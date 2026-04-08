@@ -1,0 +1,16 @@
+{
+	"name": "jsql",
+	"version": "1.0.0",
+	"description": "",
+	"license": "ISC",
+	"author": "",
+	"type": "module",
+	"main": "index.js",
+	"scripts": {
+		"test": "tsgo --noEmit -p tsconfig.json && node --test sql.test.ts"
+	},
+	"devDependencies": {
+		"@types/node": "^25.5.2",
+		"@typescript/native-preview": "^7.0.0-dev.20260408.1"
+	}
+}
