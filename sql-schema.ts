@@ -2,26 +2,26 @@ import type {
 	ColumnListArityMatch,
 	ForeignRefMeta,
 	SqlCreateTableLike,
-	ValidateColumnRefs,
+	ValidateColumnTupleRefs,
 } from "./sql-create-table.js";
 import type { SqlParseError } from "./sql-types.js";
 
 type Simplify<T> = { [K in keyof T]: T[K] };
 
-type ValidateRefColumns<Cols extends string, TargetRow> = ValidateColumnRefs<
+type ValidateRefColumns<Cols extends readonly string[], TargetRow> = ValidateColumnTupleRefs<
 	Cols,
 	Extract<keyof TargetRow, string>
 > extends true
 	? never
-	: ValidateColumnRefs<Cols, Extract<keyof TargetRow, string>>;
+	: ValidateColumnTupleRefs<Cols, Extract<keyof TargetRow, string>>;
 
 type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends infer R
 	? R extends ForeignRefMeta
 		? R extends {
-				fromColumns: infer FC extends string
+				fromColumns: infer FC extends readonly string[]
 				toSchema: infer TS
 				toTable: infer TT extends string
-				toColumns: infer TC extends string
+				toColumns: infer TC extends readonly string[]
 		  }
 			? [TS] extends [never]
 				? TT extends keyof Tables
@@ -105,9 +105,9 @@ type ValidateDatabaseRef<
 	Schemas extends Record<string, SqlSchemaLike>,
 	DefaultSchema extends string,
 > = R extends {
-	fromColumns: infer FC extends string
+	fromColumns: infer FC extends readonly string[]
 	toTable: infer TTab extends string
-	toColumns: infer TCols extends string
+	toColumns: infer TCols extends readonly string[]
 }
 	? ResolveRefSchema<R, DefaultSchema> extends infer TargetSchema extends string
 		? TargetSchema extends keyof Schemas

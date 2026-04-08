@@ -160,6 +160,12 @@ type PairRefArityShortTable = SqlCreateTable<`
 		foreign key (x) references users(id, email)
 	)
 `>
+type _PairRefArityShortFailsOnCreateTable = Expect<
+	Equal<
+		PairRefArityShortTable["row"],
+		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+	>
+>
 type SchemaCompositeArityShort = SqlSchema<[UsersTable, PairRefArityShortTable]>
 type _SchemaCompositeArityShort = Expect<
 	Equal<
@@ -176,6 +182,12 @@ type PairRefArityLongTable = SqlCreateTable<`
 		foreign key (x, y) references users(id)
 	)
 `>
+type _PairRefArityLongFailsOnCreateTable = Expect<
+	Equal<
+		PairRefArityLongTable["row"],
+		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
+	>
+>
 type SchemaCompositeArityLong = SqlSchema<[UsersTable, PairRefArityLongTable]>
 type _SchemaCompositeArityLong = Expect<
 	Equal<
@@ -439,6 +451,12 @@ type SalesDbArityShortTable = SqlCreateTable<`
 		foreign key (a) references public.users(id, email)
 	)
 `>
+type _SalesDbArityShortFailsOnCreateTable = Expect<
+	Equal<
+		SalesDbArityShortTable["row"],
+		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+	>
+>
 type SalesDbArityShortSchema = SqlSchema<[SalesDbArityShortTable]>
 type DbCompositeArityShort = SqlDatabase<{ public: PublicSchema; sales: SalesDbArityShortSchema }>
 type _DbCompositeArityShort = Expect<

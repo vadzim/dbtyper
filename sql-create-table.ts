@@ -201,18 +201,65 @@ export type ValidateColumnRefs<List extends string, Names extends string> = Trim
 			: SqlParseError<`Unknown column "${StripIdentifierQuotes<Trim<Head>>}" referenced in table constraint`>
 		: SqlParseError<"Unable to parse column reference list in table constraint">;
 
-/** True when top-level comma-separated column counts match (same rule as SQL composite FKs). */
-export type ColumnListArityMatch<Local extends string, Remote extends string> = Trim<Local> extends ""
-	? Trim<Remote> extends ""
+/** Top-level comma-separated identifiers → readonly tuple of stripped names (`never` if unparseable). */
+export type ParseColumnListToTuple<List extends string> = Trim<List> extends ""
+	? readonly []
+	: ReadUntilTopLevelComma<List> extends [infer Head extends string, infer Tail extends string]
+		? ParseColumnListToTuple<Tail> extends infer Rest extends readonly string[]
+			? readonly [StripIdentifierQuotes<Trim<Head>>, ...Rest]
+			: never
+		: never;
+
+export type ValidateColumnTupleRefs<Cols extends readonly string[], Names extends string> = Cols extends readonly [
+	infer H extends string,
+	...infer R extends readonly string[],
+]
+	? H extends Names
+		? ValidateColumnTupleRefs<R, Names>
+		: SqlParseError<`Unknown column "${H}" referenced in table constraint`>
+	: Cols extends readonly []
+		? true
+		: SqlParseError<"Unable to parse column reference list in table constraint">;
+
+/** True when column tuple lengths match (same rule as SQL composite FKs). */
+export type ColumnListArityMatch<
+	From extends readonly string[],
+	To extends readonly string[],
+> = From extends readonly []
+	? To extends readonly []
 		? true
 		: SqlParseError<"Foreign key referenced column list has more entries than the local column list">
-	: Trim<Remote> extends ""
+	: To extends readonly []
 		? SqlParseError<"Foreign key local column list has more entries than the referenced column list">
-		: ReadUntilTopLevelComma<Trim<Local>> extends [infer _LH extends string, infer LT extends string]
-			? ReadUntilTopLevelComma<Trim<Remote>> extends [infer _RH extends string, infer RT extends string]
-				? ColumnListArityMatch<LT, RT>
-				: SqlParseError<"Unable to parse referenced column list in foreign key">
-			: SqlParseError<"Unable to parse local column list in foreign key">;
+		: From extends readonly [string, ...infer FT extends readonly string[]]
+			? To extends readonly [string, ...infer TT extends readonly string[]]
+				? ColumnListArityMatch<FT, TT>
+				: SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+			: SqlParseError<"Foreign key referenced column list has more entries than the local column list">;
+
+/** FK body after `StripConstraintPrefix`: arity vs referenced list, then local column names. */
+type ValidateForeignKeyConstraintBody<E extends string, Names extends string> = E extends `foreign key${string}`
+	? FirstParenGroup<E> extends infer G extends string
+		? E extends `${string}references ${infer AfterRef}`
+			? ReadIdentifier<Trim<AfterRef>> extends [infer _TR extends string, infer RestAfterTarget extends string]
+				? FirstParenGroup<RestAfterTarget> extends infer TC extends string
+					? [ParseColumnListToTuple<G>] extends [never]
+						? SqlParseError<"Unable to parse local column list in foreign key">
+						: [ParseColumnListToTuple<TC>] extends [never]
+							? SqlParseError<"Unable to parse referenced column list in foreign key">
+							: ParseColumnListToTuple<G> extends infer FromT extends readonly string[]
+								? ParseColumnListToTuple<TC> extends infer ToT extends readonly string[]
+									? ColumnListArityMatch<FromT, ToT> extends true
+										? ValidateColumnTupleRefs<FromT, Names>
+										: ColumnListArityMatch<FromT, ToT>
+									: SqlParseError<"Unable to parse referenced column list in foreign key">
+								: SqlParseError<"Unable to parse local column list in foreign key">
+					: SqlParseError<"FOREIGN KEY must include a referenced column list">
+				: SqlParseError<"FOREIGN KEY must specify a referenced table and columns">
+			: SqlParseError<"FOREIGN KEY must include REFERENCES clause">
+		: SqlParseError<"FOREIGN KEY must include a local column list">
+	: true;
+
 type ValidateConstraintRefs<Entry extends string, Names extends string> = StripConstraintPrefix<Entry> extends infer E extends string
 	? E extends `primary key${string}`
 		? FirstParenGroup<E> extends infer G extends string
@@ -223,9 +270,7 @@ type ValidateConstraintRefs<Entry extends string, Names extends string> = StripC
 				? ValidateColumnRefs<G, Names>
 				: SqlParseError<"UNIQUE must include a column list">
 			: E extends `foreign key${string}`
-				? FirstParenGroup<E> extends infer G extends string
-					? ValidateColumnRefs<G, Names>
-					: SqlParseError<"FOREIGN KEY must include a local column list">
+				? ValidateForeignKeyConstraintBody<E, Names>
 				: true
 	: true;
 
@@ -235,10 +280,10 @@ type ParseQualifiedRefTable<T extends string> = StripIdentifierQuotes<T> extends
 
 export type ForeignRefMeta = {
 	from: string;
-	fromColumns: string;
+	fromColumns: readonly string[];
 	toSchema: string | never;
 	toTable: string;
-	toColumns: string;
+	toColumns: readonly string[];
 };
 type ParseForeignRefMeta<Entry extends string> = StripConstraintPrefix<Entry> extends infer E extends string
 	? E extends `foreign key${string}`
@@ -248,7 +293,11 @@ type ParseForeignRefMeta<Entry extends string> = StripConstraintPrefix<Entry> ex
 					? FirstParenGroup<RestAfterTarget> extends infer TargetCols extends string
 						? ParseQualifiedRefTable<TargetRaw> extends infer PQ
 							? PQ extends { schema: infer S; table: infer Tab }
-								? { from: never; fromColumns: LocalCols; toSchema: S; toTable: Tab; toColumns: TargetCols }
+								? ParseColumnListToTuple<LocalCols> extends infer FC extends readonly string[]
+									? ParseColumnListToTuple<TargetCols> extends infer TC extends readonly string[]
+										? { from: never; fromColumns: FC; toSchema: S; toTable: Tab; toColumns: TC }
+										: never
+									: never
 								: never
 							: never
 						: never
