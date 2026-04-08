@@ -123,6 +123,40 @@ type _BadRefWithComments = Expect<
 	Equal<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
+type QuotedIdentifiers = SqlCreateTableToType<`
+	create table "account users" (
+		"id" int not null,
+		"user name" text,
+		\`org-id\` int,
+		[is active] boolean not null,
+		constraint "users pk" primary key ("id"),
+		unique ("user name"),
+		foreign key (\`org-id\`) references orgs(id)
+	)
+`>
+
+type _QuotedIdentifiersShape = Expect<
+	Equal<
+		QuotedIdentifiers,
+		{
+			id: number
+			"user name": string | null
+			"org-id": number | null
+			"is active": boolean
+		}
+	>
+>
+
+type BadQuotedRef = SqlCreateTableToType<`
+	create table q_bad (
+		"id" int not null,
+		unique ("missing id")
+	)
+`>
+type _BadQuotedRef = Expect<
+	Equal<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
+>
+
 describe("sql tests", () => {
 	it("should run", () => {})
 })

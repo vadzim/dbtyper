@@ -47,6 +47,41 @@ type StripSqlComments<S extends string> = S extends `${infer Head}--${infer Tail
 		? StripSqlComments<`${Head}${StripBlockComment<Tail>}`>
 		: S;
 
+type ReadDoubleQuotedIdentifier<
+	S extends string,
+	Acc extends string = "",
+> = S extends `${infer C}${infer Rest}`
+	? C extends `"`
+		? [`"${Acc}"`, Rest]
+		: ReadDoubleQuotedIdentifier<Rest, `${Acc}${C}`>
+	: [`"${Acc}"`, ""];
+
+type ReadBacktickQuotedIdentifier<
+	S extends string,
+	Acc extends string = "",
+> = S extends `${infer C}${infer Rest}`
+	? C extends "`"
+		? [`\`${Acc}\``, Rest]
+		: ReadBacktickQuotedIdentifier<Rest, `${Acc}${C}`>
+	: [`\`${Acc}\``, ""];
+
+type ReadBracketQuotedIdentifier<
+	S extends string,
+	Acc extends string = "",
+> = S extends `${infer C}${infer Rest}`
+	? C extends "]"
+		? [`[${Acc}]`, Rest]
+		: ReadBracketQuotedIdentifier<Rest, `${Acc}${C}`>
+	: [`[${Acc}]`, ""];
+
+type ReadIdentifier<S extends string> = Trim<S> extends `"${infer Rest}`
+	? ReadDoubleQuotedIdentifier<Rest>
+	: Trim<S> extends `\`${infer Rest}`
+		? ReadBacktickQuotedIdentifier<Rest>
+		: Trim<S> extends `[${infer Rest}`
+			? ReadBracketQuotedIdentifier<Rest>
+			: ReadWord<Trim<S>>;
+
 type ReadWord<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends Ws | "," | "(" | ")"
 		? [Acc, `${C}${Rest}`]
@@ -131,7 +166,7 @@ type IsNullable<ColumnSpec extends string> =
 
 type ParseColumn<
 	Col extends string,
-> = ReadWord<Trim<Col>> extends [infer ColName extends string, infer Rest extends string]
+> = ReadIdentifier<Trim<Col>> extends [infer ColName extends string, infer Rest extends string]
 	? ReadWord<Trim<Rest>> extends [infer SqlT extends string, infer AfterType extends string]
 		? {
 				name: StripIdentifierQuotes<ColName>;
@@ -169,7 +204,7 @@ type AddColumn<
 	  };
 
 type StripConstraintPrefix<S extends string> = ToLower<Trim<S>> extends `constraint ${infer Rest}`
-	? ReadWord<Trim<Rest>> extends [string, infer AfterName extends string]
+	? ReadIdentifier<Trim<Rest>> extends [string, infer AfterName extends string]
 		? Trim<ToLower<AfterName>>
 		: ToLower<Trim<S>>
 	: ToLower<Trim<S>>;
