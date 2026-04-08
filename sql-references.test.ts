@@ -160,9 +160,9 @@ type PairRefArityShortTable = SqlCreateTable<`
 		foreign key (x) references users(id, email)
 	)
 `>
-type _PairRefArityShortFailsOnCreateTable = Expect<
+type _PairRefArityShortIsParseError = Expect<
 	Equal<
-		PairRefArityShortTable["row"],
+		PairRefArityShortTable,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
@@ -182,9 +182,9 @@ type PairRefArityLongTable = SqlCreateTable<`
 		foreign key (x, y) references users(id)
 	)
 `>
-type _PairRefArityLongFailsOnCreateTable = Expect<
+type _PairRefArityLongIsParseError = Expect<
 	Equal<
-		PairRefArityLongTable["row"],
+		PairRefArityLongTable,
 		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
 	>
 >
@@ -451,9 +451,9 @@ type SalesDbArityShortTable = SqlCreateTable<`
 		foreign key (a) references public.users(id, email)
 	)
 `>
-type _SalesDbArityShortFailsOnCreateTable = Expect<
+type _SalesDbArityShortIsParseError = Expect<
 	Equal<
-		SalesDbArityShortTable["row"],
+		SalesDbArityShortTable,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >

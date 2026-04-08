@@ -1,33 +1,33 @@
 import type {
-	ColumnListArityMatch,
+	FkColumnPair,
 	ForeignRefMeta,
 	SqlCreateTableLike,
-	ValidateColumnTupleRefs,
+	ValidateFkReferencedColumnPairs,
 } from "./sql-create-table.js";
 import type { SqlParseError } from "./sql-types.js";
 
+/** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
+export type SqlSchemaTableInput = SqlCreateTableLike | SqlParseError<string>;
+
 type Simplify<T> = { [K in keyof T]: T[K] };
 
-type ValidateRefColumns<Cols extends readonly string[], TargetRow> = ValidateColumnTupleRefs<
-	Cols,
+type ValidateRefColumnPairs<Pairs extends readonly FkColumnPair[], TargetRow> = ValidateFkReferencedColumnPairs<
+	Pairs,
 	Extract<keyof TargetRow, string>
 > extends true
 	? never
-	: ValidateColumnTupleRefs<Cols, Extract<keyof TargetRow, string>>;
+	: ValidateFkReferencedColumnPairs<Pairs, Extract<keyof TargetRow, string>>;
 
 type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends infer R
 	? R extends ForeignRefMeta
 		? R extends {
-				fromColumns: infer FC extends readonly string[]
+				columnPairs: infer Pairs extends readonly FkColumnPair[]
 				toSchema: infer TS
 				toTable: infer TT extends string
-				toColumns: infer TC extends readonly string[]
 		  }
 			? [TS] extends [never]
 				? TT extends keyof Tables
-					? ColumnListArityMatch<FC, TC> extends true
-						? ValidateRefColumns<TC, Tables[TT]>
-						: ColumnListArityMatch<FC, TC>
+					? ValidateRefColumnPairs<Pairs, Tables[TT]>
 					: SqlParseError<`Unknown referenced table "${TT}" in schema`>
 				: never
 			: never
@@ -35,29 +35,39 @@ type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends
 	: never;
 
 type SqlSchemaBuildInternal<
-	Tables extends readonly SqlCreateTableLike[],
+	Tables extends readonly SqlSchemaTableInput[],
 	Acc,
 	Seen extends string,
 	Error = never,
 	Refs extends ForeignRefMeta = never,
-> = Tables extends readonly [infer Head extends SqlCreateTableLike, ...infer Tail extends readonly SqlCreateTableLike[]]
-	? Head["name"] extends infer Name
-		? Name extends SqlParseError<string>
-			? SqlSchemaBuildInternal<Tail, Acc, Seen, Error | Name, Refs>
-			: Name extends string
-				? Name extends Seen
-					? SqlSchemaBuildInternal<Tail, Acc, Seen, Error | SqlParseError<`Duplicate table name: ${Name}`>, Refs>
-					: Head["row"] extends infer Row
-						? Row extends SqlParseError<string>
-							? SqlSchemaBuildInternal<Tail, Acc, Seen | Name, Error | Row, Refs>
-							: SqlSchemaBuildInternal<
-									Tail,
-									Acc & { [K in Name]: Row },
-									Seen | Name,
-									Error,
-									Refs | (Head["__refs"] extends infer FR extends ForeignRefMeta ? Omit<FR, "from"> & { from: Name } : never)
-							  >
-						: SqlSchemaBuildInternal<Tail, Acc, Seen | Name, Error | SqlParseError<"Internal SQL parser error">, Refs>
+> = Tables extends readonly [infer Head, ...infer Tail extends readonly SqlSchemaTableInput[]]
+	? Head extends SqlParseError<string>
+		? SqlSchemaBuildInternal<Tail, Acc, Seen, Error | Head, Refs>
+		: Head extends SqlCreateTableLike
+			? Head["name"] extends infer Name
+				? Name extends SqlParseError<string>
+					? SqlSchemaBuildInternal<Tail, Acc, Seen, Error | Name, Refs>
+					: Name extends string
+						? Name extends Seen
+							? SqlSchemaBuildInternal<Tail, Acc, Seen, Error | SqlParseError<`Duplicate table name: ${Name}`>, Refs>
+							: Head["row"] extends infer Row
+								? Row extends SqlParseError<string>
+									? SqlSchemaBuildInternal<Tail, Acc, Seen | Name, Error | Row, Refs>
+									: SqlSchemaBuildInternal<
+											Tail,
+											Acc & { [K in Name]: Row },
+											Seen | Name,
+											Error,
+											Refs | (Head["__refs"] extends infer FR extends ForeignRefMeta ? Omit<FR, "from"> & { from: Name } : never)
+									  >
+								: SqlSchemaBuildInternal<Tail, Acc, Seen | Name, Error | SqlParseError<"Internal SQL parser error">, Refs>
+						: SqlSchemaBuildInternal<
+								Tail,
+								Acc,
+								Seen,
+								Error | SqlParseError<"Expected a CREATE TABLE statement with a table name">,
+								Refs
+						  >
 				: SqlSchemaBuildInternal<
 						Tail,
 						Acc,
@@ -65,16 +75,10 @@ type SqlSchemaBuildInternal<
 						Error | SqlParseError<"Expected a CREATE TABLE statement with a table name">,
 						Refs
 				  >
-		: SqlSchemaBuildInternal<
-				Tail,
-				Acc,
-				Seen,
-				Error | SqlParseError<"Expected a CREATE TABLE statement with a table name">,
-				Refs
-		  >
+			: SqlSchemaBuildInternal<Tail, Acc, Seen, Error | SqlParseError<"Invalid schema table entry">, Refs>
 	: { tables: Simplify<Acc>; error: Error | ValidateIntraSchemaRefs<Refs, Simplify<Acc>>; refs: Refs };
 
-export type SqlSchema<Tables extends readonly SqlCreateTableLike[]> = SqlSchemaBuildInternal<
+export type SqlSchema<Tables extends readonly SqlSchemaTableInput[]> = SqlSchemaBuildInternal<
 	Tables,
 	{},
 	never
@@ -105,16 +109,13 @@ type ValidateDatabaseRef<
 	Schemas extends Record<string, SqlSchemaLike>,
 	DefaultSchema extends string,
 > = R extends {
-	fromColumns: infer FC extends readonly string[]
+	columnPairs: infer Pairs extends readonly FkColumnPair[]
 	toTable: infer TTab extends string
-	toColumns: infer TCols extends readonly string[]
 }
 	? ResolveRefSchema<R, DefaultSchema> extends infer TargetSchema extends string
 		? TargetSchema extends keyof Schemas
 			? TTab extends keyof Schemas[TargetSchema]["tables"]
-				? ColumnListArityMatch<FC, TCols> extends true
-					? ValidateRefColumns<TCols, Schemas[TargetSchema]["tables"][TTab]>
-					: ColumnListArityMatch<FC, TCols>
+				? ValidateRefColumnPairs<Pairs, Schemas[TargetSchema]["tables"][TTab]>
 				: SqlParseError<`Unknown referenced table "${TargetSchema}.${TTab}" in database`>
 			: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
 		: SqlParseError<"Internal database reference resolver error">

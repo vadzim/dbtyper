@@ -97,7 +97,7 @@ type BadUniqueRef = SqlCreateTable<`
 	)
 `>
 type _BadUniqueRef = Expect<
-	Equal<BadUniqueRef["row"], SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type BadForeignKeyRef = SqlCreateTable<`
@@ -108,7 +108,7 @@ type BadForeignKeyRef = SqlCreateTable<`
 	)
 `>
 type _BadForeignKeyRef = Expect<
-	Equal<BadForeignKeyRef["row"], SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type WithComments = SqlCreateTable<`
@@ -151,7 +151,7 @@ type BadRefWithComments = SqlCreateTable<`
 	)
 `>
 type _BadRefWithComments = Expect<
-	Equal<BadRefWithComments["row"], SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type QuotedIdentifiers = SqlCreateTable<`
@@ -190,7 +190,7 @@ type BadQuotedRef = SqlCreateTable<`
 	)
 `>
 type _BadQuotedRef = Expect<
-	Equal<BadQuotedRef["row"], SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
+	Equal<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
 >
 
 type _TableNameSimple = Expect<Equal<SqlCreateTable<"create table users (id int)">["name"], "users">>

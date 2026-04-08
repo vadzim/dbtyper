@@ -221,23 +221,52 @@ export type ValidateColumnTupleRefs<Cols extends readonly string[], Names extend
 		? true
 		: SqlParseError<"Unable to parse column reference list in table constraint">;
 
-/** True when column tuple lengths match (same rule as SQL composite FKs). */
-export type ColumnListArityMatch<
+/** One `(local_column, referenced_column)` mapping in a foreign key. */
+export type FkColumnPair = readonly [local: string, referenced: string];
+
+/**
+ * Zip two parsed column lists into aligned pairs; same arity rules as SQL.
+ * On mismatch returns `SqlParseError<…>`; on success a readonly tuple of pairs.
+ */
+export type ZipColumnListsToPairs<
 	From extends readonly string[],
 	To extends readonly string[],
+	Acc extends readonly FkColumnPair[] = [],
 > = From extends readonly []
 	? To extends readonly []
-		? true
+		? Acc
 		: SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	: To extends readonly []
 		? SqlParseError<"Foreign key local column list has more entries than the referenced column list">
-		: From extends readonly [string, ...infer FT extends readonly string[]]
-			? To extends readonly [string, ...infer TT extends readonly string[]]
-				? ColumnListArityMatch<FT, TT>
+		: From extends readonly [infer FH extends string, ...infer FT extends readonly string[]]
+			? To extends readonly [infer TH extends string, ...infer TT extends readonly string[]]
+				? ZipColumnListsToPairs<FT, TT, [...Acc, readonly [FH, TH]]>
 				: SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 			: SqlParseError<"Foreign key referenced column list has more entries than the local column list">;
 
-/** FK body after `StripConstraintPrefix`: arity vs referenced list, then local column names. */
+export type ValidateFkLocalColumnPairs<Pairs extends readonly FkColumnPair[], Names extends string> = Pairs extends readonly [
+	readonly [infer L extends string, string],
+	...infer Rest extends readonly FkColumnPair[],
+]
+	? L extends Names
+		? ValidateFkLocalColumnPairs<Rest, Names>
+		: SqlParseError<`Unknown column "${L}" referenced in table constraint`>
+	: Pairs extends readonly []
+		? true
+		: SqlParseError<"Unable to validate foreign key local columns">;
+
+export type ValidateFkReferencedColumnPairs<Pairs extends readonly FkColumnPair[], TargetNames extends string> = Pairs extends readonly [
+	readonly [string, infer R extends string],
+	...infer Rest extends readonly FkColumnPair[],
+]
+	? R extends TargetNames
+		? ValidateFkReferencedColumnPairs<Rest, TargetNames>
+		: SqlParseError<`Unknown column "${R}" referenced in table constraint`>
+	: Pairs extends readonly []
+		? true
+		: SqlParseError<"Unable to validate foreign key referenced columns">;
+
+/** FK body after `StripConstraintPrefix`: zip local/referenced lists, then validate local names. */
 type ValidateForeignKeyConstraintBody<E extends string, Names extends string> = E extends `foreign key${string}`
 	? FirstParenGroup<E> extends infer G extends string
 		? E extends `${string}references ${infer AfterRef}`
@@ -249,9 +278,13 @@ type ValidateForeignKeyConstraintBody<E extends string, Names extends string> = 
 							? SqlParseError<"Unable to parse referenced column list in foreign key">
 							: ParseColumnListToTuple<G> extends infer FromT extends readonly string[]
 								? ParseColumnListToTuple<TC> extends infer ToT extends readonly string[]
-									? ColumnListArityMatch<FromT, ToT> extends true
-										? ValidateColumnTupleRefs<FromT, Names>
-										: ColumnListArityMatch<FromT, ToT>
+									? ZipColumnListsToPairs<FromT, ToT> extends infer Pairs
+										? Pairs extends SqlParseError<string>
+											? Pairs
+											: Pairs extends readonly FkColumnPair[]
+												? ValidateFkLocalColumnPairs<Pairs, Names>
+												: SqlParseError<"Unable to build foreign key column pairs">
+										: SqlParseError<"Unable to build foreign key column pairs">
 									: SqlParseError<"Unable to parse referenced column list in foreign key">
 								: SqlParseError<"Unable to parse local column list in foreign key">
 					: SqlParseError<"FOREIGN KEY must include a referenced column list">
@@ -280,10 +313,9 @@ type ParseQualifiedRefTable<T extends string> = StripIdentifierQuotes<T> extends
 
 export type ForeignRefMeta = {
 	from: string;
-	fromColumns: readonly string[];
+	columnPairs: readonly FkColumnPair[];
 	toSchema: string | never;
 	toTable: string;
-	toColumns: readonly string[];
 };
 type ParseForeignRefMeta<Entry extends string> = StripConstraintPrefix<Entry> extends infer E extends string
 	? E extends `foreign key${string}`
@@ -295,7 +327,11 @@ type ParseForeignRefMeta<Entry extends string> = StripConstraintPrefix<Entry> ex
 							? PQ extends { schema: infer S; table: infer Tab }
 								? ParseColumnListToTuple<LocalCols> extends infer FC extends readonly string[]
 									? ParseColumnListToTuple<TargetCols> extends infer TC extends readonly string[]
-										? { from: never; fromColumns: FC; toSchema: S; toTable: Tab; toColumns: TC }
+										? ZipColumnListsToPairs<FC, TC> extends infer Pairs
+											? Pairs extends readonly FkColumnPair[]
+												? { from: never; columnPairs: Pairs; toSchema: S; toTable: Tab }
+												: never
+											: never
 										: never
 									: never
 								: never
@@ -360,7 +396,8 @@ type SqlCreateTableForeignRefs<S extends string> = [ExtractCreateBody<S>] extend
 		? Parsed["refs"]
 		: never;
 
-export type SqlCreateTable<S extends string> = {
+/** Valid name + body: full create-table object. */
+type SqlCreateTableObject<S extends string> = {
 	readonly kind: "create_table";
 	readonly name: SqlCreateTableName<S>;
 	// General rule: types are helpers and must not become a bottleneck.
@@ -368,6 +405,16 @@ export type SqlCreateTable<S extends string> = {
 	readonly source: S;
 	readonly __refs: SqlCreateTableForeignRefs<S>;
 };
+
+/**
+ * When the table name parses but the body fails, the type is `SqlParseError<…>` (not an object with `row: SqlParseError`).
+ * If the name fails, this stays an object so both `name` and `row` errors remain visible.
+ */
+export type SqlCreateTable<S extends string> = SqlCreateTableName<S> extends SqlParseError<string>
+	? SqlCreateTableObject<S>
+	: SqlCreateTableToType<S> extends SqlParseError<infer E>
+		? SqlParseError<E>
+		: SqlCreateTableObject<S>;
 
 export type SqlCreateTableLike = {
 	readonly kind: "create_table";
