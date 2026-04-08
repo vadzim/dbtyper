@@ -2,34 +2,44 @@ In this project we use typescript 7.0 preview.
 
 This project is a typescript types which parses sql strings and returns prope types.
 
-You can also build a full database schema from multiple `SqlCreateTable` types:
+You can build a schema from multiple `SqlCreateTable` types, then build a database from schemas:
 
 ```ts
-import { SqlCreateTable, SqlDatabase } from "./sql.ts"
+import { SqlCreateTable, SqlSchema, SqlDatabase } from "./sql.ts"
 
 type UsersTable = SqlCreateTable<"create table users (id int not null, email text not null)">
 type PostsTable = SqlCreateTable<"create table posts (id int not null, user_id int not null, title text)">
 
-type Db = SqlDatabase<[UsersTable, PostsTable]>
+type PublicSchema = SqlSchema<[UsersTable, PostsTable]>
+type Db = SqlDatabase<{ public: PublicSchema }>
 ```
 
 `Db` becomes:
 
 ```ts
 {
-	users: {
-		id: number
-		email: string
-	}
-	posts: {
-		id: number
-		user_id: number
-		title: string | null
+	kind: "database"
+	schemas: {
+		public: {
+			users: {
+				id: number
+				email: string
+			}
+			posts: {
+				id: number
+				user_id: number
+				title: string | null
+			}
+		}
 	}
 }
 ```
 
-If any table SQL is invalid or table names are duplicated, the result is `SqlParseError<...>`.
+Checks:
+
+- `SqlSchema` checks duplicate table names and foreign key references inside the same schema.
+- `SqlDatabase` checks foreign key references that point to another schema (for example `references public.users(id)`).
+- Any invalid case returns `SqlParseError<...>`.
 
 ## Performance Rule
 
