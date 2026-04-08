@@ -1,10 +1,15 @@
-import type { SqlCreateTableToType, SqlParseError } from "./sql.js"
+import type {
+	SqlCreateTable,
+	SqlDatabase,
+	SqlParseError,
+} from "./sql.js"
 import { describe, it } from "node:test"
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 type Expect<T extends true> = T
+type Matches<Actual, Expected> = Actual extends Expected ? true : false
 
-type Users = SqlCreateTableToType<`
+type Users = SqlCreateTable<`
 	CREATE TABLE users (
 		id int not null,
 		email varchar(255) not null,
@@ -15,34 +20,54 @@ type Users = SqlCreateTableToType<`
 `>
 
 type _UsersShape = Expect<
-	Equal<
+	Matches<
 		Users,
 		{
-			id: number
-			email: string
-			display_name: string | null
-			is_active: boolean
-			meta: unknown | null
+			readonly kind: "create_table"
+			readonly source: string
+			readonly name: "users"
+			readonly row: {
+				id: number
+				email: string
+				display_name: string | null
+				is_active: boolean
+				meta: unknown | null
+			}
 		}
 	>
 >
 
-type Posts = SqlCreateTableToType<"create table posts (id bigint not null, rating decimal(10,2), title text)">
+type Posts = SqlCreateTable<"create table posts (id bigint not null, rating decimal(10,2), title text)">
 type _PostsShape = Expect<
-	Equal<
+	Matches<
 		Posts,
 		{
-			id: number
-			rating: number | null
-			title: string | null
+			readonly kind: "create_table"
+			readonly source: string
+			readonly name: "posts"
+			readonly row: {
+				id: number
+				rating: number | null
+				title: string | null
+			}
 		}
 	>
 >
 
-type Invalid = SqlCreateTableToType<"select * from users">
-type _Invalid = Expect<Equal<Invalid, SqlParseError<"Expected a CREATE TABLE statement">>>
+type Invalid = SqlCreateTable<"select * from users">
+type _Invalid = Expect<
+	Matches<
+		Invalid,
+		{
+			readonly kind: "create_table"
+			readonly source: string
+			readonly name: SqlParseError<"Expected a CREATE TABLE statement with a table name">
+			readonly row: SqlParseError<"Expected a CREATE TABLE statement">
+		}
+	>
+>
 
-type WithConstraints = SqlCreateTableToType<`
+type WithConstraints = SqlCreateTable<`
 	create table accounts (
 		id int not null,
 		email text not null,
@@ -54,27 +79,35 @@ type WithConstraints = SqlCreateTableToType<`
 `>
 
 type _WithConstraintsShape = Expect<
-	Equal<
+	Matches<
 		WithConstraints,
 		{
-			id: number
-			email: string
-			org_id: number | null
+			readonly kind: "create_table"
+			readonly source: string
+			readonly name: "accounts"
+			readonly row: {
+				id: number
+				email: string
+				org_id: number | null
+			}
 		}
 	>
 >
 
-type BadUniqueRef = SqlCreateTableToType<`
+type BadUniqueRef = SqlCreateTable<`
 	create table bad_unique (
 		id int not null,
 		unique (missing_col)
 	)
 `>
 type _BadUniqueRef = Expect<
-	Equal<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<
+		BadUniqueRef["row"],
+		SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
+	>
 >
 
-type BadForeignKeyRef = SqlCreateTableToType<`
+type BadForeignKeyRef = SqlCreateTable<`
 	create table bad_fk (
 		id int not null,
 		org_id int,
@@ -82,10 +115,13 @@ type BadForeignKeyRef = SqlCreateTableToType<`
 	)
 `>
 type _BadForeignKeyRef = Expect<
-	Equal<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<
+		BadForeignKeyRef["row"],
+		SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
+	>
 >
 
-type WithComments = SqlCreateTableToType<`
+type WithComments = SqlCreateTable<`
 	-- one-line comment before statement
 	CREATE TABLE commented_users (
 		id int not null, -- inline one-line comment
@@ -102,17 +138,22 @@ type WithComments = SqlCreateTableToType<`
 	);
 `>
 type _WithCommentsShape = Expect<
-	Equal<
+	Matches<
 		WithComments,
 		{
-			id: number
-			email: string
-			org_id: number | null
+			readonly kind: "create_table"
+			readonly source: string
+			readonly name: "commented_users"
+			readonly row: {
+				id: number
+				email: string
+				org_id: number | null
+			}
 		}
 	>
 >
 
-type BadRefWithComments = SqlCreateTableToType<`
+type BadRefWithComments = SqlCreateTable<`
 	create table bad_ref_with_comments (
 		id int not null,
 		/* wrong column should still fail */
@@ -120,10 +161,13 @@ type BadRefWithComments = SqlCreateTableToType<`
 	)
 `>
 type _BadRefWithComments = Expect<
-	Equal<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<
+		BadRefWithComments["row"],
+		SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
+	>
 >
 
-type QuotedIdentifiers = SqlCreateTableToType<`
+type QuotedIdentifiers = SqlCreateTable<`
 	create table "account users" (
 		"id" int not null,
 		"user name" text,
@@ -136,25 +180,90 @@ type QuotedIdentifiers = SqlCreateTableToType<`
 `>
 
 type _QuotedIdentifiersShape = Expect<
-	Equal<
+	Matches<
 		QuotedIdentifiers,
 		{
-			id: number
-			"user name": string | null
-			"org-id": number | null
-			"is active": boolean
+			readonly kind: "create_table"
+			readonly source: string
+			readonly name: "account users"
+			readonly row: {
+				id: number
+				"user name": string | null
+				"org-id": number | null
+				"is active": boolean
+			}
 		}
 	>
 >
 
-type BadQuotedRef = SqlCreateTableToType<`
+type BadQuotedRef = SqlCreateTable<`
 	create table q_bad (
 		"id" int not null,
 		unique ("missing id")
 	)
 `>
 type _BadQuotedRef = Expect<
-	Equal<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
+	Equal<
+		BadQuotedRef["row"],
+		SqlParseError<`Unknown column "missing id" referenced in table constraint`>
+	>
+>
+
+type _TableNameSimple = Expect<
+	Equal<SqlCreateTable<"create table users (id int)">["name"], "users">
+>
+
+type _TableNameQuoted = Expect<
+	Equal<
+		SqlCreateTable<`create table "account users" ("id" int not null)`>["name"],
+		"account users"
+	>
+>
+
+type UsersTable = SqlCreateTable<`
+	create table users (
+		id int not null,
+		email text not null
+	)
+`>
+
+type PostsTable = SqlCreateTable<`
+	create table posts (
+		id int not null,
+		user_id int not null,
+		title text
+	)
+`>
+
+type DbFromTableTypes = SqlDatabase<[UsersTable, PostsTable]>
+type _DbFromTableTypes = Expect<
+	Equal<
+		DbFromTableTypes,
+		{
+			users: {
+				id: number
+				email: string
+			}
+			posts: {
+				id: number
+				user_id: number
+				title: string | null
+			}
+		}
+	>
+>
+
+type DupUsersTableA = SqlCreateTable<"create table users (id int not null)">
+type DupUsersTableB = SqlCreateTable<`create table "users" (other_id int not null)`>
+type DbDuplicateTables = SqlDatabase<[DupUsersTableA, DupUsersTableB]>
+type _DbDuplicateTables = Expect<
+	Equal<DbDuplicateTables, SqlParseError<"Duplicate table name: users">>
+>
+
+type InvalidTable = SqlCreateTable<"select * from users">
+type DbWithInvalidTable = SqlDatabase<[UsersTable, InvalidTable]>
+type _DbWithInvalidTable = Expect<
+	Equal<DbWithInvalidTable, SqlParseError<"Expected a CREATE TABLE statement with a table name">>
 >
 
 describe("sql tests", () => {
