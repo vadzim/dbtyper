@@ -266,6 +266,57 @@ type _DbWithInvalidTable = Expect<
 	Equal<DbWithInvalidTable, SqlParseError<"Expected a CREATE TABLE statement with a table name">>
 >
 
+type PostgresTypes = SqlCreateTable<`
+	create table pg_types (
+		id serial not null,
+		i2 int2 not null,
+		i4 int4 not null,
+		i8 int8 not null,
+		f4 float4,
+		f8 float8,
+		amount money,
+		flag bool not null,
+		created_at timestamptz not null,
+		alarm_at timetz,
+		payload jsonb,
+		raw bytea,
+		ref uuid,
+		host inet,
+		r int4range,
+		tags text[],
+		numbers int4[]
+	)
+`>
+type _PostgresTypes = Expect<
+	Matches<
+		PostgresTypes,
+		{
+			readonly kind: "create_table"
+			readonly name: "pg_types"
+			readonly source: string
+			readonly row: {
+				id: number
+				i2: number
+				i4: number
+				i8: number
+				f4: number | null
+				f8: number | null
+				amount: number | null
+				flag: boolean
+				created_at: Date
+				alarm_at: Date | null
+				payload: unknown | null
+				raw: Uint8Array | null
+				ref: string | null
+				host: string | null
+				r: unknown | null
+				tags: string[] | null
+				numbers: number[] | null
+			}
+		}
+	>
+>
+
 describe("sql tests", () => {
 	it("should run", () => {})
 })
