@@ -1,0 +1,15 @@
+---
+description: How to assert SqlParseMessage in jsql test files
+globs: "**/*.test.ts"
+---
+
+# SqlParseMessage in tests
+
+When extracting the message from a parse/schema/database type with `SqlParseMessage<T>` (or equivalent), assertions must use **fully qualified error strings only**:
+
+- Prefer `Equal<SqlParseMessage<T>, \`exact literal message\`>`.
+- If the compiler legitimately produces a **finite union** of messages, use `Equal<SqlParseMessage<T>, MsgA | MsgB | ...>` where every member is a complete string literal (no placeholders).
+
+Do **not** assert with broad template types or patterns, e.g. `` `Unknown referenced table "${string}" in schema` `` or other `` `${string}` `` wildcards. Those weaken the test and hide regressions.
+
+For simple cases where the whole type is `SqlParseError<M>`, `Equal<T, SqlParseError<\`...\`>>` is fine and does not require `SqlParseMessage`.

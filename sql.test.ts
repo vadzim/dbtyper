@@ -1,9 +1,4 @@
-import type {
-	SqlCreateTable,
-	SqlSchema,
-	SqlDatabase,
-	SqlParseError,
-} from "./sql.js"
+import type { SqlCreateTable, SqlParseError } from "./sql.js"
 import { describe, it } from "node:test"
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
@@ -102,10 +97,7 @@ type BadUniqueRef = SqlCreateTable<`
 	)
 `>
 type _BadUniqueRef = Expect<
-	Equal<
-		BadUniqueRef["row"],
-		SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
-	>
+	Equal<BadUniqueRef["row"], SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type BadForeignKeyRef = SqlCreateTable<`
@@ -116,10 +108,7 @@ type BadForeignKeyRef = SqlCreateTable<`
 	)
 `>
 type _BadForeignKeyRef = Expect<
-	Equal<
-		BadForeignKeyRef["row"],
-		SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
-	>
+	Equal<BadForeignKeyRef["row"], SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type WithComments = SqlCreateTable<`
@@ -162,10 +151,7 @@ type BadRefWithComments = SqlCreateTable<`
 	)
 `>
 type _BadRefWithComments = Expect<
-	Equal<
-		BadRefWithComments["row"],
-		SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
-	>
+	Equal<BadRefWithComments["row"], SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type QuotedIdentifiers = SqlCreateTable<`
@@ -204,166 +190,13 @@ type BadQuotedRef = SqlCreateTable<`
 	)
 `>
 type _BadQuotedRef = Expect<
-	Equal<
-		BadQuotedRef["row"],
-		SqlParseError<`Unknown column "missing id" referenced in table constraint`>
-	>
+	Equal<BadQuotedRef["row"], SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
 >
 
-type _TableNameSimple = Expect<
-	Equal<SqlCreateTable<"create table users (id int)">["name"], "users">
->
+type _TableNameSimple = Expect<Equal<SqlCreateTable<"create table users (id int)">["name"], "users">>
 
 type _TableNameQuoted = Expect<
-	Equal<
-		SqlCreateTable<`create table "account users" ("id" int not null)`>["name"],
-		"account users"
-	>
->
-
-type UsersTable = SqlCreateTable<`
-	create table users (
-		id int not null,
-		email text not null
-	)
-`>
-
-type PostsTable = SqlCreateTable<`
-	create table posts (
-		id int not null,
-		user_id int not null,
-		title text
-	)
-`>
-
-type PublicSchema = SqlSchema<[UsersTable, PostsTable]>
-type _PublicSchema = Expect<
-	Matches<
-		PublicSchema,
-		{
-			readonly kind: "schema"
-			readonly tables: {
-				users: {
-					id: number
-					email: string
-				}
-				posts: {
-					id: number
-					user_id: number
-					title: string | null
-				}
-			}
-		}
-	>
->
-
-type DbFromSchemas = SqlDatabase<{ public: PublicSchema }>
-type _DbFromSchemas = Expect<
-	Equal<
-		DbFromSchemas,
-		{
-			readonly kind: "database"
-			readonly schemas: {
-				public: {
-					users: {
-						id: number
-						email: string
-					}
-					posts: {
-						id: number
-						user_id: number
-						title: string | null
-					}
-				}
-			}
-		}
-	>
->
-
-type DupUsersTableA = SqlCreateTable<"create table users (id int not null)">
-type DupUsersTableB = SqlCreateTable<`create table "users" (other_id int not null)`>
-type SchemaDuplicateTables = SqlSchema<[DupUsersTableA, DupUsersTableB]>
-type _SchemaDuplicateTables = Expect<
-	Equal<SchemaDuplicateTables, SqlParseError<"Duplicate table name: users">>
->
-
-type InvalidTable = SqlCreateTable<"select * from users">
-type SchemaWithInvalidTable = SqlSchema<[UsersTable, InvalidTable]>
-type _SchemaWithInvalidTable = Expect<
-	Equal<SchemaWithInvalidTable, SqlParseError<"Expected a CREATE TABLE statement with a table name">>
->
-
-type BadIntraFkTable = SqlCreateTable<`
-	create table posts_bad (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references users_bad(id)
-	)
-`>
-type SchemaWithBadIntraFk = SqlSchema<[UsersTable, BadIntraFkTable]>
-type _SchemaWithBadIntraFk = Expect<
-	Equal<SchemaWithBadIntraFk, SqlParseError<`Unknown referenced table "users_bad" in schema`>>
->
-
-type OrdersTable = SqlCreateTable<`
-	create table orders (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.users(id)
-	)
-`>
-type SalesSchema = SqlSchema<[OrdersTable]>
-type MultiSchemaDb = SqlDatabase<{ public: PublicSchema; sales: SalesSchema }>
-type _MultiSchemaDb = Expect<
-	Matches<
-		MultiSchemaDb,
-		{
-			readonly kind: "database"
-			readonly schemas: {
-				public: unknown
-				sales: unknown
-			}
-		}
-	>
->
-
-type SalesBadSchemaRefTable = SqlCreateTable<`
-	create table orders_bad_schema (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references missing_schema.users(id)
-	)
-`>
-type SalesBadSchema = SqlSchema<[SalesBadSchemaRefTable]>
-type DbWithBadSchemaRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadSchema }>
-type _DbWithBadSchemaRef = Expect<
-	Equal<DbWithBadSchemaRef, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
->
-
-type SalesBadTableRefTable = SqlCreateTable<`
-	create table orders_bad_table (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.missing_table(id)
-	)
-`>
-type SalesBadTableSchema = SqlSchema<[SalesBadTableRefTable]>
-type DbWithBadTableRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadTableSchema }>
-type _DbWithBadTableRef = Expect<
-	Equal<DbWithBadTableRef, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
->
-
-type SalesBadColumnRefTable = SqlCreateTable<`
-	create table orders_bad_column (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.users(missing_col)
-	)
-`>
-type SalesBadColumnSchema = SqlSchema<[SalesBadColumnRefTable]>
-type DbWithBadColumnRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadColumnSchema }>
-type _DbWithBadColumnRef = Expect<
-	Equal<DbWithBadColumnRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Equal<SqlCreateTable<`create table "account users" ("id" int not null)`>["name"], "account users">
 >
 
 type PostgresTypes = SqlCreateTable<`

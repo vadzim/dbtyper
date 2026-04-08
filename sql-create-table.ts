@@ -226,8 +226,10 @@ type ParseForeignRefMeta<Entry extends string> = StripConstraintPrefix<Entry> ex
 		? E extends `${string}references ${infer AfterRef}`
 			? ReadIdentifier<Trim<AfterRef>> extends [infer TargetRaw extends string, infer RestAfterTarget extends string]
 				? FirstParenGroup<RestAfterTarget> extends infer TargetCols extends string
-					? ParseQualifiedRefTable<TargetRaw> extends infer T extends { schema: string | never; table: string }
-						? { from: never; toSchema: T["schema"]; toTable: T["table"]; toColumns: TargetCols }
+					? ParseQualifiedRefTable<TargetRaw> extends infer PQ
+						? PQ extends { schema: infer S; table: infer Tab }
+							? { from: never; toSchema: S; toTable: Tab; toColumns: TargetCols }
+							: never
 						: never
 					: never
 				: never

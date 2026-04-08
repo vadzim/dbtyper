@@ -14,11 +14,19 @@ type ValidateRefColumns<Cols extends string, TargetRow> = ValidateColumnRefs<
 	? never
 	: ValidateColumnRefs<Cols, Extract<keyof TargetRow, string>>;
 
-type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends infer R extends ForeignRefMeta
-	? [R["toSchema"]] extends [never]
-		? R["toTable"] extends keyof Tables
-			? ValidateRefColumns<R["toColumns"], Tables[R["toTable"]]>
-			: SqlParseError<`Unknown referenced table "${R["toTable"]}" in schema`>
+type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends infer R
+	? R extends ForeignRefMeta
+		? R extends {
+				toSchema: infer TS
+				toTable: infer TT extends string
+				toColumns: infer TC extends string
+		  }
+			? [TS] extends [never]
+				? TT extends keyof Tables
+					? ValidateRefColumns<TC, Tables[TT]>
+					: SqlParseError<`Unknown referenced table "${TT}" in schema`>
+				: never
+			: never
 		: never
 	: never;
 
@@ -84,16 +92,26 @@ type SqlSchemaLike = {
 	readonly __refs: ForeignRefMeta;
 };
 
-type ValidateDatabaseRef<R extends ForeignRefMeta, Schemas extends Record<string, SqlSchemaLike>> = [R["toSchema"]] extends [never]
-	? never
-	: R["toSchema"] extends keyof Schemas
-		? R["toTable"] extends keyof Schemas[R["toSchema"]]["tables"]
-			? ValidateRefColumns<R["toColumns"], Schemas[R["toSchema"]]["tables"][R["toTable"]]>
-			: SqlParseError<`Unknown referenced table "${R["toSchema"]}.${R["toTable"]}" in database`>
-		: SqlParseError<`Unknown referenced schema "${R["toSchema"]}" in database`>;
+type ResolveRefSchema<R extends ForeignRefMeta, DefaultSchema extends string> = [R["toSchema"]] extends [never]
+	? DefaultSchema
+	: Extract<R["toSchema"], string>;
 
-type ValidateDatabaseRefs<Schemas extends Record<string, SqlSchemaLike>> = {
-	[K in keyof Schemas]: ValidateDatabaseRef<Schemas[K]["__refs"], Schemas>;
+type ValidateDatabaseRef<
+	R extends ForeignRefMeta,
+	Schemas extends Record<string, SqlSchemaLike>,
+	DefaultSchema extends string,
+> = R extends { toTable: infer TTab extends string; toColumns: infer TCols extends string }
+	? ResolveRefSchema<R, DefaultSchema> extends infer TargetSchema extends string
+		? TargetSchema extends keyof Schemas
+			? TTab extends keyof Schemas[TargetSchema]["tables"]
+				? ValidateRefColumns<TCols, Schemas[TargetSchema]["tables"][TTab]>
+				: SqlParseError<`Unknown referenced table "${TargetSchema}.${TTab}" in database`>
+			: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
+		: SqlParseError<"Internal database reference resolver error">
+	: SqlParseError<"Internal database reference resolver error">;
+
+type ValidateDatabaseRefs<Schemas extends Record<string, SqlSchemaLike>, DefaultSchema extends string> = {
+	[K in keyof Schemas]: ValidateDatabaseRef<Schemas[K]["__refs"], Schemas, DefaultSchema>;
 }[keyof Schemas];
 
 type ExtractSchemaErrors<Schemas extends Record<string, unknown>> = {
@@ -104,8 +122,10 @@ type ExtractValidSchemas<Schemas extends Record<string, unknown>> = {
 	[K in keyof Schemas as Schemas[K] extends SqlSchemaLike ? K : never]: Extract<Schemas[K], SqlSchemaLike>;
 };
 
-export type SqlDatabase<Schemas extends Record<string, unknown>> = [ExtractSchemaErrors<Schemas>] extends [never]
-	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>> extends infer E
+export type SqlDatabase<Schemas extends Record<string, unknown>, DefaultSchema extends string = "public"> = [
+	ExtractSchemaErrors<Schemas>,
+] extends [never]
+	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>, DefaultSchema> extends infer E
 		? [E] extends [never]
 			? {
 					readonly kind: "database";
