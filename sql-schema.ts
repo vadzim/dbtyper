@@ -1,4 +1,5 @@
 import type {
+	ColumnListArityMatch,
 	ForeignRefMeta,
 	SqlCreateTableLike,
 	ValidateColumnRefs,
@@ -17,13 +18,16 @@ type ValidateRefColumns<Cols extends string, TargetRow> = ValidateColumnRefs<
 type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends infer R
 	? R extends ForeignRefMeta
 		? R extends {
+				fromColumns: infer FC extends string
 				toSchema: infer TS
 				toTable: infer TT extends string
 				toColumns: infer TC extends string
 		  }
 			? [TS] extends [never]
 				? TT extends keyof Tables
-					? ValidateRefColumns<TC, Tables[TT]>
+					? ColumnListArityMatch<FC, TC> extends true
+						? ValidateRefColumns<TC, Tables[TT]>
+						: ColumnListArityMatch<FC, TC>
 					: SqlParseError<`Unknown referenced table "${TT}" in schema`>
 				: never
 			: never
@@ -100,11 +104,17 @@ type ValidateDatabaseRef<
 	R extends ForeignRefMeta,
 	Schemas extends Record<string, SqlSchemaLike>,
 	DefaultSchema extends string,
-> = R extends { toTable: infer TTab extends string; toColumns: infer TCols extends string }
+> = R extends {
+	fromColumns: infer FC extends string
+	toTable: infer TTab extends string
+	toColumns: infer TCols extends string
+}
 	? ResolveRefSchema<R, DefaultSchema> extends infer TargetSchema extends string
 		? TargetSchema extends keyof Schemas
 			? TTab extends keyof Schemas[TargetSchema]["tables"]
-				? ValidateRefColumns<TCols, Schemas[TargetSchema]["tables"][TTab]>
+				? ColumnListArityMatch<FC, TCols> extends true
+					? ValidateRefColumns<TCols, Schemas[TargetSchema]["tables"][TTab]>
+					: ColumnListArityMatch<FC, TCols>
 				: SqlParseError<`Unknown referenced table "${TargetSchema}.${TTab}" in database`>
 			: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
 		: SqlParseError<"Internal database reference resolver error">

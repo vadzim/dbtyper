@@ -200,6 +200,19 @@ export type ValidateColumnRefs<List extends string, Names extends string> = Trim
 			? ValidateColumnRefs<Tail, Names>
 			: SqlParseError<`Unknown column "${StripIdentifierQuotes<Trim<Head>>}" referenced in table constraint`>
 		: SqlParseError<"Unable to parse column reference list in table constraint">;
+
+/** True when top-level comma-separated column counts match (same rule as SQL composite FKs). */
+export type ColumnListArityMatch<Local extends string, Remote extends string> = Trim<Local> extends ""
+	? Trim<Remote> extends ""
+		? true
+		: SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+	: Trim<Remote> extends ""
+		? SqlParseError<"Foreign key local column list has more entries than the referenced column list">
+		: ReadUntilTopLevelComma<Trim<Local>> extends [infer _LH extends string, infer LT extends string]
+			? ReadUntilTopLevelComma<Trim<Remote>> extends [infer _RH extends string, infer RT extends string]
+				? ColumnListArityMatch<LT, RT>
+				: SqlParseError<"Unable to parse referenced column list in foreign key">
+			: SqlParseError<"Unable to parse local column list in foreign key">;
 type ValidateConstraintRefs<Entry extends string, Names extends string> = StripConstraintPrefix<Entry> extends infer E extends string
 	? E extends `primary key${string}`
 		? FirstParenGroup<E> extends infer G extends string
@@ -220,15 +233,23 @@ type ParseQualifiedRefTable<T extends string> = StripIdentifierQuotes<T> extends
 	? { schema: Schema; table: Table }
 	: { schema: never; table: StripIdentifierQuotes<T> };
 
-export type ForeignRefMeta = { from: string; toSchema: string | never; toTable: string; toColumns: string };
+export type ForeignRefMeta = {
+	from: string;
+	fromColumns: string;
+	toSchema: string | never;
+	toTable: string;
+	toColumns: string;
+};
 type ParseForeignRefMeta<Entry extends string> = StripConstraintPrefix<Entry> extends infer E extends string
 	? E extends `foreign key${string}`
-		? E extends `${string}references ${infer AfterRef}`
-			? ReadIdentifier<Trim<AfterRef>> extends [infer TargetRaw extends string, infer RestAfterTarget extends string]
-				? FirstParenGroup<RestAfterTarget> extends infer TargetCols extends string
-					? ParseQualifiedRefTable<TargetRaw> extends infer PQ
-						? PQ extends { schema: infer S; table: infer Tab }
-							? { from: never; toSchema: S; toTable: Tab; toColumns: TargetCols }
+		? FirstParenGroup<E> extends infer LocalCols extends string
+			? E extends `${string}references ${infer AfterRef}`
+				? ReadIdentifier<Trim<AfterRef>> extends [infer TargetRaw extends string, infer RestAfterTarget extends string]
+					? FirstParenGroup<RestAfterTarget> extends infer TargetCols extends string
+						? ParseQualifiedRefTable<TargetRaw> extends infer PQ
+							? PQ extends { schema: infer S; table: infer Tab }
+								? { from: never; fromColumns: LocalCols; toSchema: S; toTable: Tab; toColumns: TargetCols }
+								: never
 							: never
 						: never
 					: never

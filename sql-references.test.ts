@@ -153,6 +153,37 @@ type _SchemaCompositeFkBadCol = Expect<
 	Equal<SchemaCompositeFkBadCol, SqlParseError<`Unknown column "no_such_col" referenced in table constraint`>>
 >
 
+/** Composite FK: fewer local columns than referenced columns. */
+type PairRefArityShortTable = SqlCreateTable<`
+	create table pair_arity_short (
+		x int not null,
+		foreign key (x) references users(id, email)
+	)
+`>
+type SchemaCompositeArityShort = SqlSchema<[UsersTable, PairRefArityShortTable]>
+type _SchemaCompositeArityShort = Expect<
+	Equal<
+		SchemaCompositeArityShort,
+		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+	>
+>
+
+/** Composite FK: more local columns than referenced columns. */
+type PairRefArityLongTable = SqlCreateTable<`
+	create table pair_arity_long (
+		x int not null,
+		y int not null,
+		foreign key (x, y) references users(id)
+	)
+`>
+type SchemaCompositeArityLong = SqlSchema<[UsersTable, PairRefArityLongTable]>
+type _SchemaCompositeArityLong = Expect<
+	Equal<
+		SchemaCompositeArityLong,
+		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
+	>
+>
+
 /** Several foreign keys on one table (intra-schema), all valid. */
 type MembershipsTable = SqlCreateTable<`
 	create table memberships (
@@ -399,6 +430,22 @@ type SalesCompositeBadSchema = SqlSchema<[SalesCompositeBadTable]>
 type DbCompositeBadRemoteCol = SqlDatabase<{ public: PublicSchema; sales: SalesCompositeBadSchema }>
 type _DbCompositeBadRemoteCol = Expect<
 	Equal<DbCompositeBadRemoteCol, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
+>
+
+/** Database-level composite FK: arity mismatch (one local, two referenced). */
+type SalesDbArityShortTable = SqlCreateTable<`
+	create table db_arity_short (
+		a int not null,
+		foreign key (a) references public.users(id, email)
+	)
+`>
+type SalesDbArityShortSchema = SqlSchema<[SalesDbArityShortTable]>
+type DbCompositeArityShort = SqlDatabase<{ public: PublicSchema; sales: SalesDbArityShortSchema }>
+type _DbCompositeArityShort = Expect<
+	Equal<
+		DbCompositeArityShort,
+		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+	>
 >
 
 describe("sql references", () => {
