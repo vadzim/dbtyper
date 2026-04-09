@@ -344,6 +344,31 @@ type _AlterMissingNoIfExists = Expect<
 	Matches<AlterMissingNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
 >
 
+type AlterMissingSchemeNoIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[SqlStatement<`alter table test.missing add column age int`>]
+>
+
+type _AlterMissingSchemeNoIfExists = Expect<
+	Matches<AlterMissingSchemeNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
+>
+
+type AlterMissingSchemeIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[SqlStatement<`alter table if exists test.missing add column age int`>]
+>
+
+type _AlterMissingSchemeIfExists = Expect<
+	Matches<
+		AlterMissingSchemeIfExists,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "test"
+			readonly schemas: {}
+		}
+	>
+>
+
 /** IF EXISTS skips alter when the table is missing. */
 
 type AlterMissingIfExists = SqlApplyStatements<

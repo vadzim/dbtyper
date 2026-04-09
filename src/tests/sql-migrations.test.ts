@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
-import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 
 type ImportMigration<Path extends string, Sql extends string> = Promise<{
 	default: {
@@ -43,7 +43,7 @@ type ParsedCreate = ReturnType<
 	typeof sqlStatement<`create table users (id int not null, email text not null)`>
 >["__sql_parsed__"]
 type _ParsedCreate = Expect<
-	Matches<ParsedCreate["row"], SqlCreateTable<`create table users (id int not null, email text not null)`>["row"]>
+	Matches<ParsedCreate["row"], SqlStatement<`create table users (id int not null, email text not null)`>["row"]>
 >
 
 type ParsedArityError = ReturnType<
