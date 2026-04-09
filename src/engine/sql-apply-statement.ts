@@ -7,17 +7,35 @@ import type { SqlApplyAlterTable } from "./sql-apply-alter-table.js"
 import type { SqlApplyCreateTable } from "./sql-apply-create-table.js"
 import type { SqlApplyDropTable } from "./sql-apply-drop-table.js"
 
+export type SqlStatementLike = SqlAlterTableLike | SqlCreateTableLike | SqlDropTableLike | SqlParseError<string>
+
 export type SqlApplyStatement<
 	Db extends SqlDatabaseLike | SqlParseError<string>,
-	Statement extends SqlAlterTableLike | SqlCreateTableLike | SqlDropTableLike | SqlParseError<string>,
+	Statement extends SqlStatementLike,
 > = Db extends SqlDatabaseLike
-	? Statement extends SqlCreateTableLike
-		? SqlApplyCreateTable<Db, Statement>
-		: Statement extends SqlAlterTableLike
-			? SqlApplyAlterTable<Db, Statement>
-			: Statement extends SqlDropTableLike
-				? SqlApplyDropTable<Db, Statement>
-				: Statement extends SqlParseError<string>
-					? Statement
-					: SqlParseError<"Unsupported SqlApply statement">
+	? FlattenDBType<
+			Statement extends SqlCreateTableLike
+				? SqlApplyCreateTable<Db, Statement>
+				: Statement extends SqlAlterTableLike
+					? SqlApplyAlterTable<Db, Statement>
+					: Statement extends SqlDropTableLike
+						? SqlApplyDropTable<Db, Statement>
+						: Statement extends SqlParseError<string>
+							? Statement
+							: SqlParseError<"Unsupported SqlApply statement">
+		>
 	: Db
+
+type FlattenDBType<DB extends SqlDatabaseLike | SqlParseError<string>> = DB extends SqlDatabaseLike
+	? {
+			readonly kind: "database"
+			readonly defaultSchema: DB["defaultSchema"]
+			readonly schemas: DB["schemas"] extends infer S
+				? {
+						[KS in keyof S]: S[KS] extends infer T
+							? { [KT in keyof T]: T[KT] extends infer U ? { [KU in keyof U]: U[KU] } : never }
+							: never
+					}
+				: never
+		}
+	: DB

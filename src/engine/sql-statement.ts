@@ -1,9 +1,7 @@
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlDatabaseLike, SqlEmptyDatabase } from "./sql-database.js"
-import type { SqlApplyStatement } from "./sql-apply-statement.js"
-
-type SqlStatementString<S extends string> = S & { readonly __sql_parsed__: SqlStatement<S> }
+import type { SqlApplyStatement, SqlStatementLike } from "./sql-apply-statement.js"
 
 export function sqlStatement<S extends string>(source: S) {
 	return source as S & { readonly __sql_parsed__: SqlStatement<S> }
@@ -23,8 +21,8 @@ class DBMigrations<Database extends SqlDatabaseLike | SqlParseError<string>> {
 	#migrations: Migrations | null
 	#defaultSchema: string
 
-	apply<S extends string & { readonly __sql_parsed__: SqlStatement<string> }>(statement: S) {
-		return new DBMigrations<SqlApplyStatement<Database, S["__sql_parsed__"]>>(this.#defaultSchema, {
+	apply<Parsed extends SqlStatementLike>(statement: string & { readonly __sql_parsed__: Parsed }) {
+		return new DBMigrations<SqlApplyStatement<Database, Parsed>>(this.#defaultSchema, {
 			last: statement,
 			prev: this.#migrations,
 		})
@@ -48,6 +46,3 @@ class DBMigrations<Database extends SqlDatabaseLike | SqlParseError<string>> {
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
 	return new DBMigrations<SqlEmptyDatabase<DefaultSchema>>(defaultSchema)
 }
-
-const y = sqlStatement("create table users (id int primary key)")
-const x = sqlDatabase("public").apply(sqlStatement("create table users (id int primary key)"))

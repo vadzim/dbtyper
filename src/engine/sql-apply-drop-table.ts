@@ -1,9 +1,9 @@
 import type { SqlDropTableLike } from "../parser/sql-drop-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { DropFromSchemas, FlattenDBType, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
+import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
 
-export type SqlApplyDropTable<Db extends SqlDatabaseLike, Drop extends SqlDropTableLike> = FlattenDBType<
+export type SqlApplyDropTable<Db extends SqlDatabaseLike, Drop extends SqlDropTableLike> =
 	ResolveQualifiedIdentifier<Drop["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,
@@ -24,4 +24,3 @@ export type SqlApplyDropTable<Db extends SqlDatabaseLike, Drop extends SqlDropTa
 					: SqlParseError<`Unknown dropped table "${Schema}.${Table}" in database`>
 			: SqlParseError<"Internal SqlApplyDropTable schema shape error">
 		: SqlParseError<"Internal SqlApplyDropTable target error">
->

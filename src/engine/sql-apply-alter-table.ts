@@ -1,9 +1,9 @@
 import type { SqlAlterTableLike } from "../parser/sql-alter-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { FlattenDBType, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
+import type { ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
 
-export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterTableLike> = FlattenDBType<
+export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterTableLike> =
 	ResolveQualifiedIdentifier<Alter["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,
@@ -22,7 +22,6 @@ export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlte
 					: SqlParseError<`Unknown altered table "${Schema}.${Table}" in database`>
 			: SqlParseError<"Internal SqlApplyAlterTable schema shape error">
 		: SqlParseError<"Internal SqlApplyAlterTable target error">
->
 
 type ApplyAlterOnExistingTable<
 	Db extends SqlDatabaseLike,
