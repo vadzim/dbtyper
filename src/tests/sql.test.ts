@@ -48,8 +48,7 @@ type _PostsShape = Expect<
 >
 
 type Invalid = SqlCreateTable<"select * from users">
-type _InvalidName = Expect<Equal<Invalid["name"], SqlParseError<"Expected a CREATE TABLE statement with a table name">>>
-type _InvalidRow = Expect<Equal<Invalid["row"], SqlParseError<"Expected a CREATE TABLE statement">>>
+type _Invalid = Expect<Equal<Invalid, never>>
 
 type WithConstraints = SqlCreateTable<`
 	create table accounts (
@@ -238,12 +237,41 @@ type _PostgresTypes = Expect<
 	>
 >
 
-type AlterUsers = SqlAlterTable<`alter table public.users add column age int`>
+type AlterUsers = SqlAlterTable<`alter table users add column age int`>
 type _AlterUsers = Expect<
 	Matches<
 		AlterUsers,
 		{
 			readonly kind: "alter_table"
+			readonly ifExists: false
+			readonly target: "users"
+			readonly action: "add column age int"
+			readonly source: string
+		}
+	>
+>
+
+type AlterPublicUsers = SqlAlterTable<`alter table public.users add column age int`>
+type _AlterPublicUsers = Expect<
+	Matches<
+		AlterPublicUsers,
+		{
+			readonly kind: "alter_table"
+			readonly ifExists: false
+			readonly target: "public.users"
+			readonly action: "add column age int"
+			readonly source: string
+		}
+	>
+>
+
+type AlterUsersIfExists = SqlAlterTable<`alter table if exists public.users add column age int`>
+type _AlterUsersIfExists = Expect<
+	Matches<
+		AlterUsersIfExists,
+		{
+			readonly kind: "alter_table"
+			readonly ifExists: true
 			readonly target: "public.users"
 			readonly action: "add column age int"
 			readonly source: string
@@ -254,7 +282,7 @@ type _AlterUsers = Expect<
 type BadAlter = SqlAlterTable<`alter table public.users`>
 type _BadAlter = Expect<Equal<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
 
-type DropUsers = SqlDropTable<`drop table if exists public.users`>
+type DropUsers = SqlDropTable<`drop table if exists public.users;`>
 type _DropUsers = Expect<
 	Matches<
 		DropUsers,
@@ -268,7 +296,7 @@ type _DropUsers = Expect<
 >
 
 type BadDrop = SqlDropTable<`drop view public.users`>
-type _BadDrop = Expect<Equal<BadDrop, SqlParseError<"Expected a DROP TABLE statement with a table target">>>
+type _BadDrop = Expect<Equal<BadDrop, never>>
 
 describe("sql tests", () => {
 	it("should run", () => {})

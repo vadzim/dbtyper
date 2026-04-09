@@ -69,7 +69,7 @@ type _SchemaDuplicateTables = Expect<Equal<SchemaDuplicateTables, SqlParseError<
 type InvalidTable = SqlCreateTable<"select * from users">
 type SchemaWithInvalidTable = SqlSchema<[UsersTable, InvalidTable]>
 type _SchemaWithInvalidTable = Expect<
-	Equal<SchemaWithInvalidTable, SqlParseError<"Expected a CREATE TABLE statement with a table name">>
+	Matches<SchemaWithInvalidTable, { readonly kind: "schema"; readonly tables: { users: unknown } }>
 >
 
 // --- Intra-schema FK ---

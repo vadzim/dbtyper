@@ -15,16 +15,28 @@ import type {
 	Trim,
 } from "./sql-parse-primitives.js"
 
-/**
- * When the table name parses but the body fails, the type is `SqlParseError<…>` (not an object with `row: SqlParseError`).
- * If the name fails, this stays an object so both `name` and `row` errors remain visible.
- */
 export type SqlCreateTable<S extends string> =
-	SqlCreateTableName<S> extends SqlParseError<string>
-		? SqlCreateTableObject<S>
-		: SqlCreateTableToType<S> extends SqlParseError<infer E>
-			? SqlParseError<E>
-			: SqlCreateTableObject<S>
+	ToLower<NormalizeSql<S>> extends `create table ${infer Body extends string}`
+		? ParseCreateTableStatement<Body> extends infer Statement
+			? Statement extends SqlParseError<infer E>
+				? SqlParseError<E>
+				: SqlCreateTableParsed<Statement> extends infer Parsed
+					? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E>
+						? SqlParseError<E>
+						: {
+								readonly kind: "create_table"
+								readonly name: SqlCreateTableName<Statement>
+								// General rule: types are helpers and must not become a bottleneck.
+								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
+									? // Inline mapped expansion is intentional for API/tooling: keep `SqlCreateTable["row"]` fully expanded in editor hovers.
+										{ [K in keyof Row]: Row[K] }
+									: never
+								readonly source: S
+								readonly __refs: SqlCreateTableParsedRefs<Parsed>
+							}
+					: SqlParseError<"Internal SQL parser error">
+			: SqlParseError<"Internal SQL parser error">
+		: never
 
 export type SqlCreateTableLike = {
 	readonly kind: "create_table"
@@ -35,6 +47,7 @@ export type SqlCreateTableLike = {
 }
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
+
 type ParseCreateBody<S extends string, Row, Names extends string, Error = never, Refs extends ForeignRefMeta = never> =
 	Trim<S> extends ""
 		? { row: Row; names: Names; error: Error; refs: Refs }
@@ -62,49 +75,43 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 					refs: Refs
 				}
 
-type ExtractCreateTableNameInternal<S extends string> = ParseCreateTableTarget<S>
-type ExtractCreateBody<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
-		? StripLeadingIfNotExists<Rest> extends `${string}(${infer Inner})`
-			? Inner
-			: never
-		: never
+type ParseCreateTableStatement<Body extends string> =
+	StripLeadingIfNotExists<Body> extends [infer IfNotExists extends boolean, infer RestAfterFlag extends string]
+		? ReadQualifiedIdentifier<RestAfterFlag> extends [infer Name extends string, infer RestAfterName extends string]
+			? Trim<RestAfterName> extends `(${infer Inner})`
+				? {
+						name: Name
+						ifNotExists: IfNotExists
+						body: Inner
+					}
+				: SqlParseError<"Expected CREATE TABLE body in parentheses">
+			: SqlParseError<"Expected a CREATE TABLE statement with a table name">
+		: SqlParseError<"Unable to parse CREATE TABLE statement">
 
-type ParseCreateTableTarget<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
-		? ReadQualifiedIdentifier<StripLeadingIfNotExists<Rest>> extends [infer Name extends string, string]
-			? Name
-			: never
-			: never
+type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends string }
+	? Name
+	: SqlParseError<"Expected a CREATE TABLE statement with a table name">
 
-type SqlCreateTableName<S extends string> = [ExtractCreateTableNameInternal<S>] extends [never]
-	? SqlParseError<"Expected a CREATE TABLE statement with a table name">
-	: ExtractCreateTableNameInternal<S>
-
-type SqlCreateTableToType<S extends string> = [ExtractCreateBody<S>] extends [never]
-	? SqlParseError<"Expected a CREATE TABLE statement">
-	: ParseCreateBody<ExtractCreateBody<S>, {}, never> extends infer Parsed extends { row: unknown; error: unknown }
-		? [Parsed["error"]] extends [never]
-			? // Inline mapped expansion is intentional for API/tooling: IDE shows concrete row shape instead of helper alias.
-				{ [K in keyof Parsed["row"]]: Parsed["row"][K] }
-			: Parsed["error"]
-		: SqlParseError<"Internal SQL parser error">
-
-type SqlCreateTableForeignRefs<S extends string> = [ExtractCreateBody<S>] extends [never]
-	? never
-	: ParseCreateBody<ExtractCreateBody<S>, {}, never> extends infer Parsed extends { refs: ForeignRefMeta }
-		? Parsed["refs"]
-		: never
-
-/** Valid name + body: full create-table object. */
-type SqlCreateTableObject<S extends string> = {
-	readonly kind: "create_table"
-	readonly name: SqlCreateTableName<S>
-	// General rule: types are helpers and must not become a bottleneck.
-	readonly row: SqlCreateTableToType<S> extends infer Row
-		? // Inline mapped expansion is intentional for API/tooling: keep `SqlCreateTable["row"]` fully expanded in editor hovers.
-			{ [K in keyof Row]: Row[K] }
-		: never
-	readonly source: S
-	readonly __refs: SqlCreateTableForeignRefs<S>
+type SqlCreateTableParsed<Statement> = Statement extends {
+	body: infer Body extends string
 }
+	? ParseCreateBody<Body, {}, never> extends infer Parsed extends {
+			row: unknown
+			error: unknown
+			refs: ForeignRefMeta
+		}
+		? Parsed
+		: SqlParseError<"Internal SQL parser error">
+	: SqlParseError<"Expected a CREATE TABLE statement">
+
+type SqlCreateTableParsedToType<Parsed> =
+	Parsed extends SqlParseError<infer E>
+		? SqlParseError<E>
+		: Parsed extends { row: unknown; error: unknown }
+			? [Parsed["error"]] extends [never]
+				? // Inline mapped expansion is intentional for API/tooling: IDE shows concrete row shape instead of helper alias.
+					{ [K in keyof Parsed["row"]]: Parsed["row"][K] }
+				: Parsed["error"]
+			: SqlParseError<"Internal SQL parser error">
+
+type SqlCreateTableParsedRefs<Parsed> = Parsed extends { refs: ForeignRefMeta } ? Parsed["refs"] : never
