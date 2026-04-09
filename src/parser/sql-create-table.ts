@@ -10,6 +10,7 @@ import type {
 	NormalizeSql,
 	ReadQualifiedIdentifier,
 	ReadUntilTopLevelComma,
+	StripLeadingIfNotExists,
 	ToLower,
 	Trim,
 } from "./sql-parse-primitives.js"
@@ -63,21 +64,17 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 
 type ExtractCreateTableNameInternal<S extends string> = ParseCreateTableTarget<S>
 type ExtractCreateBody<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table if not exists ${string}(${infer Inner})`
-		? Inner
-		: ToLower<NormalizeSql<S>> extends `create table ${string}(${infer Inner})`
+	ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
+		? StripLeadingIfNotExists<Rest> extends `${string}(${infer Inner})`
 			? Inner
 			: never
+		: never
 
 type ParseCreateTableTarget<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table if not exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
+	ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
+		? ReadQualifiedIdentifier<StripLeadingIfNotExists<Rest>> extends [infer Name extends string, string]
 			? Name
 			: never
-		: ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-				? Name
-				: never
 			: never
 
 type SqlCreateTableName<S extends string> = [ExtractCreateTableNameInternal<S>] extends [never]

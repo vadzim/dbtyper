@@ -1,16 +1,6 @@
 import type { SqlParseError } from "../sql-parse-error.js"
-import type { ReadQualifiedIdentifier } from "./sql-parse-primitives.js"
 import type { NormalizeSql } from "./sql-parse-primitives.js"
-import type { ToLower } from "./sql-parse-primitives.js"
-
-export type SqlDropTable<S extends string> = [ParseDropTableTarget<S>] extends [never]
-	? SqlParseError<"Expected a DROP TABLE statement with a table target">
-	: {
-			readonly kind: "drop_table"
-			readonly target: ParseDropTableTarget<S>
-			readonly ifExists: ParseDropIfExists<S>
-			readonly source: S
-		}
+import type { ReadQualifiedIdentifier, StripLeadingIfExists, ToLower } from "./sql-parse-primitives.js"
 
 export type SqlDropTableLike = {
 	readonly kind: "drop_table"
@@ -19,16 +9,22 @@ export type SqlDropTableLike = {
 	readonly source: string
 }
 
-type ParseDropTableTarget<S extends string> =
-	ToLower<NormalizeSql<S>> extends `drop table if exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-			? Name
-			: never
-		: ToLower<NormalizeSql<S>> extends `drop table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-				? Name
-				: never
-			: never
-
-type ParseDropIfExists<S extends string> =
-	ToLower<NormalizeSql<S>> extends `drop table if exists ${string}` ? true : false
+export type SqlDropTable<S extends string> =
+	ToLower<NormalizeSql<S>> extends `drop table ${infer Rest}`
+		? (Rest extends `if exists ${infer Rest2}` ? [true, Rest2] : [false, Rest]) extends [
+				infer IfExists extends boolean,
+				infer Rest3 extends string,
+			]
+			? ReadQualifiedIdentifier<Rest3> extends infer QI
+				? [QI] extends [[infer Name extends string, infer Tail extends string]]
+					? {
+							readonly kind: "drop_table"
+							readonly name: Name
+							readonly ifExists: IfExists
+							readonly target: Tail
+							readonly source: S
+						}
+					: SqlParseError<"drop table name required">
+				: SqlParseError<"Unable to parse DROP TABLE statement">
+			: SqlParseError<"Unable to parse DROP TABLE statement">
+		: never

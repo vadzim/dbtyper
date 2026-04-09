@@ -1,7 +1,11 @@
 import type { SqlParseError } from "../sql-parse-error.js"
-import type { ReadQualifiedIdentifier } from "./sql-parse-primitives.js"
-import type { NormalizeSql } from "./sql-parse-primitives.js"
-import type { ToLower, Trim } from "./sql-parse-primitives.js"
+import type {
+	NormalizeSql,
+	ReadQualifiedIdentifier,
+	StripLeadingIfExists,
+	ToLower,
+	Trim,
+} from "./sql-parse-primitives.js"
 
 export type SqlAlterTable<S extends string> = [ParseAlterTableTarget<S>] extends [never]
 	? SqlParseError<"Expected an ALTER TABLE statement with a table target">
@@ -24,23 +28,15 @@ export type SqlAlterTableLike = {
 }
 
 type ParseAlterTableTarget<S extends string> =
-	ToLower<NormalizeSql<S>> extends `alter table if exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
+	ToLower<NormalizeSql<S>> extends `alter table ${infer Rest}`
+		? ReadQualifiedIdentifier<StripLeadingIfExists<Rest>> extends [infer Name extends string, string]
 			? Name
 			: never
-		: ToLower<NormalizeSql<S>> extends `alter table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-				? Name
-				: never
-			: never
+		: never
 
 type ParseAlterAction<S extends string> =
-	ToLower<NormalizeSql<S>> extends `alter table if exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [string, infer Tail extends string]
+	ToLower<NormalizeSql<S>> extends `alter table ${infer Rest}`
+		? ReadQualifiedIdentifier<StripLeadingIfExists<Rest>> extends [string, infer Tail extends string]
 			? Trim<Tail>
 			: never
-		: ToLower<NormalizeSql<S>> extends `alter table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [string, infer Tail extends string]
-				? Trim<Tail>
-				: never
-			: never
+		: never
