@@ -4,6 +4,7 @@ import type {
 	NormalizeSql,
 	ReadIdentifier,
 	ReadQualifiedIdentifier,
+	SqlQualifiedIdentifier,
 	StripIdentifierQuotes,
 	StripLeadingIfExists,
 	StripLeadingIfNotExists,
@@ -18,7 +19,7 @@ export type SqlAlterTable<S extends string> =
 				? SqlParseError<E>
 				: Parts extends [
 							infer IfExists extends boolean,
-							infer Target extends string,
+							infer Target extends SqlQualifiedIdentifier,
 							infer Action extends SqlAlterTableAction,
 					  ]
 					? {
@@ -31,6 +32,14 @@ export type SqlAlterTable<S extends string> =
 					: SqlParseError<"Expected an ALTER TABLE statement with a table target">
 			: SqlParseError<"Expected an ALTER TABLE statement with a table target">
 		: never
+
+export type SqlAlterTableLike = {
+	readonly kind: "alter_table"
+	readonly ifExists: boolean
+	readonly target: SqlQualifiedIdentifier
+	readonly action: SqlAlterTableAction
+	readonly source: string
+}
 
 type SqlAlterTableActionAddColumn = {
 	readonly kind: "add_column"
@@ -61,14 +70,6 @@ type SqlAlterTableAction =
 	| SqlAlterTableActionDropColumn
 	| SqlAlterTableActionRenameTo
 	| SqlAlterTableActionRenameColumn
-
-export type SqlAlterTableLike = {
-	readonly kind: "alter_table"
-	readonly ifExists: boolean
-	readonly target: string
-	readonly action: SqlAlterTableAction
-	readonly source: string
-}
 
 type ParseIdentifierToken<S extends string> =
 	ReadIdentifier<S> extends [infer Raw extends string, infer Rest extends string]
@@ -146,7 +147,10 @@ type ParseAlterActionRenameColumn<S extends string> =
 
 type ParseAlterTableParts<Body extends string> =
 	StripLeadingIfExists<Body> extends [infer IfExists extends boolean, infer RestAfterFlag extends string]
-		? ReadQualifiedIdentifier<RestAfterFlag> extends [infer Name extends string, infer Tail extends string]
+		? ReadQualifiedIdentifier<RestAfterFlag> extends [
+				infer Name extends SqlQualifiedIdentifier,
+				infer Tail extends string,
+			]
 			? ParseAlterAction<Tail> extends infer ParsedAction
 				? ParsedAction extends SqlParseError<string>
 					? ParsedAction

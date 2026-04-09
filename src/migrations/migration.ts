@@ -1,7 +1,7 @@
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { SqlDropTable } from "../parser/sql-drop-table.js"
-import type { NormalizeSql } from "../parser/sql-parse-primitives.js"
+import type { NormalizeSql, SqlQualifiedIdentifier } from "../parser/sql-parse-primitives.js"
 import type { ToLower } from "../parser/sql-parse-primitives.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 
@@ -12,7 +12,7 @@ export type SqlMigrationParsed<Sql extends string> =
 				? ParsedCreate
 				: {
 						readonly statement: "create_table"
-						readonly target: ParsedCreate extends { readonly name: infer Name extends string }
+						readonly target: ParsedCreate extends { readonly name: infer Name extends SqlQualifiedIdentifier }
 							? Name
 							: never
 						readonly row: ParsedCreate extends { readonly row: infer Row } ? Row : never
@@ -24,7 +24,7 @@ export type SqlMigrationParsed<Sql extends string> =
 					? ParsedAlter
 					: {
 							readonly statement: "alter_table"
-							readonly target: ParsedAlter extends { readonly target: infer Target extends string }
+							readonly target: ParsedAlter extends { readonly target: infer Target extends SqlQualifiedIdentifier }
 								? Target
 								: never
 						}
@@ -35,7 +35,7 @@ export type SqlMigrationParsed<Sql extends string> =
 						? ParsedDrop
 						: {
 								readonly statement: "drop_table"
-								readonly target: ParsedDrop extends { readonly target: infer Target extends string }
+								readonly target: ParsedDrop extends { readonly target: infer Target extends SqlQualifiedIdentifier }
 									? Target
 									: never
 							}

@@ -46,7 +46,7 @@ export type ReadIdentifier<S extends string> =
 				: ReadWord<Trim<S>>
 
 export type ReadWord<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends Ws | "," | "(" | ")"
+	? C extends Ws | "," | "(" | ")" | "."
 		? [Acc, `${C}${Rest}`]
 		: ReadWord<Rest, `${Acc}${C}`>
 	: [Acc, ""]
@@ -112,11 +112,13 @@ export type StripLeadingIfExists<S extends string> = Trim<S> extends `if exists 
 export type StripLeadingIfNotExists<S extends string> =
 	Trim<S> extends `if not exists ${infer Rest}` ? [true, Trim<Rest>] : [false, Trim<S>]
 
+export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
+
 export type ReadQualifiedIdentifier<S extends string> =
 	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
 		? Trim<RestA> extends `.${infer AfterDot}`
 			? ReadIdentifier<AfterDot> extends [infer B extends string, infer RestB extends string]
-				? [`${StripIdentifierQuotes<A>}.${StripIdentifierQuotes<B>}`, RestB]
-				: [StripIdentifierQuotes<A>, RestA]
-			: [StripIdentifierQuotes<A>, RestA]
+				? [readonly [StripIdentifierQuotes<B>, StripIdentifierQuotes<A>], RestB]
+				: [readonly [StripIdentifierQuotes<A>], RestA]
+			: [readonly [StripIdentifierQuotes<A>], RestA]
 		: never

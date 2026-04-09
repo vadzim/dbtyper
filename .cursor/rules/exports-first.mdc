@@ -1,0 +1,21 @@
+---
+description: Keep module exports at the top when practical
+alwaysApply: true
+---
+
+# Exports First
+
+- Prefer putting public `export` declarations at the beginning of a module.
+- Keep internal helper types/functions below exported API declarations.
+- If moving exports to the top would hurt readability or require awkward indirection, keep the current order.
+- For files with many tiny exported primitives, prioritize clarity over strict reordering.
+
+## Example
+
+```ts
+// ✅ Prefer
+export type PublicType = InternalType
+export function publicFn(): void {}
+
+type InternalType = { id: string }
+```

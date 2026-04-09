@@ -2,6 +2,7 @@ import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	FirstParenGroup,
 	ReadIdentifier,
+	ReadQualifiedIdentifier,
 	ReadUntilTopLevelComma,
 	StripIdentifierQuotes,
 	Trim,
@@ -104,7 +105,7 @@ export type ValidateFkReferencedColumnPairs<
 type ValidateForeignKeyConstraintBody<E extends string, Names extends string> = E extends `foreign key${string}`
 	? FirstParenGroup<E> extends infer G extends string
 		? E extends `${string}references ${infer AfterRef}`
-			? ReadIdentifier<Trim<AfterRef>> extends [infer _TR extends string, infer RestAfterTarget extends string]
+			? ReadQualifiedIdentifier<Trim<AfterRef>> extends [readonly string[], infer RestAfterTarget extends string]
 				? FirstParenGroup<RestAfterTarget> extends infer TC extends string
 					? [ParseColumnListToTuple<G>] extends [never]
 						? SqlParseError<"Unable to parse local column list in foreign key">
@@ -142,11 +143,6 @@ export type ValidateConstraintRefs<Entry extends string, Names extends string> =
 					: true
 		: true
 
-type ParseQualifiedRefTable<T extends string> =
-	StripIdentifierQuotes<T> extends `${infer Schema}.${infer Table}`
-		? { schema: Schema; table: Table }
-		: { schema: never; table: StripIdentifierQuotes<T> }
-
 export type ForeignRefMeta = {
 	from: string
 	columnPairs: readonly FkColumnPair[]
@@ -159,20 +155,20 @@ export type ParseForeignRefMeta<Entry extends string> =
 		? E extends `foreign key${string}`
 			? FirstParenGroup<E> extends infer LocalCols extends string
 				? E extends `${string}references ${infer AfterRef}`
-					? ReadIdentifier<Trim<AfterRef>> extends [
-							infer TargetRaw extends string,
+					? ReadQualifiedIdentifier<Trim<AfterRef>> extends [
+							infer Target extends readonly string[],
 							infer RestAfterTarget extends string,
 						]
 						? FirstParenGroup<RestAfterTarget> extends infer TargetCols extends string
-							? ParseQualifiedRefTable<TargetRaw> extends infer PQ
-								? PQ extends { schema: infer S; table: infer Tab }
-									? ParseColumnListToTuple<LocalCols> extends infer FC extends readonly string[]
-										? ParseColumnListToTuple<TargetCols> extends infer TC extends readonly string[]
-											? ZipColumnListsToPairs<FC, TC> extends infer Pairs
-												? Pairs extends readonly FkColumnPair[]
-													? { from: never; columnPairs: Pairs; toSchema: S; toTable: Tab }
+							? ParseColumnListToTuple<LocalCols> extends infer FC extends readonly string[]
+								? ParseColumnListToTuple<TargetCols> extends infer TC extends readonly string[]
+									? ZipColumnListsToPairs<FC, TC> extends infer Pairs
+										? Pairs extends readonly FkColumnPair[]
+											? Target extends readonly [infer Table extends string]
+												? { from: never; columnPairs: Pairs; toSchema: never; toTable: Table }
+												: Target extends readonly [infer Table extends string, infer Schema extends string]
+													? { from: never; columnPairs: Pairs; toSchema: Schema; toTable: Table }
 													: never
-												: never
 											: never
 										: never
 									: never

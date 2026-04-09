@@ -1,6 +1,20 @@
 import type { FkColumnPair, ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../parser/sql-constraints-fk.js"
 import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlQualifiedIdentifier } from "../parser/sql-parse-primitives.js"
+
+export type SqlSchema<Tables extends readonly SqlSchemaTableInput[]> =
+	SqlSchemaBuildInternal<Tables, {}, never> extends infer Built
+		? Built extends { tables: infer T; error: infer E; refs: infer R }
+			? [E] extends [never]
+				? {
+						readonly kind: "schema"
+						readonly tables: T
+						readonly __refs: Extract<R, ForeignRefMeta>
+					}
+				: E
+			: SqlParseError<"Internal schema builder error">
+		: SqlParseError<"Internal schema builder error">
 
 /** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
 type SqlSchemaTableInput = SqlCreateTableLike | SqlParseError<string>
@@ -26,6 +40,13 @@ type ValidateIntraSchemaRefs<Refs extends ForeignRefMeta, Tables> = Refs extends
 		: never
 	: never
 
+type BuildDone<Acc, Error, Refs extends ForeignRefMeta> = {
+	// Inline mapped expansion is intentional for API/tooling: preserve expanded table map shape in schema tooltips.
+	tables: { [K in keyof Acc]: Acc[K] }
+	error: Error | ValidateIntraSchemaRefs<Refs, { [K in keyof Acc]: Acc[K] }>
+	refs: Refs
+}
+
 type SqlSchemaBuildInternal<
 	Tables extends readonly SqlSchemaTableInput[],
 	Acc,
@@ -39,36 +60,43 @@ type SqlSchemaBuildInternal<
 			? Head["name"] extends infer Name
 				? Name extends SqlParseError<string>
 					? SqlSchemaBuildInternal<Tail, Acc, Seen, Error | Name, Refs>
-					: Name extends string
-						? Name extends Seen
-							? SqlSchemaBuildInternal<
+					: Name extends SqlQualifiedIdentifier
+						? Name[0] extends infer TableName extends string
+							? TableName extends Seen
+								? SqlSchemaBuildInternal<
+										Tail,
+										Acc,
+										Seen,
+										Error | SqlParseError<`Duplicate table name: ${TableName}`>,
+										Refs
+									>
+								: Head["row"] extends infer Row
+									? Row extends SqlParseError<string>
+										? SqlSchemaBuildInternal<Tail, Acc, Seen | TableName, Error | Row, Refs>
+										: SqlSchemaBuildInternal<
+												Tail,
+												Acc & { [K in TableName]: Row },
+												Seen | TableName,
+												Error,
+												| Refs
+												| (Head["__refs"] extends infer FR extends ForeignRefMeta
+														? Omit<FR, "from"> & { from: TableName }
+														: never)
+											>
+									: SqlSchemaBuildInternal<
+											Tail,
+											Acc,
+											Seen | TableName,
+											Error | SqlParseError<"Internal SQL parser error">,
+											Refs
+										>
+							: SqlSchemaBuildInternal<
 									Tail,
 									Acc,
 									Seen,
-									Error | SqlParseError<`Duplicate table name: ${Name}`>,
+									Error | SqlParseError<"Expected a CREATE TABLE statement with a table name">,
 									Refs
 								>
-							: Head["row"] extends infer Row
-								? Row extends SqlParseError<string>
-									? SqlSchemaBuildInternal<Tail, Acc, Seen | Name, Error | Row, Refs>
-									: SqlSchemaBuildInternal<
-											Tail,
-											// Internal accumulator keeps table names literal while extending shape.
-											Acc & { [K in Name]: Row },
-											Seen | Name,
-											Error,
-											| Refs
-											| (Head["__refs"] extends infer FR extends ForeignRefMeta
-													? Omit<FR, "from"> & { from: Name }
-													: never)
-										>
-								: SqlSchemaBuildInternal<
-										Tail,
-										Acc,
-										Seen | Name,
-										Error | SqlParseError<"Internal SQL parser error">,
-										Refs
-									>
 						: SqlSchemaBuildInternal<
 								Tail,
 								Acc,
@@ -84,22 +112,4 @@ type SqlSchemaBuildInternal<
 						Refs
 					>
 			: SqlSchemaBuildInternal<Tail, Acc, Seen, Error | SqlParseError<"Invalid schema table entry">, Refs>
-	: {
-			// Inline mapped expansion is intentional for API/tooling: preserve expanded table map shape in schema tooltips.
-			tables: { [K in keyof Acc]: Acc[K] }
-			error: Error | ValidateIntraSchemaRefs<Refs, { [K in keyof Acc]: Acc[K] }>
-			refs: Refs
-		}
-
-export type SqlSchema<Tables extends readonly SqlSchemaTableInput[]> =
-	SqlSchemaBuildInternal<Tables, {}, never> extends infer Built
-		? Built extends { tables: infer T; error: infer E; refs: infer R }
-			? [E] extends [never]
-				? {
-						readonly kind: "schema"
-						readonly tables: T
-						readonly __refs: Extract<R, ForeignRefMeta>
-					}
-				: E
-			: SqlParseError<"Internal schema builder error">
-		: SqlParseError<"Internal schema builder error">
+	: BuildDone<Acc, Error, Refs>

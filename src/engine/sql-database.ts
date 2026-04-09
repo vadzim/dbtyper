@@ -1,6 +1,39 @@
 import type { FkColumnPair, ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../parser/sql-constraints-fk.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 
+export type SqlDatabaseLike = {
+	readonly kind: "database"
+	readonly defaultSchema: string
+	readonly schemas: Record<string, Record<string, unknown>>
+	readonly migrations: Record<string, string>
+}
+
+export type SqlEmptyDatabase<DefaultSchema extends string = "public"> = {
+	readonly kind: "database"
+	readonly defaultSchema: DefaultSchema
+	readonly schemas: {}
+	readonly migrations: {}
+}
+
+export type SqlDatabase<
+	Schemas extends Record<string, unknown>,
+	DefaultSchema extends string = "public",
+	Migrations extends Record<string, string> = {},
+> = [ExtractSchemaErrors<Schemas>] extends [never]
+	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>, DefaultSchema> extends infer E
+		? [E] extends [never]
+			? {
+					readonly kind: "database"
+					readonly defaultSchema: DefaultSchema
+					readonly schemas: {
+						[K in keyof ExtractValidSchemas<Schemas>]: ExtractValidSchemas<Schemas>[K]["tables"]
+					}
+					readonly migrations: Migrations
+				}
+			: E
+		: SqlParseError<"Internal database builder error">
+	: ExtractSchemaErrors<Schemas>
+
 type ValidateRefColumnPairs<Pairs extends readonly FkColumnPair[], TargetRow> =
 	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof TargetRow, string>> extends true
 		? never
@@ -44,21 +77,3 @@ type ExtractSchemaErrors<Schemas extends Record<string, unknown>> = {
 type ExtractValidSchemas<Schemas extends Record<string, unknown>> = {
 	[K in keyof Schemas as Schemas[K] extends SqlSchemaLike ? K : never]: Extract<Schemas[K], SqlSchemaLike>
 }
-
-export type SqlDatabase<
-	Schemas extends Record<string, unknown>,
-	DefaultSchema extends string = "public",
-	Migrations extends Record<string, string> = {},
-> = [ExtractSchemaErrors<Schemas>] extends [never]
-	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>, DefaultSchema> extends infer E
-		? [E] extends [never]
-			? {
-					readonly kind: "database"
-					readonly schemas: {
-						[K in keyof ExtractValidSchemas<Schemas>]: ExtractValidSchemas<Schemas>[K]["tables"]
-					}
-					readonly migrations: Migrations
-				}
-			: E
-		: SqlParseError<"Internal database builder error">
-	: ExtractSchemaErrors<Schemas>

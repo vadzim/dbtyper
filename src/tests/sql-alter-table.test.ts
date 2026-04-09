@@ -9,7 +9,7 @@ type _AlterUsers = Expect<
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
-			readonly target: "users"
+			readonly target: readonly ["users"]
 			readonly action: {
 				readonly kind: "add_column"
 				readonly ifNotExists: false
@@ -28,7 +28,7 @@ type _AlterPublicUsers = Expect<
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
-			readonly target: "public.users"
+			readonly target: readonly ["users", "public"]
 			readonly action: {
 				readonly kind: "add_column"
 				readonly ifNotExists: false
@@ -47,7 +47,7 @@ type _AlterUsersIfExists = Expect<
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: true
-			readonly target: "public.users"
+			readonly target: readonly ["users", "public"]
 			readonly action: {
 				readonly kind: "add_column"
 				readonly ifNotExists: false
@@ -70,7 +70,7 @@ type _AlterAddColumnIfNotExists = Expect<
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
-			readonly target: "users"
+			readonly target: readonly ["users"]
 			readonly action: {
 				readonly kind: "add_column"
 				readonly ifNotExists: true
@@ -89,7 +89,7 @@ type _AlterDropColumn = Expect<
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
-			readonly target: "users"
+			readonly target: readonly ["users"]
 			readonly action: {
 				readonly kind: "drop_column"
 				readonly ifExists: true

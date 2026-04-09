@@ -50,6 +50,7 @@ type _DbFromSchemas = Expect<
 		DbFromSchemas,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "public"
 			readonly schemas: {
 				public: {
 					users: { id: number; email: string }

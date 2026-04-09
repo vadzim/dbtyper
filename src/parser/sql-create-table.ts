@@ -9,6 +9,7 @@ import type {
 import type {
 	NormalizeSql,
 	ReadQualifiedIdentifier,
+	SqlQualifiedIdentifier,
 	ReadUntilTopLevelComma,
 	StripLeadingIfNotExists,
 	ToLower,
@@ -40,7 +41,7 @@ export type SqlCreateTable<S extends string> =
 
 export type SqlCreateTableLike = {
 	readonly kind: "create_table"
-	readonly name: string | SqlParseError<string>
+	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
 	readonly row: unknown
 	readonly source: string
 	readonly __refs: ForeignRefMeta
@@ -77,7 +78,10 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 
 type ParseCreateTableStatement<Body extends string> =
 	StripLeadingIfNotExists<Body> extends [infer IfNotExists extends boolean, infer RestAfterFlag extends string]
-		? ReadQualifiedIdentifier<RestAfterFlag> extends [infer Name extends string, infer RestAfterName extends string]
+		? ReadQualifiedIdentifier<RestAfterFlag> extends [
+				infer Name extends SqlQualifiedIdentifier,
+				infer RestAfterName extends string,
+			]
 			? Trim<RestAfterName> extends `(${infer Inner})`
 				? {
 						name: Name
@@ -88,7 +92,7 @@ type ParseCreateTableStatement<Body extends string> =
 			: SqlParseError<"Expected a CREATE TABLE statement with a table name">
 		: SqlParseError<"Unable to parse CREATE TABLE statement">
 
-type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends string }
+type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends SqlQualifiedIdentifier }
 	? Name
 	: SqlParseError<"Expected a CREATE TABLE statement with a table name">
 

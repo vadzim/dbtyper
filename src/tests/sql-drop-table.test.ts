@@ -8,7 +8,7 @@ type _DropUsers = Expect<
 		DropUsers,
 		{
 			readonly kind: "drop_table"
-			readonly target: "public.users"
+			readonly target: readonly ["users", "public"]
 			readonly ifExists: true
 			readonly source: string
 		}

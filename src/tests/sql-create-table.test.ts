@@ -18,7 +18,7 @@ type _UsersShape = Expect<
 		{
 			readonly kind: "create_table"
 			readonly source: string
-			readonly name: "users"
+			readonly name: readonly ["users"]
 			readonly row: {
 				id: number
 				email: string
@@ -37,7 +37,7 @@ type _PostsShape = Expect<
 		{
 			readonly kind: "create_table"
 			readonly source: string
-			readonly name: "posts"
+			readonly name: readonly ["posts"]
 			readonly row: {
 				id: number
 				rating: number | null
@@ -67,7 +67,7 @@ type _WithConstraintsShape = Expect<
 		{
 			readonly kind: "create_table"
 			readonly source: string
-			readonly name: "accounts"
+			readonly name: readonly ["accounts"]
 			readonly row: {
 				id: number
 				email: string
@@ -120,7 +120,7 @@ type _WithCommentsShape = Expect<
 		{
 			readonly kind: "create_table"
 			readonly source: string
-			readonly name: "commented_users"
+			readonly name: readonly ["commented_users"]
 			readonly row: {
 				id: number
 				email: string
@@ -159,7 +159,7 @@ type _QuotedIdentifiersShape = Expect<
 		{
 			readonly kind: "create_table"
 			readonly source: string
-			readonly name: "account users"
+			readonly name: readonly ["account users"]
 			readonly row: {
 				id: number
 				"user name": string | null
@@ -180,10 +180,10 @@ type _BadQuotedRef = Expect<
 	Equal<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
 >
 
-type _TableNameSimple = Expect<Equal<SqlCreateTable<"create table users (id int)">["name"], "users">>
+type _TableNameSimple = Expect<Equal<SqlCreateTable<"create table users (id int)">["name"], readonly ["users"]>>
 
 type _TableNameQuoted = Expect<
-	Equal<SqlCreateTable<`create table "account users" ("id" int not null)`>["name"], "account users">
+	Equal<SqlCreateTable<`create table "account users" ("id" int not null)`>["name"], readonly ["account users"]>
 >
 
 type PostgresTypes = SqlCreateTable<`
@@ -212,7 +212,7 @@ type _PostgresTypes = Expect<
 		PostgresTypes,
 		{
 			readonly kind: "create_table"
-			readonly name: "pg_types"
+			readonly name: readonly ["pg_types"]
 			readonly source: string
 			readonly row: {
 				id: number

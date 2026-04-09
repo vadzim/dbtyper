@@ -101,7 +101,7 @@ type _ParsedArityError = Expect<
 
 type AppliedDropViaSqlApply = SqlApply<
 	DbAfterDrop,
-	SqlApplyDropTable<"auth.users">
+	SqlApplyDropTable<readonly ["auth", "users"]>
 >
 type _AppliedDropViaSqlApply = Expect<
 	Matches<AppliedDropViaSqlApply, { readonly kind: "database"; readonly schemas: unknown; readonly migrations: unknown }>
