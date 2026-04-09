@@ -3,7 +3,7 @@ import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { SqlDropTable } from "../parser/sql-drop-table.js"
 import type { NormalizeSql } from "../parser/sql-parse-primitives.js"
 import type { ToLower } from "../parser/sql-parse-primitives.js"
-import type { SqlParseError } from "../sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
 
 export type SqlMigrationParsed<Sql extends string> =
 	ToLower<NormalizeSql<Sql>> extends `create table ${string}`

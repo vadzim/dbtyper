@@ -1,10 +1,24 @@
-import type {
-	FkColumnPair,
-	ForeignRefMeta,
-	ValidateFkReferencedColumnPairs,
-} from "./parser/sql-constraints-fk.js"
-import type { SqlCreateTableLike } from "./parser/sql-create-table.js"
-import type { SqlParseError } from "./sql-parse-error.js"
+import type { FkColumnPair, ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../parser/sql-constraints-fk.js"
+import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
+
+export type SqlDatabase<
+	Schemas extends Record<string, unknown>,
+	DefaultSchema extends string = "public",
+	Migrations extends Record<string, string> = {},
+> = [ExtractSchemaErrors<Schemas>] extends [never]
+	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>, DefaultSchema> extends infer E
+		? [E] extends [never]
+			? {
+					readonly kind: "database"
+					readonly schemas: {
+						[K in keyof ExtractValidSchemas<Schemas>]: ExtractValidSchemas<Schemas>[K]["tables"]
+					}
+					readonly migrations: Migrations
+				}
+			: E
+		: SqlParseError<"Internal database builder error">
+	: ExtractSchemaErrors<Schemas>
 
 /** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
 type SqlSchemaTableInput = SqlCreateTableLike | SqlParseError<string>
@@ -58,7 +72,7 @@ type SqlSchemaBuildInternal<
 									: SqlSchemaBuildInternal<
 											Tail,
 											// Internal accumulator keeps table names literal while extending shape.
-							Acc & { [K in Name]: Row },
+											Acc & { [K in Name]: Row },
 											Seen | Name,
 											Error,
 											| Refs
@@ -89,11 +103,11 @@ type SqlSchemaBuildInternal<
 					>
 			: SqlSchemaBuildInternal<Tail, Acc, Seen, Error | SqlParseError<"Invalid schema table entry">, Refs>
 	: {
-		// Inline mapped expansion is intentional for API/tooling: preserve expanded table map shape in schema tooltips.
-		tables: { [K in keyof Acc]: Acc[K] }
-		error: Error | ValidateIntraSchemaRefs<Refs, { [K in keyof Acc]: Acc[K] }>
-		refs: Refs
-	}
+			// Inline mapped expansion is intentional for API/tooling: preserve expanded table map shape in schema tooltips.
+			tables: { [K in keyof Acc]: Acc[K] }
+			error: Error | ValidateIntraSchemaRefs<Refs, { [K in keyof Acc]: Acc[K] }>
+			refs: Refs
+		}
 
 export type SqlSchema<Tables extends readonly SqlSchemaTableInput[]> =
 	SqlSchemaBuildInternal<Tables, {}, never> extends infer Built
@@ -146,23 +160,3 @@ type ExtractSchemaErrors<Schemas extends Record<string, unknown>> = {
 type ExtractValidSchemas<Schemas extends Record<string, unknown>> = {
 	[K in keyof Schemas as Schemas[K] extends SqlSchemaLike ? K : never]: Extract<Schemas[K], SqlSchemaLike>
 }
-
-export type SqlDatabase<
-	Schemas extends Record<string, unknown>,
-	DefaultSchema extends string = "public",
-	Migrations extends Record<string, string> = {},
-> = [
-	ExtractSchemaErrors<Schemas>,
-] extends [never]
-	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>, DefaultSchema> extends infer E
-		? [E] extends [never]
-			? {
-					readonly kind: "database"
-					readonly schemas: {
-						[K in keyof ExtractValidSchemas<Schemas>]: ExtractValidSchemas<Schemas>[K]["tables"]
-					}
-					readonly migrations: Migrations
-				}
-			: E
-		: SqlParseError<"Internal database builder error">
-	: ExtractSchemaErrors<Schemas>

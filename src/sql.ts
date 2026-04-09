@@ -1,10 +1,10 @@
 // Public API. Do not expose internal types here.
 
-export type { SqlParseError } from "./sql-parse-error.js"
+export type { SqlParseError } from "./parser/sql-parse-error.js"
 export type { SqlCreateTable } from "./parser/sql-create-table.js"
 export type { SqlAlterTable } from "./parser/sql-alter-table.js"
 export type { SqlDropTable } from "./parser/sql-drop-table.js"
-export type { SqlDatabase, SqlSchema } from "./sql-schema.js"
+export type { SqlDatabase, SqlSchema } from "./engine/sql-schema.js"
 
 export { migration } from "./migrations/migration.js"
 export { migrations } from "./migrations/migrations.js"

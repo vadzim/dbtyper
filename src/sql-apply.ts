@@ -1,26 +1,22 @@
 import type { SqlCreateTableLike } from "./parser/sql-create-table.js"
-import type { SqlParseError } from "./sql-parse-error.js"
-import type { SqlDatabase } from "./sql-schema.js"
+import type { SqlParseError } from "./parser/sql-parse-error.js"
+import type { SqlDatabase } from "./engine/sql-schema.js"
 
 type RecordLike = Record<string, unknown>
 type SchemaTables = Record<string, Record<string, unknown>>
 
-type SplitSchemaTable<Name extends string, DefaultSchema extends string = "public"> = Name extends `${infer S}.${infer T}`
-	? [S, T]
-	: [DefaultSchema, Name]
+type SplitSchemaTable<
+	Name extends string,
+	DefaultSchema extends string = "public",
+> = Name extends `${infer S}.${infer T}` ? [S, T] : [DefaultSchema, Name]
 
-type TableExists<Schemas extends SchemaTables, Schema extends string, Table extends string> = Schema extends keyof Schemas
-	? Table extends keyof Extract<Schemas[Schema], RecordLike>
-		? true
-		: false
-	: false
-
-type MergeSchemas<
+type TableExists<
 	Schemas extends SchemaTables,
 	Schema extends string,
 	Table extends string,
-	Row,
-> = {
+> = Schema extends keyof Schemas ? (Table extends keyof Extract<Schemas[Schema], RecordLike> ? true : false) : false
+
+type MergeSchemas<Schemas extends SchemaTables, Schema extends string, Table extends string, Row> = {
 	// Inline mapped expansion is intentional for API/tooling: keep merged schema map expanded for hover visibility.
 	[K in keyof (Schemas & {
 		[K2 in Schema]: K2 extends keyof Schemas
@@ -49,13 +45,13 @@ type DropFromSchemas<
 	Table extends string,
 > = Schema extends keyof Schemas
 	? {
-		// Inline mapped expansion is intentional for API/tooling: keep post-drop schema map expanded for hover visibility.
-		[K in keyof (Omit<Schemas, Schema> & { [K2 in Schema]: Omit<Extract<Schemas[K2], RecordLike>, Table> })]: (
-			Omit<Schemas, Schema> & {
+			// Inline mapped expansion is intentional for API/tooling: keep post-drop schema map expanded for hover visibility.
+			[K in keyof (Omit<Schemas, Schema> & {
 				[K2 in Schema]: Omit<Extract<Schemas[K2], RecordLike>, Table>
-			}
-		)[K]
-	}
+			})]: (Omit<Schemas, Schema> & {
+				[K2 in Schema]: Omit<Extract<Schemas[K2], RecordLike>, Table>
+			})[K]
+		}
 	: Schemas
 
 type BuildSchemaObjects<Schemas extends SchemaTables> = {
@@ -92,44 +88,45 @@ type ApplyCreate<Db, Create extends SqlCreateTableLike> = Create["name"] extends
 						? DbSchemas<Db> extends infer Schemas extends SchemaTables
 							? TableExists<Schemas, Schema, Table> extends true
 								? SqlParseError<`Duplicate table name: ${Name}`>
-								: SqlDatabase<BuildSchemaObjects<MergeSchemas<Schemas, Schema, Table, Row>>, "public", DbMigrations<Db>>
+								: SqlDatabase<
+										BuildSchemaObjects<MergeSchemas<Schemas, Schema, Table, Row>>,
+										"public",
+										DbMigrations<Db>
+									>
 							: SqlParseError<"Internal SqlApply create schema error">
 						: SqlParseError<"Internal SqlApply create target error">
 				: SqlParseError<"Internal SqlApply create row error">
 			: SqlParseError<"Internal SqlApply create name error">
 	: SqlParseError<"Internal SqlApply create error">
 
-type ApplyAlter<Db, Alter extends SqlApplyAlterTable<string>> = SplitSchemaTable<Alter["target"]> extends [
-	infer Schema extends string,
-	infer Table extends string,
-]
-	? DbSchemas<Db> extends infer Schemas extends SchemaTables
-		? TableExists<Schemas, Schema, Table> extends true
-			? SqlDatabase<BuildSchemaObjects<Schemas>, "public", DbMigrations<Db>>
-			: SqlParseError<`Unknown altered table "${Alter["target"]}" in database`>
-		: SqlParseError<"Internal SqlApply alter schema error">
-	: SqlParseError<"Internal SqlApply alter target error">
+type ApplyAlter<Db, Alter extends SqlApplyAlterTable<string>> =
+	SplitSchemaTable<Alter["target"]> extends [infer Schema extends string, infer Table extends string]
+		? DbSchemas<Db> extends infer Schemas extends SchemaTables
+			? TableExists<Schemas, Schema, Table> extends true
+				? SqlDatabase<BuildSchemaObjects<Schemas>, "public", DbMigrations<Db>>
+				: SqlParseError<`Unknown altered table "${Alter["target"]}" in database`>
+			: SqlParseError<"Internal SqlApply alter schema error">
+		: SqlParseError<"Internal SqlApply alter target error">
 
-type ApplyDrop<Db, Drop extends SqlApplyDropTable<string>> = SplitSchemaTable<Drop["target"]> extends [
-	infer Schema extends string,
-	infer Table extends string,
-]
-	? DbSchemas<Db> extends infer Schemas extends SchemaTables
-		? TableExists<Schemas, Schema, Table> extends true
-			? SqlDatabase<BuildSchemaObjects<DropFromSchemas<Schemas, Schema, Table>>, "public", DbMigrations<Db>>
-			: SqlParseError<`Unknown dropped table "${Drop["target"]}" in database`>
-		: SqlParseError<"Internal SqlApply drop schema error">
-	: SqlParseError<"Internal SqlApply drop target error">
+type ApplyDrop<Db, Drop extends SqlApplyDropTable<string>> =
+	SplitSchemaTable<Drop["target"]> extends [infer Schema extends string, infer Table extends string]
+		? DbSchemas<Db> extends infer Schemas extends SchemaTables
+			? TableExists<Schemas, Schema, Table> extends true
+				? SqlDatabase<BuildSchemaObjects<DropFromSchemas<Schemas, Schema, Table>>, "public", DbMigrations<Db>>
+				: SqlParseError<`Unknown dropped table "${Drop["target"]}" in database`>
+			: SqlParseError<"Internal SqlApply drop schema error">
+		: SqlParseError<"Internal SqlApply drop target error">
 
 /**
  * Apply one parsed statement to a SqlDatabase shape and return next SqlDatabase type (or SqlParseError).
  */
-export type SqlApply<Db, Statement> = Statement extends SqlParseError<string>
-	? Statement
-	: Statement extends SqlCreateTableLike
-		? ApplyCreate<Db, Statement>
-		: Statement extends SqlApplyAlterTable<string>
-			? ApplyAlter<Db, Statement>
-			: Statement extends SqlApplyDropTable<string>
-				? ApplyDrop<Db, Statement>
-				: SqlParseError<"Unsupported SqlApply statement"> 
+export type SqlApply<Db, Statement> =
+	Statement extends SqlParseError<string>
+		? Statement
+		: Statement extends SqlCreateTableLike
+			? ApplyCreate<Db, Statement>
+			: Statement extends SqlApplyAlterTable<string>
+				? ApplyAlter<Db, Statement>
+				: Statement extends SqlApplyDropTable<string>
+					? ApplyDrop<Db, Statement>
+					: SqlParseError<"Unsupported SqlApply statement">

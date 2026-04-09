@@ -1,4 +1,4 @@
-import type { SqlParseError } from "../sql-parse-error.js"
+import type { SqlParseError } from "./sql-parse-error.js"
 import type { AddColumn } from "./sql-column.js"
 import type {
 	NormalizeSql,

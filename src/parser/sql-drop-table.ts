@@ -1,4 +1,4 @@
-import type { SqlParseError } from "../sql-parse-error.js"
+import type { SqlParseError } from "./sql-parse-error.js"
 import type { NormalizeSql } from "./sql-parse-primitives.js"
 import type { ReadQualifiedIdentifier, StripLeadingIfExists, ToLower } from "./sql-parse-primitives.js"
 
