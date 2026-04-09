@@ -1,6 +1,7 @@
 import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
+import type { ValidateCreateTableFkRefs } from "./sql-apply-validate-fk-refs.js"
 import type { MergeSchemas, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
 
 export type SqlApplyCreateTable<
@@ -20,16 +21,20 @@ export type SqlApplyCreateTable<
 						? Db["schemas"] extends Record<string, Record<string, unknown>>
 							? TableExists<Db["schemas"], Schema, Table> extends true
 								? SqlParseError<`Duplicate table name: ${Table}`>
-								: {
-										readonly kind: "database"
-										readonly defaultSchema: Db["defaultSchema"]
-										readonly schemas: MergeSchemas<
-											Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
-											Schema,
-											Table,
-											Row
-										>
-									}
+								: ValidateCreateTableFkRefs<Db, Create, Schema, Table> extends infer ValidationError
+									? [ValidationError] extends [never]
+										? {
+												readonly kind: "database"
+												readonly defaultSchema: Db["defaultSchema"]
+												readonly schemas: MergeSchemas<
+													Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
+													Schema,
+													Table,
+													Row
+												>
+											}
+										: ValidationError
+									: SqlParseError<"Internal SqlApplyCreateTable error">
 							: SqlParseError<"Internal SqlApplyCreateTable schema shape error">
 						: SqlParseError<"Internal SqlApplyCreateTable target error">
 				: SqlParseError<"Internal SqlApplyCreateTable row error">

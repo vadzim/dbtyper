@@ -32,7 +32,7 @@ export type SqlCreateTable<S extends string> =
 									? { [K in keyof Row]: Row[K] }
 									: never
 								readonly source: S
-								readonly __refs: SqlCreateTableParsedRefs<Parsed>
+								readonly refs: SqlCreateTableParsedRefs<Parsed>
 							}
 					: SqlParseError<"Internal SQL parser error">
 			: SqlParseError<"Internal SQL parser error">
@@ -43,7 +43,7 @@ export type SqlCreateTableLike = {
 	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
 	readonly row: unknown
 	readonly source: string
-	readonly __refs: ForeignRefMeta | undefined
+	readonly refs: ForeignRefMeta | undefined
 }
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next

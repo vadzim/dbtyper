@@ -26,7 +26,7 @@ type _UsersShape = Expect<
 				is_active: boolean
 				meta: unknown | null
 			}
-			__refs: undefined
+			readonly refs: undefined
 		}
 	>
 >
@@ -43,7 +43,7 @@ type _PostsShape = Expect<
 				rating: number | null
 				title: string | null
 			}
-			readonly __refs: undefined
+			readonly refs: undefined
 		}
 	>
 >
@@ -71,7 +71,7 @@ type _WithConstraintsShape = Expect<
 			email: string
 			org_id: number | null
 		}
-		readonly __refs: {
+		readonly refs: {
 			from: string
 			columnPairs: readonly (readonly [string, string])[]
 			toSchema: string | undefined
@@ -128,7 +128,7 @@ type _WithCommentsShape = Expect<
 			email: string
 			org_id: number | null
 		}
-		readonly __refs: {
+		readonly refs: {
 			from: string
 			columnPairs: readonly (readonly [string, string])[]
 			toSchema: string | undefined
@@ -172,7 +172,7 @@ type _QuotedIdentifiersShape = Expect<
 			"org-id": number | null
 			"is active": boolean
 		}
-		readonly __refs: {
+		readonly refs: {
 			from: string
 			columnPairs: readonly (readonly [string, string])[]
 			toSchema: string | undefined
@@ -245,7 +245,7 @@ type _PostgresTypes = Expect<
 				tags: string[] | null
 				numbers: number[] | null
 			}
-			readonly __refs: undefined
+			readonly refs: undefined
 		}
 	>
 >

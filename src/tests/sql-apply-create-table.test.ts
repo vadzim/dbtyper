@@ -65,7 +65,7 @@ type CreateInvalidRow = SqlApplyCreateTable<
 		readonly name: readonly ["broken"]
 		readonly row: SqlParseError<"bad row">
 		readonly source: "create table broken (id)"
-		readonly __refs: never
+		readonly refs: never
 	}
 >
 type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParseError<"bad row">>>
@@ -104,7 +104,7 @@ type CreateWithForeignKeyBadLocal = SqlApplyCreateTable<
 		readonly name: readonly ["posts_bad"]
 		readonly row: SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
 		readonly source: "create table posts_bad (...)"
-		readonly __refs: never
+		readonly refs: never
 	}
 >
 type _CreateWithForeignKeyBadLocal = Expect<
@@ -146,7 +146,7 @@ type CreateWithCompositeForeignKeyBadArity = SqlApplyCreateTable<
 		readonly name: readonly ["pair_arity_bad"]
 		readonly row: SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 		readonly source: "create table pair_arity_bad (...)"
-		readonly __refs: never
+		readonly refs: never
 	}
 >
 type _CreateWithCompositeForeignKeyBadArity = Expect<

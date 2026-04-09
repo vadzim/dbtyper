@@ -342,7 +342,7 @@ type _DbMultiFkCrossSchema = Expect<
 	>
 >
 
-/** Several cross-schema FKs: one valid, one bad table in public (apply does not validate DB-level refs yet). */
+/** Several cross-schema FKs: one valid, one bad table in public. */
 type SalesMultiRefOneBadTable = SqlCreateTable<`
 	create table sales.link_bad (
 		id int not null,
@@ -415,7 +415,7 @@ type _DbWithCustomDefaultSchema = Expect<
 	>
 >
 
-// --- Cross-schema “failure” shapes (apply still merges; no SqlDatabase validation) ---
+// --- Cross-schema failure shapes (apply rejects with database-level FK errors) ---
 
 type SalesBadSchemaRefTable = SqlCreateTable<`
 	create table sales.orders_bad_schema (
@@ -477,7 +477,7 @@ type _DbWithBadColumnRef = Expect<
 	Matches<SalesBadColumnSchema, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-/** Empty `public` in DB shape except cross-schema refs target `public.users` (apply does not reject). */
+/** Empty schemas: qualified FK targets `public.users` but schema `public` is missing from the database. */
 type DbMissingDefaultSchema = SqlApplyStatement<SqlEmptyDatabase<"public">, SalesOrdersDefaultSchemaTable>
 type _DbMissingDefaultSchema = Expect<
 	Matches<DbMissingDefaultSchema, SqlParseError<`Unknown referenced schema "public" in database`>>

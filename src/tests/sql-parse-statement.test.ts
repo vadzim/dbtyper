@@ -11,7 +11,7 @@ type _ParseCreate = Expect<
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]
 			readonly row: { id: number; email: string | null }
-			readonly __refs: undefined
+			readonly refs: undefined
 		}
 	>
 >

@@ -24,7 +24,7 @@ type _YParsed = Expect<
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]
 			readonly row: { id: number | null }
-			readonly __refs: undefined
+			readonly refs: undefined
 		}
 	>
 >
