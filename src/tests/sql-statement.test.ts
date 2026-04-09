@@ -1,5 +1,5 @@
 import { describe, it } from "node:test"
-import type { SqlStatement } from "../parser/sql-statement.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../sql.js"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 

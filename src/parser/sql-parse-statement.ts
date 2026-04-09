@@ -11,7 +11,3 @@ export type SqlStatement<Sql extends string> =
 		? SqlParseError<"Unknown sql statement">
 		: Result
 	: SqlParseError<"Unknown sql statement">
-
-export function sqlStatement<S extends string>(source: S) {
-	return source as S & { readonly __sql_parsed__: SqlStatement<S> }
-}
