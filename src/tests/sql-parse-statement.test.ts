@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
-import type { SqlParseError } from "../sql.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 
 type ParseCreate = SqlStatement<`create table users (id int not null, email text)`>

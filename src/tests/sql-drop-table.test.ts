@@ -1,4 +1,4 @@
-import type { SqlDropTable } from "../sql.js"
+import type { SqlDropTable } from "../parser/sql-drop-table.js"
 import { describe, it } from "node:test"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 

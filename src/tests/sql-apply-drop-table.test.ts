@@ -1,5 +1,6 @@
 import { describe, it } from "node:test"
-import type { SqlDropTable, SqlParseError } from "../sql.js"
+import type { SqlDropTable } from "../parser/sql-drop-table.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlApplyDropTable } from "../engine/sql-apply-drop-table.js"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 

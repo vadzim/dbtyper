@@ -1,7 +1,10 @@
 /**
  * SqlSchema / SqlDatabase foreign-key and cross-schema reference tests.
  */
-import type { SqlCreateTable, SqlSchema, SqlDatabase, SqlParseError } from "../sql.js"
+import type { SqlCreateTable } from "../parser/sql-create-table.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlSchema } from "../engine/sql-schema.js"
+import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 /**
