@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
-import type { Equal, Expect } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type ImportMigration<Path extends string, Sql extends string> = Promise<{
 	default: {
@@ -30,21 +30,21 @@ type Apply<Builder, Arg extends Promise<{ default: { path: string; source: strin
 
 type DbAfterUsers = Apply<Build, UsersImport>
 type _DbAfterUsers = Expect<
-	DbAfterUsers extends { getMigrations(): Promise<{ source: string; path: string }[]> } ? true : false
+	Matches<ReturnType<DbAfterUsers["getMigrations"]>, Promise<{ source: string; path: string }[]>>
 >
 
 type ParsedCreate = ReturnType<
 	typeof sqlStatement<`create table users (id int not null, email text not null)`>
 >["__sql_parsed__"]
 type _ParsedCreate = Expect<
-	Equal<ParsedCreate["row"], SqlCreateTable<`create table users (id int not null, email text not null)`>["row"]>
+	Matches<ParsedCreate["row"], SqlCreateTable<`create table users (id int not null, email text not null)`>["row"]>
 >
 
 type ParsedArityError = ReturnType<
 	typeof sqlStatement<`create table t (id int not null, x int, foreign key (x) references users(id, email))`>
 >["__sql_parsed__"]
 type _ParsedArityError = Expect<
-	Equal<
+	Matches<
 		ParsedArityError["__sql_parse_error__"],
 		"Foreign key referenced column list has more entries than the local column list"
 	>

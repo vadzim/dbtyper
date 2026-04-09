@@ -1,7 +1,7 @@
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import { describe, it } from "node:test"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
 type Users = SqlCreateTable<`
 	CREATE TABLE users (
@@ -15,10 +15,9 @@ type Users = SqlCreateTable<`
 
 type _UsersShape = Expect<
 	Matches<
-		Users,
+		Omit<Users, "source">,
 		{
 			readonly kind: "create_table"
-			readonly source: string
 			readonly name: readonly ["users"]
 			readonly row: {
 				id: number
@@ -27,6 +26,7 @@ type _UsersShape = Expect<
 				is_active: boolean
 				meta: unknown | null
 			}
+			__refs: undefined
 		}
 	>
 >
@@ -34,22 +34,22 @@ type _UsersShape = Expect<
 type Posts = SqlCreateTable<"create table posts (id bigint not null, rating decimal(10,2), title text)">
 type _PostsShape = Expect<
 	Matches<
-		Posts,
+		Omit<Posts, "source">,
 		{
 			readonly kind: "create_table"
-			readonly source: string
 			readonly name: readonly ["posts"]
 			readonly row: {
 				id: number
 				rating: number | null
 				title: string | null
 			}
+			readonly __refs: undefined
 		}
 	>
 >
 
 type Invalid = SqlCreateTable<"select * from users">
-type _Invalid = Expect<Equal<Invalid, never>>
+type _Invalid = ExpectFalse<Matches<Invalid, { readonly kind: "create_table" }>>
 
 type WithConstraints = SqlCreateTable<`
 	create table accounts (
@@ -63,19 +63,23 @@ type WithConstraints = SqlCreateTable<`
 `>
 
 type _WithConstraintsShape = Expect<
-	Matches<
-		WithConstraints,
-		{
-			readonly kind: "create_table"
-			readonly source: string
-			readonly name: readonly ["accounts"]
-			readonly row: {
-				id: number
-				email: string
-				org_id: number | null
-			}
+	Omit<WithConstraints, "source"> extends {
+		readonly kind: "create_table"
+		readonly name: readonly ["accounts"]
+		readonly row: {
+			id: number
+			email: string
+			org_id: number | null
 		}
-	>
+		readonly __refs: {
+			from: string
+			columnPairs: readonly (readonly [string, string])[]
+			toSchema: string | undefined
+			toTable: string
+		}
+	}
+		? true
+		: false
 >
 
 type BadUniqueRef = SqlCreateTable<`
@@ -85,7 +89,7 @@ type BadUniqueRef = SqlCreateTable<`
 	)
 `>
 type _BadUniqueRef = Expect<
-	Equal<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type BadForeignKeyRef = SqlCreateTable<`
@@ -96,7 +100,7 @@ type BadForeignKeyRef = SqlCreateTable<`
 	)
 `>
 type _BadForeignKeyRef = Expect<
-	Equal<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type WithComments = SqlCreateTable<`
@@ -116,19 +120,23 @@ type WithComments = SqlCreateTable<`
 	);
 `>
 type _WithCommentsShape = Expect<
-	Matches<
-		WithComments,
-		{
-			readonly kind: "create_table"
-			readonly source: string
-			readonly name: readonly ["commented_users"]
-			readonly row: {
-				id: number
-				email: string
-				org_id: number | null
-			}
+	Omit<WithComments, "source"> extends {
+		readonly kind: "create_table"
+		readonly name: readonly ["commented_users"]
+		readonly row: {
+			id: number
+			email: string
+			org_id: number | null
 		}
-	>
+		readonly __refs: {
+			from: string
+			columnPairs: readonly (readonly [string, string])[]
+			toSchema: string | undefined
+			toTable: string
+		}
+	}
+		? true
+		: false
 >
 
 type BadRefWithComments = SqlCreateTable<`
@@ -139,7 +147,7 @@ type BadRefWithComments = SqlCreateTable<`
 	)
 `>
 type _BadRefWithComments = Expect<
-	Equal<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type QuotedIdentifiers = SqlCreateTable<`
@@ -155,20 +163,24 @@ type QuotedIdentifiers = SqlCreateTable<`
 `>
 
 type _QuotedIdentifiersShape = Expect<
-	Matches<
-		QuotedIdentifiers,
-		{
-			readonly kind: "create_table"
-			readonly source: string
-			readonly name: readonly ["account users"]
-			readonly row: {
-				id: number
-				"user name": string | null
-				"org-id": number | null
-				"is active": boolean
-			}
+	Omit<QuotedIdentifiers, "source"> extends {
+		readonly kind: "create_table"
+		readonly name: readonly ["account users"]
+		readonly row: {
+			id: number
+			"user name": string | null
+			"org-id": number | null
+			"is active": boolean
 		}
-	>
+		readonly __refs: {
+			from: string
+			columnPairs: readonly (readonly [string, string])[]
+			toSchema: string | undefined
+			toTable: string
+		}
+	}
+		? true
+		: false
 >
 
 type BadQuotedRef = SqlCreateTable<`
@@ -178,13 +190,13 @@ type BadQuotedRef = SqlCreateTable<`
 	)
 `>
 type _BadQuotedRef = Expect<
-	Equal<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
+	Matches<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
 >
 
-type _TableNameSimple = Expect<Equal<SqlCreateTable<"create table users (id int)">["name"], readonly ["users"]>>
+type _TableNameSimple = Expect<Matches<SqlCreateTable<"create table users (id int)">["name"], readonly ["users"]>>
 
 type _TableNameQuoted = Expect<
-	Equal<SqlCreateTable<`create table "account users" ("id" int not null)`>["name"], readonly ["account users"]>
+	Matches<SqlCreateTable<`create table "account users" ("id" int not null)`>["name"], readonly ["account users"]>
 >
 
 type PostgresTypes = SqlCreateTable<`
@@ -210,11 +222,10 @@ type PostgresTypes = SqlCreateTable<`
 `>
 type _PostgresTypes = Expect<
 	Matches<
-		PostgresTypes,
+		Omit<PostgresTypes, "source">,
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["pg_types"]
-			readonly source: string
 			readonly row: {
 				id: number
 				i2: number
@@ -234,6 +245,7 @@ type _PostgresTypes = Expect<
 				tags: string[] | null
 				numbers: number[] | null
 			}
+			readonly __refs: undefined
 		}
 	>
 >

@@ -6,10 +6,10 @@ import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlSchema } from "../engine/sql-schema.js"
 import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 /**
  * Message from `SqlParseError<M>` (handles `never | SqlParseError<M>` from multi-ref validation unions).
- * Use only with `Equal<SqlParseMessage<T>, M>` or `Equal<..., A | B>` where each branch is a full string literal—never broad templates like `` `...${string}...` ``.
+ * Use only with `Matches<SqlParseMessage<T>, M>` or `Matches<..., A | B>` where each branch is a full string literal—never broad templates like `` `...${string}...` ``.
  */
 type SqlParseMessage<T> = T extends SqlParseError<infer M> ? M : never
 
@@ -43,38 +43,45 @@ type _PublicSchema = Expect<
 				users: { id: number; email: string }
 				posts: { id: number; user_id: number; title: string | null }
 			}
+			readonly __refs: undefined
 		}
 	>
 >
 
 type DbFromSchemas = SqlDatabase<{ public: PublicSchema }>
-type _DbgDbDefaultSchema = DbFromSchemas extends { readonly defaultSchema: infer D } ? D : never
-type _DbgDbMigrations = DbFromSchemas extends { readonly migrations: infer M } ? M : never
-type _DbFromSchemasKind = Expect<DbFromSchemas extends { readonly kind: "database" } ? true : false>
-type _DbFromSchemasDefaultSchema = Expect<Equal<_DbgDbDefaultSchema, "public">>
+type _DbFromSchemasKind = Expect<Matches<DbFromSchemas["kind"], "database">>
+type _DbFromSchemasDefaultSchema = Expect<Matches<DbFromSchemas["defaultSchema"], "public">>
 type _DbFromSchemasSchemas = Expect<
-	DbFromSchemas extends {
-		readonly schemas: {
+	Matches<
+		DbFromSchemas["schemas"],
+		{
 			public: {
 				users: { id: number; email: string }
 				posts: { id: number; user_id: number; title: string | null }
 			}
 		}
-	}
-		? true
-		: false
+	>
 >
-type _DbFromSchemasMigrations = Expect<DbFromSchemas extends { readonly migrations: {} } ? true : false>
+type _DbFromSchemasMigrations = Expect<Matches<DbFromSchemas["migrations"], {}>>
 
 type DupUsersTableA = SqlCreateTable<"create table users (id int not null)">
 type DupUsersTableB = SqlCreateTable<`create table "users" (other_id int not null)`>
 type SchemaDuplicateTables = SqlSchema<[DupUsersTableA, DupUsersTableB]>
-type _SchemaDuplicateTables = Expect<Equal<SchemaDuplicateTables, SqlParseError<"Duplicate table name: users">>>
+type _SchemaDuplicateTables = Expect<Matches<SchemaDuplicateTables, SqlParseError<"Duplicate table name: users">>>
 
 type InvalidTable = SqlCreateTable<"select * from users">
 type SchemaWithInvalidTable = SqlSchema<[UsersTable, InvalidTable]>
 type _SchemaWithInvalidTable = Expect<
-	Matches<SchemaWithInvalidTable, { readonly kind: "schema"; readonly tables: { users: unknown } }>
+	Matches<
+		SchemaWithInvalidTable,
+		{
+			readonly kind: "schema"
+			readonly tables: {
+				users: { id: number; email: string }
+			}
+			readonly __refs: undefined
+		}
+	>
 >
 
 // --- Intra-schema FK ---
@@ -88,7 +95,7 @@ type BadIntraFkTable = SqlCreateTable<`
 `>
 type SchemaWithBadIntraFk = SqlSchema<[UsersTable, BadIntraFkTable]>
 type _SchemaWithBadIntraFk = Expect<
-	Equal<SchemaWithBadIntraFk, SqlParseError<`Unknown referenced table "users_bad" in schema`>>
+	Matches<SchemaWithBadIntraFk, SqlParseError<`Unknown referenced table "users_bad" in schema`>>
 >
 
 /** Unqualified FK to another table in the same schema (happy path). */
@@ -101,16 +108,21 @@ type PostsRefUsersTable = SqlCreateTable<`
 `>
 type SchemaWithIntraFkOk = SqlSchema<[UsersTable, PostsRefUsersTable]>
 type _SchemaWithIntraFkOk = Expect<
-	Matches<
-		SchemaWithIntraFkOk,
-		{
-			readonly kind: "schema"
-			readonly tables: {
-				users: unknown
-				post_refs: unknown
-			}
+	SchemaWithIntraFkOk extends {
+		readonly kind: "schema"
+		readonly tables: {
+			users: { id: number; email: string }
+			post_refs: { id: number; author_id: number }
 		}
-	>
+		readonly __refs: {
+			from: string
+			columnPairs: readonly (readonly [string, string])[]
+			toSchema: string | undefined
+			toTable: string
+		}
+	}
+		? true
+		: false
 >
 
 /** Self-referential FK within one schema. */
@@ -123,7 +135,18 @@ type CategoriesTable = SqlCreateTable<`
 `>
 type SchemaSelfRef = SqlSchema<[CategoriesTable]>
 type _SchemaSelfRef = Expect<
-	Matches<SchemaSelfRef, { readonly kind: "schema"; readonly tables: { categories: unknown } }>
+	SchemaSelfRef extends {
+		readonly kind: "schema"
+		readonly tables: { categories: { id: number; parent_id: number | null } }
+		readonly __refs: {
+			from: string
+			columnPairs: readonly (readonly [string, string])[]
+			toSchema: string | undefined
+			toTable: string
+		}
+	}
+		? true
+		: false
 >
 
 /** Composite FK: both referenced columns must exist on target. */
@@ -137,7 +160,21 @@ type PairRefTable = SqlCreateTable<`
 `>
 type SchemaCompositeFkOk = SqlSchema<[UsersTable, PairRefTable]>
 type _SchemaCompositeFkOk = Expect<
-	Matches<SchemaCompositeFkOk, { readonly kind: "schema"; readonly tables: { users: unknown; pair_refs: unknown } }>
+	SchemaCompositeFkOk extends {
+		readonly kind: "schema"
+		readonly tables: {
+			users: { id: number; email: string }
+			pair_refs: { id: number; u_id: number; u_email: string }
+		}
+		readonly __refs: {
+			from: string
+			columnPairs: readonly (readonly [string, string])[]
+			toSchema: string | undefined
+			toTable: string
+		}
+	}
+		? true
+		: false
 >
 
 type PairRefBadColTable = SqlCreateTable<`
@@ -150,7 +187,7 @@ type PairRefBadColTable = SqlCreateTable<`
 `>
 type SchemaCompositeFkBadCol = SqlSchema<[UsersTable, PairRefBadColTable]>
 type _SchemaCompositeFkBadCol = Expect<
-	Equal<SchemaCompositeFkBadCol, SqlParseError<`Unknown column "no_such_col" referenced in table constraint`>>
+	Matches<SchemaCompositeFkBadCol, SqlParseError<`Unknown column "no_such_col" referenced in table constraint`>>
 >
 
 /** Composite FK: fewer local columns than referenced columns. */
@@ -161,14 +198,14 @@ type PairRefArityShortTable = SqlCreateTable<`
 	)
 `>
 type _PairRefArityShortIsParseError = Expect<
-	Equal<
+	Matches<
 		PairRefArityShortTable,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 type SchemaCompositeArityShort = SqlSchema<[UsersTable, PairRefArityShortTable]>
 type _SchemaCompositeArityShort = Expect<
-	Equal<
+	Matches<
 		SchemaCompositeArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
@@ -183,14 +220,14 @@ type PairRefArityLongTable = SqlCreateTable<`
 	)
 `>
 type _PairRefArityLongIsParseError = Expect<
-	Equal<
+	Matches<
 		PairRefArityLongTable,
 		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
 	>
 >
 type SchemaCompositeArityLong = SqlSchema<[UsersTable, PairRefArityLongTable]>
 type _SchemaCompositeArityLong = Expect<
-	Equal<
+	Matches<
 		SchemaCompositeArityLong,
 		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
 	>
@@ -208,17 +245,29 @@ type MembershipsTable = SqlCreateTable<`
 `>
 type SchemaMultiFkOk = SqlSchema<[UsersTable, PostsTable, MembershipsTable]>
 type _SchemaMultiFkOk = Expect<
-	Matches<
-		SchemaMultiFkOk,
-		{
-			readonly kind: "schema"
-			readonly tables: {
-				users: unknown
-				posts: unknown
-				memberships: unknown
-			}
+	SchemaMultiFkOk extends {
+		readonly kind: "schema"
+		readonly tables: {
+			users: { id: number; email: string }
+			posts: { id: number; user_id: number; title: string | null }
+			memberships: { id: number; user_id: number; post_id: number }
 		}
-	>
+		readonly __refs:
+			| {
+					from: string
+					columnPairs: readonly (readonly [string, string])[]
+					toSchema: string | undefined
+					toTable: string
+			  }
+			| {
+					from: string
+					columnPairs: readonly (readonly [string, string])[]
+					toSchema: string | undefined
+					toTable: string
+			  }
+	}
+		? true
+		: false
 >
 
 /** Several FKs on one table: first OK, second references missing table. */
@@ -233,7 +282,7 @@ type MultiFkOneBadTable = SqlCreateTable<`
 `>
 type SchemaMultiFkOneBad = SqlSchema<[UsersTable, MultiFkOneBadTable]>
 type _SchemaMultiFkOneBad = Expect<
-	Equal<SqlParseMessage<SchemaMultiFkOneBad>, `Unknown referenced table "ghosts" in schema`>
+	Matches<SqlParseMessage<SchemaMultiFkOneBad>, `Unknown referenced table "ghosts" in schema`>
 >
 
 // --- Cross-schema (database-level) FK ---
@@ -252,7 +301,17 @@ type _MultiSchemaDb = Expect<
 		MultiSchemaDb,
 		{
 			readonly kind: "database"
-			readonly schemas: { public: unknown; sales: unknown }
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+					posts: { id: number; user_id: number; title: string | null }
+				}
+				sales: {
+					orders: { id: number; user_id: number }
+				}
+			}
+			readonly migrations: {}
 		}
 	>
 >
@@ -270,7 +329,23 @@ type SalesMultiRefTable = SqlCreateTable<`
 type SalesMultiRefSchema = SqlSchema<[SalesMultiRefTable]>
 type DbMultiFkCrossSchema = SqlDatabase<{ public: PublicSchema; sales: SalesMultiRefSchema }>
 type _DbMultiFkCrossSchema = Expect<
-	Matches<DbMultiFkCrossSchema, { readonly kind: "database"; readonly schemas: { public: unknown; sales: unknown } }>
+	Matches<
+		DbMultiFkCrossSchema,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+					posts: { id: number; user_id: number; title: string | null }
+				}
+				sales: {
+					link_rows: { id: number; u: number; p: number }
+				}
+			}
+			readonly migrations: {}
+		}
+	>
 >
 
 /** Several cross-schema FKs: one valid, one bad table in public. */
@@ -286,7 +361,7 @@ type SalesMultiRefOneBadTable = SqlCreateTable<`
 type SalesMultiRefOneBadSchema = SqlSchema<[SalesMultiRefOneBadTable]>
 type DbMultiFkOneBadCross = SqlDatabase<{ public: PublicSchema; sales: SalesMultiRefOneBadSchema }>
 type _DbMultiFkOneBadCross = Expect<
-	Equal<SqlParseMessage<DbMultiFkOneBadCross>, `Unknown referenced table "public.no_such_posts" in database`>
+	Matches<SqlParseMessage<DbMultiFkOneBadCross>, `Unknown referenced table "public.no_such_posts" in database`>
 >
 
 type OrdersDefaultSchemaTable = SqlCreateTable<`
@@ -301,7 +376,20 @@ type DbWithDefaultSchemaPublic = SqlDatabase<{ public: PublicSchema; sales: Sale
 type _DbWithDefaultSchemaPublic = Expect<
 	Matches<
 		DbWithDefaultSchemaPublic,
-		{ readonly kind: "database"; readonly schemas: { public: unknown; sales: unknown } }
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+					posts: { id: number; user_id: number; title: string | null }
+				}
+				sales: {
+					orders_default_schema: { id: number; user_id: number }
+				}
+			}
+			readonly migrations: {}
+		}
 	>
 >
 
@@ -316,7 +404,26 @@ type DbWithCustomDefaultSchema = SqlDatabase<
 	"shared"
 >
 type _DbWithCustomDefaultSchema = Expect<
-	Matches<DbWithCustomDefaultSchema, { readonly kind: "database"; readonly schemas: unknown }>
+	Matches<
+		DbWithCustomDefaultSchema,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "shared"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+					posts: { id: number; user_id: number; title: string | null }
+				}
+				shared: {
+					users: { id: number }
+				}
+				sales: {
+					orders_default_schema: { id: number; user_id: number }
+				}
+			}
+			readonly migrations: {}
+		}
+	>
 >
 
 // --- Database-level failures ---
@@ -331,7 +438,7 @@ type SalesBadSchemaRefTable = SqlCreateTable<`
 type SalesBadSchema = SqlSchema<[SalesBadSchemaRefTable]>
 type DbWithBadSchemaRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadSchema }>
 type _DbWithBadSchemaRef = Expect<
-	Equal<DbWithBadSchemaRef, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
+	Matches<DbWithBadSchemaRef, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
 >
 
 type SalesBadTableRefTable = SqlCreateTable<`
@@ -344,7 +451,7 @@ type SalesBadTableRefTable = SqlCreateTable<`
 type SalesBadTableSchema = SqlSchema<[SalesBadTableRefTable]>
 type DbWithBadTableRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadTableSchema }>
 type _DbWithBadTableRef = Expect<
-	Equal<DbWithBadTableRef, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
+	Matches<DbWithBadTableRef, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
 >
 
 type SalesBadPublicUsersBadRefTable = SqlCreateTable<`
@@ -357,7 +464,7 @@ type SalesBadPublicUsersBadRefTable = SqlCreateTable<`
 type SalesBadPublicUsersBadSchema = SqlSchema<[SalesBadPublicUsersBadRefTable]>
 type DbWithBadPublicUsersBadRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadPublicUsersBadSchema }>
 type _DbWithBadPublicUsersBadRef = Expect<
-	Equal<DbWithBadPublicUsersBadRef, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
+	Matches<DbWithBadPublicUsersBadRef, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
 >
 
 type SalesBadSchemaUsersRefTable = SqlCreateTable<`
@@ -370,7 +477,7 @@ type SalesBadSchemaUsersRefTable = SqlCreateTable<`
 type SalesBadSchemaUsersSchema = SqlSchema<[SalesBadSchemaUsersRefTable]>
 type DbWithBadSchemaUsersRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadSchemaUsersSchema }>
 type _DbWithBadSchemaUsersRef = Expect<
-	Equal<DbWithBadSchemaUsersRef, SqlParseError<`Unknown referenced schema "schema_bad" in database`>>
+	Matches<DbWithBadSchemaUsersRef, SqlParseError<`Unknown referenced schema "schema_bad" in database`>>
 >
 
 type SalesBadColumnRefTable = SqlCreateTable<`
@@ -383,13 +490,13 @@ type SalesBadColumnRefTable = SqlCreateTable<`
 type SalesBadColumnSchema = SqlSchema<[SalesBadColumnRefTable]>
 type DbWithBadColumnRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadColumnSchema }>
 type _DbWithBadColumnRef = Expect<
-	Equal<DbWithBadColumnRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<DbWithBadColumnRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 /** DB has no `public` schema key but FK targets public.users — must fail. */
 type DbMissingDefaultSchema = SqlDatabase<{ sales: SalesSchemaDefaultSchemaRef }>
 type _DbMissingDefaultSchema = Expect<
-	Equal<DbMissingDefaultSchema, SqlParseError<`Unknown referenced schema "public" in database`>>
+	Matches<DbMissingDefaultSchema, SqlParseError<`Unknown referenced schema "public" in database`>>
 >
 
 /**
@@ -420,7 +527,7 @@ type DbBadUnqualifiedUnderCustomDefault = SqlDatabase<
 	"shared"
 >
 type _DbBadUnqualifiedUnderCustomDefault = Expect<
-	Equal<DbBadUnqualifiedUnderCustomDefault, SqlParseError<`Unknown referenced table "shared.users" in database`>>
+	Matches<DbBadUnqualifiedUnderCustomDefault, SqlParseError<`Unknown referenced table "shared.users" in database`>>
 >
 
 /** Composite FK across schemas: second column wrong on remote table. */
@@ -435,7 +542,7 @@ type SalesCompositeBadTable = SqlCreateTable<`
 type SalesCompositeBadSchema = SqlSchema<[SalesCompositeBadTable]>
 type DbCompositeBadRemoteCol = SqlDatabase<{ public: PublicSchema; sales: SalesCompositeBadSchema }>
 type _DbCompositeBadRemoteCol = Expect<
-	Equal<DbCompositeBadRemoteCol, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
+	Matches<DbCompositeBadRemoteCol, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
 >
 
 /** Database-level composite FK: arity mismatch (one local, two referenced). */
@@ -446,7 +553,7 @@ type SalesDbArityShortTable = SqlCreateTable<`
 	)
 `>
 type _SalesDbArityShortIsParseError = Expect<
-	Equal<
+	Matches<
 		SalesDbArityShortTable,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
@@ -454,7 +561,7 @@ type _SalesDbArityShortIsParseError = Expect<
 type SalesDbArityShortSchema = SqlSchema<[SalesDbArityShortTable]>
 type DbCompositeArityShort = SqlDatabase<{ public: PublicSchema; sales: SalesDbArityShortSchema }>
 type _DbCompositeArityShort = Expect<
-	Equal<
+	Matches<
 		DbCompositeArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>

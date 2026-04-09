@@ -1,12 +1,12 @@
 import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import { describe, it } from "node:test"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type AlterUsers = SqlAlterTable<`alter table users add column age int`>
 type _AlterUsers = Expect<
 	Matches<
-		AlterUsers,
+		Omit<AlterUsers, "source">,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -17,7 +17,6 @@ type _AlterUsers = Expect<
 				readonly name: "age"
 				readonly definition: number | null
 			}
-			readonly source: string
 		}
 	>
 >
@@ -25,7 +24,7 @@ type _AlterUsers = Expect<
 type AlterPublicUsers = SqlAlterTable<`alter table public.users add column age int`>
 type _AlterPublicUsers = Expect<
 	Matches<
-		AlterPublicUsers,
+		Omit<AlterPublicUsers, "source">,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -36,7 +35,6 @@ type _AlterPublicUsers = Expect<
 				readonly name: "age"
 				readonly definition: number | null
 			}
-			readonly source: string
 		}
 	>
 >
@@ -44,7 +42,7 @@ type _AlterPublicUsers = Expect<
 type AlterUsersIfExists = SqlAlterTable<`alter table if exists public.users add column age int`>
 type _AlterUsersIfExists = Expect<
 	Matches<
-		AlterUsersIfExists,
+		Omit<AlterUsersIfExists, "source">,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: true
@@ -55,19 +53,18 @@ type _AlterUsersIfExists = Expect<
 				readonly name: "age"
 				readonly definition: number | null
 			}
-			readonly source: string
 		}
 	>
 >
 
 type BadAlter = SqlAlterTable<`alter table public.users`>
-type _BadAlter = Expect<Equal<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
+type _BadAlter = Expect<Matches<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
 
 type AlterAddColumnIfNotExists =
 	SqlAlterTable<`alter table users add column if not exists "display name" text not null`>
 type _AlterAddColumnIfNotExists = Expect<
 	Matches<
-		AlterAddColumnIfNotExists,
+		Omit<AlterAddColumnIfNotExists, "source">,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -78,7 +75,6 @@ type _AlterAddColumnIfNotExists = Expect<
 				readonly name: "display name"
 				readonly definition: string
 			}
-			readonly source: string
 		}
 	>
 >
@@ -86,7 +82,7 @@ type _AlterAddColumnIfNotExists = Expect<
 type AlterDropColumn = SqlAlterTable<`alter table users drop column if exists age`>
 type _AlterDropColumn = Expect<
 	Matches<
-		AlterDropColumn,
+		Omit<AlterDropColumn, "source">,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -96,7 +92,6 @@ type _AlterDropColumn = Expect<
 				readonly ifExists: true
 				readonly name: "age"
 			}
-			readonly source: string
 		}
 	>
 >
@@ -104,9 +99,11 @@ type _AlterDropColumn = Expect<
 type AlterRenameTo = SqlAlterTable<`alter table users rename to app_users`>
 type _AlterRenameTo = Expect<
 	Matches<
-		AlterRenameTo,
+		Omit<AlterRenameTo, "source">,
 		{
 			readonly kind: "alter_table"
+			readonly ifExists: false
+			readonly target: readonly ["users"]
 			readonly action: {
 				readonly kind: "rename_to"
 				readonly name: "app_users"
@@ -118,9 +115,11 @@ type _AlterRenameTo = Expect<
 type AlterRenameColumn = SqlAlterTable<`alter table users rename column old_name to "new name"`>
 type _AlterRenameColumn = Expect<
 	Matches<
-		AlterRenameColumn,
+		Omit<AlterRenameColumn, "source">,
 		{
 			readonly kind: "alter_table"
+			readonly ifExists: false
+			readonly target: readonly ["users"]
 			readonly action: {
 				readonly kind: "rename_column"
 				readonly from: "old_name"
@@ -131,7 +130,7 @@ type _AlterRenameColumn = Expect<
 >
 
 type UnsupportedAlterAction = SqlAlterTable<`alter table users set schema archive`>
-type _UnsupportedAlterAction = Expect<Equal<UnsupportedAlterAction, SqlParseError<"Unsupported ALTER TABLE action">>>
+type _UnsupportedAlterAction = Expect<Matches<UnsupportedAlterAction, SqlParseError<"Unsupported ALTER TABLE action">>>
 
 describe("sql alter table", () => {
 	it("should run", () => {})

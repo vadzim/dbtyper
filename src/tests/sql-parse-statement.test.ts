@@ -1,17 +1,17 @@
 import { describe, it } from "node:test"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type ParseCreate = SqlStatement<`create table users (id int not null, email text)`>
 type _ParseCreate = Expect<
 	Matches<
-		ParseCreate,
+		Omit<ParseCreate, "source">,
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]
 			readonly row: { id: number; email: string | null }
-			readonly source: string
+			readonly __refs: undefined
 		}
 	>
 >
@@ -19,7 +19,7 @@ type _ParseCreate = Expect<
 type ParseAlter = SqlStatement<`alter table if exists public.users add column age int`>
 type _ParseAlter = Expect<
 	Matches<
-		ParseAlter,
+		Omit<ParseAlter, "source">,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: true
@@ -30,7 +30,6 @@ type _ParseAlter = Expect<
 				readonly name: "age"
 				readonly definition: number | null
 			}
-			readonly source: string
 		}
 	>
 >
@@ -38,21 +37,20 @@ type _ParseAlter = Expect<
 type ParseDrop = SqlStatement<`drop table if exists auth.users;`>
 type _ParseDrop = Expect<
 	Matches<
-		ParseDrop,
+		Omit<ParseDrop, "source">,
 		{
 			readonly kind: "drop_table"
 			readonly ifExists: true
 			readonly target: readonly ["users", "auth"]
-			readonly source: string
 		}
 	>
 >
 
 type ParseUnknown = SqlStatement<`create view v as select 1`>
-type _ParseUnknown = Expect<Equal<ParseUnknown, SqlParseError<"Unknown sql statement">>>
+type _ParseUnknown = Expect<Matches<ParseUnknown, SqlParseError<"Unknown sql statement">>>
 
 type ParseInvalidCreate = SqlStatement<`create table broken (id)`>
-type _ParseInvalidCreate = Expect<Equal<ParseInvalidCreate, SqlParseError<"Invalid column definition: id">>>
+type _ParseInvalidCreate = Expect<Matches<ParseInvalidCreate, SqlParseError<"Invalid column definition: id">>>
 
 describe("sql parse migration", () => {
 	it("should run", () => {})

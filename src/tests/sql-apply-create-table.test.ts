@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlApplyCreateTable } from "../engine/sql-apply-create-table.js"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type Db0 = {
 	readonly kind: "database"
@@ -56,7 +56,7 @@ type _CreateInExplicitSchema = Expect<
 >
 
 type CreateDuplicateTable = SqlApplyCreateTable<Db0, SqlCreateTable<`create table users (id int not null)`>>
-type _CreateDuplicateTable = Expect<Equal<CreateDuplicateTable, SqlParseError<"Duplicate table name: users">>>
+type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParseError<"Duplicate table name: users">>>
 
 type CreateInvalidRow = SqlApplyCreateTable<
 	Db0,
@@ -68,7 +68,7 @@ type CreateInvalidRow = SqlApplyCreateTable<
 		readonly __refs: never
 	}
 >
-type _CreateInvalidRow = Expect<Equal<CreateInvalidRow, SqlParseError<"bad row">>>
+type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParseError<"bad row">>>
 
 type CreateWithForeignKeyOk = SqlApplyCreateTable<
 	Db0,
@@ -91,6 +91,7 @@ type _CreateWithForeignKeyOk = Expect<
 					users: { id: number; email: string }
 					posts: { id: number; user_id: number }
 				}
+				auth: {}
 			}
 		}
 	>
@@ -107,7 +108,7 @@ type CreateWithForeignKeyBadLocal = SqlApplyCreateTable<
 	}
 >
 type _CreateWithForeignKeyBadLocal = Expect<
-	Equal<CreateWithForeignKeyBadLocal, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<CreateWithForeignKeyBadLocal, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 type CreateWithCompositeForeignKeyOk = SqlApplyCreateTable<
@@ -129,9 +130,10 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
-					users: unknown
+					users: { id: number; email: string }
 					pair_refs: { id: number; u_id: number; u_email: string }
 				}
+				auth: {}
 			}
 		}
 	>
@@ -148,7 +150,7 @@ type CreateWithCompositeForeignKeyBadArity = SqlApplyCreateTable<
 	}
 >
 type _CreateWithCompositeForeignKeyBadArity = Expect<
-	Equal<
+	Matches<
 		CreateWithCompositeForeignKeyBadArity,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>

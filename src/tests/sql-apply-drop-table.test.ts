@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { SqlDropTable } from "../parser/sql-drop-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlApplyDropTable } from "../engine/sql-apply-drop-table.js"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type Db0 = {
 	readonly kind: "database"
@@ -24,6 +24,7 @@ type _DropExistingNoIfExists = Expect<
 		DropExistingNoIfExists,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					posts: { id: number; user_id: number }
@@ -42,6 +43,7 @@ type _DropExistingIfExists = Expect<
 		DropExistingIfExists,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					posts: { id: number; user_id: number }
@@ -56,11 +58,11 @@ type _DropExistingIfExists = Expect<
 
 type DropMissingNoIfExists = SqlApplyDropTable<Db0, SqlDropTable<`drop table test.missing`>>
 type _DropMissingNoIfExists = Expect<
-	Equal<DropMissingNoIfExists, SqlParseError<`Unknown dropped table "test.missing" in database`>>
+	Matches<DropMissingNoIfExists, SqlParseError<`Unknown dropped table "test.missing" in database`>>
 >
 
 type DropMissingIfExists = SqlApplyDropTable<Db0, SqlDropTable<`drop table if exists test.missing`>>
-type _DropMissingIfExists = Expect<Equal<DropMissingIfExists, Db0>>
+type _DropMissingIfExists = Expect<Matches<DropMissingIfExists, Db0>>
 
 type DropDefaultSchemaUnqualified = SqlApplyDropTable<Db0, SqlDropTable<`drop table users`>>
 type _DropDefaultSchemaUnqualified = Expect<
@@ -68,6 +70,7 @@ type _DropDefaultSchemaUnqualified = Expect<
 		DropDefaultSchemaUnqualified,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					posts: { id: number; user_id: number }
@@ -86,6 +89,7 @@ type _DropExplicitSchemaQualified = Expect<
 		DropExplicitSchemaQualified,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					users: { id: number }

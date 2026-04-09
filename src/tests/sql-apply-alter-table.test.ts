@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlApplyAlterTable } from "../engine/sql-apply-alter-table.js"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type Db0 = {
 	readonly kind: "database"
@@ -41,7 +41,7 @@ type AddExistingColumnNoIfNotExists = SqlApplyAlterTable<
 	SqlAlterTable<`alter table test.users add column age int`>
 >
 type _AddExistingColumnNoIfNotExists = Expect<
-	Equal<AddExistingColumnNoIfNotExists, SqlParseError<"Duplicate column name: age">>
+	Matches<AddExistingColumnNoIfNotExists, SqlParseError<"Duplicate column name: age">>
 >
 
 type AddExistingColumnIfNotExists = SqlApplyAlterTable<
@@ -56,6 +56,7 @@ type _DropExistingColumn = Expect<
 		DropExistingColumn,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					users: { id: number }
@@ -69,7 +70,7 @@ type _DropExistingColumn = Expect<
 
 type DropMissingColumnNoIfExists = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users drop column missing`>>
 type _DropMissingColumnNoIfExists = Expect<
-	Equal<DropMissingColumnNoIfExists, SqlParseError<`Unknown column "missing" in altered table`>>
+	Matches<DropMissingColumnNoIfExists, SqlParseError<`Unknown column "missing" in altered table`>>
 >
 
 type DropMissingColumnIfExists = SqlApplyAlterTable<
@@ -84,6 +85,7 @@ type _RenameExistingColumn = Expect<
 		RenameExistingColumn,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					users: { id: number; years: number }
@@ -100,14 +102,16 @@ type RenameMissingColumn = SqlApplyAlterTable<
 	SqlAlterTable<`alter table test.users rename column missing to years`>
 >
 type _RenameMissingColumn = Expect<
-	Equal<RenameMissingColumn, SqlParseError<`Unknown column "missing" in altered table`>>
+	Matches<RenameMissingColumn, SqlParseError<`Unknown column "missing" in altered table`>>
 >
 
 type RenameToExistingColumnName = SqlApplyAlterTable<
 	Db0,
 	SqlAlterTable<`alter table test.users rename column age to id`>
 >
-type _RenameToExistingColumnName = Expect<Equal<RenameToExistingColumnName, SqlParseError<"Duplicate column name: id">>>
+type _RenameToExistingColumnName = Expect<
+	Matches<RenameToExistingColumnName, SqlParseError<"Duplicate column name: id">>
+>
 
 type RenameTableOk = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename to members`>>
 type _RenameTableOk = Expect<
@@ -115,6 +119,7 @@ type _RenameTableOk = Expect<
 		RenameTableOk,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					members: { id: number; age: number }
@@ -127,22 +132,22 @@ type _RenameTableOk = Expect<
 >
 
 type RenameTableDuplicate = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename to posts`>>
-type _RenameTableDuplicate = Expect<Equal<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>>
+type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>>
 
 type AlterMissingNoIfExists = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.missing add column age int`>>
 type _AlterMissingNoIfExists = Expect<
-	Equal<AlterMissingNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
+	Matches<AlterMissingNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
 >
 
 type AlterMissingIfExists = SqlApplyAlterTable<
 	Db0,
 	SqlAlterTable<`alter table if exists test.missing add column age int`>
 >
-type _AlterMissingIfExists = Expect<Equal<AlterMissingIfExists, Db0>>
+type _AlterMissingIfExists = Expect<Matches<AlterMissingIfExists, Db0>>
 
 type AlterDefaultSchemaUnqualified = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table users add column age int`>>
 type _AlterDefaultSchemaUnqualified = Expect<
-	Equal<AlterDefaultSchemaUnqualified, SqlParseError<"Duplicate column name: age">>
+	Matches<AlterDefaultSchemaUnqualified, SqlParseError<"Duplicate column name: age">>
 >
 
 type AlterExplicitSchemaQualified = SqlApplyAlterTable<
@@ -154,6 +159,7 @@ type _AlterExplicitSchemaQualified = Expect<
 		AlterExplicitSchemaQualified,
 		{
 			readonly kind: "database"
+			readonly defaultSchema: "test"
 			readonly schemas: {
 				test: {
 					users: { id: number; age: number }

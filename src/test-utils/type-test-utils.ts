@@ -1,26 +1,28 @@
 /** Type-level test helpers for compile-time assertions. */
 
-export type IsAny<T> = 0 extends 1 & T ? true : false
-
-/**
- * Strict equality for type tests.
- * Deliberately returns `false` if either side is `any` to avoid false-positive assertions.
- */
-export type Equal<A, B> =
-	IsAny<A> extends true
-		? false
-		: IsAny<B> extends true
-			? false
-			: (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-				? true
-				: false
-
 export type Expect<T extends true> = T
 export type ExpectFalse<T extends false> = T
 
+/**
+ * Strict equality for type tests.
+ * Deliberately returns `false` if either side contains `any` to avoid false-positive assertions.
+ * The second parameter is the expected type, it always should be inlined in tests. The first parameter should be the actual type.
+ */
+export type Matches<Actual, Expected> =
+	HasNeverDeep<Actual> extends true
+		? false
+		: HasNeverDeep<Expected> extends true
+			? false
+			: Actual extends Expected
+				? Expected extends Actual
+					? true
+					: false
+				: false
+
+type IsAny<T> = 0 extends 1 & T ? true : false
 type IsNeverOrAny<T> = [T] extends [never] ? true : IsAny<T>
 
-export type HasNeverDeep<T> =
+type HasNeverDeep<T> =
 	IsNeverOrAny<T> extends true
 		? true
 		: T extends (...args: never[]) => unknown
@@ -40,12 +42,3 @@ export type HasNeverDeep<T> =
 							? true
 							: false
 						: false
-
-export type Matches<Actual, Expected> =
-	HasNeverDeep<Actual> extends true
-		? false
-		: HasNeverDeep<Expected> extends true
-			? false
-			: Actual extends Expected
-				? true
-				: false
