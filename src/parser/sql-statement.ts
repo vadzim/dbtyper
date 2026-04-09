@@ -3,7 +3,7 @@ import type { SqlCreateTable } from "./sql-create-table.js"
 import type { SqlDropTable } from "./sql-drop-table.js"
 import type { SqlParseError } from "./sql-parse-error.js"
 
-export type SqlParseMigration<Sql extends string> =
+export type SqlStatement<Sql extends string> =
 	| SqlAlterTable<Sql>
 	| SqlCreateTable<Sql>
 	| SqlDropTable<Sql> extends infer Result

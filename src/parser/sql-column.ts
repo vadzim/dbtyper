@@ -61,28 +61,39 @@ type SqlScalarTypeToTs<T extends string> =
 									| "datemultirange"
 							? unknown
 							: string
+
 type SqlTypeToTs<T extends string> = IsArrayType<T> extends true ? SqlScalarTypeToTs<T>[] : SqlScalarTypeToTs<T>
 
 type IsNullable<ColumnSpec extends string> = ToLower<ColumnSpec> extends `${string} not null${string}` ? false : true
+
 type ParseColumn<Col extends string> =
 	ReadIdentifier<Trim<Col>> extends [infer ColName extends string, infer Rest extends string]
 		? ReadWord<Trim<Rest>> extends [infer SqlT extends string, infer AfterType extends string]
-			? {
-					name: StripIdentifierQuotes<ColName>
-					type: SqlTypeToTs<SqlT>
-					nullable: IsNullable<AfterType>
-				}
+			? Trim<SqlT> extends ""
+				? never
+				: {
+						name: StripIdentifierQuotes<ColName>
+						type: SqlTypeToTs<SqlT>
+						nullable: IsNullable<AfterType>
+					}
 			: never
 		: never
+
 type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }> = {
 	[K in C["name"]]: C["nullable"] extends true ? C["type"] | null : C["type"]
 }
+
 type Merge<A, B> = A & B
+
 export type AddColumn<Head extends string, Row, Names extends string> =
-	ParseColumn<Head> extends infer C extends {
-		name: string
-		type: unknown
-		nullable: boolean
-	}
-		? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never }
-		: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
+	[ParseColumn<Head>] extends [never]
+		? { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
+		: [ParseColumn<Head>] extends [
+					infer C extends {
+						name: string
+						type: unknown
+						nullable: boolean
+					},
+			  ]
+			? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never }
+			: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }

@@ -1,5 +1,6 @@
 import { describe, it } from "node:test"
-import type { SqlAlterTable, SqlParseError } from "../sql.js"
+import type { SqlAlterTable } from "../parser/sql-alter-table.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlApplyAlterTable } from "../engine/sql-apply-alter-table.js"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 
