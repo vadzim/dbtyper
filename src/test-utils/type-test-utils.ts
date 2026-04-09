@@ -9,17 +9,21 @@ export type ExpectFalse<T extends false> = T
  * The second parameter is the expected type, it always should be inlined in tests. The first parameter should be the actual type.
  */
 export type Matches<Actual, Expected> =
-	HasNeverDeep<Actual> extends true
+	IsAny<Actual> extends true
 		? false
-		: HasNeverDeep<Expected> extends true
+		: IsAny<Expected> extends true
 			? false
-			: Actual extends Expected
-				? Expected extends Actual
-					? true
-					: false
-				: false
+			: HasNeverDeep<Actual> extends true
+				? false
+				: HasNeverDeep<Expected> extends true
+					? false
+					: Actual extends Expected
+						? Expected extends Actual
+							? true
+							: false
+						: false
 
-type IsAny<T> = 0 extends 1 & T ? true : false
+type IsAny<T> = [0] extends [1 & T] ? true : false
 type IsNeverOrAny<T> = [T] extends [never] ? true : IsAny<T>
 
 type HasNeverDeep<T> =
