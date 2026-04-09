@@ -1,5 +1,5 @@
 import type { SqlParseError } from "../sql-parse-error.js"
-import type { AddColumn, Simplify } from "./sql-column.js"
+import type { AddColumn } from "./sql-column.js"
 import type {
 	ForeignRefMeta,
 	IsConstraintEntry,
@@ -73,7 +73,10 @@ export type SqlCreateTableToType<S extends string> = [ExtractCreateBody<S>] exte
 	? SqlParseError<"Expected a CREATE TABLE statement">
 	: ParseCreateBody<ExtractCreateBody<S>, {}, never> extends infer Parsed extends { row: unknown; error: unknown }
 		? [Parsed["error"]] extends [never]
-			? Simplify<Parsed["row"]>
+			? (
+			// Inline mapped expansion is intentional for API/tooling: IDE shows concrete row shape instead of helper alias.
+			{ [K in keyof Parsed["row"]]: Parsed["row"][K] }
+		)
 			: Parsed["error"]
 		: SqlParseError<"Internal SQL parser error">
 
@@ -88,7 +91,12 @@ type SqlCreateTableObject<S extends string> = {
 	readonly kind: "create_table"
 	readonly name: SqlCreateTableName<S>
 	// General rule: types are helpers and must not become a bottleneck.
-	readonly row: SqlCreateTableToType<S> extends infer Row ? { [K in keyof Row]: Row[K] } : never
+	readonly row: SqlCreateTableToType<S> extends infer Row
+		? (
+			// Inline mapped expansion is intentional for API/tooling: keep `SqlCreateTable["row"]` fully expanded in editor hovers.
+			{ [K in keyof Row]: Row[K] }
+		)
+		: never
 	readonly source: S
 	readonly __refs: SqlCreateTableForeignRefs<S>
 }

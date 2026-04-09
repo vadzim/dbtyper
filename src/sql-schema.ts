@@ -9,8 +9,6 @@ import type { SqlParseError } from "./sql-parse-error.js"
 /** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
 type SqlSchemaTableInput = SqlCreateTableLike | SqlParseError<string>
 
-type Simplify<T> = { [K in keyof T]: T[K] }
-
 type ValidateRefColumnPairs<Pairs extends readonly FkColumnPair[], TargetRow> =
 	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof TargetRow, string>> extends true
 		? never
@@ -59,7 +57,8 @@ type SqlSchemaBuildInternal<
 									? SqlSchemaBuildInternal<Tail, Acc, Seen | Name, Error | Row, Refs>
 									: SqlSchemaBuildInternal<
 											Tail,
-											Acc & { [K in Name]: Row },
+											// Internal accumulator keeps table names literal while extending shape.
+							Acc & { [K in Name]: Row },
 											Seen | Name,
 											Error,
 											| Refs
@@ -89,7 +88,12 @@ type SqlSchemaBuildInternal<
 						Refs
 					>
 			: SqlSchemaBuildInternal<Tail, Acc, Seen, Error | SqlParseError<"Invalid schema table entry">, Refs>
-	: { tables: Simplify<Acc>; error: Error | ValidateIntraSchemaRefs<Refs, Simplify<Acc>>; refs: Refs }
+	: {
+		// Inline mapped expansion is intentional for API/tooling: preserve expanded table map shape in schema tooltips.
+		tables: { [K in keyof Acc]: Acc[K] }
+		error: Error | ValidateIntraSchemaRefs<Refs, { [K in keyof Acc]: Acc[K] }>
+		refs: Refs
+	}
 
 export type SqlSchema<Tables extends readonly SqlSchemaTableInput[]> =
 	SqlSchemaBuildInternal<Tables, {}, never> extends infer Built

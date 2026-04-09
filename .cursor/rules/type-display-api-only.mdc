@@ -1,0 +1,13 @@
+---
+description: Use inline mapped expansion only for API-facing types
+globs: "src/**/*.ts"
+---
+
+# Inline expansion rule (IDE display)
+
+Use mapped-type expansion (`{ [K in keyof T]: T[K] }`) **only** when needed for public API ergonomics,
+so IDE tooltips show concrete shapes instead of helper aliases.
+
+- Allowed: exported/public result types (`SqlCreateTable`, `SqlSchema`, `SqlDatabase`, migration API result types).
+- Avoid for internal reducers/helpers where a named helper keeps logic readable.
+- Whenever this inline expansion is used, add a short comment explaining it is for IDE/API shape display.

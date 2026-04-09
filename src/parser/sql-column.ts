@@ -78,8 +78,6 @@ type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }
 	[K in C["name"]]: C["nullable"] extends true ? C["type"] | null : C["type"]
 }
 type Merge<A, B> = A & B
-export type Simplify<T> = { [K in keyof T]: T[K] }
-
 export type AddColumn<Head extends string, Row, Names extends string> =
 	ParseColumn<Head> extends infer C extends {
 		name: string
