@@ -131,10 +131,7 @@ type PairRefTable = SqlCreateTable<`
 `>
 type SchemaCompositeFkOk = SqlSchema<[UsersTable, PairRefTable]>
 type _SchemaCompositeFkOk = Expect<
-	Matches<
-		SchemaCompositeFkOk,
-		{ readonly kind: "schema"; readonly tables: { users: unknown; pair_refs: unknown } }
-	>
+	Matches<SchemaCompositeFkOk, { readonly kind: "schema"; readonly tables: { users: unknown; pair_refs: unknown } }>
 >
 
 type PairRefBadColTable = SqlCreateTable<`
@@ -267,10 +264,7 @@ type SalesMultiRefTable = SqlCreateTable<`
 type SalesMultiRefSchema = SqlSchema<[SalesMultiRefTable]>
 type DbMultiFkCrossSchema = SqlDatabase<{ public: PublicSchema; sales: SalesMultiRefSchema }>
 type _DbMultiFkCrossSchema = Expect<
-	Matches<
-		DbMultiFkCrossSchema,
-		{ readonly kind: "database"; readonly schemas: { public: unknown; sales: unknown } }
-	>
+	Matches<DbMultiFkCrossSchema, { readonly kind: "database"; readonly schemas: { public: unknown; sales: unknown } }>
 >
 
 /** Several cross-schema FKs: one valid, one bad table in public. */
@@ -286,10 +280,7 @@ type SalesMultiRefOneBadTable = SqlCreateTable<`
 type SalesMultiRefOneBadSchema = SqlSchema<[SalesMultiRefOneBadTable]>
 type DbMultiFkOneBadCross = SqlDatabase<{ public: PublicSchema; sales: SalesMultiRefOneBadSchema }>
 type _DbMultiFkOneBadCross = Expect<
-	Equal<
-		SqlParseMessage<DbMultiFkOneBadCross>,
-		`Unknown referenced table "public.no_such_posts" in database`
-	>
+	Equal<SqlParseMessage<DbMultiFkOneBadCross>, `Unknown referenced table "public.no_such_posts" in database`>
 >
 
 type OrdersDefaultSchemaTable = SqlCreateTable<`

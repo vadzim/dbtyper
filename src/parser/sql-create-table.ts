@@ -1,4 +1,4 @@
-import type { SqlParseError } from "../sql-types.js"
+import type { SqlParseError } from "../sql-parse-error.js"
 import type { AddColumn, Simplify } from "./sql-column.js"
 import type {
 	ForeignRefMeta,

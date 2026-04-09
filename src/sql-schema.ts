@@ -4,10 +4,10 @@ import type {
 	SqlCreateTableLike,
 	ValidateFkReferencedColumnPairs,
 } from "./parser/sql-create-table.js"
-import type { SqlParseError } from "./sql-types.js"
+import type { SqlParseError } from "./sql-parse-error.js"
 
 /** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
-export type SqlSchemaTableInput = SqlCreateTableLike | SqlParseError<string>
+type SqlSchemaTableInput = SqlCreateTableLike | SqlParseError<string>
 
 type Simplify<T> = { [K in keyof T]: T[K] }
 

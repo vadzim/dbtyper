@@ -1,4 +1,4 @@
-import type { SqlParseError } from "../sql-types.js"
+import type { SqlParseError } from "../sql-parse-error.js"
 import type { ReadIdentifier, ReadWord, StripIdentifierQuotes, Trim, ToLower } from "./sql-parse-primitives.js"
 
 type NormalizeTypeToken<S extends string> = ToLower<Trim<S>> extends `${infer Base}(${string}`

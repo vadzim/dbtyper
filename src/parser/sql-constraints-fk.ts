@@ -1,4 +1,4 @@
-import type { SqlParseError } from "../sql-types.js"
+import type { SqlParseError } from "../sql-parse-error.js"
 import type {
 	FirstParenGroup,
 	ReadIdentifier,

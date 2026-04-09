@@ -12,4 +12,4 @@ When extracting the message from a parse/schema/database type with `SqlParseMess
 
 Do **not** assert with broad template types or patterns, e.g. `` `Unknown referenced table "${string}" in schema` `` or other `` `${string}` `` wildcards. Those weaken the test and hide regressions.
 
-For simple cases where the whole type is `SqlParseError<M>`, `Equal<T, SqlParseError<\`...\`>>` is fine and does not require `SqlParseMessage`.
+For simple cases where the whole type is `SqlParseError<M>`, `Equal<T, SqlParseError<\`...\`>>`is fine and does not require`SqlParseMessage`.
