@@ -1,6 +1,6 @@
 import type { SqlCreateTableLike } from "./parser/sql-create-table.js"
 import type { SqlParseError } from "./parser/sql-parse-error.js"
-import type { SqlDatabase } from "./engine/sql-schema.js"
+import type { SqlDatabase } from "./engine/sql-database.js"
 
 type RecordLike = Record<string, unknown>
 type SchemaTables = Record<string, Record<string, unknown>>
