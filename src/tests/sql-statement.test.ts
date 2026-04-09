@@ -16,12 +16,7 @@ type X2 = ApplyResult<X, "alter table users add column name text">
 type X3 = ApplyResult<X2, "alter table users add column name2 text not null">
 type X4 = ApplyResult<X3, "drop table users">
 
-type _Y = Expect<
-	Matches<
-		Y["__sql_parsed__"],
-		SqlStatement<"create table users (id int primary key)">
-	>
->
+type _Y = Expect<Matches<Y["__sql_parsed__"], SqlStatement<"create table users (id int primary key)">>>
 type _YParsed = Expect<
 	Matches<
 		Omit<Y["__sql_parsed__"], "source">,
@@ -36,9 +31,7 @@ type _YParsed = Expect<
 
 type XApplyArg = Parameters<X["apply"]>[0]
 type _XApplyArgMustBeParsedStatement = ExpectFalse<Matches<XApplyArg, string>>
-type _XApplyArgRejectsPlainString = ExpectFalse<
-	Matches<"alter table users add column age int", XApplyArg>
->
+type _XApplyArgRejectsPlainString = ExpectFalse<Matches<"alter table users add column age int", XApplyArg>>
 type _XApplyArgAcceptsParsedString = Expect<
 	Matches<
 		X extends { apply(statement: ReturnType<typeof sqlStatement<"alter table users add column age int">>): unknown }
@@ -49,9 +42,7 @@ type _XApplyArgAcceptsParsedString = Expect<
 >
 
 type _XDefaultSchemaGetter = Expect<Matches<ReturnType<X["getDefaultSchema"]>, string>>
-type _X4MigrationsGetter = Expect<
-	Matches<ReturnType<X4["getMigrations"]>, Promise<{ source: string; path: string }[]>>
->
+type _X4MigrationsGetter = Expect<Matches<ReturnType<X4["getMigrations"]>, Promise<{ source: string; path: string }[]>>>
 
 type _X2 = Expect<Matches<ReturnType<X2["getMigrations"]>, Promise<{ source: string; path: string }[]>>>
 type _X3 = Expect<Matches<ReturnType<X3["getMigrations"]>, Promise<{ source: string; path: string }[]>>>

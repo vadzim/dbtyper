@@ -105,9 +105,8 @@ export type FirstParenGroup<S extends string> =
 
 export type NormalizeSql<S extends string> = Trim<RemoveTrailingSemicolon<StripSqlComments<S>>>
 
-export type StripLeadingIfExists<S extends string> = Trim<S> extends `if exists ${infer Rest}`
-	? [true, Trim<Rest>]
-	: [false, Trim<S>]
+export type StripLeadingIfExists<S extends string> =
+	Trim<S> extends `if exists ${infer Rest}` ? [true, Trim<Rest>] : [false, Trim<S>]
 
 export type StripLeadingIfNotExists<S extends string> =
 	Trim<S> extends `if not exists ${infer Rest}` ? [true, Trim<Rest>] : [false, Trim<S>]

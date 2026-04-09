@@ -1,6 +1,11 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type { NormalizeSql } from "./sql-parse-primitives.js"
-import type { ReadQualifiedIdentifier, SqlQualifiedIdentifier, StripLeadingIfExists, ToLower } from "./sql-parse-primitives.js"
+import type {
+	ReadQualifiedIdentifier,
+	SqlQualifiedIdentifier,
+	StripLeadingIfExists,
+	ToLower,
+} from "./sql-parse-primitives.js"
 
 export type SqlDropTableLike = {
 	readonly kind: "drop_table"

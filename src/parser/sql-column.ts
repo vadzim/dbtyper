@@ -85,15 +85,14 @@ type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }
 
 type Merge<A, B> = A & B
 
-export type AddColumn<Head extends string, Row, Names extends string> =
-	[ParseColumn<Head>] extends [never]
-		? { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
-		: [ParseColumn<Head>] extends [
-					infer C extends {
-						name: string
-						type: unknown
-						nullable: boolean
-					},
-			  ]
-			? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never }
-			: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
+export type AddColumn<Head extends string, Row, Names extends string> = [ParseColumn<Head>] extends [never]
+	? { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
+	: [ParseColumn<Head>] extends [
+				infer C extends {
+					name: string
+					type: unknown
+					nullable: boolean
+				},
+		  ]
+		? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never }
+		: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }

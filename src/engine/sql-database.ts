@@ -54,17 +54,17 @@ type ValidateDatabaseRef<
 > = [R] extends [undefined]
 	? never
 	: R extends {
-	columnPairs: infer Pairs extends readonly FkColumnPair[]
-	toTable: infer TTab extends string
-}
-	? ResolveRefSchema<R, DefaultSchema> extends infer TargetSchema extends string
-		? TargetSchema extends keyof Schemas
-			? TTab extends keyof Schemas[TargetSchema]["tables"]
-				? ValidateRefColumnPairs<Pairs, Schemas[TargetSchema]["tables"][TTab]>
-				: SqlParseError<`Unknown referenced table "${TargetSchema}.${TTab}" in database`>
-			: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
+				columnPairs: infer Pairs extends readonly FkColumnPair[]
+				toTable: infer TTab extends string
+		  }
+		? ResolveRefSchema<R, DefaultSchema> extends infer TargetSchema extends string
+			? TargetSchema extends keyof Schemas
+				? TTab extends keyof Schemas[TargetSchema]["tables"]
+					? ValidateRefColumnPairs<Pairs, Schemas[TargetSchema]["tables"][TTab]>
+					: SqlParseError<`Unknown referenced table "${TargetSchema}.${TTab}" in database`>
+				: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
+			: SqlParseError<"Internal database reference resolver error">
 		: SqlParseError<"Internal database reference resolver error">
-	: SqlParseError<"Internal database reference resolver error">
 
 type ValidateDatabaseRefs<Schemas extends Record<string, SqlSchemaLike>, DefaultSchema extends string> = {
 	[K in keyof Schemas]: ValidateDatabaseRef<Schemas[K]["__refs"], Schemas, DefaultSchema>

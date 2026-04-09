@@ -166,7 +166,10 @@ export type ParseForeignRefMeta<Entry extends string> =
 										? Pairs extends readonly FkColumnPair[]
 											? Target extends readonly [infer Table extends string]
 												? { from: ""; columnPairs: Pairs; toSchema: undefined; toTable: Table }
-												: Target extends readonly [infer Table extends string, infer Schema extends string]
+												: Target extends readonly [
+															infer Table extends string,
+															infer Schema extends string,
+													  ]
 													? { from: ""; columnPairs: Pairs; toSchema: Schema; toTable: Table }
 													: never
 											: never
