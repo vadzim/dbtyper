@@ -3,9 +3,7 @@ import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { FlattenDBType, MergeSchemas, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
 
-export type SqlCreateLike = SqlCreateTableLike
-
-export type SqlApplyCreateTable<Db extends SqlDatabaseLike, Create extends SqlCreateLike> = FlattenDBType<
+export type SqlApplyCreateTable<Db extends SqlDatabaseLike, Create extends SqlCreateTableLike> = FlattenDBType<
 	Create["name"] extends infer Name
 		? Name extends SqlParseError<string>
 			? Name
