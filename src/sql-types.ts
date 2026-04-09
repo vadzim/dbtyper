@@ -67,8 +67,8 @@ export type PrimitiveSqlType =
 	| "nummultirange"
 	| "tsmultirange"
 	| "tstzmultirange"
-	| "datemultirange";
+	| "datemultirange"
 
 export type SqlParseError<Message extends string> = {
-	readonly __sql_parse_error__: Message;
-};
+	readonly __sql_parse_error__: Message
+}
