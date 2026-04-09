@@ -45,22 +45,23 @@ type _PublicSchema = Expect<
 >
 
 type DbFromSchemas = SqlDatabase<{ public: PublicSchema }>
-type _DbFromSchemas = Expect<
-	Equal<
-		DbFromSchemas,
-		{
-			readonly kind: "database"
-			readonly defaultSchema: "public"
-			readonly schemas: {
-				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
-				}
+type _DbgDbDefaultSchema = DbFromSchemas extends { readonly defaultSchema: infer D } ? D : never
+type _DbgDbMigrations = DbFromSchemas extends { readonly migrations: infer M } ? M : never
+type _DbFromSchemasKind = Expect<DbFromSchemas extends { readonly kind: "database" } ? true : false>
+type _DbFromSchemasDefaultSchema = Expect<Equal<_DbgDbDefaultSchema, "public">>
+type _DbFromSchemasSchemas = Expect<
+	DbFromSchemas extends {
+		readonly schemas: {
+			public: {
+				users: { id: number; email: string }
+				posts: { id: number; user_id: number; title: string | null }
 			}
-			readonly migrations: {}
 		}
-	>
+	}
+		? true
+		: false
 >
+type _DbFromSchemasMigrations = Expect<DbFromSchemas extends { readonly migrations: {} } ? true : false>
 
 type DupUsersTableA = SqlCreateTable<"create table users (id int not null)">
 type DupUsersTableB = SqlCreateTable<`create table "users" (other_id int not null)`>

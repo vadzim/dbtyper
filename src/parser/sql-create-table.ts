@@ -28,7 +28,9 @@ export type SqlCreateTable<S extends string> =
 								readonly kind: "create_table"
 								readonly name: SqlCreateTableName<Statement>
 								// General rule: types are helpers and must not become a bottleneck.
-								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row ? Row : never
+								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
+									? { [K in keyof Row]: Row[K] }
+									: never
 								readonly source: S
 								readonly __refs: SqlCreateTableParsedRefs<Parsed>
 							}

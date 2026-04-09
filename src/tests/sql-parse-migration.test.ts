@@ -1,0 +1,69 @@
+import { describe, it } from "node:test"
+import type { SqlParseMigration } from "../parser/sql-parse-migration.js"
+import type { SqlParseError } from "../sql.js"
+import type { Equal, Expect, Matches } from "./type-test-utils.js"
+
+type ParseCreate = SqlParseMigration<`create table users (id int not null, email text)`>
+type _ParseCreate = Expect<
+	Matches<
+		ParseCreate,
+		{
+			readonly kind: "create_table"
+			readonly name: readonly ["users"]
+			readonly row: { id: number; email: string | null }
+			readonly source: string
+		}
+	>
+>
+
+type ParseAlter = SqlParseMigration<`alter table if exists public.users add column age int`>
+type _ParseAlter = Expect<
+	Matches<
+		ParseAlter,
+		{
+			readonly kind: "alter_table"
+			readonly ifExists: true
+			readonly target: readonly ["users", "public"]
+			readonly action: {
+				readonly kind: "add_column"
+				readonly ifNotExists: false
+				readonly name: "age"
+				readonly definition: number | null
+			}
+			readonly source: string
+		}
+	>
+>
+
+type ParseDrop = SqlParseMigration<`drop table if exists auth.users;`>
+type _ParseDrop = Expect<
+	Matches<
+		ParseDrop,
+		{
+			readonly kind: "drop_table"
+			readonly ifExists: true
+			readonly target: readonly ["users", "auth"]
+			readonly source: string
+		}
+	>
+>
+
+type ParseUnknown = SqlParseMigration<`create view v as select 1`>
+type _ParseUnknown = Expect<Equal<ParseUnknown, SqlParseError<"Unknown sql statement">>>
+
+type ParseInvalidCreate = SqlParseMigration<`create table broken (id)`>
+type _ParseInvalidCreate = Expect<
+	Matches<
+		ParseInvalidCreate,
+		{
+			readonly kind: "create_table"
+			readonly name: readonly ["broken"]
+			readonly row: { id: string | null }
+			readonly source: string
+		}
+	>
+>
+
+describe("sql parse migration", () => {
+	it("should run", () => {})
+})
