@@ -1,10 +1,10 @@
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
-import type { SqlDatabaseLike, SqlEmptyDatabase } from "./sql-database.js"
+import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
 import type { SqlApplyStatement, SqlStatementLike } from "./sql-apply-statement.js"
 
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
-	return new DBMigrations<SqlEmptyDatabase<DefaultSchema>>(defaultSchema)
+	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
 }
 
 export function sqlStatement<S extends string>(source: S) {

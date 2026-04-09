@@ -2,14 +2,14 @@
  * SqlApplyStatements: foreign-key and cross-schema reference error type tests.
  */
 import type { SqlParseError } from "../parser/sql-parse-error.js"
-import type { SqlEmptyDatabase } from "../engine/sql-database.js"
+import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
 
 type DbDuplicateUsersTables = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<"create table users (id int not null)">,
@@ -20,7 +20,7 @@ type DbDuplicateUsersTables = SqlApplyStatements<
 type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParseError<"Duplicate table name: users">>>
 
 type DbSelectFromUsersAfterCreate = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -35,7 +35,7 @@ type _DbSelectFromUsersAfterCreate = Expect<
 // --- Intra-schema FK ---
 
 type DbPostsBadIntraFk = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -54,7 +54,7 @@ type _DbPostsBadIntraFk = Expect<
 >
 
 type DbCompositeFkPairRefsBadCol = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -90,7 +90,7 @@ type _StmtPairRefArityShort = Expect<
 >
 
 type DbPairRefArityShort = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -128,7 +128,7 @@ type _StmtPairRefArityLong = Expect<
 >
 
 type DbPairRefArityLong = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -152,7 +152,7 @@ type _DbPairRefArityLong = Expect<
 /** Several FKs on one table: first OK, second references missing table. */
 
 type DbMultiFkOneBad = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -175,7 +175,7 @@ type _DbMultiFkOneBad = Expect<Matches<DbMultiFkOneBad, SqlParseError<`Unknown r
 /** Several cross-schema FKs: one valid, one bad table in public. */
 
 type DbSalesLinkBad = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -200,7 +200,7 @@ type _DbSalesLinkBad = Expect<
 // --- Cross-schema failure shapes (apply rejects with database-level FK errors) ---
 
 type DbSalesBadSchemaRef = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -221,7 +221,7 @@ type _DbSalesBadSchemaRef = Expect<
 >
 
 type DbSalesBadTableRef = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -242,7 +242,7 @@ type _DbSalesBadTableRef = Expect<
 >
 
 type DbSalesBadPublicUsersBadRef = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -263,7 +263,7 @@ type _DbSalesBadPublicUsersBadRef = Expect<
 >
 
 type DbSalesBadSchemaUsersRef = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -284,7 +284,7 @@ type _DbSalesBadSchemaUsersRef = Expect<
 >
 
 type DbSalesBadColumnRef = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -307,7 +307,7 @@ type _DbSalesBadColumnRef = Expect<
 /** No schemas: `CREATE TABLE sales.*` fails before FK checks (sales must exist first). */
 
 type DbMissingSalesSchema = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`
 			create table sales.orders_default_schema (
@@ -329,7 +329,7 @@ type _DbMissingSalesSchema = Expect<
  */
 
 type DbUnqualifiedUsersWrongDefault = SqlApplyStatements<
-	SqlEmptyDatabase<"shared">,
+	SqlDatabase<"shared">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table public.users (id int not null, email text not null)`>,
@@ -355,7 +355,7 @@ type _DbUnqualifiedUsersWrongDefault = Expect<
 /** Composite FK across schemas: second column wrong on remote (row still parses; apply merges). */
 
 type DbSalesCompositeBadRemoteCol = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -393,7 +393,7 @@ type _StmtSalesDbArityShort = Expect<
 >
 
 type DbSalesDbArityShort = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,

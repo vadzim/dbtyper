@@ -3,11 +3,11 @@ import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlApplyCreateSchema } from "../engine/sql-apply-create-schema.js"
 import type { SqlApplyStatement } from "../engine/sql-apply-statement.js"
-import type { SqlEmptyDatabase } from "../engine/sql-database.js"
+import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type EmptyDb = SqlEmptyDatabase<"public">
+type EmptyDb = SqlDatabase<"public">
 
 type AfterCreateSchema = SqlApplyCreateSchema<EmptyDb, SqlCreateSchema<`create schema auth`>>
 type _AfterCreateSchema = Expect<

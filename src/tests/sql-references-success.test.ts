@@ -1,14 +1,14 @@
 /**
  * SqlApplyStatements: successful foreign-key and cross-schema reference type tests.
  */
-import type { SqlEmptyDatabase } from "../engine/sql-database.js"
+import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
 
 type DbFromSchemasKind = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -37,7 +37,7 @@ type _DbFromSchemasKind = Expect<
 /** Unqualified FK to another table in the same schema (happy path). */
 
 type DbPostRefsIntraFk = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -70,7 +70,7 @@ type _DbPostRefsIntraFk = Expect<
 /** Self-referential FK within one schema. */
 
 type DbCategoriesSelfRef = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`
@@ -101,7 +101,7 @@ type _DbCategoriesSelfRef = Expect<
 /** Composite FK: both referenced columns must exist on target. */
 
 type DbCompositeFkPairRefs = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -135,7 +135,7 @@ type _DbCompositeFkPairRefs = Expect<
 /** Several foreign keys on one table (intra-schema), all valid. */
 
 type DbMembershipsMultiFk = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -172,7 +172,7 @@ type _DbMembershipsMultiFk = Expect<
 // --- Cross-schema FK (qualified `sales.*` tables) ---
 
 type DbSalesOrders = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -210,7 +210,7 @@ type _DbSalesOrders = Expect<
 /** Several FKs on one table, both targets in another schema (database-level). */
 
 type DbSalesLinkRows = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -248,7 +248,7 @@ type _DbSalesLinkRows = Expect<
 >
 
 type DbSalesOrdersDefaultSchema = SqlApplyStatements<
-	SqlEmptyDatabase<"public">,
+	SqlDatabase<"public">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table users (id int not null, email text not null)`>,
@@ -284,7 +284,7 @@ type _DbSalesOrdersDefaultSchema = Expect<
 >
 
 type DbSharedDefaultWithSalesOrders = SqlApplyStatements<
-	SqlEmptyDatabase<"shared">,
+	SqlDatabase<"shared">,
 	[
 		SqlStatement<`create schema public`>,
 		SqlStatement<`create table public.users (id int not null, email text not null)`>,
