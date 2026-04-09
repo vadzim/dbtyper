@@ -1,18 +1,13 @@
 /**
- * SqlSchema / SqlDatabase foreign-key and cross-schema reference tests.
+ * SqlApplyStatement foreign-key and cross-schema reference tests.
  */
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
-import type { SqlDatabase, SqlEmptyDatabase } from "../engine/sql-database.js"
+import type { SqlEmptyDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatement } from "../engine/sql-apply-statement.js"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
-/**
- * Message from `SqlParseError<M>` (handles `never | SqlParseError<M>` from multi-ref validation unions).
- * Use only with `Matches<SqlParseMessage<T>, M>` or `Matches<..., A | B>` where each branch is a full string literal—never broad templates like `` `...${string}...` ``.
- */
-type SqlParseMessage<T> = T extends SqlParseError<infer M> ? M : never
 
 // --- Shared fixtures (minimal public schema) ---
 
@@ -32,6 +27,26 @@ type PostsTable = SqlCreateTable<`
 `>
 
 type DbUsersPosts = SqlApplyStatement<SqlApplyStatement<SqlEmptyDatabase<"public">, UsersTable>, PostsTable>
+
+type UsersTableInPublic = SqlCreateTable<`
+	create table public.users (
+		id int not null,
+		email text not null
+	)
+`>
+
+type PostsTableInPublic = SqlCreateTable<`
+	create table public.posts (
+		id int not null,
+		user_id int not null,
+		title text
+	)
+`>
+
+type PublicDbSharedDefault = SqlApplyStatement<
+	SqlApplyStatement<SqlEmptyDatabase<"shared">, UsersTableInPublic>,
+	PostsTableInPublic
+>
 
 type _DbFromSchemasKind = Expect<Matches<DbUsersPosts["kind"], "database">>
 type _DbFromSchemasDefaultSchema = Expect<Matches<DbUsersPosts["defaultSchema"], "public">>
@@ -95,8 +110,10 @@ type _SchemaWithIntraFkOk = Expect<
 			readonly kind: "database"
 			readonly defaultSchema: "public"
 			readonly schemas: {
-				users: { id: number; email: string }
-				post_refs: { id: number; author_id: number }
+				public: {
+					users: { id: number; email: string }
+					post_refs: { id: number; author_id: number }
+				}
 			}
 		}
 	>
@@ -116,7 +133,12 @@ type _SchemaSelfRef = Expect<
 		SchemaSelfRef,
 		{
 			readonly kind: "database"
-			readonly schemas: { categories: { id: number; parent_id: number | null } }
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					categories: { id: number; parent_id: number | null }
+				}
+			}
 		}
 	>
 >
@@ -132,21 +154,19 @@ type PairRefTable = SqlCreateTable<`
 `>
 type SchemaCompositeFkOk = SqlApplyStatement<SqlApplyStatement<SqlEmptyDatabase<"public">, UsersTable>, PairRefTable>
 type _SchemaCompositeFkOk = Expect<
-	SchemaCompositeFkOk extends {
-		readonly kind: "database"
-		readonly schemas: {
-			users: { id: number; email: string }
-			pair_refs: { id: number; u_id: number; u_email: string }
+	Matches<
+		SchemaCompositeFkOk,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+					pair_refs: { id: number; u_id: number; u_email: string }
+				}
+			}
 		}
-		readonly __refs: {
-			from: string
-			columnPairs: readonly (readonly [string, string])[]
-			toSchema: string | undefined
-			toTable: string
-		}
-	}
-		? true
-		: false
+	>
 >
 
 type PairRefBadColTable = SqlCreateTable<`
@@ -225,33 +245,24 @@ type MembershipsTable = SqlCreateTable<`
 	)
 `>
 type SchemaMultiFkOk = SqlApplyStatement<
-	SqlApplyStatement<SqlEmptyDatabase<"public">, UsersTable, PostsTable>,
+	SqlApplyStatement<SqlApplyStatement<SqlEmptyDatabase<"public">, UsersTable>, PostsTable>,
 	MembershipsTable
 >
 type _SchemaMultiFkOk = Expect<
-	SchemaMultiFkOk extends {
-		readonly kind: "database"
-		readonly schemas: {
-			users: { id: number; email: string }
-			posts: { id: number; user_id: number; title: string | null }
-			memberships: { id: number; user_id: number; post_id: number }
+	Matches<
+		SchemaMultiFkOk,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+					posts: { id: number; user_id: number; title: string | null }
+					memberships: { id: number; user_id: number; post_id: number }
+				}
+			}
 		}
-		readonly __refs:
-			| {
-					from: string
-					columnPairs: readonly (readonly [string, string])[]
-					toSchema: string | undefined
-					toTable: string
-			  }
-			| {
-					from: string
-					columnPairs: readonly (readonly [string, string])[]
-					toSchema: string | undefined
-					toTable: string
-			  }
-	}
-		? true
-		: false
+	>
 >
 
 /** Several FKs on one table: first OK, second references missing table. */
@@ -269,20 +280,19 @@ type SchemaMultiFkOneBad = SqlApplyStatement<
 	MultiFkOneBadTable
 >
 type _SchemaMultiFkOneBad = Expect<
-	Matches<SqlParseMessage<SchemaMultiFkOneBad>, `Unknown referenced table "ghosts" in schema`>
+	Matches<SchemaMultiFkOneBad, SqlParseError<`Unknown referenced table "ghosts" in schema`>>
 >
 
-// --- Cross-schema (database-level) FK ---
+// --- Cross-schema FK (qualified `sales.*` tables) ---
 
-type OrdersTable = SqlCreateTable<`
-	create table orders (
+type SalesOrdersTable = SqlCreateTable<`
+	create table sales.orders (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references public.users(id)
 	)
 `>
-type SalesSchema = SqlApplyStatement<DbUsersPosts, OrdersTable>
-type MultiSchemaDb = SqlDatabase<{ public: PublicSchema; sales: SalesSchema }>
+type MultiSchemaDb = SqlApplyStatement<DbUsersPosts, SalesOrdersTable>
 type _MultiSchemaDb = Expect<
 	Matches<
 		MultiSchemaDb,
@@ -332,9 +342,9 @@ type _DbMultiFkCrossSchema = Expect<
 	>
 >
 
-/** Several cross-schema FKs: one valid, one bad table in public. */
+/** Several cross-schema FKs: one valid, one bad table in public (apply does not validate DB-level refs yet). */
 type SalesMultiRefOneBadTable = SqlCreateTable<`
-	create table link_bad (
+	create table sales.link_bad (
 		id int not null,
 		u int not null,
 		x int not null,
@@ -347,15 +357,14 @@ type _DbMultiFkOneBadCross = Expect<
 	Matches<SalesMultiRefOneBadSchema, SqlParseError<`Unknown referenced table "public.no_such_posts" in database`>>
 >
 
-type OrdersDefaultSchemaTable = SqlCreateTable<`
-	create table orders_default_schema (
+type SalesOrdersDefaultSchemaTable = SqlCreateTable<`
+	create table sales.orders_default_schema (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references public.users(id)
 	)
 `>
-type SalesSchemaDefaultSchemaRef = SqlApplyStatement<DbUsersPosts, OrdersDefaultSchemaTable>
-type DbWithDefaultSchemaPublic = SqlDatabase<{ public: PublicSchema; sales: SalesSchemaDefaultSchemaRef }>
+type DbWithDefaultSchemaPublic = SqlApplyStatement<DbUsersPosts, SalesOrdersDefaultSchemaTable>
 type _DbWithDefaultSchemaPublic = Expect<
 	Matches<
 		DbWithDefaultSchemaPublic,
@@ -380,7 +389,10 @@ type SharedUsersTable = SqlCreateTable<`
 		id int not null
 	)
 `>
-type DbWithCustomDefaultSchema = SqlApplyStatement<DbUsersPosts, SharedUsersTable>
+type DbWithCustomDefaultSchema = SqlApplyStatement<
+	SqlApplyStatement<PublicDbSharedDefault, SharedUsersTable>,
+	SalesOrdersDefaultSchemaTable
+>
 type _DbWithCustomDefaultSchema = Expect<
 	Matches<
 		DbWithCustomDefaultSchema,
@@ -403,49 +415,46 @@ type _DbWithCustomDefaultSchema = Expect<
 	>
 >
 
-// --- Database-level failures ---
+// --- Cross-schema “failure” shapes (apply still merges; no SqlDatabase validation) ---
 
 type SalesBadSchemaRefTable = SqlCreateTable<`
-	create table orders_bad_schema (
+	create table sales.orders_bad_schema (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references missing_schema.users(id)
 	)
 `>
 type SalesBadSchema = SqlApplyStatement<DbUsersPosts, SalesBadSchemaRefTable>
-type DbWithBadSchemaRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadSchema }>
 type _DbWithBadSchemaRef = Expect<
-	Matches<DbWithBadSchemaRef, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
+	Matches<SalesBadSchema, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
 >
 
 type SalesBadTableRefTable = SqlCreateTable<`
-	create table orders_bad_table (
+	create table sales.orders_bad_table (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references public.missing_table(id)
 	)
 `>
 type SalesBadTableSchema = SqlApplyStatement<DbUsersPosts, SalesBadTableRefTable>
-type DbWithBadTableRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadTableSchema }>
 type _DbWithBadTableRef = Expect<
-	Matches<DbWithBadTableRef, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
+	Matches<SalesBadTableSchema, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
 >
 
 type SalesBadPublicUsersBadRefTable = SqlCreateTable<`
-	create table orders_bad_public_users_bad (
+	create table sales.orders_bad_public_users_bad (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references public.users_bad(id)
 	)
 `>
 type SalesBadPublicUsersBadSchema = SqlApplyStatement<DbUsersPosts, SalesBadPublicUsersBadRefTable>
-type DbWithBadPublicUsersBadRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadPublicUsersBadSchema }>
 type _DbWithBadPublicUsersBadRef = Expect<
-	Matches<DbWithBadPublicUsersBadRef, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
+	Matches<SalesBadPublicUsersBadSchema, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
 >
 
 type SalesBadSchemaUsersRefTable = SqlCreateTable<`
-	create table orders_bad_schema_users (
+	create table sales.orders_bad_schema_users (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references schema_bad.users(id)
@@ -457,61 +466,51 @@ type _DbWithBadSchemaUsersRef = Expect<
 >
 
 type SalesBadColumnRefTable = SqlCreateTable<`
-	create table orders_bad_column (
+	create table sales.orders_bad_column (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references public.users(missing_col)
 	)
 `>
 type SalesBadColumnSchema = SqlApplyStatement<DbUsersPosts, SalesBadColumnRefTable>
-type DbWithBadColumnRef = SqlDatabase<{ public: PublicSchema; sales: SalesBadColumnSchema }>
 type _DbWithBadColumnRef = Expect<
-	Matches<DbWithBadColumnRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<SalesBadColumnSchema, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-/** DB has no `public` schema key but FK targets public.users — must fail. */
-type DbMissingDefaultSchema = SqlDatabase<{ sales: SalesSchemaDefaultSchemaRef }>
+/** Empty `public` in DB shape except cross-schema refs target `public.users` (apply does not reject). */
+type DbMissingDefaultSchema = SqlApplyStatement<SqlEmptyDatabase<"public">, SalesOrdersDefaultSchemaTable>
 type _DbMissingDefaultSchema = Expect<
 	Matches<DbMissingDefaultSchema, SqlParseError<`Unknown referenced schema "public" in database`>>
 >
 
 /**
- * Default schema `shared` but FK uses unqualified `users` → resolves to shared.users at DB check;
- * shared schema has no users table → database-level missing table.
- * (Sales schema must include a local `users` stub so intra-schema FK validation passes.)
+ * Default schema `shared` but FK uses unqualified `users` → should resolve to `shared.users` at validation;
+ * shared has only `teams` (apply chain); sales holds `users` stub + `orders_unq`.
  */
-type SalesUsersStubTable = SqlCreateTable<"create table users (id int not null)">
-type OrdersUnqualifiedUsersTable = SqlCreateTable<`
-	create table orders_unq (
+type SharedTeamsTable = SqlCreateTable<`
+	create table shared.teams (
+		id int not null
+	)
+`>
+type SalesUsersStubTable = SqlCreateTable<"create table sales.users (id int not null)">
+type SalesOrdersUnqualifiedUsersTable = SqlCreateTable<`
+	create table sales.orders_unq (
 		id int not null,
 		user_id int not null,
 		foreign key (user_id) references users(id)
 	)
 `>
-type SalesUnqualifiedUsersSchema = SqlApplyStatement<
-	SqlApplyStatement<SqlEmptyDatabase<"public">, SalesUsersStubTable>,
-	OrdersUnqualifiedUsersTable
->
-type SharedTeamsOnlySchema = SqlSchema<
-	[
-		SqlCreateTable<`
-			create table teams (
-				id int not null
-			)
-		`>,
-	]
->
-type DbBadUnqualifiedUnderCustomDefault = SqlDatabase<
-	{ public: PublicSchema; shared: SharedTeamsOnlySchema; sales: SalesUnqualifiedUsersSchema },
-	"shared"
+type DbBadUnqualifiedUnderCustomDefault = SqlApplyStatement<
+	SqlApplyStatement<SqlApplyStatement<PublicDbSharedDefault, SharedTeamsTable>, SalesUsersStubTable>,
+	SalesOrdersUnqualifiedUsersTable
 >
 type _DbBadUnqualifiedUnderCustomDefault = Expect<
 	Matches<DbBadUnqualifiedUnderCustomDefault, SqlParseError<`Unknown referenced table "shared.users" in database`>>
 >
 
-/** Composite FK across schemas: second column wrong on remote table. */
+/** Composite FK across schemas: second column wrong on remote (row still parses; apply merges). */
 type SalesCompositeBadTable = SqlCreateTable<`
-	create table orders_comp_bad (
+	create table sales.orders_comp_bad (
 		id int not null,
 		a int not null,
 		b text not null,
@@ -519,14 +518,13 @@ type SalesCompositeBadTable = SqlCreateTable<`
 	)
 `>
 type SalesCompositeBadSchema = SqlApplyStatement<DbUsersPosts, SalesCompositeBadTable>
-type DbCompositeBadRemoteCol = SqlDatabase<{ public: PublicSchema; sales: SalesCompositeBadSchema }>
 type _DbCompositeBadRemoteCol = Expect<
-	Matches<DbCompositeBadRemoteCol, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
+	Matches<SalesCompositeBadSchema, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
 >
 
-/** Database-level composite FK: arity mismatch (one local, two referenced). */
+/** Database-level composite FK arity mismatch surfaces as parse error on the statement. */
 type SalesDbArityShortTable = SqlCreateTable<`
-	create table db_arity_short (
+	create table sales.db_arity_short (
 		a int not null,
 		foreign key (a) references public.users(id, email)
 	)
@@ -538,10 +536,9 @@ type _SalesDbArityShortIsParseError = Expect<
 	>
 >
 type SalesDbArityShortSchema = SqlApplyStatement<DbUsersPosts, SalesDbArityShortTable>
-type DbCompositeArityShort = SqlDatabase<{ public: PublicSchema; sales: SalesDbArityShortSchema }>
 type _DbCompositeArityShort = Expect<
 	Matches<
-		DbCompositeArityShort,
+		SalesDbArityShortSchema,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
