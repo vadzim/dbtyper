@@ -17,4 +17,32 @@ export type Equal<A, B> =
 
 export type Expect<T extends true> = T
 export type ExpectFalse<T extends false> = T
-export type Matches<Actual, Expected> = Actual extends Expected ? true : false
+
+export type HasNeverDeep<T> = [T] extends [never]
+	? true
+	: T extends (...args: never[]) => unknown
+		? false
+		: T extends readonly [infer H, ...infer R]
+			? HasNeverDeep<H> extends true
+				? true
+				: HasNeverDeep<R>
+			: T extends readonly (infer U)[]
+				? [U] extends [never]
+					? false
+					: HasNeverDeep<U>
+				: T extends object
+					? true extends {
+							[K in keyof T]-?: [T[K]] extends [never] ? true : HasNeverDeep<T[K]>
+						}[keyof T]
+						? true
+						: false
+					: false
+
+export type Matches<Actual, Expected> =
+	HasNeverDeep<Actual> extends true
+		? false
+		: HasNeverDeep<Expected> extends true
+			? false
+			: Actual extends Expected
+				? true
+				: false
