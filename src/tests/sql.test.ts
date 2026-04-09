@@ -1,4 +1,4 @@
-import type { SqlCreateTable, SqlParseError } from "../sql.js"
+import type { SqlAlterTable, SqlCreateTable, SqlDropTable, SqlParseError } from "../sql.js"
 import { describe, it } from "node:test"
 import type { Equal, Expect, Matches } from "./type-test-utils.js"
 
@@ -237,6 +237,38 @@ type _PostgresTypes = Expect<
 		}
 	>
 >
+
+type AlterUsers = SqlAlterTable<`alter table public.users add column age int`>
+type _AlterUsers = Expect<
+	Matches<
+		AlterUsers,
+		{
+			readonly kind: "alter_table"
+			readonly target: "public.users"
+			readonly action: "add column age int"
+			readonly source: string
+		}
+	>
+>
+
+type BadAlter = SqlAlterTable<`alter table public.users`>
+type _BadAlter = Expect<Equal<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
+
+type DropUsers = SqlDropTable<`drop table if exists public.users`>
+type _DropUsers = Expect<
+	Matches<
+		DropUsers,
+		{
+			readonly kind: "drop_table"
+			readonly target: "public.users"
+			readonly ifExists: true
+			readonly source: string
+		}
+	>
+>
+
+type BadDrop = SqlDropTable<`drop view public.users`>
+type _BadDrop = Expect<Equal<BadDrop, SqlParseError<"Expected a DROP TABLE statement with a table target">>>
 
 describe("sql tests", () => {
 	it("should run", () => {})

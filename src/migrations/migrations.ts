@@ -1,71 +1,20 @@
-import type {
-	ReadIdentifier,
-	RemoveTrailingSemicolon,
-	StripIdentifierQuotes,
-	StripSqlComments,
-	ToLower,
-	Trim,
-} from "../parser/sql-parse-primitives.js"
+import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { SqlDatabase } from "../sql-schema.js"
 import type { SqlApply, SqlApplyAlterTable, SqlApplyDropTable } from "../sql-apply.js"
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
+import type { SqlDropTable } from "../parser/sql-drop-table.js"
+import type { NormalizeCreateForRow, NormalizeSql } from "../parser/sql-statement-primitives.js"
+import type { ToLower } from "../parser/sql-parse-primitives.js"
 import type { SqlParseError } from "../sql-parse-error.js"
 import type { SqlMigration } from "./migration.js"
 
 type RecordLike = Record<string, unknown>
 type SchemaTables = Record<string, Record<string, unknown>>
 
-type ReadQualifiedIdentifier<S extends string> =
-	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
-		? Trim<RestA> extends `.${infer AfterDot}`
-			? ReadIdentifier<AfterDot> extends [infer B extends string, infer RestB extends string]
-				? [`${StripIdentifierQuotes<A>}.${StripIdentifierQuotes<B>}`, RestB]
-				: [StripIdentifierQuotes<A>, RestA]
-			: [StripIdentifierQuotes<A>, RestA]
-		: never
-
 type SplitSchemaTable<
 	Name extends string,
 	DefaultSchema extends string = "public",
 > = Name extends `${infer S}.${infer T}` ? [S, T] : [DefaultSchema, Name]
-
-type NormalizeSql<S extends string> = Trim<RemoveTrailingSemicolon<StripSqlComments<S>>>
-
-type ParseCreateName<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table if not exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-			? Name
-			: never
-		: ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-				? Name
-				: never
-			: never
-
-type ParseDropTarget<S extends string> =
-	ToLower<NormalizeSql<S>> extends `drop table if exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-			? Name
-			: never
-		: ToLower<NormalizeSql<S>> extends `drop table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-				? Name
-				: never
-			: never
-
-type ParseAlterTarget<S extends string> =
-	ToLower<NormalizeSql<S>> extends `alter table if exists ${infer Rest}`
-		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-			? Name
-			: never
-		: ToLower<NormalizeSql<S>> extends `alter table ${infer Rest}`
-			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
-				? Name
-				: never
-			: never
-
-type NormalizeCreateForRow<S extends string> =
-	NormalizeSql<S> extends `create table if not exists ${infer Rest}` ? `create table ${Rest}` : NormalizeSql<S>
 
 type BuildSchemaObjects<Schemas extends SchemaTables> = {
 	[K in keyof Schemas]: {
@@ -91,12 +40,20 @@ type StatementFromSql<Sql extends string> =
 	ToLower<NormalizeSql<Sql>> extends `create table ${string}`
 		? SqlCreateTable<NormalizeCreateForRow<Sql>>
 		: ToLower<NormalizeSql<Sql>> extends `drop table ${string}`
-			? ParseDropTarget<Sql> extends infer QName extends string
-				? SqlApplyDropTable<QName>
+			? SqlDropTable<NormalizeSql<Sql>> extends infer ParsedDrop
+				? ParsedDrop extends SqlParseError<string>
+					? ParsedDrop
+					: ParsedDrop extends { readonly target: infer Target extends string }
+						? SqlApplyDropTable<Target>
+						: SqlParseError<"Unable to parse DROP TABLE migration target">
 				: SqlParseError<"Unable to parse DROP TABLE migration target">
 			: ToLower<NormalizeSql<Sql>> extends `alter table ${string}`
-				? ParseAlterTarget<Sql> extends infer QName extends string
-					? SqlApplyAlterTable<QName>
+				? SqlAlterTable<NormalizeSql<Sql>> extends infer ParsedAlter
+					? ParsedAlter extends SqlParseError<string>
+						? ParsedAlter
+						: ParsedAlter extends { readonly target: infer Target extends string }
+							? SqlApplyAlterTable<Target>
+							: SqlParseError<"Unable to parse ALTER TABLE migration target">
 					: SqlParseError<"Unable to parse ALTER TABLE migration target">
 				: SqlParseError<"Only CREATE TABLE / ALTER TABLE / DROP TABLE migrations are supported for now">
 
