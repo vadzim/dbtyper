@@ -1,12 +1,9 @@
 /**
  * SqlSchema / SqlDatabase foreign-key and cross-schema reference tests.
  */
-import type { SqlCreateTable, SqlSchema, SqlDatabase, SqlParseError } from "./sql.js"
+import type { SqlCreateTable, SqlSchema, SqlDatabase, SqlParseError } from "../sql.js"
 import { describe, it } from "node:test"
-
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
-type Expect<T extends true> = T
-type Matches<Actual, Expected> = Actual extends Expected ? true : false
+import type { Equal, Expect, Matches } from "./type-test-utils.js"
 /**
  * Message from `SqlParseError<M>` (handles `never | SqlParseError<M>` from multi-ref validation unions).
  * Use only with `Equal<SqlParseMessage<T>, M>` or `Equal<..., A | B>` where each branch is a full string literal—never broad templates like `` `...${string}...` ``.

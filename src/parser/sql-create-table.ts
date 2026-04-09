@@ -1,4 +1,4 @@
-import type { SqlParseError } from "./sql-types.js";
+import type { SqlParseError } from "../sql-types.js";
 import type { AddColumn, Simplify } from "./sql-column.js";
 import type { ForeignRefMeta, IsConstraintEntry, ParseForeignRefMeta, ValidateConstraintRefs } from "./sql-constraints-fk.js";
 import type {

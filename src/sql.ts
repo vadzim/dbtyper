@@ -7,5 +7,5 @@ export type {
 	ValidateFkLocalColumnPairs,
 	ValidateFkReferencedColumnPairs,
 	ZipColumnListsToPairs,
-} from "./sql-create-table.js"
+} from "./parser/sql-create-table.js"
 export type { SqlDatabase, SqlSchema, SqlSchemaTableInput } from "./sql-schema.js"

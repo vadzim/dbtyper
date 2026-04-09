@@ -5,7 +5,7 @@ This project is a typescript types which parses sql strings and returns prope ty
 You can build a schema from multiple `SqlCreateTable` types, then build a database from schemas:
 
 ```ts
-import { SqlCreateTable, SqlSchema, SqlDatabase } from "./sql.ts"
+import { SqlCreateTable, SqlSchema, SqlDatabase } from "./src/sql.ts"
 
 type UsersTable = SqlCreateTable<"create table users (id int not null, email text not null)">
 type PostsTable = SqlCreateTable<"create table posts (id int not null, user_id int not null, title text)">

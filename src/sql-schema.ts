@@ -3,7 +3,7 @@ import type {
 	ForeignRefMeta,
 	SqlCreateTableLike,
 	ValidateFkReferencedColumnPairs,
-} from "./sql-create-table.js";
+} from "./parser/sql-create-table.js";
 import type { SqlParseError } from "./sql-types.js";
 
 /** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
