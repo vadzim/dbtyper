@@ -12,7 +12,6 @@ export type SqlCreateSchemaLike = {
 	readonly kind: "create_schema"
 	readonly name: string
 	readonly ifNotExists: boolean
-	readonly source: string
 }
 
 export type SqlCreateSchema<S extends string> =
@@ -27,7 +26,6 @@ export type SqlCreateSchema<S extends string> =
 									readonly kind: "create_schema"
 									readonly name: Name
 									readonly ifNotExists: IfNotExists
-									readonly source: S
 								}
 						: SqlParseError<"Unable to parse CREATE SCHEMA statement">
 					: SqlParseError<"Unable to parse CREATE SCHEMA statement">

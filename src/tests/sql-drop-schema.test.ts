@@ -5,7 +5,7 @@ import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils
 type DropAuth = SqlDropSchema<`drop schema if exists auth;`>
 type _DropAuth = Expect<
 	Matches<
-		Omit<DropAuth, "source">,
+		DropAuth,
 		{
 			readonly kind: "drop_schema"
 			readonly name: "auth"
@@ -17,7 +17,7 @@ type _DropAuth = Expect<
 type DropBilling = SqlDropSchema<`drop schema billing`>
 type _DropBilling = Expect<
 	Matches<
-		Omit<DropBilling, "source">,
+		DropBilling,
 		{
 			readonly kind: "drop_schema"
 			readonly name: "billing"

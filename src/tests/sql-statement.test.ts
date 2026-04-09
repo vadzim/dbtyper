@@ -20,7 +20,7 @@ type X4 = ApplyResult<X3, "drop table users">
 type _Y = Expect<Matches<Y["__sql_parsed__"], SqlStatement<"create table users (id int primary key)">>>
 type _YParsed = Expect<
 	Matches<
-		Omit<Y["__sql_parsed__"], "source">,
+		Y["__sql_parsed__"],
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]

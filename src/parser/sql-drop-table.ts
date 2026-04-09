@@ -11,7 +11,6 @@ export type SqlDropTableLike = {
 	readonly kind: "drop_table"
 	readonly target: SqlQualifiedIdentifier
 	readonly ifExists: boolean
-	readonly source: string
 }
 
 export type SqlDropTable<S extends string> =
@@ -22,7 +21,6 @@ export type SqlDropTable<S extends string> =
 						readonly kind: "drop_table"
 						readonly ifExists: IfExists
 						readonly target: Name
-						readonly source: S
 					}
 				: SqlParseError<"Unable to parse DROP TABLE statement">
 			: SqlParseError<"Unable to parse DROP TABLE statement">

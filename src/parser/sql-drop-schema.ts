@@ -12,7 +12,6 @@ export type SqlDropSchemaLike = {
 	readonly kind: "drop_schema"
 	readonly name: string
 	readonly ifExists: boolean
-	readonly source: string
 }
 
 export type SqlDropSchema<S extends string> =
@@ -27,7 +26,6 @@ export type SqlDropSchema<S extends string> =
 									readonly kind: "drop_schema"
 									readonly name: Name
 									readonly ifExists: IfExists
-									readonly source: S
 								}
 						: SqlParseError<"Unable to parse DROP SCHEMA statement">
 					: SqlParseError<"Unable to parse DROP SCHEMA statement">

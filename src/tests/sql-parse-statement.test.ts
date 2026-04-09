@@ -6,7 +6,7 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 type ParseCreate = SqlStatement<`create table users (id int not null, email text)`>
 type _ParseCreate = Expect<
 	Matches<
-		Omit<ParseCreate, "source">,
+		ParseCreate,
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]
@@ -19,7 +19,7 @@ type _ParseCreate = Expect<
 type ParseAlter = SqlStatement<`alter table if exists public.users add column age int`>
 type _ParseAlter = Expect<
 	Matches<
-		Omit<ParseAlter, "source">,
+		ParseAlter,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: true
@@ -37,7 +37,7 @@ type _ParseAlter = Expect<
 type ParseDrop = SqlStatement<`drop table if exists auth.users;`>
 type _ParseDrop = Expect<
 	Matches<
-		Omit<ParseDrop, "source">,
+		ParseDrop,
 		{
 			readonly kind: "drop_table"
 			readonly ifExists: true
@@ -49,7 +49,7 @@ type _ParseDrop = Expect<
 type ParseCreateSchema = SqlStatement<`create schema if not exists billing;`>
 type _ParseCreateSchema = Expect<
 	Matches<
-		Omit<ParseCreateSchema, "source">,
+		ParseCreateSchema,
 		{
 			readonly kind: "create_schema"
 			readonly name: "billing"
@@ -61,7 +61,7 @@ type _ParseCreateSchema = Expect<
 type ParseDropSchema = SqlStatement<`drop schema if exists staging`>
 type _ParseDropSchema = Expect<
 	Matches<
-		Omit<ParseDropSchema, "source">,
+		ParseDropSchema,
 		{
 			readonly kind: "drop_schema"
 			readonly name: "staging"

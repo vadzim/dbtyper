@@ -15,7 +15,7 @@ type Users = SqlCreateTable<`
 
 type _UsersShape = Expect<
 	Matches<
-		Omit<Users, "source">,
+		Users,
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]
@@ -34,7 +34,7 @@ type _UsersShape = Expect<
 type Posts = SqlCreateTable<"create table posts (id bigint not null, rating decimal(10,2), title text)">
 type _PostsShape = Expect<
 	Matches<
-		Omit<Posts, "source">,
+		Posts,
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["posts"]
@@ -63,7 +63,7 @@ type WithConstraints = SqlCreateTable<`
 `>
 
 type _WithConstraintsShape = Expect<
-	Omit<WithConstraints, "source"> extends {
+	WithConstraints extends {
 		readonly kind: "create_table"
 		readonly name: readonly ["accounts"]
 		readonly row: {
@@ -120,7 +120,7 @@ type WithComments = SqlCreateTable<`
 	);
 `>
 type _WithCommentsShape = Expect<
-	Omit<WithComments, "source"> extends {
+	WithComments extends {
 		readonly kind: "create_table"
 		readonly name: readonly ["commented_users"]
 		readonly row: {
@@ -163,7 +163,7 @@ type QuotedIdentifiers = SqlCreateTable<`
 `>
 
 type _QuotedIdentifiersShape = Expect<
-	Omit<QuotedIdentifiers, "source"> extends {
+	QuotedIdentifiers extends {
 		readonly kind: "create_table"
 		readonly name: readonly ["account users"]
 		readonly row: {
@@ -222,7 +222,7 @@ type PostgresTypes = SqlCreateTable<`
 `>
 type _PostgresTypes = Expect<
 	Matches<
-		Omit<PostgresTypes, "source">,
+		PostgresTypes,
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["pg_types"]

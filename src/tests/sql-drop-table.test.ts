@@ -5,7 +5,7 @@ import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils
 type DropUsers = SqlDropTable<`drop table if exists public.users;`>
 type _DropUsers = Expect<
 	Matches<
-		Omit<DropUsers, "source">,
+		DropUsers,
 		{
 			readonly kind: "drop_table"
 			readonly target: readonly ["users", "public"]

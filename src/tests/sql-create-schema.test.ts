@@ -5,7 +5,7 @@ import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils
 type CreateAuth = SqlCreateSchema<`create schema auth`>
 type _CreateAuth = Expect<
 	Matches<
-		Omit<CreateAuth, "source">,
+		CreateAuth,
 		{
 			readonly kind: "create_schema"
 			readonly name: "auth"
@@ -17,7 +17,7 @@ type _CreateAuth = Expect<
 type CreateAuthIfNotExists = SqlCreateSchema<`create schema if not exists auth`>
 type _CreateAuthIfNotExists = Expect<
 	Matches<
-		Omit<CreateAuthIfNotExists, "source">,
+		CreateAuthIfNotExists,
 		{
 			readonly kind: "create_schema"
 			readonly name: "auth"
@@ -29,7 +29,7 @@ type _CreateAuthIfNotExists = Expect<
 type CreateAuthSemicolon = SqlCreateSchema<`create schema auth;`>
 type _CreateAuthSemicolon = Expect<
 	Matches<
-		Omit<CreateAuthSemicolon, "source">,
+		CreateAuthSemicolon,
 		{
 			readonly kind: "create_schema"
 			readonly name: "auth"
@@ -41,7 +41,7 @@ type _CreateAuthSemicolon = Expect<
 type CreateQuoted = SqlCreateSchema<`create schema "my schema"`>
 type _CreateQuoted = Expect<
 	Matches<
-		Omit<CreateQuoted, "source">,
+		CreateQuoted,
 		{
 			readonly kind: "create_schema"
 			readonly name: "my schema"

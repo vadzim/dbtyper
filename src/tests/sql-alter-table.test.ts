@@ -6,7 +6,7 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 type AlterUsers = SqlAlterTable<`alter table users add column age int`>
 type _AlterUsers = Expect<
 	Matches<
-		Omit<AlterUsers, "source">,
+		AlterUsers,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -24,7 +24,7 @@ type _AlterUsers = Expect<
 type AlterPublicUsers = SqlAlterTable<`alter table public.users add column age int`>
 type _AlterPublicUsers = Expect<
 	Matches<
-		Omit<AlterPublicUsers, "source">,
+		AlterPublicUsers,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -42,7 +42,7 @@ type _AlterPublicUsers = Expect<
 type AlterUsersIfExists = SqlAlterTable<`alter table if exists public.users add column age int`>
 type _AlterUsersIfExists = Expect<
 	Matches<
-		Omit<AlterUsersIfExists, "source">,
+		AlterUsersIfExists,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: true
@@ -64,7 +64,7 @@ type AlterAddColumnIfNotExists =
 	SqlAlterTable<`alter table users add column if not exists "display name" text not null`>
 type _AlterAddColumnIfNotExists = Expect<
 	Matches<
-		Omit<AlterAddColumnIfNotExists, "source">,
+		AlterAddColumnIfNotExists,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -82,7 +82,7 @@ type _AlterAddColumnIfNotExists = Expect<
 type AlterDropColumn = SqlAlterTable<`alter table users drop column if exists age`>
 type _AlterDropColumn = Expect<
 	Matches<
-		Omit<AlterDropColumn, "source">,
+		AlterDropColumn,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -99,7 +99,7 @@ type _AlterDropColumn = Expect<
 type AlterRenameTo = SqlAlterTable<`alter table users rename to app_users`>
 type _AlterRenameTo = Expect<
 	Matches<
-		Omit<AlterRenameTo, "source">,
+		AlterRenameTo,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false
@@ -115,7 +115,7 @@ type _AlterRenameTo = Expect<
 type AlterRenameColumn = SqlAlterTable<`alter table users rename column old_name to "new name"`>
 type _AlterRenameColumn = Expect<
 	Matches<
-		Omit<AlterRenameColumn, "source">,
+		AlterRenameColumn,
 		{
 			readonly kind: "alter_table"
 			readonly ifExists: false

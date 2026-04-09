@@ -27,7 +27,6 @@ export type SqlAlterTable<S extends string> =
 							readonly ifExists: IfExists
 							readonly target: Target
 							readonly action: Action
-							readonly source: S
 						}
 					: SqlParseError<"Expected an ALTER TABLE statement with a table target">
 			: SqlParseError<"Expected an ALTER TABLE statement with a table target">
@@ -38,7 +37,6 @@ export type SqlAlterTableLike = {
 	readonly ifExists: boolean
 	readonly target: SqlQualifiedIdentifier
 	readonly action: SqlAlterTableAction
-	readonly source: string
 }
 
 type SqlAlterTableActionAddColumn = {

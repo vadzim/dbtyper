@@ -31,7 +31,6 @@ export type SqlCreateTable<S extends string> =
 								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
 									? { [K in keyof Row]: Row[K] }
 									: never
-								readonly source: S
 								readonly refs: SqlCreateTableParsedRefs<Parsed>
 							}
 					: SqlParseError<"Internal SQL parser error">
@@ -42,7 +41,6 @@ export type SqlCreateTableLike = {
 	readonly kind: "create_table"
 	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
 	readonly row: unknown
-	readonly source: string
 	readonly refs: ForeignRefMeta | undefined
 }
 
