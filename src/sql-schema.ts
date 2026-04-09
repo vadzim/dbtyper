@@ -1,9 +1,9 @@
 import type {
 	FkColumnPair,
 	ForeignRefMeta,
-	SqlCreateTableLike,
 	ValidateFkReferencedColumnPairs,
-} from "./parser/sql-create-table.js"
+} from "./parser/sql-constraints-fk.js"
+import type { SqlCreateTableLike } from "./parser/sql-create-table.js"
 import type { SqlParseError } from "./sql-parse-error.js"
 
 /** One entry in `SqlSchema<[…]>`: a parsed table or a whole-table parse error from `SqlCreateTable`. */
@@ -147,7 +147,11 @@ type ExtractValidSchemas<Schemas extends Record<string, unknown>> = {
 	[K in keyof Schemas as Schemas[K] extends SqlSchemaLike ? K : never]: Extract<Schemas[K], SqlSchemaLike>
 }
 
-export type SqlDatabase<Schemas extends Record<string, unknown>, DefaultSchema extends string = "public"> = [
+export type SqlDatabase<
+	Schemas extends Record<string, unknown>,
+	DefaultSchema extends string = "public",
+	Migrations extends Record<string, string> = {},
+> = [
 	ExtractSchemaErrors<Schemas>,
 ] extends [never]
 	? ValidateDatabaseRefs<ExtractValidSchemas<Schemas>, DefaultSchema> extends infer E
@@ -157,6 +161,7 @@ export type SqlDatabase<Schemas extends Record<string, unknown>, DefaultSchema e
 					readonly schemas: {
 						[K in keyof ExtractValidSchemas<Schemas>]: ExtractValidSchemas<Schemas>[K]["tables"]
 					}
+					readonly migrations: Migrations
 				}
 			: E
 		: SqlParseError<"Internal database builder error">

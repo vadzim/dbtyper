@@ -56,6 +56,7 @@ type _DbFromSchemas = Expect<
 					posts: { id: number; user_id: number; title: string | null }
 				}
 			}
+			readonly migrations: {}
 		}
 	>
 >

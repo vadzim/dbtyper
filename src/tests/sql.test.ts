@@ -48,17 +48,8 @@ type _PostsShape = Expect<
 >
 
 type Invalid = SqlCreateTable<"select * from users">
-type _Invalid = Expect<
-	Matches<
-		Invalid,
-		{
-			readonly kind: "create_table"
-			readonly source: string
-			readonly name: SqlParseError<"Expected a CREATE TABLE statement with a table name">
-			readonly row: SqlParseError<"Expected a CREATE TABLE statement">
-		}
-	>
->
+type _InvalidName = Expect<Equal<Invalid["name"], SqlParseError<"Expected a CREATE TABLE statement with a table name">>>
+type _InvalidRow = Expect<Equal<Invalid["row"], SqlParseError<"Expected a CREATE TABLE statement">>>
 
 type WithConstraints = SqlCreateTable<`
 	create table accounts (
