@@ -28,3 +28,40 @@ export type ResolveQualifiedIdentifier<
 	: Name extends readonly [infer Table extends string, infer Schema extends string]
 		? [Schema, Table]
 		: never
+
+export type MergeSchemas<
+	Schemas extends Record<string, Record<string, unknown>>,
+	Schema extends string,
+	Table extends string,
+	Row,
+> = {
+	[K in keyof (Schemas & {
+		[K2 in Schema]: K2 extends keyof Schemas
+			? {
+					[K3 in keyof (Schemas[K2] & {
+						[T in Table]: Row
+					})]: (Schemas[K2] & {
+						[T in Table]: Row
+					})[K3]
+				}
+			: {
+					[T in Table]: Row
+				}
+	})]: (Schemas & {
+		[K2 in Schema]: K2 extends keyof Schemas
+			? {
+					[K3 in keyof (Schemas[K2] & {
+						[T in Table]: Row
+					})]: (Schemas[K2] & {
+						[T in Table]: Row
+					})[K3]
+				}
+			: {
+					[T in Table]: Row
+				}
+	})[K]
+} extends infer Result // flatten type
+	? {
+			[K in keyof Result]: Result[K] extends infer T ? { [K2 in keyof T]: T[K2] } : never
+		}
+	: never

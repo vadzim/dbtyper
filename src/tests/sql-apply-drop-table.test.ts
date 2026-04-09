@@ -15,9 +15,6 @@ type Db0 = {
 			sessions: { id: string }
 		}
 	}
-	readonly migrations: {
-		"0001_init": string
-	}
 }
 
 type DropExistingNoIfExists = SqlApplyDropTable<Db0, SqlDropTable<`drop table test.users`>>
@@ -33,9 +30,6 @@ type _DropExistingNoIfExists = Expect<
 				auth: {
 					sessions: { id: string }
 				}
-			}
-			readonly migrations: {
-				"0001_init": string
 			}
 		}
 	>

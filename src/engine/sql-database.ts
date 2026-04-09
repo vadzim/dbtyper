@@ -5,14 +5,12 @@ export type SqlDatabaseLike = {
 	readonly kind: "database"
 	readonly defaultSchema: string
 	readonly schemas: Record<string, Record<string, unknown>>
-	readonly migrations: Record<string, string>
 }
 
 export type SqlEmptyDatabase<DefaultSchema extends string = "public"> = {
 	readonly kind: "database"
 	readonly defaultSchema: DefaultSchema
 	readonly schemas: {}
-	readonly migrations: {}
 }
 
 export type SqlDatabase<

@@ -14,7 +14,6 @@ export type SqlApplyDropTable<Db extends SqlDatabaseLike, Drop extends SqlDropTa
 						readonly kind: "database"
 						readonly defaultSchema: Db["defaultSchema"]
 						readonly schemas: DropFromSchemas<Schemas, Schema, Table>
-						readonly migrations: Db["migrations"]
 					}
 				: Drop["ifExists"] extends true
 					? Db
