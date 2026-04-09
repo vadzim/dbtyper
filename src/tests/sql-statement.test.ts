@@ -10,8 +10,9 @@ type ApplyResult<Db, S extends string> = Db extends {
 	: never
 
 type Db0 = ReturnType<typeof sqlDatabase<"public">>
+type DbAfterPublicSchema = ApplyResult<Db0, "create schema public">
 type Y = ReturnType<typeof sqlStatement<"create table users (id int primary key)">>
-type X = ApplyResult<Db0, "create table users (id int primary key)">
+type X = ApplyResult<DbAfterPublicSchema, "create table users (id int primary key)">
 type X2 = ApplyResult<X, "alter table users add column name text">
 type X3 = ApplyResult<X2, "alter table users add column name2 text not null">
 type X4 = ApplyResult<X3, "drop table users">

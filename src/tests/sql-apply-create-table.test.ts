@@ -1,6 +1,7 @@
 import { describe, it } from "node:test"
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlEmptyDatabase } from "../engine/sql-database.js"
 import type { SqlApplyCreateTable } from "../engine/sql-apply-create-table.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -57,6 +58,14 @@ type _CreateInExplicitSchema = Expect<
 
 type CreateDuplicateTable = SqlApplyCreateTable<Db0, SqlCreateTable<`create table users (id int not null)`>>
 type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParseError<"Duplicate table name: users">>>
+
+type CreateTableWithoutSchema = SqlApplyCreateTable<
+	SqlEmptyDatabase<"public">,
+	SqlCreateTable<`create table users (id int not null)`>
+>
+type _CreateTableWithoutSchema = Expect<
+	Matches<CreateTableWithoutSchema, SqlParseError<`Unknown schema "public" (use CREATE SCHEMA first)`>>
+>
 
 type CreateInvalidRow = SqlApplyCreateTable<
 	Db0,

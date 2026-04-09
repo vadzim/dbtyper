@@ -8,13 +8,9 @@ export type ValidateCreateTableFkRefs<
 	Create extends SqlCreateTableLike,
 	NewSchema extends string,
 	NewTable extends string,
-> = Create["refs"] extends undefined
-	? never
-	: ValidateFkRefsUnion<Db, Create, NewSchema, NewTable, Create["refs"]>
+> = Create["refs"] extends undefined ? never : ValidateFkRefsUnion<Db, Create, NewSchema, NewTable, Create["refs"]>
 
-type ResolveFkTargetSchema<R extends ForeignRefMeta, DbDefault extends string> = [
-	R["toSchema"],
-] extends [undefined]
+type ResolveFkTargetSchema<R extends ForeignRefMeta, DbDefault extends string> = [R["toSchema"]] extends [undefined]
 	? DbDefault
 	: Extract<R["toSchema"], string>
 
@@ -41,11 +37,9 @@ type IsSelfRef<
 		: false
 	: false
 
-type UnknownRefTableError<
-	R extends ForeignRefMeta,
-	TargetSchema extends string,
-	NewSchema extends string,
-> = [R["toSchema"]] extends [undefined]
+type UnknownRefTableError<R extends ForeignRefMeta, TargetSchema extends string, NewSchema extends string> = [
+	R["toSchema"],
+] extends [undefined]
 	? TargetSchema extends NewSchema
 		? NewSchema extends TargetSchema
 			? SqlParseError<`Unknown referenced table "${R["toTable"]}" in schema`>
@@ -64,12 +58,13 @@ type ValidateOneCreateTableFkRef<
 	NewSchema extends string,
 	NewTable extends string,
 	R extends ForeignRefMeta,
-> = ResolveFkTargetSchema<R, Db["defaultSchema"]> extends infer TargetSchema extends string
-	? IsSelfRef<NewSchema, NewTable, TargetSchema, R> extends true
-		? ValidateFkTargetColumns<Create["row"], R["columnPairs"]>
-		: TargetSchema extends keyof Db["schemas"]
-			? R["toTable"] extends keyof Db["schemas"][TargetSchema]
-				? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
-				: UnknownRefTableError<R, TargetSchema, NewSchema>
-			: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
-	: SqlParseError<"Internal FK target schema resolution error">
+> =
+	ResolveFkTargetSchema<R, Db["defaultSchema"]> extends infer TargetSchema extends string
+		? IsSelfRef<NewSchema, NewTable, TargetSchema, R> extends true
+			? ValidateFkTargetColumns<Create["row"], R["columnPairs"]>
+			: TargetSchema extends keyof Db["schemas"]
+				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
+					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
+					: UnknownRefTableError<R, TargetSchema, NewSchema>
+				: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
+		: SqlParseError<"Internal FK target schema resolution error">

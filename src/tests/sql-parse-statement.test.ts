@@ -46,6 +46,30 @@ type _ParseDrop = Expect<
 	>
 >
 
+type ParseCreateSchema = SqlStatement<`create schema if not exists billing;`>
+type _ParseCreateSchema = Expect<
+	Matches<
+		Omit<ParseCreateSchema, "source">,
+		{
+			readonly kind: "create_schema"
+			readonly name: "billing"
+			readonly ifNotExists: true
+		}
+	>
+>
+
+type ParseDropSchema = SqlStatement<`drop schema if exists staging`>
+type _ParseDropSchema = Expect<
+	Matches<
+		Omit<ParseDropSchema, "source">,
+		{
+			readonly kind: "drop_schema"
+			readonly name: "staging"
+			readonly ifExists: true
+		}
+	>
+>
+
 type ParseUnknown = SqlStatement<`create view v as select 1`>
 type _ParseUnknown = Expect<Matches<ParseUnknown, SqlParseError<"Unknown sql statement">>>
 

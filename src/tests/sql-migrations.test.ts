@@ -10,6 +10,11 @@ type ImportMigration<Path extends string, Sql extends string> = Promise<{
 	}
 }>
 
+type AuthSchemaImport = ImportMigration<
+	"file:///migrations/20260409093100_auth_schema.ts",
+	`create schema if not exists auth`
+>
+
 type UsersImport = ImportMigration<
 	"file:///migrations/20260409093300_users.ts",
 	`
@@ -28,7 +33,8 @@ type Apply<Builder, Arg extends Promise<{ default: { path: string; source: strin
 	? Next
 	: never
 
-type DbAfterUsers = Apply<Build, UsersImport>
+type DbAfterAuthSchema = Apply<Build, AuthSchemaImport>
+type DbAfterUsers = Apply<DbAfterAuthSchema, UsersImport>
 type _DbAfterUsers = Expect<
 	Matches<ReturnType<DbAfterUsers["getMigrations"]>, Promise<{ source: string; path: string }[]>>
 >

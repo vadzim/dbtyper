@@ -1,10 +1,20 @@
 import type { SqlQualifiedIdentifier } from "../parser/sql-parse-primitives.js"
 
+export type SchemaExists<
+	Schemas extends Record<string, Record<string, unknown>>,
+	Name extends string,
+> = Name extends keyof Schemas ? true : false
+
 export type TableExists<
 	Schemas extends Record<string, Record<string, unknown>>,
 	Schema extends string,
 	Table extends string,
 > = Schema extends keyof Schemas ? (Table extends keyof Schemas[Schema] ? true : false) : false
+
+export type DropSchemaFromSchemas<
+	Schemas extends Record<string, Record<string, unknown>>,
+	Name extends string,
+> = Name extends keyof Schemas ? Omit<Schemas, Name> : Schemas
 
 export type DropFromSchemas<
 	Schemas extends Record<string, Record<string, unknown>>,
