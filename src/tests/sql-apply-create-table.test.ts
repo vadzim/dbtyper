@@ -33,6 +33,29 @@ type _DbApplyCreateTableFixture = Expect<
 	>
 >
 
+type MixedCaseColumns = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create table users ("Id" int not null, "Main Title" text not null)`>,
+	]
+>
+
+type _MixedCaseColumns = Expect<
+	Matches<
+		DbApplyCreateTableFixture,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "test"
+			readonly schemas: {
+				test: {
+					users: { Id: number; "Main Title": string }
+				}
+			}
+		}
+	>
+>
+
 // --- Create table (default and explicit schema) ---
 
 /** New table in the default schema. */
