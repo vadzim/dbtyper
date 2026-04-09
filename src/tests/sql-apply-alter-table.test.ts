@@ -77,10 +77,7 @@ type DropMissingColumnIfExists = SqlApplyAlterTable<
 >
 type _DropMissingColumnIfExists = Expect<Matches<DropMissingColumnIfExists, Db0>>
 
-type RenameExistingColumn = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table test.users rename column age to years`>
->
+type RenameExistingColumn = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename column age to years`>>
 type _RenameExistingColumn = Expect<
 	Matches<
 		RenameExistingColumn,
@@ -109,9 +106,7 @@ type RenameToExistingColumnName = SqlApplyAlterTable<
 	Db0,
 	SqlAlterTable<`alter table test.users rename column age to id`>
 >
-type _RenameToExistingColumnName = Expect<
-	Equal<RenameToExistingColumnName, SqlParseError<"Duplicate column name: id">>
->
+type _RenameToExistingColumnName = Expect<Equal<RenameToExistingColumnName, SqlParseError<"Duplicate column name: id">>>
 
 type RenameTableOk = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename to members`>>
 type _RenameTableOk = Expect<
@@ -131,9 +126,7 @@ type _RenameTableOk = Expect<
 >
 
 type RenameTableDuplicate = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename to posts`>>
-type _RenameTableDuplicate = Expect<
-	Equal<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>
->
+type _RenameTableDuplicate = Expect<Equal<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>>
 
 type AlterMissingNoIfExists = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.missing add column age int`>>
 type _AlterMissingNoIfExists = Expect<

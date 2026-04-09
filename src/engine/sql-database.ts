@@ -40,18 +40,20 @@ type ValidateRefColumnPairs<Pairs extends readonly FkColumnPair[], TargetRow> =
 type SqlSchemaLike = {
 	readonly kind: "schema"
 	readonly tables: Record<string, unknown>
-	readonly __refs: ForeignRefMeta
+	readonly __refs: ForeignRefMeta | undefined
 }
 
-type ResolveRefSchema<R extends ForeignRefMeta, DefaultSchema extends string> = [R["toSchema"]] extends [never]
+type ResolveRefSchema<R extends ForeignRefMeta, DefaultSchema extends string> = [R["toSchema"]] extends [undefined]
 	? DefaultSchema
 	: Extract<R["toSchema"], string>
 
 type ValidateDatabaseRef<
-	R extends ForeignRefMeta,
+	R extends ForeignRefMeta | undefined,
 	Schemas extends Record<string, SqlSchemaLike>,
 	DefaultSchema extends string,
-> = R extends {
+> = [R] extends [undefined]
+	? never
+	: R extends {
 	columnPairs: infer Pairs extends readonly FkColumnPair[]
 	toTable: infer TTab extends string
 }

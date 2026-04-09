@@ -1,4 +1,6 @@
 import type { SqlQualifiedIdentifier } from "../parser/sql-parse-primitives.js"
+import type { SqlParseError } from "../sql.js"
+import type { SqlDatabaseLike } from "./sql-database.js"
 
 export type TableExists<
 	Schemas extends Record<string, Record<string, unknown>>,
@@ -60,8 +62,14 @@ export type MergeSchemas<
 					[T in Table]: Row
 				}
 	})[K]
-} extends infer Result // flatten type
+}
+
+export type FlattenDBType<DB extends SqlDatabaseLike | SqlParseError<string>> = DB extends SqlDatabaseLike
 	? {
-			[K in keyof Result]: Result[K] extends infer T ? { [K2 in keyof T]: T[K2] } : never
+			readonly kind: "database"
+			readonly defaultSchema: DB["defaultSchema"]
+			readonly schemas: DB["schemas"] extends infer S
+				? { [K in keyof S]: S[K] extends infer T ? { [K2 in keyof T]: T[K2] } : never }
+				: never
 		}
-	: never
+	: DB

@@ -72,19 +72,25 @@ type ApplyOne<
 				: SqlParseError<"Internal migration apply shape error">
 		: SqlParseError<"Internal migration apply error">
 
+type SqlMigrationsApply<
+	Schemas extends SchemaTables,
+	Rec extends Record<string, string>,
+	DefaultSchema extends string,
+> = {
+	apply<Arg>(
+		arg: Arg,
+	): Arg extends Promise<{ default: infer M extends SqlMigration<string, string> }>
+		? ApplyOne<Schemas, Rec, DefaultSchema, M>
+		: SqlParseError<"Invalid migration import">
+}
+
 export type SqlMigrationsBuilder<
 	Schemas extends SchemaTables = {},
 	Rec extends Record<string, string> = {},
 	DefaultSchema extends string = "public",
 > =
 	// Public API return keeps migrations SQL record attached for export/apply pipelines.
-	SqlDatabase<BuildSchemaObjects<Schemas>, DefaultSchema, Rec> & {
-		apply<Arg>(
-			arg: Arg,
-		): Arg extends Promise<{ default: infer M extends SqlMigration<string, string> }>
-			? ApplyOne<Schemas, Rec, DefaultSchema, M>
-			: SqlParseError<"Invalid migration import">
-	}
+	SqlDatabase<BuildSchemaObjects<Schemas>, DefaultSchema, Rec> & SqlMigrationsApply<Schemas, Rec, DefaultSchema>
 
 /** Apply one migration import at a time, updating SqlDatabase type incrementally. */
 export function migrations(): SqlMigrationsBuilder<{}, {}> {

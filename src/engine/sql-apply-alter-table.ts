@@ -1,23 +1,30 @@
 import type { SqlAlterTableLike } from "../parser/sql-alter-table.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
+import type { FlattenDBType, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
 
 export type SqlAlterLike = SqlAlterTableLike
 
-export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterLike> =
+export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterLike> = FlattenDBType<
 	ResolveQualifiedIdentifier<Alter["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,
 	]
-		? Db["schemas"] extends infer Schemas extends Record<string, Record<string, unknown>>
-			? TableExists<Schemas, Schema, Table> extends true
-				? ApplyAlterOnExistingTable<Db, Schemas, Schema, Table, Alter["action"]>
+		? Db["schemas"] extends Record<string, Record<string, unknown>>
+			? TableExists<Db["schemas"], Schema, Table> extends true
+				? ApplyAlterOnExistingTable<
+						Db,
+						Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
+						Schema,
+						Table,
+						Alter["action"]
+					>
 				: Alter["ifExists"] extends true
 					? Db
 					: SqlParseError<`Unknown altered table "${Schema}.${Table}" in database`>
 			: SqlParseError<"Internal SqlApplyAlterTable schema shape error">
 		: SqlParseError<"Internal SqlApplyAlterTable target error">
+>
 
 type ApplyAlterOnExistingTable<
 	Db extends SqlDatabaseLike,
@@ -33,17 +40,13 @@ type ApplyAlterOnExistingTable<
 				? {
 						readonly kind: "database"
 						readonly defaultSchema: Db["defaultSchema"]
-						readonly schemas: UpdateSchemaTableRow<Schemas, Schema, Table, NextRow> extends infer Result // flatten type
-							? { [K in keyof Result]: Result[K] }
-							: never
+						readonly schemas: UpdateSchemaTableRow<Schemas, Schema, Table, NextRow>
 					}
 				: Next extends { mode: "schema"; tables: infer NextTables extends Record<string, unknown> }
 					? {
 							readonly kind: "database"
 							readonly defaultSchema: Db["defaultSchema"]
-							readonly schemas: ReplaceSchema<Schemas, Schema, NextTables> extends infer Result // flatten type
-								? { [K in keyof Result]: Result[K] }
-								: never
+							readonly schemas: ReplaceSchema<Schemas, Schema, NextTables>
 						}
 					: SqlParseError<"Internal SqlApplyAlterTable action shape error">
 		: SqlParseError<"Internal SqlApplyAlterTable action error">
@@ -134,14 +137,10 @@ type UpdateSchemaTableRow<
 	Schema extends string,
 	Table extends string,
 	NextRow extends Record<string, unknown>,
-> = {
-	[K in keyof Schemas]: K extends Schema
-		? Omit<Extract<Schemas[K], Record<string, unknown>>, Table> & {
-				[T in Table]: NextRow
-			} extends infer Result // flatten type
-			? { [K in keyof Result]: Result[K] extends infer T ? { [K2 in keyof T]: T[K2] } : never }
-			: never
-		: never
+> = Omit<Schemas, Schema> & {
+	[K in Schema]: Omit<Extract<Schemas[K], Record<string, unknown>>, Table> & {
+		[T in Table]: NextRow
+	}
 }
 
 type ReplaceSchema<

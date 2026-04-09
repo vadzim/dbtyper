@@ -146,7 +146,7 @@ export type ValidateConstraintRefs<Entry extends string, Names extends string> =
 export type ForeignRefMeta = {
 	from: string
 	columnPairs: readonly FkColumnPair[]
-	toSchema: string | never
+	toSchema: string | undefined
 	toTable: string
 }
 
@@ -165,9 +165,9 @@ export type ParseForeignRefMeta<Entry extends string> =
 									? ZipColumnListsToPairs<FC, TC> extends infer Pairs
 										? Pairs extends readonly FkColumnPair[]
 											? Target extends readonly [infer Table extends string]
-												? { from: never; columnPairs: Pairs; toSchema: never; toTable: Table }
+												? { from: ""; columnPairs: Pairs; toSchema: undefined; toTable: Table }
 												: Target extends readonly [infer Table extends string, infer Schema extends string]
-													? { from: never; columnPairs: Pairs; toSchema: Schema; toTable: Table }
+													? { from: ""; columnPairs: Pairs; toSchema: Schema; toTable: Table }
 													: never
 											: never
 										: never

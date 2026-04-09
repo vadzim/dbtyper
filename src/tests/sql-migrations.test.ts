@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { SqlApply, SqlApplyDropTable, SqlCreateTable, SqlMigration, SqlParseError } from "../sql.js"
 import type { migrations } from "../migrations/migrations.js"
-import type { Equal, Expect, Matches } from "./type-test-utils.js"
+import type { Equal, Expect } from "./type-test-utils.js"
 
 type SqlParseMessage<T> = T extends SqlParseError<infer M> ? M : never
 
@@ -58,35 +58,39 @@ type Apply<Builder, Arg extends Promise<{ default: SqlMigration<string, string> 
 	: never
 
 type DbAfterDrop = Apply<Apply<Apply<Apply<Build, UsersImport>, AgendaImport>, AlterAgendaImport>, DropAgendaImport>
-
-type _DbAfterDropShape = Expect<
-	Matches<
-		DbAfterDrop,
-		{
-			readonly kind: "database"
-			readonly schemas: {
-				auth: {
-					users: {
-						id: string
-						email: string
-					}
+type _DbAfterDropKind = Expect<DbAfterDrop extends { readonly kind: "database" } ? true : false>
+type _DbAfterDropSchemas = Expect<
+	DbAfterDrop extends {
+		readonly schemas: {
+			auth: {
+				users: {
+					id: string
+					email: string
 				}
 			}
-			readonly migrations: {
-				"20260409093300_users": string
-				"20260409093400_agenda": string
-				"20260409093500_alter_agenda": string
-				"20260409093600_drop_agenda": string
-			}
 		}
-	>
+	}
+		? true
+		: false
+>
+type _DbAfterDropMigrations = Expect<
+	DbAfterDrop extends {
+		readonly migrations: {
+			"20260409093300_users": string
+			"20260409093400_agenda": string
+			"20260409093500_alter_agenda": string
+			"20260409093600_drop_agenda": string
+		}
+	}
+		? true
+		: false
 >
 
 type DbAlterMissing = Apply<Apply<Build, UsersImport>, AlterMissingImport>
-type _DbAlterMissing = Expect<Matches<DbAlterMissing, SqlParseError<string>>>
+type _DbAlterMissing = Expect<DbAlterMissing extends SqlParseError<string> ? true : false>
 
 type DbUnsupported = Apply<Build, UnsupportedImport>
-type _DbUnsupported = Expect<Matches<DbUnsupported, SqlParseError<string>>>
+type _DbUnsupported = Expect<DbUnsupported extends SqlParseError<string> ? true : false>
 
 type ParsedCreate = SqlMigration<"file:///migrations/parsed_create.ts", `create table users (id int not null, email text not null)`>["parsed"]
 type _ParsedCreate = Expect<
@@ -104,7 +108,9 @@ type AppliedDropViaSqlApply = SqlApply<
 	SqlApplyDropTable<readonly ["auth", "users"]>
 >
 type _AppliedDropViaSqlApply = Expect<
-	Matches<AppliedDropViaSqlApply, { readonly kind: "database"; readonly schemas: unknown; readonly migrations: unknown }>
+	AppliedDropViaSqlApply extends { readonly kind: "database"; readonly schemas: unknown; readonly migrations: unknown }
+		? true
+		: false
 >
 
 describe("sql migrations", () => {

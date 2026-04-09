@@ -28,10 +28,7 @@ export type SqlCreateTable<S extends string> =
 								readonly kind: "create_table"
 								readonly name: SqlCreateTableName<Statement>
 								// General rule: types are helpers and must not become a bottleneck.
-								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
-									? // Inline mapped expansion is intentional for API/tooling: keep `SqlCreateTable["row"]` fully expanded in editor hovers.
-										{ [K in keyof Row]: Row[K] }
-									: never
+								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row ? Row : never
 								readonly source: S
 								readonly __refs: SqlCreateTableParsedRefs<Parsed>
 							}
@@ -44,7 +41,7 @@ export type SqlCreateTableLike = {
 	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
 	readonly row: unknown
 	readonly source: string
-	readonly __refs: ForeignRefMeta
+	readonly __refs: ForeignRefMeta | undefined
 }
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
@@ -113,9 +110,12 @@ type SqlCreateTableParsedToType<Parsed> =
 		? SqlParseError<E>
 		: Parsed extends { row: unknown; error: unknown }
 			? [Parsed["error"]] extends [never]
-				? // Inline mapped expansion is intentional for API/tooling: IDE shows concrete row shape instead of helper alias.
-					{ [K in keyof Parsed["row"]]: Parsed["row"][K] }
+				? Parsed["row"]
 				: Parsed["error"]
 			: SqlParseError<"Internal SQL parser error">
 
-type SqlCreateTableParsedRefs<Parsed> = Parsed extends { refs: ForeignRefMeta } ? Parsed["refs"] : never
+type SqlCreateTableParsedRefs<Parsed> = Parsed extends { refs: infer Refs }
+	? [Refs] extends [never]
+		? undefined
+		: Extract<Refs, ForeignRefMeta>
+	: undefined
