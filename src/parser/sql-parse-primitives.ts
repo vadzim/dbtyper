@@ -13,6 +13,7 @@ type StripLineComment<S extends string> = S extends `${infer _Comment}\n${infer 
 		? `\r${Rest}`
 		: ""
 type StripBlockComment<S extends string> = S extends `${infer _Comment}*/${infer Rest}` ? Rest : ""
+
 export type StripSqlComments<S extends string> = S extends `${infer Head}--${infer Tail}`
 	? StripSqlComments<`${Head}${StripLineComment<Tail>}`>
 	: S extends `${infer Head}/*${infer Tail}`
@@ -34,6 +35,7 @@ type ReadBracketQuotedIdentifier<S extends string, Acc extends string = ""> = S 
 		? [`[${Acc}]`, Rest]
 		: ReadBracketQuotedIdentifier<Rest, `${Acc}${C}`>
 	: [`[${Acc}]`, ""]
+
 export type ReadIdentifier<S extends string> =
 	Trim<S> extends `"${infer Rest}`
 		? ReadDoubleQuotedIdentifier<Rest>
@@ -42,11 +44,13 @@ export type ReadIdentifier<S extends string> =
 			: Trim<S> extends `[${infer Rest}`
 				? ReadBracketQuotedIdentifier<Rest>
 				: ReadWord<Trim<S>>
+
 export type ReadWord<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends Ws | "," | "(" | ")"
 		? [Acc, `${C}${Rest}`]
 		: ReadWord<Rest, `${Acc}${C}`>
 	: [Acc, ""]
+
 export type ReadUntilTopLevelComma<
 	S extends string,
 	Depth extends 0[] = [],
@@ -64,6 +68,7 @@ export type ReadUntilTopLevelComma<
 					: ReadUntilTopLevelComma<Rest, Depth, `${Acc}${C}`>
 				: ReadUntilTopLevelComma<Rest, Depth, `${Acc}${C}`>
 	: [Acc, ""]
+
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"`
 	? X
 	: S extends `\`${infer X}\``
@@ -90,9 +95,21 @@ type ReadParenContent<
 				: [Acc, Rest]
 			: ReadParenContent<Rest, Depth, `${Acc}${C}`>
 	: never
+
 export type FirstParenGroup<S extends string> =
 	FindFirstOpenParen<S> extends infer Rest extends string
 		? ReadParenContent<Rest> extends [infer Group extends string, string]
 			? Group
 			: never
+		: never
+
+export type NormalizeSql<S extends string> = Trim<RemoveTrailingSemicolon<StripSqlComments<S>>>
+
+export type ReadQualifiedIdentifier<S extends string> =
+	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
+		? Trim<RestA> extends `.${infer AfterDot}`
+			? ReadIdentifier<AfterDot> extends [infer B extends string, infer RestB extends string]
+				? [`${StripIdentifierQuotes<A>}.${StripIdentifierQuotes<B>}`, RestB]
+				: [StripIdentifierQuotes<A>, RestA]
+			: [StripIdentifierQuotes<A>, RestA]
 		: never

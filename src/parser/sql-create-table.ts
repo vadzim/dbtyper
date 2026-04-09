@@ -7,11 +7,9 @@ import type {
 	ValidateConstraintRefs,
 } from "./sql-constraints-fk.js"
 import type {
-	ReadIdentifier,
+	NormalizeSql,
+	ReadQualifiedIdentifier,
 	ReadUntilTopLevelComma,
-	RemoveTrailingSemicolon,
-	StripIdentifierQuotes,
-	StripSqlComments,
 	ToLower,
 	Trim,
 } from "./sql-parse-primitives.js"
@@ -63,15 +61,24 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 					refs: Refs
 				}
 
-type NormalizeSql<S extends string> = RemoveTrailingSemicolon<StripSqlComments<S>>
-type ExtractCreateTableNameInternal<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
-		? ReadIdentifier<Rest> extends [infer RawName extends string, string]
-			? StripIdentifierQuotes<RawName>
-			: never
-		: never
+type ExtractCreateTableNameInternal<S extends string> = ParseCreateTableTarget<S>
 type ExtractCreateBody<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table ${string}(${infer Inner})` ? Inner : never
+	ToLower<NormalizeSql<S>> extends `create table if not exists ${string}(${infer Inner})`
+		? Inner
+		: ToLower<NormalizeSql<S>> extends `create table ${string}(${infer Inner})`
+			? Inner
+			: never
+
+type ParseCreateTableTarget<S extends string> =
+	ToLower<NormalizeSql<S>> extends `create table if not exists ${infer Rest}`
+		? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
+			? Name
+			: never
+		: ToLower<NormalizeSql<S>> extends `create table ${infer Rest}`
+			? ReadQualifiedIdentifier<Rest> extends [infer Name extends string, string]
+				? Name
+				: never
+			: never
 
 type SqlCreateTableName<S extends string> = [ExtractCreateTableNameInternal<S>] extends [never]
 	? SqlParseError<"Expected a CREATE TABLE statement with a table name">

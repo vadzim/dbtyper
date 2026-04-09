@@ -1,5 +1,6 @@
 import type { SqlParseError } from "../sql-parse-error.js"
-import type { NormalizeSql, ReadQualifiedIdentifier } from "./sql-statement-primitives.js"
+import type { ReadQualifiedIdentifier } from "./sql-parse-primitives.js"
+import type { NormalizeSql } from "./sql-parse-primitives.js"
 import type { ToLower } from "./sql-parse-primitives.js"
 
 export type SqlDropTable<S extends string> = [ParseDropTableTarget<S>] extends [never]

@@ -1,5 +1,6 @@
 import type { SqlParseError } from "../sql-parse-error.js"
-import type { NormalizeSql, ReadQualifiedIdentifier } from "./sql-statement-primitives.js"
+import type { ReadQualifiedIdentifier } from "./sql-parse-primitives.js"
+import type { NormalizeSql } from "./sql-parse-primitives.js"
 import type { ToLower, Trim } from "./sql-parse-primitives.js"
 
 export type SqlAlterTable<S extends string> = [ParseAlterTableTarget<S>] extends [never]

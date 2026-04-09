@@ -1,18 +1,20 @@
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { SqlDropTable } from "../parser/sql-drop-table.js"
-import type { NormalizeCreateForRow, NormalizeSql } from "../parser/sql-statement-primitives.js"
+import type { NormalizeSql } from "../parser/sql-parse-primitives.js"
 import type { ToLower } from "../parser/sql-parse-primitives.js"
 import type { SqlParseError } from "../sql-parse-error.js"
 
 export type SqlMigrationParsed<Sql extends string> =
 	ToLower<NormalizeSql<Sql>> extends `create table ${string}`
-		? SqlCreateTable<NormalizeCreateForRow<Sql>> extends infer ParsedCreate
+		? SqlCreateTable<NormalizeSql<Sql>> extends infer ParsedCreate
 			? ParsedCreate extends SqlParseError<string>
 				? ParsedCreate
 				: {
 						readonly statement: "create_table"
-						readonly target: ParsedCreate extends { readonly name: infer Name extends string } ? Name : never
+						readonly target: ParsedCreate extends { readonly name: infer Name extends string }
+							? Name
+							: never
 						readonly row: ParsedCreate extends { readonly row: infer Row } ? Row : never
 					}
 			: SqlParseError<"Unable to parse CREATE TABLE migration">
@@ -22,7 +24,9 @@ export type SqlMigrationParsed<Sql extends string> =
 					? ParsedAlter
 					: {
 							readonly statement: "alter_table"
-							readonly target: ParsedAlter extends { readonly target: infer Target extends string } ? Target : never
+							readonly target: ParsedAlter extends { readonly target: infer Target extends string }
+								? Target
+								: never
 						}
 				: SqlParseError<"Unable to parse ALTER TABLE migration">
 			: ToLower<NormalizeSql<Sql>> extends `drop table ${string}`
@@ -31,7 +35,9 @@ export type SqlMigrationParsed<Sql extends string> =
 						? ParsedDrop
 						: {
 								readonly statement: "drop_table"
-								readonly target: ParsedDrop extends { readonly target: infer Target extends string } ? Target : never
+								readonly target: ParsedDrop extends { readonly target: infer Target extends string }
+									? Target
+									: never
 							}
 					: SqlParseError<"Unable to parse DROP TABLE migration">
 				: SqlParseError<"Only CREATE TABLE / ALTER TABLE / DROP TABLE migrations are supported for now">

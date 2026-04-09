@@ -3,7 +3,7 @@ import type { SqlDatabase } from "../sql-schema.js"
 import type { SqlApply, SqlApplyAlterTable, SqlApplyDropTable } from "../sql-apply.js"
 import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlDropTable } from "../parser/sql-drop-table.js"
-import type { NormalizeCreateForRow, NormalizeSql } from "../parser/sql-statement-primitives.js"
+import type { NormalizeSql } from "../parser/sql-parse-primitives.js"
 import type { ToLower } from "../parser/sql-parse-primitives.js"
 import type { SqlParseError } from "../sql-parse-error.js"
 import type { SqlMigration } from "./migration.js"
@@ -38,7 +38,7 @@ type AppendMigrationRecord<Rec extends Record<string, string>, M extends SqlMigr
 
 type StatementFromSql<Sql extends string> =
 	ToLower<NormalizeSql<Sql>> extends `create table ${string}`
-		? SqlCreateTable<NormalizeCreateForRow<Sql>>
+		? SqlCreateTable<NormalizeSql<Sql>>
 		: ToLower<NormalizeSql<Sql>> extends `drop table ${string}`
 			? SqlDropTable<NormalizeSql<Sql>> extends infer ParsedDrop
 				? ParsedDrop extends SqlParseError<string>
