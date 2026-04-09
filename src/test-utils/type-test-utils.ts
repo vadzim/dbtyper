@@ -6,7 +6,7 @@ export type ExpectFalse<T extends false> = T
 /**
  * Strict equality for type tests.
  * Deliberately returns `false` if either side contains `any` to avoid false-positive assertions.
- * The second parameter is the expected type, it always should be inlined in tests. The first parameter should be the actual type.
+ * The second parameter is the expected type, it always should be inlined in tests, except SqlParseError type. It is allowed to use SqlParseError as opaque type. The first parameter should be the actual type.
  */
 export type Matches<Actual, Expected> =
 	IsAny<Actual> extends true

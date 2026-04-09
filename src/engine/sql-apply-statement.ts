@@ -40,6 +40,13 @@ export type SqlApplyStatement<
 		>
 	: Db
 
+export type SqlApplyStatements<
+	Db extends SqlDatabaseLike | SqlParseError<string>,
+	Statements extends SqlStatementLike[],
+> = Statements extends [infer First extends SqlStatementLike, ...infer Rest extends SqlStatementLike[]]
+	? SqlApplyStatements<SqlApplyStatement<Db, First>, Rest>
+	: Db
+
 type FlattenDBType<DB extends SqlDatabaseLike | SqlParseError<string>> = DB extends SqlDatabaseLike
 	? {
 			readonly kind: "database"

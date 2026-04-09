@@ -1,22 +1,25 @@
 /**
- * SqlApplyStatement foreign-key and cross-schema reference tests.
+ * SqlApplyStatements foreign-key and cross-schema reference tests.
  */
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import type { SqlEmptyDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
-import type { SqlApplyStatement } from "../engine/sql-apply-statement.js"
+import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
+
+type DbFromSchemasKind = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+	]
+>
 
 type _DbFromSchemasKind = Expect<
 	Matches<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
+		DbFromSchemasKind,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -30,66 +33,71 @@ type _DbFromSchemasKind = Expect<
 	>
 >
 
-type _SchemaDuplicateTables = Expect<
-	Matches<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<"create table users (id int not null)">
-			>,
-			SqlStatement<`create table "users" (other_id int not null)`>
-		>,
-		SqlParseError<"Duplicate table name: users">
-	>
+type DbDuplicateUsersTables = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<"create table users (id int not null)">,
+		SqlStatement<`create table "users" (other_id int not null)`>,
+	]
 >
 
-type SchemaWithInvalidTable = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	SqlStatement<"select * from users">
+type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParseError<"Duplicate table name: users">>>
+
+type DbSelectFromUsersAfterCreate = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<"select * from users">,
+	]
 >
-type _SchemaWithInvalidTable = Expect<Matches<SchemaWithInvalidTable, SqlParseError<"Unknown sql statement">>>
+
+type _DbSelectFromUsersAfterCreate = Expect<
+	Matches<DbSelectFromUsersAfterCreate, SqlParseError<"Unknown sql statement">>
+>
 
 // --- Intra-schema FK ---
 
-type BadIntraFkTable = SqlStatement<`
-	create table posts_bad (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references users_bad(id)
-	)
-`>
-type SchemaWithBadIntraFk = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	BadIntraFkTable
+type DbPostsBadIntraFk = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table posts_bad (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references users_bad(id)
+			)
+		`>,
+	]
 >
-type _SchemaWithBadIntraFk = Expect<
-	Matches<SchemaWithBadIntraFk, SqlParseError<`Unknown referenced table "users_bad" in schema`>>
+
+type _DbPostsBadIntraFk = Expect<
+	Matches<DbPostsBadIntraFk, SqlParseError<`Unknown referenced table "users_bad" in schema`>>
 >
 
 /** Unqualified FK to another table in the same schema (happy path). */
-type PostsRefUsersTable = SqlStatement<`
-	create table post_refs (
-		id int not null,
-		author_id int not null,
-		foreign key (author_id) references users(id)
-	)
-`>
-type SchemaWithIntraFkOk = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	PostsRefUsersTable
+
+type DbPostRefsIntraFk = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table post_refs (
+				id int not null,
+				author_id int not null,
+				foreign key (author_id) references users(id)
+			)
+		`>,
+	]
 >
-type _SchemaWithIntraFkOk = Expect<
+
+type _DbPostRefsIntraFk = Expect<
 	Matches<
-		SchemaWithIntraFkOk,
+		DbPostRefsIntraFk,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -104,20 +112,24 @@ type _SchemaWithIntraFkOk = Expect<
 >
 
 /** Self-referential FK within one schema. */
-type CategoriesTable = SqlStatement<`
-	create table categories (
-		id int not null,
-		parent_id int,
-		foreign key (parent_id) references categories(id)
-	)
-`>
-type SchemaSelfRef = SqlApplyStatement<
-	SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-	CategoriesTable
+
+type DbCategoriesSelfRef = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`
+			create table categories (
+				id int not null,
+				parent_id int,
+				foreign key (parent_id) references categories(id)
+			)
+		`>,
+	]
 >
-type _SchemaSelfRef = Expect<
+
+type _DbCategoriesSelfRef = Expect<
 	Matches<
-		SchemaSelfRef,
+		DbCategoriesSelfRef,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -131,24 +143,26 @@ type _SchemaSelfRef = Expect<
 >
 
 /** Composite FK: both referenced columns must exist on target. */
-type PairRefTable = SqlStatement<`
-	create table pair_refs (
-		id int not null,
-		u_id int not null,
-		u_email text not null,
-		foreign key (u_id, u_email) references users(id, email)
-	)
-`>
-type SchemaCompositeFkOk = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	PairRefTable
+
+type DbCompositeFkPairRefs = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table pair_refs (
+				id int not null,
+				u_id int not null,
+				u_email text not null,
+				foreign key (u_id, u_email) references users(id, email)
+			)
+		`>,
+	]
 >
-type _SchemaCompositeFkOk = Expect<
+
+type _DbCompositeFkPairRefs = Expect<
 	Matches<
-		SchemaCompositeFkOk,
+		DbCompositeFkPairRefs,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -162,103 +176,125 @@ type _SchemaCompositeFkOk = Expect<
 	>
 >
 
-type PairRefBadColTable = SqlStatement<`
-	create table pair_refs_bad (
-		id int not null,
-		u_id int not null,
-		u_nope text not null,
-		foreign key (u_id, u_nope) references users(id, no_such_col)
-	)
-`>
-type SchemaCompositeFkBadCol = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	PairRefBadColTable
+type DbCompositeFkPairRefsBadCol = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table pair_refs_bad (
+				id int not null,
+				u_id int not null,
+				u_nope text not null,
+				foreign key (u_id, u_nope) references users(id, no_such_col)
+			)
+		`>,
+	]
 >
-type _SchemaCompositeFkBadCol = Expect<
-	Matches<SchemaCompositeFkBadCol, SqlParseError<`Unknown column "no_such_col" referenced in table constraint`>>
+
+type _DbCompositeFkPairRefsBadCol = Expect<
+	Matches<DbCompositeFkPairRefsBadCol, SqlParseError<`Unknown column "no_such_col" referenced in table constraint`>>
 >
 
 /** Composite FK: fewer local columns than referenced columns. */
-type PairRefArityShortTable = SqlStatement<`
+
+type StmtPairRefArityShort = SqlStatement<`
 	create table pair_arity_short (
 		x int not null,
 		foreign key (x) references users(id, email)
 	)
 `>
-type _PairRefArityShortIsParseError = Expect<
+
+type _StmtPairRefArityShort = Expect<
 	Matches<
-		PairRefArityShortTable,
+		StmtPairRefArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
-type SchemaCompositeArityShort = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	PairRefArityShortTable
+
+type DbPairRefArityShort = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table pair_arity_short (
+				x int not null,
+				foreign key (x) references users(id, email)
+			)
+		`>,
+	]
 >
-type _SchemaCompositeArityShort = Expect<
+
+type _DbPairRefArityShort = Expect<
 	Matches<
-		SchemaCompositeArityShort,
+		DbPairRefArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 
 /** Composite FK: more local columns than referenced columns. */
-type PairRefArityLongTable = SqlStatement<`
+
+type StmtPairRefArityLong = SqlStatement<`
 	create table pair_arity_long (
 		x int not null,
 		y int not null,
 		foreign key (x, y) references users(id)
 	)
 `>
-type _PairRefArityLongIsParseError = Expect<
+
+type _StmtPairRefArityLong = Expect<
 	Matches<
-		PairRefArityLongTable,
+		StmtPairRefArityLong,
 		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
 	>
 >
-type SchemaCompositeArityLong = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	PairRefArityLongTable
+
+type DbPairRefArityLong = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table pair_arity_long (
+				x int not null,
+				y int not null,
+				foreign key (x, y) references users(id)
+			)
+		`>,
+	]
 >
-type _SchemaCompositeArityLong = Expect<
+
+type _DbPairRefArityLong = Expect<
 	Matches<
-		SchemaCompositeArityLong,
+		DbPairRefArityLong,
 		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
 	>
 >
 
 /** Several foreign keys on one table (intra-schema), all valid. */
-type MembershipsTable = SqlStatement<`
-	create table memberships (
-		id int not null,
-		user_id int not null,
-		post_id int not null,
-		foreign key (user_id) references users(id),
-		foreign key (post_id) references posts(id)
-	)
-`>
-type SchemaMultiFkOk = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-			SqlStatement<`create table users (id int not null, email text not null)`>
-		>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-	>,
-	MembershipsTable
+
+type DbMembershipsMultiFk = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`
+			create table memberships (
+				id int not null,
+				user_id int not null,
+				post_id int not null,
+				foreign key (user_id) references users(id),
+				foreign key (post_id) references posts(id)
+			)
+		`>,
+	]
 >
-type _SchemaMultiFkOk = Expect<
+
+type _DbMembershipsMultiFk = Expect<
 	Matches<
-		SchemaMultiFkOk,
+		DbMembershipsMultiFk,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -274,51 +310,48 @@ type _SchemaMultiFkOk = Expect<
 >
 
 /** Several FKs on one table: first OK, second references missing table. */
-type MultiFkOneBadTable = SqlStatement<`
-	create table multi_fk_bad (
-		id int not null,
-		user_id int not null,
-		ghost_id int not null,
-		foreign key (user_id) references users(id),
-		foreign key (ghost_id) references ghosts(id)
-	)
-`>
-type SchemaMultiFkOneBad = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-		SqlStatement<`create table users (id int not null, email text not null)`>
-	>,
-	MultiFkOneBadTable
+
+type DbMultiFkOneBad = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`
+			create table multi_fk_bad (
+				id int not null,
+				user_id int not null,
+				ghost_id int not null,
+				foreign key (user_id) references users(id),
+				foreign key (ghost_id) references ghosts(id)
+			)
+		`>,
+	]
 >
-type _SchemaMultiFkOneBad = Expect<
-	Matches<SchemaMultiFkOneBad, SqlParseError<`Unknown referenced table "ghosts" in schema`>>
->
+
+type _DbMultiFkOneBad = Expect<Matches<DbMultiFkOneBad, SqlParseError<`Unknown referenced table "ghosts" in schema`>>>
 
 // --- Cross-schema FK (qualified `sales.*` tables) ---
 
-type SalesOrdersTable = SqlStatement<`
-	create table sales.orders (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.users(id)
-	)
-`>
-type MultiSchemaDb = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesOrdersTable
+type DbSalesOrders = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.users(id)
+			)
+		`>,
+	]
 >
-type _MultiSchemaDb = Expect<
+
+type _DbSalesOrders = Expect<
 	Matches<
-		MultiSchemaDb,
+		DbSalesOrders,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -336,31 +369,29 @@ type _MultiSchemaDb = Expect<
 >
 
 /** Several FKs on one table, both targets in another schema (database-level). */
-type SalesMultiRefTable = SqlStatement<`
-	create table sales.link_rows (
-		id int not null,
-		u int not null,
-		p int not null,
-		foreign key (u) references public.users(id),
-		foreign key (p) references public.posts(id)
-	)
-`>
-type DbMultiFkCrossSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesMultiRefTable
+
+type DbSalesLinkRows = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.link_rows (
+				id int not null,
+				u int not null,
+				p int not null,
+				foreign key (u) references public.users(id),
+				foreign key (p) references public.posts(id)
+			)
+		`>,
+	]
 >
-type _DbMultiFkCrossSchema = Expect<
+
+type _DbSalesLinkRows = Expect<
 	Matches<
-		DbMultiFkCrossSchema,
+		DbSalesLinkRows,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -378,55 +409,50 @@ type _DbMultiFkCrossSchema = Expect<
 >
 
 /** Several cross-schema FKs: one valid, one bad table in public. */
-type SalesMultiRefOneBadTable = SqlStatement<`
-	create table sales.link_bad (
-		id int not null,
-		u int not null,
-		x int not null,
-		foreign key (u) references public.users(id),
-		foreign key (x) references public.no_such_posts(id)
-	)
-`>
-type SalesMultiRefOneBadSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesMultiRefOneBadTable
->
-type _DbMultiFkOneBadCross = Expect<
-	Matches<SalesMultiRefOneBadSchema, SqlParseError<`Unknown referenced table "public.no_such_posts" in database`>>
+
+type DbSalesLinkBad = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.link_bad (
+				id int not null,
+				u int not null,
+				x int not null,
+				foreign key (u) references public.users(id),
+				foreign key (x) references public.no_such_posts(id)
+			)
+		`>,
+	]
 >
 
-type SalesOrdersDefaultSchemaTable = SqlStatement<`
-	create table sales.orders_default_schema (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.users(id)
-	)
-`>
-type DbWithDefaultSchemaPublic = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesOrdersDefaultSchemaTable
+type _DbSalesLinkBad = Expect<
+	Matches<DbSalesLinkBad, SqlParseError<`Unknown referenced table "public.no_such_posts" in database`>>
 >
-type _DbWithDefaultSchemaPublic = Expect<
+
+type DbSalesOrdersDefaultSchema = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_default_schema (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.users(id)
+			)
+		`>,
+	]
+>
+
+type _DbSalesOrdersDefaultSchema = Expect<
 	Matches<
-		DbWithDefaultSchemaPublic,
+		DbSalesOrdersDefaultSchema,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "public"
@@ -443,33 +469,28 @@ type _DbWithDefaultSchemaPublic = Expect<
 	>
 >
 
-type SharedUsersTable = SqlStatement<`
-	create table users (
-		id int not null
-	)
-`>
-type DbWithCustomDefaultSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<
-					SqlApplyStatement<
-						SqlApplyStatement<SqlEmptyDatabase<"shared">, SqlStatement<`create schema public`>>,
-						SqlStatement<`create table public.users (id int not null, email text not null)`>
-					>,
-					SqlStatement<`create table public.posts (id int not null, user_id int not null, title text)`>
-				>,
-				SqlStatement<`create schema shared`>
-			>,
-			SharedUsersTable
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesOrdersDefaultSchemaTable
+type DbSharedDefaultWithSalesOrders = SqlApplyStatements<
+	SqlEmptyDatabase<"shared">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table public.users (id int not null, email text not null)`>,
+		SqlStatement<`create table public.posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema shared`>,
+		SqlStatement<`create table users (id int not null)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_default_schema (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.users(id)
+			)
+		`>,
+	]
 >
-type _DbWithCustomDefaultSchema = Expect<
+
+type _DbSharedDefaultWithSalesOrders = Expect<
 	Matches<
-		DbWithCustomDefaultSchema,
+		DbSharedDefaultWithSalesOrders,
 		{
 			readonly kind: "database"
 			readonly defaultSchema: "shared"
@@ -491,230 +512,218 @@ type _DbWithCustomDefaultSchema = Expect<
 
 // --- Cross-schema failure shapes (apply rejects with database-level FK errors) ---
 
-type SalesBadSchemaRefTable = SqlStatement<`
-	create table sales.orders_bad_schema (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references missing_schema.users(id)
-	)
-`>
-type SalesBadSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesBadSchemaRefTable
->
-type _DbWithBadSchemaRef = Expect<
-	Matches<SalesBadSchema, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
+type DbSalesBadSchemaRef = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_bad_schema (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references missing_schema.users(id)
+			)
+		`>,
+	]
 >
 
-type SalesBadTableRefTable = SqlStatement<`
-	create table sales.orders_bad_table (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.missing_table(id)
-	)
-`>
-type SalesBadTableSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesBadTableRefTable
->
-type _DbWithBadTableRef = Expect<
-	Matches<SalesBadTableSchema, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
+type _DbSalesBadSchemaRef = Expect<
+	Matches<DbSalesBadSchemaRef, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
 >
 
-type SalesBadPublicUsersBadRefTable = SqlStatement<`
-	create table sales.orders_bad_public_users_bad (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.users_bad(id)
-	)
-`>
-type SalesBadPublicUsersBadSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesBadPublicUsersBadRefTable
->
-type _DbWithBadPublicUsersBadRef = Expect<
-	Matches<SalesBadPublicUsersBadSchema, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
+type DbSalesBadTableRef = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_bad_table (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.missing_table(id)
+			)
+		`>,
+	]
 >
 
-type SalesBadSchemaUsersRefTable = SqlStatement<`
-	create table sales.orders_bad_schema_users (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references schema_bad.users(id)
-	)
-`>
-type SalesBadSchemaUsersSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesBadSchemaUsersRefTable
->
-type _DbWithBadSchemaUsersRef = Expect<
-	Matches<SalesBadSchemaUsersSchema, SqlParseError<`Unknown referenced schema "schema_bad" in database`>>
+type _DbSalesBadTableRef = Expect<
+	Matches<DbSalesBadTableRef, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
 >
 
-type SalesBadColumnRefTable = SqlStatement<`
-	create table sales.orders_bad_column (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references public.users(missing_col)
-	)
-`>
-type SalesBadColumnSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesBadColumnRefTable
+type DbSalesBadPublicUsersBadRef = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_bad_public_users_bad (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.users_bad(id)
+			)
+		`>,
+	]
 >
-type _DbWithBadColumnRef = Expect<
-	Matches<SalesBadColumnSchema, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+
+type _DbSalesBadPublicUsersBadRef = Expect<
+	Matches<DbSalesBadPublicUsersBadRef, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
+>
+
+type DbSalesBadSchemaUsersRef = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_bad_schema_users (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references schema_bad.users(id)
+			)
+		`>,
+	]
+>
+
+type _DbSalesBadSchemaUsersRef = Expect<
+	Matches<DbSalesBadSchemaUsersRef, SqlParseError<`Unknown referenced schema "schema_bad" in database`>>
+>
+
+type DbSalesBadColumnRef = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_bad_column (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.users(missing_col)
+			)
+		`>,
+	]
+>
+
+type _DbSalesBadColumnRef = Expect<
+	Matches<DbSalesBadColumnRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 /** No schemas: `CREATE TABLE sales.*` fails before FK checks (sales must exist first). */
-type DbMissingDefaultSchema = SqlApplyStatement<SqlEmptyDatabase<"public">, SalesOrdersDefaultSchemaTable>
-type _DbMissingDefaultSchema = Expect<
-	Matches<DbMissingDefaultSchema, SqlParseError<`Unknown schema "sales" (use CREATE SCHEMA first)`>>
+
+type DbMissingSalesSchema = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`
+			create table sales.orders_default_schema (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references public.users(id)
+			)
+		`>,
+	]
+>
+
+type _DbMissingSalesSchema = Expect<
+	Matches<DbMissingSalesSchema, SqlParseError<`Unknown schema "sales" (use CREATE SCHEMA first)`>>
 >
 
 /**
  * Default schema `shared` but FK uses unqualified `users` → should resolve to `shared.users` at validation;
  * shared has only `teams` (apply chain); sales holds `users` stub + `orders_unq`.
  */
-type SharedTeamsTable = SqlStatement<`
-	create table shared.teams (
-		id int not null
-	)
-`>
-type SalesUsersStubTable = SqlStatement<"create table sales.users (id int not null)">
-type SalesOrdersUnqualifiedUsersTable = SqlStatement<`
-	create table sales.orders_unq (
-		id int not null,
-		user_id int not null,
-		foreign key (user_id) references users(id)
-	)
-`>
-type DbBadUnqualifiedUnderCustomDefault = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<
-					SqlApplyStatement<
-						SqlApplyStatement<
-							SqlApplyStatement<SqlEmptyDatabase<"shared">, SqlStatement<`create schema public`>>,
-							SqlStatement<`create table public.users (id int not null, email text not null)`>
-						>,
-						SqlStatement<`create table public.posts (id int not null, user_id int not null, title text)`>
-					>,
-					SqlStatement<`create schema shared`>
-				>,
-				SharedTeamsTable
-			>,
-			SqlStatement<`create schema sales`>
-		>,
-		SalesUsersStubTable
-	>,
-	SalesOrdersUnqualifiedUsersTable
+
+type DbUnqualifiedUsersWrongDefault = SqlApplyStatements<
+	SqlEmptyDatabase<"shared">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table public.users (id int not null, email text not null)`>,
+		SqlStatement<`create table public.posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema shared`>,
+		SqlStatement<`create table shared.teams (id int not null)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`create table sales.users (id int not null)`>,
+		SqlStatement<`
+			create table sales.orders_unq (
+				id int not null,
+				user_id int not null,
+				foreign key (user_id) references users(id)
+			)
+		`>,
+	]
 >
-type _DbBadUnqualifiedUnderCustomDefault = Expect<
-	Matches<DbBadUnqualifiedUnderCustomDefault, SqlParseError<`Unknown referenced table "shared.users" in database`>>
+
+type _DbUnqualifiedUsersWrongDefault = Expect<
+	Matches<DbUnqualifiedUsersWrongDefault, SqlParseError<`Unknown referenced table "shared.users" in database`>>
 >
 
 /** Composite FK across schemas: second column wrong on remote (row still parses; apply merges). */
-type SalesCompositeBadTable = SqlStatement<`
-	create table sales.orders_comp_bad (
-		id int not null,
-		a int not null,
-		b text not null,
-		foreign key (a, b) references public.users(id, not_a_column)
-	)
-`>
-type SalesCompositeBadSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesCompositeBadTable
+
+type DbSalesCompositeBadRemoteCol = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.orders_comp_bad (
+				id int not null,
+				a int not null,
+				b text not null,
+				foreign key (a, b) references public.users(id, not_a_column)
+			)
+		`>,
+	]
 >
-type _DbCompositeBadRemoteCol = Expect<
-	Matches<SalesCompositeBadSchema, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
+
+type _DbSalesCompositeBadRemoteCol = Expect<
+	Matches<DbSalesCompositeBadRemoteCol, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
 >
 
 /** Database-level composite FK arity mismatch surfaces as parse error on the statement. */
-type SalesDbArityShortTable = SqlStatement<`
+
+type StmtSalesDbArityShort = SqlStatement<`
 	create table sales.db_arity_short (
 		a int not null,
 		foreign key (a) references public.users(id, email)
 	)
 `>
-type _SalesDbArityShortIsParseError = Expect<
+
+type _StmtSalesDbArityShort = Expect<
 	Matches<
-		SalesDbArityShortTable,
+		StmtSalesDbArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
-type SalesDbArityShortSchema = SqlApplyStatement<
-	SqlApplyStatement<
-		SqlApplyStatement<
-			SqlApplyStatement<
-				SqlApplyStatement<SqlEmptyDatabase<"public">, SqlStatement<`create schema public`>>,
-				SqlStatement<`create table users (id int not null, email text not null)`>
-			>,
-			SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>
-		>,
-		SqlStatement<`create schema sales`>
-	>,
-	SalesDbArityShortTable
+
+type DbSalesDbArityShort = SqlApplyStatements<
+	SqlEmptyDatabase<"public">,
+	[
+		SqlStatement<`create schema public`>,
+		SqlStatement<`create table users (id int not null, email text not null)`>,
+		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatement<`create schema sales`>,
+		SqlStatement<`
+			create table sales.db_arity_short (
+				a int not null,
+				foreign key (a) references public.users(id, email)
+			)
+		`>,
+	]
 >
-type _DbCompositeArityShort = Expect<
+
+type _DbSalesDbArityShort = Expect<
 	Matches<
-		SalesDbArityShortSchema,
+		DbSalesDbArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
