@@ -1,24 +1,59 @@
+/**
+ * SqlApplyStatements: ALTER TABLE apply type tests (add/drop/rename column, rename table, IF EXISTS).
+ */
+import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
-import type { SqlAlterTable } from "../parser/sql-alter-table.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
-import type { SqlApplyAlterTable } from "../engine/sql-apply-alter-table.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
+import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 
-type Db0 = {
-	readonly kind: "database"
-	readonly defaultSchema: "test"
-	readonly schemas: {
-		test: {
-			users: { id: number; age: number }
-			posts: { id: number; user_id: number }
-		}
-		auth: {
-			sessions: { id: string }
-		}
-	}
-}
+type DbApplyAlterFixture = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+	]
+>
 
-type AddNewColumn = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users add column email text not null`>>
+type _DbApplyAlterFixture = Expect<
+	Matches<
+		DbApplyAlterFixture,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "test"
+			readonly schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+// --- Add column ---
+
+/** Add a new NOT NULL column on an existing table. */
+
+type AddNewColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users add column email text not null`>,
+	]
+>
+
 type _AddNewColumn = Expect<
 	Matches<
 		AddNewColumn,
@@ -36,21 +71,73 @@ type _AddNewColumn = Expect<
 	>
 >
 
-type AddExistingColumnNoIfNotExists = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table test.users add column age int`>
+/** Duplicate column without IF NOT EXISTS is an error. */
+
+type AddExistingColumnNoIfNotExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users add column age int`>,
+	]
 >
+
 type _AddExistingColumnNoIfNotExists = Expect<
 	Matches<AddExistingColumnNoIfNotExists, SqlParseError<"Duplicate column name: age">>
 >
 
-type AddExistingColumnIfNotExists = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table test.users add column if not exists age int`>
->
-type _AddExistingColumnIfNotExists = Expect<Matches<AddExistingColumnIfNotExists, Db0>>
+/** IF NOT EXISTS skips add when the column already exists. */
 
-type DropExistingColumn = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users drop column age`>>
+type AddExistingColumnIfNotExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users add column if not exists age int`>,
+	]
+>
+
+type _AddExistingColumnIfNotExists = Expect<
+	Matches<
+		AddExistingColumnIfNotExists,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "test"
+			readonly schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+// --- Drop column ---
+
+/** Drop an existing column. */
+
+type DropExistingColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users drop column age`>,
+	]
+>
+
 type _DropExistingColumn = Expect<
 	Matches<
 		DropExistingColumn,
@@ -68,18 +155,73 @@ type _DropExistingColumn = Expect<
 	>
 >
 
-type DropMissingColumnNoIfExists = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users drop column missing`>>
+/** Unknown column without IF EXISTS is an error. */
+
+type DropMissingColumnNoIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users drop column missing`>,
+	]
+>
+
 type _DropMissingColumnNoIfExists = Expect<
 	Matches<DropMissingColumnNoIfExists, SqlParseError<`Unknown column "missing" in altered table`>>
 >
 
-type DropMissingColumnIfExists = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table test.users drop column if exists missing`>
->
-type _DropMissingColumnIfExists = Expect<Matches<DropMissingColumnIfExists, Db0>>
+/** IF EXISTS makes drop of a missing column a no-op. */
 
-type RenameExistingColumn = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename column age to years`>>
+type DropMissingColumnIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users drop column if exists missing`>,
+	]
+>
+
+type _DropMissingColumnIfExists = Expect<
+	Matches<
+		DropMissingColumnIfExists,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "test"
+			readonly schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+// --- Rename column ---
+
+/** Rename an existing column. */
+
+type RenameExistingColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users rename column age to years`>,
+	]
+>
+
 type _RenameExistingColumn = Expect<
 	Matches<
 		RenameExistingColumn,
@@ -97,23 +239,58 @@ type _RenameExistingColumn = Expect<
 	>
 >
 
-type RenameMissingColumn = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table test.users rename column missing to years`>
+/** Rename from a missing column is an error. */
+
+type RenameMissingColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users rename column missing to years`>,
+	]
 >
+
 type _RenameMissingColumn = Expect<
 	Matches<RenameMissingColumn, SqlParseError<`Unknown column "missing" in altered table`>>
 >
 
-type RenameToExistingColumnName = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table test.users rename column age to id`>
+/** Target name that collides with an existing column is an error. */
+
+type RenameToExistingColumnName = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users rename column age to id`>,
+	]
 >
+
 type _RenameToExistingColumnName = Expect<
 	Matches<RenameToExistingColumnName, SqlParseError<"Duplicate column name: id">>
 >
 
-type RenameTableOk = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename to members`>>
+// --- Rename table ---
+
+/** Rename a table within its schema. */
+
+type RenameTableOk = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users rename to members`>,
+	]
+>
+
 type _RenameTableOk = Expect<
 	Matches<
 		RenameTableOk,
@@ -131,29 +308,107 @@ type _RenameTableOk = Expect<
 	>
 >
 
-type RenameTableDuplicate = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.users rename to posts`>>
+/** New table name that already exists in the schema is an error. */
+
+type RenameTableDuplicate = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.users rename to posts`>,
+	]
+>
+
 type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>>
 
-type AlterMissingNoIfExists = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table test.missing add column age int`>>
+// --- Table resolution ---
+
+/** Alter a missing table without IF EXISTS is an error. */
+
+type AlterMissingNoIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table test.missing add column age int`>,
+	]
+>
+
 type _AlterMissingNoIfExists = Expect<
 	Matches<AlterMissingNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
 >
 
-type AlterMissingIfExists = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table if exists test.missing add column age int`>
->
-type _AlterMissingIfExists = Expect<Matches<AlterMissingIfExists, Db0>>
+/** IF EXISTS skips alter when the table is missing. */
 
-type AlterDefaultSchemaUnqualified = SqlApplyAlterTable<Db0, SqlAlterTable<`alter table users add column age int`>>
+type AlterMissingIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table if exists test.missing add column age int`>,
+	]
+>
+
+type _AlterMissingIfExists = Expect<
+	Matches<
+		AlterMissingIfExists,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "test"
+			readonly schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+/** Unqualified name resolves to default schema; duplicate column is an error. */
+
+type AlterDefaultSchemaUnqualified = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table users add column age int`>,
+	]
+>
+
 type _AlterDefaultSchemaUnqualified = Expect<
 	Matches<AlterDefaultSchemaUnqualified, SqlParseError<"Duplicate column name: age">>
 >
 
-type AlterExplicitSchemaQualified = SqlApplyAlterTable<
-	Db0,
-	SqlAlterTable<`alter table auth.sessions add column expires_at timestamptz`>
+/** Qualified alter on a non-default schema adds a nullable timestamptz column. */
+
+type AlterExplicitSchemaQualified = SqlApplyStatements<
+	SqlDatabase<"test">,
+	[
+		SqlStatement<`create schema test`>,
+		SqlStatement<`create schema auth`>,
+		SqlStatement<`create table test.users (id int not null, age int not null)`>,
+		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatement<`alter table auth.sessions add column expires_at timestamptz`>,
+	]
 >
+
 type _AlterExplicitSchemaQualified = Expect<
 	Matches<
 		AlterExplicitSchemaQualified,
