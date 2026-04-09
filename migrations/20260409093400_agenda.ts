@@ -1,6 +1,6 @@
-import { migration } from "../src/migrations/migration.js"
+import { migration } from "../src/engine/sql-statement.js"
 
-export default migration(import.meta.url)(`
+export default migration(import.meta.url).add(`
     create table if not exists "public"."agenda" (
         "id" "uuid" default "gen_random_uuid"() not null primary key,
         "created_at" timestamp with time zone default "now"() not null,
@@ -10,5 +10,4 @@ export default migration(import.meta.url)(`
         "agenda_blocks" "jsonb",
         "agenda_raw" "text"
     );
-`
-)
+`)

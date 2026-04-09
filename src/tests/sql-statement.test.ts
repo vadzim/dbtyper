@@ -35,11 +35,11 @@ type _XApplyArgAcceptsParsedString = Expect<
 >
 
 type _XDefaultSchemaGetter = Expect<Equal<ReturnType<X["getDefaultSchema"]>, string>>
-type _X4MigrationsGetter = Expect<Equal<ReturnType<X4["getMigrations"]>, string[]>>
+type _X4MigrationsGetter = Expect<Equal<ReturnType<X4["getMigrations"]>, Promise<{ source: string; path: string }[]>>
 
 type _X2 = Expect<Matches<X2, { apply(statement: string & { readonly __sql_parsed__: unknown }): unknown }>>
 type _X3 = Expect<Matches<X3, { apply(statement: string & { readonly __sql_parsed__: unknown }): unknown }>>
-type _X4 = Expect<Matches<X4, { getDefaultSchema(): string; getMigrations(): string[] }>>
+type _X4 = Expect<Matches<X4, { getDefaultSchema(): string; getMigrations(): Promise<{ source: string; path: string }[]> }>>
 
 describe("sql statement", () => {
 	it("should run", () => {})

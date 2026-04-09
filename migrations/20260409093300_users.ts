@@ -1,6 +1,6 @@
-import { migration } from "../src/migrations/migration.js"
+import { migration } from "../src/engine/sql-statement.js"
 
-export default migration(import.meta.url)(`
+export default migration(import.meta.url).add(`
   create table if not exists auth.users (
     id uuid not null,
     email text not null,
@@ -10,5 +10,4 @@ export default migration(import.meta.url)(`
     deleted_at timestamp with time zone null,
     constraint users_pkey primary key (id)
   );
-`
-)
+`)

@@ -31,11 +31,12 @@ type FlattenDBType<DB extends SqlDatabaseLike | SqlParseError<string>> = DB exte
 			readonly kind: "database"
 			readonly defaultSchema: DB["defaultSchema"]
 			readonly schemas: DB["schemas"] extends infer S
-				? {
-						[KS in keyof S]: S[KS] extends infer T
-							? { [KT in keyof T]: T[KT] extends infer U ? { [KU in keyof U]: U[KU] } : never }
-							: never
-					}
-				: never
+				? S // {
+				: // 			[KS in keyof S]: S[KS]
+					// extends infer T
+					// 	? { [KT in keyof T]: T[KT] extends infer U ? { [KU in keyof U]: U[KU] } : never }
+					// 	: never
+					// 	}
+					never
 		}
 	: DB
