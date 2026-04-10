@@ -1,5 +1,15 @@
-export type ReadToken<S extends string> = S extends `${Ws}${infer Rest}`
-	? ReadToken<Rest>
+export type Buffer = { readonly buffer: string }
+export type EmptyBuffer = { readonly buffer: "" }
+export type InitBuffer<S extends string = string> = { readonly buffer: S }
+export type BufferString<B extends Buffer> = B["buffer"]
+
+export type ReadToken<B extends Buffer> =
+	ReadTokenFromString<B["buffer"]> extends [infer Token extends string, infer Rest extends string]
+		? [Token, InitBuffer<Rest>]
+		: never
+
+type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
+	? ReadTokenFromString<Rest>
 	: S extends `"${infer String}"${infer Rest}`
 		? [`"${String}"`, Rest]
 		: S extends `'${infer String}'${infer Rest}`
@@ -10,11 +20,11 @@ export type ReadToken<S extends string> = S extends `${Ws}${infer Rest}`
 					? [String, Rest]
 					: S extends `--${infer Comment}`
 						? Comment extends `${string}\n${infer Rest}`
-							? ReadToken<Rest>
+							? ReadTokenFromString<Rest>
 							: ["", ""]
 						: S extends `/*${infer Comment}`
 							? Comment extends `${string}*/${infer Rest}`
-								? ReadToken<Rest>
+								? ReadTokenFromString<Rest>
 								: ["", ""]
 							: S extends `${infer Head}${infer Rest}`
 								? Head extends StartTokenChar

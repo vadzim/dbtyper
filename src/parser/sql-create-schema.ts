@@ -1,12 +1,12 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	ConsumeStatementEnd,
+	InitParseBuffer,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfNotExists,
-	Trim,
 } from "./sql-parse-primitives.js"
-import type { ReadToken } from "./sql-tokens.js"
+import type { Buffer, ReadToken } from "./sql-tokens.js"
 
 export type SqlCreateSchemaLike = {
 	readonly kind: "create_schema"
@@ -15,63 +15,63 @@ export type SqlCreateSchemaLike = {
 }
 
 export type SqlCreateSchema<S extends string> =
-	ReadToken<S> extends ["create", infer AfterCreate extends string]
-		? ReadToken<AfterCreate> extends ["schema", string]
-			? FinalizeCreateSchema<ParseCreateSchemaTuple<S>>
+	ReadToken<InitParseBuffer<S>> extends ["create", infer AfterCreate extends Buffer]
+		? ReadToken<AfterCreate> extends ["schema", Buffer]
+			? FinalizeCreateSchema<ParseCreateSchemaTuple<InitParseBuffer<S>>>
 			: never
 		: never
 
-type FinalizeCreateSchema<T> = T extends [infer E extends SqlParseError<string>, string]
+type FinalizeCreateSchema<T> = T extends [infer E extends SqlParseError<string>, Buffer]
 	? E
-	: T extends [infer Result, infer Rest extends string]
-		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends string]
-			? ReadToken<Tail> extends ["", string]
+	: T extends [infer Result, infer Rest extends Buffer]
+		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends Buffer]
+			? ReadToken<Tail> extends ["", Buffer]
 				? Result
 				: SqlParseError<"Unable to parse CREATE SCHEMA statement">
 			: SqlParseError<"Unable to parse CREATE SCHEMA statement">
 			: never
 
-type ParseCreateSchemaTuple<S extends string> =
-	ReadExpectedToken<S, "create", "Unable to parse CREATE SCHEMA statement"> extends [
+type ParseCreateSchemaTuple<B extends Buffer> =
+	ReadExpectedToken<B, "create", "Unable to parse CREATE SCHEMA statement"> extends [
 		infer CreateResult,
-		infer RestCreate extends string,
+		infer RestCreate extends Buffer,
 	]
 		? CreateResult extends SqlParseError<string>
 			? [CreateResult, RestCreate]
 			: ReadExpectedToken<RestCreate, "schema", "Unable to parse CREATE SCHEMA statement"> extends [
 					infer SchemaResult,
-					infer RestSchema extends string,
+					infer RestSchema extends Buffer,
 				]
 				? SchemaResult extends SqlParseError<string>
 					? [SchemaResult, RestSchema]
-					: ReadOptionalIfNotExists<RestSchema> extends [true, infer RestFlag extends string]
+					: ReadOptionalIfNotExists<RestSchema> extends [true, infer RestFlag extends Buffer]
 						? ParseCreateSchemaWithFlag<true, RestFlag>
-						: ReadOptionalIfNotExists<RestSchema> extends [false, infer RestFlag extends string]
+						: ReadOptionalIfNotExists<RestSchema> extends [false, infer RestFlag extends Buffer]
 							? ParseCreateSchemaWithFlag<false, RestFlag>
 							: ReadOptionalIfNotExists<RestSchema> extends [
 									  infer FlagError extends SqlParseError<string>,
-									  infer RestFlag extends string,
+									  infer RestFlag extends Buffer,
 								  ]
 								? [FlagError, RestFlag]
-								: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, S]
-				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, S]
-		: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, S]
+								: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, B]
+				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, B]
+		: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, B]
 
-type ParseCreateSchemaWithFlag<IfNotExists extends boolean, S extends string> =
-	ReadExpectedIdentifier<S, "Unable to parse CREATE SCHEMA statement"> extends [
+type ParseCreateSchemaWithFlag<IfNotExists extends boolean, B extends Buffer> =
+	ReadExpectedIdentifier<B, "Unable to parse CREATE SCHEMA statement"> extends [
 		infer NameResult extends string | SqlParseError<string>,
-		infer RestName extends string,
+		infer RestName extends Buffer,
 	]
 		? NameResult extends SqlParseError<string>
 			? [NameResult, RestName]
-			: ConsumeStatementEnd<RestName> extends [true, infer Tail extends string]
+			: ConsumeStatementEnd<RestName> extends [true, infer Tail extends Buffer]
 				? [
 						{
 							readonly kind: "create_schema"
 							readonly name: NameResult
 							readonly ifNotExists: IfNotExists
 						},
-						Trim<Tail>,
+						Tail,
 					]
-				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Trim<RestName>]
-		: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, S]
+				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, RestName]
+		: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, B]

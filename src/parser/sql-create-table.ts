@@ -7,30 +7,32 @@ import type {
 	ValidateConstraintRefs,
 } from "./sql-constraints-fk.js"
 import type {
+	BufferToString,
 	ConsumeStatementEnd,
+	InitParseBuffer,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
-	ReadQualifiedIdentifier,
+	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 	ReadUntilTopLevelComma,
 	StripSqlComments,
 	Trim,
 } from "./sql-parse-primitives.js"
-import type { ReadToken } from "./sql-tokens.js"
+import type { Buffer, ReadToken } from "./sql-tokens.js"
 
 export type SqlCreateTable<S extends string> =
-	ReadToken<S> extends ["create", infer AfterCreate extends string]
-		? ReadToken<AfterCreate> extends ["table", string]
-			? FinalizeCreateTable<ParseCreateTableTuple<S>>
+	ReadToken<InitParseBuffer<S>> extends ["create", infer AfterCreate extends Buffer]
+		? ReadToken<AfterCreate> extends ["table", Buffer]
+			? FinalizeCreateTable<ParseCreateTableTuple<InitParseBuffer<S>>>
 			: never
 		: never
 
-type FinalizeCreateTable<T> = T extends [infer E extends SqlParseError<string>, string]
+type FinalizeCreateTable<T> = T extends [infer E extends SqlParseError<string>, Buffer]
 	? E
-	: T extends [infer StatementResult, infer StatementRest extends string]
-		? ConsumeStatementEnd<StatementRest> extends [true, infer Tail extends string]
-			? ReadToken<Tail> extends ["", string]
+	: T extends [infer StatementResult, infer StatementRest extends Buffer]
+		? ConsumeStatementEnd<StatementRest> extends [true, infer Tail extends Buffer]
+			? ReadToken<Tail> extends ["", Buffer]
 			? SqlCreateTableParsed<StatementResult> extends infer Parsed
 				? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
 					? SqlParseError<E2>
@@ -84,53 +86,56 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 					refs: Refs
 				}
 
-type ParseCreateTableTuple<S extends string> =
-	ReadExpectedToken<S, "create", "Unable to parse CREATE TABLE statement"> extends [
+type ParseCreateTableTuple<B extends Buffer> =
+	ReadExpectedToken<B, "create", "Unable to parse CREATE TABLE statement"> extends [
 		infer CreateResult,
-		infer RestCreate extends string,
+		infer RestCreate extends Buffer,
 	]
 		? CreateResult extends SqlParseError<string>
 			? [CreateResult, RestCreate]
 			: ReadExpectedToken<RestCreate, "table", "Unable to parse CREATE TABLE statement"> extends [
 					infer TableResult,
-					infer RestTable extends string,
+					infer RestTable extends Buffer,
 				]
 				? TableResult extends SqlParseError<string>
 					? [TableResult, RestTable]
 					: ParseCreateTableStatementBody<RestTable>
-				: [SqlParseError<"Unable to parse CREATE TABLE statement">, S]
-		: [SqlParseError<"Unable to parse CREATE TABLE statement">, S]
+				: [SqlParseError<"Unable to parse CREATE TABLE statement">, B]
+		: [SqlParseError<"Unable to parse CREATE TABLE statement">, B]
 
-type ParseCreateTableStatementBody<Body extends string> =
-	ReadOptionalIfNotExists<Body> extends [true, infer RestAfterFlag extends string]
+type ParseCreateTableStatementBody<B extends Buffer> =
+	ReadOptionalIfNotExists<B> extends [true, infer RestAfterFlag extends Buffer]
 		? ParseCreateTableWithFlag<true, RestAfterFlag>
-		: ReadOptionalIfNotExists<Body> extends [false, infer RestAfterFlag extends string]
+		: ReadOptionalIfNotExists<B> extends [false, infer RestAfterFlag extends Buffer]
 			? ParseCreateTableWithFlag<false, RestAfterFlag>
-			: ReadOptionalIfNotExists<Body> extends [
+			: ReadOptionalIfNotExists<B> extends [
 					  infer FlagError extends SqlParseError<string>,
-					  infer RestAfterFlag extends string,
+					  infer RestAfterFlag extends Buffer,
 				  ]
 				? [FlagError, RestAfterFlag]
-				: [SqlParseError<"Unable to parse CREATE TABLE statement">, Body]
+				: [SqlParseError<"Unable to parse CREATE TABLE statement">, B]
 
-type ParseCreateTableWithFlag<IfNotExists extends boolean, S extends string> =
-	ReadQualifiedIdentifier<S> extends [
+type ParseCreateTableWithFlag<IfNotExists extends boolean, B extends Buffer> =
+	ReadQualifiedIdentifierFromBuffer<B> extends [
 		infer Name extends SqlQualifiedIdentifier,
-		infer RestAfterName extends string,
+		infer RestAfterName extends Buffer,
 	]
-		? ReadFirstParenGroup<Trim<RestAfterName>> extends [infer Inner extends string, infer Tail extends string]
-			? ConsumeStatementEnd<Tail> extends [true, infer RestTail extends string]
+		? ReadFirstParenGroup<Trim<BufferToString<RestAfterName>>> extends [
+				infer Inner extends string,
+				infer Tail extends string,
+			]
+			? ConsumeStatementEnd<InitParseBuffer<Tail>> extends [true, infer RestTail extends Buffer]
 				? [
 						{
 							name: Name
 							ifNotExists: IfNotExists
 							body: Inner
 						},
-						Trim<RestTail>,
+						RestTail,
 					]
 				: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
 			: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
-		: [SqlParseError<"Expected a CREATE TABLE statement with a table name">, S]
+		: [SqlParseError<"Expected a CREATE TABLE statement with a table name">, B]
 
 type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends SqlQualifiedIdentifier }
 	? Name

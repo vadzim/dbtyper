@@ -1,5 +1,5 @@
 import type { SqlParseError } from "./sql-parse-error.js"
-import type { ReadToken } from "./sql-tokens.js"
+import type { Buffer, BufferString, InitBuffer, ReadToken } from "./sql-tokens.js"
 
 /** Low-level string / identifier parsing for SQL template literals. */
 
@@ -120,75 +120,93 @@ export type NormalizeSql<S extends string> = Trim<RemoveTrailingSemicolon<StripS
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 
-export type ParseResult<Result, Rest extends string> = [result: Result, rest: Rest]
-export type ParseFailure<Message extends string, Rest extends string> = ParseResult<SqlParseError<Message>, Rest>
-export type ParseOutput<Result, Rest extends string> = ParseResult<Result | SqlParseError<string>, Rest>
-export type ConsumeStatementEnd<S extends string> =
-	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
+export type ParseResult<Result, Rest> = [result: Result, rest: Rest]
+export type ParseFailure<Message extends string, Rest> = ParseResult<SqlParseError<Message>, Rest>
+export type ParseOutput<Result, Rest> = ParseResult<Result | SqlParseError<string>, Rest>
+export type ConsumeStatementEnd<B extends Buffer> =
+	ReadToken<B> extends [infer Token extends string, infer Rest extends Buffer]
 		? Token extends ";"
 			? ParseResult<true, Rest>
 			: Token extends ""
 				? ParseResult<true, Rest>
-				: ParseResult<false, S>
-		: ParseResult<false, S>
+				: ParseResult<false, B>
+		: ParseResult<false, B>
 
-export type ReadExpectedToken<S extends string, Expected extends string, Message extends string> =
-	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
+export type ReadExpectedToken<B extends Buffer, Expected extends string, Message extends string> =
+	ReadToken<B> extends [infer Token extends string, infer Rest extends Buffer]
 		? Token extends Expected
 			? ParseResult<true, Rest>
-			: ParseFailure<Message, S>
-		: ParseFailure<Message, S>
+			: ParseFailure<Message, B>
+		: ParseFailure<Message, B>
 
-export type ReadOptionalToken<S extends string, Expected extends string> =
-	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
+export type ReadOptionalToken<B extends Buffer, Expected extends string> =
+	ReadToken<B> extends [infer Token extends string, infer Rest extends Buffer]
 		? Token extends Expected
 			? ParseResult<true, Rest>
-			: ParseResult<false, S>
-		: ParseResult<false, S>
+			: ParseResult<false, B>
+		: ParseResult<false, B>
 
-export type ReadExpectedIdentifier<S extends string, Message extends string> =
-	ReadIdentifier<Trim<S>> extends [infer Raw extends string, infer Rest extends string]
-		? StripIdentifierQuotes<Raw> extends infer Name extends string
+export type ReadExpectedIdentifier<B extends Buffer, Message extends string> =
+	ReadToken<B> extends [infer Raw extends string, infer Rest extends Buffer]
+		? StripIdentifierQuotes<Trim<Raw>> extends infer Name extends string
 			? Name extends ""
-				? ParseFailure<Message, S>
+				? ParseFailure<Message, B>
 				: ParseResult<Name, Rest>
-			: ParseFailure<Message, S>
-		: ParseFailure<Message, S>
+			: ParseFailure<Message, B>
+		: ParseFailure<Message, B>
 
-export type ReadOptionalIfExists<S extends string> =
-	ReadOptionalToken<S, "if"> extends [infer HasIf extends boolean, infer RestIf extends string]
+export type ReadOptionalIfExists<B extends Buffer> =
+	ReadOptionalToken<B, "if"> extends [infer HasIf extends boolean, infer RestIf extends Buffer]
 		? HasIf extends true
 			? ReadExpectedToken<RestIf, "exists", "Expected EXISTS after IF"> extends [
 					infer ExistsResult,
-					infer RestExists extends string,
+					infer RestExists extends Buffer,
 				]
 				? ExistsResult extends SqlParseError<string>
 					? ParseResult<ExistsResult, RestExists>
 					: ParseResult<true, RestExists>
-				: ParseFailure<"Expected EXISTS after IF", S>
+				: ParseFailure<"Expected EXISTS after IF", B>
 			: ParseResult<false, RestIf>
-		: ParseResult<false, S>
+		: ParseResult<false, B>
 
-export type ReadOptionalIfNotExists<S extends string> =
-	ReadOptionalToken<S, "if"> extends [infer HasIf extends boolean, infer RestIf extends string]
+export type ReadOptionalIfNotExists<B extends Buffer> =
+	ReadOptionalToken<B, "if"> extends [infer HasIf extends boolean, infer RestIf extends Buffer]
 		? HasIf extends true
 			? ReadExpectedToken<RestIf, "not", "Expected NOT after IF"> extends [
 					infer NotResult,
-					infer RestNot extends string,
+					infer RestNot extends Buffer,
 				]
 				? NotResult extends SqlParseError<string>
 					? ParseResult<NotResult, RestNot>
 					: ReadExpectedToken<RestNot, "exists", "Expected EXISTS after IF NOT"> extends [
 								infer ExistsResult,
-								infer RestExists extends string,
+								infer RestExists extends Buffer,
 						  ]
 						? ExistsResult extends SqlParseError<string>
 							? ParseResult<ExistsResult, RestExists>
 							: ParseResult<true, RestExists>
-						: ParseFailure<"Expected EXISTS after IF NOT", S>
-				: ParseFailure<"Expected NOT after IF", S>
+						: ParseFailure<"Expected EXISTS after IF NOT", B>
+				: ParseFailure<"Expected NOT after IF", B>
 			: ParseResult<false, RestIf>
-		: ParseResult<false, S>
+		: ParseResult<false, B>
+
+export type ReadQualifiedIdentifierFromBuffer<B extends Buffer> =
+	ReadExpectedIdentifier<B, "Unable to parse identifier"> extends [
+		infer A extends string,
+		infer RestA extends Buffer,
+	]
+		? ReadOptionalToken<RestA, "."> extends [true, infer RestDot extends Buffer]
+			? ReadExpectedIdentifier<RestDot, "Unable to parse identifier"> extends [
+					infer B2 extends string,
+					infer RestB extends Buffer,
+				]
+				? [readonly [B2, A], RestB]
+				: [readonly [A], RestA]
+			: [readonly [A], RestA]
+		: never
+
+export type BufferToString<B extends Buffer> = BufferString<B>
+export type InitParseBuffer<S extends string> = InitBuffer<S>
 
 export type ReadQualifiedIdentifier<S extends string> =
 	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
