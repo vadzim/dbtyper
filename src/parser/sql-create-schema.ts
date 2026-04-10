@@ -1,7 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	ConsumeStatementEnd,
-	InitParseBuffer,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfNotExists,
@@ -14,21 +13,21 @@ export type SqlCreateSchemaLike = {
 	readonly ifNotExists: boolean
 }
 
-export type SqlCreateSchema<S extends string> =
-	ReadToken<InitParseBuffer<S>> extends ["create", infer AfterCreate extends Buffer]
+export type SqlCreateSchema<B extends Buffer> =
+	ReadToken<B> extends ["create", infer AfterCreate extends Buffer]
 		? ReadToken<AfterCreate> extends ["schema", Buffer]
-			? FinalizeCreateSchema<ParseCreateSchemaTuple<InitParseBuffer<S>>>
+			? FinalizeCreateSchemaTuple<ParseCreateSchemaTuple<B>>
 			: never
 		: never
 
-type FinalizeCreateSchema<T> = T extends [infer E extends SqlParseError<string>, Buffer]
-	? E
+type FinalizeCreateSchemaTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends Buffer]
+	? [E, R]
 	: T extends [infer Result, infer Rest extends Buffer]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends Buffer]
 			? ReadToken<Tail> extends ["", Buffer]
-				? Result
-				: SqlParseError<"Unable to parse CREATE SCHEMA statement">
-			: SqlParseError<"Unable to parse CREATE SCHEMA statement">
+				? [Result, Tail]
+				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Rest]
+			: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Rest]
 		: never
 
 type ParseCreateSchemaTuple<B extends Buffer> =

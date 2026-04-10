@@ -1,7 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	ConsumeStatementEnd,
-	InitParseBuffer,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadQualifiedIdentifierFromBuffer,
@@ -15,21 +14,21 @@ export type SqlDropTableLike = {
 	readonly ifExists: boolean
 }
 
-export type SqlDropTable<S extends string> =
-	ReadToken<InitParseBuffer<S>> extends ["drop", infer AfterDrop extends Buffer]
+export type SqlDropTable<B extends Buffer> =
+	ReadToken<B> extends ["drop", infer AfterDrop extends Buffer]
 		? ReadToken<AfterDrop> extends ["table", Buffer]
-			? FinalizeDropTable<ParseDropTableTuple<InitParseBuffer<S>>>
+			? FinalizeDropTableTuple<ParseDropTableTuple<B>>
 			: never
 		: never
 
-type FinalizeDropTable<T> = T extends [infer E extends SqlParseError<string>, Buffer]
-	? E
+type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends Buffer]
+	? [E, R]
 	: T extends [infer Result, infer Rest extends Buffer]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends Buffer]
 			? ReadToken<Tail> extends ["", Buffer]
-				? Result
-				: SqlParseError<"Unable to parse DROP TABLE statement">
-			: SqlParseError<"Unable to parse DROP TABLE statement">
+				? [Result, Tail]
+				: [SqlParseError<"Unable to parse DROP TABLE statement">, Rest]
+			: [SqlParseError<"Unable to parse DROP TABLE statement">, Rest]
 		: never
 
 type ParseDropTableTuple<B extends Buffer> =

@@ -1,9 +1,9 @@
-import type { SqlAlterTable } from "../parser/sql-alter-table.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type AlterUsers = SqlAlterTable<`alter table users add column age int`>
+type AlterUsers = SqlStatement<`alter table users add column age int`>
 type _AlterUsers = Expect<
 	Matches<
 		AlterUsers,
@@ -21,7 +21,7 @@ type _AlterUsers = Expect<
 	>
 >
 
-type AlterPublicUsers = SqlAlterTable<`alter table public.users add column age int`>
+type AlterPublicUsers = SqlStatement<`alter table public.users add column age int`>
 type _AlterPublicUsers = Expect<
 	Matches<
 		AlterPublicUsers,
@@ -39,7 +39,7 @@ type _AlterPublicUsers = Expect<
 	>
 >
 
-type AlterUsersIfExists = SqlAlterTable<`alter table if exists public.users add column age int`>
+type AlterUsersIfExists = SqlStatement<`alter table if exists public.users add column age int`>
 type _AlterUsersIfExists = Expect<
 	Matches<
 		AlterUsersIfExists,
@@ -57,11 +57,10 @@ type _AlterUsersIfExists = Expect<
 	>
 >
 
-type BadAlter = SqlAlterTable<`alter table public.users`>
+type BadAlter = SqlStatement<`alter table public.users`>
 type _BadAlter = Expect<Matches<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
 
-type AlterAddColumnIfNotExists =
-	SqlAlterTable<`alter table users add column if not exists "display name" text not null`>
+type AlterAddColumnIfNotExists = SqlStatement<`alter table users add column if not exists "display name" text not null`>
 type _AlterAddColumnIfNotExists = Expect<
 	Matches<
 		AlterAddColumnIfNotExists,
@@ -79,7 +78,7 @@ type _AlterAddColumnIfNotExists = Expect<
 	>
 >
 
-type AlterDropColumn = SqlAlterTable<`alter table users drop column if exists age`>
+type AlterDropColumn = SqlStatement<`alter table users drop column if exists age`>
 type _AlterDropColumn = Expect<
 	Matches<
 		AlterDropColumn,
@@ -96,7 +95,7 @@ type _AlterDropColumn = Expect<
 	>
 >
 
-type AlterRenameTo = SqlAlterTable<`alter table users rename to app_users`>
+type AlterRenameTo = SqlStatement<`alter table users rename to app_users`>
 type _AlterRenameTo = Expect<
 	Matches<
 		AlterRenameTo,
@@ -112,7 +111,7 @@ type _AlterRenameTo = Expect<
 	>
 >
 
-type AlterRenameColumn = SqlAlterTable<`alter table users rename column old_name to "new name"`>
+type AlterRenameColumn = SqlStatement<`alter table users rename column old_name to "new name"`>
 type _AlterRenameColumn = Expect<
 	Matches<
 		AlterRenameColumn,
@@ -129,7 +128,7 @@ type _AlterRenameColumn = Expect<
 	>
 >
 
-type UnsupportedAlterAction = SqlAlterTable<`alter table users set schema archive`>
+type UnsupportedAlterAction = SqlStatement<`alter table users set schema archive`>
 type _UnsupportedAlterAction = Expect<Matches<UnsupportedAlterAction, SqlParseError<"Unsupported ALTER TABLE action">>>
 
 describe("sql alter table", () => {

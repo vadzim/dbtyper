@@ -1,9 +1,9 @@
-import type { SqlCreateTable } from "../parser/sql-create-table.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../parser/sql-parse-error.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
-type Users = SqlCreateTable<`
+type Users = SqlStatement<`
 	CREATE TABLE users (
 		id int not null,
 		email varchar(255) not null,
@@ -31,7 +31,7 @@ type _UsersShape = Expect<
 	>
 >
 
-type Posts = SqlCreateTable<"create table posts (id bigint not null, rating decimal(10,2), title text)">
+type Posts = SqlStatement<"create table posts (id bigint not null, rating decimal(10,2), title text)">
 type _PostsShape = Expect<
 	Matches<
 		Posts,
@@ -48,10 +48,10 @@ type _PostsShape = Expect<
 	>
 >
 
-type Invalid = SqlCreateTable<"select * from users">
+type Invalid = SqlStatement<"select * from users">
 type _Invalid = ExpectFalse<Matches<Invalid, { readonly kind: "create_table" }>>
 
-type WithConstraints = SqlCreateTable<`
+type WithConstraints = SqlStatement<`
 	create table accounts (
 		id int not null,
 		email text not null,
@@ -82,7 +82,7 @@ type _WithConstraintsShape = Expect<
 		: false
 >
 
-type BadUniqueRef = SqlCreateTable<`
+type BadUniqueRef = SqlStatement<`
 	create table bad_unique (
 		id int not null,
 		unique (missing_col)
@@ -92,7 +92,7 @@ type _BadUniqueRef = Expect<
 	Matches<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-type BadForeignKeyRef = SqlCreateTable<`
+type BadForeignKeyRef = SqlStatement<`
 	create table bad_fk (
 		id int not null,
 		org_id int,
@@ -103,7 +103,7 @@ type _BadForeignKeyRef = Expect<
 	Matches<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-type WithComments = SqlCreateTable<`
+type WithComments = SqlStatement<`
 	-- one-line comment before statement
 	CREATE TABLE commented_users (
 		id int not null, -- inline one-line comment
@@ -139,7 +139,7 @@ type _WithCommentsShape = Expect<
 		: false
 >
 
-type BadRefWithComments = SqlCreateTable<`
+type BadRefWithComments = SqlStatement<`
 	create table bad_ref_with_comments (
 		id int not null,
 		/* wrong column should still fail */
@@ -150,7 +150,7 @@ type _BadRefWithComments = Expect<
 	Matches<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-type QuotedIdentifiers = SqlCreateTable<`
+type QuotedIdentifiers = SqlStatement<`
 	create table "account users" (
 		"id" int not null,
 		"user name" text,
@@ -183,7 +183,7 @@ type _QuotedIdentifiersShape = Expect<
 		: false
 >
 
-type BadQuotedRef = SqlCreateTable<`
+type BadQuotedRef = SqlStatement<`
 	create table q_bad (
 		"id" int not null,
 		unique ("missing id")
@@ -193,13 +193,13 @@ type _BadQuotedRef = Expect<
 	Matches<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
 >
 
-type _TableNameSimple = Expect<Matches<SqlCreateTable<"create table users (id int)">["name"], readonly ["users"]>>
+type _TableNameSimple = Expect<Matches<SqlStatement<"create table users (id int)">["name"], readonly ["users"]>>
 
 type _TableNameQuoted = Expect<
-	Matches<SqlCreateTable<`create table "account users" ("id" int not null)`>["name"], readonly ["account users"]>
+	Matches<SqlStatement<`create table "account users" ("id" int not null)`>["name"], readonly ["account users"]>
 >
 
-type PostgresTypes = SqlCreateTable<`
+type PostgresTypes = SqlStatement<`
 	create table pg_types (
 		id serial not null,
 		i2 int2 not null,

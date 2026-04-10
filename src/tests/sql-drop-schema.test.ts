@@ -1,8 +1,8 @@
-import type { SqlDropSchema } from "../parser/sql-drop-schema.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
-type DropAuth = SqlDropSchema<`drop schema if exists auth;`>
+type DropAuth = SqlStatement<`drop schema if exists auth;`>
 type _DropAuth = Expect<
 	Matches<
 		DropAuth,
@@ -14,7 +14,7 @@ type _DropAuth = Expect<
 	>
 >
 
-type DropBilling = SqlDropSchema<`drop schema billing`>
+type DropBilling = SqlStatement<`drop schema billing`>
 type _DropBilling = Expect<
 	Matches<
 		DropBilling,
@@ -26,7 +26,7 @@ type _DropBilling = Expect<
 	>
 >
 
-type BadDrop = SqlDropSchema<`drop table auth`>
+type BadDrop = SqlStatement<`drop table auth`>
 type _BadDrop = ExpectFalse<Matches<BadDrop, { readonly kind: "drop_schema" }>>
 
 describe("sql drop schema", () => {

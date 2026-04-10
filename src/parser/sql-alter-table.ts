@@ -2,7 +2,6 @@ import type { SqlParseError } from "./sql-parse-error.js"
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ConsumeStatementEnd,
-	InitParseBuffer,
 	IsBufferEnd,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
@@ -11,24 +10,24 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { Buffer, ReadToken, ReadTokenRaw } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, ReadToken, ReadTokenRaw } from "./sql-tokens.js"
 
-export type SqlAlterTable<S extends string> =
-	ReadToken<InitParseBuffer<S>> extends ["alter", infer AfterAlter extends Buffer]
+export type SqlAlterTable<B extends Buffer> =
+	ReadToken<B> extends ["alter", infer AfterAlter extends Buffer]
 		? ReadToken<AfterAlter> extends ["table", Buffer]
-			? FinalizeAlterTable<ParseAlterTableTuple<InitParseBuffer<S>>>
+			? FinalizeAlterTableTuple<ParseAlterTableTuple<B>>
 			: never
 		: never
 
-type FinalizeAlterTable<T> = T extends [infer E extends SqlParseError<string>, Buffer]
-	? E
+type FinalizeAlterTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends Buffer]
+	? [E, R]
 	: T extends [infer Result, infer Rest extends Buffer]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends Buffer]
 			? ReadToken<Tail> extends ["", Buffer]
-				? Result
-				: SqlParseError<"Expected an ALTER TABLE statement with a table target">
-			: SqlParseError<"Expected an ALTER TABLE statement with a table target">
-		: SqlParseError<"Expected an ALTER TABLE statement with a table target">
+				? [Result, Tail]
+				: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, Rest]
+			: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, Rest]
+		: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, EmptyBuffer]
 
 export type SqlAlterTableLike = {
 	readonly kind: "alter_table"
@@ -255,7 +254,7 @@ type ParseAlterTableWithFlag<IfExists extends boolean, B extends Buffer, Fallbac
 							readonly target: Target
 							readonly action: ActionResult
 						},
-						InitParseBuffer<"">,
+						EmptyBuffer,
 					]
 			: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
 		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]

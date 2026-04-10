@@ -1,8 +1,8 @@
-import type { SqlCreateSchema } from "../parser/sql-create-schema.js"
+import type { SqlStatement } from "../parser/sql-parse-statement.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
-type CreateAuth = SqlCreateSchema<`create schema auth`>
+type CreateAuth = SqlStatement<`create schema auth`>
 type _CreateAuth = Expect<
 	Matches<
 		CreateAuth,
@@ -14,7 +14,7 @@ type _CreateAuth = Expect<
 	>
 >
 
-type CreateAuthIfNotExists = SqlCreateSchema<`create schema if not exists auth`>
+type CreateAuthIfNotExists = SqlStatement<`create schema if not exists auth`>
 type _CreateAuthIfNotExists = Expect<
 	Matches<
 		CreateAuthIfNotExists,
@@ -26,7 +26,7 @@ type _CreateAuthIfNotExists = Expect<
 	>
 >
 
-type CreateAuthSemicolon = SqlCreateSchema<`create schema auth;`>
+type CreateAuthSemicolon = SqlStatement<`create schema auth;`>
 type _CreateAuthSemicolon = Expect<
 	Matches<
 		CreateAuthSemicolon,
@@ -38,7 +38,7 @@ type _CreateAuthSemicolon = Expect<
 	>
 >
 
-type CreateQuoted = SqlCreateSchema<`create schema "my schema"`>
+type CreateQuoted = SqlStatement<`create schema "my schema"`>
 type _CreateQuoted = Expect<
 	Matches<
 		CreateQuoted,
@@ -50,7 +50,7 @@ type _CreateQuoted = Expect<
 	>
 >
 
-type BadStatement = SqlCreateSchema<`create view v as select 1`>
+type BadStatement = SqlStatement<`create view v as select 1`>
 type _BadStatement = ExpectFalse<Matches<BadStatement, { readonly kind: "create_schema" }>>
 
 describe("sql create schema", () => {

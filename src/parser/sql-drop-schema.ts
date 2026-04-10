@@ -1,7 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	ConsumeStatementEnd,
-	InitParseBuffer,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
@@ -14,21 +13,21 @@ export type SqlDropSchemaLike = {
 	readonly ifExists: boolean
 }
 
-export type SqlDropSchema<S extends string> =
-	ReadToken<InitParseBuffer<S>> extends ["drop", infer AfterDrop extends Buffer]
+export type SqlDropSchema<B extends Buffer> =
+	ReadToken<B> extends ["drop", infer AfterDrop extends Buffer]
 		? ReadToken<AfterDrop> extends ["schema", Buffer]
-			? FinalizeDropSchema<ParseDropSchemaTuple<InitParseBuffer<S>>>
+			? FinalizeDropSchemaTuple<ParseDropSchemaTuple<B>>
 			: never
 		: never
 
-type FinalizeDropSchema<T> = T extends [infer E extends SqlParseError<string>, Buffer]
-	? E
+type FinalizeDropSchemaTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends Buffer]
+	? [E, R]
 	: T extends [infer Result, infer Rest extends Buffer]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends Buffer]
 			? ReadToken<Tail> extends ["", Buffer]
-				? Result
-				: SqlParseError<"Unable to parse DROP SCHEMA statement">
-			: SqlParseError<"Unable to parse DROP SCHEMA statement">
+				? [Result, Tail]
+				: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Rest]
+			: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Rest]
 		: never
 
 type ParseDropSchemaTuple<B extends Buffer> =

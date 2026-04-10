@@ -8,7 +8,6 @@ import type {
 } from "./sql-constraints-fk.js"
 import type {
 	ConsumeStatementEnd,
-	InitParseBuffer,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
@@ -18,36 +17,39 @@ import type {
 	StripSqlComments,
 	Trim,
 } from "./sql-parse-primitives.js"
-import type { Buffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, ReadToken } from "./sql-tokens.js"
 
-export type SqlCreateTable<S extends string> =
-	ReadToken<InitParseBuffer<S>> extends ["create", infer AfterCreate extends Buffer]
+export type SqlCreateTable<B extends Buffer> =
+	ReadToken<B> extends ["create", infer AfterCreate extends Buffer]
 		? ReadToken<AfterCreate> extends ["table", Buffer]
-			? FinalizeCreateTable<ParseCreateTableTuple<InitParseBuffer<S>>>
+			? FinalizeCreateTableTuple<ParseCreateTableTuple<B>>
 			: never
 		: never
 
-type FinalizeCreateTable<T> = T extends [infer E extends SqlParseError<string>, Buffer]
-	? E
+type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends Buffer]
+	? [E, R]
 	: T extends [infer StatementResult, infer StatementRest extends Buffer]
 		? ConsumeStatementEnd<StatementRest> extends [true, infer Tail extends Buffer]
 			? ReadToken<Tail> extends ["", Buffer]
 				? SqlCreateTableParsed<StatementResult> extends infer Parsed
 					? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
-						? SqlParseError<E2>
-						: {
-								readonly kind: "create_table"
-								readonly name: SqlCreateTableName<StatementResult>
-								// General rule: types are helpers and must not become a bottleneck.
-								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
-									? { [K in keyof Row]: Row[K] }
-									: never
-								readonly refs: SqlCreateTableParsedRefs<Parsed>
-							}
-					: SqlParseError<"Internal SQL parser error">
-				: SqlParseError<"Expected CREATE TABLE body in parentheses">
-			: SqlParseError<"Expected CREATE TABLE body in parentheses">
-		: SqlParseError<"Internal SQL parser error">
+						? [SqlParseError<E2>, Tail]
+						: [
+								{
+									readonly kind: "create_table"
+									readonly name: SqlCreateTableName<StatementResult>
+									// General rule: types are helpers and must not become a bottleneck.
+									readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
+										? { [K in keyof Row]: Row[K] }
+										: never
+									readonly refs: SqlCreateTableParsedRefs<Parsed>
+								},
+								Tail,
+							]
+					: [SqlParseError<"Internal SQL parser error">, Tail]
+				: [SqlParseError<"Expected CREATE TABLE body in parentheses">, StatementRest]
+			: [SqlParseError<"Expected CREATE TABLE body in parentheses">, StatementRest]
+		: [SqlParseError<"Internal SQL parser error">, EmptyBuffer]
 
 export type SqlCreateTableLike = {
 	readonly kind: "create_table"
