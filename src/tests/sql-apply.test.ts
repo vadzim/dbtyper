@@ -43,13 +43,7 @@ type _ApplyOneStatement = Expect<
 
 type ApplyUnknownStatement = SqlApply<SqlDatabase<"public">, `create view v as select 1; drop table users`>
 type _ApplyUnknownStatement = Expect<
-	Matches<
-		ApplyUnknownStatement,
-		[
-			SqlParseError<"Unknown sql statement">,
-			"drop table users",
-		]
-	>
+	Matches<ApplyUnknownStatement, [SqlParseError<"Unknown sql statement">, "drop table users"]>
 >
 
 describe("sql apply", () => {

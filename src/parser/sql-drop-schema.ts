@@ -39,9 +39,9 @@ type ParseDropSchemaTuple<B extends Buffer> =
 		? DropResult extends SqlParseError<string>
 			? [DropResult, RestDrop]
 			: ReadExpectedToken<RestDrop, "schema", "Unable to parse DROP SCHEMA statement"> extends [
-					infer SchemaResult,
-					infer RestSchema extends Buffer,
-				]
+						infer SchemaResult,
+						infer RestSchema extends Buffer,
+				  ]
 				? SchemaResult extends SqlParseError<string>
 					? [SchemaResult, RestSchema]
 					: ReadOptionalIfExists<RestSchema> extends [true, infer RestFlag extends Buffer]
@@ -49,8 +49,8 @@ type ParseDropSchemaTuple<B extends Buffer> =
 						: ReadOptionalIfExists<RestSchema> extends [false, infer RestFlag extends Buffer]
 							? ParseDropSchemaWithFlag<false, RestFlag>
 							: ReadOptionalIfExists<RestSchema> extends [
-									  infer FlagError extends SqlParseError<string>,
-									  infer RestFlag extends Buffer,
+										infer FlagError extends SqlParseError<string>,
+										infer RestFlag extends Buffer,
 								  ]
 								? [FlagError, RestFlag]
 								: [SqlParseError<"Unable to parse DROP SCHEMA statement">, B]

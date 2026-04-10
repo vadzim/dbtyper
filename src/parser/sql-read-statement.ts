@@ -7,10 +7,7 @@ export type SplitFirstSqlStatement<S extends string> = S extends `${infer Head};
 	: [statement: Trim<S>, rest: ""]
 
 export type SqlReadStatement<S extends string> =
-	SplitFirstSqlStatement<S> extends [
-		infer StatementSql extends string,
-		infer Rest extends string,
-	]
+	SplitFirstSqlStatement<S> extends [infer StatementSql extends string, infer Rest extends string]
 		? [SqlStatement<StatementSql>] extends [infer Parsed]
 			? Parsed extends SqlParseError<string>
 				? [Parsed, Rest]

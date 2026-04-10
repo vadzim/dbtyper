@@ -1,10 +1,15 @@
-export type Buffer = { readonly buffer: string }
-export type EmptyBuffer = { readonly buffer: "" }
-export type InitBuffer<S extends string = string> = { readonly buffer: S }
-export type BufferString<B extends Buffer> = B["buffer"]
+export type Buffer = { readonly __buffer__: string }
+export type EmptyBuffer = { readonly __buffer__: "" }
+export type InitBuffer<S extends string = string> = { readonly __buffer__: S }
+export type BufferPayload<B extends Buffer> = B["__buffer__"]
 
 export type ReadToken<B extends Buffer> =
-	ReadTokenFromString<B["buffer"]> extends [infer Token extends string, infer Rest extends string]
+	ReadTokenFromString<B["__buffer__"]> extends [infer Token extends string, infer Rest extends string]
+		? [Token, InitBuffer<Rest>]
+		: never
+
+export type ReadTokenRaw<B extends Buffer> =
+	ReadTokenRawFromString<B["__buffer__"]> extends [infer Token extends string, infer Rest extends string]
 		? [Token, InitBuffer<Rest>]
 		: never
 
@@ -33,6 +38,35 @@ type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 											infer Rest extends string,
 										]
 										? [CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Rest]
+										: never
+									: [Head, Rest]
+								: [S, ""]
+
+type ReadTokenRawFromString<S extends string> = S extends `${Ws}${infer Rest}`
+	? ReadTokenRawFromString<Rest>
+	: S extends `"${infer String}"${infer Rest}`
+		? [`"${String}"`, Rest]
+		: S extends `'${infer String}'${infer Rest}`
+			? [`'${String}'`, Rest]
+			: S extends `\`${infer String}\`${infer Rest}`
+				? [`\`${String}\``, Rest]
+				: S extends `[${infer String}]${infer Rest}`
+					? [`[${String}]`, Rest]
+					: S extends `--${infer Comment}`
+						? Comment extends `${string}\n${infer Rest}`
+							? ReadTokenRawFromString<Rest>
+							: ["", ""]
+						: S extends `/*${infer Comment}`
+							? Comment extends `${string}*/${infer Rest}`
+								? ReadTokenRawFromString<Rest>
+								: ["", ""]
+							: S extends `${infer Head}${infer Rest}`
+								? Head extends StartTokenChar
+									? OptimizedBySpaceReadTokenChars<Rest> extends [
+											infer Word extends string,
+											infer Rest extends string,
+										]
+										? [`${Head}${Word}`, Rest]
 										: never
 									: [Head, Rest]
 								: [S, ""]

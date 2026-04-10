@@ -1,5 +1,5 @@
 import type { SqlParseError } from "./sql-parse-error.js"
-import type { Buffer, BufferString, InitBuffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, BufferPayload, InitBuffer, ReadToken } from "./sql-tokens.js"
 
 /** Low-level string / identifier parsing for SQL template literals. */
 
@@ -80,43 +80,36 @@ export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"`
 			? X
 			: S
 
-type FindFirstOpenParen<S extends string> = S extends `${infer C}${infer Rest}`
-	? C extends "("
-		? Rest
-		: FindFirstOpenParen<Rest>
-	: never
-type ReadParenContent<
+type FindFirstOpenParen<B extends Buffer> =
+	BufferPayload<B> extends `${infer C}${infer Rest}`
+		? C extends "("
+			? InitBuffer<Rest>
+			: FindFirstOpenParen<InitBuffer<Rest>>
+		: never
+
+type ReadParenContentString<
 	S extends string,
 	Depth extends 0[] = [],
 	Acc extends string = "",
 > = S extends `${infer C}${infer Rest}`
 	? C extends "("
-		? ReadParenContent<Rest, [0, ...Depth], `${Acc}${C}`>
+		? ReadParenContentString<Rest, [0, ...Depth], `${Acc}${C}`>
 		: C extends ")"
 			? Depth extends [0, ...infer Tail extends 0[]]
-				? ReadParenContent<Rest, Tail, `${Acc}${C}`>
+				? ReadParenContentString<Rest, Tail, `${Acc}${C}`>
 				: [Acc, Rest]
-			: ReadParenContent<Rest, Depth, `${Acc}${C}`>
+			: ReadParenContentString<Rest, Depth, `${Acc}${C}`>
 	: never
 
+export type ReadFirstParenGroup<B extends Buffer> =
+	FindFirstOpenParen<B> extends infer Rest extends Buffer
+		? ReadParenContentString<BufferPayload<Rest>> extends [infer Group extends string, infer Tail extends string]
+			? [Group, InitBuffer<Tail>]
+			: never
+		: never
+
 export type FirstParenGroup<S extends string> =
-	FindFirstOpenParen<S> extends infer Rest extends string
-		? ReadParenContent<Rest> extends [infer Group extends string, string]
-			? Group
-			: never
-		: never
-
-export type ReadFirstParenGroup<S extends string> =
-	FindFirstOpenParen<S> extends infer Rest extends string
-		? ReadParenContent<Rest> extends [
-				infer Group extends string,
-				infer Tail extends string,
-			]
-			? [Group, Tail]
-			: never
-		: never
-
-export type NormalizeSql<S extends string> = Trim<RemoveTrailingSemicolon<StripSqlComments<S>>>
+	ReadFirstParenGroup<InitBuffer<S>> extends [infer Group extends string, Buffer] ? Group : never
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 
@@ -191,10 +184,7 @@ export type ReadOptionalIfNotExists<B extends Buffer> =
 		: ParseResult<false, B>
 
 export type ReadQualifiedIdentifierFromBuffer<B extends Buffer> =
-	ReadExpectedIdentifier<B, "Unable to parse identifier"> extends [
-		infer A extends string,
-		infer RestA extends Buffer,
-	]
+	ReadExpectedIdentifier<B, "Unable to parse identifier"> extends [infer A extends string, infer RestA extends Buffer]
 		? ReadOptionalToken<RestA, "."> extends [true, infer RestDot extends Buffer]
 			? ReadExpectedIdentifier<RestDot, "Unable to parse identifier"> extends [
 					infer B2 extends string,
@@ -205,8 +195,8 @@ export type ReadQualifiedIdentifierFromBuffer<B extends Buffer> =
 			: [readonly [A], RestA]
 		: never
 
-export type BufferToString<B extends Buffer> = BufferString<B>
 export type InitParseBuffer<S extends string> = InitBuffer<S>
+export type IsBufferEnd<B extends Buffer> = ReadToken<B> extends ["", Buffer] ? true : false
 
 export type ReadQualifiedIdentifier<S extends string> =
 	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]

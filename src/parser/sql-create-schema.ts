@@ -29,7 +29,7 @@ type FinalizeCreateSchema<T> = T extends [infer E extends SqlParseError<string>,
 				? Result
 				: SqlParseError<"Unable to parse CREATE SCHEMA statement">
 			: SqlParseError<"Unable to parse CREATE SCHEMA statement">
-			: never
+		: never
 
 type ParseCreateSchemaTuple<B extends Buffer> =
 	ReadExpectedToken<B, "create", "Unable to parse CREATE SCHEMA statement"> extends [
@@ -39,9 +39,9 @@ type ParseCreateSchemaTuple<B extends Buffer> =
 		? CreateResult extends SqlParseError<string>
 			? [CreateResult, RestCreate]
 			: ReadExpectedToken<RestCreate, "schema", "Unable to parse CREATE SCHEMA statement"> extends [
-					infer SchemaResult,
-					infer RestSchema extends Buffer,
-				]
+						infer SchemaResult,
+						infer RestSchema extends Buffer,
+				  ]
 				? SchemaResult extends SqlParseError<string>
 					? [SchemaResult, RestSchema]
 					: ReadOptionalIfNotExists<RestSchema> extends [true, infer RestFlag extends Buffer]
@@ -49,8 +49,8 @@ type ParseCreateSchemaTuple<B extends Buffer> =
 						: ReadOptionalIfNotExists<RestSchema> extends [false, infer RestFlag extends Buffer]
 							? ParseCreateSchemaWithFlag<false, RestFlag>
 							: ReadOptionalIfNotExists<RestSchema> extends [
-									  infer FlagError extends SqlParseError<string>,
-									  infer RestFlag extends Buffer,
+										infer FlagError extends SqlParseError<string>,
+										infer RestFlag extends Buffer,
 								  ]
 								? [FlagError, RestFlag]
 								: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, B]

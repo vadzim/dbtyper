@@ -40,9 +40,9 @@ type ParseDropTableTuple<B extends Buffer> =
 		? DropResult extends SqlParseError<string>
 			? [DropResult, RestDrop]
 			: ReadExpectedToken<RestDrop, "table", "Unable to parse DROP TABLE statement"> extends [
-					infer TableResult,
-					infer RestTable extends Buffer,
-				]
+						infer TableResult,
+						infer RestTable extends Buffer,
+				  ]
 				? TableResult extends SqlParseError<string>
 					? [TableResult, RestTable]
 					: ReadOptionalIfExists<RestTable> extends [true, infer RestFlag extends Buffer]
@@ -50,8 +50,8 @@ type ParseDropTableTuple<B extends Buffer> =
 						: ReadOptionalIfExists<RestTable> extends [false, infer RestFlag extends Buffer]
 							? ParseDropTableWithFlag<false, RestFlag>
 							: ReadOptionalIfExists<RestTable> extends [
-									  infer FlagError extends SqlParseError<string>,
-									  infer RestFlag extends Buffer,
+										infer FlagError extends SqlParseError<string>,
+										infer RestFlag extends Buffer,
 								  ]
 								? [FlagError, RestFlag]
 								: [SqlParseError<"Unable to parse DROP TABLE statement">, B]
@@ -59,7 +59,10 @@ type ParseDropTableTuple<B extends Buffer> =
 		: [SqlParseError<"Unable to parse DROP TABLE statement">, B]
 
 type ParseDropTableWithFlag<IfExists extends boolean, B extends Buffer> =
-	ReadQualifiedIdentifierFromBuffer<B> extends [infer Name extends SqlQualifiedIdentifier, infer RestName extends Buffer]
+	ReadQualifiedIdentifierFromBuffer<B> extends [
+		infer Name extends SqlQualifiedIdentifier,
+		infer RestName extends Buffer,
+	]
 		? ConsumeStatementEnd<RestName> extends [true, infer Tail extends Buffer]
 			? [
 					{

@@ -1,18 +1,17 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type { AddColumn } from "./sql-column.js"
 import type {
-	BufferToString,
 	ConsumeStatementEnd,
 	InitParseBuffer,
+	IsBufferEnd,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadOptionalIfNotExists,
 	ReadExpectedIdentifier,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
-	Trim,
 } from "./sql-parse-primitives.js"
-import type { Buffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, ReadToken, ReadTokenRaw } from "./sql-tokens.js"
 
 export type SqlAlterTable<S extends string> =
 	ReadToken<InitParseBuffer<S>> extends ["alter", infer AfterAlter extends Buffer]
@@ -68,20 +67,21 @@ type SqlAlterTableAction =
 	| SqlAlterTableActionRenameTo
 	| SqlAlterTableActionRenameColumn
 
-type ParseIdentifierToken<B extends Buffer> = ReadExpectedIdentifier<B, "Unable to parse identifier"> extends [
-	infer Name extends string,
-	infer Rest extends Buffer,
-]
-	? [Name, Rest]
-	: never
+type ParseIdentifierToken<B extends Buffer> =
+	ReadExpectedIdentifier<B, "Unable to parse identifier"> extends [
+		infer Name extends string,
+		infer Rest extends Buffer,
+	]
+		? [Name, Rest]
+		: never
 
 type ParseAlterAction<B extends Buffer> =
-	Trim<BufferToString<B>> extends ""
+	IsBufferEnd<B> extends true
 		? SqlParseError<"Expected an ALTER TABLE action">
 		: ReadExpectedToken<B, "add", "Expected an ALTER TABLE action"> extends [
-				infer AddResult,
-				infer AddRest extends Buffer,
-			]
+					infer AddResult,
+					infer AddRest extends Buffer,
+			  ]
 			? AddResult extends SqlParseError<string>
 				? ReadExpectedToken<B, "drop", "Expected an ALTER TABLE action"> extends [
 						infer DropResult,
@@ -122,10 +122,7 @@ type ParseAlterActionDrop<B extends Buffer> =
 		: SqlParseError<"Unsupported ALTER TABLE action">
 
 type ParseAlterActionRename<B extends Buffer> =
-	ReadExpectedToken<B, "to", "Unsupported ALTER TABLE action"> extends [
-		infer ToResult,
-		infer ToTail extends Buffer,
-	]
+	ReadExpectedToken<B, "to", "Unsupported ALTER TABLE action"> extends [infer ToResult, infer ToTail extends Buffer]
 		? ToResult extends SqlParseError<string>
 			? ReadExpectedToken<B, "column", "Unsupported ALTER TABLE action"> extends [
 					infer ColumnResult,
@@ -148,9 +145,13 @@ type ParseAlterActionAddColumn<B extends Buffer> =
 				: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends Buffer> =
-	Trim<BufferToString<Rest>> extends ""
+	IsBufferEnd<Rest> extends true
 		? SqlParseError<"Expected a column definition in ALTER TABLE ADD COLUMN">
-		: AddColumn<BufferToString<Rest>, {}, never> extends infer Added extends { row: unknown; names: string; error: unknown }
+		: AddColumn<BufferToRawSql<Rest>, {}, never> extends infer Added extends {
+					row: unknown
+					names: string
+					error: unknown
+			  }
 			? [Added["error"]] extends [never]
 				? Added["row"] extends Record<Added["names"], infer Definition>
 					? {
@@ -174,7 +175,7 @@ type ParseAlterActionDropColumn<B extends Buffer> =
 
 type ParseAlterActionDropColumnWithFlag<IfExists extends boolean, Rest extends Buffer> =
 	ParseIdentifierToken<Rest> extends [infer Name extends string, infer Tail extends Buffer]
-		? Trim<BufferToString<Tail>> extends ""
+		? IsBufferEnd<Tail> extends true
 			? {
 					readonly kind: "drop_column"
 					readonly ifExists: IfExists
@@ -185,7 +186,7 @@ type ParseAlterActionDropColumnWithFlag<IfExists extends boolean, Rest extends B
 
 type ParseAlterActionRenameTo<B extends Buffer> =
 	ParseIdentifierToken<B> extends [infer Name extends string, infer Tail extends Buffer]
-		? Trim<BufferToString<Tail>> extends ""
+		? IsBufferEnd<Tail> extends true
 			? {
 					readonly kind: "rename_to"
 					readonly name: Name
@@ -202,7 +203,7 @@ type ParseAlterActionRenameColumn<B extends Buffer> =
 			? ToTokenResult extends SqlParseError<string>
 				? SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 				: ParseIdentifierToken<Tail2> extends [infer To extends string, infer Tail3 extends Buffer]
-					? Trim<BufferToString<Tail3>> extends ""
+					? IsBufferEnd<Tail3> extends true
 						? {
 								readonly kind: "rename_column"
 								readonly from: From
@@ -221,9 +222,9 @@ type ParseAlterTableTuple<B extends Buffer> =
 		? AlterResult extends SqlParseError<string>
 			? [AlterResult, RestAlter]
 			: ReadExpectedToken<RestAlter, "table", "Expected an ALTER TABLE statement with a table target"> extends [
-					infer TableResult,
-					infer RestTable extends Buffer,
-				]
+						infer TableResult,
+						infer RestTable extends Buffer,
+				  ]
 				? TableResult extends SqlParseError<string>
 					? [TableResult, RestTable]
 					: ReadOptionalIfExists<RestTable> extends [true, infer RestFlag extends Buffer]
@@ -231,8 +232,8 @@ type ParseAlterTableTuple<B extends Buffer> =
 						: ReadOptionalIfExists<RestTable> extends [false, infer RestFlag extends Buffer]
 							? ParseAlterTableWithFlag<false, RestFlag, B>
 							: ReadOptionalIfExists<RestTable> extends [
-									  infer FlagError extends SqlParseError<string>,
-									  infer RestFlag extends Buffer,
+										infer FlagError extends SqlParseError<string>,
+										infer RestFlag extends Buffer,
 								  ]
 								? [FlagError, RestFlag]
 								: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]
@@ -258,3 +259,20 @@ type ParseAlterTableWithFlag<IfExists extends boolean, B extends Buffer, Fallbac
 					]
 			: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
 		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
+
+type AppendRawToken<Acc extends string, Token extends string> = Acc extends ""
+	? Token
+	: Token extends "," | "." | ")" | ";" | "]"
+		? `${Acc}${Token}`
+		: Token extends "(" | "["
+			? `${Acc}${Token}`
+			: Acc extends `${string}(` | `${string}.` | `${string}[`
+				? `${Acc}${Token}`
+				: `${Acc} ${Token}`
+
+type BufferToRawSql<B extends Buffer, Acc extends string = ""> =
+	ReadTokenRaw<B> extends [infer Token extends string, infer Rest extends Buffer]
+		? Token extends ""
+			? Acc
+			: BufferToRawSql<Rest, AppendRawToken<Acc, Token>>
+		: Acc
