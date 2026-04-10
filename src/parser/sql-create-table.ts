@@ -7,35 +7,44 @@ import type {
 	ValidateConstraintRefs,
 } from "./sql-constraints-fk.js"
 import type {
-	NormalizeSql,
+	IsTokenRestEmpty,
+	ReadExpectedToken,
+	ReadFirstParenGroup,
+	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifier,
 	SqlQualifiedIdentifier,
 	ReadUntilTopLevelComma,
-	StripLeadingIfNotExists,
-	ToLower,
+	StripSqlComments,
 	Trim,
 } from "./sql-parse-primitives.js"
+import type { ReadToken } from "./sql-tokens.js"
 
 export type SqlCreateTable<S extends string> =
-	ToLower<NormalizeSql<S>> extends `create table ${infer Body extends string}`
-		? ParseCreateTableStatement<Body> extends infer Statement
-			? Statement extends SqlParseError<infer E>
-				? SqlParseError<E>
-				: SqlCreateTableParsed<Statement> extends infer Parsed
-					? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E>
-						? SqlParseError<E>
-						: {
-								readonly kind: "create_table"
-								readonly name: SqlCreateTableName<Statement>
-								// General rule: types are helpers and must not become a bottleneck.
-								readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
-									? { [K in keyof Row]: Row[K] }
-									: never
-								readonly refs: SqlCreateTableParsedRefs<Parsed>
-							}
-					: SqlParseError<"Internal SQL parser error">
-			: SqlParseError<"Internal SQL parser error">
+	ReadToken<S> extends ["create", infer AfterCreate extends string]
+		? ReadToken<AfterCreate> extends ["table", string]
+			? FinalizeCreateTable<ParseCreateTableTuple<S>>
+			: never
 		: never
+
+type FinalizeCreateTable<T> = T extends [infer E extends SqlParseError<string>, string]
+	? E
+	: T extends [infer StatementResult, infer StatementRest extends string]
+		? IsTokenRestEmpty<StatementRest> extends true
+			? SqlCreateTableParsed<StatementResult> extends infer Parsed
+				? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
+					? SqlParseError<E2>
+					: {
+							readonly kind: "create_table"
+							readonly name: SqlCreateTableName<StatementResult>
+							// General rule: types are helpers and must not become a bottleneck.
+							readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
+								? { [K in keyof Row]: Row[K] }
+								: never
+							readonly refs: SqlCreateTableParsedRefs<Parsed>
+						}
+				: SqlParseError<"Internal SQL parser error">
+			: SqlParseError<"Expected CREATE TABLE body in parentheses">
+		: SqlParseError<"Internal SQL parser error">
 
 export type SqlCreateTableLike = {
 	readonly kind: "create_table"
@@ -73,21 +82,53 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 					refs: Refs
 				}
 
-type ParseCreateTableStatement<Body extends string> =
-	StripLeadingIfNotExists<Body> extends [infer IfNotExists extends boolean, infer RestAfterFlag extends string]
-		? ReadQualifiedIdentifier<RestAfterFlag> extends [
-				infer Name extends SqlQualifiedIdentifier,
-				infer RestAfterName extends string,
-			]
-			? Trim<RestAfterName> extends `(${infer Inner})`
-				? {
-						name: Name
-						ifNotExists: IfNotExists
-						body: Inner
-					}
-				: SqlParseError<"Expected CREATE TABLE body in parentheses">
-			: SqlParseError<"Expected a CREATE TABLE statement with a table name">
-		: SqlParseError<"Unable to parse CREATE TABLE statement">
+type ParseCreateTableTuple<S extends string> =
+	ReadExpectedToken<S, "create", "Unable to parse CREATE TABLE statement"> extends [
+		infer CreateResult,
+		infer RestCreate extends string,
+	]
+		? CreateResult extends SqlParseError<string>
+			? [CreateResult, RestCreate]
+			: ReadExpectedToken<RestCreate, "table", "Unable to parse CREATE TABLE statement"> extends [
+					infer TableResult,
+					infer RestTable extends string,
+				]
+				? TableResult extends SqlParseError<string>
+					? [TableResult, RestTable]
+					: ParseCreateTableStatementBody<RestTable>
+				: [SqlParseError<"Unable to parse CREATE TABLE statement">, S]
+		: [SqlParseError<"Unable to parse CREATE TABLE statement">, S]
+
+type ParseCreateTableStatementBody<Body extends string> =
+	ReadOptionalIfNotExists<Body> extends [true, infer RestAfterFlag extends string]
+		? ParseCreateTableWithFlag<true, RestAfterFlag>
+		: ReadOptionalIfNotExists<Body> extends [false, infer RestAfterFlag extends string]
+			? ParseCreateTableWithFlag<false, RestAfterFlag>
+			: ReadOptionalIfNotExists<Body> extends [
+					  infer FlagError extends SqlParseError<string>,
+					  infer RestAfterFlag extends string,
+				  ]
+				? [FlagError, RestAfterFlag]
+				: [SqlParseError<"Unable to parse CREATE TABLE statement">, Body]
+
+type ParseCreateTableWithFlag<IfNotExists extends boolean, S extends string> =
+	ReadQualifiedIdentifier<S> extends [
+		infer Name extends SqlQualifiedIdentifier,
+		infer RestAfterName extends string,
+	]
+		? ReadFirstParenGroup<Trim<RestAfterName>> extends [infer Inner extends string, infer Tail extends string]
+			? IsTokenRestEmpty<Tail> extends true
+				? [
+						{
+							name: Name
+							ifNotExists: IfNotExists
+							body: Inner
+						},
+						"",
+					]
+				: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
+			: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
+		: [SqlParseError<"Expected a CREATE TABLE statement with a table name">, S]
 
 type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends SqlQualifiedIdentifier }
 	? Name
@@ -96,7 +137,7 @@ type SqlCreateTableName<Statement> = Statement extends { name: infer Name extend
 type SqlCreateTableParsed<Statement> = Statement extends {
 	body: infer Body extends string
 }
-	? ParseCreateBody<Body, {}, never> extends infer Parsed extends {
+	? ParseCreateBody<StripSqlComments<Body>, {}, never> extends infer Parsed extends {
 			row: unknown
 			error: unknown
 			refs: ForeignRefMeta

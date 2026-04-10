@@ -76,6 +76,18 @@ type _ParseUnknown = Expect<Matches<ParseUnknown, SqlParseError<"Unknown sql sta
 type ParseInvalidCreate = SqlStatement<`create table broken (id)`>
 type _ParseInvalidCreate = Expect<Matches<ParseInvalidCreate, SqlParseError<"Invalid column definition: id">>>
 
+type ParseInvalidKeywordBoundary = SqlStatement<`createx table users (id int)`>
+type _ParseInvalidKeywordBoundary = Expect<Matches<ParseInvalidKeywordBoundary, SqlParseError<"Unknown sql statement">>>
+
+type ParseInvalidDropBoundary = SqlStatement<`dropx table users`>
+type _ParseInvalidDropBoundary = Expect<Matches<ParseInvalidDropBoundary, SqlParseError<"Unknown sql statement">>>
+
+type ParseInvalidIfNot = SqlStatement<`create schema if not billing`>
+type _ParseInvalidIfNot = Expect<Matches<ParseInvalidIfNot, SqlParseError<"Expected EXISTS after IF NOT">>>
+
+type ParseTrailingTokens = SqlStatement<`drop table users extra`>
+type _ParseTrailingTokens = Expect<Matches<ParseTrailingTokens, SqlParseError<"Unable to parse DROP TABLE statement">>>
+
 describe("sql parse migration", () => {
 	it("should run", () => {})
 })

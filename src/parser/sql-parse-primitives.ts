@@ -1,3 +1,6 @@
+import type { SqlParseError } from "./sql-parse-error.js"
+import type { ReadToken } from "./sql-tokens.js"
+
 /** Low-level string / identifier parsing for SQL template literals. */
 
 export type Ws = " " | "\n" | "\t" | "\r"
@@ -46,7 +49,7 @@ export type ReadIdentifier<S extends string> =
 				: ReadWord<Trim<S>>
 
 export type ReadWord<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends Ws | "," | "(" | ")" | "."
+	? C extends Ws | "," | "(" | ")" | "." | ";"
 		? [Acc, `${C}${Rest}`]
 		: ReadWord<Rest, `${Acc}${C}`>
 	: [Acc, ""]
@@ -103,15 +106,89 @@ export type FirstParenGroup<S extends string> =
 			: never
 		: never
 
+export type ReadFirstParenGroup<S extends string> =
+	FindFirstOpenParen<S> extends infer Rest extends string
+		? ReadParenContent<Rest> extends [
+				infer Group extends string,
+				infer Tail extends string,
+			]
+			? [Group, Tail]
+			: never
+		: never
+
 export type NormalizeSql<S extends string> = Trim<RemoveTrailingSemicolon<StripSqlComments<S>>>
 
-export type StripLeadingIfExists<S extends string> =
-	Trim<S> extends `if exists ${infer Rest}` ? [true, Trim<Rest>] : [false, Trim<S>]
-
-export type StripLeadingIfNotExists<S extends string> =
-	Trim<S> extends `if not exists ${infer Rest}` ? [true, Trim<Rest>] : [false, Trim<S>]
-
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
+
+export type ParseResult<Result, Rest extends string> = [result: Result, rest: Rest]
+export type ParseFailure<Message extends string, Rest extends string> = ParseResult<SqlParseError<Message>, Rest>
+export type ParseOutput<Result, Rest extends string> = ParseResult<Result | SqlParseError<string>, Rest>
+export type IsTokenRestEmpty<S extends string> =
+	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
+		? Token extends ""
+			? true
+			: Token extends ";"
+				? IsTokenRestEmpty<Rest>
+				: false
+		: false
+
+export type ReadExpectedToken<S extends string, Expected extends string, Message extends string> =
+	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
+		? Token extends Expected
+			? ParseResult<true, Rest>
+			: ParseFailure<Message, S>
+		: ParseFailure<Message, S>
+
+export type ReadOptionalToken<S extends string, Expected extends string> =
+	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
+		? Token extends Expected
+			? ParseResult<true, Rest>
+			: ParseResult<false, S>
+		: ParseResult<false, S>
+
+export type ReadExpectedIdentifier<S extends string, Message extends string> =
+	ReadIdentifier<Trim<S>> extends [infer Raw extends string, infer Rest extends string]
+		? StripIdentifierQuotes<Raw> extends infer Name extends string
+			? Name extends ""
+				? ParseFailure<Message, S>
+				: ParseResult<Name, Rest>
+			: ParseFailure<Message, S>
+		: ParseFailure<Message, S>
+
+export type ReadOptionalIfExists<S extends string> =
+	ReadOptionalToken<S, "if"> extends [infer HasIf extends boolean, infer RestIf extends string]
+		? HasIf extends true
+			? ReadExpectedToken<RestIf, "exists", "Expected EXISTS after IF"> extends [
+					infer ExistsResult,
+					infer RestExists extends string,
+				]
+				? ExistsResult extends SqlParseError<string>
+					? ParseResult<ExistsResult, RestExists>
+					: ParseResult<true, RestExists>
+				: ParseFailure<"Expected EXISTS after IF", S>
+			: ParseResult<false, RestIf>
+		: ParseResult<false, S>
+
+export type ReadOptionalIfNotExists<S extends string> =
+	ReadOptionalToken<S, "if"> extends [infer HasIf extends boolean, infer RestIf extends string]
+		? HasIf extends true
+			? ReadExpectedToken<RestIf, "not", "Expected NOT after IF"> extends [
+					infer NotResult,
+					infer RestNot extends string,
+				]
+				? NotResult extends SqlParseError<string>
+					? ParseResult<NotResult, RestNot>
+					: ReadExpectedToken<RestNot, "exists", "Expected EXISTS after IF NOT"> extends [
+								infer ExistsResult,
+								infer RestExists extends string,
+						  ]
+						? ExistsResult extends SqlParseError<string>
+							? ParseResult<ExistsResult, RestExists>
+							: ParseResult<true, RestExists>
+						: ParseFailure<"Expected EXISTS after IF NOT", S>
+				: ParseFailure<"Expected NOT after IF", S>
+			: ParseResult<false, RestIf>
+		: ParseResult<false, S>
 
 export type ReadQualifiedIdentifier<S extends string> =
 	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
