@@ -72,6 +72,11 @@ export type ReadUntilTopLevelComma<
 				: ReadUntilTopLevelComma<Rest, Depth, `${Acc}${C}`>
 	: [Acc, ""]
 
+export type ReadUntilTopLevelCommaBuffer<B extends Buffer> =
+	ReadUntilTopLevelComma<BufferPayload<B>> extends [infer Head extends string, infer Tail extends string]
+		? [head: InitBuffer<Head>, tail: InitBuffer<Tail>]
+		: never
+
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"`
 	? X
 	: S extends `\`${infer X}\``
@@ -104,12 +109,16 @@ type ReadParenContentString<
 export type ReadFirstParenGroup<B extends Buffer> =
 	FindFirstOpenParen<B> extends infer Rest extends Buffer
 		? ReadParenContentString<BufferPayload<Rest>> extends [infer Group extends string, infer Tail extends string]
-			? [Group, InitBuffer<Tail>]
+			? [InitBuffer<Group>, InitBuffer<Tail>]
 			: never
 		: never
 
 export type FirstParenGroup<S extends string> =
-	ReadFirstParenGroup<InitBuffer<S>> extends [infer Group extends string, Buffer] ? Group : never
+	ReadFirstParenGroup<InitBuffer<S>> extends [infer Inner extends Buffer, infer _ extends Buffer]
+		? Inner extends InitBuffer<infer G>
+			? G
+			: never
+		: never
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 

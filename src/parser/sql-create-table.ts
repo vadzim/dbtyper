@@ -12,10 +12,9 @@ import type {
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
+	ReadUntilTopLevelCommaBuffer,
 	SqlQualifiedIdentifier,
-	ReadUntilTopLevelComma,
 	StripSqlComments,
-	Trim,
 } from "./sql-parse-primitives.js"
 import type { Buffer, EmptyBuffer, InitBuffer, ReadToken } from "./sql-tokens.js"
 
@@ -60,19 +59,25 @@ export type SqlCreateTableLike = {
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
 
-type ParseCreateBody<S extends string, Row, Names extends string, Error = never, Refs extends ForeignRefMeta = never> =
-	Trim<S> extends ""
+type ParseForeignRefMetaFirst<B extends Buffer> =
+	ParseForeignRefMeta<B> extends [infer R extends ForeignRefMeta, infer _ extends Buffer] ? R : never
+
+type ParseCreateBody<B extends Buffer, Row, Names extends string, Error = never, Refs extends ForeignRefMeta = never> =
+	ReadToken<B> extends ["", Buffer]
 		? { row: Row; names: Names; error: Error; refs: Refs }
-		: ReadUntilTopLevelComma<S> extends [infer Head extends string, infer Tail extends string]
-			? IsConstraintEntry<Head> extends true
+		: ReadUntilTopLevelCommaBuffer<B> extends [infer Head extends Buffer, infer Tail extends Buffer]
+			? IsConstraintEntry<Head> extends [true, infer _ extends Buffer]
 				? ParseCreateBody<
 						Tail,
 						Row,
 						Names,
-						MergeError<Error, ValidateConstraintRefs<Head, Names>>,
-						Refs | ParseForeignRefMeta<Head>
+						MergeError<
+							Error,
+							ValidateConstraintRefs<Head, Names> extends [infer R, infer __ extends Buffer] ? R : never
+						>,
+						Refs | ParseForeignRefMetaFirst<Head>
 					>
-				: AddColumn<InitBuffer<Head>, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
+				: AddColumn<Head, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
 					? ParseCreateBody<Tail, Next["row"], Next["names"], MergeError<Error, Next["error"]>, Refs>
 					: {
 							row: Row
@@ -121,7 +126,7 @@ type ParseCreateTableWithFlag<IfNotExists extends boolean, B extends Buffer> =
 		infer Name extends SqlQualifiedIdentifier,
 		infer RestAfterName extends Buffer,
 	]
-		? ReadFirstParenGroup<RestAfterName> extends [infer Inner extends string, infer Tail extends Buffer]
+		? ReadFirstParenGroup<RestAfterName> extends [infer Inner extends Buffer, infer Tail extends Buffer]
 			? ConsumeStatementEnd<Tail> extends [true, infer RestTail extends Buffer]
 				? [
 						{
@@ -140,14 +145,16 @@ type SqlCreateTableName<Statement> = Statement extends { name: infer Name extend
 	: SqlParseError<"Expected a CREATE TABLE statement with a table name">
 
 type SqlCreateTableParsed<Statement> = Statement extends {
-	body: infer Body extends string
+	body: infer Body extends Buffer
 }
-	? ParseCreateBody<StripSqlComments<Body>, {}, never> extends infer Parsed extends {
+	? Body extends { readonly __buffer__: infer S extends string }
+		? ParseCreateBody<InitBuffer<StripSqlComments<S>>, {}, never> extends infer Parsed extends {
 			row: unknown
 			error: unknown
 			refs: ForeignRefMeta
 		}
-		? Parsed
+			? Parsed
+			: SqlParseError<"Internal SQL parser error">
 		: SqlParseError<"Internal SQL parser error">
 	: SqlParseError<"Expected a CREATE TABLE statement">
 
