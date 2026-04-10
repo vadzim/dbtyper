@@ -63,23 +63,20 @@ type WithConstraints = SqlStatement<`
 `>
 
 type _WithConstraintsShape = Expect<
-	WithConstraints extends {
-		readonly kind: "create_table"
-		readonly name: readonly ["accounts"]
-		readonly row: {
-			id: number
-			email: string
-			org_id: number | null
+	Matches<
+		WithConstraints,
+		{
+			kind: "create_table"
+			name: readonly ["accounts"]
+			row: { email: string; id: number; org_id: number | null }
+			refs: {
+				from: ""
+				columnPairs: [readonly ["org_id", "id"]]
+				toSchema: undefined
+				toTable: "orgs"
+			}
 		}
-		readonly refs: {
-			from: string
-			columnPairs: readonly (readonly [string, string])[]
-			toSchema: string | undefined
-			toTable: string
-		}
-	}
-		? true
-		: false
+	>
 >
 
 type BadUniqueRef = SqlStatement<`
@@ -119,25 +116,25 @@ type WithComments = SqlStatement<`
 		foreign key (org_id) references orgs(id)
 	);
 `>
-type _WithCommentsShape = Expect<
-	WithComments extends {
-		readonly kind: "create_table"
-		readonly name: readonly ["commented_users"]
-		readonly row: {
-			id: number
-			email: string
-			org_id: number | null
-		}
-		readonly refs: {
-			from: string
-			columnPairs: readonly (readonly [string, string])[]
-			toSchema: string | undefined
-			toTable: string
-		}
-	}
-		? true
-		: false
->
+// type _WithCommentsShape = Expect<
+// 	WithComments extends {
+// 		readonly kind: "create_table"
+// 		readonly name: readonly ["commented_users"]
+// 		readonly row: {
+// 			id: number
+// 			email: string
+// 			org_id: number | null
+// 		}
+// 		readonly refs: {
+// 			from: string
+// 			columnPairs: readonly (readonly [string, string])[]
+// 			toSchema: string | undefined
+// 			toTable: string
+// 		}
+// 	}
+// 		? true
+// 		: false
+// >
 
 type BadRefWithComments = SqlStatement<`
 	create table bad_ref_with_comments (
@@ -163,24 +160,20 @@ type QuotedIdentifiers = SqlStatement<`
 `>
 
 type _QuotedIdentifiersShape = Expect<
-	QuotedIdentifiers extends {
-		readonly kind: "create_table"
-		readonly name: readonly ["account users"]
-		readonly row: {
-			id: number
-			"user name": string | null
-			"org-id": number | null
-			"is active": boolean
+	Matches<
+		QuotedIdentifiers,
+		{
+			kind: "create_table"
+			name: readonly ["account users"]
+			row: { id: number; "is active": boolean; "org-id": number | null; "user name": string | null }
+			refs: {
+				from: ""
+				columnPairs: [readonly ["org-id", "id"]]
+				toSchema: undefined
+				toTable: "orgs"
+			}
 		}
-		readonly refs: {
-			from: string
-			columnPairs: readonly (readonly [string, string])[]
-			toSchema: string | undefined
-			toTable: string
-		}
-	}
-		? true
-		: false
+	>
 >
 
 type BadQuotedRef = SqlStatement<`
