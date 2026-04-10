@@ -7,7 +7,7 @@ import type {
 	ValidateConstraintRefs,
 } from "./sql-constraints-fk.js"
 import type {
-	IsTokenRestEmpty,
+	ConsumeStatementEnd,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
@@ -29,7 +29,8 @@ export type SqlCreateTable<S extends string> =
 type FinalizeCreateTable<T> = T extends [infer E extends SqlParseError<string>, string]
 	? E
 	: T extends [infer StatementResult, infer StatementRest extends string]
-		? IsTokenRestEmpty<StatementRest> extends true
+		? ConsumeStatementEnd<StatementRest> extends [true, infer Tail extends string]
+			? ReadToken<Tail> extends ["", string]
 			? SqlCreateTableParsed<StatementResult> extends infer Parsed
 				? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
 					? SqlParseError<E2>
@@ -43,6 +44,7 @@ type FinalizeCreateTable<T> = T extends [infer E extends SqlParseError<string>, 
 							readonly refs: SqlCreateTableParsedRefs<Parsed>
 						}
 				: SqlParseError<"Internal SQL parser error">
+			: SqlParseError<"Expected CREATE TABLE body in parentheses">
 			: SqlParseError<"Expected CREATE TABLE body in parentheses">
 		: SqlParseError<"Internal SQL parser error">
 
@@ -117,14 +119,14 @@ type ParseCreateTableWithFlag<IfNotExists extends boolean, S extends string> =
 		infer RestAfterName extends string,
 	]
 		? ReadFirstParenGroup<Trim<RestAfterName>> extends [infer Inner extends string, infer Tail extends string]
-			? IsTokenRestEmpty<Tail> extends true
+			? ConsumeStatementEnd<Tail> extends [true, infer RestTail extends string]
 				? [
 						{
 							name: Name
 							ifNotExists: IfNotExists
 							body: Inner
 						},
-						"",
+						Trim<RestTail>,
 					]
 				: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
 			: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]

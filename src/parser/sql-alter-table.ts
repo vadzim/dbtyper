@@ -1,7 +1,7 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type { AddColumn } from "./sql-column.js"
 import type {
-	IsTokenRestEmpty,
+	ConsumeStatementEnd,
 	ReadExpectedToken,
 	ReadIdentifier,
 	ReadOptionalIfExists,
@@ -23,8 +23,10 @@ export type SqlAlterTable<S extends string> =
 type FinalizeAlterTable<T> = T extends [infer E extends SqlParseError<string>, string]
 	? E
 	: T extends [infer Result, infer Rest extends string]
-		? IsTokenRestEmpty<Rest> extends true
-			? Result
+		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends string]
+			? ReadToken<Tail> extends ["", string]
+				? Result
+				: SqlParseError<"Expected an ALTER TABLE statement with a table target">
 			: SqlParseError<"Expected an ALTER TABLE statement with a table target">
 		: SqlParseError<"Expected an ALTER TABLE statement with a table target">
 

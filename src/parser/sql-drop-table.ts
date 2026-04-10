@@ -1,6 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
-	IsTokenRestEmpty,
+	ConsumeStatementEnd,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadQualifiedIdentifier,
@@ -25,8 +25,10 @@ export type SqlDropTable<S extends string> =
 type FinalizeDropTable<T> = T extends [infer E extends SqlParseError<string>, string]
 	? E
 	: T extends [infer Result, infer Rest extends string]
-		? IsTokenRestEmpty<Rest> extends true
-			? Result
+		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends string]
+			? ReadToken<Tail> extends ["", string]
+				? Result
+				: SqlParseError<"Unable to parse DROP TABLE statement">
 			: SqlParseError<"Unable to parse DROP TABLE statement">
 		: never
 
@@ -58,14 +60,14 @@ type ParseDropTableTuple<S extends string> =
 
 type ParseDropTableWithFlag<IfExists extends boolean, S extends string> =
 	ReadQualifiedIdentifier<S> extends [infer Name extends SqlQualifiedIdentifier, infer RestName extends string]
-		? IsTokenRestEmpty<RestName> extends true
+		? ConsumeStatementEnd<RestName> extends [true, infer Tail extends string]
 			? [
 					{
 						readonly kind: "drop_table"
 						readonly ifExists: IfExists
 						readonly target: Name
 					},
-					"",
+					Trim<Tail>,
 				]
 			: [SqlParseError<"Unable to parse DROP TABLE statement">, Trim<RestName>]
 		: [SqlParseError<"Unable to parse DROP TABLE statement">, S]

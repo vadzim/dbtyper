@@ -1,6 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
-	IsTokenRestEmpty,
+	ConsumeStatementEnd,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
@@ -24,8 +24,10 @@ export type SqlDropSchema<S extends string> =
 type FinalizeDropSchema<T> = T extends [infer E extends SqlParseError<string>, string]
 	? E
 	: T extends [infer Result, infer Rest extends string]
-		? IsTokenRestEmpty<Rest> extends true
-			? Result
+		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends string]
+			? ReadToken<Tail> extends ["", string]
+				? Result
+				: SqlParseError<"Unable to parse DROP SCHEMA statement">
 			: SqlParseError<"Unable to parse DROP SCHEMA statement">
 		: never
 
@@ -62,14 +64,14 @@ type ParseDropSchemaWithFlag<IfExists extends boolean, S extends string> =
 	]
 		? NameResult extends SqlParseError<string>
 			? [NameResult, RestName]
-			: IsTokenRestEmpty<RestName> extends true
+			: ConsumeStatementEnd<RestName> extends [true, infer Tail extends string]
 				? [
 						{
 							readonly kind: "drop_schema"
 							readonly name: NameResult
 							readonly ifExists: IfExists
 						},
-						"",
+						Trim<Tail>,
 					]
 				: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Trim<RestName>]
 		: [SqlParseError<"Unable to parse DROP SCHEMA statement">, S]

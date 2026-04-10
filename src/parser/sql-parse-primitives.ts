@@ -123,14 +123,14 @@ export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: s
 export type ParseResult<Result, Rest extends string> = [result: Result, rest: Rest]
 export type ParseFailure<Message extends string, Rest extends string> = ParseResult<SqlParseError<Message>, Rest>
 export type ParseOutput<Result, Rest extends string> = ParseResult<Result | SqlParseError<string>, Rest>
-export type IsTokenRestEmpty<S extends string> =
+export type ConsumeStatementEnd<S extends string> =
 	ReadToken<S> extends [infer Token extends string, infer Rest extends string]
-		? Token extends ""
-			? true
-			: Token extends ";"
-				? IsTokenRestEmpty<Rest>
-				: false
-		: false
+		? Token extends ";"
+			? ParseResult<true, Rest>
+			: Token extends ""
+				? ParseResult<true, Rest>
+				: ParseResult<false, S>
+		: ParseResult<false, S>
 
 export type ReadExpectedToken<S extends string, Expected extends string, Message extends string> =
 	ReadToken<S> extends [infer Token extends string, infer Rest extends string]

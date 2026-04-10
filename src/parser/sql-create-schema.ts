@@ -1,6 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type {
-	IsTokenRestEmpty,
+	ConsumeStatementEnd,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfNotExists,
@@ -24,8 +24,10 @@ export type SqlCreateSchema<S extends string> =
 type FinalizeCreateSchema<T> = T extends [infer E extends SqlParseError<string>, string]
 	? E
 	: T extends [infer Result, infer Rest extends string]
-		? IsTokenRestEmpty<Rest> extends true
-			? Result
+		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends string]
+			? ReadToken<Tail> extends ["", string]
+				? Result
+				: SqlParseError<"Unable to parse CREATE SCHEMA statement">
 			: SqlParseError<"Unable to parse CREATE SCHEMA statement">
 			: never
 
@@ -62,14 +64,14 @@ type ParseCreateSchemaWithFlag<IfNotExists extends boolean, S extends string> =
 	]
 		? NameResult extends SqlParseError<string>
 			? [NameResult, RestName]
-			: IsTokenRestEmpty<RestName> extends true
+			: ConsumeStatementEnd<RestName> extends [true, infer Tail extends string]
 				? [
 						{
 							readonly kind: "create_schema"
 							readonly name: NameResult
 							readonly ifNotExists: IfNotExists
 						},
-						"",
+						Trim<Tail>,
 					]
 				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Trim<RestName>]
 		: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, S]
