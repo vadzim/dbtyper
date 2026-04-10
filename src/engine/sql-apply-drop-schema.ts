@@ -1,5 +1,5 @@
 import type { SqlDropSchemaLike } from "../parser/sql-drop-schema.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { DropSchemaFromSchemas, SchemaExists } from "./sql-engine.js"
 

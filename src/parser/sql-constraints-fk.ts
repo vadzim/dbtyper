@@ -1,6 +1,5 @@
-import type { SqlParseError } from "./sql-parse-error.js"
 import type {
-	IsBufferEnd,
+	ReadBufferEnd,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
@@ -9,7 +8,7 @@ import type {
 	ReadUntilTopLevelCommaBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { Buffer, EmptyBuffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
 export type ForeignRefMeta = {
 	from: string
@@ -32,31 +31,31 @@ type StripConstraintPrefixBuffers<B extends Buffer> = ReadOptionalToken<B, "cons
 		: [B, EmptyBuffer]
 	: [B, EmptyBuffer]
 
-type ConstraintKindIsKeyword<EB extends Buffer> = ReadToken<EB> extends ["primary", infer R1 extends Buffer]
-	? ReadExpectedToken<R1, "key", "Expected KEY after PRIMARY"> extends [true, infer _]
-		? true
-		: false
-	: ReadToken<EB> extends ["unique", infer _]
-		? true
-		: ReadToken<EB> extends ["foreign", infer R2 extends Buffer]
-			? ReadExpectedToken<R2, "key", "Expected KEY after FOREIGN"> extends [true, infer __]
-				? true
-				: false
-			: ReadToken<EB> extends ["check", infer ___]
-				? true
-				: ReadToken<EB> extends ["exclude", infer ____]
-					? true
-					: ReadToken<EB> extends ["constraint", infer _____]
-						? true
-						: false
+type ReadConstraintKeywordOnStripped<EB extends Buffer, Original extends Buffer> =
+	ReadToken<EB> extends ["primary", infer R1 extends Buffer]
+		? ReadExpectedToken<R1, "key", "Expected KEY after PRIMARY"> extends [true, infer _]
+			? [true, Original]
+			: [false, Original]
+		: ReadToken<EB> extends ["unique", infer __]
+			? [true, Original]
+			: ReadToken<EB> extends ["foreign", infer R2 extends Buffer]
+				? ReadExpectedToken<R2, "key", "Expected KEY after FOREIGN"> extends [true, infer ___]
+					? [true, Original]
+					: [false, Original]
+				: ReadToken<EB> extends ["check", infer ____]
+					? [true, Original]
+					: ReadToken<EB> extends ["exclude", infer _____]
+						? [true, Original]
+						: ReadToken<EB> extends ["constraint", infer ______]
+							? [true, Original]
+							: [false, Original]
 
-export type IsConstraintEntry<B extends Buffer> = StripConstraintPrefixBuffers<B> extends [
+/** `[true, Rest]` if `Rest` is a constraint clause head; `[false, Rest]` if it is a column definition. `Rest` is always the original fragment buffer (nothing consumed). */
+export type ReadConstraintEntryMatch<B extends Buffer> = StripConstraintPrefixBuffers<B> extends [
 	infer EB extends Buffer,
 	EmptyBuffer,
 ]
-	? ConstraintKindIsKeyword<EB> extends true
-		? [true, B]
-		: [false, B]
+	? ReadConstraintKeywordOnStripped<EB, B>
 	: [false, B]
 
 export type ValidateColumnRefs<B extends Buffer, Names extends string> = ReadToken<B> extends ["", Buffer]
@@ -66,7 +65,7 @@ export type ValidateColumnRefs<B extends Buffer, Names extends string> = ReadTok
 				infer Col extends string,
 				infer HBend extends Buffer,
 			]
-			? IsBufferEnd<HBend> extends true
+			? ReadBufferEnd<HBend> extends [true, infer _RestAfterEof extends Buffer]
 				? Col extends Names
 					? ValidateColumnRefs<TB, Names> extends [infer R, infer _ extends Buffer]
 						? R extends true
@@ -85,7 +84,7 @@ export type ParseColumnListToTuple<B extends Buffer> = ReadToken<B> extends ["",
 				infer Col extends string,
 				infer HBend extends Buffer,
 			]
-			? IsBufferEnd<HBend> extends true
+			? ReadBufferEnd<HBend> extends [true, infer _RestAfterEof extends Buffer]
 				? ParseColumnListToTuple<TB> extends [infer Rest extends readonly string[], infer _ extends Buffer]
 					? [readonly [Col, ...Rest], EmptyBuffer]
 					: never

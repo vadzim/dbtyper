@@ -1,5 +1,5 @@
 import type { SqlCreateSchemaLike } from "../parser/sql-create-schema.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { SchemaExists } from "./sql-engine.js"
 

@@ -1,4 +1,3 @@
-import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	ConsumeStatementEnd,
 	ReadExpectedToken,
@@ -6,7 +5,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { Buffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlDropTableLike = {
 	readonly kind: "drop_table"

@@ -1,5 +1,5 @@
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
 import type { SqlApplyStatement, SqlStatementLike } from "./sql-apply-statement.js"
 

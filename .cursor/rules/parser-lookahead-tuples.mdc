@@ -1,0 +1,22 @@
+---
+description: Parser lookahead must return [result, rest] tuples, not boolean predicates
+globs: src/parser/**/*.ts
+alwaysApply: false
+---
+
+# Parser lookahead: tuple results only
+
+In `src/parser/**/*.ts`, **do not** add type-level helpers that act as **boolean lookahead** on a `Buffer` (e.g. `IsFoo<B> extends true ? …`, or `IsFoo<B> = … ? true : false`).
+
+Instead:
+
+1. **Lookahead / peeks** must return **`[result, rest]`** (or the project’s existing `ParseResult`-style pair): a **discriminated first slot** plus the **remaining buffer**.
+2. If the lookahead **does not apply**, the first slot must be **falsy** (e.g. `false`, or a dedicated “no match” marker). The second slot must still be a **`Buffer`** (typically the **same** input if nothing was consumed).
+3. **Callers must not ignore `rest`.** On success, continue parsing from **`rest`** (or the appropriate remainder returned with the result). **Do not** re-tokenize the same logical position from an older buffer reference when the tuple already advanced the stream.
+4. Prefer **one** `ReadBufferEnd`-style or `ReadOptionalToken`-style primitive per decision point instead of a separate boolean check plus a separate read.
+
+Examples:
+
+- **Good:** `ReadBufferEnd<B> extends [infer AtEnd, infer Rem]` then `AtEnd extends true ? … : ReadExpectedToken<Rem, …>`.
+- **Good:** `ReadConstraintEntryMatch<Head> extends [infer Matched, infer RestHead]` then `Matched extends false ? AddColumn<RestHead, …> : ValidateConstraintRefs<RestHead, …>`.
+- **Avoid:** `IsBufferEnd<B> extends true`, `IsConstraintEntry<B> extends [true, …]` as a boolean-only API (use tuple + explicit `rest` binding instead).

@@ -1,5 +1,5 @@
 import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ValidateCreateTableFkRefs } from "./sql-apply-validate-fk-refs.js"
 import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./sql-engine.js"

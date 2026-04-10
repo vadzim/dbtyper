@@ -1,5 +1,5 @@
 import type { SqlAlterTableLike } from "../parser/sql-alter-table.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
 

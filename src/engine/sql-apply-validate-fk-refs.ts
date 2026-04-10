@@ -1,7 +1,6 @@
 import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
 import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../parser/sql-constraints-fk.js"
-import type { SqlParseError } from "../parser/sql-parse-error.js"
-import type { Buffer } from "../parser/sql-tokens.js"
+import type { Buffer, SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 
 export type ValidateCreateTableFkRefs<

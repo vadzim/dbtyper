@@ -1,4 +1,4 @@
-import type { SqlParseError } from "../parser/sql-parse-error.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlReadStatement } from "../parser/sql-read-statement.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { SqlApplyStatement, SqlStatementLike } from "./sql-apply-statement.js"

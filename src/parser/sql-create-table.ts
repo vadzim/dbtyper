@@ -1,9 +1,8 @@
-import type { SqlParseError } from "./sql-parse-error.js"
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ForeignRefMeta,
-	IsConstraintEntry,
 	ParseForeignRefMeta,
+	ReadConstraintEntryMatch,
 	ValidateConstraintRefs,
 } from "./sql-constraints-fk.js"
 import type {
@@ -16,7 +15,7 @@ import type {
 	SqlQualifiedIdentifier,
 	StripSqlComments,
 } from "./sql-parse-primitives.js"
-import type { Buffer, EmptyBuffer, InitBuffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, InitBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlCreateTable<B extends Buffer> =
 	ReadToken<B> extends ["create", infer AfterCreate extends Buffer]
@@ -59,38 +58,70 @@ export type SqlCreateTableLike = {
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
 
-type ParseForeignRefMetaFirst<B extends Buffer> =
-	ParseForeignRefMeta<B> extends [infer R extends ForeignRefMeta, infer _ extends Buffer] ? R : never
+type CreateBodyState<Row, Names extends string, Error, Refs extends ForeignRefMeta> = {
+	row: Row
+	names: Names
+	error: Error
+	refs: Refs
+}
+
+type RefsWithOptionalFkMeta<RestHead extends Buffer, Refs extends ForeignRefMeta> =
+	ParseForeignRefMeta<RestHead> extends [infer Meta extends ForeignRefMeta, infer FkRest extends Buffer]
+		? ReadToken<FkRest> extends ["", Buffer]
+			? Refs | Meta
+			: Refs
+		: Refs
+
+type ParseCreateBodyOneCommaSegment<
+	Tail extends Buffer,
+	Row,
+	Names extends string,
+	Error,
+	Refs extends ForeignRefMeta,
+	Matched,
+	RestHead extends Buffer,
+> = Matched extends false
+	? AddColumn<RestHead, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
+		? [Next["error"]] extends [never]
+			? ParseCreateBody<Tail, Next["row"], Next["names"], MergeError<Error, Next["error"]>, Refs>
+			: [CreateBodyState<Row, Names, MergeError<Error, Next["error"]>, Refs>, Tail]
+		: [
+				CreateBodyState<
+					Row,
+					Names,
+					MergeError<Error, SqlParseError<"Unable to parse CREATE TABLE body">>,
+					Refs
+				>,
+				Tail,
+			]
+	: ValidateConstraintRefs<RestHead, Names> extends [infer R, infer ValRest extends Buffer]
+		? ReadToken<ValRest> extends ["", Buffer]
+			? ParseCreateBody<
+					Tail,
+					Row,
+					Names,
+					MergeError<Error, R>,
+					RefsWithOptionalFkMeta<RestHead, Refs>
+				>
+			: never
+		: never
 
 type ParseCreateBody<B extends Buffer, Row, Names extends string, Error = never, Refs extends ForeignRefMeta = never> =
-	ReadToken<B> extends ["", Buffer]
-		? { row: Row; names: Names; error: Error; refs: Refs }
+	ReadToken<B> extends ["", infer RestAfterEof extends Buffer]
+		? [CreateBodyState<Row, Names, Error, Refs>, RestAfterEof]
 		: ReadUntilTopLevelCommaBuffer<B> extends [infer Head extends Buffer, infer Tail extends Buffer]
-			? IsConstraintEntry<Head> extends [true, infer _ extends Buffer]
-				? ParseCreateBody<
-						Tail,
+			? ReadConstraintEntryMatch<Head> extends [infer Matched, infer RestHead extends Buffer]
+				? ParseCreateBodyOneCommaSegment<Tail, Row, Names, Error, Refs, Matched, RestHead>
+				: never
+			: [
+					CreateBodyState<
 						Row,
 						Names,
-						MergeError<
-							Error,
-							ValidateConstraintRefs<Head, Names> extends [infer R, infer __ extends Buffer] ? R : never
-						>,
-						Refs | ParseForeignRefMetaFirst<Head>
-					>
-				: AddColumn<Head, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
-					? ParseCreateBody<Tail, Next["row"], Next["names"], MergeError<Error, Next["error"]>, Refs>
-					: {
-							row: Row
-							names: Names
-							error: MergeError<Error, SqlParseError<"Unable to parse CREATE TABLE body">>
-							refs: Refs
-						}
-			: {
-					row: Row
-					names: Names
-					error: MergeError<Error, SqlParseError<"Unable to parse CREATE TABLE body">>
-					refs: Refs
-				}
+						MergeError<Error, SqlParseError<"Unable to parse CREATE TABLE body">>,
+						Refs
+					>,
+					B,
+				]
 
 type ParseCreateTableTuple<B extends Buffer> =
 	ReadExpectedToken<B, "create", "Unable to parse CREATE TABLE statement"> extends [
@@ -148,12 +179,15 @@ type SqlCreateTableParsed<Statement> = Statement extends {
 	body: infer Body extends Buffer
 }
 	? Body extends { readonly __buffer__: infer S extends string }
-		? ParseCreateBody<InitBuffer<StripSqlComments<S>>, {}, never> extends infer Parsed extends {
-			row: unknown
-			error: unknown
-			refs: ForeignRefMeta
-		}
-			? Parsed
+		? ParseCreateBody<InitBuffer<StripSqlComments<S>>, {}, never> extends [
+				infer Parsed extends { row: unknown; error: unknown; refs: ForeignRefMeta },
+				infer BodyRest extends Buffer,
+			]
+			? [Parsed["error"]] extends [never]
+				? ReadToken<BodyRest> extends ["", Buffer]
+					? Parsed
+					: SqlParseError<"Unexpected trailing input in CREATE TABLE body">
+				: Parsed
 			: SqlParseError<"Internal SQL parser error">
 		: SqlParseError<"Internal SQL parser error">
 	: SqlParseError<"Expected a CREATE TABLE statement">

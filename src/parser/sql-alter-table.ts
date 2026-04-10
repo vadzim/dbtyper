@@ -1,8 +1,7 @@
-import type { SqlParseError } from "./sql-parse-error.js"
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ConsumeStatementEnd,
-	IsBufferEnd,
+	ReadBufferEnd,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadOptionalIfNotExists,
@@ -10,7 +9,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { Buffer, EmptyBuffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlAlterTable<B extends Buffer> =
 	ReadToken<B> extends ["alter", infer AfterAlter extends Buffer]
@@ -74,20 +73,20 @@ type ParseIdentifierToken<B extends Buffer> =
 		? [Name, Rest]
 		: never
 
-type ParseAlterAction<B extends Buffer> =
-	IsBufferEnd<B> extends true
+type ParseAlterAction<B extends Buffer> = ReadBufferEnd<B> extends [infer AtEnd, infer Rem extends Buffer]
+	? AtEnd extends true
 		? SqlParseError<"Expected an ALTER TABLE action">
-		: ReadExpectedToken<B, "add", "Expected an ALTER TABLE action"> extends [
+		: ReadExpectedToken<Rem, "add", "Expected an ALTER TABLE action"> extends [
 					infer AddResult,
 					infer AddRest extends Buffer,
 			  ]
 			? AddResult extends SqlParseError<string>
-				? ReadExpectedToken<B, "drop", "Expected an ALTER TABLE action"> extends [
+				? ReadExpectedToken<Rem, "drop", "Expected an ALTER TABLE action"> extends [
 						infer DropResult,
 						infer DropRest extends Buffer,
 					]
 					? DropResult extends SqlParseError<string>
-						? ReadExpectedToken<B, "rename", "Expected an ALTER TABLE action"> extends [
+						? ReadExpectedToken<Rem, "rename", "Expected an ALTER TABLE action"> extends [
 								infer RenameResult,
 								infer RenameRest extends Buffer,
 							]
@@ -99,6 +98,7 @@ type ParseAlterAction<B extends Buffer> =
 					: SqlParseError<"Unsupported ALTER TABLE action">
 				: ParseAlterActionAdd<AddRest>
 			: SqlParseError<"Unsupported ALTER TABLE action">
+	: never
 
 type ParseAlterActionAdd<B extends Buffer> =
 	ReadExpectedToken<B, "column", "Unsupported ALTER TABLE action"> extends [
@@ -144,24 +144,26 @@ type ParseAlterActionAddColumn<B extends Buffer> =
 				: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends Buffer> =
-	IsBufferEnd<Rest> extends true
-		? SqlParseError<"Expected a column definition in ALTER TABLE ADD COLUMN">
-		: AddColumn<Rest, {}, never> extends infer Added extends {
+	ReadBufferEnd<Rest> extends [infer AtEnd, infer Rem extends Buffer]
+		? AtEnd extends true
+			? SqlParseError<"Expected a column definition in ALTER TABLE ADD COLUMN">
+			: AddColumn<Rem, {}, never> extends infer Added extends {
 					row: unknown
 					names: string
 					error: unknown
 			  }
-			? [Added["error"]] extends [never]
-				? Added["row"] extends Record<Added["names"], infer Definition>
-					? {
-							readonly kind: "add_column"
-							readonly ifNotExists: IfNotExists
-							readonly name: Added["names"]
-							readonly definition: Definition
-						}
-					: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
-				: Added["error"]
-			: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
+				? [Added["error"]] extends [never]
+					? Added["row"] extends Record<Added["names"], infer Definition>
+						? {
+								readonly kind: "add_column"
+								readonly ifNotExists: IfNotExists
+								readonly name: Added["names"]
+								readonly definition: Definition
+							}
+						: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
+					: Added["error"]
+				: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
+		: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionDropColumn<B extends Buffer> =
 	ReadOptionalIfExists<B> extends [true, infer Rest extends Buffer]
@@ -174,7 +176,7 @@ type ParseAlterActionDropColumn<B extends Buffer> =
 
 type ParseAlterActionDropColumnWithFlag<IfExists extends boolean, Rest extends Buffer> =
 	ParseIdentifierToken<Rest> extends [infer Name extends string, infer Tail extends Buffer]
-		? IsBufferEnd<Tail> extends true
+		? ReadBufferEnd<Tail> extends [true, infer _]
 			? {
 					readonly kind: "drop_column"
 					readonly ifExists: IfExists
@@ -185,7 +187,7 @@ type ParseAlterActionDropColumnWithFlag<IfExists extends boolean, Rest extends B
 
 type ParseAlterActionRenameTo<B extends Buffer> =
 	ParseIdentifierToken<B> extends [infer Name extends string, infer Tail extends Buffer]
-		? IsBufferEnd<Tail> extends true
+		? ReadBufferEnd<Tail> extends [true, infer _]
 			? {
 					readonly kind: "rename_to"
 					readonly name: Name
@@ -202,7 +204,7 @@ type ParseAlterActionRenameColumn<B extends Buffer> =
 			? ToTokenResult extends SqlParseError<string>
 				? SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 				: ParseIdentifierToken<Tail2> extends [infer To extends string, infer Tail3 extends Buffer]
-					? IsBufferEnd<Tail3> extends true
+					? ReadBufferEnd<Tail3> extends [true, infer __]
 						? {
 								readonly kind: "rename_column"
 								readonly from: From

@@ -1,11 +1,10 @@
-import type { SqlParseError } from "./sql-parse-error.js"
 import type {
 	ConsumeStatementEnd,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 } from "./sql-parse-primitives.js"
-import type { Buffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlDropSchemaLike = {
 	readonly kind: "drop_schema"

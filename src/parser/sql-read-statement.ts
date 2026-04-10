@@ -1,4 +1,4 @@
-import type { SqlParseError } from "./sql-parse-error.js"
+import type { SqlParseError } from "./sql-tokens.js"
 import type { SqlStatement } from "./sql-parse-statement.js"
 import type { Trim } from "./sql-parse-primitives.js"
 

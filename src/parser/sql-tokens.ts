@@ -3,6 +3,10 @@ export type EmptyBuffer = { readonly __buffer__: "" }
 export type InitBuffer<S extends string = string> = { readonly __buffer__: S }
 export type BufferPayload<B extends Buffer> = B["__buffer__"]
 
+export type SqlParseError<Message extends string> = {
+	readonly __sql_parse_error__: Message
+}
+
 export type ReadToken<B extends Buffer> =
 	ReadTokenFromString<B["__buffer__"]> extends [infer Token extends string, infer Rest extends string]
 		? [Token, InitBuffer<Rest>]
