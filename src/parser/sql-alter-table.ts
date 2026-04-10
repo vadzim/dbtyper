@@ -73,32 +73,33 @@ type ParseIdentifierToken<B extends Buffer> =
 		? [Name, Rest]
 		: never
 
-type ParseAlterAction<B extends Buffer> = ReadBufferEnd<B> extends [infer AtEnd, infer Rem extends Buffer]
-	? AtEnd extends true
-		? SqlParseError<"Expected an ALTER TABLE action">
-		: ReadExpectedToken<Rem, "add", "Expected an ALTER TABLE action"> extends [
-					infer AddResult,
-					infer AddRest extends Buffer,
-			  ]
-			? AddResult extends SqlParseError<string>
-				? ReadExpectedToken<Rem, "drop", "Expected an ALTER TABLE action"> extends [
-						infer DropResult,
-						infer DropRest extends Buffer,
-					]
-					? DropResult extends SqlParseError<string>
-						? ReadExpectedToken<Rem, "rename", "Expected an ALTER TABLE action"> extends [
-								infer RenameResult,
-								infer RenameRest extends Buffer,
-							]
-							? RenameResult extends SqlParseError<string>
-								? SqlParseError<"Unsupported ALTER TABLE action">
-								: ParseAlterActionRename<RenameRest>
-							: SqlParseError<"Unsupported ALTER TABLE action">
-						: ParseAlterActionDrop<DropRest>
-					: SqlParseError<"Unsupported ALTER TABLE action">
-				: ParseAlterActionAdd<AddRest>
-			: SqlParseError<"Unsupported ALTER TABLE action">
-	: never
+type ParseAlterAction<B extends Buffer> =
+	ReadBufferEnd<B> extends [infer AtEnd, infer Rem extends Buffer]
+		? AtEnd extends true
+			? SqlParseError<"Expected an ALTER TABLE action">
+			: ReadExpectedToken<Rem, "add", "Expected an ALTER TABLE action"> extends [
+						infer AddResult,
+						infer AddRest extends Buffer,
+				  ]
+				? AddResult extends SqlParseError<string>
+					? ReadExpectedToken<Rem, "drop", "Expected an ALTER TABLE action"> extends [
+							infer DropResult,
+							infer DropRest extends Buffer,
+						]
+						? DropResult extends SqlParseError<string>
+							? ReadExpectedToken<Rem, "rename", "Expected an ALTER TABLE action"> extends [
+									infer RenameResult,
+									infer RenameRest extends Buffer,
+								]
+								? RenameResult extends SqlParseError<string>
+									? SqlParseError<"Unsupported ALTER TABLE action">
+									: ParseAlterActionRename<RenameRest>
+								: SqlParseError<"Unsupported ALTER TABLE action">
+							: ParseAlterActionDrop<DropRest>
+						: SqlParseError<"Unsupported ALTER TABLE action">
+					: ParseAlterActionAdd<AddRest>
+				: SqlParseError<"Unsupported ALTER TABLE action">
+		: never
 
 type ParseAlterActionAdd<B extends Buffer> =
 	ReadExpectedToken<B, "column", "Unsupported ALTER TABLE action"> extends [
@@ -148,10 +149,10 @@ type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends
 		? AtEnd extends true
 			? SqlParseError<"Expected a column definition in ALTER TABLE ADD COLUMN">
 			: AddColumn<Rem, {}, never> extends infer Added extends {
-					row: unknown
-					names: string
-					error: unknown
-			  }
+						row: unknown
+						names: string
+						error: unknown
+				  }
 				? [Added["error"]] extends [never]
 					? Added["row"] extends Record<Added["names"], infer Definition>
 						? {

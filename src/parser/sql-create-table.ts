@@ -96,13 +96,7 @@ type ParseCreateBodyOneCommaSegment<
 			]
 	: ValidateConstraintRefs<RestHead, Names> extends [infer R, infer ValRest extends Buffer]
 		? ReadToken<ValRest> extends ["", Buffer]
-			? ParseCreateBody<
-					Tail,
-					Row,
-					Names,
-					MergeError<Error, R>,
-					RefsWithOptionalFkMeta<RestHead, Refs>
-				>
+			? ParseCreateBody<Tail, Row, Names, MergeError<Error, R>, RefsWithOptionalFkMeta<RestHead, Refs>>
 			: never
 		: never
 

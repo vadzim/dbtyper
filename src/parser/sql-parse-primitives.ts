@@ -206,14 +206,12 @@ export type ReadQualifiedIdentifierFromBuffer<B extends Buffer> =
 export type InitParseBuffer<S extends string> = InitBuffer<S>
 
 /** `[true, Rest]` when the next token is EOF; `[false, B]` when there is more input. Caller must branch on the first element and continue from `Rest` (on success) or `B` (on failure, unchanged). */
-export type ReadBufferEnd<B extends Buffer> = ReadToken<B> extends [
-	infer T extends string,
-	infer Rest extends Buffer,
-]
-	? T extends ""
-		? [true, Rest]
+export type ReadBufferEnd<B extends Buffer> =
+	ReadToken<B> extends [infer T extends string, infer Rest extends Buffer]
+		? T extends ""
+			? [true, Rest]
+			: [false, B]
 		: [false, B]
-	: [false, B]
 
 export type ReadQualifiedIdentifier<S extends string> =
 	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
