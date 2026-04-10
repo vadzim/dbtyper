@@ -1,5 +1,6 @@
 import type { SqlParseError } from "./sql-parse-error.js"
 import type { ReadIdentifier, ReadWord, StripIdentifierQuotes, Trim, ToLower } from "./sql-parse-primitives.js"
+import type { Buffer, BufferPayload } from "./sql-tokens.js"
 
 type NormalizeTypeToken<S extends string> =
 	ToLower<Trim<S>> extends `${infer Base}(${string}` ? Trim<Base> : ToLower<Trim<S>>
@@ -79,15 +80,19 @@ type ParseColumn<Col extends string> =
 			: never
 		: never
 
+type ParseColumnFromBuffer<B extends Buffer> = ParseColumn<Trim<BufferPayload<B>>>
+
 type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }> = {
 	[K in C["name"]]: C["nullable"] extends true ? C["type"] | null : C["type"]
 }
 
 type Merge<A, B> = A & B
 
-export type AddColumn<Head extends string, Row, Names extends string> = [ParseColumn<Head>] extends [never]
-	? { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
-	: [ParseColumn<Head>] extends [
+type AddColumnErrorPayload<B extends Buffer> = Trim<BufferPayload<B>>
+
+export type AddColumn<B extends Buffer, Row, Names extends string> = [ParseColumnFromBuffer<B>] extends [never]
+	? { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${AddColumnErrorPayload<B>}`> }
+	: [ParseColumnFromBuffer<B>] extends [
 				infer C extends {
 					name: string
 					type: unknown
@@ -95,4 +100,4 @@ export type AddColumn<Head extends string, Row, Names extends string> = [ParseCo
 				},
 		  ]
 		? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never }
-		: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${Trim<Head>}`> }
+		: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${AddColumnErrorPayload<B>}`> }

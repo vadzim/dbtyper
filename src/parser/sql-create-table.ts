@@ -17,7 +17,7 @@ import type {
 	StripSqlComments,
 	Trim,
 } from "./sql-parse-primitives.js"
-import type { Buffer, EmptyBuffer, ReadToken } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, InitBuffer, ReadToken } from "./sql-tokens.js"
 
 export type SqlCreateTable<B extends Buffer> =
 	ReadToken<B> extends ["create", infer AfterCreate extends Buffer]
@@ -72,7 +72,7 @@ type ParseCreateBody<S extends string, Row, Names extends string, Error = never,
 						MergeError<Error, ValidateConstraintRefs<Head, Names>>,
 						Refs | ParseForeignRefMeta<Head>
 					>
-				: AddColumn<Head, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
+				: AddColumn<InitBuffer<Head>, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
 					? ParseCreateBody<Tail, Next["row"], Next["names"], MergeError<Error, Next["error"]>, Refs>
 					: {
 							row: Row

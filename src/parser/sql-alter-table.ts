@@ -10,7 +10,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { Buffer, EmptyBuffer, ReadToken, ReadTokenRaw } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, ReadToken } from "./sql-tokens.js"
 
 export type SqlAlterTable<B extends Buffer> =
 	ReadToken<B> extends ["alter", infer AfterAlter extends Buffer]
@@ -146,7 +146,7 @@ type ParseAlterActionAddColumn<B extends Buffer> =
 type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends Buffer> =
 	IsBufferEnd<Rest> extends true
 		? SqlParseError<"Expected a column definition in ALTER TABLE ADD COLUMN">
-		: AddColumn<BufferToRawSql<Rest>, {}, never> extends infer Added extends {
+		: AddColumn<Rest, {}, never> extends infer Added extends {
 					row: unknown
 					names: string
 					error: unknown
@@ -258,20 +258,3 @@ type ParseAlterTableWithFlag<IfExists extends boolean, B extends Buffer, Fallbac
 					]
 			: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
 		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
-
-type AppendRawToken<Acc extends string, Token extends string> = Acc extends ""
-	? Token
-	: Token extends "," | "." | ")" | ";" | "]"
-		? `${Acc}${Token}`
-		: Token extends "(" | "["
-			? `${Acc}${Token}`
-			: Acc extends `${string}(` | `${string}.` | `${string}[`
-				? `${Acc}${Token}`
-				: `${Acc} ${Token}`
-
-type BufferToRawSql<B extends Buffer, Acc extends string = ""> =
-	ReadTokenRaw<B> extends [infer Token extends string, infer Rest extends Buffer]
-		? Token extends ""
-			? Acc
-			: BufferToRawSql<Rest, AppendRawToken<Acc, Token>>
-		: Acc
