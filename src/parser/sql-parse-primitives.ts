@@ -9,19 +9,6 @@ export type Trim<S extends string> = TrimLeft<TrimRight<S>>
 export type RemoveTrailingSemicolon<S extends string> = Trim<S> extends `${infer X};` ? Trim<X> : Trim<S>
 export type ToLower<S extends string> = Lowercase<S>
 
-type StripLineComment<S extends string> = S extends `${infer _Comment}\n${infer Rest}`
-	? `\n${Rest}`
-	: S extends `${infer _Comment}\r${infer Rest}`
-		? `\r${Rest}`
-		: ""
-type StripBlockComment<S extends string> = S extends `${infer _Comment}*/${infer Rest}` ? Rest : ""
-
-export type StripSqlComments<S extends string> = S extends `${infer Head}--${infer Tail}`
-	? StripSqlComments<`${Head}${StripLineComment<Tail>}`>
-	: S extends `${infer Head}/*${infer Tail}`
-		? StripSqlComments<`${Head}${StripBlockComment<Tail>}`>
-		: S
-
 type ReadDoubleQuotedIdentifier<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends `"`
 		? [`"${Acc}"`, Rest]

@@ -13,9 +13,8 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	ReadUntilTopLevelCommaBuffer,
 	SqlQualifiedIdentifier,
-	StripSqlComments,
 } from "./sql-parse-primitives.js"
-import type { Buffer, EmptyBuffer, InitBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { Buffer, EmptyBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlCreateTable<B extends Buffer> =
 	ReadToken<B> extends ["create", infer AfterCreate extends Buffer]
@@ -172,19 +171,17 @@ type SqlCreateTableName<Statement> = Statement extends { name: infer Name extend
 type SqlCreateTableParsed<Statement> = Statement extends {
 	body: infer Body extends Buffer
 }
-	? Body extends { readonly __buffer__: infer S extends string }
-		? ParseCreateBody<InitBuffer<StripSqlComments<S>>, {}, never> extends [
-				infer Parsed extends { row: unknown; error: unknown; refs: ForeignRefMeta },
-				infer BodyRest extends Buffer,
-			]
-			? [Parsed["error"]] extends [never]
-				? ReadToken<BodyRest> extends ["", Buffer]
-					? Parsed
-					: SqlParseError<"Unexpected trailing input in CREATE TABLE body">
-				: Parsed
-			: SqlParseError<"Internal SQL parser error">
+	? ParseCreateBody<Body, {}, never> extends [
+			infer Parsed extends { row: unknown; error: unknown; refs: ForeignRefMeta },
+			infer BodyRest extends Buffer,
+		]
+		? [Parsed["error"]] extends [never]
+			? ReadToken<BodyRest> extends ["", Buffer]
+				? Parsed
+				: SqlParseError<"Unexpected trailing input in CREATE TABLE body">
+			: Parsed
 		: SqlParseError<"Internal SQL parser error">
-	: SqlParseError<"Expected a CREATE TABLE statement">
+	: SqlParseError<"Internal SQL parser error">
 
 type SqlCreateTableParsedToType<Parsed> =
 	Parsed extends SqlParseError<infer E>
