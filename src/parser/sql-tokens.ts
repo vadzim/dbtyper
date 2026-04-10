@@ -118,33 +118,44 @@ type LowerCaseLetter =
 type ServiceWords = keyof {
 	add: true
 	alter: true
+	and: true
 	as: true
+	begin: true
 	by: true
+	character: true
 	check: true
 	column: true
 	constraint: true
 	create: true
 	cross: true
 	database: true
+	declare: true
 	default: true
 	delete: true
 	drop: true
+	end: true
 	exclude: true
 	exists: true
 	false: true
 	foreign: true
 	from: true
 	full: true
+	function: true
 	generated: true
 	group: true
 	having: true
 	if: true
 	in: true
 	index: true
+	inet: true
 	inner: true
 	insert: true
+	int: true
+	int4range: true
+	into: true
 	join: true
 	key: true
+	language: true
 	left: true
 	limit: true
 	natural: true
@@ -152,19 +163,31 @@ type ServiceWords = keyof {
 	null: true
 	offset: true
 	on: true
+	or: true
 	order: true
 	outer: true
 	primary: true
 	references: true
 	rename: true
+	replace: true
+	return: true
+	returning: true
+	returns: true
 	right: true
 	schema: true
 	select: true
 	table: true
+	text: true
+	timestamp: true
+	timestampz: true
+	timetz: true
 	to: true
 	true: true
 	unique: true
 	use: true
 	using: true
+	uuid: true
+	values: true
+	varying: true
 	where: true
 }
