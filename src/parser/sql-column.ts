@@ -67,17 +67,24 @@ type SkipOptionalTypeParams<B extends BufferLike> =
 type ReadIsArray<B extends BufferLike> =
 	TrimLeft<BufferPayload<B>> extends `[]${infer Rest}` ? [true, InitBuffer<Rest>] : [false, B]
 
-/** Scans remaining tokens for a `NOT NULL` sequence. Returns `true` if found. */
-type ScanForNotNull<B extends BufferLike> =
-	ReadToken<B> extends [infer T extends string, infer R extends BufferLike]
-		? T extends ""
-			? false
-			: T extends "not"
-				? ReadToken<R> extends ["null", infer _]
-					? true
-					: ScanForNotNull<R>
-				: ScanForNotNull<R>
-		: false
+/**
+ * Scans for a `NOT NULL` token pair from `B`. Returns `[found, rest]`:
+ * - `[true, R]` — `R` is the buffer immediately after the `null` token.
+ * - `[false, Start]` — no such pair found; `Start` is the buffer at the beginning of this scan
+ *   (call with `Start` defaulted to `B` so callers keep the cursor when nothing was consumed).
+ */
+type ScanForNotNullWithRest<
+	B extends BufferLike,
+	Start extends BufferLike = B,
+> = ReadToken<B> extends [infer T extends string, infer R extends BufferLike]
+	? T extends ""
+		? [false, Start]
+		: T extends "not"
+			? ReadToken<R> extends ["null", infer R2 extends BufferLike]
+				? [true, R2]
+				: ScanForNotNullWithRest<R, Start>
+			: ScanForNotNullWithRest<R, Start>
+	: [false, Start]
 
 /**
  * Parses a column definition from a buffer.
@@ -96,16 +103,21 @@ type ParseColumnFromBuffer<B extends BufferLike> =
 								infer IsArr extends boolean,
 								infer RestArray extends BufferLike,
 							]
-							? [
-									{
-										name: StripIdentifierQuotes<ColNameRaw>
-										type: IsArr extends true
-											? SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>[]
-											: SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>
-										nullable: ScanForNotNull<RestArray> extends true ? false : true
-									},
-									RestArray,
+							? ScanForNotNullWithRest<RestArray> extends [
+									infer FoundNotNull extends boolean,
+									infer RestAfterNullable extends BufferLike,
 								]
+								? [
+										{
+											name: StripIdentifierQuotes<ColNameRaw>
+											type: IsArr extends true
+												? SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>[]
+												: SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>
+											nullable: FoundNotNull extends true ? false : true
+										},
+										RestAfterNullable,
+									]
+								: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
 							: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
 						: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
 				: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
