@@ -23,11 +23,7 @@ export type SqlDropTable<B extends BufferLike> =
 type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends BufferLike]
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
-		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? PeekToken<Tail> extends ""
-				? [Result, Tail]
-				: [SqlParseError<"Unable to parse DROP TABLE statement">, Rest]
-			: [SqlParseError<"Unable to parse DROP TABLE statement">, Rest]
+		? [Result, Rest]
 		: never
 
 type ParseDropTableTuple<B extends BufferLike> =

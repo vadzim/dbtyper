@@ -22,11 +22,7 @@ export type SqlCreateSchema<B extends BufferLike> =
 type FinalizeCreateSchemaTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends BufferLike]
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
-		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? PeekToken<Tail> extends ""
-				? [Result, Tail]
-				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Rest]
-			: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Rest]
+		? [Result, Rest]
 		: never
 
 type ParseCreateSchemaTuple<B extends BufferLike> =

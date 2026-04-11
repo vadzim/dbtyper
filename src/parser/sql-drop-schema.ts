@@ -22,11 +22,7 @@ export type SqlDropSchema<B extends BufferLike> =
 type FinalizeDropSchemaTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends BufferLike]
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
-		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? PeekToken<Tail> extends ""
-				? [Result, Tail]
-				: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Rest]
-			: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Rest]
+		? [Result, Rest]
 		: never
 
 type ParseDropSchemaTuple<B extends BufferLike> =

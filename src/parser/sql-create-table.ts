@@ -26,26 +26,22 @@ export type SqlCreateTable<B extends BufferLike> =
 type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends BufferLike]
 	? [E, R]
 	: T extends [infer StatementResult, infer StatementRest extends BufferLike]
-		? ConsumeStatementEnd<StatementRest> extends [true, infer Tail extends BufferLike]
-			? PeekToken<Tail> extends ""
-				? SqlCreateTableParsed<StatementResult> extends infer Parsed
-					? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
-						? [SqlParseError<E2>, Tail]
-						: [
-								{
-									readonly kind: "create_table"
-									readonly name: SqlCreateTableName<StatementResult>
-									// General rule: types are helpers and must not become a bottleneck.
-									readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
-										? { [K in keyof Row]: Row[K] }
-										: never
-									readonly refs: SqlCreateTableParsedRefs<Parsed>
-								},
-								Tail,
-							]
-					: [SqlParseError<"Internal SQL parser error">, Tail]
-				: [SqlParseError<"Expected CREATE TABLE body in parentheses">, StatementRest]
-			: [SqlParseError<"Expected CREATE TABLE body in parentheses">, StatementRest]
+		? SqlCreateTableParsed<StatementResult> extends infer Parsed
+			? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
+				? [SqlParseError<E2>, StatementRest]
+				: [
+						{
+							readonly kind: "create_table"
+							readonly name: SqlCreateTableName<StatementResult>
+							// General rule: types are helpers and must not become a bottleneck.
+							readonly row: SqlCreateTableParsedToType<Parsed> extends infer Row
+								? { [K in keyof Row]: Row[K] }
+								: never
+							readonly refs: SqlCreateTableParsedRefs<Parsed>
+						},
+						StatementRest,
+					]
+			: [SqlParseError<"Internal SQL parser error">, StatementRest]
 		: [SqlParseError<"Internal SQL parser error">, EmptyBuffer]
 
 export type SqlCreateTableLike = {

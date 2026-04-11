@@ -22,9 +22,7 @@ type FinalizeAlterTableTuple<T> = T extends [infer E extends SqlParseError<strin
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? PeekToken<Tail> extends ""
-				? [Result, Tail]
-				: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, Rest]
+			? [Result, Tail]
 			: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, Rest]
 		: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, EmptyBuffer]
 
@@ -155,15 +153,19 @@ type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends
 						row: unknown
 						names: string
 						error: unknown
+						rest: BufferLike
 				  }
 				? [Added["error"]] extends [never]
 					? Added["row"] extends Record<Added["names"], infer Definition>
-						? {
-								readonly kind: "add_column"
-								readonly ifNotExists: IfNotExists
-								readonly name: Added["names"]
-								readonly definition: Definition
-							}
+						? [
+								{
+									readonly kind: "add_column"
+									readonly ifNotExists: IfNotExists
+									readonly name: Added["names"]
+									readonly definition: Definition
+								},
+								Added["rest"],
+							]
 						: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
 					: Added["error"]
 				: SqlParseError<"Unable to parse ALTER TABLE ADD COLUMN action">
@@ -180,23 +182,25 @@ type ParseAlterActionDropColumn<B extends BufferLike> =
 
 type ParseAlterActionDropColumnWithFlag<IfExists extends boolean, Rest extends BufferLike> =
 	ParseIdentifierToken<Rest> extends [infer Name extends string, infer Tail extends BufferLike]
-		? ReadBufferEnd<Tail> extends [true, infer _]
-			? {
+		? [
+				{
 					readonly kind: "drop_column"
 					readonly ifExists: IfExists
 					readonly name: Name
-				}
-			: SqlParseError<"Unable to parse ALTER TABLE DROP COLUMN action">
+				},
+				Tail,
+			]
 		: SqlParseError<"Unable to parse ALTER TABLE DROP COLUMN action">
 
 type ParseAlterActionRenameTo<B extends BufferLike> =
 	ParseIdentifierToken<B> extends [infer Name extends string, infer Tail extends BufferLike]
-		? ReadBufferEnd<Tail> extends [true, infer _]
-			? {
+		? [
+				{
 					readonly kind: "rename_to"
 					readonly name: Name
-				}
-			: SqlParseError<"Unable to parse ALTER TABLE RENAME TO action">
+				},
+				Tail,
+			]
 		: SqlParseError<"Unable to parse ALTER TABLE RENAME TO action">
 
 type ParseAlterActionRenameColumn<B extends BufferLike> =
@@ -208,13 +212,14 @@ type ParseAlterActionRenameColumn<B extends BufferLike> =
 			? ToTokenResult extends SqlParseError<string>
 				? SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 				: ParseIdentifierToken<Tail2> extends [infer To extends string, infer Tail3 extends BufferLike]
-					? ReadBufferEnd<Tail3> extends [true, infer __]
-						? {
+					? [
+							{
 								readonly kind: "rename_column"
 								readonly from: From
 								readonly to: To
-							}
-						: SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
+							},
+							Tail3,
+						]
 					: SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 			: SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 		: SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
@@ -253,14 +258,16 @@ type ParseAlterTableWithFlag<IfExists extends boolean, B extends BufferLike, Fal
 		? ParseAlterAction<RestName> extends infer ActionResult
 			? ActionResult extends SqlParseError<string>
 				? [ActionResult, RestName]
-				: [
-						{
-							readonly kind: "alter_table"
-							readonly ifExists: IfExists
-							readonly target: Target
-							readonly action: ActionResult
-						},
-						EmptyBuffer,
-					]
+				: ActionResult extends [infer Action, infer ActionRest extends BufferLike]
+					? [
+							{
+								readonly kind: "alter_table"
+								readonly ifExists: IfExists
+								readonly target: Target
+								readonly action: Action
+							},
+							ActionRest,
+						]
+					: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
 			: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
 		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
