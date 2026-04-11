@@ -1,5 +1,5 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
@@ -13,47 +13,55 @@ type Users = SqlStatements<
 		meta json
 	);
 `>
->[0][0]
+>
 
 type _UsersShape = Expect<
 	Matches<
 		Users,
-		{
-			readonly kind: "create_table"
-			readonly name: readonly ["users"]
-			readonly row: {
-				id: number
-				email: string
-				display_name: string | null
-				is_active: boolean
-				meta: unknown | null
-			}
-			readonly refs: undefined
-		}
+		[
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["users"]
+					readonly row: {
+						id: number
+						email: string
+						display_name: string | null
+						is_active: boolean
+						meta: unknown | null
+					}
+					readonly refs: undefined
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type Posts = SqlStatements<
-	InitBuffer<"create table posts (id bigint not null, rating decimal(10,2), title text)">
->[0][0]
+type Posts = SqlStatements<InitBuffer<"create table posts (id bigint not null, rating decimal(10,2), title text)">>
 type _PostsShape = Expect<
 	Matches<
 		Posts,
-		{
-			readonly kind: "create_table"
-			readonly name: readonly ["posts"]
-			readonly row: {
-				id: number
-				rating: number | null
-				title: string | null
-			}
-			readonly refs: undefined
-		}
+		[
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["posts"]
+					readonly row: {
+						id: number
+						rating: number | null
+						title: string | null
+					}
+					readonly refs: undefined
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type Invalid = SqlStatements<InitBuffer<"select * from users">>[0]
-type _Invalid = ExpectFalse<Matches<Invalid, { readonly kind: "create_table" }>>
+type Invalid = SqlStatements<InitBuffer<"select * from users">>
+type _Invalid = ExpectFalse<Matches<Invalid, [{ readonly kind: "create_table" }, EmptyBuffer]>>
 
 type WithConstraints = SqlStatements<
 	InitBuffer<`
@@ -66,22 +74,27 @@ type WithConstraints = SqlStatements<
 		foreign key (org_id) references orgs(id)
 	)
 `>
->[0][0]
+>
 
 type _WithConstraintsShape = Expect<
 	Matches<
 		WithConstraints,
-		{
-			kind: "create_table"
-			name: readonly ["accounts"]
-			row: { email: string; id: number; org_id: number | null }
-			refs: {
-				from: ""
-				columnPairs: [readonly ["org_id", "id"]]
-				toSchema: undefined
-				toTable: "orgs"
-			}
-		}
+		[
+			readonly [
+				{
+					kind: "create_table"
+					name: readonly ["accounts"]
+					row: { email: string; id: number; org_id: number | null }
+					refs: {
+						from: ""
+						columnPairs: [readonly ["org_id", "id"]]
+						toSchema: undefined
+						toTable: "orgs"
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
@@ -172,22 +185,27 @@ type QuotedIdentifiers = SqlStatements<
 		foreign key (\`org-id\`) references orgs(id)
 	)
 `>
->[0][0]
+>
 
 type _QuotedIdentifiersShape = Expect<
 	Matches<
 		QuotedIdentifiers,
-		{
-			kind: "create_table"
-			name: readonly ["account users"]
-			row: { id: number; "org-id": number | null; "user name": string | null }
-			refs: {
-				from: ""
-				columnPairs: [readonly ["org-id", "id"]]
-				toSchema: undefined
-				toTable: "orgs"
-			}
-		}
+		[
+			readonly [
+				{
+					kind: "create_table"
+					name: readonly ["account users"]
+					row: { id: number; "org-id": number | null; "user name": string | null }
+					refs: {
+						from: ""
+						columnPairs: [readonly ["org-id", "id"]]
+						toSchema: undefined
+						toTable: "orgs"
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
@@ -236,34 +254,39 @@ type PostgresTypes = SqlStatements<
 		numbers int4[]
 	)
 `>
->[0][0]
+>
 type _PostgresTypes = Expect<
 	Matches<
 		PostgresTypes,
-		{
-			readonly kind: "create_table"
-			readonly name: readonly ["pg_types"]
-			readonly row: {
-				id: number
-				i2: number
-				i4: number
-				i8: number
-				f4: number | null
-				f8: number | null
-				amount: number | null
-				flag: boolean
-				created_at: Date
-				alarm_at: Date | null
-				payload: unknown | null
-				raw: Uint8Array | null
-				ref: string | null
-				host: string | null
-				r: unknown | null
-				tags: string[] | null
-				numbers: number[] | null
-			}
-			readonly refs: undefined
-		}
+		[
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["pg_types"]
+					readonly row: {
+						id: number
+						i2: number
+						i4: number
+						i8: number
+						f4: number | null
+						f8: number | null
+						amount: number | null
+						flag: boolean
+						created_at: Date
+						alarm_at: Date | null
+						payload: unknown | null
+						raw: Uint8Array | null
+						ref: string | null
+						host: string | null
+						r: unknown | null
+						tags: string[] | null
+						numbers: number[] | null
+					}
+					readonly refs: undefined
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 describe("sql create table", () => {

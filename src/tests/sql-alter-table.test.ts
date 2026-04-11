@@ -1,60 +1,87 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer } from "../parser/sql-tokens.js"
+import type { EmptyBuffer, InitBuffer } from "../parser/sql-tokens.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type AlterUsers = SqlStatements<InitBuffer<`alter table users add column age int`>>[0][0]
+type AlterUsers = SqlStatements<
+	InitBuffer<`
+	alter table users add column age int
+`>
+>
 type _AlterUsers = Expect<
 	Matches<
 		AlterUsers,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: false
-			readonly target: readonly ["users"]
-			readonly action: {
-				readonly kind: "add_column"
-				readonly ifNotExists: false
-				readonly name: "age"
-				readonly definition: number | null
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: false
+					readonly target: readonly ["users"]
+					readonly action: {
+						readonly kind: "add_column"
+						readonly ifNotExists: false
+						readonly name: "age"
+						readonly definition: number | null
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type AlterPublicUsers = SqlStatements<InitBuffer<`alter table public.users add column age int`>>[0][0]
+type AlterPublicUsers = SqlStatements<
+	InitBuffer<`
+	alter table public.users add column age int
+`>
+>
 type _AlterPublicUsers = Expect<
 	Matches<
 		AlterPublicUsers,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: false
-			readonly target: readonly ["users", "public"]
-			readonly action: {
-				readonly kind: "add_column"
-				readonly ifNotExists: false
-				readonly name: "age"
-				readonly definition: number | null
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: false
+					readonly target: readonly ["users", "public"]
+					readonly action: {
+						readonly kind: "add_column"
+						readonly ifNotExists: false
+						readonly name: "age"
+						readonly definition: number | null
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type AlterUsersIfExists = SqlStatements<InitBuffer<`alter table if exists public.users add column age int`>>[0][0]
+type AlterUsersIfExists = SqlStatements<
+	InitBuffer<`
+	alter table if exists public.users add column age int
+`>
+>
 type _AlterUsersIfExists = Expect<
 	Matches<
 		AlterUsersIfExists,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: true
-			readonly target: readonly ["users", "public"]
-			readonly action: {
-				readonly kind: "add_column"
-				readonly ifNotExists: false
-				readonly name: "age"
-				readonly definition: number | null
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: true
+					readonly target: readonly ["users", "public"]
+					readonly action: {
+						readonly kind: "add_column"
+						readonly ifNotExists: false
+						readonly name: "age"
+						readonly definition: number | null
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
@@ -65,71 +92,103 @@ type AlterAddColumnIfNotExists = SqlStatements<
 	InitBuffer<`
 	alter table users add column if not exists "display name" text not null
 `>
->[0][0]
+>
 type _AlterAddColumnIfNotExists = Expect<
 	Matches<
 		AlterAddColumnIfNotExists,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: false
-			readonly target: readonly ["users"]
-			readonly action: {
-				readonly kind: "add_column"
-				readonly ifNotExists: true
-				readonly name: "display name"
-				readonly definition: string
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: false
+					readonly target: readonly ["users"]
+					readonly action: {
+						readonly kind: "add_column"
+						readonly ifNotExists: true
+						readonly name: "display name"
+						readonly definition: string
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type AlterDropColumn = SqlStatements<InitBuffer<`alter table users drop column if exists age`>>[0][0]
+type AlterDropColumn = SqlStatements<
+	InitBuffer<`
+	alter table users drop column if exists age
+`>
+>
 type _AlterDropColumn = Expect<
 	Matches<
 		AlterDropColumn,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: false
-			readonly target: readonly ["users"]
-			readonly action: {
-				readonly kind: "drop_column"
-				readonly ifExists: true
-				readonly name: "age"
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: false
+					readonly target: readonly ["users"]
+					readonly action: {
+						readonly kind: "drop_column"
+						readonly ifExists: true
+						readonly name: "age"
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type AlterRenameTo = SqlStatements<InitBuffer<`alter table users rename to app_users`>>[0][0]
+type AlterRenameTo = SqlStatements<
+	InitBuffer<`
+	alter table users rename to app_users
+`>
+>
 type _AlterRenameTo = Expect<
 	Matches<
 		AlterRenameTo,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: false
-			readonly target: readonly ["users"]
-			readonly action: {
-				readonly kind: "rename_to"
-				readonly name: "app_users"
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: false
+					readonly target: readonly ["users"]
+					readonly action: {
+						readonly kind: "rename_to"
+						readonly name: "app_users"
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type AlterRenameColumn = SqlStatements<InitBuffer<`alter table users rename column old_name to "new name"`>>[0][0]
+type AlterRenameColumn = SqlStatements<
+	InitBuffer<`
+	alter table users rename column old_name to "new name"
+`>
+>
 type _AlterRenameColumn = Expect<
 	Matches<
 		AlterRenameColumn,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: false
-			readonly target: readonly ["users"]
-			readonly action: {
-				readonly kind: "rename_column"
-				readonly from: "old_name"
-				readonly to: "new name"
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: false
+					readonly target: readonly ["users"]
+					readonly action: {
+						readonly kind: "rename_column"
+						readonly from: "old_name"
+						readonly to: "new name"
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 

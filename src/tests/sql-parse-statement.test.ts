@@ -1,72 +1,117 @@
 import { describe, it } from "node:test"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type ParseCreate = SqlStatements<InitBuffer<`create table users (id int not null, email text)`>>[0][0]
+type ParseCreate = SqlStatements<
+	InitBuffer<`
+	create table users (id int not null, email text)
+`>
+>
 type _ParseCreate = Expect<
 	Matches<
 		ParseCreate,
-		{
-			readonly kind: "create_table"
-			readonly name: readonly ["users"]
-			readonly row: { id: number; email: string | null }
-			readonly refs: undefined
-		}
+		[
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["users"]
+					readonly row: { id: number; email: string | null }
+					readonly refs: undefined
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type ParseAlter = SqlStatements<InitBuffer<`alter table if exists public.users add column age int`>>[0][0]
+type ParseAlter = SqlStatements<
+	InitBuffer<`
+	alter table if exists public.users add column age int
+`>
+>
 type _ParseAlter = Expect<
 	Matches<
 		ParseAlter,
-		{
-			readonly kind: "alter_table"
-			readonly ifExists: true
-			readonly target: readonly ["users", "public"]
-			readonly action: {
-				readonly kind: "add_column"
-				readonly ifNotExists: false
-				readonly name: "age"
-				readonly definition: number | null
-			}
-		}
+		[
+			readonly [
+				{
+					readonly kind: "alter_table"
+					readonly ifExists: true
+					readonly target: readonly ["users", "public"]
+					readonly action: {
+						readonly kind: "add_column"
+						readonly ifNotExists: false
+						readonly name: "age"
+						readonly definition: number | null
+					}
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type ParseDrop = SqlStatements<InitBuffer<`drop table if exists auth.users;`>>[0][0]
+type ParseDrop = SqlStatements<
+	InitBuffer<`
+	drop table if exists auth.users;
+`>
+>
 type _ParseDrop = Expect<
 	Matches<
 		ParseDrop,
-		{
-			readonly kind: "drop_table"
-			readonly ifExists: true
-			readonly target: readonly ["users", "auth"]
-		}
+		[
+			readonly [
+				{
+					readonly kind: "drop_table"
+					readonly ifExists: true
+					readonly target: readonly ["users", "auth"]
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type ParseCreateSchema = SqlStatements<InitBuffer<`create schema if not exists billing;`>>[0][0]
+type ParseCreateSchema = SqlStatements<
+	InitBuffer<`
+	create schema if not exists billing;
+`>
+>
 type _ParseCreateSchema = Expect<
 	Matches<
 		ParseCreateSchema,
-		{
-			readonly kind: "create_schema"
-			readonly name: "billing"
-			readonly ifNotExists: true
-		}
+		[
+			readonly [
+				{
+					readonly kind: "create_schema"
+					readonly name: "billing"
+					readonly ifNotExists: true
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 
-type ParseDropSchema = SqlStatements<InitBuffer<`drop schema if exists staging`>>[0][0]
+type ParseDropSchema = SqlStatements<
+	InitBuffer<`
+	drop schema if exists staging
+`>
+>
 type _ParseDropSchema = Expect<
 	Matches<
 		ParseDropSchema,
-		{
-			readonly kind: "drop_schema"
-			readonly name: "staging"
-			readonly ifExists: true
-		}
+		[
+			readonly [
+				{
+					readonly kind: "drop_schema"
+					readonly name: "staging"
+					readonly ifExists: true
+				},
+			],
+			EmptyBuffer,
+		]
 	>
 >
 

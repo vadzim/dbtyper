@@ -49,12 +49,12 @@ type ParsedCreate = ReturnType<
 >["__sql_parsed__"]
 type _ParsedCreate = Expect<
 	Matches<
-		ParsedCreate[0]["row"],
+		ParsedCreate,
 		SqlStatements<
 			InitBuffer<`
 	create table users (id int not null, email text not null)
 `>
-		>[0][0]["row"]
+		>[0]
 	>
 >
 
