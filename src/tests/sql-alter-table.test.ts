@@ -85,8 +85,10 @@ type _AlterUsersIfExists = Expect<
 	>
 >
 
-type BadAlter = SqlStatements<InitBuffer<`alter table public.users`>>[0]
-type _BadAlter = Expect<Matches<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
+type BadAlter = SqlStatements<InitBuffer<`alter table public.users`>>
+type _BadAlter = Expect<
+	Matches<BadAlter, [SqlParseError<"Expected an ALTER TABLE action">, InitBuffer<`alter table public.users`>]>
+>
 
 type AlterAddColumnIfNotExists = SqlStatements<
 	InitBuffer<`
@@ -192,8 +194,13 @@ type _AlterRenameColumn = Expect<
 	>
 >
 
-type UnsupportedAlterAction = SqlStatements<InitBuffer<`alter table users set schema archive`>>[0]
-type _UnsupportedAlterAction = Expect<Matches<UnsupportedAlterAction, SqlParseError<"Unsupported ALTER TABLE action">>>
+type UnsupportedAlterAction = SqlStatements<InitBuffer<`alter table users set schema archive`>>
+type _UnsupportedAlterAction = Expect<
+	Matches<
+		UnsupportedAlterAction,
+		[SqlParseError<"Unsupported ALTER TABLE action">, InitBuffer<`alter table users set schema archive`>]
+	>
+>
 
 describe("sql alter table", () => {
 	it("should run", () => {})
