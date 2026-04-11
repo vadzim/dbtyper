@@ -1,5 +1,5 @@
 import type { ReadFirstParenGroup, StripIdentifierQuotes, TrimLeft } from "./sql-parse-primitives.js"
-import type { BufferLike, BufferPayload, InitBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, BufferPayload, InitBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 type SqlScalarTypeToTs<T extends string> = T extends
 	| "int"
@@ -57,7 +57,7 @@ type SqlScalarTypeToTs<T extends string> = T extends
 
 /** Skips optional `(size)` type parameters, e.g. `varchar(255)`. Returns the rest buffer. */
 type SkipOptionalTypeParams<B extends BufferLike> =
-	ReadToken<B> extends ["(", infer _]
+	PeekToken<B> extends "("
 		? ReadFirstParenGroup<B> extends [infer _, infer R extends BufferLike]
 			? R
 			: B
@@ -76,15 +76,13 @@ type ReadIsArray<B extends BufferLike> =
 type ScanForNotNullWithRest<
 	B extends BufferLike,
 	Start extends BufferLike = B,
-> = ReadToken<B> extends [infer T extends string, infer R extends BufferLike]
-	? T extends ""
-		? [false, Start]
-		: T extends "not"
-			? ReadToken<R> extends ["null", infer R2 extends BufferLike]
-				? [true, R2]
-				: ScanForNotNullWithRest<R, Start>
-			: ScanForNotNullWithRest<R, Start>
-	: [false, Start]
+> = PeekToken<B> extends ""
+	? [false, Start]
+	: PeekToken<B> extends "not"
+		? PeekToken<SkipToken<B>> extends "null"
+			? [true, SkipToken<SkipToken<B>>]
+			: ScanForNotNullWithRest<SkipToken<B>, Start>
+		: ScanForNotNullWithRest<SkipToken<B>, Start>
 
 /**
  * Parses a column definition from a buffer.
@@ -92,13 +90,13 @@ type ScanForNotNullWithRest<
  * or `[SqlParseError, B]` on failure.
  */
 type ParseColumnFromBuffer<B extends BufferLike> =
-	ReadToken<B> extends [infer ColNameRaw extends string, infer RestName extends BufferLike]
+	PeekToken<B> extends infer ColNameRaw extends string
 		? ColNameRaw extends ""
 			? [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
-			: ReadToken<RestName> extends [infer TypeRaw extends string, infer RestType extends BufferLike]
+			: PeekToken<SkipToken<B>> extends infer TypeRaw extends string
 				? TypeRaw extends ""
 					? [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
-					: SkipOptionalTypeParams<RestType> extends infer RestParams extends BufferLike
+					: SkipOptionalTypeParams<SkipToken<SkipToken<B>>> extends infer RestParams extends BufferLike
 						? ReadIsArray<RestParams> extends [
 								infer IsArr extends boolean,
 								infer RestArray extends BufferLike,
@@ -120,8 +118,8 @@ type ParseColumnFromBuffer<B extends BufferLike> =
 								: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
 							: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
 						: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
-				: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
-		: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+				: never
+		: never
 
 type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }> = {
 	[K in C["name"]]: C["nullable"] extends true ? C["type"] | null : C["type"]
