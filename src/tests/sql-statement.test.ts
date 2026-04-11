@@ -4,53 +4,73 @@ import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { InitBuffer } from "../parser/sql-tokens.js"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
-type ApplyResult<Db, S extends string> = Db extends {
-	apply(statement: ReturnType<typeof sqlStatement<S>>): infer Next
-}
-	? Next
-	: never
+// --- sqlStatement: brands a string with its parsed type ---
 
-type Db0 = ReturnType<typeof sqlDatabase<"public">>
-type DbAfterPublicSchema = ApplyResult<Db0, "create schema public">
-type Y = ReturnType<typeof sqlStatement<"create table users (id int primary key)">>
-type X = ApplyResult<DbAfterPublicSchema, "create table users (id int primary key)">
-type X2 = ApplyResult<X, "alter table users add column name text">
-type X3 = ApplyResult<X2, "alter table users add column name2 text not null">
-type X4 = ApplyResult<X3, "drop table users">
+type CreateUsersStatement = ReturnType<typeof sqlStatement<"create table users (id int not null, name text)">>
 
-type _Y = Expect<
-	Matches<Y["__sql_parsed__"], SqlStatementsRecovering<InitBuffer<"create table users (id int primary key)">>[0]>
->
-type _YParsed = Expect<
+type _CreateUsersStatementParsedType = Expect<
 	Matches<
-		Y["__sql_parsed__"][0],
+		CreateUsersStatement["__sql_parsed__"],
+		SqlStatementsRecovering<InitBuffer<"create table users (id int not null, name text)">>[0]
+	>
+>
+
+type _CreateUsersStatementParsedShape = Expect<
+	Matches<
+		CreateUsersStatement["__sql_parsed__"][0],
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]
-			readonly row: { id: number | null }
+			readonly row: { id: number; name: string | null }
 			readonly refs: undefined
 		}
 	>
 >
 
-type XApplyArg = Parameters<X["apply"]>[0]
-type _XApplyArgMustBeParsedStatement = ExpectFalse<Matches<XApplyArg, string>>
-type _XApplyArgRejectsPlainString = ExpectFalse<Matches<"alter table users add column age int", XApplyArg>>
-type _XApplyArgAcceptsParsedString = Expect<
+// --- sqlDatabase().apply(): only accepts branded strings, not plain strings ---
+
+type Db = ReturnType<typeof sqlDatabase<"public">>
+type ApplyArg = Parameters<Db["apply"]>[0]
+
+type _ApplyRejectsPlainString = ExpectFalse<Matches<string, ApplyArg>>
+type _ApplyRejectsUnbrandedLiteral = ExpectFalse<Matches<"alter table users add column age int", ApplyArg>>
+type _ApplyAcceptsBrandedStatement = Expect<
 	Matches<
-		X extends { apply(statement: ReturnType<typeof sqlStatement<"alter table users add column age int">>): unknown }
+		Db extends {
+			apply(statement: ReturnType<typeof sqlStatement<"create schema app">>): unknown
+		}
 			? true
 			: false,
 		true
 	>
 >
 
-type _XDefaultSchemaGetter = Expect<Matches<ReturnType<X["getDefaultSchema"]>, string>>
-type _X4MigrationsGetter = Expect<Matches<ReturnType<X4["getMigrations"]>, Promise<{ source: string; path: string }[]>>>
+// --- sqlDatabase() methods ---
 
-type _X2 = Expect<Matches<ReturnType<X2["getMigrations"]>, Promise<{ source: string; path: string }[]>>>
-type _X3 = Expect<Matches<ReturnType<X3["getMigrations"]>, Promise<{ source: string; path: string }[]>>>
-type _X4 = Expect<Matches<ReturnType<X4["getMigrations"]>, Promise<{ source: string; path: string }[]>>>
+type _GetDefaultSchemaReturnsString = Expect<Matches<ReturnType<Db["getDefaultSchema"]>, string>>
+type _GetMigrationsReturnsPromise = Expect<
+	Matches<ReturnType<Db["getMigrations"]>, Promise<{ source: string; path: string }[]>>
+>
+
+// --- apply chain type-checks: each step narrows the database type ---
+
+type DbWithSchema = ReturnType<
+	Db["apply"] extends (statement: ReturnType<typeof sqlStatement<"create schema public">>) => infer Next
+		? () => Next
+		: never
+>
+
+type DbWithUsers = ReturnType<
+	DbWithSchema["apply"] extends (
+		statement: ReturnType<typeof sqlStatement<"create table users (id int not null)">>,
+	) => infer Next
+		? () => Next
+		: never
+>
+
+type _GetMigrationsAfterApplyChain = Expect<
+	Matches<ReturnType<DbWithUsers["getMigrations"]>, Promise<{ source: string; path: string }[]>>
+>
 
 describe("sql statement", () => {
 	it("should run", () => {})
