@@ -17,13 +17,15 @@ type _CreateUsersStatementParsedType = Expect<
 
 type _CreateUsersStatementParsedShape = Expect<
 	Matches<
-		CreateUsersStatement["__sql_parsed__"][0],
-		{
-			readonly kind: "create_table"
-			readonly name: readonly ["users"]
-			readonly row: { id: number; name: string | null }
-			readonly refs: undefined
-		}
+		CreateUsersStatement["__sql_parsed__"],
+		readonly [
+			{
+				readonly kind: "create_table"
+				readonly name: readonly ["users"]
+				readonly row: { id: number; name: string | null }
+				readonly refs: undefined
+			},
+		]
 	>
 >
 
@@ -35,14 +37,11 @@ type ApplyArg = Parameters<Db["apply"]>[0]
 type _ApplyRejectsPlainString = ExpectFalse<Matches<string, ApplyArg>>
 type _ApplyRejectsUnbrandedLiteral = ExpectFalse<Matches<"alter table users add column age int", ApplyArg>>
 type _ApplyAcceptsBrandedStatement = Expect<
-	Matches<
-		Db extends {
-			apply(statement: ReturnType<typeof sqlStatement<"create schema app">>): unknown
-		}
-			? true
-			: false,
-		true
-	>
+	Db extends {
+		apply(statement: ReturnType<typeof sqlStatement<"create schema app">>): unknown
+	}
+		? true
+		: false
 >
 
 // --- sqlDatabase() methods ---
