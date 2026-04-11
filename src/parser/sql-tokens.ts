@@ -4,8 +4,6 @@
 export type InitBuffer<S extends string = string> = ReadTokenFromString<S> // opaque buffer type
 export type EmptyBuffer = { __token__: ""; __rest__: ""; __buffer__: "" }
 export type BufferLike = { __token__: string; __rest__: string; __buffer__: string }
-export type BufferPayload<B extends BufferLike> = B["__buffer__"] // will be removed in the future
-
 export type SqlParseError<Message extends string> = {
 	readonly __sql_parse_error__: Message
 }

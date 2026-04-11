@@ -1,4 +1,4 @@
-import type { BufferLike, BufferPayload, InitBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, InitBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 /** Low-level string / identifier parsing for SQL template literals. */
 
@@ -9,30 +9,7 @@ export type Trim<S extends string> = TrimLeft<TrimRight<S>>
 export type RemoveTrailingSemicolon<S extends string> = Trim<S> extends `${infer X};` ? Trim<X> : Trim<S>
 export type ToLower<S extends string> = Lowercase<S>
 
-type ReadDoubleQuotedIdentifier<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends `"`
-		? [`"${Acc}"`, Rest]
-		: ReadDoubleQuotedIdentifier<Rest, `${Acc}${C}`>
-	: [`"${Acc}"`, ""]
-type ReadBacktickQuotedIdentifier<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends "`"
-		? [`\`${Acc}\``, Rest]
-		: ReadBacktickQuotedIdentifier<Rest, `${Acc}${C}`>
-	: [`\`${Acc}\``, ""]
-export type ReadIdentifier<S extends string> =
-	Trim<S> extends `"${infer Rest}`
-		? ReadDoubleQuotedIdentifier<Rest>
-		: Trim<S> extends `\`${infer Rest}`
-			? ReadBacktickQuotedIdentifier<Rest>
-			: ReadWord<Trim<S>>
-
-export type ReadWord<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends Ws | "," | "(" | ")" | "." | ";"
-		? [Acc, `${C}${Rest}`]
-		: ReadWord<Rest, `${Acc}${C}`>
-	: [Acc, ""]
-
-export type ReadUntilTopLevelComma<
+type ReadUntilTopLevelComma<
 	S extends string,
 	Depth extends 0[] = [],
 	Acc extends string = "",
@@ -51,7 +28,7 @@ export type ReadUntilTopLevelComma<
 	: [Acc, ""]
 
 export type ReadUntilTopLevelCommaBuffer<B extends BufferLike> =
-	ReadUntilTopLevelComma<BufferPayload<B>> extends [infer Head extends string, infer Tail extends string]
+	ReadUntilTopLevelComma<B["__buffer__"]> extends [infer Head extends string, infer Tail extends string]
 		? [head: InitBuffer<Head>, tail: InitBuffer<Tail>]
 		: never
 
@@ -82,15 +59,8 @@ type ReadParenContentString<
 
 export type ReadFirstParenGroup<B extends BufferLike> =
 	FindFirstOpenParen<B> extends infer Rest extends BufferLike
-		? ReadParenContentString<BufferPayload<Rest>> extends [infer Group extends string, infer Tail extends string]
+		? ReadParenContentString<Rest["__buffer__"]> extends [infer Group extends string, infer Tail extends string]
 			? [InitBuffer<Group>, InitBuffer<Tail>]
-			: never
-		: never
-
-export type FirstParenGroup<S extends string> =
-	ReadFirstParenGroup<InitBuffer<S>> extends [infer Inner extends BufferLike, infer _ extends BufferLike]
-		? Inner extends InitBuffer<infer G>
-			? G
 			: never
 		: never
 
@@ -171,19 +141,8 @@ export type ReadQualifiedIdentifierFromBuffer<B extends BufferLike> =
 			: [readonly [A], RestA]
 		: never
 
-export type InitParseBuffer<S extends string> = InitBuffer<S>
-
 /** `[true, Rest]` when the next token is EOF; `[false, B]` when there is more input. Caller must branch on the first element and continue from `Rest` (on success) or `B` (on failure, unchanged). */
 export type ReadBufferEnd<B extends BufferLike> =
 	PeekToken<B> extends ""
 		? [true, SkipToken<B>]
 		: [false, B]
-
-export type ReadQualifiedIdentifier<S extends string> =
-	ReadIdentifier<Trim<S>> extends [infer A extends string, infer RestA extends string]
-		? Trim<RestA> extends `.${infer AfterDot}`
-			? ReadIdentifier<AfterDot> extends [infer B extends string, infer RestB extends string]
-				? [readonly [StripIdentifierQuotes<B>, StripIdentifierQuotes<A>], RestB]
-				: [readonly [StripIdentifierQuotes<A>], RestA]
-			: [readonly [StripIdentifierQuotes<A>], RestA]
-		: never
