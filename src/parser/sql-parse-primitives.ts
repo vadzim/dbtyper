@@ -1,4 +1,4 @@
-import type { BufferLike, InitBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 /** Low-level string / identifier parsing for SQL template literals. */
 
@@ -8,54 +8,48 @@ export type TrimRight<S extends string> = S extends `${infer R}${Ws}` ? TrimRigh
 export type Trim<S extends string> = TrimLeft<TrimRight<S>>
 export type ToLower<S extends string> = Lowercase<S>
 
-type ReadUntilTopLevelComma<
-	S extends string,
+/** Walks from `B` and returns the buffer **after** the first top-level `,` token. If none, returns the buffer at EOF (`PeekToken` is `""`). */
+export type SkipPastFirstTopLevelComma<
+	B extends BufferLike,
 	Depth extends 0[] = [],
-	Acc extends string = "",
-> = S extends `${infer C}${infer Rest}`
-	? C extends "("
-		? ReadUntilTopLevelComma<Rest, [0, ...Depth], `${Acc}${C}`>
-		: C extends ")"
+> = PeekToken<B> extends ""
+	? B
+	: PeekToken<B> extends "("
+		? SkipPastFirstTopLevelComma<SkipToken<B>, [0, ...Depth]>
+		: PeekToken<B> extends ")"
 			? Depth extends [0, ...infer Tail extends 0[]]
-				? ReadUntilTopLevelComma<Rest, Tail, `${Acc}${C}`>
-				: ReadUntilTopLevelComma<Rest, Depth, `${Acc}${C}`>
-			: C extends ","
+				? SkipPastFirstTopLevelComma<SkipToken<B>, Tail>
+				: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
+			: PeekToken<B> extends ","
 				? Depth["length"] extends 0
-					? [Acc, Rest]
-					: ReadUntilTopLevelComma<Rest, Depth, `${Acc}${C}`>
-				: ReadUntilTopLevelComma<Rest, Depth, `${Acc}${C}`>
-	: [Acc, ""]
-
-export type ReadUntilTopLevelCommaBuffer<B extends BufferLike> =
-	ReadUntilTopLevelComma<B["__buffer__"]> extends [infer Head extends string, infer Tail extends string]
-		? [head: InitBuffer<Head>, tail: InitBuffer<Tail>]
-		: never
+					? SkipToken<B>
+					: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
+				: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
 
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
 
 type FindFirstOpenParen<B extends BufferLike> =
 	PeekToken<B> extends "(" ? SkipToken<B> : FindFirstOpenParen<SkipToken<B>>
 
-type ReadParenContentString<
-	S extends string,
-	Depth extends 0[] = [],
-	Acc extends string = "",
-> = S extends `${infer C}${infer Rest}`
-	? C extends "("
-		? ReadParenContentString<Rest, [0, ...Depth], `${Acc}${C}`>
-		: C extends ")"
-			? Depth extends [0, ...infer Tail extends 0[]]
-				? ReadParenContentString<Rest, Tail, `${Acc}${C}`>
-				: [Acc, Rest]
-			: ReadParenContentString<Rest, Depth, `${Acc}${C}`>
-	: never
-
+/** `[innerStart, afterClose]` — `innerStart` is the buffer after `(`; `afterClose` is after the matching `)`. */
 export type ReadFirstParenGroup<B extends BufferLike> =
-	FindFirstOpenParen<B> extends infer Rest extends BufferLike
-		? ReadParenContentString<Rest["__buffer__"]> extends [infer Group extends string, infer Tail extends string]
-			? [InitBuffer<Group>, InitBuffer<Tail>]
-			: never
+	FindFirstOpenParen<B> extends infer AfterOpen extends BufferLike
+		? ReadParenGroupTail<AfterOpen, AfterOpen, []>
 		: never
+
+type ReadParenGroupTail<
+	AfterOpen extends BufferLike,
+	Cur extends BufferLike,
+	Depth extends 0[],
+> = PeekToken<Cur> extends ""
+	? never
+	: PeekToken<Cur> extends "("
+		? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, [0, ...Depth]>
+		: PeekToken<Cur> extends ")"
+			? Depth extends [0, ...infer Tail extends 0[]]
+				? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Tail>
+				: [AfterOpen, SkipToken<Cur>]
+			: ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Depth>
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 

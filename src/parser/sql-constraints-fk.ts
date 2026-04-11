@@ -5,7 +5,6 @@ import type {
 	ReadFirstParenGroup,
 	ReadOptionalToken,
 	ReadQualifiedIdentifierFromBuffer,
-	ReadUntilTopLevelCommaBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
 import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
@@ -53,40 +52,48 @@ export type ReadConstraintEntryMatch<B extends BufferLike> =
 export type ValidateColumnRefs<B extends BufferLike, Names extends string> =
 	PeekToken<B> extends ""
 		? [true, EmptyBuffer]
-		: ReadUntilTopLevelCommaBuffer<B> extends [infer HB extends BufferLike, infer TB extends BufferLike]
-			? ReadExpectedIdentifier<HB, "Expected column name in constraint list"> extends [
-					infer Col extends string,
-					infer HBend extends BufferLike,
-				]
-				? ReadBufferEnd<HBend> extends [true, infer _RestAfterEof extends BufferLike]
+		: ReadExpectedIdentifier<B, "Expected column name in constraint list"> extends [
+				infer Col extends string,
+				infer AfterId extends BufferLike,
+			]
+			? PeekToken<AfterId> extends ","
+				? Col extends Names
+					? ValidateColumnRefs<SkipToken<AfterId>, Names> extends [infer R, infer _ extends BufferLike]
+						? R extends true
+							? [true, EmptyBuffer]
+							: [R, EmptyBuffer]
+						: never
+					: [SqlParseError<`Unknown column "${Col}" referenced in table constraint`>, EmptyBuffer]
+				: PeekToken<AfterId> extends "" | ")"
 					? Col extends Names
-						? ValidateColumnRefs<TB, Names> extends [infer R, infer _ extends BufferLike]
-							? R extends true
-								? [true, EmptyBuffer]
-								: [R, EmptyBuffer]
-							: never
+						? [true, EmptyBuffer]
 						: [SqlParseError<`Unknown column "${Col}" referenced in table constraint`>, EmptyBuffer]
-					: [SqlParseError<"Unable to parse column reference list in table constraint">, EmptyBuffer]
-				: [SqlParseError<"Unable to parse column reference list in table constraint">, EmptyBuffer]
+					: ReadBufferEnd<AfterId> extends [true, infer _]
+						? Col extends Names
+							? [true, EmptyBuffer]
+							: [SqlParseError<`Unknown column "${Col}" referenced in table constraint`>, EmptyBuffer]
+						: [SqlParseError<"Unable to parse column reference list in table constraint">, EmptyBuffer]
 			: [SqlParseError<"Unable to parse column reference list in table constraint">, EmptyBuffer]
 
 export type ParseColumnListToTuple<B extends BufferLike> =
 	PeekToken<B> extends ""
 		? [readonly [], EmptyBuffer]
-		: ReadUntilTopLevelCommaBuffer<B> extends [infer HB extends BufferLike, infer TB extends BufferLike]
-			? ReadExpectedIdentifier<HB, "Expected column name in column list"> extends [
-					infer Col extends string,
-					infer HBend extends BufferLike,
-				]
-				? ReadBufferEnd<HBend> extends [true, infer _RestAfterEof extends BufferLike]
-					? ParseColumnListToTuple<TB> extends [
-							infer Rest extends readonly string[],
-							infer _ extends BufferLike,
-						]
-						? [readonly [Col, ...Rest], EmptyBuffer]
-						: never
+		: ReadExpectedIdentifier<B, "Expected column name in column list"> extends [
+				infer Col extends string,
+				infer AfterId extends BufferLike,
+			]
+			? PeekToken<AfterId> extends ","
+				? ParseColumnListToTuple<SkipToken<AfterId>> extends [
+						infer Rest extends readonly string[],
+						infer _ extends BufferLike,
+					]
+					? [readonly [Col, ...Rest], EmptyBuffer]
 					: never
-				: never
+				: PeekToken<AfterId> extends "" | ")"
+					? [readonly [Col], EmptyBuffer]
+					: ReadBufferEnd<AfterId> extends [true, infer _]
+						? [readonly [Col], EmptyBuffer]
+						: never
 			: never
 
 export type ValidateColumnTupleRefs<Cols extends readonly string[], Names extends string> = Cols extends readonly [

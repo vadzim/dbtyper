@@ -11,7 +11,7 @@ import type {
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
-	ReadUntilTopLevelCommaBuffer,
+	SkipPastFirstTopLevelComma,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
 import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
@@ -104,10 +104,16 @@ type ParseCreateBody<
 > =
 	PeekToken<B> extends ""
 		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<B>]
-		: ReadUntilTopLevelCommaBuffer<B> extends [infer Head extends BufferLike, infer Tail extends BufferLike]
-			? ReadConstraintEntryMatch<Head> extends [infer Matched, infer RestHead extends BufferLike]
-				? ParseCreateBodyOneCommaSegment<Tail, Row, Names, Error, Refs, Matched, RestHead>
-				: never
+		: ReadConstraintEntryMatch<B> extends [infer Matched, infer RestHead extends BufferLike]
+			? ParseCreateBodyOneCommaSegment<
+					SkipPastFirstTopLevelComma<B>,
+					Row,
+					Names,
+					Error,
+					Refs,
+					Matched,
+					RestHead
+				>
 			: [
 					CreateBodyState<
 						Row,

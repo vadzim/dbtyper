@@ -82,11 +82,13 @@ type ScanForNotNullWithRest<
 	Start extends BufferLike = B,
 > = PeekToken<B> extends ""
 	? [false, Start]
-	: PeekToken<B> extends "not"
-		? PeekToken<SkipToken<B>> extends "null"
-			? [true, SkipToken<SkipToken<B>>]
+	: PeekToken<B> extends "," | ")"
+		? [false, Start]
+		: PeekToken<B> extends "not"
+			? PeekToken<SkipToken<B>> extends "null"
+				? [true, SkipToken<SkipToken<B>>]
+				: ScanForNotNullWithRest<SkipToken<B>, Start>
 			: ScanForNotNullWithRest<SkipToken<B>, Start>
-		: ScanForNotNullWithRest<SkipToken<B>, Start>
 
 /**
  * Parses a column definition from a buffer.
@@ -98,7 +100,7 @@ type ParseColumnFromBuffer<B extends BufferLike> =
 		? ColNameRaw extends ""
 			? [SqlParseError<"Invalid column definition">, B]
 			: PeekToken<SkipToken<B>> extends infer TypeRaw extends string
-				? TypeRaw extends ""
+				? TypeRaw extends "" | ")" | "," | ";"
 					? [SqlParseError<"Invalid column definition">, B]
 					: SkipOptionalTypeParams<SkipToken<SkipToken<B>>> extends infer RestParams extends BufferLike
 						? ReadIsArray<RestParams> extends [
