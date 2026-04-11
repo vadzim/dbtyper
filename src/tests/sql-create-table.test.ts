@@ -105,9 +105,20 @@ type BadUniqueRef = SqlStatements<
 		unique (missing_col)
 	)
 `>
->[0]
+>
 type _BadUniqueRef = Expect<
-	Matches<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<
+		BadUniqueRef,
+		[
+			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
+			InitBuffer<`
+	create table bad_unique (
+		id int not null,
+		unique (missing_col)
+	)
+`>,
+		]
+	>
 >
 
 type BadForeignKeyRef = SqlStatements<
@@ -118,9 +129,21 @@ type BadForeignKeyRef = SqlStatements<
 		foreign key (missing_col) references orgs(id)
 	)
 `>
->[0]
+>
 type _BadForeignKeyRef = Expect<
-	Matches<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<
+		BadForeignKeyRef,
+		[
+			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
+			InitBuffer<`
+	create table bad_fk (
+		id int not null,
+		org_id int,
+		foreign key (missing_col) references orgs(id)
+	)
+`>,
+		]
+	>
 >
 
 type WithComments = SqlStatements<
@@ -169,9 +192,21 @@ type BadRefWithComments = SqlStatements<
 		unique (missing_col)
 	)
 `>
->[0]
+>
 type _BadRefWithComments = Expect<
-	Matches<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<
+		BadRefWithComments,
+		[
+			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
+			InitBuffer<`
+	create table bad_ref_with_comments (
+		id int not null,
+		/* wrong column should still fail */
+		unique (missing_col)
+	)
+`>,
+		]
+	>
 >
 
 type QuotedIdentifiers = SqlStatements<
@@ -216,9 +251,20 @@ type BadQuotedRef = SqlStatements<
 		unique ("missing id")
 	)
 `>
->[0]
+>
 type _BadQuotedRef = Expect<
-	Matches<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
+	Matches<
+		BadQuotedRef,
+		[
+			SqlParseError<`Unknown column "missing id" referenced in table constraint`>,
+			InitBuffer<`
+	create table q_bad (
+		"id" int not null,
+		unique ("missing id")
+	)
+`>,
+		]
+	>
 >
 
 type _TableNameSimple = Expect<

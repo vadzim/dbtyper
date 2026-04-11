@@ -22,6 +22,7 @@ export function migration<Path extends string>(path: Path) {
 	}
 }
 
+// use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 type UnnamedMigration<S extends string> = S & { readonly __sql_parsed__: SqlStatementsRecovering<InitBuffer<S>>[0] }
 
 type NamedMigration<S extends string, Path extends string> = {

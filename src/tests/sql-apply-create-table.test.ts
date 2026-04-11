@@ -5,7 +5,7 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
@@ -281,7 +281,7 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 
 type CreateWithCompositeForeignKeyBadArity = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatementsRecovering<
+	SqlStatements<
 		InitBuffer<`
 	create schema test;
 	create schema auth;

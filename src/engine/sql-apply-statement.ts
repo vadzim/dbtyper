@@ -42,13 +42,16 @@ export type SqlApplyStatement<
 
 export type SqlApplyStatements<
 	Db extends SqlDatabaseLike | SqlParseError<string>,
-	Statements extends readonly SqlStatementLike[],
-> = Statements extends readonly [
-	infer First extends SqlStatementLike,
-	...infer Rest extends readonly SqlStatementLike[],
-]
-	? SqlApplyStatements<SqlApplyStatement<Db, First>, Rest>
-	: Db
+	Statements extends readonly SqlStatementLike[] | SqlParseError<string>,
+> =
+	Statements extends SqlParseError<string>
+		? Statements
+		: Statements extends readonly [
+					infer First extends SqlStatementLike,
+					...infer Rest extends readonly SqlStatementLike[],
+			  ]
+			? SqlApplyStatements<SqlApplyStatement<Db, First>, Rest>
+			: Db
 
 type FlattenDBType<DB extends SqlDatabaseLike | SqlParseError<string>> = DB extends SqlDatabaseLike
 	? {

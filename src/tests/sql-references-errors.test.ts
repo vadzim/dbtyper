@@ -5,7 +5,7 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 
 type DbDuplicateUsersTables = SqlApplyStatements<
@@ -23,7 +23,7 @@ type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParseEr
 
 type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatementsRecovering<
+	SqlStatements<
 		InitBuffer<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -97,7 +97,7 @@ type _StmtPairRefArityShort = Expect<
 
 type DbPairRefArityShort = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatementsRecovering<
+	SqlStatements<
 		InitBuffer<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -137,7 +137,7 @@ type _StmtPairRefArityLong = Expect<
 
 type DbPairRefArityLong = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatementsRecovering<
+	SqlStatements<
 		InitBuffer<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -404,7 +404,7 @@ type _StmtSalesDbArityShort = Expect<
 
 type DbSalesDbArityShort = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatementsRecovering<
+	SqlStatements<
 		InitBuffer<`
 	create schema public;
 	create table users (id int not null, email text not null);

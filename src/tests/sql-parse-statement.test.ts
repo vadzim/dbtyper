@@ -115,23 +115,44 @@ type _ParseDropSchema = Expect<
 	>
 >
 
-type ParseUnknown = SqlStatements<InitBuffer<`create view v as select 1`>>[0]
-type _ParseUnknown = Expect<Matches<ParseUnknown, SqlParseError<"Unknown sql statement">>>
+type ParseUnknown = SqlStatements<InitBuffer<`create view v as select 1`>>
+type _ParseUnknown = Expect<
+	Matches<ParseUnknown, [SqlParseError<"Unknown sql statement">, InitBuffer<`create view v as select 1`>]>
+>
 
-type ParseInvalidCreate = SqlStatements<InitBuffer<`create table broken (id)`>>[0]
-type _ParseInvalidCreate = Expect<Matches<ParseInvalidCreate, SqlParseError<"Invalid column definition">>>
+type ParseInvalidCreate = SqlStatements<InitBuffer<`create table broken (id)`>>
+type _ParseInvalidCreate = Expect<
+	Matches<ParseInvalidCreate, [SqlParseError<"Invalid column definition">, InitBuffer<`create table broken (id)`>]>
+>
 
-type ParseInvalidKeywordBoundary = SqlStatements<InitBuffer<`createx table users (id int)`>>[0]
-type _ParseInvalidKeywordBoundary = Expect<Matches<ParseInvalidKeywordBoundary, SqlParseError<"Unknown sql statement">>>
+type ParseInvalidKeywordBoundary = SqlStatements<InitBuffer<`createx table users (id int)`>>
+type _ParseInvalidKeywordBoundary = Expect<
+	Matches<
+		ParseInvalidKeywordBoundary,
+		[SqlParseError<"Unknown sql statement">, InitBuffer<`createx table users (id int)`>]
+	>
+>
 
-type ParseInvalidDropBoundary = SqlStatements<InitBuffer<`dropx table users`>>[0]
-type _ParseInvalidDropBoundary = Expect<Matches<ParseInvalidDropBoundary, SqlParseError<"Unknown sql statement">>>
+type ParseInvalidDropBoundary = SqlStatements<InitBuffer<`dropx table users`>>
+type _ParseInvalidDropBoundary = Expect<
+	Matches<ParseInvalidDropBoundary, [SqlParseError<"Unknown sql statement">, InitBuffer<`dropx table users`>]>
+>
 
-type ParseInvalidIfNot = SqlStatements<InitBuffer<`create schema if not billing`>>[0]
-type _ParseInvalidIfNot = Expect<Matches<ParseInvalidIfNot, SqlParseError<"Expected EXISTS after IF NOT">>>
+type ParseInvalidIfNot = SqlStatements<InitBuffer<`create schema if not billing`>>
+type _ParseInvalidIfNot = Expect<
+	Matches<
+		ParseInvalidIfNot,
+		[SqlParseError<"Expected EXISTS after IF NOT">, InitBuffer<`create schema if not billing`>]
+	>
+>
 
-type ParseTrailingTokens = SqlStatements<InitBuffer<`drop table users extra`>>[0]
-type _ParseTrailingTokens = Expect<Matches<ParseTrailingTokens, SqlParseError<"Unable to parse DROP TABLE statement">>>
+type ParseTrailingTokens = SqlStatements<InitBuffer<`drop table users extra`>>
+type _ParseTrailingTokens = Expect<
+	Matches<
+		ParseTrailingTokens,
+		[SqlParseError<"Unable to parse DROP TABLE statement">, InitBuffer<`drop table users extra`>]
+	>
+>
 
 describe("sql parse migration", () => {
 	it("should run", () => {})

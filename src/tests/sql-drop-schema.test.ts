@@ -1,5 +1,5 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyBuffer, InitBuffer } from "../parser/sql-tokens.js"
+import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
@@ -45,8 +45,10 @@ type _DropBilling = Expect<
 	>
 >
 
-type BadDrop = SqlStatements<InitBuffer<`drop table auth`>>[0]
-type _BadDrop = ExpectFalse<Matches<BadDrop, { readonly kind: "drop_schema" }>>
+type BadDrop = SqlStatements<InitBuffer<`drop schema auth.`>>
+type _BadDrop = Expect<
+	Matches<BadDrop, [SqlParseError<"Unable to parse DROP SCHEMA statement">, InitBuffer<`drop schema auth.`>]>
+>
 
 describe("sql drop schema", () => {
 	it("should run", () => {})
