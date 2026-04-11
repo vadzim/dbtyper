@@ -1,4 +1,4 @@
-import type { BufferLike, BufferPayload, InitBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, BufferPayload, InitBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 /** Low-level string / identifier parsing for SQL template literals. */
 
@@ -72,11 +72,9 @@ export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"`
 			: S
 
 type FindFirstOpenParen<B extends BufferLike> =
-	ReadToken<B> extends [infer C, infer Rest extends BufferLike]
-		? C extends "("
-			? Rest
-			: FindFirstOpenParen<Rest>
-		: never
+	PeekToken<B> extends "("
+		? SkipToken<B>
+		: FindFirstOpenParen<SkipToken<B>>
 
 type ReadParenContentString<
 	S extends string,
@@ -112,35 +110,25 @@ export type ParseResult<Result, Rest> = [result: Result, rest: Rest]
 export type ParseFailure<Message extends string, Rest> = ParseResult<SqlParseError<Message>, Rest>
 export type ParseOutput<Result, Rest> = ParseResult<Result | SqlParseError<string>, Rest>
 export type ConsumeStatementEnd<B extends BufferLike> =
-	ReadToken<B> extends [infer Token extends string, infer Rest extends BufferLike]
-		? Token extends ";"
-			? ParseResult<true, Rest>
-			: Token extends ""
-				? ParseResult<true, Rest>
-				: ParseResult<false, B>
+	PeekToken<B> extends ";" | ""
+		? ParseResult<true, SkipToken<B>>
 		: ParseResult<false, B>
 
 export type ReadExpectedToken<B extends BufferLike, Expected extends string, Message extends string> =
-	ReadToken<B> extends [infer Token extends string, infer Rest extends BufferLike]
-		? Token extends Expected
-			? ParseResult<true, Rest>
-			: ParseFailure<Message, B>
+	PeekToken<B> extends Expected
+		? ParseResult<true, SkipToken<B>>
 		: ParseFailure<Message, B>
 
 export type ReadOptionalToken<B extends BufferLike, Expected extends string> =
-	ReadToken<B> extends [infer Token extends string, infer Rest extends BufferLike]
-		? Token extends Expected
-			? ParseResult<true, Rest>
-			: ParseResult<false, B>
+	PeekToken<B> extends Expected
+		? ParseResult<true, SkipToken<B>>
 		: ParseResult<false, B>
 
 export type ReadExpectedIdentifier<B extends BufferLike, Message extends string> =
-	ReadToken<B> extends [infer Raw extends string, infer Rest extends BufferLike]
-		? StripIdentifierQuotes<Trim<Raw>> extends infer Name extends string
-			? Name extends ""
-				? ParseFailure<Message, B>
-				: ParseResult<Name, Rest>
-			: ParseFailure<Message, B>
+	StripIdentifierQuotes<Trim<PeekToken<B>>> extends infer Name extends string
+		? Name extends ""
+			? ParseFailure<Message, B>
+			: ParseResult<Name, SkipToken<B>>
 		: ParseFailure<Message, B>
 
 export type ReadOptionalIfExists<B extends BufferLike> =
@@ -197,10 +185,8 @@ export type InitParseBuffer<S extends string> = InitBuffer<S>
 
 /** `[true, Rest]` when the next token is EOF; `[false, B]` when there is more input. Caller must branch on the first element and continue from `Rest` (on success) or `B` (on failure, unchanged). */
 export type ReadBufferEnd<B extends BufferLike> =
-	ReadToken<B> extends [infer T extends string, infer Rest extends BufferLike]
-		? T extends ""
-			? [true, Rest]
-			: [false, B]
+	PeekToken<B> extends ""
+		? [true, SkipToken<B>]
 		: [false, B]
 
 export type ReadQualifiedIdentifier<S extends string> =
