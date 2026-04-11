@@ -8,7 +8,7 @@ import type {
 	ReadUntilTopLevelCommaBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { BufferLike, EmptyBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type ForeignRefMeta = {
 	from: string
@@ -30,23 +30,19 @@ type StripConstraintPrefixBuffers<B extends BufferLike> =
 		: [B, EmptyBuffer]
 
 type ReadConstraintKeywordOnStripped<EB extends BufferLike, Original extends BufferLike> =
-	ReadToken<EB> extends ["primary", infer R1 extends BufferLike]
-		? ReadExpectedToken<R1, "key", "Expected KEY after PRIMARY"> extends [true, infer _]
+	PeekToken<EB> extends "primary"
+		? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after PRIMARY"> extends [true, infer _]
 			? [true, Original]
 			: [false, Original]
-		: ReadToken<EB> extends ["unique", infer __]
+		: PeekToken<EB> extends "unique"
 			? [true, Original]
-			: ReadToken<EB> extends ["foreign", infer R2 extends BufferLike]
-				? ReadExpectedToken<R2, "key", "Expected KEY after FOREIGN"> extends [true, infer ___]
+			: PeekToken<EB> extends "foreign"
+				? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
 					? [true, Original]
 					: [false, Original]
-				: ReadToken<EB> extends ["check", infer ____]
+				: PeekToken<EB> extends "check" | "exclude" | "constraint"
 					? [true, Original]
-					: ReadToken<EB> extends ["exclude", infer _____]
-						? [true, Original]
-						: ReadToken<EB> extends ["constraint", infer ______]
-							? [true, Original]
-							: [false, Original]
+					: [false, Original]
 
 /** `[true, Rest]` if `Rest` is a constraint clause head; `[false, Rest]` if it is a column definition. `Rest` is always the original fragment buffer (nothing consumed). */
 export type ReadConstraintEntryMatch<B extends BufferLike> =
@@ -55,7 +51,7 @@ export type ReadConstraintEntryMatch<B extends BufferLike> =
 		: [false, B]
 
 export type ValidateColumnRefs<B extends BufferLike, Names extends string> =
-	ReadToken<B> extends ["", BufferLike]
+	PeekToken<B> extends ""
 		? [true, EmptyBuffer]
 		: ReadUntilTopLevelCommaBuffer<B> extends [infer HB extends BufferLike, infer TB extends BufferLike]
 			? ReadExpectedIdentifier<HB, "Expected column name in constraint list"> extends [
@@ -75,7 +71,7 @@ export type ValidateColumnRefs<B extends BufferLike, Names extends string> =
 			: [SqlParseError<"Unable to parse column reference list in table constraint">, EmptyBuffer]
 
 export type ParseColumnListToTuple<B extends BufferLike> =
-	ReadToken<B> extends ["", BufferLike]
+	PeekToken<B> extends ""
 		? [readonly [], EmptyBuffer]
 		: ReadUntilTopLevelCommaBuffer<B> extends [infer HB extends BufferLike, infer TB extends BufferLike]
 			? ReadExpectedIdentifier<HB, "Expected column name in column list"> extends [
@@ -196,8 +192,8 @@ type ValidateForeignKeyConstraintBodyBuffer<B extends BufferLike, Names extends 
 
 export type ValidateConstraintRefs<B extends BufferLike, Names extends string> =
 	StripConstraintPrefixBuffers<B> extends [infer EB extends BufferLike, EmptyBuffer]
-		? ReadToken<EB> extends ["primary", infer Rpk extends BufferLike]
-			? ReadExpectedToken<Rpk, "key", "Expected KEY after PRIMARY"> extends [
+		? PeekToken<EB> extends "primary"
+			? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after PRIMARY"> extends [
 					true,
 					infer AfterPk extends BufferLike,
 				]
@@ -205,12 +201,12 @@ export type ValidateConstraintRefs<B extends BufferLike, Names extends string> =
 					? ValidateColumnRefs<Gr, Names>
 					: [SqlParseError<"PRIMARY KEY must include a column list">, EmptyBuffer]
 				: [true, EmptyBuffer]
-			: ReadToken<EB> extends ["unique", infer Ru extends BufferLike]
-				? ReadFirstParenGroup<Ru> extends [infer Gu extends BufferLike, infer __]
+			: PeekToken<EB> extends "unique"
+				? ReadFirstParenGroup<SkipToken<EB>> extends [infer Gu extends BufferLike, infer _]
 					? ValidateColumnRefs<Gu, Names>
 					: [SqlParseError<"UNIQUE must include a column list">, EmptyBuffer]
-				: ReadToken<EB> extends ["foreign", infer Rf extends BufferLike]
-					? ReadExpectedToken<Rf, "key", "Expected KEY after FOREIGN"> extends [true, infer ___]
+				: PeekToken<EB> extends "foreign"
+					? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
 						? ValidateForeignKeyConstraintBodyBuffer<EB, Names>
 						: [true, EmptyBuffer]
 					: [true, EmptyBuffer]
@@ -261,8 +257,8 @@ type ParseForeignRefMetaFkTail<
 		: never
 
 type ParseForeignRefMetaAfterStrip<EB extends BufferLike> =
-	ReadToken<EB> extends ["foreign", infer Rfk extends BufferLike]
-		? ReadExpectedToken<Rfk, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
+	PeekToken<EB> extends "foreign"
+		? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
 			? ReadFirstParenGroup<EB> extends [infer LocalBuf extends BufferLike, infer R1 extends BufferLike]
 				? ReadExpectedToken<R1, "references", "Expected REFERENCES"> extends [
 						true,
