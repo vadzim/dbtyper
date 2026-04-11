@@ -164,25 +164,24 @@ type WithComments = SqlStatements<
 	);
 `>
 >[0]
-// type _WithCommentsShape = Expect<
-// 	WithComments extends {
-// 		readonly kind: "create_table"
-// 		readonly name: readonly ["commented_users"]
-// 		readonly row: {
-// 			id: number
-// 			email: string
-// 			org_id: number | null
-// 		}
-// 		readonly refs: {
-// 			from: string
-// 			columnPairs: readonly (readonly [string, string])[]
-// 			toSchema: string | undefined
-// 			toTable: string
-// 		}
-// 	}
-// 		? true
-// 		: false
-// >
+type _WithCommentsShape = Expect<
+	Matches<
+		WithComments,
+		readonly [
+			{
+				kind: "create_table"
+				name: readonly ["commented_users"]
+				row: { email: string; id: number; org_id: number | null }
+				refs: {
+					from: ""
+					columnPairs: [readonly ["org_id", "id"]]
+					toSchema: undefined
+					toTable: "orgs"
+				}
+			},
+		]
+	>
+>
 
 type BadRefWithComments = SqlStatements<
 	InitBuffer<`
