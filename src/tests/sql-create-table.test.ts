@@ -339,6 +339,82 @@ type _PostgresTypes = Expect<
 		]
 	>
 >
+// Type names are identifiers — they can appear in double quotes in SQL and
+// behave identically to the unquoted form.
+
+type QuotedTypeNames = SqlStatements<
+	ParseSqlTokens<`
+	create table quoted_types (
+		a "int" not null,
+		b "text",
+		c "uuid" not null,
+		d "timestamp" not null,
+		e "timetz",
+		f "inet",
+		g "int4range"
+	)
+`>
+>
+type _QuotedTypeNames = Expect<
+	Matches<
+		QuotedTypeNames,
+		[
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["quoted_types"]
+					readonly row: {
+						a: number
+						b: string | null
+						c: string
+						d: Date
+						e: Date | null
+						f: string | null
+						g: unknown | null
+					}
+					readonly refs: undefined
+				},
+			],
+			EmptyTokenList,
+		]
+	>
+>
+
+// Type names can also be used as column names (they are just identifiers).
+type TypeNamesAsColumnNames = SqlStatements<
+	ParseSqlTokens<`
+	create table type_name_columns (
+		int int not null,
+		text text,
+		uuid uuid not null,
+		timestamp timestamp not null,
+		inet inet
+	)
+`>
+>
+type _TypeNamesAsColumnNames = Expect<
+	Matches<
+		TypeNamesAsColumnNames,
+		[
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["type_name_columns"]
+					readonly row: {
+						int: number
+						text: string | null
+						uuid: string
+						timestamp: Date
+						inet: string | null
+					}
+					readonly refs: undefined
+				},
+			],
+			EmptyTokenList,
+		]
+	>
+>
+
 describe("sql create table", () => {
 	it("should run", () => {})
 })
