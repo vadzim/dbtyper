@@ -5,7 +5,7 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 
 type DbDuplicateUsersTables = SqlApplyStatements<
@@ -423,6 +423,24 @@ type _DbSalesDbArityShort = Expect<
 		DbSalesDbArityShort,
 		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
+>
+
+type WrongStatementBeforeIncompletedStatementWithRecovering = SqlApplyStatements<
+	SqlDatabase<"public">,
+	SqlStatementsRecovering<InitBuffer<`create schema a; create schema a; select 1`>>[0]
+>
+
+type _WrongStatementBeforeIncompletedStatementWithRecovering = Expect<
+	Matches<WrongStatementBeforeIncompletedStatementWithRecovering, SqlParseError<"Duplicate schema name: a">>
+>
+
+type WrongStatementBeforeIncompletedStatementStrict = SqlApplyStatements<
+	SqlDatabase<"public">,
+	SqlStatements<InitBuffer<`create schema a; create schema a; select 1`>>[0]
+>
+
+type _WrongStatementBeforeIncompletedStatementStrict = Expect<
+	Matches<WrongStatementBeforeIncompletedStatementStrict, SqlParseError<"Unknown sql statement">>
 >
 
 describe("sql references (errors)", () => {
