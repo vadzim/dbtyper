@@ -2,6 +2,7 @@ import { describe, it } from "node:test"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlParseError } from "../parser/sql-tokens.js"
 
 type ImportMigration<Path extends string, Sql extends string> = Promise<{
 	default: {
@@ -51,8 +52,8 @@ type ParsedArityError = ReturnType<
 >["__sql_parsed__"]
 type _ParsedArityError = Expect<
 	Matches<
-		ParsedArityError["__sql_parse_error__"],
-		"Foreign key referenced column list has more entries than the local column list"
+		ParsedArityError,
+		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 
