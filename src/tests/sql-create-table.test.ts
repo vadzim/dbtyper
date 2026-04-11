@@ -163,22 +163,25 @@ type WithComments = SqlStatements<
 		foreign key (org_id) references orgs(id)
 	);
 `>
->[0]
+>
 type _WithCommentsShape = Expect<
 	Matches<
 		WithComments,
-		readonly [
-			{
-				kind: "create_table"
-				name: readonly ["commented_users"]
-				row: { email: string; id: number; org_id: number | null }
-				refs: {
-					from: ""
-					columnPairs: [readonly ["org_id", "id"]]
-					toSchema: undefined
-					toTable: "orgs"
-				}
-			},
+		[
+			readonly [
+				{
+					kind: "create_table"
+					name: readonly ["commented_users"]
+					row: { email: string; id: number; org_id: number | null }
+					refs: {
+						from: ""
+						columnPairs: [readonly ["org_id", "id"]]
+						toSchema: undefined
+						toTable: "orgs"
+					}
+				},
+			],
+			EmptyBuffer,
 		]
 	>
 >
