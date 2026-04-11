@@ -12,7 +12,6 @@ export type SqlParseError<Message extends string> = {
 
 export type PeekToken<B extends BufferLike> = B["__token__"]
 export type SkipToken<B extends BufferLike> = InitBuffer<B["__rest__"]>
-export type ReadToken<B extends BufferLike> = [PeekToken<B>, SkipToken<B>]
 
 /** Lex one token from a string (internal). `__buffer__` is always `S` for this call (debug). */
 type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
