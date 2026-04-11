@@ -1,85 +1,115 @@
-import type { ReadIdentifier, ReadWord, StripIdentifierQuotes, Trim, ToLower } from "./sql-parse-primitives.js"
-import type { Buffer, BufferPayload, SqlParseError } from "./sql-tokens.js"
+import type { ReadFirstParenGroup, StripIdentifierQuotes, TrimLeft } from "./sql-parse-primitives.js"
+import type { BufferLike, BufferPayload, InitBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
 
-type NormalizeTypeToken<S extends string> =
-	ToLower<Trim<S>> extends `${infer Base}(${string}` ? Trim<Base> : ToLower<Trim<S>>
-type StripArraySuffix<T extends string> = T extends `${infer Base}[]` ? StripArraySuffix<Base> : T
-type StripSchemaPrefix<T extends string> = T extends `${string}.${infer Name}` ? Name : T
-type NormalizePgTypeToken<T extends string> = StripSchemaPrefix<StripArraySuffix<NormalizeTypeToken<T>>>
-type IsArrayType<T extends string> = NormalizeTypeToken<T> extends `${string}[]` ? true : false
-type SqlScalarTypeToTs<T extends string> =
-	NormalizePgTypeToken<T> extends
-		| "int"
-		| "integer"
-		| "smallint"
-		| "bigint"
-		| "int2"
-		| "int4"
-		| "int8"
-		| "smallserial"
-		| "serial"
-		| "bigserial"
-		| "serial2"
-		| "serial4"
-		| "serial8"
-		| "float"
-		| "double"
-		| "float4"
-		| "float8"
-		| "real"
-		| "decimal"
-		| "numeric"
-		| "money"
-		? number
-		: NormalizePgTypeToken<T> extends "boolean" | "bool"
-			? boolean
-			: NormalizePgTypeToken<T> extends "date" | "timestamp" | "time" | "timetz" | "timestamptz" | "interval"
-				? Date
-				: NormalizePgTypeToken<T> extends "bytea"
-					? Uint8Array
-					: NormalizePgTypeToken<T> extends "json" | "jsonb"
+type SqlScalarTypeToTs<T extends string> = T extends
+	| "int"
+	| "integer"
+	| "smallint"
+	| "bigint"
+	| "int2"
+	| "int4"
+	| "int8"
+	| "smallserial"
+	| "serial"
+	| "bigserial"
+	| "serial2"
+	| "serial4"
+	| "serial8"
+	| "float"
+	| "double"
+	| "float4"
+	| "float8"
+	| "real"
+	| "decimal"
+	| "numeric"
+	| "money"
+	? number
+	: T extends "boolean" | "bool"
+		? boolean
+		: T extends "date" | "timestamp" | "time" | "timetz" | "timestamptz" | "interval"
+			? Date
+			: T extends "bytea"
+				? Uint8Array
+				: T extends "json" | "jsonb"
+					? unknown
+					: T extends
+								| "point"
+								| "line"
+								| "lseg"
+								| "box"
+								| "path"
+								| "polygon"
+								| "circle"
+								| "int4range"
+								| "int8range"
+								| "numrange"
+								| "tsrange"
+								| "tstzrange"
+								| "daterange"
+								| "int4multirange"
+								| "int8multirange"
+								| "nummultirange"
+								| "tsmultirange"
+								| "tstzmultirange"
+								| "datemultirange"
 						? unknown
-						: NormalizePgTypeToken<T> extends
-									| "point"
-									| "line"
-									| "lseg"
-									| "box"
-									| "path"
-									| "polygon"
-									| "circle"
-									| "int4range"
-									| "int8range"
-									| "numrange"
-									| "tsrange"
-									| "tstzrange"
-									| "daterange"
-									| "int4multirange"
-									| "int8multirange"
-									| "nummultirange"
-									| "tsmultirange"
-									| "tstzmultirange"
-									| "datemultirange"
-							? unknown
-							: string
+						: string
 
-type SqlTypeToTs<T extends string> = IsArrayType<T> extends true ? SqlScalarTypeToTs<T>[] : SqlScalarTypeToTs<T>
+/** Skips optional `(size)` type parameters, e.g. `varchar(255)`. Returns the rest buffer. */
+type SkipOptionalTypeParams<B extends BufferLike> =
+	ReadToken<B> extends ["(", infer _]
+		? ReadFirstParenGroup<B> extends [infer _, infer R extends BufferLike]
+			? R
+			: B
+		: B
 
-type IsNullable<ColumnSpec extends string> = ToLower<ColumnSpec> extends `${string} not null${string}` ? false : true
+/** Checks whether the buffer starts with `[]` (array suffix). Returns `[isArray, rest]`. */
+type ReadIsArray<B extends BufferLike> =
+	TrimLeft<BufferPayload<B>> extends `[]${infer Rest}` ? [true, InitBuffer<Rest>] : [false, B]
 
-type ParseColumn<Col extends string> =
-	ReadIdentifier<Trim<Col>> extends [infer ColName extends string, infer Rest extends string]
-		? ReadWord<Trim<Rest>> extends [infer SqlT extends string, infer AfterType extends string]
-			? Trim<SqlT> extends ""
-				? never
-				: {
-						name: StripIdentifierQuotes<ColName>
-						type: SqlTypeToTs<SqlT>
-						nullable: IsNullable<AfterType>
-					}
-			: never
-		: never
+/** Scans remaining tokens for a `NOT NULL` sequence. Returns `true` if found. */
+type ScanForNotNull<B extends BufferLike> =
+	ReadToken<B> extends [infer T extends string, infer R extends BufferLike]
+		? T extends ""
+			? false
+			: T extends "not"
+				? ReadToken<R> extends ["null", infer _]
+					? true
+					: ScanForNotNull<R>
+				: ScanForNotNull<R>
+		: false
 
-type ParseColumnFromBuffer<B extends Buffer> = ParseColumn<Trim<BufferPayload<B>>>
+/**
+ * Parses a column definition from a buffer.
+ * Returns `[{ name, type, nullable }, rest]` on success,
+ * or `[SqlParseError, B]` on failure.
+ */
+type ParseColumnFromBuffer<B extends BufferLike> =
+	ReadToken<B> extends [infer ColNameRaw extends string, infer RestName extends BufferLike]
+		? ColNameRaw extends ""
+			? [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+			: ReadToken<RestName> extends [infer TypeRaw extends string, infer RestType extends BufferLike]
+				? TypeRaw extends ""
+					? [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+					: SkipOptionalTypeParams<RestType> extends infer RestParams extends BufferLike
+						? ReadIsArray<RestParams> extends [
+								infer IsArr extends boolean,
+								infer RestArray extends BufferLike,
+							]
+							? [
+									{
+										name: StripIdentifierQuotes<ColNameRaw>
+										type: IsArr extends true
+											? SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>[]
+											: SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>
+										nullable: ScanForNotNull<RestArray> extends true ? false : true
+									},
+									RestArray,
+								]
+							: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+						: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+				: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+		: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
 
 type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }> = {
 	[K in C["name"]]: C["nullable"] extends true ? C["type"] | null : C["type"]
@@ -87,16 +117,15 @@ type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }
 
 type Merge<A, B> = A & B
 
-type AddColumnErrorPayload<B extends Buffer> = Trim<BufferPayload<B>>
-
-export type AddColumn<B extends Buffer, Row, Names extends string> = [ParseColumnFromBuffer<B>] extends [never]
-	? { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${AddColumnErrorPayload<B>}`> }
-	: [ParseColumnFromBuffer<B>] extends [
-				infer C extends {
-					name: string
-					type: unknown
-					nullable: boolean
-				},
-		  ]
-		? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never }
-		: { row: Row; names: Names; error: SqlParseError<`Invalid column definition: ${AddColumnErrorPayload<B>}`> }
+export type AddColumn<B extends BufferLike, Row, Names extends string> =
+	ParseColumnFromBuffer<B> extends [
+		infer C extends { name: string; type: unknown; nullable: boolean },
+		infer Rest extends BufferLike,
+	]
+		? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never; rest: Rest }
+		: {
+				row: Row
+				names: Names
+				error: SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>
+				rest: B
+			}

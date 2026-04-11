@@ -1,14 +1,17 @@
-export type Buffer = { readonly __buffer__: string }
-export type EmptyBuffer = { readonly __buffer__: "" }
-export type InitBuffer<S extends string = string> = { readonly __buffer__: S }
-export type BufferPayload<B extends Buffer> = B["__buffer__"]
+const bufferKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
+type BufferKey = typeof bufferKey // it's denied to export this type and use it outside this module in any directional or indirectional way
+
+export type InitBuffer<S extends string = string> = { readonly [bufferKey]: S } // opaque buffer type
+export type EmptyBuffer = InitBuffer<"">
+export type BufferLike = InitBuffer<string>
+export type BufferPayload<B extends BufferLike> = B[BufferKey] // will be removed in the future
 
 export type SqlParseError<Message extends string> = {
 	readonly __sql_parse_error__: Message
 }
 
-export type ReadToken<B extends Buffer> =
-	ReadTokenFromString<B["__buffer__"]> extends [infer Token extends string, infer Rest extends string]
+export type ReadToken<B extends BufferLike> =
+	ReadTokenFromString<B[BufferKey]> extends [infer Token extends string, infer Rest extends string]
 		? [Token, InitBuffer<Rest>]
 		: never
 
