@@ -1,23 +1,18 @@
 // const bufferKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 // type BufferKey = typeof bufferKey // it's denied to export this type and use it outside this module in any directional or indirectional way
 
-export type InitBuffer<S extends string = string> = { __buffer__: S } // opaque buffer type
-export type EmptyBuffer = { __buffer__: "" }
-export type BufferLike = { __buffer__: string }
+export type InitBuffer<S extends string = string> = ReadTokenFromString<S> // opaque buffer type
+export type EmptyBuffer = { __token__: ""; __rest__: ""; __buffer__: "" }
+export type BufferLike = { __token__: string; __rest__: string; __buffer__: string }
 export type BufferPayload<B extends BufferLike> = B["__buffer__"] // will be removed in the future
 
 export type SqlParseError<Message extends string> = {
 	readonly __sql_parse_error__: Message
 }
 
-export type ReadToken<B extends BufferLike> =
-	ReadTokenFromString<B["__buffer__"]> extends {
-		__token__: infer Token extends string
-		__rest__: infer Rest extends string
-		__buffer__: string
-	}
-		? [Token, InitBuffer<Rest>]
-		: never
+export type PeekToken<B extends BufferLike> = B["__token__"]
+export type SkipToken<B extends BufferLike> = InitBuffer<B["__rest__"]>
+export type ReadToken<B extends BufferLike> = [PeekToken<B>, SkipToken<B>]
 
 /** Lex one token from a string (internal). `__buffer__` is always `S` for this call (debug). */
 type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
