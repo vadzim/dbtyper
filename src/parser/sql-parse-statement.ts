@@ -3,20 +3,38 @@ import type { SqlCreateSchema } from "./sql-create-schema.js"
 import type { SqlCreateTable } from "./sql-create-table.js"
 import type { SqlDropSchema } from "./sql-drop-schema.js"
 import type { SqlDropTable } from "./sql-drop-table.js"
-import type { TokensList, PeekToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlStatement<Buffer extends TokensList> =
-	| SqlAlterTable<Buffer>
-	| SqlCreateSchema<Buffer>
-	| SqlCreateTable<Buffer>
-	| SqlDropSchema<Buffer>
-	| SqlDropTable<Buffer> extends infer Result
-	? [Result] extends [never]
+	PeekToken<Buffer> extends ""
 		? [SqlParseError<"Unknown sql statement">, Buffer]
-		: Result extends [infer Result, infer Rest extends TokensList]
-			? [Result, Rest]
-			: [SqlParseError<"Unknown sql statement">, Buffer]
-	: [SqlParseError<"Unknown sql statement">, Buffer]
+		: PeekToken<Buffer> extends "create"
+			? SqlStatementAfterCreate<SkipToken<Buffer>, Buffer>
+			: PeekToken<Buffer> extends "drop"
+				? SqlStatementAfterDrop<SkipToken<Buffer>, Buffer>
+				: PeekToken<Buffer> extends "alter"
+					? SqlStatementAfterAlter<SkipToken<Buffer>, Buffer>
+					: [SqlParseError<"Unknown sql statement">, Buffer]
+
+type SqlStatementAfterCreate<AfterCreate extends TokensList, Orig extends TokensList> =
+	PeekToken<AfterCreate> extends "table"
+		? SqlCreateTable<SkipToken<AfterCreate>>
+		: PeekToken<AfterCreate> extends "schema"
+			? SqlCreateSchema<SkipToken<AfterCreate>>
+			: [SqlParseError<"Unknown sql statement">, Orig]
+
+type SqlStatementAfterDrop<AfterDrop extends TokensList, Orig extends TokensList> =
+	PeekToken<AfterDrop> extends "table"
+		? SqlDropTable<SkipToken<AfterDrop>>
+		: PeekToken<AfterDrop> extends "schema"
+			? SqlDropSchema<SkipToken<AfterDrop>>
+			: [SqlParseError<"Unknown sql statement">, Orig]
+
+/** Second token after `alter` selects the statement kind; extend with more branches when new ALTER variants exist. */
+type SqlStatementAfterAlter<AfterAlter extends TokensList, Orig extends TokensList> =
+	PeekToken<AfterAlter> extends "table"
+		? SqlAlterTable<SkipToken<AfterAlter>>
+		: [SqlParseError<"Unknown sql statement">, Orig]
 
 /**
  * Parses zero or more statements from `B`. On **full** success returns `[readonly [...statements], rest]`

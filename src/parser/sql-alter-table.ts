@@ -9,14 +9,10 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, SqlParseError } from "./sql-tokens.js"
 
-export type SqlAlterTable<B extends TokensList> =
-	PeekToken<B> extends "alter"
-		? PeekToken<SkipToken<B>> extends "table"
-			? FinalizeAlterTableTuple<ParseAlterTableTuple<B>>
-			: never
-		: never
+/** `B` is immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
+export type SqlAlterTable<B extends TokensList> = FinalizeAlterTableTuple<ParseAlterTableTupleAfterTable<B>>
 
 type FinalizeAlterTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
 	? [E, R]
@@ -224,33 +220,19 @@ type ParseAlterActionRenameColumn<B extends TokensList> =
 			: SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 		: SqlParseError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 
-type ParseAlterTableTuple<B extends TokensList> =
-	ReadExpectedToken<B, "alter", "Expected an ALTER TABLE statement with a table target"> extends [
-		infer AlterResult,
-		infer RestAlter extends TokensList,
-	]
-		? AlterResult extends SqlParseError<string>
-			? [AlterResult, RestAlter]
-			: ReadExpectedToken<RestAlter, "table", "Expected an ALTER TABLE statement with a table target"> extends [
-						infer TableResult,
-						infer RestTable extends TokensList,
+type ParseAlterTableTupleAfterTable<B extends TokensList> =
+	ReadOptionalIfExists<B> extends [true, infer RestFlag extends TokensList]
+		? ParseAlterTableWithFlag<true, RestFlag>
+		: ReadOptionalIfExists<B> extends [false, infer RestFlag extends TokensList]
+			? ParseAlterTableWithFlag<false, RestFlag>
+			: ReadOptionalIfExists<B> extends [
+						infer FlagError extends SqlParseError<string>,
+						infer RestFlag extends TokensList,
 				  ]
-				? TableResult extends SqlParseError<string>
-					? [TableResult, RestTable]
-					: ReadOptionalIfExists<RestTable> extends [true, infer RestFlag extends TokensList]
-						? ParseAlterTableWithFlag<true, RestFlag, B>
-						: ReadOptionalIfExists<RestTable> extends [false, infer RestFlag extends TokensList]
-							? ParseAlterTableWithFlag<false, RestFlag, B>
-							: ReadOptionalIfExists<RestTable> extends [
-										infer FlagError extends SqlParseError<string>,
-										infer RestFlag extends TokensList,
-								  ]
-								? [FlagError, RestFlag]
-								: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]
+				? [FlagError, RestFlag]
 				: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]
-		: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]
 
-type ParseAlterTableWithFlag<IfExists extends boolean, B extends TokensList, Fallback extends TokensList> =
+type ParseAlterTableWithFlag<IfExists extends boolean, B extends TokensList> =
 	ReadQualifiedIdentifierFromBuffer<B> extends [
 		infer Target extends SqlQualifiedIdentifier,
 		infer RestName extends TokensList,
@@ -268,6 +250,6 @@ type ParseAlterTableWithFlag<IfExists extends boolean, B extends TokensList, Fal
 							},
 							ActionRest,
 						]
-					: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
-			: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
-		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Fallback]
+					: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]
+			: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]
+		: [SqlParseError<"Unable to parse ALTER TABLE statement">, B]

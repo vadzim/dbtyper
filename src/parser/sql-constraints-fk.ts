@@ -28,26 +28,38 @@ type StripConstraintPrefixBuffers<B extends TokensList> =
 			: [B, EmptyTokenList]
 		: [B, EmptyTokenList]
 
-type ReadConstraintKeywordOnStripped<EB extends TokensList, Original extends TokensList> =
+/** Returns `[kind, afterKeyword]` when `EB` is a constraint clause head, or `false` otherwise. `afterKeyword` is the buffer after all constraint type keywords (e.g. after `PRIMARY KEY`, after `UNIQUE`), ready for body parsing without re-extracting those tokens. */
+type ReadConstraintKeywordOnStripped<EB extends TokensList> =
 	PeekToken<EB> extends "primary"
-		? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after PRIMARY"> extends [true, infer _]
-			? [true, Original]
-			: [false, Original]
+		? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after PRIMARY"> extends [
+				true,
+				infer AfterKey extends TokensList,
+			]
+			? ["primary_key", AfterKey]
+			: false
 		: PeekToken<EB> extends "unique"
-			? [true, Original]
+			? ["unique", SkipToken<EB>]
 			: PeekToken<EB> extends "foreign"
-				? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
-					? [true, Original]
-					: [false, Original]
+				? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [
+						true,
+						infer AfterKey extends TokensList,
+					]
+					? ["foreign_key", AfterKey]
+					: false
 				: PeekToken<EB> extends "check" | "exclude" | "constraint"
-					? [true, Original]
-					: [false, Original]
+					? ["other", SkipToken<EB>]
+					: false
 
-/** `[true, Rest]` if `Rest` is a constraint clause head; `[false, Rest]` if it is a column definition. `Rest` is always the original fragment buffer (nothing consumed). */
+/**
+ * `[Kind, EB, AfterKw]` when matched — `Kind` is the constraint type (`"primary_key"` | `"unique"` | `"foreign_key"` | `"other"`), `EB` is the stripped buffer (after any `CONSTRAINT name` prefix), `AfterKw` is the buffer after all constraint type keywords, ready for body parsing.
+ * `[false, B, B]` when not matched — `B` is the original buffer (column definition start).
+ */
 export type ReadConstraintEntryMatch<B extends TokensList> =
 	StripConstraintPrefixBuffers<B> extends [infer EB extends TokensList, EmptyTokenList]
-		? ReadConstraintKeywordOnStripped<EB, B>
-		: [false, B]
+		? ReadConstraintKeywordOnStripped<EB> extends [infer Kind extends string, infer AfterKw extends TokensList]
+			? [Kind, EB, AfterKw]
+			: [false, B, B]
+		: [false, B, B]
 
 export type ValidateColumnRefs<B extends TokensList, Names extends string> =
 	PeekToken<B> extends ""
@@ -68,7 +80,7 @@ export type ValidateColumnRefs<B extends TokensList, Names extends string> =
 					? Col extends Names
 						? [true, EmptyTokenList]
 						: [SqlParseError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
-					: ReadBufferEnd<AfterId> extends [true, infer _]
+					: ReadBufferEnd<AfterId> extends [true, infer _EofRest extends TokensList]
 						? Col extends Names
 							? [true, EmptyTokenList]
 							: [SqlParseError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
@@ -91,7 +103,7 @@ export type ParseColumnListToTuple<B extends TokensList> =
 					: never
 				: PeekToken<AfterId> extends "" | ")"
 					? [readonly [Col], EmptyTokenList]
-					: ReadBufferEnd<AfterId> extends [true, infer _]
+					: ReadBufferEnd<AfterId> extends [true, infer _EofRest extends TokensList]
 						? [readonly [Col], EmptyTokenList]
 						: never
 			: never
@@ -169,6 +181,7 @@ export type ValidateFkReferencedColumnPairs<
 		? [true, EmptyTokenList]
 		: [SqlParseError<"Unable to validate foreign key referenced columns">, EmptyTokenList]
 
+/** `B` must be the buffer immediately after `FOREIGN KEY` — pointing at `(local_col_list)`. */
 type ValidateForeignKeyConstraintBodyBuffer<B extends TokensList, Names extends string> =
 	ReadFirstParenGroup<B> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
 		? ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
@@ -203,27 +216,25 @@ type ValidateForeignKeyConstraintBodyBuffer<B extends TokensList, Names extends 
 			: [SqlParseError<"FOREIGN KEY must include REFERENCES clause">, EmptyTokenList]
 		: [SqlParseError<"FOREIGN KEY must include a local column list">, EmptyTokenList]
 
-export type ValidateConstraintRefs<B extends TokensList, Names extends string> =
-	StripConstraintPrefixBuffers<B> extends [infer EB extends TokensList, EmptyTokenList]
-		? PeekToken<EB> extends "primary"
-			? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after PRIMARY"> extends [
-					true,
-					infer AfterPk extends TokensList,
-				]
-				? ReadFirstParenGroup<AfterPk> extends [infer Gr extends TokensList, infer _]
-					? ValidateColumnRefs<Gr, Names>
-					: [SqlParseError<"PRIMARY KEY must include a column list">, EmptyTokenList]
-				: [true, EmptyTokenList]
-			: PeekToken<EB> extends "unique"
-				? ReadFirstParenGroup<SkipToken<EB>> extends [infer Gu extends TokensList, infer _]
-					? ValidateColumnRefs<Gu, Names>
-					: [SqlParseError<"UNIQUE must include a column list">, EmptyTokenList]
-				: PeekToken<EB> extends "foreign"
-					? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
-						? ValidateForeignKeyConstraintBodyBuffer<EB, Names>
-						: [true, EmptyTokenList]
-					: [true, EmptyTokenList]
-		: [true, EmptyTokenList]
+/**
+ * Caller must pass `Kind` and `AfterKw` from `ReadConstraintEntryMatch` — tokens for the constraint type keywords have already been extracted once (no re-extraction here).
+ * `AfterKw` is the buffer immediately after the constraint type keywords, e.g. after `PRIMARY KEY`, pointing at `(col_list)`.
+ */
+export type ValidateConstraintRefs<
+	Kind extends string,
+	AfterKw extends TokensList,
+	Names extends string,
+> = Kind extends "primary_key"
+	? ReadFirstParenGroup<AfterKw> extends [infer Gr extends TokensList, infer _]
+		? ValidateColumnRefs<Gr, Names>
+		: [SqlParseError<"PRIMARY KEY must include a column list">, EmptyTokenList]
+	: Kind extends "unique"
+		? ReadFirstParenGroup<AfterKw> extends [infer Gu extends TokensList, infer _]
+			? ValidateColumnRefs<Gu, Names>
+			: [SqlParseError<"UNIQUE must include a column list">, EmptyTokenList]
+		: Kind extends "foreign_key"
+			? ValidateForeignKeyConstraintBodyBuffer<AfterKw, Names>
+			: [true, EmptyTokenList]
 
 type ParseForeignRefMetaBuildMeta<
 	Target extends SqlQualifiedIdentifier,
@@ -269,26 +280,23 @@ type ParseForeignRefMetaFkTail<
 			: never
 		: never
 
-type ParseForeignRefMetaAfterStrip<EB extends TokensList> =
-	PeekToken<EB> extends "foreign"
-		? ReadExpectedToken<SkipToken<EB>, "key", "Expected KEY after FOREIGN"> extends [true, infer _]
-			? ReadFirstParenGroup<EB> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
-				? ReadExpectedToken<R1, "references", "Expected REFERENCES"> extends [
-						true,
-						infer R1b extends TokensList,
-					]
-					? ReadQualifiedIdentifierFromBuffer<R1b> extends [
-							infer Target extends SqlQualifiedIdentifier,
-							infer R2 extends TokensList,
-						]
-						? ParseForeignRefMetaFkTail<LocalBuf, Target, R2>
-						: never
-					: never
+/** `AfterKey` must be the buffer immediately after `FOREIGN KEY` — pointing at `(local_col_list)`. */
+type ParseForeignRefMetaAfterKey<AfterKey extends TokensList> =
+	ReadFirstParenGroup<AfterKey> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
+		? ReadExpectedToken<R1, "references", "Expected REFERENCES"> extends [true, infer R1b extends TokensList]
+			? ReadQualifiedIdentifierFromBuffer<R1b> extends [
+					infer Target extends SqlQualifiedIdentifier,
+					infer R2 extends TokensList,
+				]
+				? ParseForeignRefMetaFkTail<LocalBuf, Target, R2>
 				: never
 			: never
 		: never
 
-export type ParseForeignRefMeta<B extends TokensList> =
-	StripConstraintPrefixBuffers<B> extends [infer EB extends TokensList, EmptyTokenList]
-		? ParseForeignRefMetaAfterStrip<EB>
-		: never
+/**
+ * Caller must pass `Kind` and `AfterKw` from `ReadConstraintEntryMatch`.
+ * Returns FK metadata when `Kind` is `"foreign_key"`, otherwise `never`.
+ */
+export type ParseForeignRefMeta<Kind extends string, AfterKw extends TokensList> = Kind extends "foreign_key"
+	? ParseForeignRefMetaAfterKey<AfterKw>
+	: never

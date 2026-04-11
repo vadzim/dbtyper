@@ -7,7 +7,6 @@ import type {
 } from "./sql-constraints-fk.js"
 import type {
 	ConsumeStatementEnd,
-	ReadExpectedToken,
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
@@ -16,12 +15,8 @@ import type {
 } from "./sql-parse-primitives.js"
 import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
-export type SqlCreateTable<B extends TokensList> =
-	PeekToken<B> extends "create"
-		? PeekToken<SkipToken<B>> extends "table"
-			? FinalizeCreateTableTuple<ParseCreateTableTuple<B>>
-			: never
-		: never
+/** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
+export type SqlCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
 
 type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
 	? [E, R]
@@ -60,8 +55,8 @@ type CreateBodyState<Row, Names extends string, Error, Refs extends ForeignRefMe
 	refs: Refs
 }
 
-type RefsWithOptionalFkMeta<RestHead extends TokensList, Refs extends ForeignRefMeta> =
-	ParseForeignRefMeta<RestHead> extends [infer Meta extends ForeignRefMeta, infer FkRest extends TokensList]
+type RefsWithOptionalFkMeta<Kind extends string, AfterKw extends TokensList, Refs extends ForeignRefMeta> =
+	ParseForeignRefMeta<Kind, AfterKw> extends [infer Meta extends ForeignRefMeta, infer FkRest extends TokensList]
 		? PeekToken<FkRest> extends ""
 			? Refs | Meta
 			: Refs
@@ -73,10 +68,11 @@ type ParseCreateBodyOneCommaSegment<
 	Names extends string,
 	Error,
 	Refs extends ForeignRefMeta,
-	Matched,
-	RestHead extends TokensList,
-> = Matched extends false
-	? AddColumn<RestHead, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
+	Kind,
+	ColStart extends TokensList,
+	AfterKw extends TokensList,
+> = [Kind] extends [false]
+	? AddColumn<ColStart, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
 		? [Next["error"]] extends [never]
 			? ParseCreateBody<Tail, Next["row"], Next["names"], MergeError<Error, Next["error"]>, Refs>
 			: [CreateBodyState<Row, Names, MergeError<Error, Next["error"]>, Refs>, Tail]
@@ -89,9 +85,11 @@ type ParseCreateBodyOneCommaSegment<
 				>,
 				Tail,
 			]
-	: ValidateConstraintRefs<RestHead, Names> extends [infer R, infer ValRest extends TokensList]
-		? PeekToken<ValRest> extends ""
-			? ParseCreateBody<Tail, Row, Names, MergeError<Error, R>, RefsWithOptionalFkMeta<RestHead, Refs>>
+	: Kind extends string
+		? ValidateConstraintRefs<Kind, AfterKw, Names> extends [infer R, infer ValRest extends TokensList]
+			? PeekToken<ValRest> extends ""
+				? ParseCreateBody<Tail, Row, Names, MergeError<Error, R>, RefsWithOptionalFkMeta<Kind, AfterKw, Refs>>
+				: never
 			: never
 		: never
 
@@ -104,8 +102,21 @@ type ParseCreateBody<
 > =
 	PeekToken<B> extends ""
 		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<B>]
-		: ReadConstraintEntryMatch<B> extends [infer Matched, infer RestHead extends TokensList]
-			? ParseCreateBodyOneCommaSegment<SkipPastFirstTopLevelComma<B>, Row, Names, Error, Refs, Matched, RestHead>
+		: ReadConstraintEntryMatch<B> extends [
+					infer Kind,
+					infer ColStart extends TokensList,
+					infer AfterKw extends TokensList,
+			  ]
+			? ParseCreateBodyOneCommaSegment<
+					SkipPastFirstTopLevelComma<B>,
+					Row,
+					Names,
+					Error,
+					Refs,
+					Kind,
+					ColStart,
+					AfterKw
+				>
 			: [
 					CreateBodyState<
 						Row,
@@ -116,22 +127,7 @@ type ParseCreateBody<
 					B,
 				]
 
-type ParseCreateTableTuple<B extends TokensList> =
-	ReadExpectedToken<B, "create", "Unable to parse CREATE TABLE statement"> extends [
-		infer CreateResult,
-		infer RestCreate extends TokensList,
-	]
-		? CreateResult extends SqlParseError<string>
-			? [CreateResult, RestCreate]
-			: ReadExpectedToken<RestCreate, "table", "Unable to parse CREATE TABLE statement"> extends [
-						infer TableResult,
-						infer RestTable extends TokensList,
-				  ]
-				? TableResult extends SqlParseError<string>
-					? [TableResult, RestTable]
-					: ParseCreateTableStatementBody<RestTable>
-				: [SqlParseError<"Unable to parse CREATE TABLE statement">, B]
-		: [SqlParseError<"Unable to parse CREATE TABLE statement">, B]
+type ParseCreateTableTupleAfterTable<B extends TokensList> = ParseCreateTableStatementBody<B>
 
 type ParseCreateTableStatementBody<B extends TokensList> =
 	ReadOptionalIfNotExists<B> extends [true, infer RestAfterFlag extends TokensList]

@@ -1,0 +1,19 @@
+---
+description: Type-level SQL parser must not re-lex discarded buffers; SkipToken once per cursor
+globs: src/parser/**/*.ts
+alwaysApply: false
+---
+
+# SkipToken-once and threading `rest`
+
+In `src/parser/**/*.ts`, tokenization is **`SkipToken<B>`** (`ParseSqlTokens` on `B["__rest__"]`) and is **expensive**. **`PeekToken<B>`** is cheap (`B["__token__"]`).
+
+1. **At most one `SkipToken` per logical cursor position** on any path. Do not combine **`PeekToken<SkipToken<B>>`** for a guard with a later **`ReadExpectedToken<B, …>`** / **`Parse*Tuple<B>`** from the **same** pre-skip `B` (that re-pays `SkipToken` for the same prefix).
+
+2. **Never discard an advanced buffer** from **`SkipToken`**, **`ReadExpectedToken`**, **`ReadExpectedIdentifier`**, or **`ReadOptionalToken`**: avoid `extends [true, infer _]` / `infer _ extends TokensList` for the **`rest`** slot when that rest is a real `TokensList` you could continue from. Bind `infer Rest` / `infer AfterKw` and pass it to the next step.
+
+3. **Statement routing:** dispatch on the **first** keyword once (e.g. in `sql-parse-statement.ts`), then route to leaves whose **`Parse*Tuple`** starts **after** that keyword (no second full read of `create` / `drop` / `alter`).
+
+4. **Multi-token keywords** (`primary key`, `foreign key`): one helper that returns **`[ok, rest]`** and threads **`rest`** into the next parser (complements `parser-lookahead-tuples.mdc` in this repo).
+
+5. **Intentional dummy tails** (e.g. validators returning `EmptyTokenList` as second slot) are fine; still prefer a named `infer _Rest` if it aids review.
