@@ -1,7 +1,7 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
-import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type Users = SqlStatements<
 	InitBuffer<`
@@ -61,7 +61,7 @@ type _PostsShape = Expect<
 >
 
 type Invalid = SqlStatements<InitBuffer<"select * from users">>
-type _Invalid = ExpectFalse<Matches<Invalid, [{ readonly kind: "create_table" }, EmptyBuffer]>>
+type _Invalid = Expect<Matches<Invalid, [SqlParseError<"Unknown sql statement">, InitBuffer<"select * from users">]>>
 
 type WithConstraints = SqlStatements<
 	InitBuffer<`

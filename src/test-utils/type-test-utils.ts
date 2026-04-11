@@ -1,7 +1,6 @@
 /** Type-level test helpers for compile-time assertions. */
 
 export type Expect<T extends true> = T
-export type ExpectFalse<T extends false> = T
 
 /**
  * Strict equality for type tests.

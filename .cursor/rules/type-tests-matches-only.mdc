@@ -8,9 +8,7 @@ alwaysApply: false
 
 - Allowed assertion forms:
     - `Expect<Matches<Actual, Expected>>`
-    - `ExpectFalse<Matches<Actual, Expected>>`
 - Disallow:
     - `Expect<...>` where the inner type is not `Matches<...>`
-    - `ExpectFalse<...>` where the inner type is not `Matches<...>`
     - direct conditional boolean assertions (`T extends U ? true : false`)
 - In `Matches<Actual, Expected>`, keep `Expected` explicit and inline in test files (avoid indirection via helper aliases/index lookups).

@@ -1,7 +1,7 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyBuffer, InitBuffer } from "../parser/sql-tokens.js"
+import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
-import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type CreateAuth = SqlStatements<
 	InitBuffer<`
@@ -88,7 +88,9 @@ type _CreateQuoted = Expect<
 >
 
 type BadStatement = SqlStatements<InitBuffer<`create view v as select 1`>>
-type _BadStatement = ExpectFalse<Matches<BadStatement, [{ readonly kind: "create_schema" }, EmptyBuffer]>>
+type _BadStatement = Expect<
+	Matches<BadStatement, [SqlParseError<"Unknown sql statement">, InitBuffer<`create view v as select 1`>]>
+>
 
 describe("sql create schema", () => {
 	it("should run", () => {})

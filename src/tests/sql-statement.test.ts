@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
 import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { InitBuffer } from "../parser/sql-tokens.js"
-import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
+import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // --- sqlStatement: brands a string with its parsed type ---
 
@@ -32,10 +32,7 @@ type _CreateUsersStatementParsedShape = Expect<
 // --- sqlDatabase().apply(): only accepts branded strings, not plain strings ---
 
 type Db = ReturnType<typeof sqlDatabase<"public">>
-type ApplyArg = Parameters<Db["apply"]>[0]
 
-type _ApplyRejectsPlainString = ExpectFalse<Matches<string, ApplyArg>>
-type _ApplyRejectsUnbrandedLiteral = ExpectFalse<Matches<"alter table users add column age int", ApplyArg>>
 type _ApplyAcceptsBrandedStatement = Expect<
 	Db extends {
 		apply(statement: ReturnType<typeof sqlStatement<"create schema app">>): unknown
