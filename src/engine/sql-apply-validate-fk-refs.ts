@@ -1,6 +1,6 @@
 import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
 import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../parser/sql-constraints-fk.js"
-import type { BufferLike, SqlParseError } from "../parser/sql-tokens.js"
+import type { TokensList, SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 
 export type ValidateCreateTableFkRefs<
@@ -48,7 +48,7 @@ type UnknownRefTableError<R extends ForeignRefMeta, TargetSchema extends string,
 	: SqlParseError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
 
 type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> =
-	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof Row, string>> extends [infer R, infer _ extends BufferLike]
+	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof Row, string>> extends [infer R, infer _ extends TokensList]
 		? R extends true
 			? never
 			: R

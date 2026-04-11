@@ -1,10 +1,10 @@
 import { describe, it } from "node:test"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type ParseCreate = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table users (id int not null, email text)
 `>
 >
@@ -20,13 +20,13 @@ type _ParseCreate = Expect<
 					readonly refs: undefined
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type ParseAlter = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table if exists public.users add column age int
 `>
 >
@@ -47,13 +47,13 @@ type _ParseAlter = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type ParseDrop = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	drop table if exists auth.users;
 `>
 >
@@ -68,13 +68,13 @@ type _ParseDrop = Expect<
 					readonly target: readonly ["users", "auth"]
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type ParseCreateSchema = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create schema if not exists billing;
 `>
 >
@@ -89,13 +89,13 @@ type _ParseCreateSchema = Expect<
 					readonly ifNotExists: true
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type ParseDropSchema = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	drop schema if exists staging
 `>
 >
@@ -110,47 +110,50 @@ type _ParseDropSchema = Expect<
 					readonly ifExists: true
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
-type ParseUnknown = SqlStatements<InitBuffer<`create view v as select 1`>>
+type ParseUnknown = SqlStatements<ParseSqlTokens<`create view v as select 1`>>
 type _ParseUnknown = Expect<
-	Matches<ParseUnknown, [SqlParseError<"Unknown sql statement">, InitBuffer<`create view v as select 1`>]>
+	Matches<ParseUnknown, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`create view v as select 1`>]>
 >
 
-type ParseInvalidCreate = SqlStatements<InitBuffer<`create table broken (id)`>>
+type ParseInvalidCreate = SqlStatements<ParseSqlTokens<`create table broken (id)`>>
 type _ParseInvalidCreate = Expect<
-	Matches<ParseInvalidCreate, [SqlParseError<"Invalid column definition">, InitBuffer<`create table broken (id)`>]>
+	Matches<
+		ParseInvalidCreate,
+		[SqlParseError<"Invalid column definition">, ParseSqlTokens<`create table broken (id)`>]
+	>
 >
 
-type ParseInvalidKeywordBoundary = SqlStatements<InitBuffer<`createx table users (id int)`>>
+type ParseInvalidKeywordBoundary = SqlStatements<ParseSqlTokens<`createx table users (id int)`>>
 type _ParseInvalidKeywordBoundary = Expect<
 	Matches<
 		ParseInvalidKeywordBoundary,
-		[SqlParseError<"Unknown sql statement">, InitBuffer<`createx table users (id int)`>]
+		[SqlParseError<"Unknown sql statement">, ParseSqlTokens<`createx table users (id int)`>]
 	>
 >
 
-type ParseInvalidDropBoundary = SqlStatements<InitBuffer<`dropx table users`>>
+type ParseInvalidDropBoundary = SqlStatements<ParseSqlTokens<`dropx table users`>>
 type _ParseInvalidDropBoundary = Expect<
-	Matches<ParseInvalidDropBoundary, [SqlParseError<"Unknown sql statement">, InitBuffer<`dropx table users`>]>
+	Matches<ParseInvalidDropBoundary, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`dropx table users`>]>
 >
 
-type ParseInvalidIfNot = SqlStatements<InitBuffer<`create schema if not billing`>>
+type ParseInvalidIfNot = SqlStatements<ParseSqlTokens<`create schema if not billing`>>
 type _ParseInvalidIfNot = Expect<
 	Matches<
 		ParseInvalidIfNot,
-		[SqlParseError<"Expected EXISTS after IF NOT">, InitBuffer<`create schema if not billing`>]
+		[SqlParseError<"Expected EXISTS after IF NOT">, ParseSqlTokens<`create schema if not billing`>]
 	>
 >
 
-type ParseTrailingTokens = SqlStatements<InitBuffer<`drop table users extra`>>
+type ParseTrailingTokens = SqlStatements<ParseSqlTokens<`drop table users extra`>>
 type _ParseTrailingTokens = Expect<
 	Matches<
 		ParseTrailingTokens,
-		[SqlParseError<"Unable to parse DROP TABLE statement">, InitBuffer<`drop table users extra`>]
+		[SqlParseError<"Unable to parse DROP TABLE statement">, ParseSqlTokens<`drop table users extra`>]
 	>
 >
 

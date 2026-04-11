@@ -6,12 +6,12 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
-import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 
 type DbDuplicateUsersTables = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null);
 	create table "users" (other_id int not null)
@@ -24,7 +24,7 @@ type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParseEr
 type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	select * from users
@@ -41,7 +41,7 @@ type _DbSelectFromUsersAfterCreate = Expect<
 type DbPostsBadIntraFk = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts_bad (
@@ -60,7 +60,7 @@ type _DbPostsBadIntraFk = Expect<
 type DbCompositeFkPairRefsBadCol = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table pair_refs_bad (
@@ -80,7 +80,7 @@ type _DbCompositeFkPairRefsBadCol = Expect<
 /** Composite FK: fewer local columns than referenced columns. */
 
 type StmtPairRefArityShort = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table pair_arity_short (
 		x int not null,
 		foreign key (x) references users(id, email)
@@ -98,7 +98,7 @@ type _StmtPairRefArityShort = Expect<
 type DbPairRefArityShort = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table pair_arity_short (
@@ -119,7 +119,7 @@ type _DbPairRefArityShort = Expect<
 /** Composite FK: more local columns than referenced columns. */
 
 type StmtPairRefArityLong = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table pair_arity_long (
 		x int not null,
 		y int not null,
@@ -138,7 +138,7 @@ type _StmtPairRefArityLong = Expect<
 type DbPairRefArityLong = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table pair_arity_long (
@@ -162,7 +162,7 @@ type _DbPairRefArityLong = Expect<
 type DbMultiFkOneBad = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table multi_fk_bad (
@@ -185,7 +185,7 @@ type _DbMultiFkOneBad = Expect<Matches<DbMultiFkOneBad, SqlParseError<`Unknown r
 type DbSalesLinkBad = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -210,7 +210,7 @@ type _DbSalesLinkBad = Expect<
 type DbSalesBadSchemaRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -231,7 +231,7 @@ type _DbSalesBadSchemaRef = Expect<
 type DbSalesBadTableRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -252,7 +252,7 @@ type _DbSalesBadTableRef = Expect<
 type DbSalesBadPublicUsersBadRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -273,7 +273,7 @@ type _DbSalesBadPublicUsersBadRef = Expect<
 type DbSalesBadSchemaUsersRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -294,7 +294,7 @@ type _DbSalesBadSchemaUsersRef = Expect<
 type DbSalesBadColumnRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -317,7 +317,7 @@ type _DbSalesBadColumnRef = Expect<
 type DbMissingSalesSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create table sales.orders_default_schema (
 		id int not null,
 		user_id int not null,
@@ -339,7 +339,7 @@ type _DbMissingSalesSchema = Expect<
 type DbUnqualifiedUsersWrongDefault = SqlApplyStatements<
 	SqlDatabase<"shared">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table public.users (id int not null, email text not null);
 	create table public.posts (id int not null, user_id int not null, title text);
@@ -365,7 +365,7 @@ type _DbUnqualifiedUsersWrongDefault = Expect<
 type DbSalesCompositeBadRemoteCol = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -387,7 +387,7 @@ type _DbSalesCompositeBadRemoteCol = Expect<
 /** Database-level composite FK arity mismatch surfaces as parse error on the statement. */
 
 type StmtSalesDbArityShort = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table sales.db_arity_short (
 		a int not null,
 		foreign key (a) references public.users(id, email)
@@ -405,7 +405,7 @@ type _StmtSalesDbArityShort = Expect<
 type DbSalesDbArityShort = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
 	create table posts (id int not null, user_id int not null, title text);
@@ -427,7 +427,7 @@ type _DbSalesDbArityShort = Expect<
 
 type WrongStatementBeforeIncompletedStatementWithRecovering = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatementsRecovering<InitBuffer<`create schema a; create schema a; select 1`>>[0]
+	SqlStatementsRecovering<ParseSqlTokens<`create schema a; create schema a; select 1`>>[0]
 >
 
 type _WrongStatementBeforeIncompletedStatementWithRecovering = Expect<
@@ -436,7 +436,7 @@ type _WrongStatementBeforeIncompletedStatementWithRecovering = Expect<
 
 type WrongStatementBeforeIncompletedStatementStrict = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<InitBuffer<`create schema a; create schema a; select 1`>>[0]
+	SqlStatements<ParseSqlTokens<`create schema a; create schema a; select 1`>>[0]
 >
 
 type _WrongStatementBeforeIncompletedStatementStrict = Expect<

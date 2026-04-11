@@ -1,11 +1,11 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyBuffer, InitBuffer } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type AlterUsers = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table users add column age int
 `>
 >
@@ -26,13 +26,13 @@ type _AlterUsers = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type AlterPublicUsers = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table public.users add column age int
 `>
 >
@@ -53,13 +53,13 @@ type _AlterPublicUsers = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type AlterUsersIfExists = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table if exists public.users add column age int
 `>
 >
@@ -80,18 +80,18 @@ type _AlterUsersIfExists = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
-type BadAlter = SqlStatements<InitBuffer<`alter table public.users`>>
+type BadAlter = SqlStatements<ParseSqlTokens<`alter table public.users`>>
 type _BadAlter = Expect<
-	Matches<BadAlter, [SqlParseError<"Expected an ALTER TABLE action">, InitBuffer<`alter table public.users`>]>
+	Matches<BadAlter, [SqlParseError<"Expected an ALTER TABLE action">, ParseSqlTokens<`alter table public.users`>]>
 >
 
 type AlterAddColumnIfNotExists = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table users add column if not exists "display name" text not null
 `>
 >
@@ -112,13 +112,13 @@ type _AlterAddColumnIfNotExists = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type AlterDropColumn = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table users drop column if exists age
 `>
 >
@@ -138,13 +138,13 @@ type _AlterDropColumn = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type AlterRenameTo = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table users rename to app_users
 `>
 >
@@ -163,13 +163,13 @@ type _AlterRenameTo = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type AlterRenameColumn = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	alter table users rename column old_name to "new name"
 `>
 >
@@ -189,16 +189,16 @@ type _AlterRenameColumn = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
-type UnsupportedAlterAction = SqlStatements<InitBuffer<`alter table users set schema archive`>>
+type UnsupportedAlterAction = SqlStatements<ParseSqlTokens<`alter table users set schema archive`>>
 type _UnsupportedAlterAction = Expect<
 	Matches<
 		UnsupportedAlterAction,
-		[SqlParseError<"Unsupported ALTER TABLE action">, InitBuffer<`alter table users set schema archive`>]
+		[SqlParseError<"Unsupported ALTER TABLE action">, ParseSqlTokens<`alter table users set schema archive`>]
 	>
 >
 

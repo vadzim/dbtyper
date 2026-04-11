@@ -6,12 +6,12 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null)
@@ -38,7 +38,7 @@ type _DbApplyCreateTableFixture = Expect<
 type MixedCaseColumns = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 		create schema test;
 		create table users ("Id" int not null, Id int not null, "Main\x20\x20\x20Title" text not null)
 `>
@@ -67,7 +67,7 @@ type _MixedCaseColumns = Expect<
 type CreateInDefaultSchema = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null);
@@ -98,7 +98,7 @@ type _CreateInDefaultSchema = Expect<
 type CreateInExplicitSchema = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null);
@@ -132,7 +132,7 @@ type _CreateInExplicitSchema = Expect<
 type CreateDuplicateTable = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null);
@@ -147,7 +147,7 @@ type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParseError<
 
 type CreateTableWithoutSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<InitBuffer<`create table users (id int not null)`>>[0]
+	SqlStatements<ParseSqlTokens<`create table users (id int not null)`>>[0]
 >
 
 type _CreateTableWithoutSchema = Expect<
@@ -170,7 +170,7 @@ type CreateInvalidRow = SqlApplyStatements<
 	SqlDatabase<"test">,
 	readonly [
 		...SqlStatements<
-			InitBuffer<`
+			ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null)
@@ -187,7 +187,7 @@ type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParseError<"bad row
 type CreateWithForeignKeyOk = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null);
@@ -231,7 +231,7 @@ type CreateWithForeignKeyBadLocal = SqlApplyStatements<
 	SqlDatabase<"test">,
 	readonly [
 		...SqlStatements<
-			InitBuffer<`
+			ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null)
@@ -250,7 +250,7 @@ type _CreateWithForeignKeyBadLocal = Expect<
 type CreateWithCompositeForeignKeyOk = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null);
@@ -284,7 +284,7 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 type CreateWithCompositeForeignKeyBadArity = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, email text not null);

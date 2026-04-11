@@ -6,7 +6,7 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 
 // --- Create schema ---
 
@@ -15,7 +15,7 @@ import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 type AfterCreateSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema auth
 `>
 	>[0]
@@ -39,7 +39,7 @@ type _AfterCreateSchema = Expect<
 type DuplicateSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema auth;
 	create schema auth
 `>
@@ -53,7 +53,7 @@ type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParseError<"Duplicate
 type DuplicateIfNotExists = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema auth;
 	create schema if not exists auth
 `>
@@ -80,7 +80,7 @@ type _DuplicateIfNotExists = Expect<
 type DbAuthThenTable = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema auth;
 	create table auth.users (id int not null)
 `>

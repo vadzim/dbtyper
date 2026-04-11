@@ -7,12 +7,12 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyAlterFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -48,7 +48,7 @@ type _DbApplyAlterFixture = Expect<
 type AddNewColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -80,7 +80,7 @@ type _AddNewColumn = Expect<
 type AddExistingColumnNoIfNotExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -99,7 +99,7 @@ type _AddExistingColumnNoIfNotExists = Expect<
 type AddExistingColumnIfNotExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -135,7 +135,7 @@ type _AddExistingColumnIfNotExists = Expect<
 type DropExistingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -167,7 +167,7 @@ type _DropExistingColumn = Expect<
 type DropMissingColumnNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -186,7 +186,7 @@ type _DropMissingColumnNoIfExists = Expect<
 type DropMissingColumnIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -222,7 +222,7 @@ type _DropMissingColumnIfExists = Expect<
 type RenameExistingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -254,7 +254,7 @@ type _RenameExistingColumn = Expect<
 type RenameMissingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -273,7 +273,7 @@ type _RenameMissingColumn = Expect<
 type RenameToExistingColumnName = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -294,7 +294,7 @@ type _RenameToExistingColumnName = Expect<
 type RenameTableOk = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -326,7 +326,7 @@ type _RenameTableOk = Expect<
 type RenameTableDuplicate = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -345,7 +345,7 @@ type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParseError<
 type AlterMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -362,7 +362,7 @@ type _AlterMissingNoIfExists = Expect<
 type AlterMissingSchemeNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	alter table test.missing add column age int
 `>
 	>[0]
@@ -375,7 +375,7 @@ type _AlterMissingSchemeNoIfExists = Expect<
 type AlterMissingSchemeIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	alter table if exists test.missing add column age int
 `>
 	>[0]
@@ -397,7 +397,7 @@ type _AlterMissingSchemeIfExists = Expect<
 type AlterMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -431,7 +431,7 @@ type _AlterMissingIfExists = Expect<
 type AlterDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);
@@ -450,7 +450,7 @@ type _AlterDefaultSchemaUnqualified = Expect<
 type AlterExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null, age int not null);

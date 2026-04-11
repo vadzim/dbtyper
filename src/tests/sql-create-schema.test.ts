@@ -1,10 +1,10 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type CreateAuth = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create schema auth
 `>
 >
@@ -19,13 +19,13 @@ type _CreateAuth = Expect<
 					readonly ifNotExists: false
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type CreateAuthIfNotExists = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create schema if not exists auth
 `>
 >
@@ -40,13 +40,13 @@ type _CreateAuthIfNotExists = Expect<
 					readonly ifNotExists: true
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type CreateAuthSemicolon = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create schema auth;
 `>
 >
@@ -61,13 +61,13 @@ type _CreateAuthSemicolon = Expect<
 					readonly ifNotExists: false
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type CreateQuoted = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create schema "my schema"
 `>
 >
@@ -82,14 +82,14 @@ type _CreateQuoted = Expect<
 					readonly ifNotExists: false
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
-type BadStatement = SqlStatements<InitBuffer<`create view v as select 1`>>
+type BadStatement = SqlStatements<ParseSqlTokens<`create view v as select 1`>>
 type _BadStatement = Expect<
-	Matches<BadStatement, [SqlParseError<"Unknown sql statement">, InitBuffer<`create view v as select 1`>]>
+	Matches<BadStatement, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`create view v as select 1`>]>
 >
 
 describe("sql create schema", () => {

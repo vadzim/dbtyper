@@ -3,9 +3,9 @@ import type { SqlCreateSchema } from "./sql-create-schema.js"
 import type { SqlCreateTable } from "./sql-create-table.js"
 import type { SqlDropSchema } from "./sql-drop-schema.js"
 import type { SqlDropTable } from "./sql-drop-table.js"
-import type { BufferLike, PeekToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, PeekToken, SqlParseError } from "./sql-tokens.js"
 
-export type SqlStatement<Buffer extends BufferLike> =
+export type SqlStatement<Buffer extends TokensList> =
 	| SqlAlterTable<Buffer>
 	| SqlCreateSchema<Buffer>
 	| SqlCreateTable<Buffer>
@@ -13,7 +13,7 @@ export type SqlStatement<Buffer extends BufferLike> =
 	| SqlDropTable<Buffer> extends infer Result
 	? [Result] extends [never]
 		? [SqlParseError<"Unknown sql statement">, Buffer]
-		: Result extends [infer Result, infer Rest extends BufferLike]
+		: Result extends [infer Result, infer Rest extends TokensList]
 			? [Result, Rest]
 			: [SqlParseError<"Unknown sql statement">, Buffer]
 	: [SqlParseError<"Unknown sql statement">, Buffer]
@@ -23,12 +23,12 @@ export type SqlStatement<Buffer extends BufferLike> =
  * with `PeekToken<rest>` empty. On the first `SqlStatement` failure returns **`[error, buffer]`** only:
  * no tuple of prior successes, and `buffer` is the cursor at the **start** of the statement that failed.
  */
-export type SqlStatements<B extends BufferLike> = SqlStatementsRec<B, readonly []>
+export type SqlStatements<B extends TokensList> = SqlStatementsRec<B, readonly []>
 
-type SqlStatementsRec<B extends BufferLike, Acc extends readonly unknown[]> =
+type SqlStatementsRec<B extends TokensList, Acc extends readonly unknown[]> =
 	PeekToken<B> extends ""
 		? [Acc, B]
-		: SqlStatement<B> extends [infer Head, infer Rest extends BufferLike]
+		: SqlStatement<B> extends [infer Head, infer Rest extends TokensList]
 			? Head extends SqlParseError<string>
 				? [Head, B]
 				: SqlStatementsRec<Rest, readonly [...Acc, Head]>
@@ -40,12 +40,12 @@ type SqlStatementsRec<B extends BufferLike, Acc extends readonly unknown[]> =
  * statement (so later input after a bad statement is still visible). Use {@link SqlStatements}
  * when you only need either a full success tuple or a single `[error, buffer]` with no partial list.
  */
-export type SqlStatementsRecovering<B extends BufferLike> = SqlStatementsRecoveringRec<B, readonly []>
+export type SqlStatementsRecovering<B extends TokensList> = SqlStatementsRecoveringRec<B, readonly []>
 
-type SqlStatementsRecoveringRec<B extends BufferLike, Acc extends readonly unknown[]> =
+type SqlStatementsRecoveringRec<B extends TokensList, Acc extends readonly unknown[]> =
 	PeekToken<B> extends ""
 		? [Acc, B]
-		: SqlStatement<B> extends [infer Head, infer Rest extends BufferLike]
+		: SqlStatement<B> extends [infer Head, infer Rest extends TokensList]
 			? Head extends SqlParseError<string>
 				? [readonly [...Acc, Head], B]
 				: SqlStatementsRecoveringRec<Rest, readonly [...Acc, Head]>

@@ -7,12 +7,12 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyDropSchemaFixture = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
 	create table public.users (id int not null);
@@ -46,7 +46,7 @@ type _DbApplyDropSchemaFixture = Expect<
 type DropAuth = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
 	create table public.users (id int not null);
@@ -76,7 +76,7 @@ type _DropAuth = Expect<
 type DropMissingNoIf = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
 	create table public.users (id int not null);
@@ -93,7 +93,7 @@ type _DropMissingNoIf = Expect<Matches<DropMissingNoIf, SqlParseError<`Unknown d
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"public">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
 	create table public.users (id int not null);

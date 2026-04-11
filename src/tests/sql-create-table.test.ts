@@ -1,10 +1,10 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyBuffer, InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type Users = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	CREATE TABLE users (
 		id int not null,
 		email varchar(255) not null,
@@ -33,12 +33,12 @@ type _UsersShape = Expect<
 					readonly refs: undefined
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
-type Posts = SqlStatements<InitBuffer<"create table posts (id bigint not null, rating decimal(10,2), title text)">>
+type Posts = SqlStatements<ParseSqlTokens<"create table posts (id bigint not null, rating decimal(10,2), title text)">>
 type _PostsShape = Expect<
 	Matches<
 		Posts,
@@ -55,16 +55,18 @@ type _PostsShape = Expect<
 					readonly refs: undefined
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
-type Invalid = SqlStatements<InitBuffer<"select * from users">>
-type _Invalid = Expect<Matches<Invalid, [SqlParseError<"Unknown sql statement">, InitBuffer<"select * from users">]>>
+type Invalid = SqlStatements<ParseSqlTokens<"select * from users">>
+type _Invalid = Expect<
+	Matches<Invalid, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<"select * from users">]>
+>
 
 type WithConstraints = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table accounts (
 		id int not null,
 		email text not null,
@@ -93,13 +95,13 @@ type _WithConstraintsShape = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type BadUniqueRef = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table bad_unique (
 		id int not null,
 		unique (missing_col)
@@ -111,7 +113,7 @@ type _BadUniqueRef = Expect<
 		BadUniqueRef,
 		[
 			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
-			InitBuffer<`
+			ParseSqlTokens<`
 	create table bad_unique (
 		id int not null,
 		unique (missing_col)
@@ -122,7 +124,7 @@ type _BadUniqueRef = Expect<
 >
 
 type BadForeignKeyRef = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table bad_fk (
 		id int not null,
 		org_id int,
@@ -135,7 +137,7 @@ type _BadForeignKeyRef = Expect<
 		BadForeignKeyRef,
 		[
 			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
-			InitBuffer<`
+			ParseSqlTokens<`
 	create table bad_fk (
 		id int not null,
 		org_id int,
@@ -147,7 +149,7 @@ type _BadForeignKeyRef = Expect<
 >
 
 type WithComments = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	-- one-line comment before statement
 	CREATE TABLE commented_users (
 		id int not null, -- inline one-line comment
@@ -181,13 +183,13 @@ type _WithCommentsShape = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type BadRefWithComments = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table bad_ref_with_comments (
 		id int not null,
 		/* wrong column should still fail */
@@ -200,7 +202,7 @@ type _BadRefWithComments = Expect<
 		BadRefWithComments,
 		[
 			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
-			InitBuffer<`
+			ParseSqlTokens<`
 	create table bad_ref_with_comments (
 		id int not null,
 		/* wrong column should still fail */
@@ -212,7 +214,7 @@ type _BadRefWithComments = Expect<
 >
 
 type QuotedIdentifiers = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table "account users" (
 		"id" int not null,
 		"user name" text,
@@ -241,13 +243,13 @@ type _QuotedIdentifiersShape = Expect<
 					}
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >
 
 type BadQuotedRef = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table q_bad (
 		"id" int not null,
 		unique ("missing id")
@@ -259,7 +261,7 @@ type _BadQuotedRef = Expect<
 		BadQuotedRef,
 		[
 			SqlParseError<`Unknown column "missing id" referenced in table constraint`>,
-			InitBuffer<`
+			ParseSqlTokens<`
 	create table q_bad (
 		"id" int not null,
 		unique ("missing id")
@@ -270,18 +272,18 @@ type _BadQuotedRef = Expect<
 >
 
 type _TableNameSimple = Expect<
-	Matches<SqlStatements<InitBuffer<"create table users (id int)">>[0][0]["name"], readonly ["users"]>
+	Matches<SqlStatements<ParseSqlTokens<"create table users (id int)">>[0][0]["name"], readonly ["users"]>
 >
 
 type _TableNameQuoted = Expect<
 	Matches<
-		SqlStatements<InitBuffer<`create table "account users" ("id" int not null)`>>[0][0]["name"],
+		SqlStatements<ParseSqlTokens<`create table "account users" ("id" int not null)`>>[0][0]["name"],
 		readonly ["account users"]
 	>
 >
 
 type PostgresTypes = SqlStatements<
-	InitBuffer<`
+	ParseSqlTokens<`
 	create table pg_types (
 		id serial not null,
 		i2 int2 not null,
@@ -333,7 +335,7 @@ type _PostgresTypes = Expect<
 					readonly refs: undefined
 				},
 			],
-			EmptyBuffer,
+			EmptyTokenList,
 		]
 	>
 >

@@ -7,12 +7,12 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { InitBuffer } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyDropTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
@@ -48,7 +48,7 @@ type _DbApplyDropTableFixture = Expect<
 type DropExistingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
@@ -82,7 +82,7 @@ type _DropExistingNoIfExists = Expect<
 type DropExistingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
@@ -116,7 +116,7 @@ type _DropExistingIfExists = Expect<
 type DropMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
@@ -136,7 +136,7 @@ type _DropMissingNoIfExists = Expect<
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
@@ -171,7 +171,7 @@ type _DropMissingIfExists = Expect<
 type DropDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
@@ -205,7 +205,7 @@ type _DropDefaultSchemaUnqualified = Expect<
 type DropExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
 	SqlStatements<
-		InitBuffer<`
+		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
 	create table test.users (id int not null);
