@@ -74,7 +74,7 @@ type ParseUnknown = SqlStatement<`create view v as select 1`>
 type _ParseUnknown = Expect<Matches<ParseUnknown, SqlParseError<"Unknown sql statement">>>
 
 type ParseInvalidCreate = SqlStatement<`create table broken (id)`>
-type _ParseInvalidCreate = Expect<Matches<ParseInvalidCreate, SqlParseError<"Invalid column definition: id">>>
+type _ParseInvalidCreate = Expect<Matches<ParseInvalidCreate, SqlParseError<"Invalid column definition">>>
 
 type ParseInvalidKeywordBoundary = SqlStatement<`createx table users (id int)`>
 type _ParseInvalidKeywordBoundary = Expect<Matches<ParseInvalidKeywordBoundary, SqlParseError<"Unknown sql statement">>>

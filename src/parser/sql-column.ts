@@ -1,5 +1,5 @@
-import type { ReadFirstParenGroup, StripIdentifierQuotes, TrimLeft } from "./sql-parse-primitives.js"
-import type { BufferLike, BufferPayload, InitBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-parse-primitives.js"
+import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 type SqlScalarTypeToTs<T extends string> = T extends
 	| "int"
@@ -65,7 +65,7 @@ type SkipOptionalTypeParams<B extends BufferLike> =
 
 /** Checks whether the buffer starts with `[]` (array suffix). Returns `[isArray, rest]`. */
 type ReadIsArray<B extends BufferLike> =
-	TrimLeft<BufferPayload<B>> extends `[]${infer Rest}` ? [true, InitBuffer<Rest>] : [false, B]
+	B extends EmptyBuffer ? [false, B] : PeekToken<B> extends "" ? [true, SkipToken<B>] : [false, B]
 
 /**
  * Scans for a `NOT NULL` token pair from `B`. Returns `[found, rest]`:
@@ -92,10 +92,10 @@ type ScanForNotNullWithRest<
 type ParseColumnFromBuffer<B extends BufferLike> =
 	PeekToken<B> extends infer ColNameRaw extends string
 		? ColNameRaw extends ""
-			? [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+			? [SqlParseError<"Invalid column definition">, B]
 			: PeekToken<SkipToken<B>> extends infer TypeRaw extends string
 				? TypeRaw extends ""
-					? [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+					? [SqlParseError<"Invalid column definition">, B]
 					: SkipOptionalTypeParams<SkipToken<SkipToken<B>>> extends infer RestParams extends BufferLike
 						? ReadIsArray<RestParams> extends [
 								infer IsArr extends boolean,
@@ -115,9 +115,9 @@ type ParseColumnFromBuffer<B extends BufferLike> =
 										},
 										RestAfterNullable,
 									]
-								: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
-							: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
-						: [SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>, B]
+								: [SqlParseError<"Invalid column definition">, B]
+							: [SqlParseError<"Invalid column definition">, B]
+						: [SqlParseError<"Invalid column definition">, B]
 				: never
 		: never
 
@@ -136,6 +136,6 @@ export type AddColumn<B extends BufferLike, Row, Names extends string> =
 		: {
 				row: Row
 				names: Names
-				error: SqlParseError<`Invalid column definition: ${BufferPayload<B>}`>
+				error: SqlParseError<"Invalid column definition">
 				rest: B
 			}
