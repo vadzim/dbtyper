@@ -1,5 +1,5 @@
 import type { ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-parse-primitives.js"
-import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 type SqlScalarTypeToTs<T extends string> = T extends
 	| "int"
@@ -65,7 +65,11 @@ type SkipOptionalTypeParams<B extends BufferLike> =
 
 /** Checks whether the buffer starts with `[]` (array suffix). Returns `[isArray, rest]`. */
 type ReadIsArray<B extends BufferLike> =
-	B extends EmptyBuffer ? [false, B] : PeekToken<B> extends "" ? [true, SkipToken<B>] : [false, B]
+	PeekToken<B> extends "["
+		? PeekToken<SkipToken<B>> extends "]"
+			? [true, SkipToken<SkipToken<B>>]
+			: [false, B]
+		: [false, B]
 
 /**
  * Scans for a `NOT NULL` token pair from `B`. Returns `[found, rest]`:

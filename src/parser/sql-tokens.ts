@@ -22,9 +22,7 @@ type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 			? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
 			: S extends `\`${infer String}\`${infer Rest}`
 				? { __token__: `\`${String}\``; __rest__: Rest; __buffer__: S }
-				: S extends `[${infer String}]${infer Rest}`
-					? { __token__: String; __rest__: Rest; __buffer__: S }
-					: S extends `--${infer Comment}`
+				: S extends `--${infer Comment}`
 						? Comment extends `${string}\n${infer Rest}`
 							? ReadTokenFromString<Rest>
 							: { __token__: ""; __rest__: ""; __buffer__: S }

@@ -152,7 +152,6 @@ type QuotedIdentifiers = SqlStatement<`
 		"id" int not null,
 		"user name" text,
 		\`org-id\` int,
-		[is active] boolean not null,
 		constraint "users pk" primary key ("id"),
 		unique ("user name"),
 		foreign key (\`org-id\`) references orgs(id)
@@ -165,7 +164,7 @@ type _QuotedIdentifiersShape = Expect<
 		{
 			kind: "create_table"
 			name: readonly ["account users"]
-			row: { id: number; "is active": boolean; "org-id": number | null; "user name": string | null }
+			row: { id: number; "org-id": number | null; "user name": string | null }
 			refs: {
 				from: ""
 				columnPairs: [readonly ["org-id", "id"]]

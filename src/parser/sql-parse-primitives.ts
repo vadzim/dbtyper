@@ -19,20 +19,12 @@ type ReadBacktickQuotedIdentifier<S extends string, Acc extends string = ""> = S
 		? [`\`${Acc}\``, Rest]
 		: ReadBacktickQuotedIdentifier<Rest, `${Acc}${C}`>
 	: [`\`${Acc}\``, ""]
-type ReadBracketQuotedIdentifier<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends "]"
-		? [`[${Acc}]`, Rest]
-		: ReadBracketQuotedIdentifier<Rest, `${Acc}${C}`>
-	: [`[${Acc}]`, ""]
-
 export type ReadIdentifier<S extends string> =
 	Trim<S> extends `"${infer Rest}`
 		? ReadDoubleQuotedIdentifier<Rest>
 		: Trim<S> extends `\`${infer Rest}`
 			? ReadBacktickQuotedIdentifier<Rest>
-			: Trim<S> extends `[${infer Rest}`
-				? ReadBracketQuotedIdentifier<Rest>
-				: ReadWord<Trim<S>>
+			: ReadWord<Trim<S>>
 
 export type ReadWord<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends Ws | "," | "(" | ")" | "." | ";"
@@ -67,9 +59,7 @@ export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"`
 	? X
 	: S extends `\`${infer X}\``
 		? X
-		: S extends `[${infer X}]`
-			? X
-			: S
+		: S
 
 type FindFirstOpenParen<B extends BufferLike> =
 	PeekToken<B> extends "("
