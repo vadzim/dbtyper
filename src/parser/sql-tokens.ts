@@ -127,7 +127,6 @@ type ServiceWords = keyof {
 	as: true
 	begin: true
 	by: true
-	character: true
 	check: true
 	column: true
 	constraint: true
@@ -152,11 +151,8 @@ type ServiceWords = keyof {
 	if: true
 	in: true
 	index: true
-	inet: true
 	inner: true
 	insert: true
-	int: true
-	int4range: true
 	into: true
 	join: true
 	key: true
@@ -182,17 +178,11 @@ type ServiceWords = keyof {
 	schema: true
 	select: true
 	table: true
-	text: true
-	timestamp: true
-	timestampz: true
-	timetz: true
 	to: true
 	true: true
 	unique: true
 	use: true
 	using: true
-	uuid: true
 	values: true
-	varying: true
 	where: true
 }
