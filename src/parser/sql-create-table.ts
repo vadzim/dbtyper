@@ -14,11 +14,11 @@ import type {
 	ReadUntilTopLevelCommaBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { BufferLike, EmptyBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlCreateTable<B extends BufferLike> =
-	ReadToken<B> extends ["create", infer AfterCreate extends BufferLike]
-		? ReadToken<AfterCreate> extends ["table", BufferLike]
+	PeekToken<B> extends "create"
+		? PeekToken<SkipToken<B>> extends "table"
 			? FinalizeCreateTableTuple<ParseCreateTableTuple<B>>
 			: never
 		: never
@@ -27,7 +27,7 @@ type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<stri
 	? [E, R]
 	: T extends [infer StatementResult, infer StatementRest extends BufferLike]
 		? ConsumeStatementEnd<StatementRest> extends [true, infer Tail extends BufferLike]
-			? ReadToken<Tail> extends ["", BufferLike]
+			? PeekToken<Tail> extends ""
 				? SqlCreateTableParsed<StatementResult> extends infer Parsed
 					? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
 						? [SqlParseError<E2>, Tail]
@@ -66,7 +66,7 @@ type CreateBodyState<Row, Names extends string, Error, Refs extends ForeignRefMe
 
 type RefsWithOptionalFkMeta<RestHead extends BufferLike, Refs extends ForeignRefMeta> =
 	ParseForeignRefMeta<RestHead> extends [infer Meta extends ForeignRefMeta, infer FkRest extends BufferLike]
-		? ReadToken<FkRest> extends ["", BufferLike]
+		? PeekToken<FkRest> extends ""
 			? Refs | Meta
 			: Refs
 		: Refs
@@ -94,7 +94,7 @@ type ParseCreateBodyOneCommaSegment<
 				Tail,
 			]
 	: ValidateConstraintRefs<RestHead, Names> extends [infer R, infer ValRest extends BufferLike]
-		? ReadToken<ValRest> extends ["", BufferLike]
+		? PeekToken<ValRest> extends ""
 			? ParseCreateBody<Tail, Row, Names, MergeError<Error, R>, RefsWithOptionalFkMeta<RestHead, Refs>>
 			: never
 		: never
@@ -106,8 +106,8 @@ type ParseCreateBody<
 	Error = never,
 	Refs extends ForeignRefMeta = never,
 > =
-	ReadToken<B> extends ["", infer RestAfterEof extends BufferLike]
-		? [CreateBodyState<Row, Names, Error, Refs>, RestAfterEof]
+	PeekToken<B> extends ""
+		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<B>]
 		: ReadUntilTopLevelCommaBuffer<B> extends [infer Head extends BufferLike, infer Tail extends BufferLike]
 			? ReadConstraintEntryMatch<Head> extends [infer Matched, infer RestHead extends BufferLike]
 				? ParseCreateBodyOneCommaSegment<Tail, Row, Names, Error, Refs, Matched, RestHead>
@@ -182,7 +182,7 @@ type SqlCreateTableParsed<Statement> = Statement extends {
 			infer BodyRest extends BufferLike,
 		]
 		? [Parsed["error"]] extends [never]
-			? ReadToken<BodyRest> extends ["", BufferLike]
+			? PeekToken<BodyRest> extends ""
 				? Parsed
 				: SqlParseError<"Unexpected trailing input in CREATE TABLE body">
 			: Parsed

@@ -5,7 +5,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { BufferLike, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlDropTableLike = {
 	readonly kind: "drop_table"
@@ -14,8 +14,8 @@ export type SqlDropTableLike = {
 }
 
 export type SqlDropTable<B extends BufferLike> =
-	ReadToken<B> extends ["drop", infer AfterDrop extends BufferLike]
-		? ReadToken<AfterDrop> extends ["table", BufferLike]
+	PeekToken<B> extends "drop"
+		? PeekToken<SkipToken<B>> extends "table"
 			? FinalizeDropTableTuple<ParseDropTableTuple<B>>
 			: never
 		: never
@@ -24,7 +24,7 @@ type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParseError<string
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? ReadToken<Tail> extends ["", BufferLike]
+			? PeekToken<Tail> extends ""
 				? [Result, Tail]
 				: [SqlParseError<"Unable to parse DROP TABLE statement">, Rest]
 			: [SqlParseError<"Unable to parse DROP TABLE statement">, Rest]

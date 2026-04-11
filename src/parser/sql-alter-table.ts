@@ -9,11 +9,11 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { BufferLike, EmptyBuffer, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, EmptyBuffer, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlAlterTable<B extends BufferLike> =
-	ReadToken<B> extends ["alter", infer AfterAlter extends BufferLike]
-		? ReadToken<AfterAlter> extends ["table", BufferLike]
+	PeekToken<B> extends "alter"
+		? PeekToken<SkipToken<B>> extends "table"
 			? FinalizeAlterTableTuple<ParseAlterTableTuple<B>>
 			: never
 		: never
@@ -22,7 +22,7 @@ type FinalizeAlterTableTuple<T> = T extends [infer E extends SqlParseError<strin
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? ReadToken<Tail> extends ["", BufferLike]
+			? PeekToken<Tail> extends ""
 				? [Result, Tail]
 				: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, Rest]
 			: [SqlParseError<"Expected an ALTER TABLE statement with a table target">, Rest]

@@ -4,7 +4,7 @@ import type {
 	ReadExpectedToken,
 	ReadOptionalIfNotExists,
 } from "./sql-parse-primitives.js"
-import type { BufferLike, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlCreateSchemaLike = {
 	readonly kind: "create_schema"
@@ -13,8 +13,8 @@ export type SqlCreateSchemaLike = {
 }
 
 export type SqlCreateSchema<B extends BufferLike> =
-	ReadToken<B> extends ["create", infer AfterCreate extends BufferLike]
-		? ReadToken<AfterCreate> extends ["schema", BufferLike]
+	PeekToken<B> extends "create"
+		? PeekToken<SkipToken<B>> extends "schema"
 			? FinalizeCreateSchemaTuple<ParseCreateSchemaTuple<B>>
 			: never
 		: never
@@ -23,7 +23,7 @@ type FinalizeCreateSchemaTuple<T> = T extends [infer E extends SqlParseError<str
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? ReadToken<Tail> extends ["", BufferLike]
+			? PeekToken<Tail> extends ""
 				? [Result, Tail]
 				: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Rest]
 			: [SqlParseError<"Unable to parse CREATE SCHEMA statement">, Rest]

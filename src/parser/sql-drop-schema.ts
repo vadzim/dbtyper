@@ -4,7 +4,7 @@ import type {
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 } from "./sql-parse-primitives.js"
-import type { BufferLike, ReadToken, SqlParseError } from "./sql-tokens.js"
+import type { BufferLike, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlDropSchemaLike = {
 	readonly kind: "drop_schema"
@@ -13,8 +13,8 @@ export type SqlDropSchemaLike = {
 }
 
 export type SqlDropSchema<B extends BufferLike> =
-	ReadToken<B> extends ["drop", infer AfterDrop extends BufferLike]
-		? ReadToken<AfterDrop> extends ["schema", BufferLike]
+	PeekToken<B> extends "drop"
+		? PeekToken<SkipToken<B>> extends "schema"
 			? FinalizeDropSchemaTuple<ParseDropSchemaTuple<B>>
 			: never
 		: never
@@ -23,7 +23,7 @@ type FinalizeDropSchemaTuple<T> = T extends [infer E extends SqlParseError<strin
 	? [E, R]
 	: T extends [infer Result, infer Rest extends BufferLike]
 		? ConsumeStatementEnd<Rest> extends [true, infer Tail extends BufferLike]
-			? ReadToken<Tail> extends ["", BufferLike]
+			? PeekToken<Tail> extends ""
 				? [Result, Tail]
 				: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Rest]
 			: [SqlParseError<"Unable to parse DROP SCHEMA statement">, Rest]
