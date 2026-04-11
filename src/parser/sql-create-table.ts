@@ -105,15 +105,7 @@ type ParseCreateBody<
 	PeekToken<B> extends ""
 		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<B>]
 		: ReadConstraintEntryMatch<B> extends [infer Matched, infer RestHead extends BufferLike]
-			? ParseCreateBodyOneCommaSegment<
-					SkipPastFirstTopLevelComma<B>,
-					Row,
-					Names,
-					Error,
-					Refs,
-					Matched,
-					RestHead
-				>
+			? ParseCreateBodyOneCommaSegment<SkipPastFirstTopLevelComma<B>, Row, Names, Error, Refs, Matched, RestHead>
 			: [
 					CreateBodyState<
 						Row,

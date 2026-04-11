@@ -5,15 +5,18 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 
 type DbFromSchemasKind = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table posts (id int not null, user_id int not null, title text)
+`>
+	>[0]
 >
 
 type _DbFromSchemasKind = Expect<
@@ -38,17 +41,17 @@ type _DbFromSchemasKind = Expect<
 
 type DbPostRefsIntraFk = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`
-			create table post_refs (
-				id int not null,
-				author_id int not null,
-				foreign key (author_id) references users(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table post_refs (
+		id int not null,
+		author_id int not null,
+		foreign key (author_id) references users(id)
+	)
+`>
+	>[0]
 >
 
 type _DbPostRefsIntraFk = Expect<
@@ -71,16 +74,16 @@ type _DbPostRefsIntraFk = Expect<
 
 type DbCategoriesSelfRef = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`
-			create table categories (
-				id int not null,
-				parent_id int,
-				foreign key (parent_id) references categories(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table categories (
+		id int not null,
+		parent_id int,
+		foreign key (parent_id) references categories(id)
+	)
+`>
+	>[0]
 >
 
 type _DbCategoriesSelfRef = Expect<
@@ -102,18 +105,18 @@ type _DbCategoriesSelfRef = Expect<
 
 type DbCompositeFkPairRefs = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`
-			create table pair_refs (
-				id int not null,
-				u_id int not null,
-				u_email text not null,
-				foreign key (u_id, u_email) references users(id, email)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table pair_refs (
+		id int not null,
+		u_id int not null,
+		u_email text not null,
+		foreign key (u_id, u_email) references users(id, email)
+	)
+`>
+	>[0]
 >
 
 type _DbCompositeFkPairRefs = Expect<
@@ -136,20 +139,20 @@ type _DbCompositeFkPairRefs = Expect<
 
 type DbMembershipsMultiFk = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatementLoose<`
-			create table memberships (
-				id int not null,
-				user_id int not null,
-				post_id int not null,
-				foreign key (user_id) references users(id),
-				foreign key (post_id) references posts(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table posts (id int not null, user_id int not null, title text);
+	create table memberships (
+		id int not null,
+		user_id int not null,
+		post_id int not null,
+		foreign key (user_id) references users(id),
+		foreign key (post_id) references posts(id)
+	)
+`>
+	>[0]
 >
 
 type _DbMembershipsMultiFk = Expect<
@@ -173,19 +176,19 @@ type _DbMembershipsMultiFk = Expect<
 
 type DbSalesOrders = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatementLoose<`create schema sales`>,
-		SqlStatementLoose<`
-			create table sales.orders (
-				id int not null,
-				user_id int not null,
-				foreign key (user_id) references public.users(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table posts (id int not null, user_id int not null, title text);
+	create schema sales;
+	create table sales.orders (
+		id int not null,
+		user_id int not null,
+		foreign key (user_id) references public.users(id)
+	)
+`>
+	>[0]
 >
 
 type _DbSalesOrders = Expect<
@@ -211,21 +214,21 @@ type _DbSalesOrders = Expect<
 
 type DbSalesLinkRows = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatementLoose<`create schema sales`>,
-		SqlStatementLoose<`
-			create table sales.link_rows (
-				id int not null,
-				u int not null,
-				p int not null,
-				foreign key (u) references public.users(id),
-				foreign key (p) references public.posts(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table posts (id int not null, user_id int not null, title text);
+	create schema sales;
+	create table sales.link_rows (
+		id int not null,
+		u int not null,
+		p int not null,
+		foreign key (u) references public.users(id),
+		foreign key (p) references public.posts(id)
+	)
+`>
+	>[0]
 >
 
 type _DbSalesLinkRows = Expect<
@@ -249,19 +252,19 @@ type _DbSalesLinkRows = Expect<
 
 type DbSalesOrdersDefaultSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
-		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatementLoose<`create schema sales`>,
-		SqlStatementLoose<`
-			create table sales.orders_default_schema (
-				id int not null,
-				user_id int not null,
-				foreign key (user_id) references public.users(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table users (id int not null, email text not null);
+	create table posts (id int not null, user_id int not null, title text);
+	create schema sales;
+	create table sales.orders_default_schema (
+		id int not null,
+		user_id int not null,
+		foreign key (user_id) references public.users(id)
+	)
+`>
+	>[0]
 >
 
 type _DbSalesOrdersDefaultSchema = Expect<
@@ -285,21 +288,21 @@ type _DbSalesOrdersDefaultSchema = Expect<
 
 type DbSharedDefaultWithSalesOrders = SqlApplyStatements<
 	SqlDatabase<"shared">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create table public.users (id int not null, email text not null)`>,
-		SqlStatementLoose<`create table public.posts (id int not null, user_id int not null, title text)`>,
-		SqlStatementLoose<`create schema shared`>,
-		SqlStatementLoose<`create table users (id int not null)`>,
-		SqlStatementLoose<`create schema sales`>,
-		SqlStatementLoose<`
-			create table sales.orders_default_schema (
-				id int not null,
-				user_id int not null,
-				foreign key (user_id) references public.users(id)
-			)
-		`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create table public.users (id int not null, email text not null);
+	create table public.posts (id int not null, user_id int not null, title text);
+	create schema shared;
+	create table users (id int not null);
+	create schema sales;
+	create table sales.orders_default_schema (
+		id int not null,
+		user_id int not null,
+		foreign key (user_id) references public.users(id)
+	)
+`>
+	>[0]
 >
 
 type _DbSharedDefaultWithSalesOrders = Expect<

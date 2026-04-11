@@ -6,17 +6,20 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 
 type DbApplyDropTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null)
+`>
+	>[0]
 >
 
 type _DbApplyDropTableFixture = Expect<
@@ -44,14 +47,16 @@ type _DbApplyDropTableFixture = Expect<
 
 type DropExistingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop table test.users`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	drop table test.users
+`>
+	>[0]
 >
 
 type _DropExistingNoIfExists = Expect<
@@ -76,14 +81,16 @@ type _DropExistingNoIfExists = Expect<
 
 type DropExistingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop table if exists test.users`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	drop table if exists test.users
+`>
+	>[0]
 >
 
 type _DropExistingIfExists = Expect<
@@ -108,14 +115,16 @@ type _DropExistingIfExists = Expect<
 
 type DropMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop table test.missing`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	drop table test.missing
+`>
+	>[0]
 >
 
 type _DropMissingNoIfExists = Expect<
@@ -126,14 +135,16 @@ type _DropMissingNoIfExists = Expect<
 
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop table if exists test.missing`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	drop table if exists test.missing
+`>
+	>[0]
 >
 
 type _DropMissingIfExists = Expect<
@@ -159,14 +170,16 @@ type _DropMissingIfExists = Expect<
 
 type DropDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop table users`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	drop table users
+`>
+	>[0]
 >
 
 type _DropDefaultSchemaUnqualified = Expect<
@@ -191,14 +204,16 @@ type _DropDefaultSchemaUnqualified = Expect<
 
 type DropExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop table auth.sessions`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	drop table auth.sessions
+`>
+	>[0]
 >
 
 type _DropExplicitSchemaQualified = Expect<

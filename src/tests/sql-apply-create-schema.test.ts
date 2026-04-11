@@ -5,14 +5,21 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 
 // --- Create schema ---
 
 /** New schema is merged into the database (fixture shape for following cases). */
 
-type AfterCreateSchema = SqlApplyStatements<SqlDatabase<"public">, [SqlStatementLoose<`create schema auth`>]>
+type AfterCreateSchema = SqlApplyStatements<
+	SqlDatabase<"public">,
+	SqlStatements<
+		InitBuffer<`
+	create schema auth
+`>
+	>[0]
+>
 
 type _AfterCreateSchema = Expect<
 	Matches<
@@ -31,7 +38,12 @@ type _AfterCreateSchema = Expect<
 
 type DuplicateSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatementLoose<`create schema auth`>, SqlStatementLoose<`create schema auth`>]
+	SqlStatements<
+		InitBuffer<`
+	create schema auth;
+	create schema auth
+`>
+	>[0]
 >
 
 type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParseError<"Duplicate schema name: auth">>>
@@ -40,7 +52,12 @@ type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParseError<"Duplicate
 
 type DuplicateIfNotExists = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatementLoose<`create schema auth`>, SqlStatementLoose<`create schema if not exists auth`>]
+	SqlStatements<
+		InitBuffer<`
+	create schema auth;
+	create schema if not exists auth
+`>
+	>[0]
 >
 
 type _DuplicateIfNotExists = Expect<
@@ -62,7 +79,12 @@ type _DuplicateIfNotExists = Expect<
 
 type DbAuthThenTable = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatementLoose<`create schema auth`>, SqlStatementLoose<`create table auth.users (id int not null)`>]
+	SqlStatements<
+		InitBuffer<`
+	create schema auth;
+	create table auth.users (id int not null)
+`>
+	>[0]
 >
 
 type _DbAuthThenTable = Expect<

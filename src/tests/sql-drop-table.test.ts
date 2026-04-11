@@ -1,8 +1,9 @@
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
-type DropUsers = SqlStatementLoose<`drop table if exists public.users;`>
+type DropUsers = SqlStatements<InitBuffer<`drop table if exists public.users;`>>[0][0]
 type _DropUsers = Expect<
 	Matches<
 		DropUsers,
@@ -14,7 +15,7 @@ type _DropUsers = Expect<
 	>
 >
 
-type BadDrop = SqlStatementLoose<`drop view public.users`>
+type BadDrop = SqlStatements<InitBuffer<`drop view public.users`>>[0]
 type _BadDrop = ExpectFalse<Matches<BadDrop, { readonly kind: "drop_table" }>>
 
 describe("sql drop table", () => {

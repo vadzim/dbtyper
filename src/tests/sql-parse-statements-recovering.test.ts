@@ -23,7 +23,12 @@ type _One = Expect<
 	>
 >
 
-type Two = SqlStatementsRecovering<InitBuffer<`create schema a; create schema b`>>
+type Two = SqlStatementsRecovering<
+	InitBuffer<`
+	create schema a;
+	create schema b
+`>
+>
 type _Two = Expect<
 	Matches<
 		Two,

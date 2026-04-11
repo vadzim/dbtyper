@@ -3,9 +3,7 @@ import type { SqlCreateSchema } from "./sql-create-schema.js"
 import type { SqlCreateTable } from "./sql-create-table.js"
 import type { SqlDropSchema } from "./sql-drop-schema.js"
 import type { SqlDropTable } from "./sql-drop-table.js"
-import type { BufferLike, InitBuffer, PeekToken, SqlParseError } from "./sql-tokens.js"
-
-export type SqlStatementLoose<Sql extends string> = SqlStatement<InitBuffer<Sql>>[0]
+import type { BufferLike, PeekToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlStatement<Buffer extends BufferLike> =
 	| SqlAlterTable<Buffer>

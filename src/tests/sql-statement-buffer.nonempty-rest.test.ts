@@ -8,9 +8,7 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // --- CREATE TABLE ---
 
-type CreateTable = SqlStatement<
-	InitBuffer<`create table users (id int not null, email text); drop table users`>
->
+type CreateTable = SqlStatement<InitBuffer<`create table users (id int not null, email text); drop table users`>>
 
 type _CreateTable = Expect<
 	Matches<
@@ -158,9 +156,7 @@ type _AlterTableRename = Expect<
 
 // --- DROP TABLE ---
 
-type DropTable = SqlStatement<
-	InitBuffer<`drop table if exists auth.users; create schema if not exists billing`>
->
+type DropTable = SqlStatement<InitBuffer<`drop table if exists auth.users; create schema if not exists billing`>>
 
 type _DropTable = Expect<
 	Matches<
@@ -178,9 +174,7 @@ type _DropTable = Expect<
 
 // --- CREATE SCHEMA ---
 
-type CreateSchema = SqlStatement<
-	InitBuffer<`create schema if not exists billing; drop schema if exists billing`>
->
+type CreateSchema = SqlStatement<InitBuffer<`create schema if not exists billing; drop schema if exists billing`>>
 
 type _CreateSchema = Expect<
 	Matches<
@@ -198,9 +192,7 @@ type _CreateSchema = Expect<
 
 // --- DROP SCHEMA ---
 
-type DropSchema = SqlStatement<
-	InitBuffer<`drop schema if exists staging; create schema if not exists staging`>
->
+type DropSchema = SqlStatement<InitBuffer<`drop schema if exists staging; create schema if not exists staging`>>
 
 type _DropSchema = Expect<
 	Matches<

@@ -1,9 +1,9 @@
 import { describe, it } from "node:test"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type ParseCreate = SqlStatementLoose<`create table users (id int not null, email text)`>
+type ParseCreate = SqlStatements<InitBuffer<`create table users (id int not null, email text)`>>[0][0]
 type _ParseCreate = Expect<
 	Matches<
 		ParseCreate,
@@ -16,7 +16,7 @@ type _ParseCreate = Expect<
 	>
 >
 
-type ParseAlter = SqlStatementLoose<`alter table if exists public.users add column age int`>
+type ParseAlter = SqlStatements<InitBuffer<`alter table if exists public.users add column age int`>>[0][0]
 type _ParseAlter = Expect<
 	Matches<
 		ParseAlter,
@@ -34,7 +34,7 @@ type _ParseAlter = Expect<
 	>
 >
 
-type ParseDrop = SqlStatementLoose<`drop table if exists auth.users;`>
+type ParseDrop = SqlStatements<InitBuffer<`drop table if exists auth.users;`>>[0][0]
 type _ParseDrop = Expect<
 	Matches<
 		ParseDrop,
@@ -46,7 +46,7 @@ type _ParseDrop = Expect<
 	>
 >
 
-type ParseCreateSchema = SqlStatementLoose<`create schema if not exists billing;`>
+type ParseCreateSchema = SqlStatements<InitBuffer<`create schema if not exists billing;`>>[0][0]
 type _ParseCreateSchema = Expect<
 	Matches<
 		ParseCreateSchema,
@@ -58,7 +58,7 @@ type _ParseCreateSchema = Expect<
 	>
 >
 
-type ParseDropSchema = SqlStatementLoose<`drop schema if exists staging`>
+type ParseDropSchema = SqlStatements<InitBuffer<`drop schema if exists staging`>>[0][0]
 type _ParseDropSchema = Expect<
 	Matches<
 		ParseDropSchema,
@@ -70,22 +70,22 @@ type _ParseDropSchema = Expect<
 	>
 >
 
-type ParseUnknown = SqlStatementLoose<`create view v as select 1`>
+type ParseUnknown = SqlStatements<InitBuffer<`create view v as select 1`>>[0]
 type _ParseUnknown = Expect<Matches<ParseUnknown, SqlParseError<"Unknown sql statement">>>
 
-type ParseInvalidCreate = SqlStatementLoose<`create table broken (id)`>
+type ParseInvalidCreate = SqlStatements<InitBuffer<`create table broken (id)`>>[0]
 type _ParseInvalidCreate = Expect<Matches<ParseInvalidCreate, SqlParseError<"Invalid column definition">>>
 
-type ParseInvalidKeywordBoundary = SqlStatementLoose<`createx table users (id int)`>
+type ParseInvalidKeywordBoundary = SqlStatements<InitBuffer<`createx table users (id int)`>>[0]
 type _ParseInvalidKeywordBoundary = Expect<Matches<ParseInvalidKeywordBoundary, SqlParseError<"Unknown sql statement">>>
 
-type ParseInvalidDropBoundary = SqlStatementLoose<`dropx table users`>
+type ParseInvalidDropBoundary = SqlStatements<InitBuffer<`dropx table users`>>[0]
 type _ParseInvalidDropBoundary = Expect<Matches<ParseInvalidDropBoundary, SqlParseError<"Unknown sql statement">>>
 
-type ParseInvalidIfNot = SqlStatementLoose<`create schema if not billing`>
+type ParseInvalidIfNot = SqlStatements<InitBuffer<`create schema if not billing`>>[0]
 type _ParseInvalidIfNot = Expect<Matches<ParseInvalidIfNot, SqlParseError<"Expected EXISTS after IF NOT">>>
 
-type ParseTrailingTokens = SqlStatementLoose<`drop table users extra`>
+type ParseTrailingTokens = SqlStatements<InitBuffer<`drop table users extra`>>[0]
 type _ParseTrailingTokens = Expect<Matches<ParseTrailingTokens, SqlParseError<"Unable to parse DROP TABLE statement">>>
 
 describe("sql parse migration", () => {

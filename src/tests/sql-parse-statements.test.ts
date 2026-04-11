@@ -23,7 +23,12 @@ type _One = Expect<
 	>
 >
 
-type Two = SqlStatements<InitBuffer<`create schema a; create schema b`>>
+type Two = SqlStatements<
+	InitBuffer<`
+	create schema a;
+	create schema b
+`>
+>
 type _Two = Expect<
 	Matches<
 		Two,
@@ -39,9 +44,7 @@ type _Two = Expect<
 
 /** First failure is only `[error, buffer]` — prior successful parses are not returned. */
 type UnknownSecond = SqlStatements<InitBuffer<`create schema a; select 1`>>
-type _UnknownSecond = Expect<
-	Matches<UnknownSecond, [SqlParseError<"Unknown sql statement">, InitBuffer<`select 1`>]>
->
+type _UnknownSecond = Expect<Matches<UnknownSecond, [SqlParseError<"Unknown sql statement">, InitBuffer<`select 1`>]>>
 
 type InvalidSecond = SqlStatements<InitBuffer<`create schema a; create table broken (id); create schema b`>>
 type _InvalidSecond = Expect<

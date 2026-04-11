@@ -6,16 +6,19 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 
 type DbApplyDropSchemaFixture = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table public.users (id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create schema auth;
+	create table public.users (id int not null);
+	create table auth.sessions (id text not null)
+`>
+	>[0]
 >
 
 type _DbApplyDropSchemaFixture = Expect<
@@ -42,13 +45,15 @@ type _DbApplyDropSchemaFixture = Expect<
 
 type DropAuth = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table public.users (id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop schema auth`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create schema auth;
+	create table public.users (id int not null);
+	create table auth.sessions (id text not null);
+	drop schema auth
+`>
+	>[0]
 >
 
 type _DropAuth = Expect<
@@ -70,13 +75,15 @@ type _DropAuth = Expect<
 
 type DropMissingNoIf = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table public.users (id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop schema missing`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create schema auth;
+	create table public.users (id int not null);
+	create table auth.sessions (id text not null);
+	drop schema missing
+`>
+	>[0]
 >
 
 type _DropMissingNoIf = Expect<Matches<DropMissingNoIf, SqlParseError<`Unknown dropped schema "missing" in database`>>>
@@ -85,13 +92,15 @@ type _DropMissingNoIf = Expect<Matches<DropMissingNoIf, SqlParseError<`Unknown d
 
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[
-		SqlStatementLoose<`create schema public`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table public.users (id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`drop schema if exists missing`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema public;
+	create schema auth;
+	create table public.users (id int not null);
+	create table auth.sessions (id text not null);
+	drop schema if exists missing
+`>
+	>[0]
 >
 
 type _DropMissingIfExists = Expect<

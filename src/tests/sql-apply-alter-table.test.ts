@@ -6,17 +6,20 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 
 type DbApplyAlterFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null)
+`>
+	>[0]
 >
 
 type _DbApplyAlterFixture = Expect<
@@ -44,14 +47,15 @@ type _DbApplyAlterFixture = Expect<
 
 type AddNewColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users add column email text not null`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users add column email text not null`>
+	>[0]
 >
 
 type _AddNewColumn = Expect<
@@ -75,14 +79,15 @@ type _AddNewColumn = Expect<
 
 type AddExistingColumnNoIfNotExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users add column age int`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users add column age int`>
+	>[0]
 >
 
 type _AddExistingColumnNoIfNotExists = Expect<
@@ -93,14 +98,15 @@ type _AddExistingColumnNoIfNotExists = Expect<
 
 type AddExistingColumnIfNotExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users add column if not exists age int`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users add column if not exists age int`>
+	>[0]
 >
 
 type _AddExistingColumnIfNotExists = Expect<
@@ -128,14 +134,15 @@ type _AddExistingColumnIfNotExists = Expect<
 
 type DropExistingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users drop column age`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users drop column age`>
+	>[0]
 >
 
 type _DropExistingColumn = Expect<
@@ -159,14 +166,15 @@ type _DropExistingColumn = Expect<
 
 type DropMissingColumnNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users drop column missing`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users drop column missing`>
+	>[0]
 >
 
 type _DropMissingColumnNoIfExists = Expect<
@@ -177,14 +185,15 @@ type _DropMissingColumnNoIfExists = Expect<
 
 type DropMissingColumnIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users drop column if exists missing`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users drop column if exists missing`>
+	>[0]
 >
 
 type _DropMissingColumnIfExists = Expect<
@@ -212,14 +221,15 @@ type _DropMissingColumnIfExists = Expect<
 
 type RenameExistingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users rename column age to years`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename column age to years`>
+	>[0]
 >
 
 type _RenameExistingColumn = Expect<
@@ -243,14 +253,15 @@ type _RenameExistingColumn = Expect<
 
 type RenameMissingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users rename column missing to years`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename column missing to years`>
+	>[0]
 >
 
 type _RenameMissingColumn = Expect<
@@ -261,14 +272,15 @@ type _RenameMissingColumn = Expect<
 
 type RenameToExistingColumnName = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users rename column age to id`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename column age to id`>
+	>[0]
 >
 
 type _RenameToExistingColumnName = Expect<
@@ -281,14 +293,15 @@ type _RenameToExistingColumnName = Expect<
 
 type RenameTableOk = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users rename to members`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename to members`>
+	>[0]
 >
 
 type _RenameTableOk = Expect<
@@ -312,14 +325,15 @@ type _RenameTableOk = Expect<
 
 type RenameTableDuplicate = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.users rename to posts`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename to posts`>
+	>[0]
 >
 
 type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>>
@@ -330,14 +344,15 @@ type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParseError<
 
 type AlterMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table test.missing add column age int`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.missing add column age int`>
+	>[0]
 >
 
 type _AlterMissingNoIfExists = Expect<
@@ -346,7 +361,11 @@ type _AlterMissingNoIfExists = Expect<
 
 type AlterMissingSchemeNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[SqlStatementLoose<`alter table test.missing add column age int`>]
+	SqlStatements<
+		InitBuffer<`
+	alter table test.missing add column age int
+`>
+	>[0]
 >
 
 type _AlterMissingSchemeNoIfExists = Expect<
@@ -355,7 +374,11 @@ type _AlterMissingSchemeNoIfExists = Expect<
 
 type AlterMissingSchemeIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[SqlStatementLoose<`alter table if exists test.missing add column age int`>]
+	SqlStatements<
+		InitBuffer<`
+	alter table if exists test.missing add column age int
+`>
+	>[0]
 >
 
 type _AlterMissingSchemeIfExists = Expect<
@@ -373,14 +396,15 @@ type _AlterMissingSchemeIfExists = Expect<
 
 type AlterMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table if exists test.missing add column age int`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table if exists test.missing add column age int`>
+	>[0]
 >
 
 type _AlterMissingIfExists = Expect<
@@ -406,14 +430,15 @@ type _AlterMissingIfExists = Expect<
 
 type AlterDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table users add column age int`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table users add column age int`>
+	>[0]
 >
 
 type _AlterDefaultSchemaUnqualified = Expect<
@@ -424,14 +449,15 @@ type _AlterDefaultSchemaUnqualified = Expect<
 
 type AlterExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	[
-		SqlStatementLoose<`create schema test`>,
-		SqlStatementLoose<`create schema auth`>,
-		SqlStatementLoose<`create table test.users (id int not null, age int not null)`>,
-		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
-		SqlStatementLoose<`alter table auth.sessions add column expires_at timestamptz`>,
-	]
+	SqlStatements<
+		InitBuffer<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table auth.sessions add column expires_at timestamptz`>
+	>[0]
 >
 
 type _AlterExplicitSchemaQualified = Expect<

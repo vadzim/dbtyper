@@ -1,6 +1,7 @@
 import { describe, it } from "node:test"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
 type ApplyResult<Db, S extends string> = Db extends {
@@ -17,10 +18,12 @@ type X2 = ApplyResult<X, "alter table users add column name text">
 type X3 = ApplyResult<X2, "alter table users add column name2 text not null">
 type X4 = ApplyResult<X3, "drop table users">
 
-type _Y = Expect<Matches<Y["__sql_parsed__"], SqlStatementLoose<"create table users (id int primary key)">>>
+type _Y = Expect<
+	Matches<Y["__sql_parsed__"], SqlStatementsRecovering<InitBuffer<"create table users (id int primary key)">>[0]>
+>
 type _YParsed = Expect<
 	Matches<
-		Y["__sql_parsed__"],
+		Y["__sql_parsed__"][0],
 		{
 			readonly kind: "create_table"
 			readonly name: readonly ["users"]

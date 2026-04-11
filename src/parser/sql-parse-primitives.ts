@@ -9,22 +9,20 @@ export type Trim<S extends string> = TrimLeft<TrimRight<S>>
 export type ToLower<S extends string> = Lowercase<S>
 
 /** Walks from `B` and returns the buffer **after** the first top-level `,` token. If none, returns the buffer at EOF (`PeekToken` is `""`). */
-export type SkipPastFirstTopLevelComma<
-	B extends BufferLike,
-	Depth extends 0[] = [],
-> = PeekToken<B> extends ""
-	? B
-	: PeekToken<B> extends "("
-		? SkipPastFirstTopLevelComma<SkipToken<B>, [0, ...Depth]>
-		: PeekToken<B> extends ")"
-			? Depth extends [0, ...infer Tail extends 0[]]
-				? SkipPastFirstTopLevelComma<SkipToken<B>, Tail>
-				: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
-			: PeekToken<B> extends ","
-				? Depth["length"] extends 0
-					? SkipToken<B>
+export type SkipPastFirstTopLevelComma<B extends BufferLike, Depth extends 0[] = []> =
+	PeekToken<B> extends ""
+		? B
+		: PeekToken<B> extends "("
+			? SkipPastFirstTopLevelComma<SkipToken<B>, [0, ...Depth]>
+			: PeekToken<B> extends ")"
+				? Depth extends [0, ...infer Tail extends 0[]]
+					? SkipPastFirstTopLevelComma<SkipToken<B>, Tail>
 					: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
-				: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
+				: PeekToken<B> extends ","
+					? Depth["length"] extends 0
+						? SkipToken<B>
+						: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
+					: SkipPastFirstTopLevelComma<SkipToken<B>, Depth>
 
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
 
@@ -37,19 +35,16 @@ export type ReadFirstParenGroup<B extends BufferLike> =
 		? ReadParenGroupTail<AfterOpen, AfterOpen, []>
 		: never
 
-type ReadParenGroupTail<
-	AfterOpen extends BufferLike,
-	Cur extends BufferLike,
-	Depth extends 0[],
-> = PeekToken<Cur> extends ""
-	? never
-	: PeekToken<Cur> extends "("
-		? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, [0, ...Depth]>
-		: PeekToken<Cur> extends ")"
-			? Depth extends [0, ...infer Tail extends 0[]]
-				? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Tail>
-				: [AfterOpen, SkipToken<Cur>]
-			: ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Depth>
+type ReadParenGroupTail<AfterOpen extends BufferLike, Cur extends BufferLike, Depth extends 0[]> =
+	PeekToken<Cur> extends ""
+		? never
+		: PeekToken<Cur> extends "("
+			? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, [0, ...Depth]>
+			: PeekToken<Cur> extends ")"
+				? Depth extends [0, ...infer Tail extends 0[]]
+					? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Tail>
+					: [AfterOpen, SkipToken<Cur>]
+				: ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Depth>
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 

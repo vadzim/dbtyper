@@ -37,7 +37,9 @@ type _CreateTableSemicolon = Expect<
 	>
 >
 
-type CreateTableSchemaQualified = SqlStatement<InitBuffer<`create table auth.sessions (token text not null, user_id int not null)`>>
+type CreateTableSchemaQualified = SqlStatement<
+	InitBuffer<`create table auth.sessions (token text not null, user_id int not null)`>
+>
 type _CreateTableSchemaQualified = Expect<
 	Matches<
 		CreateTableSchemaQualified,

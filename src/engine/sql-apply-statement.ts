@@ -42,8 +42,11 @@ export type SqlApplyStatement<
 
 export type SqlApplyStatements<
 	Db extends SqlDatabaseLike | SqlParseError<string>,
-	Statements extends SqlStatementLike[],
-> = Statements extends [infer First extends SqlStatementLike, ...infer Rest extends SqlStatementLike[]]
+	Statements extends readonly SqlStatementLike[],
+> = Statements extends readonly [
+	infer First extends SqlStatementLike,
+	...infer Rest extends readonly SqlStatementLike[],
+]
 	? SqlApplyStatements<SqlApplyStatement<Db, First>, Rest>
 	: Db
 

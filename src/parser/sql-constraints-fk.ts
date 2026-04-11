@@ -53,9 +53,9 @@ export type ValidateColumnRefs<B extends BufferLike, Names extends string> =
 	PeekToken<B> extends ""
 		? [true, EmptyBuffer]
 		: ReadExpectedIdentifier<B, "Expected column name in constraint list"> extends [
-				infer Col extends string,
-				infer AfterId extends BufferLike,
-			]
+					infer Col extends string,
+					infer AfterId extends BufferLike,
+			  ]
 			? PeekToken<AfterId> extends ","
 				? Col extends Names
 					? ValidateColumnRefs<SkipToken<AfterId>, Names> extends [infer R, infer _ extends BufferLike]
@@ -79,9 +79,9 @@ export type ParseColumnListToTuple<B extends BufferLike> =
 	PeekToken<B> extends ""
 		? [readonly [], EmptyBuffer]
 		: ReadExpectedIdentifier<B, "Expected column name in column list"> extends [
-				infer Col extends string,
-				infer AfterId extends BufferLike,
-			]
+					infer Col extends string,
+					infer AfterId extends BufferLike,
+			  ]
 			? PeekToken<AfterId> extends ","
 				? ParseColumnListToTuple<SkipToken<AfterId>> extends [
 						infer Rest extends readonly string[],

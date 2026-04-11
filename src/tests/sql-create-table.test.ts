@@ -1,9 +1,10 @@
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, ExpectFalse, Matches } from "../test-utils/type-test-utils.js"
 
-type Users = SqlStatementLoose<`
+type Users = SqlStatements<
+	InitBuffer<`
 	CREATE TABLE users (
 		id int not null,
 		email varchar(255) not null,
@@ -12,6 +13,7 @@ type Users = SqlStatementLoose<`
 		meta json
 	);
 `>
+>[0][0]
 
 type _UsersShape = Expect<
 	Matches<
@@ -31,7 +33,9 @@ type _UsersShape = Expect<
 	>
 >
 
-type Posts = SqlStatementLoose<"create table posts (id bigint not null, rating decimal(10,2), title text)">
+type Posts = SqlStatements<
+	InitBuffer<"create table posts (id bigint not null, rating decimal(10,2), title text)">
+>[0][0]
 type _PostsShape = Expect<
 	Matches<
 		Posts,
@@ -48,10 +52,11 @@ type _PostsShape = Expect<
 	>
 >
 
-type Invalid = SqlStatementLoose<"select * from users">
+type Invalid = SqlStatements<InitBuffer<"select * from users">>[0]
 type _Invalid = ExpectFalse<Matches<Invalid, { readonly kind: "create_table" }>>
 
-type WithConstraints = SqlStatementLoose<`
+type WithConstraints = SqlStatements<
+	InitBuffer<`
 	create table accounts (
 		id int not null,
 		email text not null,
@@ -61,6 +66,7 @@ type WithConstraints = SqlStatementLoose<`
 		foreign key (org_id) references orgs(id)
 	)
 `>
+>[0][0]
 
 type _WithConstraintsShape = Expect<
 	Matches<
@@ -79,28 +85,33 @@ type _WithConstraintsShape = Expect<
 	>
 >
 
-type BadUniqueRef = SqlStatementLoose<`
+type BadUniqueRef = SqlStatements<
+	InitBuffer<`
 	create table bad_unique (
 		id int not null,
 		unique (missing_col)
 	)
 `>
+>[0]
 type _BadUniqueRef = Expect<
 	Matches<BadUniqueRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-type BadForeignKeyRef = SqlStatementLoose<`
+type BadForeignKeyRef = SqlStatements<
+	InitBuffer<`
 	create table bad_fk (
 		id int not null,
 		org_id int,
 		foreign key (missing_col) references orgs(id)
 	)
 `>
+>[0]
 type _BadForeignKeyRef = Expect<
 	Matches<BadForeignKeyRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-type WithComments = SqlStatementLoose<`
+type WithComments = SqlStatements<
+	InitBuffer<`
 	-- one-line comment before statement
 	CREATE TABLE commented_users (
 		id int not null, -- inline one-line comment
@@ -116,6 +127,7 @@ type WithComments = SqlStatementLoose<`
 		foreign key (org_id) references orgs(id)
 	);
 `>
+>[0]
 // type _WithCommentsShape = Expect<
 // 	WithComments extends {
 // 		readonly kind: "create_table"
@@ -136,18 +148,21 @@ type WithComments = SqlStatementLoose<`
 // 		: false
 // >
 
-type BadRefWithComments = SqlStatementLoose<`
+type BadRefWithComments = SqlStatements<
+	InitBuffer<`
 	create table bad_ref_with_comments (
 		id int not null,
 		/* wrong column should still fail */
 		unique (missing_col)
 	)
 `>
+>[0]
 type _BadRefWithComments = Expect<
 	Matches<BadRefWithComments, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
-type QuotedIdentifiers = SqlStatementLoose<`
+type QuotedIdentifiers = SqlStatements<
+	InitBuffer<`
 	create table "account users" (
 		"id" int not null,
 		"user name" text,
@@ -157,6 +172,7 @@ type QuotedIdentifiers = SqlStatementLoose<`
 		foreign key (\`org-id\`) references orgs(id)
 	)
 `>
+>[0][0]
 
 type _QuotedIdentifiersShape = Expect<
 	Matches<
@@ -175,23 +191,31 @@ type _QuotedIdentifiersShape = Expect<
 	>
 >
 
-type BadQuotedRef = SqlStatementLoose<`
+type BadQuotedRef = SqlStatements<
+	InitBuffer<`
 	create table q_bad (
 		"id" int not null,
 		unique ("missing id")
 	)
 `>
+>[0]
 type _BadQuotedRef = Expect<
 	Matches<BadQuotedRef, SqlParseError<`Unknown column "missing id" referenced in table constraint`>>
 >
 
-type _TableNameSimple = Expect<Matches<SqlStatementLoose<"create table users (id int)">["name"], readonly ["users"]>>
-
-type _TableNameQuoted = Expect<
-	Matches<SqlStatementLoose<`create table "account users" ("id" int not null)`>["name"], readonly ["account users"]>
+type _TableNameSimple = Expect<
+	Matches<SqlStatements<InitBuffer<"create table users (id int)">>[0][0]["name"], readonly ["users"]>
 >
 
-type PostgresTypes = SqlStatementLoose<`
+type _TableNameQuoted = Expect<
+	Matches<
+		SqlStatements<InitBuffer<`create table "account users" ("id" int not null)`>>[0][0]["name"],
+		readonly ["account users"]
+	>
+>
+
+type PostgresTypes = SqlStatements<
+	InitBuffer<`
 	create table pg_types (
 		id serial not null,
 		i2 int2 not null,
@@ -212,6 +236,7 @@ type PostgresTypes = SqlStatementLoose<`
 		numbers int4[]
 	)
 `>
+>[0][0]
 type _PostgresTypes = Expect<
 	Matches<
 		PostgresTypes,

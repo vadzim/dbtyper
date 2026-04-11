@@ -57,11 +57,7 @@ type SqlScalarTypeToTs<T extends string> = T extends
 
 /** Skips optional `(size)` type parameters, e.g. `varchar(255)`. Returns the rest buffer. */
 type SkipOptionalTypeParams<B extends BufferLike> =
-	PeekToken<B> extends "("
-		? ReadFirstParenGroup<B> extends [infer _, infer R extends BufferLike]
-			? R
-			: B
-		: B
+	PeekToken<B> extends "(" ? (ReadFirstParenGroup<B> extends [infer _, infer R extends BufferLike] ? R : B) : B
 
 /** Checks whether the buffer starts with `[]` (array suffix). Returns `[isArray, rest]`. */
 type ReadIsArray<B extends BufferLike> =
@@ -77,18 +73,16 @@ type ReadIsArray<B extends BufferLike> =
  * - `[false, Start]` — no such pair found; `Start` is the buffer at the beginning of this scan
  *   (call with `Start` defaulted to `B` so callers keep the cursor when nothing was consumed).
  */
-type ScanForNotNullWithRest<
-	B extends BufferLike,
-	Start extends BufferLike = B,
-> = PeekToken<B> extends ""
-	? [false, Start]
-	: PeekToken<B> extends "," | ")"
+type ScanForNotNullWithRest<B extends BufferLike, Start extends BufferLike = B> =
+	PeekToken<B> extends ""
 		? [false, Start]
-		: PeekToken<B> extends "not"
-			? PeekToken<SkipToken<B>> extends "null"
-				? [true, SkipToken<SkipToken<B>>]
+		: PeekToken<B> extends "," | ")"
+			? [false, Start]
+			: PeekToken<B> extends "not"
+				? PeekToken<SkipToken<B>> extends "null"
+					? [true, SkipToken<SkipToken<B>>]
+					: ScanForNotNullWithRest<SkipToken<B>, Start>
 				: ScanForNotNullWithRest<SkipToken<B>, Start>
-			: ScanForNotNullWithRest<SkipToken<B>, Start>
 
 /**
  * Parses a column definition from a buffer.

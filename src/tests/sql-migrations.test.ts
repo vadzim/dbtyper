@@ -1,8 +1,10 @@
 import { describe, it } from "node:test"
+import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
+import type { SqlDatabase } from "../engine/sql-database.js"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { InitBuffer, SqlParseError } from "../parser/sql-tokens.js"
 
 type ImportMigration<Path extends string, Sql extends string> = Promise<{
 	default: {
@@ -41,20 +43,75 @@ type _DbAfterUsers = Expect<
 >
 
 type ParsedCreate = ReturnType<
-	typeof sqlStatement<`create table users (id int not null, email text not null)`>
+	typeof sqlStatement<`
+		create table users (id int not null, email text not null)
+	`>
 >["__sql_parsed__"]
 type _ParsedCreate = Expect<
-	Matches<ParsedCreate["row"], SqlStatementLoose<`create table users (id int not null, email text not null)`>["row"]>
+	Matches<
+		ParsedCreate[0]["row"],
+		SqlStatements<
+			InitBuffer<`
+	create table users (id int not null, email text not null)
+`>
+		>[0][0]["row"]
+	>
 >
 
 type ParsedArityError = ReturnType<
-	typeof sqlStatement<`create table t (id int not null, x int, foreign key (x) references users(id, email))`>
+	typeof sqlStatement<`
+		create table t (id int not null, x int, foreign key (x) references users(id, email))
+	`>
 >["__sql_parsed__"]
 type _ParsedArityError = Expect<
 	Matches<
 		ParsedArityError,
-		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+		readonly [SqlParseError<"Foreign key referenced column list has more entries than the local column list">]
 	>
+>
+
+/** One migration source with two statements: both are parsed into `__sql_parsed__` and both apply to the DB type. */
+type MultiStatementSql = `
+	create schema if not exists app;
+	create table app.users (id int not null)
+`
+type _ParsedMulti = Expect<
+	Matches<
+		SqlStatementsRecovering<InitBuffer<MultiStatementSql>>[0],
+		readonly [
+			{ readonly kind: "create_schema"; readonly name: "app"; readonly ifNotExists: true },
+			{
+				readonly kind: "create_table"
+				readonly name: readonly ["users", "app"]
+				readonly row: { id: number }
+				readonly refs: undefined
+			},
+		]
+	>
+>
+type DbFromMultiMigration = SqlApplyStatements<
+	SqlDatabase<"public">,
+	SqlStatementsRecovering<InitBuffer<MultiStatementSql>>[0]
+>
+type _DbFromMultiMigration = Expect<
+	Matches<
+		DbFromMultiMigration,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				readonly app: {
+					readonly users: { readonly id: number }
+				}
+			}
+		}
+	>
+>
+
+type MultiStatementImport = ImportMigration<"file:///migrations/20260409120000_app_users.ts", MultiStatementSql>
+type DbAfterMulti = Apply<Build, MultiStatementImport>
+type _DbAfterMultiMigrations = Expect<
+	Matches<ReturnType<DbAfterMulti["getMigrations"]>, Promise<{ source: string; path: string }[]>>
 >
 
 describe("sql migrations", () => {

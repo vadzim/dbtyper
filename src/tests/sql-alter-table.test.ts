@@ -1,9 +1,10 @@
-import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
+import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { InitBuffer } from "../parser/sql-tokens.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type AlterUsers = SqlStatementLoose<`alter table users add column age int`>
+type AlterUsers = SqlStatements<InitBuffer<`alter table users add column age int`>>[0][0]
 type _AlterUsers = Expect<
 	Matches<
 		AlterUsers,
@@ -21,7 +22,7 @@ type _AlterUsers = Expect<
 	>
 >
 
-type AlterPublicUsers = SqlStatementLoose<`alter table public.users add column age int`>
+type AlterPublicUsers = SqlStatements<InitBuffer<`alter table public.users add column age int`>>[0][0]
 type _AlterPublicUsers = Expect<
 	Matches<
 		AlterPublicUsers,
@@ -39,7 +40,7 @@ type _AlterPublicUsers = Expect<
 	>
 >
 
-type AlterUsersIfExists = SqlStatementLoose<`alter table if exists public.users add column age int`>
+type AlterUsersIfExists = SqlStatements<InitBuffer<`alter table if exists public.users add column age int`>>[0][0]
 type _AlterUsersIfExists = Expect<
 	Matches<
 		AlterUsersIfExists,
@@ -57,11 +58,14 @@ type _AlterUsersIfExists = Expect<
 	>
 >
 
-type BadAlter = SqlStatementLoose<`alter table public.users`>
+type BadAlter = SqlStatements<InitBuffer<`alter table public.users`>>[0]
 type _BadAlter = Expect<Matches<BadAlter, SqlParseError<"Expected an ALTER TABLE action">>>
 
-type AlterAddColumnIfNotExists =
-	SqlStatementLoose<`alter table users add column if not exists "display name" text not null`>
+type AlterAddColumnIfNotExists = SqlStatements<
+	InitBuffer<`
+	alter table users add column if not exists "display name" text not null
+`>
+>[0][0]
 type _AlterAddColumnIfNotExists = Expect<
 	Matches<
 		AlterAddColumnIfNotExists,
@@ -79,7 +83,7 @@ type _AlterAddColumnIfNotExists = Expect<
 	>
 >
 
-type AlterDropColumn = SqlStatementLoose<`alter table users drop column if exists age`>
+type AlterDropColumn = SqlStatements<InitBuffer<`alter table users drop column if exists age`>>[0][0]
 type _AlterDropColumn = Expect<
 	Matches<
 		AlterDropColumn,
@@ -96,7 +100,7 @@ type _AlterDropColumn = Expect<
 	>
 >
 
-type AlterRenameTo = SqlStatementLoose<`alter table users rename to app_users`>
+type AlterRenameTo = SqlStatements<InitBuffer<`alter table users rename to app_users`>>[0][0]
 type _AlterRenameTo = Expect<
 	Matches<
 		AlterRenameTo,
@@ -112,7 +116,7 @@ type _AlterRenameTo = Expect<
 	>
 >
 
-type AlterRenameColumn = SqlStatementLoose<`alter table users rename column old_name to "new name"`>
+type AlterRenameColumn = SqlStatements<InitBuffer<`alter table users rename column old_name to "new name"`>>[0][0]
 type _AlterRenameColumn = Expect<
 	Matches<
 		AlterRenameColumn,
@@ -129,7 +133,7 @@ type _AlterRenameColumn = Expect<
 	>
 >
 
-type UnsupportedAlterAction = SqlStatementLoose<`alter table users set schema archive`>
+type UnsupportedAlterAction = SqlStatements<InitBuffer<`alter table users set schema archive`>>[0]
 type _UnsupportedAlterAction = Expect<Matches<UnsupportedAlterAction, SqlParseError<"Unsupported ALTER TABLE action">>>
 
 describe("sql alter table", () => {

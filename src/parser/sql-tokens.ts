@@ -21,27 +21,27 @@ type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 			: S extends `\`${infer String}\`${infer Rest}`
 				? { __token__: `\`${String}\``; __rest__: Rest; __buffer__: S }
 				: S extends `--${infer Comment}`
-						? Comment extends `${string}\n${infer Rest}`
+					? Comment extends `${string}\n${infer Rest}`
+						? ReadTokenFromString<Rest>
+						: { __token__: ""; __rest__: ""; __buffer__: S }
+					: S extends `/*${infer Comment}`
+						? Comment extends `${string}*/${infer Rest}`
 							? ReadTokenFromString<Rest>
 							: { __token__: ""; __rest__: ""; __buffer__: S }
-						: S extends `/*${infer Comment}`
-							? Comment extends `${string}*/${infer Rest}`
-								? ReadTokenFromString<Rest>
-								: { __token__: ""; __rest__: ""; __buffer__: S }
-							: S extends `${infer Head}${infer Rest}`
-								? Head extends StartTokenChar
-									? OptimizedBySpaceReadTokenChars<Rest> extends {
-											__token__: infer Word extends string
-											__rest__: infer Tail extends string
+						: S extends `${infer Head}${infer Rest}`
+							? Head extends StartTokenChar
+								? OptimizedBySpaceReadTokenChars<Rest> extends {
+										__token__: infer Word extends string
+										__rest__: infer Tail extends string
+									}
+									? {
+											__token__: CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>
+											__rest__: Tail
+											__buffer__: S
 										}
-										? {
-												__token__: CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>
-												__rest__: Tail
-												__buffer__: S
-											}
-										: { __token__: Head; __rest__: Rest; __buffer__: S }
 									: { __token__: Head; __rest__: Rest; __buffer__: S }
-								: { __token__: S; __rest__: ""; __buffer__: S }
+								: { __token__: Head; __rest__: Rest; __buffer__: S }
+							: { __token__: S; __rest__: ""; __buffer__: S }
 
 type CheckDoubleQuotes<S extends string> = S extends ServiceWords ? S : `"${S}"`
 
