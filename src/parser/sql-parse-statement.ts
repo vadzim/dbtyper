@@ -3,16 +3,14 @@ import type { SqlCreateSchema } from "./sql-create-schema.js"
 import type { SqlCreateTable } from "./sql-create-table.js"
 import type { SqlDropSchema } from "./sql-drop-schema.js"
 import type { SqlDropTable } from "./sql-drop-table.js"
-import type { BufferLike, InitBuffer, SqlParseError } from "./sql-tokens.js"
-
-type ParseTupleResult<T> = T extends readonly [infer R, infer _ extends BufferLike] ? R : never
+import type { InitBuffer, SqlParseError } from "./sql-tokens.js"
 
 export type SqlStatement<Sql extends string> =
-	| ParseTupleResult<SqlAlterTable<InitBuffer<Sql>>>
-	| ParseTupleResult<SqlCreateSchema<InitBuffer<Sql>>>
-	| ParseTupleResult<SqlCreateTable<InitBuffer<Sql>>>
-	| ParseTupleResult<SqlDropSchema<InitBuffer<Sql>>>
-	| ParseTupleResult<SqlDropTable<InitBuffer<Sql>>> extends infer Result
+	| SqlAlterTable<InitBuffer<Sql>>[0]
+	| SqlCreateSchema<InitBuffer<Sql>>[0]
+	| SqlCreateTable<InitBuffer<Sql>>[0]
+	| SqlDropSchema<InitBuffer<Sql>>[0]
+	| SqlDropTable<InitBuffer<Sql>>[0] extends infer Result
 	? [Result] extends [never]
 		? SqlParseError<"Unknown sql statement">
 		: Result

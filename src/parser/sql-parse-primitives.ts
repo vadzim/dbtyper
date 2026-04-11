@@ -6,7 +6,6 @@ export type Ws = " " | "\n" | "\t" | "\r"
 export type TrimLeft<S extends string> = S extends `${Ws}${infer R}` ? TrimLeft<R> : S
 export type TrimRight<S extends string> = S extends `${infer R}${Ws}` ? TrimRight<R> : S
 export type Trim<S extends string> = TrimLeft<TrimRight<S>>
-export type RemoveTrailingSemicolon<S extends string> = Trim<S> extends `${infer X};` ? Trim<X> : Trim<S>
 export type ToLower<S extends string> = Lowercase<S>
 
 type ReadUntilTopLevelComma<
@@ -32,16 +31,10 @@ export type ReadUntilTopLevelCommaBuffer<B extends BufferLike> =
 		? [head: InitBuffer<Head>, tail: InitBuffer<Tail>]
 		: never
 
-export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"`
-	? X
-	: S extends `\`${infer X}\``
-		? X
-		: S
+export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
 
 type FindFirstOpenParen<B extends BufferLike> =
-	PeekToken<B> extends "("
-		? SkipToken<B>
-		: FindFirstOpenParen<SkipToken<B>>
+	PeekToken<B> extends "(" ? SkipToken<B> : FindFirstOpenParen<SkipToken<B>>
 
 type ReadParenContentString<
 	S extends string,
@@ -70,19 +63,13 @@ export type ParseResult<Result, Rest> = [result: Result, rest: Rest]
 export type ParseFailure<Message extends string, Rest> = ParseResult<SqlParseError<Message>, Rest>
 export type ParseOutput<Result, Rest> = ParseResult<Result | SqlParseError<string>, Rest>
 export type ConsumeStatementEnd<B extends BufferLike> =
-	PeekToken<B> extends ";" | ""
-		? ParseResult<true, SkipToken<B>>
-		: ParseResult<false, B>
+	PeekToken<B> extends ";" | "" ? ParseResult<true, SkipToken<B>> : ParseResult<false, B>
 
 export type ReadExpectedToken<B extends BufferLike, Expected extends string, Message extends string> =
-	PeekToken<B> extends Expected
-		? ParseResult<true, SkipToken<B>>
-		: ParseFailure<Message, B>
+	PeekToken<B> extends Expected ? ParseResult<true, SkipToken<B>> : ParseFailure<Message, B>
 
 export type ReadOptionalToken<B extends BufferLike, Expected extends string> =
-	PeekToken<B> extends Expected
-		? ParseResult<true, SkipToken<B>>
-		: ParseResult<false, B>
+	PeekToken<B> extends Expected ? ParseResult<true, SkipToken<B>> : ParseResult<false, B>
 
 export type ReadExpectedIdentifier<B extends BufferLike, Message extends string> =
 	StripIdentifierQuotes<Trim<PeekToken<B>>> extends infer Name extends string
@@ -142,7 +129,4 @@ export type ReadQualifiedIdentifierFromBuffer<B extends BufferLike> =
 		: never
 
 /** `[true, Rest]` when the next token is EOF; `[false, B]` when there is more input. Caller must branch on the first element and continue from `Rest` (on success) or `B` (on failure, unchanged). */
-export type ReadBufferEnd<B extends BufferLike> =
-	PeekToken<B> extends ""
-		? [true, SkipToken<B>]
-		: [false, B]
+export type ReadBufferEnd<B extends BufferLike> = PeekToken<B> extends "" ? [true, SkipToken<B>] : [false, B]
