@@ -5,14 +5,14 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
 
 type DbFromSchemasKind = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
 	]
 >
 
@@ -39,9 +39,9 @@ type _DbFromSchemasKind = Expect<
 type DbPostRefsIntraFk = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table post_refs (
 				id int not null,
 				author_id int not null,
@@ -72,8 +72,8 @@ type _DbPostRefsIntraFk = Expect<
 type DbCategoriesSelfRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`
 			create table categories (
 				id int not null,
 				parent_id int,
@@ -103,9 +103,9 @@ type _DbCategoriesSelfRef = Expect<
 type DbCompositeFkPairRefs = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table pair_refs (
 				id int not null,
 				u_id int not null,
@@ -137,10 +137,10 @@ type _DbCompositeFkPairRefs = Expect<
 type DbMembershipsMultiFk = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`
 			create table memberships (
 				id int not null,
 				user_id int not null,
@@ -174,11 +174,11 @@ type _DbMembershipsMultiFk = Expect<
 type DbSalesOrders = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders (
 				id int not null,
 				user_id int not null,
@@ -212,11 +212,11 @@ type _DbSalesOrders = Expect<
 type DbSalesLinkRows = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.link_rows (
 				id int not null,
 				u int not null,
@@ -250,11 +250,11 @@ type _DbSalesLinkRows = Expect<
 type DbSalesOrdersDefaultSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_default_schema (
 				id int not null,
 				user_id int not null,
@@ -286,13 +286,13 @@ type _DbSalesOrdersDefaultSchema = Expect<
 type DbSharedDefaultWithSalesOrders = SqlApplyStatements<
 	SqlDatabase<"shared">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table public.users (id int not null, email text not null)`>,
-		SqlStatement<`create table public.posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema shared`>,
-		SqlStatement<`create table users (id int not null)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table public.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table public.posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema shared`>,
+		SqlStatementLoose<`create table users (id int not null)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_default_schema (
 				id int not null,
 				user_id int not null,

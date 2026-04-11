@@ -6,14 +6,14 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
 	]
 >
 
@@ -36,8 +36,8 @@ type _DbApplyCreateTableFixture = Expect<
 // type MixedCaseColumns = SqlApplyStatements<
 // 	SqlDatabase<"test">,
 // 	[
-// 		SqlStatement<`create schema test`>,
-// 		SqlStatement<`create table users ("Id" int not null, "Main   Title" text not null)`>,
+// 		SqlStatementLoose<`create schema test`>,
+// 		SqlStatementLoose<`create table users ("Id" int not null, "Main   Title" text not null)`>,
 // 	]
 // >
 
@@ -63,10 +63,10 @@ type _DbApplyCreateTableFixture = Expect<
 type CreateInDefaultSchema = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null)`>,
 	]
 >
 
@@ -92,10 +92,10 @@ type _CreateInDefaultSchema = Expect<
 type CreateInExplicitSchema = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
-		SqlStatement<`create table auth.sessions (id uuid not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id uuid not null)`>,
 	]
 >
 
@@ -124,10 +124,10 @@ type _CreateInExplicitSchema = Expect<
 type CreateDuplicateTable = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
-		SqlStatement<`create table users (id int not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table users (id int not null)`>,
 	]
 >
 
@@ -137,7 +137,7 @@ type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParseError<
 
 type CreateTableWithoutSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatement<`create table users (id int not null)`>]
+	[SqlStatementLoose<`create table users (id int not null)`>]
 >
 
 type _CreateTableWithoutSchema = Expect<
@@ -159,9 +159,9 @@ type CreateInvalidRowStatement = {
 type CreateInvalidRow = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
 		CreateInvalidRowStatement,
 	]
 >
@@ -173,10 +173,10 @@ type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParseError<"bad row
 type CreateWithForeignKeyOk = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table posts (
 				id int not null,
 				user_id int not null,
@@ -216,9 +216,9 @@ type CreateWithForeignKeyBadLocalStatement = {
 type CreateWithForeignKeyBadLocal = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
 		CreateWithForeignKeyBadLocalStatement,
 	]
 >
@@ -232,10 +232,10 @@ type _CreateWithForeignKeyBadLocal = Expect<
 type CreateWithCompositeForeignKeyOk = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table pair_refs (
 				id int not null,
 				u_id int not null,
@@ -266,10 +266,10 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 type CreateWithCompositeForeignKeyBadArity = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null, email text not null)`>,
-		SqlStatement<`create table pair_arity_bad (id int not null, u_id int not null, u_email text not null, foreign key (u_id) references users(id, email))`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table pair_arity_bad (id int not null, u_id int not null, u_email text not null, foreign key (u_id) references users(id, email))`>,
 	]
 >
 

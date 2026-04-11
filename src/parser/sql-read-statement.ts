@@ -1,5 +1,5 @@
 import type { SqlParseError } from "./sql-tokens.js"
-import type { SqlStatement } from "./sql-parse-statement.js"
+import type { SqlStatementLoose } from "./sql-parse-statement.js"
 import type { Trim } from "./sql-parse-primitives.js"
 
 export type SplitFirstSqlStatement<S extends string> = S extends `${infer Head};${infer Tail}`
@@ -8,7 +8,7 @@ export type SplitFirstSqlStatement<S extends string> = S extends `${infer Head};
 
 export type SqlReadStatement<S extends string> =
 	SplitFirstSqlStatement<S> extends [infer StatementSql extends string, infer Rest extends string]
-		? [SqlStatement<StatementSql>] extends [infer Parsed]
+		? [SqlStatementLoose<StatementSql>] extends [infer Parsed]
 			? Parsed extends SqlParseError<string>
 				? [Parsed, Rest]
 				: [Parsed, Rest]

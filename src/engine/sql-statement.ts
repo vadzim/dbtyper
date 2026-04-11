@@ -1,4 +1,4 @@
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
 import type { SqlApplyStatement, SqlStatementLike } from "./sql-apply-statement.js"
@@ -22,7 +22,7 @@ export function migration<Path extends string>(path: Path) {
 	}
 }
 
-type UnnamedMigration<S extends string> = S & { readonly __sql_parsed__: SqlStatement<S> }
+type UnnamedMigration<S extends string> = S & { readonly __sql_parsed__: SqlStatementLoose<S> }
 
 type NamedMigration<S extends string, Path extends string> = {
 	readonly kind: "migration"

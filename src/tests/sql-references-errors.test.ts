@@ -6,14 +6,14 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
 
 type DbDuplicateUsersTables = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<"create table users (id int not null)">,
-		SqlStatement<`create table "users" (other_id int not null)`>,
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<"create table users (id int not null)">,
+		SqlStatementLoose<`create table "users" (other_id int not null)`>,
 	]
 >
 
@@ -22,9 +22,9 @@ type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParseEr
 type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<"select * from users">,
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<"select * from users">,
 	]
 >
 
@@ -37,9 +37,9 @@ type _DbSelectFromUsersAfterCreate = Expect<
 type DbPostsBadIntraFk = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table posts_bad (
 				id int not null,
 				user_id int not null,
@@ -56,9 +56,9 @@ type _DbPostsBadIntraFk = Expect<
 type DbCompositeFkPairRefsBadCol = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table pair_refs_bad (
 				id int not null,
 				u_id int not null,
@@ -75,7 +75,7 @@ type _DbCompositeFkPairRefsBadCol = Expect<
 
 /** Composite FK: fewer local columns than referenced columns. */
 
-type StmtPairRefArityShort = SqlStatement<`
+type StmtPairRefArityShort = SqlStatementLoose<`
 	create table pair_arity_short (
 		x int not null,
 		foreign key (x) references users(id, email)
@@ -92,9 +92,9 @@ type _StmtPairRefArityShort = Expect<
 type DbPairRefArityShort = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table pair_arity_short (
 				x int not null,
 				foreign key (x) references users(id, email)
@@ -112,7 +112,7 @@ type _DbPairRefArityShort = Expect<
 
 /** Composite FK: more local columns than referenced columns. */
 
-type StmtPairRefArityLong = SqlStatement<`
+type StmtPairRefArityLong = SqlStatementLoose<`
 	create table pair_arity_long (
 		x int not null,
 		y int not null,
@@ -130,9 +130,9 @@ type _StmtPairRefArityLong = Expect<
 type DbPairRefArityLong = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table pair_arity_long (
 				x int not null,
 				y int not null,
@@ -154,9 +154,9 @@ type _DbPairRefArityLong = Expect<
 type DbMultiFkOneBad = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`
 			create table multi_fk_bad (
 				id int not null,
 				user_id int not null,
@@ -177,11 +177,11 @@ type _DbMultiFkOneBad = Expect<Matches<DbMultiFkOneBad, SqlParseError<`Unknown r
 type DbSalesLinkBad = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.link_bad (
 				id int not null,
 				u int not null,
@@ -202,11 +202,11 @@ type _DbSalesLinkBad = Expect<
 type DbSalesBadSchemaRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_bad_schema (
 				id int not null,
 				user_id int not null,
@@ -223,11 +223,11 @@ type _DbSalesBadSchemaRef = Expect<
 type DbSalesBadTableRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_bad_table (
 				id int not null,
 				user_id int not null,
@@ -244,11 +244,11 @@ type _DbSalesBadTableRef = Expect<
 type DbSalesBadPublicUsersBadRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_bad_public_users_bad (
 				id int not null,
 				user_id int not null,
@@ -265,11 +265,11 @@ type _DbSalesBadPublicUsersBadRef = Expect<
 type DbSalesBadSchemaUsersRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_bad_schema_users (
 				id int not null,
 				user_id int not null,
@@ -286,11 +286,11 @@ type _DbSalesBadSchemaUsersRef = Expect<
 type DbSalesBadColumnRef = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_bad_column (
 				id int not null,
 				user_id int not null,
@@ -309,7 +309,7 @@ type _DbSalesBadColumnRef = Expect<
 type DbMissingSalesSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`
+		SqlStatementLoose<`
 			create table sales.orders_default_schema (
 				id int not null,
 				user_id int not null,
@@ -331,14 +331,14 @@ type _DbMissingSalesSchema = Expect<
 type DbUnqualifiedUsersWrongDefault = SqlApplyStatements<
 	SqlDatabase<"shared">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table public.users (id int not null, email text not null)`>,
-		SqlStatement<`create table public.posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema shared`>,
-		SqlStatement<`create table shared.teams (id int not null)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`create table sales.users (id int not null)`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table public.users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table public.posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema shared`>,
+		SqlStatementLoose<`create table shared.teams (id int not null)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`create table sales.users (id int not null)`>,
+		SqlStatementLoose<`
 			create table sales.orders_unq (
 				id int not null,
 				user_id int not null,
@@ -357,11 +357,11 @@ type _DbUnqualifiedUsersWrongDefault = Expect<
 type DbSalesCompositeBadRemoteCol = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.orders_comp_bad (
 				id int not null,
 				a int not null,
@@ -378,7 +378,7 @@ type _DbSalesCompositeBadRemoteCol = Expect<
 
 /** Database-level composite FK arity mismatch surfaces as parse error on the statement. */
 
-type StmtSalesDbArityShort = SqlStatement<`
+type StmtSalesDbArityShort = SqlStatementLoose<`
 	create table sales.db_arity_short (
 		a int not null,
 		foreign key (a) references public.users(id, email)
@@ -395,11 +395,11 @@ type _StmtSalesDbArityShort = Expect<
 type DbSalesDbArityShort = SqlApplyStatements<
 	SqlDatabase<"public">,
 	[
-		SqlStatement<`create schema public`>,
-		SqlStatement<`create table users (id int not null, email text not null)`>,
-		SqlStatement<`create table posts (id int not null, user_id int not null, title text)`>,
-		SqlStatement<`create schema sales`>,
-		SqlStatement<`
+		SqlStatementLoose<`create schema public`>,
+		SqlStatementLoose<`create table users (id int not null, email text not null)`>,
+		SqlStatementLoose<`create table posts (id int not null, user_id int not null, title text)`>,
+		SqlStatementLoose<`create schema sales`>,
+		SqlStatementLoose<`
 			create table sales.db_arity_short (
 				a int not null,
 				foreign key (a) references public.users(id, email)

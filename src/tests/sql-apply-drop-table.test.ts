@@ -6,16 +6,16 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
 
 type DbApplyDropTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
 	]
 >
 
@@ -45,12 +45,12 @@ type _DbApplyDropTableFixture = Expect<
 type DropExistingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
-		SqlStatement<`drop table test.users`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`drop table test.users`>,
 	]
 >
 
@@ -77,12 +77,12 @@ type _DropExistingNoIfExists = Expect<
 type DropExistingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
-		SqlStatement<`drop table if exists test.users`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`drop table if exists test.users`>,
 	]
 >
 
@@ -109,12 +109,12 @@ type _DropExistingIfExists = Expect<
 type DropMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
-		SqlStatement<`drop table test.missing`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`drop table test.missing`>,
 	]
 >
 
@@ -127,12 +127,12 @@ type _DropMissingNoIfExists = Expect<
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
-		SqlStatement<`drop table if exists test.missing`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`drop table if exists test.missing`>,
 	]
 >
 
@@ -160,12 +160,12 @@ type _DropMissingIfExists = Expect<
 type DropDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
-		SqlStatement<`drop table users`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`drop table users`>,
 	]
 >
 
@@ -192,12 +192,12 @@ type _DropDefaultSchemaUnqualified = Expect<
 type DropExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
 	[
-		SqlStatement<`create schema test`>,
-		SqlStatement<`create schema auth`>,
-		SqlStatement<`create table test.users (id int not null)`>,
-		SqlStatement<`create table test.posts (id int not null, user_id int not null)`>,
-		SqlStatement<`create table auth.sessions (id text not null)`>,
-		SqlStatement<`drop table auth.sessions`>,
+		SqlStatementLoose<`create schema test`>,
+		SqlStatementLoose<`create schema auth`>,
+		SqlStatementLoose<`create table test.users (id int not null)`>,
+		SqlStatementLoose<`create table test.posts (id int not null, user_id int not null)`>,
+		SqlStatementLoose<`create table auth.sessions (id text not null)`>,
+		SqlStatementLoose<`drop table auth.sessions`>,
 	]
 >
 

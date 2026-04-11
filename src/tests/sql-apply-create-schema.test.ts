@@ -6,13 +6,13 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { SqlStatementLoose } from "../parser/sql-parse-statement.js"
 
 // --- Create schema ---
 
 /** New schema is merged into the database (fixture shape for following cases). */
 
-type AfterCreateSchema = SqlApplyStatements<SqlDatabase<"public">, [SqlStatement<`create schema auth`>]>
+type AfterCreateSchema = SqlApplyStatements<SqlDatabase<"public">, [SqlStatementLoose<`create schema auth`>]>
 
 type _AfterCreateSchema = Expect<
 	Matches<
@@ -31,7 +31,7 @@ type _AfterCreateSchema = Expect<
 
 type DuplicateSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatement<`create schema auth`>, SqlStatement<`create schema auth`>]
+	[SqlStatementLoose<`create schema auth`>, SqlStatementLoose<`create schema auth`>]
 >
 
 type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParseError<"Duplicate schema name: auth">>>
@@ -40,7 +40,7 @@ type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParseError<"Duplicate
 
 type DuplicateIfNotExists = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatement<`create schema auth`>, SqlStatement<`create schema if not exists auth`>]
+	[SqlStatementLoose<`create schema auth`>, SqlStatementLoose<`create schema if not exists auth`>]
 >
 
 type _DuplicateIfNotExists = Expect<
@@ -62,7 +62,7 @@ type _DuplicateIfNotExists = Expect<
 
 type DbAuthThenTable = SqlApplyStatements<
 	SqlDatabase<"public">,
-	[SqlStatement<`create schema auth`>, SqlStatement<`create table auth.users (id int not null)`>]
+	[SqlStatementLoose<`create schema auth`>, SqlStatementLoose<`create table auth.users (id int not null)`>]
 >
 
 type _DbAuthThenTable = Expect<
