@@ -21,6 +21,7 @@ export type ParseSqlStatement<Tokens extends TokensList> =
 						? ParseInsert<SkipToken<Tokens>>
 						: SkipStatement<Tokens>
 
+// TODO:
 /** Non-validated `INSERT` shapes (e.g. `INSERT … SELECT`) → skip from `insert` for ignorable. */
 type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
 	| "Expected VALUES after column list"
