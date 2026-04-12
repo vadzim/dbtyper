@@ -2,27 +2,27 @@
 name: SkipToken-once refactor
 overview: Eliminate duplicate `ParseSqlTokens` / `SkipToken` work by threading a single `TokensList` cursor through parsers. Constraint/FK path and CREATE TABLE wiring are largely done in the working tree. Remaining work includes hierarchical statement dispatch in sql-parse-statement (SqlCreate/SqlDrop/SqlAlter), leaf parser entry contracts, sql-column, Cursor rule, and tests.
 todos:
-  - id: statement-guards
-    content: "Refactor sql-parse-statement: SqlStatement dispatches on first token only (PeekToken + one SkipToken to AfterVerb), then SqlCreate/SqlDrop/SqlAlter route to a single leaf; leaf Parse*Tuple assumes buffer after first keyword (no duplicate create/drop/alter reads). Replace union-of-all-leaves SqlStatement definition."
-    status: completed
-  - id: constraint-head
-    content: "Replace ReadConstraintKeywordOnStripped + ReadConstraintEntryMatch contract: return [match, rest] with rest threaded; no SkipToken result discarded."
-    status: completed
-  - id: fk-buffer-bug
-    content: Fix ValidateConstraintRefs and ParseForeignRefMeta to continue from buffer after FOREIGN KEY (thread AfterKw); no ReadFirstParenGroup from stale EB.
-    status: completed
-  - id: sql-column-helpers
-    content: Refactor sql-column ReadIsArray / ScanForNotNullWithRest / ParseColumnFromBuffer to avoid PeekToken<SkipToken<B>> + SkipToken<SkipToken<B>> double chains.
-    status: completed
-  - id: cursor-rule
-    content: Add SkipToken-once + no-discard-rest rule under .cursor/rules/ (extend parser-lookahead-tuples.mdc or new mdc with globs).
-    status: completed
-  - id: tests
-    content: Run parser/type tests after merging working tree; confirm CREATE TABLE + FK paths still typecheck.
-    status: completed
-  - id: audit-discarded-rests
-    content: "After implementation pass: double-check src/parser for discarded rests — rg for infer _ on ReadExpectedToken/ReadBufferEnd/SkipToken chains, PeekToken<SkipToken before ReadExpected from same B, nested SkipToken<SkipToken without binding intermediate rest."
-    status: completed
+    - id: statement-guards
+      content: "Refactor sql-parse-statement: SqlStatement dispatches on first token only (PeekToken + one SkipToken to AfterVerb), then SqlCreate/SqlDrop/SqlAlter route to a single leaf; leaf Parse*Tuple assumes buffer after first keyword (no duplicate create/drop/alter reads). Replace union-of-all-leaves SqlStatement definition."
+      status: completed
+    - id: constraint-head
+      content: "Replace ReadConstraintKeywordOnStripped + ReadConstraintEntryMatch contract: return [match, rest] with rest threaded; no SkipToken result discarded."
+      status: completed
+    - id: fk-buffer-bug
+      content: Fix ValidateConstraintRefs and ParseForeignRefMeta to continue from buffer after FOREIGN KEY (thread AfterKw); no ReadFirstParenGroup from stale EB.
+      status: completed
+    - id: sql-column-helpers
+      content: Refactor sql-column ReadIsArray / ScanForNotNullWithRest / ParseColumnFromBuffer to avoid PeekToken<SkipToken<B>> + SkipToken<SkipToken<B>> double chains.
+      status: completed
+    - id: cursor-rule
+      content: Add SkipToken-once + no-discard-rest rule under .cursor/rules/ (extend parser-lookahead-tuples.mdc or new mdc with globs).
+      status: completed
+    - id: tests
+      content: Run parser/type tests after merging working tree; confirm CREATE TABLE + FK paths still typecheck.
+      status: completed
+    - id: audit-discarded-rests
+      content: "After implementation pass: double-check src/parser for discarded rests — rg for infer _ on ReadExpectedToken/ReadBufferEnd/SkipToken chains, PeekToken<SkipToken before ReadExpected from same B, nested SkipToken<SkipToken without binding intermediate rest."
+      status: completed
 isProject: false
 ---
 
@@ -67,7 +67,7 @@ Existing guidance: [`.cursor/rules/parser-lookahead-tuples.mdc`](.cursor/rules/p
 
 **Why the current shape is costly**
 
-- [`SqlStatement`](src/parser/sql-parse-statement.ts) is implemented as a **union** of five leaf parsers passed through one conditional (`SqlAlterTable<Buffer> | … | SqlDropTable<Buffer> extends infer Result`). For a buffer like `create table …`, TypeScript still has to relate **each** union member to the result; in practice **both** [`SqlCreateSchema`](src/parser/sql-create-schema.ts) and [`SqlCreateTable`](src/parser/sql-create-table.ts) are pulled in, and **each** repeats `PeekToken<B> extends "create"` plus `PeekToken<SkipToken<B>>` for the second keyword, then each `Parse*Tuple<B>` runs **`ReadExpectedToken` from `B` again** for `create` (and `schema` / `table`). Lexing **unquoted identifiers / long tokens** is the hottest path; duplicating leading-keyword work multiplies that cost before routing even wins.
+- [`SqlStatement`](src/parser/sql-parse-statement.ts) is implemented as a **union** of five leaf parsers passed through one conditional (`SqlAlterTable<Buffer> | … | SqlDropTable<Buffer> extends infer Result`). For a buffer like `create table …`, TypeScript still has to relate **each** union member to the result; in practice **both** [`SqlCreateSchema`](src/parser/parse-create-schema.ts) and [`SqlCreateTable`](src/parser/sql-create-table.ts) are pulled in, and **each** repeats `PeekToken<B> extends "create"` plus `PeekToken<SkipToken<B>>` for the second keyword, then each `Parse*Tuple<B>` runs **`ReadExpectedToken` from `B` again** for `create` (and `schema` / `table`). Lexing **unquoted identifiers / long tokens** is the hottest path; duplicating leading-keyword work multiplies that cost before routing even wins.
 
 **Target architecture (user direction)**
 
@@ -78,7 +78,7 @@ Existing guidance: [`.cursor/rules/parser-lookahead-tuples.mdc`](.cursor/rules/p
 
 **Leaf parser contract**
 
-- [`SqlCreateTable`](src/parser/sql-create-table.ts), [`SqlCreateSchema`](src/parser/sql-create-schema.ts), [`SqlDropTable`](src/parser/sql-drop-table.ts), [`SqlDropSchema`](src/parser/sql-drop-schema.ts), [`SqlAlterTable`](src/parser/sql-alter-table.ts): remove the outer `PeekToken<B> extends "create"` / `"drop"` / `"alter"` **and** the inner `PeekToken<SkipToken<B>>` second-keyword peek **if** the parent already guarantees `B` is **after** the first keyword. **`Parse*Tuple`** should begin with **`ReadExpectedToken<B, "table" | "schema" | …>`** (single leading keyword from the cursor the parent handed in). Finalize / error shapes stay the same.
+- [`SqlCreateTable`](src/parser/sql-create-table.ts), [`SqlCreateSchema`](src/parser/parse-create-schema.ts), [`SqlDropTable`](src/parser/parse-drop-table.ts), [`SqlDropSchema`](src/parser/parse-drop-schema.ts), [`SqlAlterTable`](src/parser/sql-alter-table.ts): remove the outer `PeekToken<B> extends "create"` / `"drop"` / `"alter"` **and** the inner `PeekToken<SkipToken<B>>` second-keyword peek **if** the parent already guarantees `B` is **after** the first keyword. **`Parse*Tuple`** should begin with **`ReadExpectedToken<B, "table" | "schema" | …>`** (single leading keyword from the cursor the parent handed in). Finalize / error shapes stay the same.
 - **Exports:** [`src/sql.ts`](src/sql.ts) exposes only `SqlStatement` / `SqlStatements*` — leaf types can stay internal. Tests that import leaf types from parser files are grep-clean for direct `SqlCreateTable<…>` usage outside definitions, so narrowing the leaf contract is safe as long as **`SqlStatement` remains the single public entry** used by tests.
 
 **Optional primitive**
