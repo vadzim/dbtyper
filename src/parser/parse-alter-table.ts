@@ -14,7 +14,7 @@ import type {
 	ForeignRefMeta,
 	ParseColumnListToTuple,
 	ParseForeignKeyMetaAndRest,
-	ReadConstraintEntryMatch,
+	TryReadConstraintHead,
 } from "./sql-constraints-fk.js"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
@@ -233,12 +233,14 @@ type ParseAlterAddConstraint<Tokens extends TokensList> =
 		: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
 
 type ParseAlterAddConstraintAfterName<Rest0 extends TokensList> =
-	ReadConstraintEntryMatch<Rest0> extends [infer Kind, infer AfterKw extends TokensList]
-		? [Kind] extends [false]
+	TryReadConstraintHead<Rest0> extends infer H
+		? H extends readonly ["no", infer _]
 			? SqlParserError<"Expected constraint definition in ALTER TABLE">
-			: Kind extends string
-				? ParseAlterAddConstraintByKind<Kind, AfterKw>
-				: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
+			: H extends readonly ["err", infer E extends SqlParserError<string>, infer _R]
+				? E
+				: H extends readonly ["yes", infer P extends { kind: string; afterKw: TokensList }]
+					? ParseAlterAddConstraintByKind<P["kind"], P["afterKw"]>
+					: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
 		: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
 
 type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensList> = Kind extends "foreign_key"
