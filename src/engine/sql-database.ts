@@ -15,8 +15,8 @@ export function migration<Path extends string>(path: Path) {
 		add<const S extends string>(source: S): NamedMigration<S, Path> {
 			return {
 				path,
-				source,
-			} as NamedMigration<S, Path>
+				source: source as MigrationText<S>,
+			}
 		},
 	}
 }
@@ -39,7 +39,6 @@ type MigrationText<S extends string> = S & {
 }
 
 type NamedMigration<S extends string, Path extends string> = {
-	readonly kind: "migration"
 	readonly source: MigrationText<S>
 	readonly path: Path
 }
