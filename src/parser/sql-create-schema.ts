@@ -1,7 +1,7 @@
 import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfNotExists } from "./sql-parse-primitives.js"
 import type { TokensList, SqlParserError } from "./sql-tokens.js"
 
-export type SqlCreateSchema = {
+export type CreateSchemaStatement = {
 	readonly kind: "create_schema"
 	readonly name: string
 	readonly ifNotExists: boolean

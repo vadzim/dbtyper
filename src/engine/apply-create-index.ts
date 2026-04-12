@@ -1,9 +1,9 @@
-import type { SqlCreateIndex } from "../parser/sql-create-index.js"
+import type { CreateIndexStatement } from "../parser/sql-create-index.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
 
-export type ApplyCreateIndex<Db extends SqlDatabaseLike, Stmt extends SqlCreateIndex> =
+export type ApplyCreateIndex<Db extends SqlDatabaseLike, Stmt extends CreateIndexStatement> =
 	ResolveQualifiedIdentifier<Stmt["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,

@@ -1,11 +1,11 @@
 import { describe, it } from "node:test"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatement } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // --- CREATE TABLE ---
 
-type CreateTable = SqlStatement<ParseSqlTokens<`create table users (id int not null, email text)`>>
+type CreateTable = ParseSqlStatement<ParseSqlTokens<`create table users (id int not null, email text)`>>
 type _CreateTable = Expect<
 	Matches<
 		CreateTable,
@@ -21,7 +21,7 @@ type _CreateTable = Expect<
 	>
 >
 
-type CreateTableSemicolon = SqlStatement<ParseSqlTokens<`create table users (id int not null);`>>
+type CreateTableSemicolon = ParseSqlStatement<ParseSqlTokens<`create table users (id int not null);`>>
 type _CreateTableSemicolon = Expect<
 	Matches<
 		CreateTableSemicolon,
@@ -37,7 +37,7 @@ type _CreateTableSemicolon = Expect<
 	>
 >
 
-type CreateTableSchemaQualified = SqlStatement<
+type CreateTableSchemaQualified = ParseSqlStatement<
 	ParseSqlTokens<`create table auth.sessions (token text not null, user_id int not null)`>
 >
 type _CreateTableSchemaQualified = Expect<
@@ -55,7 +55,7 @@ type _CreateTableSchemaQualified = Expect<
 	>
 >
 
-type CreateTableWithArrays = SqlStatement<ParseSqlTokens<`create table t (tags text[], nums int4[] not null)`>>
+type CreateTableWithArrays = ParseSqlStatement<ParseSqlTokens<`create table t (tags text[], nums int4[] not null)`>>
 type _CreateTableWithArrays = Expect<
 	Matches<
 		CreateTableWithArrays,
@@ -73,7 +73,7 @@ type _CreateTableWithArrays = Expect<
 
 // --- ALTER TABLE ---
 
-type AlterTableAdd = SqlStatement<ParseSqlTokens<`alter table if exists public.users add column age int`>>
+type AlterTableAdd = ParseSqlStatement<ParseSqlTokens<`alter table if exists public.users add column age int`>>
 type _AlterTableAdd = Expect<
 	Matches<
 		AlterTableAdd,
@@ -94,7 +94,7 @@ type _AlterTableAdd = Expect<
 	>
 >
 
-type AlterTableDrop = SqlStatement<ParseSqlTokens<`alter table users drop column if exists email`>>
+type AlterTableDrop = ParseSqlStatement<ParseSqlTokens<`alter table users drop column if exists email`>>
 type _AlterTableDrop = Expect<
 	Matches<
 		AlterTableDrop,
@@ -114,7 +114,7 @@ type _AlterTableDrop = Expect<
 	>
 >
 
-type AlterTableRename = SqlStatement<ParseSqlTokens<`alter table users rename column age to years`>>
+type AlterTableRename = ParseSqlStatement<ParseSqlTokens<`alter table users rename column age to years`>>
 type _AlterTableRename = Expect<
 	Matches<
 		AlterTableRename,
@@ -136,7 +136,7 @@ type _AlterTableRename = Expect<
 
 // --- DROP TABLE ---
 
-type DropTable = SqlStatement<ParseSqlTokens<`drop table if exists auth.users`>>
+type DropTable = ParseSqlStatement<ParseSqlTokens<`drop table if exists auth.users`>>
 type _DropTable = Expect<
 	Matches<
 		DropTable,
@@ -153,7 +153,7 @@ type _DropTable = Expect<
 
 // --- CREATE SCHEMA ---
 
-type CreateSchema = SqlStatement<ParseSqlTokens<`create schema if not exists billing`>>
+type CreateSchema = ParseSqlStatement<ParseSqlTokens<`create schema if not exists billing`>>
 type _CreateSchema = Expect<
 	Matches<
 		CreateSchema,
@@ -170,7 +170,7 @@ type _CreateSchema = Expect<
 
 // --- DROP SCHEMA ---
 
-type DropSchema = SqlStatement<ParseSqlTokens<`drop schema if exists staging`>>
+type DropSchema = ParseSqlStatement<ParseSqlTokens<`drop schema if exists staging`>>
 type _DropSchema = Expect<
 	Matches<
 		DropSchema,
@@ -187,16 +187,16 @@ type _DropSchema = Expect<
 
 // --- Error cases: result is SqlParserError, rest is the original buffer ---
 
-type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1;`>>
+type UnknownStatement = ParseSqlStatement<ParseSqlTokens<`create view v as select 1;`>>
 type _UnknownStatement = Expect<Matches<UnknownStatement, [{ readonly kind: "ignorable" }, EmptyTokenList]>>
 
-type InvalidColumn = SqlStatement<ParseSqlTokens<`create table broken (id)`>>
+type InvalidColumn = ParseSqlStatement<ParseSqlTokens<`create table broken (id)`>>
 type _InvalidColumnResult = Expect<Matches<InvalidColumn[0], SqlParserError<"Invalid column definition">>>
 
-type TrailingTokens = SqlStatement<ParseSqlTokens<`drop table users extra`>>
+type TrailingTokens = ParseSqlStatement<ParseSqlTokens<`drop table users extra`>>
 type _TrailingTokens = Expect<Matches<TrailingTokens[0], SqlParserError<"Unable to parse DROP TABLE statement">>>
 
-type InvalidIfNot = SqlStatement<ParseSqlTokens<`create schema if not billing`>>
+type InvalidIfNot = ParseSqlStatement<ParseSqlTokens<`create schema if not billing`>>
 type _InvalidIfNot = Expect<Matches<InvalidIfNot[0], SqlParserError<"Expected EXISTS after IF NOT">>>
 
 describe("sql statement buffer", () => {

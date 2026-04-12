@@ -1,9 +1,9 @@
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type DropAuth = SqlStatements<
+type DropAuth = ParseSqlStatements<
 	ParseSqlTokens<`
 	drop schema if exists auth;
 `>
@@ -24,7 +24,7 @@ type _DropAuth = Expect<
 	>
 >
 
-type DropBilling = SqlStatements<
+type DropBilling = ParseSqlStatements<
 	ParseSqlTokens<`
 	drop schema billing
 `>
@@ -45,7 +45,7 @@ type _DropBilling = Expect<
 	>
 >
 
-type BadDrop = SqlStatements<ParseSqlTokens<`drop schema auth.`>>
+type BadDrop = ParseSqlStatements<ParseSqlTokens<`drop schema auth.`>>
 type _BadDrop = Expect<
 	Matches<BadDrop, [SqlParserError<"Unable to parse DROP SCHEMA statement">, ParseSqlTokens<`drop schema auth.`>]>
 >

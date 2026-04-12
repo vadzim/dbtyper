@@ -1,11 +1,11 @@
-import type { SqlAlterTable } from "../parser/sql-alter-table.js"
+import type { AlterTableStatement } from "../parser/sql-alter-table.js"
 import type { ForeignRefMeta } from "../parser/sql-constraints-fk.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.js"
 import type { ValidateAlterTableFkRef } from "./helpers/validate-fk-refs.js"
 
-export type ApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterTable> =
+export type ApplyAlterTable<Db extends SqlDatabaseLike, Alter extends AlterTableStatement> =
 	ResolveQualifiedIdentifier<Alter["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,

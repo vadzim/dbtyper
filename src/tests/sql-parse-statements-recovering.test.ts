@@ -1,12 +1,12 @@
 import { describe, it } from "node:test"
-import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type Empty = SqlStatementsRecovering<ParseSqlTokens<``>>
+type Empty = ParseSqlStatementsRecovering<ParseSqlTokens<``>>
 type _Empty = Expect<Matches<Empty, [readonly [], EmptyTokenList]>>
 
-type One = SqlStatementsRecovering<ParseSqlTokens<`create schema if not exists app`>>
+type One = ParseSqlStatementsRecovering<ParseSqlTokens<`create schema if not exists app`>>
 type _One = Expect<
 	Matches<
 		One,
@@ -23,7 +23,7 @@ type _One = Expect<
 	>
 >
 
-type Two = SqlStatementsRecovering<
+type Two = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
 	create schema a;
 	create schema b
@@ -42,7 +42,7 @@ type _Two = Expect<
 	>
 >
 
-type UnknownSecond = SqlStatementsRecovering<ParseSqlTokens<`create schema a; select 1;`>>
+type UnknownSecond = ParseSqlStatementsRecovering<ParseSqlTokens<`create schema a; select 1;`>>
 type _UnknownSecond = Expect<
 	Matches<
 		UnknownSecond,
@@ -56,7 +56,7 @@ type _UnknownSecond = Expect<
 	>
 >
 
-type InvalidSecond = SqlStatementsRecovering<
+type InvalidSecond = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`create schema a; create table broken (id); create schema b`>
 >
 type _InvalidSecond = Expect<

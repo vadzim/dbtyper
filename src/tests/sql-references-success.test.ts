@@ -5,12 +5,12 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbFromSchemasKind = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -41,7 +41,7 @@ type _DbFromSchemasKind = Expect<
 
 type DbPostRefsIntraFk = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -74,7 +74,7 @@ type _DbPostRefsIntraFk = Expect<
 
 type DbCategoriesSelfRef = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table categories (
@@ -105,7 +105,7 @@ type _DbCategoriesSelfRef = Expect<
 
 type DbCompositeFkPairRefs = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -139,7 +139,7 @@ type _DbCompositeFkPairRefs = Expect<
 
 type DbMembershipsMultiFk = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -176,7 +176,7 @@ type _DbMembershipsMultiFk = Expect<
 
 type DbSalesOrders = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -214,7 +214,7 @@ type _DbSalesOrders = Expect<
 
 type DbSalesLinkRows = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -252,7 +252,7 @@ type _DbSalesLinkRows = Expect<
 
 type DbSalesOrdersDefaultSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table users (id int not null, email text not null);
@@ -288,7 +288,7 @@ type _DbSalesOrdersDefaultSchema = Expect<
 
 type DbSharedDefaultWithSalesOrders = SqlApplyStatements<
 	SqlDatabase<"shared">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create table public.users (id int not null, email text not null);

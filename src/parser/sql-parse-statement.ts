@@ -8,7 +8,7 @@ import type { ParseInsertValues } from "./sql-insert-values.js"
 import type { SkipStatementFromBuffer } from "./sql-skip-statement.js"
 import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
-export type SqlStatement<Tokens extends TokensList> =
+export type ParseSqlStatement<Tokens extends TokensList> =
 	PeekToken<Tokens> extends ""
 		? [SqlParserError<"Unknown sql statement">, Tokens]
 		: PeekToken<Tokens> extends "create"
@@ -47,33 +47,30 @@ type ParseCreate<Tokens extends TokensList, Orig extends TokensList> =
 		: PeekToken<Tokens> extends "schema"
 			? ParseCreateSchema<SkipToken<Tokens>>
 			: PeekToken<Tokens> extends "unique"
-				? SqlStatementAfterCreateUniqueIndex<SkipToken<Tokens>, Orig>
+				? ParseCreateUnique<SkipToken<Tokens>, Orig>
 				: PeekToken<Tokens> extends "index"
 					? ParseCreateIndex<SkipToken<Tokens>, false>
 					: SkipStatementFromBuffer<Orig>
 
-type SqlStatementAfterCreateUniqueIndex<AfterUnique extends TokensList, Orig extends TokensList> =
-	PeekToken<AfterUnique> extends "index"
-		? ParseCreateIndex<SkipToken<AfterUnique>, true>
-		: SkipStatementFromBuffer<Orig>
+type ParseCreateUnique<Tokens extends TokensList, Orig extends TokensList> =
+	PeekToken<Tokens> extends "index" ? ParseCreateIndex<SkipToken<Tokens>, true> : SkipStatementFromBuffer<Orig>
 
-type ParseDrop<AfterDrop extends TokensList, Orig extends TokensList> =
-	PeekToken<AfterDrop> extends "table"
-		? ParseDropTable<SkipToken<AfterDrop>>
-		: PeekToken<AfterDrop> extends "schema"
-			? ParseDropSchema<SkipToken<AfterDrop>>
+type ParseDrop<Tokens extends TokensList, Orig extends TokensList> =
+	PeekToken<Tokens> extends "table"
+		? ParseDropTable<SkipToken<Tokens>>
+		: PeekToken<Tokens> extends "schema"
+			? ParseDropSchema<SkipToken<Tokens>>
 			: SkipStatementFromBuffer<Orig>
 
-type ParseAlter<AfterAlter extends TokensList, Orig extends TokensList> =
-	PeekToken<AfterAlter> extends "table"
-		? SqlAlterWithMaybeSkipUnsupported<AfterAlter, Orig>
-		: SkipStatementFromBuffer<Orig>
+type ParseAlter<Tokens extends TokensList, Orig extends TokensList> =
+	PeekToken<Tokens> extends "table" ? SqlAlterWithMaybeSkipUnsupported<Tokens, Orig> : SkipStatementFromBuffer<Orig>
 
-type SqlAlterWithMaybeSkipUnsupported<AfterAlter extends TokensList, Orig extends TokensList> =
-	ParseAlterTable<SkipToken<AfterAlter>> extends [infer Head, infer Rest extends TokensList]
+// TODO:
+type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList, Orig extends TokensList> =
+	ParseAlterTable<SkipToken<Tokens>> extends [infer Head, infer Rest extends TokensList]
 		? Head extends { readonly kind: "alter_table" }
 			? [Head, Rest]
-			: Head extends { readonly __sql_parser_error__: "Unsupported ALTER TABLE action" }
+			: Head extends SqlParserError<"Unsupported ALTER TABLE action">
 				? SkipStatementFromBuffer<Orig>
 				: [Head, Rest]
 		: [SqlParserError<"Unable to parse ALTER TABLE statement">, Orig]
@@ -83,30 +80,30 @@ type SqlAlterWithMaybeSkipUnsupported<AfterAlter extends TokensList, Orig extend
  * with `PeekToken<rest>` empty. On the first `SqlStatement` failure returns **`[error, buffer]`** only:
  * no tuple of prior successes, and `buffer` is the cursor at the **start** of the statement that failed.
  */
-export type SqlStatements<B extends TokensList> = SqlStatementsRec<B, readonly []>
+export type ParseSqlStatements<B extends TokensList> = InternalParseStatements<B, readonly []>
 
-type SqlStatementsRec<B extends TokensList, Acc extends readonly unknown[]> =
+type InternalParseStatements<B extends TokensList, Acc extends readonly unknown[]> =
 	PeekToken<B> extends ""
 		? [Acc, B]
-		: SqlStatement<B> extends [infer Head, infer Rest extends TokensList]
+		: ParseSqlStatement<B> extends [infer Head, infer Rest extends TokensList]
 			? Head extends SqlParserError<string>
 				? [Head, B]
-				: SqlStatementsRec<Rest, readonly [...Acc, Head]>
+				: InternalParseStatements<Rest, readonly [...Acc, Head]>
 			: [SqlParserError<"Unknown sql statement">, B]
 
 /**
  * Parses statements from `B`, keeping every successful parse in order. On failure, returns
  * `[readonly [...parsed, error], buffer]` where `buffer` is `B` at the **start** of the failing
- * statement (so later input after a bad statement is still visible). Use {@link SqlStatements}
+ * statement (so later input after a bad statement is still visible). Use {@link ParseSqlStatements}
  * when you only need either a full success tuple or a single `[error, buffer]` with no partial list.
  */
-export type SqlStatementsRecovering<B extends TokensList> = SqlStatementsRecoveringRec<B, readonly []>
+export type ParseSqlStatementsRecovering<B extends TokensList> = InternalParseSqlStatementsRecovering<B, readonly []>
 
-type SqlStatementsRecoveringRec<B extends TokensList, Acc extends readonly unknown[]> =
+type InternalParseSqlStatementsRecovering<B extends TokensList, Acc extends readonly unknown[]> =
 	PeekToken<B> extends ""
 		? [Acc, B]
-		: SqlStatement<B> extends [infer Head, infer Rest extends TokensList]
+		: ParseSqlStatement<B> extends [infer Head, infer Rest extends TokensList]
 			? Head extends SqlParserError<string>
 				? [readonly [...Acc, Head], B]
-				: SqlStatementsRecoveringRec<Rest, readonly [...Acc, Head]>
+				: InternalParseSqlStatementsRecovering<Rest, readonly [...Acc, Head]>
 			: [readonly [...Acc, SqlParserError<"Unknown sql statement">], B]

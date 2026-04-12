@@ -6,7 +6,7 @@ import type {
 } from "./sql-parse-primitives.js"
 import type { TokensList, SqlParserError } from "./sql-tokens.js"
 
-export type SqlDropTable = {
+export type DropTableStatement = {
 	readonly kind: "drop_table"
 	readonly target: SqlQualifiedIdentifier
 	readonly ifExists: boolean

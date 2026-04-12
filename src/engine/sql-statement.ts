@@ -1,4 +1,4 @@
-import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
 import type { SqlApplyStatements, SqlStatementLike } from "./apply-statement.js"
@@ -23,7 +23,9 @@ export function migration<Path extends string>(path: Path) {
 }
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
-type UnnamedMigration<S extends string> = S & { readonly __sql_parsed__: SqlStatementsRecovering<ParseSqlTokens<S>>[0] }
+type UnnamedMigration<S extends string> = S & {
+	readonly __sql_parsed__: ParseSqlStatementsRecovering<ParseSqlTokens<S>>[0]
+}
 
 type NamedMigration<S extends string, Path extends string> = {
 	readonly kind: "migration"

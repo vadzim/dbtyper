@@ -15,15 +15,15 @@ import type {
 } from "./sql-parse-primitives.js"
 import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
-/** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
-export type ParseCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
-
-export type SqlCreateTable = {
+export type CreateTableStatement = {
 	readonly kind: "create_table"
 	readonly name: SqlQualifiedIdentifier | SqlParserError<string>
 	readonly row: unknown
 	readonly refs: ForeignRefMeta | undefined
 }
+
+/** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
+export type ParseCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
 
 type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]

@@ -1,9 +1,9 @@
-import type { SqlInsertValues } from "../parser/sql-insert-values.js"
+import type { InsertValuesStatement } from "../parser/sql-insert-values.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
 
-export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends SqlInsertValues> =
+export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends InsertValuesStatement> =
 	ResolveQualifiedIdentifier<Stmt["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,

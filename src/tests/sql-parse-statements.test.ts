@@ -1,12 +1,12 @@
 import { describe, it } from "node:test"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type Empty = SqlStatements<ParseSqlTokens<``>>
+type Empty = ParseSqlStatements<ParseSqlTokens<``>>
 type _Empty = Expect<Matches<Empty, [readonly [], EmptyTokenList]>>
 
-type One = SqlStatements<ParseSqlTokens<`create schema if not exists app`>>
+type One = ParseSqlStatements<ParseSqlTokens<`create schema if not exists app`>>
 type _One = Expect<
 	Matches<
 		One,
@@ -23,7 +23,7 @@ type _One = Expect<
 	>
 >
 
-type Two = SqlStatements<
+type Two = ParseSqlStatements<
 	ParseSqlTokens<`
 	create schema a;
 	create schema b
@@ -43,7 +43,7 @@ type _Two = Expect<
 >
 
 /** First failure is only `[error, buffer]` — prior successful parses are not returned. */
-type UnknownSecond = SqlStatements<ParseSqlTokens<`create schema a; select 1;`>>
+type UnknownSecond = ParseSqlStatements<ParseSqlTokens<`create schema a; select 1;`>>
 type _UnknownSecond = Expect<
 	Matches<
 		UnknownSecond,
@@ -57,7 +57,7 @@ type _UnknownSecond = Expect<
 	>
 >
 
-type InvalidSecond = SqlStatements<ParseSqlTokens<`create schema a; create table broken (id); create schema b`>>
+type InvalidSecond = ParseSqlStatements<ParseSqlTokens<`create schema a; create table broken (id); create schema b`>>
 type _InvalidSecond = Expect<
 	Matches<
 		InvalidSecond,

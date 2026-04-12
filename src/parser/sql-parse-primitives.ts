@@ -1,13 +1,5 @@
 import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
-/** Low-level string / identifier parsing for SQL template literals. */
-
-export type Ws = " " | "\n" | "\t" | "\r"
-export type TrimLeft<S extends string> = S extends `${Ws}${infer R}` ? TrimLeft<R> : S
-export type TrimRight<S extends string> = S extends `${infer R}${Ws}` ? TrimRight<R> : S
-export type Trim<S extends string> = TrimLeft<TrimRight<S>>
-export type ToLower<S extends string> = Lowercase<S>
-
 /** Walks from `B` and returns the buffer **after** the first top-level `,` token. If none, returns the buffer at EOF (`PeekToken` is `""`). */
 export type SkipPastFirstTopLevelComma<B extends TokensList, Depth extends 0[] = []> =
 	PeekToken<B> extends ""
@@ -61,7 +53,7 @@ export type ReadOptionalToken<B extends TokensList, Expected extends string> =
 	PeekToken<B> extends Expected ? ParseResult<true, SkipToken<B>> : ParseResult<false, B>
 
 export type ReadExpectedIdentifier<B extends TokensList, Message extends string> =
-	StripIdentifierQuotes<Trim<PeekToken<B>>> extends infer Name extends string
+	StripIdentifierQuotes<PeekToken<B>> extends infer Name extends string
 		? Name extends ""
 			? ParseFailure<Message, B>
 			: ParseResult<Name, SkipToken<B>>

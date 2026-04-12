@@ -6,12 +6,12 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyDropSchemaFixture = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
@@ -45,7 +45,7 @@ type _DbApplyDropSchemaFixture = Expect<
 
 type DropAuth = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
@@ -75,7 +75,7 @@ type _DropAuth = Expect<
 
 type DropMissingNoIf = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create schema auth;
@@ -92,7 +92,7 @@ type _DropMissingNoIf = Expect<Matches<DropMissingNoIf, SqlParserError<`Unknown 
 
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema public;
 	create schema auth;

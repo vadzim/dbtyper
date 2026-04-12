@@ -1,10 +1,10 @@
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type AlterUsers = SqlStatements<
+type AlterUsers = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table users add column age int
 `>
@@ -31,7 +31,7 @@ type _AlterUsers = Expect<
 	>
 >
 
-type AlterPublicUsers = SqlStatements<
+type AlterPublicUsers = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table public.users add column age int
 `>
@@ -58,7 +58,7 @@ type _AlterPublicUsers = Expect<
 	>
 >
 
-type AlterUsersIfExists = SqlStatements<
+type AlterUsersIfExists = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table if exists public.users add column age int
 `>
@@ -85,12 +85,12 @@ type _AlterUsersIfExists = Expect<
 	>
 >
 
-type BadAlter = SqlStatements<ParseSqlTokens<`alter table public.users`>>
+type BadAlter = ParseSqlStatements<ParseSqlTokens<`alter table public.users`>>
 type _BadAlter = Expect<
 	Matches<BadAlter, [SqlParserError<"Expected an ALTER TABLE action">, ParseSqlTokens<`alter table public.users`>]>
 >
 
-type AlterAddColumnIfNotExists = SqlStatements<
+type AlterAddColumnIfNotExists = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table users add column if not exists "display name" text not null
 `>
@@ -117,7 +117,7 @@ type _AlterAddColumnIfNotExists = Expect<
 	>
 >
 
-type AlterDropColumn = SqlStatements<
+type AlterDropColumn = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table users drop column if exists age
 `>
@@ -143,7 +143,7 @@ type _AlterDropColumn = Expect<
 	>
 >
 
-type AlterRenameTo = SqlStatements<
+type AlterRenameTo = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table users rename to app_users
 `>
@@ -168,7 +168,7 @@ type _AlterRenameTo = Expect<
 	>
 >
 
-type AlterRenameColumn = SqlStatements<
+type AlterRenameColumn = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table users rename column old_name to "new name"
 `>
@@ -194,7 +194,7 @@ type _AlterRenameColumn = Expect<
 	>
 >
 
-type UnsupportedAlterAction = SqlStatements<ParseSqlTokens<`alter table users set schema archive;`>>
+type UnsupportedAlterAction = ParseSqlStatements<ParseSqlTokens<`alter table users set schema archive;`>>
 type _UnsupportedAlterAction = Expect<
 	Matches<UnsupportedAlterAction, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >

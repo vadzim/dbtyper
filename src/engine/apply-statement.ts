@@ -1,13 +1,13 @@
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlIgnorableStatement } from "../parser/sql-ignorable.js"
-import type { SqlCreateIndex } from "../parser/sql-create-index.js"
-import type { SqlInsertValues } from "../parser/sql-insert-values.js"
-import type { SqlCreateSchema } from "../parser/sql-create-schema.js"
-import type { SqlCreateTable } from "../parser/sql-create-table.js"
-import type { SqlDropSchema } from "../parser/sql-drop-schema.js"
-import type { SqlDropTable } from "../parser/sql-drop-table.js"
-import type { SqlAlterTable } from "../parser/sql-alter-table.js"
+import type { IgnorableStatement } from "../parser/sql-ignorable.js"
+import type { CreateIndexStatement } from "../parser/sql-create-index.js"
+import type { InsertValuesStatement } from "../parser/sql-insert-values.js"
+import type { CreateSchemaStatement } from "../parser/sql-create-schema.js"
+import type { CreateTableStatement } from "../parser/sql-create-table.js"
+import type { DropSchemaStatement } from "../parser/sql-drop-schema.js"
+import type { DropTableStatement } from "../parser/sql-drop-table.js"
+import type { AlterTableStatement } from "../parser/sql-alter-table.js"
 import type { ApplyAlterTable } from "./apply-alter-table.js"
 import type { ApplyCreateIndex } from "./apply-create-index.js"
 import type { ApplyCreateSchema } from "./apply-create-schema.js"
@@ -17,14 +17,14 @@ import type { ApplyDropTable } from "./apply-drop-table.js"
 import type { ApplyInsertValues } from "./apply-insert-values.js"
 
 export type SqlStatementLike =
-	| SqlIgnorableStatement
-	| SqlCreateIndex
-	| SqlInsertValues
-	| SqlAlterTable
-	| SqlCreateSchema
-	| SqlCreateTable
-	| SqlDropSchema
-	| SqlDropTable
+	| IgnorableStatement
+	| CreateIndexStatement
+	| InsertValuesStatement
+	| AlterTableStatement
+	| CreateSchemaStatement
+	| CreateTableStatement
+	| DropSchemaStatement
+	| DropTableStatement
 	| SqlParserError<string>
 
 export type SqlApplyStatement<
@@ -32,21 +32,21 @@ export type SqlApplyStatement<
 	Statement extends SqlStatementLike,
 > = Db extends SqlDatabaseLike
 	? FlattenDBType<
-			Statement extends SqlIgnorableStatement
+			Statement extends IgnorableStatement
 				? Db
-				: Statement extends SqlCreateIndex
+				: Statement extends CreateIndexStatement
 					? ApplyCreateIndex<Db, Statement>
-					: Statement extends SqlInsertValues
+					: Statement extends InsertValuesStatement
 						? ApplyInsertValues<Db, Statement>
-						: Statement extends SqlCreateSchema
+						: Statement extends CreateSchemaStatement
 							? ApplyCreateSchema<Db, Statement>
-							: Statement extends SqlCreateTable
+							: Statement extends CreateTableStatement
 								? ApplyCreateTable<Db, Statement>
-								: Statement extends SqlAlterTable
+								: Statement extends AlterTableStatement
 									? ApplyAlterTable<Db, Statement>
-									: Statement extends SqlDropTable
+									: Statement extends DropTableStatement
 										? ApplyDropTable<Db, Statement>
-										: Statement extends SqlDropSchema
+										: Statement extends DropSchemaStatement
 											? ApplyDropSchema<Db, Statement>
 											: Statement extends SqlParserError<string>
 												? Statement

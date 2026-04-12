@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { sqlDatabase, sqlStatement } from "../engine/sql-statement.js"
-import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -11,7 +11,7 @@ type CreateUsersStatement = ReturnType<typeof sqlStatement<"create table users (
 type _CreateUsersStatementParsedType = Expect<
 	Matches<
 		CreateUsersStatement["__sql_parsed__"],
-		SqlStatementsRecovering<ParseSqlTokens<"create table users (id int not null, name text)">>[0]
+		ParseSqlStatementsRecovering<ParseSqlTokens<"create table users (id int not null, name text)">>[0]
 	>
 >
 

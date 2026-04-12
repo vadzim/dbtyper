@@ -1,9 +1,9 @@
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type Users = SqlStatements<
+type Users = ParseSqlStatements<
 	ParseSqlTokens<`
 	CREATE TABLE users (
 		id int not null,
@@ -38,7 +38,9 @@ type _UsersShape = Expect<
 	>
 >
 
-type Posts = SqlStatements<ParseSqlTokens<"create table posts (id bigint not null, rating decimal(10,2), title text)">>
+type Posts = ParseSqlStatements<
+	ParseSqlTokens<"create table posts (id bigint not null, rating decimal(10,2), title text)">
+>
 type _PostsShape = Expect<
 	Matches<
 		Posts,
@@ -60,10 +62,10 @@ type _PostsShape = Expect<
 	>
 >
 
-type Invalid = SqlStatements<ParseSqlTokens<"select * from users;">>
+type Invalid = ParseSqlStatements<ParseSqlTokens<"select * from users;">>
 type _Invalid = Expect<Matches<Invalid, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
-type WithConstraints = SqlStatements<
+type WithConstraints = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table accounts (
 		id int not null,
@@ -98,7 +100,7 @@ type _WithConstraintsShape = Expect<
 	>
 >
 
-type BadUniqueRef = SqlStatements<
+type BadUniqueRef = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table bad_unique (
 		id int not null,
@@ -121,7 +123,7 @@ type _BadUniqueRef = Expect<
 	>
 >
 
-type BadForeignKeyRef = SqlStatements<
+type BadForeignKeyRef = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table bad_fk (
 		id int not null,
@@ -146,7 +148,7 @@ type _BadForeignKeyRef = Expect<
 	>
 >
 
-type WithComments = SqlStatements<
+type WithComments = ParseSqlStatements<
 	ParseSqlTokens<`
 	-- one-line comment before statement
 	CREATE TABLE commented_users (
@@ -186,7 +188,7 @@ type _WithCommentsShape = Expect<
 	>
 >
 
-type BadRefWithComments = SqlStatements<
+type BadRefWithComments = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table bad_ref_with_comments (
 		id int not null,
@@ -211,7 +213,7 @@ type _BadRefWithComments = Expect<
 	>
 >
 
-type QuotedIdentifiers = SqlStatements<
+type QuotedIdentifiers = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table "account users" (
 		"id" int not null,
@@ -246,7 +248,7 @@ type _QuotedIdentifiersShape = Expect<
 	>
 >
 
-type BadQuotedRef = SqlStatements<
+type BadQuotedRef = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table q_bad (
 		"id" int not null,
@@ -270,17 +272,17 @@ type _BadQuotedRef = Expect<
 >
 
 type _TableNameSimple = Expect<
-	Matches<SqlStatements<ParseSqlTokens<"create table users (id int)">>[0][0]["name"], readonly ["users"]>
+	Matches<ParseSqlStatements<ParseSqlTokens<"create table users (id int)">>[0][0]["name"], readonly ["users"]>
 >
 
 type _TableNameQuoted = Expect<
 	Matches<
-		SqlStatements<ParseSqlTokens<`create table "account users" ("id" int not null)`>>[0][0]["name"],
+		ParseSqlStatements<ParseSqlTokens<`create table "account users" ("id" int not null)`>>[0][0]["name"],
 		readonly ["account users"]
 	>
 >
 
-type PostgresTypes = SqlStatements<
+type PostgresTypes = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table pg_types (
 		id serial not null,
@@ -340,7 +342,7 @@ type _PostgresTypes = Expect<
 // Type names are identifiers — they can appear in double quotes in SQL and
 // behave identically to the unquoted form.
 
-type QuotedTypeNames = SqlStatements<
+type QuotedTypeNames = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table quoted_types (
 		a "int" not null,
@@ -379,7 +381,7 @@ type _QuotedTypeNames = Expect<
 >
 
 // Type names can also be used as column names (they are just identifiers).
-type TypeNamesAsColumnNames = SqlStatements<
+type TypeNamesAsColumnNames = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table type_name_columns (
 		int int not null,

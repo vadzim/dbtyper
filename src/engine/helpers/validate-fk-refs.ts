@@ -1,11 +1,11 @@
-import type { SqlCreateTable } from "../../parser/sql-create-table.js"
+import type { CreateTableStatement } from "../../parser/sql-create-table.js"
 import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../../parser/sql-constraints-fk.js"
 import type { TokensList, SqlParserError } from "../../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "../sql-database.js"
 
 export type ValidateCreateTableFkRefs<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTable,
+	Create extends CreateTableStatement,
 	NewSchema extends string,
 	NewTable extends string,
 > = Create["refs"] extends undefined ? never : ValidateFkRefsUnion<Db, Create, NewSchema, NewTable, Create["refs"]>
@@ -16,7 +16,7 @@ type ResolveFkTargetSchema<R extends ForeignRefMeta, DbDefault extends string> =
 
 type ValidateFkRefsUnion<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTable,
+	Create extends CreateTableStatement,
 	NewSchema extends string,
 	NewTable extends string,
 	Refs,
@@ -56,7 +56,7 @@ type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> =
 
 type ValidateOneCreateTableFkRef<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTable,
+	Create extends CreateTableStatement,
 	NewSchema extends string,
 	NewTable extends string,
 	R extends ForeignRefMeta,

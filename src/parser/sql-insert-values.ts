@@ -9,7 +9,7 @@ import type {
 import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
-export type SqlInsertValues = {
+export type InsertValuesStatement = {
 	readonly kind: "insert_values_validated"
 	readonly target: SqlQualifiedIdentifier
 	readonly columns: readonly string[]

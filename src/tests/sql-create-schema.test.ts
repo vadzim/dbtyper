@@ -1,9 +1,9 @@
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type CreateAuth = SqlStatements<
+type CreateAuth = ParseSqlStatements<
 	ParseSqlTokens<`
 	create schema auth
 `>
@@ -24,7 +24,7 @@ type _CreateAuth = Expect<
 	>
 >
 
-type CreateAuthIfNotExists = SqlStatements<
+type CreateAuthIfNotExists = ParseSqlStatements<
 	ParseSqlTokens<`
 	create schema if not exists auth
 `>
@@ -45,7 +45,7 @@ type _CreateAuthIfNotExists = Expect<
 	>
 >
 
-type CreateAuthSemicolon = SqlStatements<
+type CreateAuthSemicolon = ParseSqlStatements<
 	ParseSqlTokens<`
 	create schema auth;
 `>
@@ -66,7 +66,7 @@ type _CreateAuthSemicolon = Expect<
 	>
 >
 
-type CreateQuoted = SqlStatements<
+type CreateQuoted = ParseSqlStatements<
 	ParseSqlTokens<`
 	create schema "my schema"
 `>
@@ -87,7 +87,7 @@ type _CreateQuoted = Expect<
 	>
 >
 
-type BadStatement = SqlStatements<ParseSqlTokens<`create view v as select 1;`>>
+type BadStatement = ParseSqlStatements<ParseSqlTokens<`create view v as select 1;`>>
 type _BadStatement = Expect<Matches<BadStatement, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
 describe("sql create schema", () => {

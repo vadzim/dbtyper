@@ -1,4 +1,4 @@
-import type { SqlCreateTable } from "../parser/sql-create-table.js"
+import type { CreateTableStatement } from "../parser/sql-create-table.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ValidateCreateTableFkRefs } from "./helpers/validate-fk-refs.js"
@@ -6,7 +6,7 @@ import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExist
 
 export type ApplyCreateTable<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTable,
+	Create extends CreateTableStatement,
 > = Create["name"] extends infer Name
 	? Name extends SqlParserError<string>
 		? Name

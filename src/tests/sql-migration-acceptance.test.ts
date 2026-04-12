@@ -4,11 +4,11 @@
 import { describe, it } from "node:test"
 import type { SqlDatabase } from "../engine/sql-database.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type SkipCommentGrantSet = SqlStatementsRecovering<
+type SkipCommentGrantSet = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
 	comment on table public.t is 'x';
 	grant select on table public.t to anon;
@@ -25,31 +25,31 @@ type _SkipCommentGrantSet = Expect<
 	>
 >
 
-type SkipAlterDefaultPrivileges = SqlStatementsRecovering<
+type SkipAlterDefaultPrivileges = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`alter default privileges in schema public grant select on tables to anon;`>
 >
 type _SkipAlterDefaultPrivileges = Expect<
 	Matches<SkipAlterDefaultPrivileges, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type SkipDollarFn = SqlStatementsRecovering<
+type SkipDollarFn = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`create function app.f() returns int language sql as $$ select 1 $$;`>
 >
 type _SkipDollarFn = Expect<Matches<SkipDollarFn, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
-type SkipTaggedDollarFn = SqlStatementsRecovering<
+type SkipTaggedDollarFn = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`create function app.g() returns int language sql as $fn$ select 1 $fn$;`>
 >
 type _SkipTaggedDollarFn = Expect<
 	Matches<SkipTaggedDollarFn, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type UnclosedStatement = SqlStatementsRecovering<ParseSqlTokens<`select 1`>>
+type UnclosedStatement = ParseSqlStatementsRecovering<ParseSqlTokens<`select 1`>>
 type _UnclosedStatement = Expect<
 	Matches<UnclosedStatement, [readonly [SqlParserError<"Unclosed statement">], ParseSqlTokens<`select 1`>]>
 >
 
-type UnclosedDollar = SqlStatementsRecovering<ParseSqlTokens<`create function x() returns void as $fn$ select 1`>>
+type UnclosedDollar = ParseSqlStatementsRecovering<ParseSqlTokens<`create function x() returns void as $fn$ select 1`>>
 type _UnclosedDollar = Expect<
 	Matches<
 		UnclosedDollar,
@@ -60,12 +60,12 @@ type _UnclosedDollar = Expect<
 	>
 >
 
-type CreateViewIgnorable = SqlStatementsRecovering<ParseSqlTokens<`create view v as select 1;`>>
+type CreateViewIgnorable = ParseSqlStatementsRecovering<ParseSqlTokens<`create view v as select 1;`>>
 type _CreateViewIgnorable = Expect<
 	Matches<CreateViewIgnorable, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type ParseIndexOk = SqlStatementsRecovering<
+type ParseIndexOk = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
 	create schema app;
 	create table app.items (id int not null, name text not null);
@@ -99,7 +99,7 @@ type _ParseIndexOk = Expect<
 
 type ApplyIndexBadCol = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatementsRecovering<
+	ParseSqlStatementsRecovering<
 		ParseSqlTokens<`
 		create schema app;
 		create table app.t (id int not null);
@@ -111,7 +111,7 @@ type _ApplyIndexBadCol = Expect<
 	Matches<ApplyIndexBadCol, SqlParserError<`Unknown column "missing_col" in CREATE INDEX`>>
 >
 
-type ParseInsertSelectIgnorable = SqlStatementsRecovering<
+type ParseInsertSelectIgnorable = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
 	create schema app;
 	create table app.t (id int not null);
@@ -137,7 +137,7 @@ type _ParseInsertSelectIgnorable = Expect<
 	>
 >
 
-type ParsedInsertChain = SqlStatements<
+type ParsedInsertChain = ParseSqlStatements<
 	ParseSqlTokens<`create schema app; create table app.t (id int not null, label text not null); insert into app.t (id, label) values (1, 'a');`>
 >
 type ParsedInsertChainHead = ParsedInsertChain[0]
@@ -151,7 +151,9 @@ type _Stmt2ColumnsOrder = Expect<
 >
 type ApplyAfterCreateTableOnly = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatements<ParseSqlTokens<`create schema app; create table app.t (id int not null, label text not null);`>>[0]
+	ParseSqlStatements<
+		ParseSqlTokens<`create schema app; create table app.t (id int not null, label text not null);`>
+	>[0]
 >
 
 type ApplyInsertOk = SqlApplyStatements<SqlDatabase<"app">, ParsedInsertChain[0]>
@@ -161,7 +163,7 @@ type _ApplyInsertOkRow = Expect<
 
 type ApplyInsertWrongType = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 		create schema app;
 		create table app.t (id int not null);
@@ -171,7 +173,7 @@ type ApplyInsertWrongType = SqlApplyStatements<
 >
 type _ApplyInsertWrongType = Expect<Matches<ApplyInsertWrongType, SqlParserError<`Unknown column "nope" in INSERT`>>>
 
-type ParseAlterOnlyPk = SqlStatements<ParseSqlTokens<`alter table app.u add constraint u_pkey primary key (id);`>>
+type ParseAlterOnlyPk = ParseSqlStatements<ParseSqlTokens<`alter table app.u add constraint u_pkey primary key (id);`>>
 type PkAlterStmt = ParseAlterOnlyPk[0] extends readonly [infer H] ? H : never
 type _PkAlterStmtKind = Expect<Matches<PkAlterStmt extends { readonly kind: infer K } ? K : never, "alter_table">>
 type _PkAlterPrimary = Expect<
@@ -181,7 +183,7 @@ type _PkAlterPrimary = Expect<
 	>
 >
 
-type ParseAlterDropConstraintOnly = SqlStatements<
+type ParseAlterDropConstraintOnly = ParseSqlStatements<
 	ParseSqlTokens<`alter table app.u drop constraint if exists u_email_key;`>
 >
 type DropAlterStmt = ParseAlterDropConstraintOnly[0] extends readonly [infer H] ? H : never
@@ -193,7 +195,7 @@ type _DropAlterAction = Expect<
 	>
 >
 
-type ParseAlterRlsIgnorable = SqlStatementsRecovering<
+type ParseAlterRlsIgnorable = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
 	create schema app;
 	create table app.u (id int not null);
@@ -221,7 +223,7 @@ type _ParseAlterRlsIgnorable = Expect<
 
 type ApplyCrossSchemaFkOk = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatementsRecovering<
+	ParseSqlStatementsRecovering<
 		ParseSqlTokens<`
 		create schema auth;
 		create table auth.users (id int not null);
@@ -247,7 +249,7 @@ type _ApplyCrossSchemaFkOk = Expect<
 
 type ApplyCrossSchemaFkMissingSchema = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatementsRecovering<
+	ParseSqlStatementsRecovering<
 		ParseSqlTokens<`
 		create schema app;
 		create table app.members (uid int not null);
@@ -261,7 +263,7 @@ type _ApplyCrossSchemaFkMissingSchema = Expect<
 
 type ApplyMixNoRowChange = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 		create schema app;
 		create table app.t (id int not null, label text not null);
@@ -275,7 +277,7 @@ type ApplyMixNoRowChange = SqlApplyStatements<
 /** Same apply-depth as {@link ApplyMixNoRowChange}: two DDL statements + three identity statements. */
 type ApplyMixBaselineSameDepth = SqlApplyStatements<
 	SqlDatabase<"app">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 		create schema app;
 		create table app.t (id int not null, label text not null);

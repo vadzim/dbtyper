@@ -19,6 +19,13 @@ import type {
 import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
+export type AlterTableStatement = {
+	readonly kind: "alter_table"
+	readonly ifExists: boolean
+	readonly target: SqlQualifiedIdentifier
+	readonly action: SqlAlterTableAction
+}
+
 /** `B` is immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
 export type ParseAlterTable<B extends TokensList> = FinalizeAlterTableTuple<ParseAlterTableTupleAfterTable<B>>
 
@@ -29,13 +36,6 @@ type FinalizeAlterTableTuple<T> = T extends [infer E extends SqlParserError<stri
 			? [Result, Tail]
 			: [SqlParserError<"Expected an ALTER TABLE statement with a table target">, Rest]
 		: [SqlParserError<"Expected an ALTER TABLE statement with a table target">, EmptyTokenList]
-
-export type SqlAlterTable = {
-	readonly kind: "alter_table"
-	readonly ifExists: boolean
-	readonly target: SqlQualifiedIdentifier
-	readonly action: SqlAlterTableAction
-}
 
 type SqlAlterTableActionAddColumn = {
 	readonly kind: "add_column"

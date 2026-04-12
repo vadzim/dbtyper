@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
-import type { SqlStatement } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
+import type { ParseSqlStatement } from "../parser/sql-parse-statement.js"
+import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // Copy of sql-statement-buffer.test.ts, but with extra operations appended after ';'
@@ -8,7 +8,9 @@ import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // --- CREATE TABLE ---
 
-type CreateTable = SqlStatement<ParseSqlTokens<`create table users (id int not null, email text); drop table users`>>
+type CreateTable = ParseSqlStatement<
+	ParseSqlTokens<`create table users (id int not null, email text); drop table users`>
+>
 
 type _CreateTable = Expect<
 	Matches<
@@ -25,7 +27,7 @@ type _CreateTable = Expect<
 	>
 >
 
-type CreateTableSemicolon = SqlStatement<
+type CreateTableSemicolon = ParseSqlStatement<
 	ParseSqlTokens<`create table users (id int not null); drop schema if exists staging`>
 >
 
@@ -44,7 +46,7 @@ type _CreateTableSemicolon = Expect<
 	>
 >
 
-type CreateTableSchemaQualified = SqlStatement<
+type CreateTableSchemaQualified = ParseSqlStatement<
 	ParseSqlTokens<`create table auth.sessions (token text not null, user_id int not null); alter table auth.sessions add column age int`>
 >
 
@@ -63,7 +65,7 @@ type _CreateTableSchemaQualified = Expect<
 	>
 >
 
-type CreateTableWithArrays = SqlStatement<
+type CreateTableWithArrays = ParseSqlStatement<
 	ParseSqlTokens<`create table t (tags text[], nums int4[] not null); create schema if not exists billing`>
 >
 
@@ -84,7 +86,7 @@ type _CreateTableWithArrays = Expect<
 
 // --- ALTER TABLE ---
 
-type AlterTableAdd = SqlStatement<
+type AlterTableAdd = ParseSqlStatement<
 	ParseSqlTokens<`alter table if exists public.users add column age int; drop table if exists auth.users`>
 >
 
@@ -108,7 +110,7 @@ type _AlterTableAdd = Expect<
 	>
 >
 
-type AlterTableDrop = SqlStatement<
+type AlterTableDrop = ParseSqlStatement<
 	ParseSqlTokens<`alter table users drop column if exists email; create table users (id int not null)`>
 >
 
@@ -131,7 +133,7 @@ type _AlterTableDrop = Expect<
 	>
 >
 
-type AlterTableRename = SqlStatement<
+type AlterTableRename = ParseSqlStatement<
 	ParseSqlTokens<`alter table users rename column age to years; drop schema if exists staging`>
 >
 
@@ -156,7 +158,9 @@ type _AlterTableRename = Expect<
 
 // --- DROP TABLE ---
 
-type DropTable = SqlStatement<ParseSqlTokens<`drop table if exists auth.users; create schema if not exists billing`>>
+type DropTable = ParseSqlStatement<
+	ParseSqlTokens<`drop table if exists auth.users; create schema if not exists billing`>
+>
 
 type _DropTable = Expect<
 	Matches<
@@ -174,7 +178,9 @@ type _DropTable = Expect<
 
 // --- CREATE SCHEMA ---
 
-type CreateSchema = SqlStatement<ParseSqlTokens<`create schema if not exists billing; drop schema if exists billing`>>
+type CreateSchema = ParseSqlStatement<
+	ParseSqlTokens<`create schema if not exists billing; drop schema if exists billing`>
+>
 
 type _CreateSchema = Expect<
 	Matches<
@@ -192,7 +198,9 @@ type _CreateSchema = Expect<
 
 // --- DROP SCHEMA ---
 
-type DropSchema = SqlStatement<ParseSqlTokens<`drop schema if exists staging; create schema if not exists staging`>>
+type DropSchema = ParseSqlStatement<
+	ParseSqlTokens<`drop schema if exists staging; create schema if not exists staging`>
+>
 
 type _DropSchema = Expect<
 	Matches<
@@ -210,7 +218,7 @@ type _DropSchema = Expect<
 
 // --- Error cases: keep as-is ---
 
-type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1;`>>
+type UnknownStatement = ParseSqlStatement<ParseSqlTokens<`create view v as select 1;`>>
 type _UnknownStatement = Expect<Matches<UnknownStatement, [{ readonly kind: "ignorable" }, EmptyTokenList]>>
 
 describe("sql statement buffer (non-empty rest)", () => {

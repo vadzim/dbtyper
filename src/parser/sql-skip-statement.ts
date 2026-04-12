@@ -1,10 +1,7 @@
-import type { TrimLeft } from "./sql-parse-primitives.js"
 import type { ParseSqlTokens, SqlParserError, TokensList } from "./sql-tokens.js"
-import type { SqlIgnorableStatement } from "./sql-ignorable.js"
+import type { IgnorableStatement } from "./sql-ignorable.js"
 
 type Inc<D extends readonly 0[]> = readonly [0, ...D]
-type DecP<D extends readonly 0[]> = D extends readonly [0, ...infer R extends readonly 0[]] ? R : never
-type DecBk<D extends readonly 0[]> = D extends readonly [0, ...infer R extends readonly 0[]] ? R : never
 
 /**
  * Lexical skip from the start of a statement buffer to the first top-level `;`.
@@ -18,10 +15,13 @@ export type SkipStatementFromBuffer<B extends TokensList> = B["__buffer__"] exte
 			? R extends SqlParserError<string>
 				? [R, B]
 				: R extends [true, infer After extends string]
-					? [SqlIgnorableStatement, ParseSqlTokens<TrimLeft<After>>]
+					? [IgnorableStatement, ParseSqlTokens<TrimLeft<After>>]
 					: [SqlParserError<"Unclosed statement">, B]
 			: [SqlParserError<"Unclosed statement">, B]
 	: [SqlParserError<"Unclosed statement">, B]
+
+type Ws = " " | "\n" | "\t" | "\r"
+type TrimLeft<S extends string> = S extends `${Ws}${infer R}` ? TrimLeft<R> : S
 
 type ScanSkip<S extends string, P extends readonly 0[] = [], Bk extends readonly 0[] = []> = S extends ""
 	? SqlParserError<"Unclosed statement">

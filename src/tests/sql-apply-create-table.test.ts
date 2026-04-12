@@ -5,12 +5,12 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -37,7 +37,7 @@ type _DbApplyCreateTableFixture = Expect<
 
 type MixedCaseColumns = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 		create schema test;
 		create table users ("Id" int not null, Id int not null, "Main\x20\x20\x20Title" text not null)
@@ -66,7 +66,7 @@ type _MixedCaseColumns = Expect<
 
 type CreateInDefaultSchema = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -97,7 +97,7 @@ type _CreateInDefaultSchema = Expect<
 
 type CreateInExplicitSchema = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -131,7 +131,7 @@ type _CreateInExplicitSchema = Expect<
 
 type CreateDuplicateTable = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -147,7 +147,7 @@ type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParserError
 
 type CreateTableWithoutSchema = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<ParseSqlTokens<`create table users (id int not null)`>>[0]
+	ParseSqlStatements<ParseSqlTokens<`create table users (id int not null)`>>[0]
 >
 
 type _CreateTableWithoutSchema = Expect<
@@ -169,7 +169,7 @@ type CreateInvalidRowStatement = {
 type CreateInvalidRow = SqlApplyStatements<
 	SqlDatabase<"test">,
 	readonly [
-		...SqlStatements<
+		...ParseSqlStatements<
 			ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -186,7 +186,7 @@ type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParserError<"bad ro
 
 type CreateWithForeignKeyOk = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -230,7 +230,7 @@ type CreateWithForeignKeyBadLocalStatement = {
 type CreateWithForeignKeyBadLocal = SqlApplyStatements<
 	SqlDatabase<"test">,
 	readonly [
-		...SqlStatements<
+		...ParseSqlStatements<
 			ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -249,7 +249,7 @@ type _CreateWithForeignKeyBadLocal = Expect<
 
 type CreateWithCompositeForeignKeyOk = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -283,7 +283,7 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 
 type CreateWithCompositeForeignKeyBadArity = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;

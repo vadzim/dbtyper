@@ -6,12 +6,12 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyDropTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -47,7 +47,7 @@ type _DbApplyDropTableFixture = Expect<
 
 type DropExistingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -81,7 +81,7 @@ type _DropExistingNoIfExists = Expect<
 
 type DropExistingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -115,7 +115,7 @@ type _DropExistingIfExists = Expect<
 
 type DropMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -135,7 +135,7 @@ type _DropMissingNoIfExists = Expect<
 
 type DropMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -170,7 +170,7 @@ type _DropMissingIfExists = Expect<
 
 type DropDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -204,7 +204,7 @@ type _DropDefaultSchemaUnqualified = Expect<
 
 type DropExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;

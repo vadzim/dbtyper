@@ -1,9 +1,9 @@
 import { describe, it } from "node:test"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
-type ParseCreate = SqlStatements<
+type ParseCreate = ParseSqlStatements<
 	ParseSqlTokens<`
 	create table users (id int not null, email text)
 `>
@@ -25,7 +25,7 @@ type _ParseCreate = Expect<
 	>
 >
 
-type ParseAlter = SqlStatements<
+type ParseAlter = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table if exists public.users add column age int
 `>
@@ -52,7 +52,7 @@ type _ParseAlter = Expect<
 	>
 >
 
-type ParseDrop = SqlStatements<
+type ParseDrop = ParseSqlStatements<
 	ParseSqlTokens<`
 	drop table if exists auth.users;
 `>
@@ -73,7 +73,7 @@ type _ParseDrop = Expect<
 	>
 >
 
-type ParseCreateSchema = SqlStatements<
+type ParseCreateSchema = ParseSqlStatements<
 	ParseSqlTokens<`
 	create schema if not exists billing;
 `>
@@ -94,7 +94,7 @@ type _ParseCreateSchema = Expect<
 	>
 >
 
-type ParseDropSchema = SqlStatements<
+type ParseDropSchema = ParseSqlStatements<
 	ParseSqlTokens<`
 	drop schema if exists staging
 `>
@@ -115,10 +115,10 @@ type _ParseDropSchema = Expect<
 	>
 >
 
-type ParseUnknown = SqlStatements<ParseSqlTokens<`create view v as select 1;`>>
+type ParseUnknown = ParseSqlStatements<ParseSqlTokens<`create view v as select 1;`>>
 type _ParseUnknown = Expect<Matches<ParseUnknown, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
-type ParseInvalidCreate = SqlStatements<ParseSqlTokens<`create table broken (id)`>>
+type ParseInvalidCreate = ParseSqlStatements<ParseSqlTokens<`create table broken (id)`>>
 type _ParseInvalidCreate = Expect<
 	Matches<
 		ParseInvalidCreate,
@@ -126,17 +126,17 @@ type _ParseInvalidCreate = Expect<
 	>
 >
 
-type ParseInvalidKeywordBoundary = SqlStatements<ParseSqlTokens<`createx table users (id int);`>>
+type ParseInvalidKeywordBoundary = ParseSqlStatements<ParseSqlTokens<`createx table users (id int);`>>
 type _ParseInvalidKeywordBoundary = Expect<
 	Matches<ParseInvalidKeywordBoundary, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type ParseInvalidDropBoundary = SqlStatements<ParseSqlTokens<`dropx table users;`>>
+type ParseInvalidDropBoundary = ParseSqlStatements<ParseSqlTokens<`dropx table users;`>>
 type _ParseInvalidDropBoundary = Expect<
 	Matches<ParseInvalidDropBoundary, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type ParseInvalidIfNot = SqlStatements<ParseSqlTokens<`create schema if not billing`>>
+type ParseInvalidIfNot = ParseSqlStatements<ParseSqlTokens<`create schema if not billing`>>
 type _ParseInvalidIfNot = Expect<
 	Matches<
 		ParseInvalidIfNot,
@@ -144,7 +144,7 @@ type _ParseInvalidIfNot = Expect<
 	>
 >
 
-type ParseTrailingTokens = SqlStatements<ParseSqlTokens<`drop table users extra`>>
+type ParseTrailingTokens = ParseSqlStatements<ParseSqlTokens<`drop table users extra`>>
 type _ParseTrailingTokens = Expect<
 	Matches<
 		ParseTrailingTokens,

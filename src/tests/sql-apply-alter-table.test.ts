@@ -6,12 +6,12 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyAlterFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -47,7 +47,7 @@ type _DbApplyAlterFixture = Expect<
 
 type AddNewColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -79,7 +79,7 @@ type _AddNewColumn = Expect<
 
 type AddExistingColumnNoIfNotExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -98,7 +98,7 @@ type _AddExistingColumnNoIfNotExists = Expect<
 
 type AddExistingColumnIfNotExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -134,7 +134,7 @@ type _AddExistingColumnIfNotExists = Expect<
 
 type DropExistingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -166,7 +166,7 @@ type _DropExistingColumn = Expect<
 
 type DropMissingColumnNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -185,7 +185,7 @@ type _DropMissingColumnNoIfExists = Expect<
 
 type DropMissingColumnIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -221,7 +221,7 @@ type _DropMissingColumnIfExists = Expect<
 
 type RenameExistingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -253,7 +253,7 @@ type _RenameExistingColumn = Expect<
 
 type RenameMissingColumn = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -272,7 +272,7 @@ type _RenameMissingColumn = Expect<
 
 type RenameToExistingColumnName = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -293,7 +293,7 @@ type _RenameToExistingColumnName = Expect<
 
 type RenameTableOk = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -325,7 +325,7 @@ type _RenameTableOk = Expect<
 
 type RenameTableDuplicate = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -344,7 +344,7 @@ type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParserError
 
 type AlterMissingNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -361,7 +361,7 @@ type _AlterMissingNoIfExists = Expect<
 
 type AlterMissingSchemeNoIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	alter table test.missing add column age int
 `>
@@ -374,7 +374,7 @@ type _AlterMissingSchemeNoIfExists = Expect<
 
 type AlterMissingSchemeIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	alter table if exists test.missing add column age int
 `>
@@ -396,7 +396,7 @@ type _AlterMissingSchemeIfExists = Expect<
 
 type AlterMissingIfExists = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -430,7 +430,7 @@ type _AlterMissingIfExists = Expect<
 
 type AlterDefaultSchemaUnqualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;
@@ -449,7 +449,7 @@ type _AlterDefaultSchemaUnqualified = Expect<
 
 type AlterExplicitSchemaQualified = SqlApplyStatements<
 	SqlDatabase<"test">,
-	SqlStatements<
+	ParseSqlStatements<
 		ParseSqlTokens<`
 	create schema test;
 	create schema auth;

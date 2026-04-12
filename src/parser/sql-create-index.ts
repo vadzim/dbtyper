@@ -10,7 +10,7 @@ import type {
 import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
 import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
-export type SqlCreateIndex = {
+export type CreateIndexStatement = {
 	readonly kind: "create_index_validated"
 	readonly unique: boolean
 	readonly ifNotExists: boolean
