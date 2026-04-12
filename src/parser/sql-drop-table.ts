@@ -4,7 +4,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { TokensList, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, SqlParserError } from "./sql-tokens.js"
 
 export type SqlDropTable = {
 	readonly kind: "drop_table"
@@ -15,7 +15,7 @@ export type SqlDropTable = {
 /** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
 export type ParseDropTable<B extends TokensList> = FinalizeDropTableTuple<ParseDropTableTupleAfterTable<B>>
 
-type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
+type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
 	: T extends [infer Result, infer Rest extends TokensList]
 		? [Result, Rest]
@@ -27,11 +27,11 @@ type ParseDropTableTupleAfterTable<B extends TokensList> =
 		: ReadOptionalIfExists<B> extends [false, infer RestFlag extends TokensList]
 			? ParseDropTableWithFlag<false, RestFlag>
 			: ReadOptionalIfExists<B> extends [
-						infer FlagError extends SqlParseError<string>,
+						infer FlagError extends SqlParserError<string>,
 						infer RestFlag extends TokensList,
 				  ]
 				? [FlagError, RestFlag]
-				: [SqlParseError<"Unable to parse DROP TABLE statement">, B]
+				: [SqlParserError<"Unable to parse DROP TABLE statement">, B]
 
 type ParseDropTableWithFlag<IfExists extends boolean, B extends TokensList> =
 	ReadQualifiedIdentifierFromBuffer<B> extends [
@@ -47,5 +47,5 @@ type ParseDropTableWithFlag<IfExists extends boolean, B extends TokensList> =
 					},
 					Tail,
 				]
-			: [SqlParseError<"Unable to parse DROP TABLE statement">, RestName]
-		: [SqlParseError<"Unable to parse DROP TABLE statement">, B]
+			: [SqlParserError<"Unable to parse DROP TABLE statement">, RestName]
+		: [SqlParserError<"Unable to parse DROP TABLE statement">, B]

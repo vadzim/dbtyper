@@ -1,4 +1,4 @@
-import type { TokensList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 /** Low-level string / identifier parsing for SQL template literals. */
 
@@ -49,8 +49,8 @@ type ReadParenGroupTail<AfterOpen extends TokensList, Cur extends TokensList, De
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 
 export type ParseResult<Result, Rest> = [result: Result, rest: Rest]
-export type ParseFailure<Message extends string, Rest> = ParseResult<SqlParseError<Message>, Rest>
-export type ParseOutput<Result, Rest> = ParseResult<Result | SqlParseError<string>, Rest>
+export type ParseFailure<Message extends string, Rest> = ParseResult<SqlParserError<Message>, Rest>
+export type ParseOutput<Result, Rest> = ParseResult<Result | SqlParserError<string>, Rest>
 export type ConsumeStatementEnd<B extends TokensList> =
 	PeekToken<B> extends ";" | "" ? ParseResult<true, SkipToken<B>> : ParseResult<false, B>
 
@@ -74,7 +74,7 @@ export type ReadOptionalIfExists<B extends TokensList> =
 					infer ExistsResult,
 					infer RestExists extends TokensList,
 				]
-				? ExistsResult extends SqlParseError<string>
+				? ExistsResult extends SqlParserError<string>
 					? ParseResult<ExistsResult, RestExists>
 					: ParseResult<true, RestExists>
 				: ParseFailure<"Expected EXISTS after IF", B>
@@ -88,13 +88,13 @@ export type ReadOptionalIfNotExists<B extends TokensList> =
 					infer NotResult,
 					infer RestNot extends TokensList,
 				]
-				? NotResult extends SqlParseError<string>
+				? NotResult extends SqlParserError<string>
 					? ParseResult<NotResult, RestNot>
 					: ReadExpectedToken<RestNot, "exists", "Expected EXISTS after IF NOT"> extends [
 								infer ExistsResult,
 								infer RestExists extends TokensList,
 						  ]
-						? ExistsResult extends SqlParseError<string>
+						? ExistsResult extends SqlParserError<string>
 							? ParseResult<ExistsResult, RestExists>
 							: ParseResult<true, RestExists>
 						: ParseFailure<"Expected EXISTS after IF NOT", B>

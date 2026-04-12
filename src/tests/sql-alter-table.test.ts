@@ -1,6 +1,6 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -87,7 +87,7 @@ type _AlterUsersIfExists = Expect<
 
 type BadAlter = SqlStatements<ParseSqlTokens<`alter table public.users`>>
 type _BadAlter = Expect<
-	Matches<BadAlter, [SqlParseError<"Expected an ALTER TABLE action">, ParseSqlTokens<`alter table public.users`>]>
+	Matches<BadAlter, [SqlParserError<"Expected an ALTER TABLE action">, ParseSqlTokens<`alter table public.users`>]>
 >
 
 type AlterAddColumnIfNotExists = SqlStatements<
@@ -196,10 +196,7 @@ type _AlterRenameColumn = Expect<
 
 type UnsupportedAlterAction = SqlStatements<ParseSqlTokens<`alter table users set schema archive;`>>
 type _UnsupportedAlterAction = Expect<
-	Matches<
-		UnsupportedAlterAction,
-		[readonly [{ readonly kind: "ignorable" }], EmptyTokenList]
-	>
+	Matches<UnsupportedAlterAction, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
 describe("sql alter table", () => {

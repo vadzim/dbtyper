@@ -6,20 +6,20 @@ import type { ParseDropSchema } from "./sql-drop-schema.js"
 import type { ParseDropTable } from "./sql-drop-table.js"
 import type { ParseInsertValues } from "./sql-insert-values.js"
 import type { SkipStatementFromBuffer } from "./sql-skip-statement.js"
-import type { TokensList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
-export type SqlStatement<Buffer extends TokensList> =
-	PeekToken<Buffer> extends ""
-		? [SqlParseError<"Unknown sql statement">, Buffer]
-		: PeekToken<Buffer> extends "create"
-			? SqlStatementAfterCreate<SkipToken<Buffer>, Buffer>
-			: PeekToken<Buffer> extends "drop"
-				? SqlStatementAfterDrop<SkipToken<Buffer>, Buffer>
-				: PeekToken<Buffer> extends "alter"
-					? SqlStatementAfterAlter<SkipToken<Buffer>, Buffer>
-					: PeekToken<Buffer> extends "insert"
-						? SqlStatementAfterInsert<SkipToken<Buffer>, Buffer>
-						: SkipStatementFromBuffer<Buffer>
+export type SqlStatement<Tokens extends TokensList> =
+	PeekToken<Tokens> extends ""
+		? [SqlParserError<"Unknown sql statement">, Tokens]
+		: PeekToken<Tokens> extends "create"
+			? ParseCreate<SkipToken<Tokens>, Tokens>
+			: PeekToken<Tokens> extends "drop"
+				? ParseDrop<SkipToken<Tokens>, Tokens>
+				: PeekToken<Tokens> extends "alter"
+					? ParseAlter<SkipToken<Tokens>, Tokens>
+					: PeekToken<Tokens> extends "insert"
+						? ParseInsert<SkipToken<Tokens>, Tokens>
+						: SkipStatementFromBuffer<Tokens>
 
 /** Non-validated `INSERT` shapes (e.g. `INSERT … SELECT`) → skip from `insert` for ignorable. */
 type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
@@ -30,26 +30,26 @@ type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
 	? true
 	: false
 
-type SqlStatementAfterInsert<AfterInsert extends TokensList, Orig extends TokensList> =
-	ParseInsertValues<AfterInsert> extends [infer Head, infer Rest extends TokensList]
+type ParseInsert<Tokens extends TokensList, Orig extends TokensList> =
+	ParseInsertValues<Tokens> extends [infer Head, infer Rest extends TokensList]
 		? Head extends { readonly kind: "insert_values_validated" }
 			? [Head, Rest]
-			: Head extends SqlParseError<infer Msg extends string>
+			: Head extends SqlParserError<infer Msg extends string>
 				? InsertParseShapeMismatchAllowsSkip<Msg> extends true
 					? SkipStatementFromBuffer<Orig>
 					: [Head, Rest]
 				: [Head, Rest]
 		: SkipStatementFromBuffer<Orig>
 
-type SqlStatementAfterCreate<AfterCreate extends TokensList, Orig extends TokensList> =
-	PeekToken<AfterCreate> extends "table"
-		? ParseCreateTable<SkipToken<AfterCreate>>
-		: PeekToken<AfterCreate> extends "schema"
-			? ParseCreateSchema<SkipToken<AfterCreate>>
-			: PeekToken<AfterCreate> extends "unique"
-				? SqlStatementAfterCreateUniqueIndex<SkipToken<AfterCreate>, Orig>
-				: PeekToken<AfterCreate> extends "index"
-					? ParseCreateIndex<SkipToken<AfterCreate>, false>
+type ParseCreate<Tokens extends TokensList, Orig extends TokensList> =
+	PeekToken<Tokens> extends "table"
+		? ParseCreateTable<SkipToken<Tokens>>
+		: PeekToken<Tokens> extends "schema"
+			? ParseCreateSchema<SkipToken<Tokens>>
+			: PeekToken<Tokens> extends "unique"
+				? SqlStatementAfterCreateUniqueIndex<SkipToken<Tokens>, Orig>
+				: PeekToken<Tokens> extends "index"
+					? ParseCreateIndex<SkipToken<Tokens>, false>
 					: SkipStatementFromBuffer<Orig>
 
 type SqlStatementAfterCreateUniqueIndex<AfterUnique extends TokensList, Orig extends TokensList> =
@@ -57,14 +57,14 @@ type SqlStatementAfterCreateUniqueIndex<AfterUnique extends TokensList, Orig ext
 		? ParseCreateIndex<SkipToken<AfterUnique>, true>
 		: SkipStatementFromBuffer<Orig>
 
-type SqlStatementAfterDrop<AfterDrop extends TokensList, Orig extends TokensList> =
+type ParseDrop<AfterDrop extends TokensList, Orig extends TokensList> =
 	PeekToken<AfterDrop> extends "table"
 		? ParseDropTable<SkipToken<AfterDrop>>
 		: PeekToken<AfterDrop> extends "schema"
 			? ParseDropSchema<SkipToken<AfterDrop>>
 			: SkipStatementFromBuffer<Orig>
 
-type SqlStatementAfterAlter<AfterAlter extends TokensList, Orig extends TokensList> =
+type ParseAlter<AfterAlter extends TokensList, Orig extends TokensList> =
 	PeekToken<AfterAlter> extends "table"
 		? SqlAlterWithMaybeSkipUnsupported<AfterAlter, Orig>
 		: SkipStatementFromBuffer<Orig>
@@ -73,10 +73,10 @@ type SqlAlterWithMaybeSkipUnsupported<AfterAlter extends TokensList, Orig extend
 	ParseAlterTable<SkipToken<AfterAlter>> extends [infer Head, infer Rest extends TokensList]
 		? Head extends { readonly kind: "alter_table" }
 			? [Head, Rest]
-			: Head extends { readonly __sql_parse_error__: "Unsupported ALTER TABLE action" }
+			: Head extends { readonly __sql_parser_error__: "Unsupported ALTER TABLE action" }
 				? SkipStatementFromBuffer<Orig>
 				: [Head, Rest]
-		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Orig]
+		: [SqlParserError<"Unable to parse ALTER TABLE statement">, Orig]
 
 /**
  * Parses zero or more statements from `B`. On **full** success returns `[readonly [...statements], rest]`
@@ -89,10 +89,10 @@ type SqlStatementsRec<B extends TokensList, Acc extends readonly unknown[]> =
 	PeekToken<B> extends ""
 		? [Acc, B]
 		: SqlStatement<B> extends [infer Head, infer Rest extends TokensList]
-			? Head extends SqlParseError<string>
+			? Head extends SqlParserError<string>
 				? [Head, B]
 				: SqlStatementsRec<Rest, readonly [...Acc, Head]>
-			: [SqlParseError<"Unknown sql statement">, B]
+			: [SqlParserError<"Unknown sql statement">, B]
 
 /**
  * Parses statements from `B`, keeping every successful parse in order. On failure, returns
@@ -106,7 +106,7 @@ type SqlStatementsRecoveringRec<B extends TokensList, Acc extends readonly unkno
 	PeekToken<B> extends ""
 		? [Acc, B]
 		: SqlStatement<B> extends [infer Head, infer Rest extends TokensList]
-			? Head extends SqlParseError<string>
+			? Head extends SqlParserError<string>
 				? [readonly [...Acc, Head], B]
 				: SqlStatementsRecoveringRec<Rest, readonly [...Acc, Head]>
-			: [readonly [...Acc, SqlParseError<"Unknown sql statement">], B]
+			: [readonly [...Acc, SqlParserError<"Unknown sql statement">], B]

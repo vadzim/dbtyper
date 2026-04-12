@@ -1,5 +1,5 @@
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlIgnorableStatement } from "../parser/sql-ignorable.js"
 import type { SqlCreateIndex } from "../parser/sql-create-index.js"
 import type { SqlInsertValues } from "../parser/sql-insert-values.js"
@@ -25,10 +25,10 @@ export type SqlStatementLike =
 	| SqlCreateTable
 	| SqlDropSchema
 	| SqlDropTable
-	| SqlParseError<string>
+	| SqlParserError<string>
 
 export type SqlApplyStatement<
-	Db extends SqlDatabaseLike | SqlParseError<string>,
+	Db extends SqlDatabaseLike | SqlParserError<string>,
 	Statement extends SqlStatementLike,
 > = Db extends SqlDatabaseLike
 	? FlattenDBType<
@@ -48,17 +48,17 @@ export type SqlApplyStatement<
 										? ApplyDropTable<Db, Statement>
 										: Statement extends SqlDropSchema
 											? ApplyDropSchema<Db, Statement>
-											: Statement extends SqlParseError<string>
+											: Statement extends SqlParserError<string>
 												? Statement
-												: SqlParseError<"Unsupported SqlApply statement">
+												: SqlParserError<"Unsupported SqlApply statement">
 		>
 	: Db
 
 export type SqlApplyStatements<
-	Db extends SqlDatabaseLike | SqlParseError<string>,
-	Statements extends readonly SqlStatementLike[] | SqlParseError<string>,
+	Db extends SqlDatabaseLike | SqlParserError<string>,
+	Statements extends readonly SqlStatementLike[] | SqlParserError<string>,
 > =
-	Statements extends SqlParseError<string>
+	Statements extends SqlParserError<string>
 		? Statements
 		: Statements extends readonly [
 					infer First extends SqlStatementLike,
@@ -68,4 +68,4 @@ export type SqlApplyStatements<
 			: Db
 
 /** Kept as identity so chained applies preserve the same nominal DB shape for type tests (`Matches`). */
-type FlattenDBType<DB extends SqlDatabaseLike | SqlParseError<string>> = DB
+type FlattenDBType<DB extends SqlDatabaseLike | SqlParserError<string>> = DB

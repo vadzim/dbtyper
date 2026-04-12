@@ -1,6 +1,6 @@
 import type { SqlCreateTable } from "../../parser/sql-create-table.js"
 import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../../parser/sql-constraints-fk.js"
-import type { TokensList, SqlParseError } from "../../parser/sql-tokens.js"
+import type { TokensList, SqlParserError } from "../../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "../sql-database.js"
 
 export type ValidateCreateTableFkRefs<
@@ -42,10 +42,10 @@ type UnknownRefTableError<R extends ForeignRefMeta, TargetSchema extends string,
 ] extends [undefined]
 	? TargetSchema extends NewSchema
 		? NewSchema extends TargetSchema
-			? SqlParseError<`Unknown referenced table "${R["toTable"]}" in schema`>
-			: SqlParseError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
-		: SqlParseError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
-	: SqlParseError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
+			? SqlParserError<`Unknown referenced table "${R["toTable"]}" in schema`>
+			: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
+		: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
+	: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
 
 type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> =
 	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof Row, string>> extends [infer R, infer _ extends TokensList]
@@ -68,8 +68,8 @@ type ValidateOneCreateTableFkRef<
 				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
 					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
 					: UnknownRefTableError<R, TargetSchema, NewSchema>
-				: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
-		: SqlParseError<"Internal FK target schema resolution error">
+				: SqlParserError<`Unknown referenced schema "${TargetSchema}" in database`>
+		: SqlParserError<"Internal FK target schema resolution error">
 
 /** FK validation for `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY` on an existing typed row. */
 export type ValidateAlterTableFkRef<
@@ -86,5 +86,5 @@ export type ValidateAlterTableFkRef<
 				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
 					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
 					: UnknownRefTableError<R, TargetSchema, Schema>
-				: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
-		: SqlParseError<"Internal FK target schema resolution error">
+				: SqlParserError<`Unknown referenced schema "${TargetSchema}" in database`>
+		: SqlParserError<"Internal FK target schema resolution error">

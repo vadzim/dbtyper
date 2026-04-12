@@ -6,7 +6,7 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
@@ -141,7 +141,7 @@ type CreateDuplicateTable = SqlApplyStatements<
 	>[0]
 >
 
-type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParseError<"Duplicate table name: users">>>
+type _CreateDuplicateTable = Expect<Matches<CreateDuplicateTable, SqlParserError<"Duplicate table name: users">>>
 
 /** Creating a table when the default schema does not exist yet is an error. */
 
@@ -151,7 +151,7 @@ type CreateTableWithoutSchema = SqlApplyStatements<
 >
 
 type _CreateTableWithoutSchema = Expect<
-	Matches<CreateTableWithoutSchema, SqlParseError<`Unknown schema "public" (use CREATE SCHEMA first)`>>
+	Matches<CreateTableWithoutSchema, SqlParserError<`Unknown schema "public" (use CREATE SCHEMA first)`>>
 >
 
 // --- Parse and FK validation errors ---
@@ -159,7 +159,7 @@ type _CreateTableWithoutSchema = Expect<
 type CreateInvalidRowStatement = {
 	readonly kind: "create_table"
 	readonly name: readonly ["broken"]
-	readonly row: SqlParseError<"bad row">
+	readonly row: SqlParserError<"bad row">
 	readonly source: "create table broken (id)"
 	readonly refs: never
 }
@@ -180,7 +180,7 @@ type CreateInvalidRow = SqlApplyStatements<
 	]
 >
 
-type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParseError<"bad row">>>
+type _CreateInvalidRow = Expect<Matches<CreateInvalidRow, SqlParserError<"bad row">>>
 
 /** Valid foreign key referencing default-schema users. */
 
@@ -220,7 +220,7 @@ type _CreateWithForeignKeyOk = Expect<
 type CreateWithForeignKeyBadLocalStatement = {
 	readonly kind: "create_table"
 	readonly name: readonly ["posts_bad"]
-	readonly row: SqlParseError<`Unknown column "missing_col" referenced in table constraint`>
+	readonly row: SqlParserError<`Unknown column "missing_col" referenced in table constraint`>
 	readonly source: "create table posts_bad (...)"
 	readonly refs: never
 }
@@ -242,7 +242,7 @@ type CreateWithForeignKeyBadLocal = SqlApplyStatements<
 >
 
 type _CreateWithForeignKeyBadLocal = Expect<
-	Matches<CreateWithForeignKeyBadLocal, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<CreateWithForeignKeyBadLocal, SqlParserError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 /** Composite foreign key with matching arity. */
@@ -303,7 +303,7 @@ type CreateWithCompositeForeignKeyBadArity = SqlApplyStatements<
 type _CreateWithCompositeForeignKeyBadArity = Expect<
 	Matches<
 		CreateWithCompositeForeignKeyBadArity,
-		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+		SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 

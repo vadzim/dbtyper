@@ -8,7 +8,7 @@ import type {
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
 import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
-import type { TokensList, EmptyTokenList, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type SqlCreateIndex = {
 	readonly kind: "create_index_validated"
@@ -23,7 +23,7 @@ export type ParseCreateIndex<B extends TokensList, Unique extends boolean = fals
 	ParseCreateIndexTuple<B, Unique>
 >
 
-type FinalizeCreateIndex<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
+type FinalizeCreateIndex<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
 	: T extends [
 				{
@@ -44,7 +44,7 @@ type FinalizeCreateIndex<T> = T extends [infer E extends SqlParseError<string>, 
 				},
 				Rest,
 			]
-		: [SqlParseError<"Unable to parse CREATE INDEX">, EmptyTokenList]
+		: [SqlParserError<"Unable to parse CREATE INDEX">, EmptyTokenList]
 
 type ParseCreateIndexTuple<B extends TokensList, Unique extends boolean> =
 	ReadOptionalIfNotExists<B> extends [infer IfNotExists extends boolean, infer Rest0 extends TokensList]
@@ -56,7 +56,7 @@ type ParseCreateIndexAfterIfNotExists<Rest0 extends TokensList, Unique extends b
 		infer IdxName,
 		infer Rest1 extends TokensList,
 	]
-		? IdxName extends SqlParseError<string>
+		? IdxName extends SqlParserError<string>
 			? [IdxName, Rest1]
 			: ParseCreateIndexAfterOn<Rest1, Unique, IfNotExists>
 		: never
@@ -69,14 +69,14 @@ type ParseCreateIndexAfterOn<Rest1 extends TokensList, Unique extends boolean, I
 			]
 			? ReadFirstParenGroup<Rest3> extends [infer Inner extends TokensList, infer Tail extends TokensList]
 				? ParseCreateIndexAfterParen<Inner, Tail, Unique, IfNotExists, Table>
-				: [SqlParseError<"Expected column list in CREATE INDEX">, Rest3]
-			: [SqlParseError<"Expected table name after ON in CREATE INDEX">, Rest2]
+				: [SqlParserError<"Expected column list in CREATE INDEX">, Rest3]
+			: [SqlParserError<"Expected table name after ON in CREATE INDEX">, Rest2]
 		: ReadExpectedToken<Rest1, "on", "Expected ON in CREATE INDEX"> extends [
-					infer E extends SqlParseError<string>,
+					infer E extends SqlParserError<string>,
 					infer R extends TokensList,
 			  ]
 			? [E, R]
-			: [SqlParseError<"Unable to parse CREATE INDEX">, Rest1]
+			: [SqlParserError<"Unable to parse CREATE INDEX">, Rest1]
 
 type ParseCreateIndexAfterParen<
 	Inner extends TokensList,
@@ -96,7 +96,7 @@ type ParseCreateIndexAfterParen<
 					},
 					RestFinal,
 				]
-			: SkipTailToSemicolonBuffer<Tail> extends [infer Err extends SqlParseError<string>, infer _R]
+			: SkipTailToSemicolonBuffer<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
 				? [Err, Tail]
-				: [SqlParseError<"Unable to parse CREATE INDEX">, Tail]
-		: [SqlParseError<"Unable to parse CREATE INDEX column list">, Tail]
+				: [SqlParserError<"Unable to parse CREATE INDEX">, Tail]
+		: [SqlParserError<"Unable to parse CREATE INDEX column list">, Tail]

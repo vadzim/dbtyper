@@ -5,7 +5,7 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
@@ -86,7 +86,7 @@ type DropMissingNoIf = SqlApplyStatements<
 	>[0]
 >
 
-type _DropMissingNoIf = Expect<Matches<DropMissingNoIf, SqlParseError<`Unknown dropped schema "missing" in database`>>>
+type _DropMissingNoIf = Expect<Matches<DropMissingNoIf, SqlParserError<`Unknown dropped schema "missing" in database`>>>
 
 /** IF EXISTS makes dropping a missing schema a no-op. */
 

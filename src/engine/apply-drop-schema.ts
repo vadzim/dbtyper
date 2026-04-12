@@ -1,5 +1,5 @@
 import type { SqlDropSchema } from "../parser/sql-drop-schema.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { DropSchemaFromSchemas, SchemaExists } from "./helpers/engine-helpers.js"
 
@@ -16,5 +16,5 @@ export type ApplyDropSchema<Db extends SqlDatabaseLike, Drop extends SqlDropSche
 				}
 			: Drop["ifExists"] extends true
 				? Db
-				: SqlParseError<`Unknown dropped schema "${Drop["name"]}" in database`>
-		: SqlParseError<"Internal SqlApplyDropSchema schema shape error">
+				: SqlParserError<`Unknown dropped schema "${Drop["name"]}" in database`>
+		: SqlParserError<"Internal SqlApplyDropSchema schema shape error">

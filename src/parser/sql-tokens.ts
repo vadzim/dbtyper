@@ -4,8 +4,8 @@
 export type ParseSqlTokens<S extends string = string> = ReadTokenFromString<S> // opaque buffer type
 export type EmptyTokenList = { __token__: ""; __rest__: ""; __buffer__: "" }
 export type TokensList = { __token__: string; __rest__: string; __buffer__: string }
-export type SqlParseError<Message extends string> = {
-	readonly __sql_parse_error__: Message
+export type SqlParserError<Message extends string> = {
+	readonly __sql_parser_error__: Message
 }
 
 export type PeekToken<B extends TokensList> = B["__token__"]

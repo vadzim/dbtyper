@@ -1,5 +1,5 @@
 import type { SqlInsertValues } from "../parser/sql-insert-values.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
 
@@ -18,14 +18,14 @@ export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends SqlInsert
 						> extends infer Err
 						? [Err] extends [never]
 							? Db
-							: Err extends SqlParseError<string>
+							: Err extends SqlParserError<string>
 								? Err
-								: SqlParseError<"Internal INSERT validation error">
-						: SqlParseError<"Internal INSERT validation error">
-					: SqlParseError<`Unknown table for INSERT: "${Schema}.${Table}"`>
-				: SqlParseError<`Unknown schema for INSERT: "${Schema}"`>
-			: SqlParseError<"Internal INSERT schema shape error">
-		: SqlParseError<"Internal INSERT target error">
+								: SqlParserError<"Internal INSERT validation error">
+						: SqlParserError<"Internal INSERT validation error">
+					: SqlParserError<`Unknown table for INSERT: "${Schema}.${Table}"`>
+				: SqlParserError<`Unknown schema for INSERT: "${Schema}"`>
+			: SqlParserError<"Internal INSERT schema shape error">
+		: SqlParserError<"Internal INSERT target error">
 
 type ValidateInsertValues<
 	Row extends Record<string, unknown>,
@@ -35,10 +35,10 @@ type ValidateInsertValues<
 	? Vals extends readonly [infer _V, ...infer VR extends readonly unknown[]]
 		? C extends keyof Row
 			? ValidateInsertValues<Row, CR, VR>
-			: SqlParseError<`Unknown column "${C & string}" in INSERT`>
-		: SqlParseError<"INSERT column count does not match value count">
+			: SqlParserError<`Unknown column "${C & string}" in INSERT`>
+		: SqlParserError<"INSERT column count does not match value count">
 	: Cols extends readonly []
 		? Vals extends readonly []
 			? never
-			: SqlParseError<"INSERT column count does not match value count">
-		: SqlParseError<"INSERT column count does not match value count">
+			: SqlParserError<"INSERT column count does not match value count">
+		: SqlParserError<"INSERT column count does not match value count">

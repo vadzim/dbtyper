@@ -1,5 +1,5 @@
 import type { TrimLeft } from "./sql-parse-primitives.js"
-import type { ParseSqlTokens, SqlParseError, TokensList } from "./sql-tokens.js"
+import type { ParseSqlTokens, SqlParserError, TokensList } from "./sql-tokens.js"
 import type { SqlIgnorableStatement } from "./sql-ignorable.js"
 
 type Inc<D extends readonly 0[]> = readonly [0, ...D]
@@ -10,20 +10,21 @@ type DecBk<D extends readonly 0[]> = D extends readonly [0, ...infer R extends r
  * Lexical skip from the start of a statement buffer to the first top-level `;`.
  * Tracks `()`, `[]`, line/block comments, single/double-quoted strings, and PostgreSQL dollar quotes (`$$` / `$tag$`).
  */
+// TODO:
 export type SkipStatementFromBuffer<B extends TokensList> = B["__buffer__"] extends infer Raw extends string
 	? TrimLeft<Raw> extends ""
-		? [SqlParseError<"Unclosed statement">, B]
+		? [SqlParserError<"Unclosed statement">, B]
 		: ScanSkip<TrimLeft<Raw>> extends infer R
-			? R extends SqlParseError<string>
+			? R extends SqlParserError<string>
 				? [R, B]
 				: R extends [true, infer After extends string]
 					? [SqlIgnorableStatement, ParseSqlTokens<TrimLeft<After>>]
-					: [SqlParseError<"Unclosed statement">, B]
-			: [SqlParseError<"Unclosed statement">, B]
-	: [SqlParseError<"Unclosed statement">, B]
+					: [SqlParserError<"Unclosed statement">, B]
+			: [SqlParserError<"Unclosed statement">, B]
+	: [SqlParserError<"Unclosed statement">, B]
 
 type ScanSkip<S extends string, P extends readonly 0[] = [], Bk extends readonly 0[] = []> = S extends ""
-	? SqlParseError<"Unclosed statement">
+	? SqlParserError<"Unclosed statement">
 	: S extends `;${infer Rest}`
 		? P["length"] extends 0
 			? Bk["length"] extends 0
@@ -35,48 +36,48 @@ type ScanSkip<S extends string, P extends readonly 0[] = [], Bk extends readonly
 			: S extends `)${infer Rest}`
 				? P extends readonly [0, ...infer PTail extends readonly 0[]]
 					? ScanSkip<Rest, PTail, Bk>
-					: SqlParseError<"Unbalanced parentheses in skipped statement">
+					: SqlParserError<"Unbalanced parentheses in skipped statement">
 				: S extends `[${infer Rest}`
 					? ScanSkip<Rest, P, Inc<Bk>>
 					: S extends `]${infer Rest}`
 						? Bk extends readonly [0, ...infer BTail extends readonly 0[]]
 							? ScanSkip<Rest, P, BTail>
-							: SqlParseError<"Unbalanced brackets in skipped statement">
+							: SqlParserError<"Unbalanced brackets in skipped statement">
 						: S extends `--${infer Line}`
 							? Line extends `${string}\n${infer Rest}`
 								? ScanSkip<Rest, P, Bk>
-								: SqlParseError<"Unclosed statement">
+								: SqlParserError<"Unclosed statement">
 							: S extends `/*${infer Com}`
 								? Com extends `${string}*/${infer Rest}`
 									? ScanSkip<Rest, P, Bk>
-									: SqlParseError<"Unclosed statement">
+									: SqlParserError<"Unclosed statement">
 								: S extends `"${infer Rest}`
 									? ScanDoubleQuoted<Rest, P, Bk>
 									: S extends `'${infer Rest}`
 										? ScanSingleQuoted<Rest, P, Bk>
 										: S extends `$$${infer Rest}`
 											? ScanEmptyDollarBody<Rest> extends infer D
-												? D extends SqlParseError<string>
+												? D extends SqlParserError<string>
 													? D
 													: D extends [infer After extends string]
 														? ScanSkip<After, P, Bk>
-														: SqlParseError<"Unclosed statement">
-												: SqlParseError<"Unclosed statement">
+														: SqlParserError<"Unclosed statement">
+												: SqlParserError<"Unclosed statement">
 											: S extends `$${infer Tag}$${infer Rest}`
 												? Tag extends `${string}$${string}`
 													? ScanSkip<S, P, Bk>
 													: CloseTaggedDollar<Rest, Tag> extends infer D
-														? D extends SqlParseError<string>
+														? D extends SqlParserError<string>
 															? D
 															: D extends [infer After extends string]
 																? ScanSkip<After, P, Bk>
-																: SqlParseError<"Unclosed statement">
-														: SqlParseError<"Unclosed statement">
+																: SqlParserError<"Unclosed statement">
+														: SqlParserError<"Unclosed statement">
 												: S extends `${infer _C}${infer Tail}`
 													? Tail extends string
 														? ScanSkip<Tail, P, Bk>
-														: SqlParseError<"Unclosed statement">
-													: SqlParseError<"Unclosed statement">
+														: SqlParserError<"Unclosed statement">
+													: SqlParserError<"Unclosed statement">
 
 type ScanDoubleQuoted<S extends string, P extends readonly 0[], Bk extends readonly 0[]> = S extends `"${infer After}`
 	? ScanSkip<After, P, Bk>
@@ -84,7 +85,7 @@ type ScanDoubleQuoted<S extends string, P extends readonly 0[], Bk extends reado
 		? ScanDoubleQuoted<Rest, P, Bk>
 		: S extends `${infer _C}${infer Rest}`
 			? ScanDoubleQuoted<Rest, P, Bk>
-			: SqlParseError<"Unclosed string in skipped statement">
+			: SqlParserError<"Unclosed string in skipped statement">
 
 type ScanSingleQuoted<S extends string, P extends readonly 0[], Bk extends readonly 0[]> = S extends `'${infer After}`
 	? ScanSkip<After, P, Bk>
@@ -92,28 +93,28 @@ type ScanSingleQuoted<S extends string, P extends readonly 0[], Bk extends reado
 		? ScanSingleQuoted<Rest, P, Bk>
 		: S extends `${infer _C}${infer Rest}`
 			? ScanSingleQuoted<Rest, P, Bk>
-			: SqlParseError<"Unclosed string in skipped statement">
+			: SqlParserError<"Unclosed string in skipped statement">
 
 type ScanEmptyDollarBody<S extends string> = S extends `$$${infer After}`
 	? [After]
 	: S extends `${infer _C}${infer T}`
 		? ScanEmptyDollarBody<T>
-		: SqlParseError<"Unclosed statement">
+		: SqlParserError<"Unclosed statement">
 
 type CloseTaggedDollar<S extends string, Tag extends string> = S extends `$${Tag}$${infer After}`
 	? [After]
 	: S extends `${infer _C}${infer T}`
 		? CloseTaggedDollar<T, Tag>
-		: SqlParseError<"Unclosed dollar quote in skipped statement">
+		: SqlParserError<"Unclosed dollar quote in skipped statement">
 
 /** Advance from `B` to the buffer after the next top-level `;` (same rules as {@link SkipStatementFromBuffer} but no ignorable wrapper). */
 export type SkipTailToSemicolonBuffer<B extends TokensList> =
 	TrimLeft<B["__buffer__"]> extends infer S extends string
 		? ScanSkip<S> extends infer R
-			? R extends SqlParseError<string>
+			? R extends SqlParserError<string>
 				? [R, B]
 				: R extends [true, infer After extends string]
 					? [true, ParseSqlTokens<TrimLeft<After>>]
-					: [SqlParseError<"Unclosed statement">, B]
-			: [SqlParseError<"Unclosed statement">, B]
-		: [SqlParseError<"Unclosed statement">, B]
+					: [SqlParserError<"Unclosed statement">, B]
+			: [SqlParserError<"Unclosed statement">, B]
+		: [SqlParserError<"Unclosed statement">, B]

@@ -11,7 +11,7 @@ This document sketches where the project could go. It is aspirational and unorde
 - `CREATE TABLE` → column names, nullability, coarse SQL-to-TS type mapping
 - Table, schema, and multi-schema database composition with duplicate-name checks
 - Foreign keys: intra-schema, cross-schema, composite columns, arity vs referenced list, column existence on targets
-- Explicit `SqlParseError<"…">` messages suitable for strict type tests
+- Explicit `SqlParserError<"…">` messages suitable for strict type tests
 
 Constraints that should stay visible in future work:
 

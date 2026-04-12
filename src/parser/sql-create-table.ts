@@ -13,24 +13,24 @@ import type {
 	SkipPastFirstTopLevelComma,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 /** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
 export type ParseCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
 
 export type SqlCreateTable = {
 	readonly kind: "create_table"
-	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
+	readonly name: SqlQualifiedIdentifier | SqlParserError<string>
 	readonly row: unknown
 	readonly refs: ForeignRefMeta | undefined
 }
 
-type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
+type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
 	: T extends [infer StatementResult, infer StatementRest extends TokensList]
 		? SqlCreateTableParsed<StatementResult> extends infer Parsed
-			? SqlCreateTableParsedToType<Parsed> extends SqlParseError<infer E2>
-				? [SqlParseError<E2>, StatementRest]
+			? SqlCreateTableParsedToType<Parsed> extends SqlParserError<infer E2>
+				? [SqlParserError<E2>, StatementRest]
 				: [
 						{
 							readonly kind: "create_table"
@@ -43,8 +43,8 @@ type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<stri
 						},
 						StatementRest,
 					]
-			: [SqlParseError<"Internal SQL parser error">, StatementRest]
-		: [SqlParseError<"Internal SQL parser error">, EmptyTokenList]
+			: [SqlParserError<"Internal SQL parser error">, StatementRest]
+		: [SqlParserError<"Internal SQL parser error">, EmptyTokenList]
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
 
@@ -80,7 +80,7 @@ type ParseCreateBodyOneCommaSegment<
 				CreateBodyState<
 					Row,
 					Names,
-					MergeError<Error, SqlParseError<"Unable to parse CREATE TABLE body">>,
+					MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
 					Refs
 				>,
 				Tail,
@@ -121,7 +121,7 @@ type ParseCreateBody<
 					CreateBodyState<
 						Row,
 						Names,
-						MergeError<Error, SqlParseError<"Unable to parse CREATE TABLE body">>,
+						MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
 						Refs
 					>,
 					B,
@@ -135,11 +135,11 @@ type ParseCreateTableStatementBody<B extends TokensList> =
 		: ReadOptionalIfNotExists<B> extends [false, infer RestAfterFlag extends TokensList]
 			? ParseCreateTableWithFlag<false, RestAfterFlag>
 			: ReadOptionalIfNotExists<B> extends [
-						infer FlagError extends SqlParseError<string>,
+						infer FlagError extends SqlParserError<string>,
 						infer RestAfterFlag extends TokensList,
 				  ]
 				? [FlagError, RestAfterFlag]
-				: [SqlParseError<"Unable to parse CREATE TABLE statement">, B]
+				: [SqlParserError<"Unable to parse CREATE TABLE statement">, B]
 
 type ParseCreateTableWithFlag<IfNotExists extends boolean, B extends TokensList> =
 	ReadQualifiedIdentifierFromBuffer<B> extends [
@@ -156,13 +156,13 @@ type ParseCreateTableWithFlag<IfNotExists extends boolean, B extends TokensList>
 						},
 						RestTail,
 					]
-				: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
-			: [SqlParseError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
-		: [SqlParseError<"Expected a CREATE TABLE statement with a table name">, B]
+				: [SqlParserError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
+			: [SqlParserError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
+		: [SqlParserError<"Expected a CREATE TABLE statement with a table name">, B]
 
 type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends SqlQualifiedIdentifier }
 	? Name
-	: SqlParseError<"Expected a CREATE TABLE statement with a table name">
+	: SqlParserError<"Expected a CREATE TABLE statement with a table name">
 
 type SqlCreateTableParsed<Statement> = Statement extends {
 	body: infer Body extends TokensList
@@ -174,19 +174,19 @@ type SqlCreateTableParsed<Statement> = Statement extends {
 		? [Parsed["error"]] extends [never]
 			? PeekToken<BodyRest> extends ""
 				? Parsed
-				: SqlParseError<"Unexpected trailing input in CREATE TABLE body">
+				: SqlParserError<"Unexpected trailing input in CREATE TABLE body">
 			: Parsed
-		: SqlParseError<"Internal SQL parser error">
-	: SqlParseError<"Internal SQL parser error">
+		: SqlParserError<"Internal SQL parser error">
+	: SqlParserError<"Internal SQL parser error">
 
 type SqlCreateTableParsedToType<Parsed> =
-	Parsed extends SqlParseError<infer E>
-		? SqlParseError<E>
+	Parsed extends SqlParserError<infer E>
+		? SqlParserError<E>
 		: Parsed extends { row: unknown; error: unknown }
 			? [Parsed["error"]] extends [never]
 				? Parsed["row"]
 				: Parsed["error"]
-			: SqlParseError<"Internal SQL parser error">
+			: SqlParserError<"Internal SQL parser error">
 
 type SqlCreateTableParsedRefs<Parsed> = Parsed extends { refs: infer Refs }
 	? [Refs] extends [never]

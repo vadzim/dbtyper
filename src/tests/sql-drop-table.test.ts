@@ -1,5 +1,5 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -26,7 +26,7 @@ type _DropUsers = Expect<
 
 type BadDrop = SqlStatements<ParseSqlTokens<`drop table public.`>>
 type _BadDrop = Expect<
-	Matches<BadDrop, [SqlParseError<"Unable to parse DROP TABLE statement">, ParseSqlTokens<`drop table public.`>]>
+	Matches<BadDrop, [SqlParserError<"Unable to parse DROP TABLE statement">, ParseSqlTokens<`drop table public.`>]>
 >
 
 describe("sql drop table", () => {

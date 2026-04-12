@@ -5,7 +5,7 @@ import { describe, it } from "node:test"
 import type { SqlDatabase } from "../engine/sql-database.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type SkipCommentGrantSet = SqlStatementsRecovering<
@@ -46,7 +46,7 @@ type _SkipTaggedDollarFn = Expect<
 
 type UnclosedStatement = SqlStatementsRecovering<ParseSqlTokens<`select 1`>>
 type _UnclosedStatement = Expect<
-	Matches<UnclosedStatement, [readonly [SqlParseError<"Unclosed statement">], ParseSqlTokens<`select 1`>]>
+	Matches<UnclosedStatement, [readonly [SqlParserError<"Unclosed statement">], ParseSqlTokens<`select 1`>]>
 >
 
 type UnclosedDollar = SqlStatementsRecovering<ParseSqlTokens<`create function x() returns void as $fn$ select 1`>>
@@ -54,7 +54,7 @@ type _UnclosedDollar = Expect<
 	Matches<
 		UnclosedDollar,
 		[
-			readonly [SqlParseError<"Unclosed dollar quote in skipped statement">],
+			readonly [SqlParserError<"Unclosed dollar quote in skipped statement">],
 			ParseSqlTokens<`create function x() returns void as $fn$ select 1`>,
 		]
 	>
@@ -108,7 +108,7 @@ type ApplyIndexBadCol = SqlApplyStatements<
 	>[0]
 >
 type _ApplyIndexBadCol = Expect<
-	Matches<ApplyIndexBadCol, SqlParseError<`Unknown column "missing_col" in CREATE INDEX`>>
+	Matches<ApplyIndexBadCol, SqlParserError<`Unknown column "missing_col" in CREATE INDEX`>>
 >
 
 type ParseInsertSelectIgnorable = SqlStatementsRecovering<
@@ -169,7 +169,7 @@ type ApplyInsertWrongType = SqlApplyStatements<
 	`>
 	>[0]
 >
-type _ApplyInsertWrongType = Expect<Matches<ApplyInsertWrongType, SqlParseError<`Unknown column "nope" in INSERT`>>>
+type _ApplyInsertWrongType = Expect<Matches<ApplyInsertWrongType, SqlParserError<`Unknown column "nope" in INSERT`>>>
 
 type ParseAlterOnlyPk = SqlStatements<ParseSqlTokens<`alter table app.u add constraint u_pkey primary key (id);`>>
 type PkAlterStmt = ParseAlterOnlyPk[0] extends readonly [infer H] ? H : never
@@ -256,7 +256,7 @@ type ApplyCrossSchemaFkMissingSchema = SqlApplyStatements<
 	>[0]
 >
 type _ApplyCrossSchemaFkMissingSchema = Expect<
-	Matches<ApplyCrossSchemaFkMissingSchema, SqlParseError<`Unknown referenced schema "missing" in database`>>
+	Matches<ApplyCrossSchemaFkMissingSchema, SqlParserError<`Unknown referenced schema "missing" in database`>>
 >
 
 type ApplyMixNoRowChange = SqlApplyStatements<

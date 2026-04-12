@@ -6,7 +6,7 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
-import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 
 type DbDuplicateUsersTables = SqlApplyStatements<
 	SqlDatabase<"public">,
@@ -19,7 +19,7 @@ type DbDuplicateUsersTables = SqlApplyStatements<
 	>[0]
 >
 
-type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParseError<"Duplicate table name: users">>>
+type _DbDuplicateUsersTables = Expect<Matches<DbDuplicateUsersTables, SqlParserError<"Duplicate table name: users">>>
 
 type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	SqlDatabase<"public">,
@@ -32,7 +32,7 @@ type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	>[0]
 >
 
-type _DbSelectFromUsersAfterCreate = Expect<Matches<DbSelectFromUsersAfterCreate, SqlParseError<"Unclosed statement">>>
+type _DbSelectFromUsersAfterCreate = Expect<Matches<DbSelectFromUsersAfterCreate, SqlParserError<"Unclosed statement">>>
 
 // --- Intra-schema FK ---
 
@@ -52,7 +52,7 @@ type DbPostsBadIntraFk = SqlApplyStatements<
 >
 
 type _DbPostsBadIntraFk = Expect<
-	Matches<DbPostsBadIntraFk, SqlParseError<`Unknown referenced table "users_bad" in schema`>>
+	Matches<DbPostsBadIntraFk, SqlParserError<`Unknown referenced table "users_bad" in schema`>>
 >
 
 type DbCompositeFkPairRefsBadCol = SqlApplyStatements<
@@ -72,7 +72,7 @@ type DbCompositeFkPairRefsBadCol = SqlApplyStatements<
 >
 
 type _DbCompositeFkPairRefsBadCol = Expect<
-	Matches<DbCompositeFkPairRefsBadCol, SqlParseError<`Unknown column "no_such_col" referenced in table constraint`>>
+	Matches<DbCompositeFkPairRefsBadCol, SqlParserError<`Unknown column "no_such_col" referenced in table constraint`>>
 >
 
 /** Composite FK: fewer local columns than referenced columns. */
@@ -89,7 +89,7 @@ type StmtPairRefArityShort = SqlStatements<
 type _StmtPairRefArityShort = Expect<
 	Matches<
 		StmtPairRefArityShort,
-		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+		SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 
@@ -110,7 +110,7 @@ type DbPairRefArityShort = SqlApplyStatements<
 type _DbPairRefArityShort = Expect<
 	Matches<
 		DbPairRefArityShort,
-		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+		SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 
@@ -129,7 +129,7 @@ type StmtPairRefArityLong = SqlStatements<
 type _StmtPairRefArityLong = Expect<
 	Matches<
 		StmtPairRefArityLong,
-		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
+		SqlParserError<"Foreign key local column list has more entries than the referenced column list">
 	>
 >
 
@@ -151,7 +151,7 @@ type DbPairRefArityLong = SqlApplyStatements<
 type _DbPairRefArityLong = Expect<
 	Matches<
 		DbPairRefArityLong,
-		SqlParseError<"Foreign key local column list has more entries than the referenced column list">
+		SqlParserError<"Foreign key local column list has more entries than the referenced column list">
 	>
 >
 
@@ -174,7 +174,7 @@ type DbMultiFkOneBad = SqlApplyStatements<
 	>[0]
 >
 
-type _DbMultiFkOneBad = Expect<Matches<DbMultiFkOneBad, SqlParseError<`Unknown referenced table "ghosts" in schema`>>>
+type _DbMultiFkOneBad = Expect<Matches<DbMultiFkOneBad, SqlParserError<`Unknown referenced table "ghosts" in schema`>>>
 
 // --- Cross-schema FK (qualified `sales.*` tables) ---
 
@@ -200,7 +200,7 @@ type DbSalesLinkBad = SqlApplyStatements<
 >
 
 type _DbSalesLinkBad = Expect<
-	Matches<DbSalesLinkBad, SqlParseError<`Unknown referenced table "public.no_such_posts" in database`>>
+	Matches<DbSalesLinkBad, SqlParserError<`Unknown referenced table "public.no_such_posts" in database`>>
 >
 
 // --- Cross-schema failure shapes (apply rejects with database-level FK errors) ---
@@ -223,7 +223,7 @@ type DbSalesBadSchemaRef = SqlApplyStatements<
 >
 
 type _DbSalesBadSchemaRef = Expect<
-	Matches<DbSalesBadSchemaRef, SqlParseError<`Unknown referenced schema "missing_schema" in database`>>
+	Matches<DbSalesBadSchemaRef, SqlParserError<`Unknown referenced schema "missing_schema" in database`>>
 >
 
 type DbSalesBadTableRef = SqlApplyStatements<
@@ -244,7 +244,7 @@ type DbSalesBadTableRef = SqlApplyStatements<
 >
 
 type _DbSalesBadTableRef = Expect<
-	Matches<DbSalesBadTableRef, SqlParseError<`Unknown referenced table "public.missing_table" in database`>>
+	Matches<DbSalesBadTableRef, SqlParserError<`Unknown referenced table "public.missing_table" in database`>>
 >
 
 type DbSalesBadPublicUsersBadRef = SqlApplyStatements<
@@ -265,7 +265,7 @@ type DbSalesBadPublicUsersBadRef = SqlApplyStatements<
 >
 
 type _DbSalesBadPublicUsersBadRef = Expect<
-	Matches<DbSalesBadPublicUsersBadRef, SqlParseError<`Unknown referenced table "public.users_bad" in database`>>
+	Matches<DbSalesBadPublicUsersBadRef, SqlParserError<`Unknown referenced table "public.users_bad" in database`>>
 >
 
 type DbSalesBadSchemaUsersRef = SqlApplyStatements<
@@ -286,7 +286,7 @@ type DbSalesBadSchemaUsersRef = SqlApplyStatements<
 >
 
 type _DbSalesBadSchemaUsersRef = Expect<
-	Matches<DbSalesBadSchemaUsersRef, SqlParseError<`Unknown referenced schema "schema_bad" in database`>>
+	Matches<DbSalesBadSchemaUsersRef, SqlParserError<`Unknown referenced schema "schema_bad" in database`>>
 >
 
 type DbSalesBadColumnRef = SqlApplyStatements<
@@ -307,7 +307,7 @@ type DbSalesBadColumnRef = SqlApplyStatements<
 >
 
 type _DbSalesBadColumnRef = Expect<
-	Matches<DbSalesBadColumnRef, SqlParseError<`Unknown column "missing_col" referenced in table constraint`>>
+	Matches<DbSalesBadColumnRef, SqlParserError<`Unknown column "missing_col" referenced in table constraint`>>
 >
 
 /** No schemas: `CREATE TABLE sales.*` fails before FK checks (sales must exist first). */
@@ -326,7 +326,7 @@ type DbMissingSalesSchema = SqlApplyStatements<
 >
 
 type _DbMissingSalesSchema = Expect<
-	Matches<DbMissingSalesSchema, SqlParseError<`Unknown schema "sales" (use CREATE SCHEMA first)`>>
+	Matches<DbMissingSalesSchema, SqlParserError<`Unknown schema "sales" (use CREATE SCHEMA first)`>>
 >
 
 /**
@@ -355,7 +355,7 @@ type DbUnqualifiedUsersWrongDefault = SqlApplyStatements<
 >
 
 type _DbUnqualifiedUsersWrongDefault = Expect<
-	Matches<DbUnqualifiedUsersWrongDefault, SqlParseError<`Unknown referenced table "shared.users" in database`>>
+	Matches<DbUnqualifiedUsersWrongDefault, SqlParserError<`Unknown referenced table "shared.users" in database`>>
 >
 
 /** Composite FK across schemas: second column wrong on remote (row still parses; apply merges). */
@@ -379,7 +379,10 @@ type DbSalesCompositeBadRemoteCol = SqlApplyStatements<
 >
 
 type _DbSalesCompositeBadRemoteCol = Expect<
-	Matches<DbSalesCompositeBadRemoteCol, SqlParseError<`Unknown column "not_a_column" referenced in table constraint`>>
+	Matches<
+		DbSalesCompositeBadRemoteCol,
+		SqlParserError<`Unknown column "not_a_column" referenced in table constraint`>
+	>
 >
 
 /** Database-level composite FK arity mismatch surfaces as parse error on the statement. */
@@ -396,7 +399,7 @@ type StmtSalesDbArityShort = SqlStatements<
 type _StmtSalesDbArityShort = Expect<
 	Matches<
 		StmtSalesDbArityShort,
-		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+		SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 
@@ -419,7 +422,7 @@ type DbSalesDbArityShort = SqlApplyStatements<
 type _DbSalesDbArityShort = Expect<
 	Matches<
 		DbSalesDbArityShort,
-		SqlParseError<"Foreign key referenced column list has more entries than the local column list">
+		SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 	>
 >
 
@@ -429,7 +432,7 @@ type WrongStatementBeforeIncompletedStatementWithRecovering = SqlApplyStatements
 >
 
 type _WrongStatementBeforeIncompletedStatementWithRecovering = Expect<
-	Matches<WrongStatementBeforeIncompletedStatementWithRecovering, SqlParseError<"Duplicate schema name: a">>
+	Matches<WrongStatementBeforeIncompletedStatementWithRecovering, SqlParserError<"Duplicate schema name: a">>
 >
 
 type WrongStatementBeforeIncompletedStatementStrict = SqlApplyStatements<
@@ -438,7 +441,7 @@ type WrongStatementBeforeIncompletedStatementStrict = SqlApplyStatements<
 >
 
 type _WrongStatementBeforeIncompletedStatementStrict = Expect<
-	Matches<WrongStatementBeforeIncompletedStatementStrict, SqlParseError<"Duplicate schema name: a">>
+	Matches<WrongStatementBeforeIncompletedStatementStrict, SqlParserError<"Duplicate schema name: a">>
 >
 
 describe("sql references (errors)", () => {

@@ -1,6 +1,6 @@
 import type { SqlAlterTable } from "../parser/sql-alter-table.js"
 import type { ForeignRefMeta } from "../parser/sql-constraints-fk.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.js"
 import type { ValidateAlterTableFkRef } from "./helpers/validate-fk-refs.js"
@@ -21,9 +21,9 @@ export type ApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterTa
 					>
 				: Alter["ifExists"] extends true
 					? Db
-					: SqlParseError<`Unknown altered table "${Schema}.${Table}" in database`>
-			: SqlParseError<"Internal SqlApplyAlterTable schema shape error">
-		: SqlParseError<"Internal SqlApplyAlterTable target error">
+					: SqlParserError<`Unknown altered table "${Schema}.${Table}" in database`>
+			: SqlParserError<"Internal SqlApplyAlterTable schema shape error">
+		: SqlParserError<"Internal SqlApplyAlterTable target error">
 
 type ValidateConstraintColumnsExist<
 	Row extends Record<string, unknown>,
@@ -31,10 +31,10 @@ type ValidateConstraintColumnsExist<
 > = Cols extends readonly [infer H extends string, ...infer R extends readonly string[]]
 	? H extends keyof Row
 		? ValidateConstraintColumnsExist<Row, R>
-		: SqlParseError<`Unknown column "${H}" in ALTER TABLE constraint`>
+		: SqlParserError<`Unknown column "${H}" in ALTER TABLE constraint`>
 	: Cols extends readonly []
 		? never
-		: SqlParseError<"Internal ALTER TABLE constraint columns error">
+		: SqlParserError<"Internal ALTER TABLE constraint columns error">
 
 type ApplyAlterOnExistingTable<
 	Db extends SqlDatabaseLike,
@@ -44,7 +44,7 @@ type ApplyAlterOnExistingTable<
 	Action,
 > =
 	ApplyTableAction<Db, Schemas[Schema][Table], Action, Schemas[Schema], Schema, Table> extends infer Next
-		? Next extends SqlParseError<string>
+		? Next extends SqlParserError<string>
 			? Next
 			: Next extends { mode: "row"; row: infer NextRow extends Record<string, unknown> }
 				? {
@@ -58,8 +58,8 @@ type ApplyAlterOnExistingTable<
 							readonly defaultSchema: Db["defaultSchema"]
 							readonly schemas: ReplaceSchema<Schemas, Schema, NextTables>
 						}
-					: SqlParseError<"Internal SqlApplyAlterTable action shape error">
-		: SqlParseError<"Internal SqlApplyAlterTable action error">
+					: SqlParserError<"Internal SqlApplyAlterTable action shape error">
+		: SqlParserError<"Internal SqlApplyAlterTable action error">
 
 type ApplyTableAction<
 	Db extends SqlDatabaseLike,
@@ -75,32 +75,32 @@ type ApplyTableAction<
 	definition: infer Definition
 }
 	? AddColumnToRow<Row, Name, Definition, IfNotExists> extends infer Next
-		? Next extends SqlParseError<string>
+		? Next extends SqlParserError<string>
 			? Next
 			: { mode: "row"; row: Extract<Next, Record<string, unknown>> }
-		: SqlParseError<"Internal add_column action error">
+		: SqlParserError<"Internal add_column action error">
 	: Action extends {
 				kind: "drop_column"
 				ifExists: infer IfExists extends boolean
 				name: infer Name extends string
 		  }
 		? DropColumnFromRow<Row, Name, IfExists> extends infer Next
-			? Next extends SqlParseError<string>
+			? Next extends SqlParserError<string>
 				? Next
 				: { mode: "row"; row: Extract<Next, Record<string, unknown>> }
-			: SqlParseError<"Internal drop_column action error">
+			: SqlParserError<"Internal drop_column action error">
 		: Action extends { kind: "rename_column"; from: infer From extends string; to: infer To extends string }
 			? RenameColumnInRow<Row, From, To> extends infer Next
-				? Next extends SqlParseError<string>
+				? Next extends SqlParserError<string>
 					? Next
 					: { mode: "row"; row: Extract<Next, Record<string, unknown>> }
-				: SqlParseError<"Internal rename_column action error">
+				: SqlParserError<"Internal rename_column action error">
 			: Action extends { kind: "rename_to"; name: infer NewName extends string }
 				? RenameTableInSchema<SchemaTables, CurrentTable, NewName> extends infer Next
-					? Next extends SqlParseError<string>
+					? Next extends SqlParserError<string>
 						? Next
 						: { mode: "schema"; tables: Extract<Next, Record<string, unknown>> }
-					: SqlParseError<"Internal rename_to action error">
+					: SqlParserError<"Internal rename_to action error">
 				: Action extends { readonly kind: "add_constraint_fk"; readonly refs: infer R extends ForeignRefMeta }
 					? ValidateAlterTableFkRef<
 							Db,
@@ -111,10 +111,10 @@ type ApplyTableAction<
 						> extends infer Err
 						? [Err] extends [never]
 							? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
-							: Err extends SqlParseError<string>
+							: Err extends SqlParserError<string>
 								? Err
-								: SqlParseError<"Internal ALTER TABLE add_constraint_fk validation error">
-						: SqlParseError<"Internal ALTER TABLE add_constraint_fk validation error">
+								: SqlParserError<"Internal ALTER TABLE add_constraint_fk validation error">
+						: SqlParserError<"Internal ALTER TABLE add_constraint_fk validation error">
 					: Action extends {
 								readonly kind: "add_constraint_primary"
 								readonly columns: infer Cols extends readonly string[]
@@ -122,10 +122,10 @@ type ApplyTableAction<
 						? ValidateConstraintColumnsExist<Extract<Row, Record<string, unknown>>, Cols> extends infer Err
 							? [Err] extends [never]
 								? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
-								: Err extends SqlParseError<string>
+								: Err extends SqlParserError<string>
 									? Err
-									: SqlParseError<"Internal ALTER TABLE add_constraint_primary validation error">
-							: SqlParseError<"Internal ALTER TABLE add_constraint_primary validation error">
+									: SqlParserError<"Internal ALTER TABLE add_constraint_primary validation error">
+							: SqlParserError<"Internal ALTER TABLE add_constraint_primary validation error">
 						: Action extends {
 									readonly kind: "add_constraint_unique"
 									readonly columns: infer Cols extends readonly string[]
@@ -136,13 +136,13 @@ type ApplyTableAction<
 								> extends infer Err
 								? [Err] extends [never]
 									? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
-									: Err extends SqlParseError<string>
+									: Err extends SqlParserError<string>
 										? Err
-										: SqlParseError<"Internal ALTER TABLE add_constraint_unique validation error">
-								: SqlParseError<"Internal ALTER TABLE add_constraint_unique validation error">
+										: SqlParserError<"Internal ALTER TABLE add_constraint_unique validation error">
+								: SqlParserError<"Internal ALTER TABLE add_constraint_unique validation error">
 							: Action extends { readonly kind: "drop_constraint" }
 								? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
-								: SqlParseError<"Unsupported ALTER TABLE action">
+								: SqlParserError<"Unsupported ALTER TABLE action">
 
 type AddColumnToRow<Row, Name extends string, Definition, IfNotExists extends boolean> = Name extends keyof Extract<
 	Row,
@@ -150,7 +150,7 @@ type AddColumnToRow<Row, Name extends string, Definition, IfNotExists extends bo
 >
 	? IfNotExists extends true
 		? Row
-		: SqlParseError<`Duplicate column name: ${Name}`>
+		: SqlParserError<`Duplicate column name: ${Name}`>
 	: Extract<Row, Record<string, unknown>> & { [K in Name]: Definition }
 
 type DropColumnFromRow<Row, Name extends string, IfExists extends boolean> = Name extends keyof Extract<
@@ -160,30 +160,30 @@ type DropColumnFromRow<Row, Name extends string, IfExists extends boolean> = Nam
 	? Omit<Extract<Row, Record<string, unknown>>, Name>
 	: IfExists extends true
 		? Row
-		: SqlParseError<`Unknown column "${Name}" in altered table`>
+		: SqlParserError<`Unknown column "${Name}" in altered table`>
 
 type RenameColumnInRow<Row, From extends string, To extends string> = From extends keyof Extract<
 	Row,
 	Record<string, unknown>
 >
 	? To extends keyof Extract<Row, Record<string, unknown>>
-		? SqlParseError<`Duplicate column name: ${To}`>
+		? SqlParserError<`Duplicate column name: ${To}`>
 		: Omit<Extract<Row, Record<string, unknown>>, From> & {
 				[K in To]: Extract<Row, Record<string, unknown>>[From]
 			}
-	: SqlParseError<`Unknown column "${From}" in altered table`>
+	: SqlParserError<`Unknown column "${From}" in altered table`>
 
 type RenameTableInSchema<
 	SchemaTables extends Record<string, unknown>,
 	CurrentTable extends string,
 	NewName extends string,
 > = NewName extends keyof SchemaTables
-	? SqlParseError<`Duplicate table name: ${NewName}`>
+	? SqlParserError<`Duplicate table name: ${NewName}`>
 	: CurrentTable extends keyof SchemaTables
 		? Omit<SchemaTables, CurrentTable> & {
 				[K in NewName]: SchemaTables[CurrentTable]
 			}
-		: SqlParseError<`Unknown altered table "${CurrentTable}" in database`>
+		: SqlParserError<`Unknown altered table "${CurrentTable}" in database`>
 
 type UpdateSchemaTableRow<
 	Schemas extends Record<string, Record<string, unknown>>,

@@ -1,5 +1,5 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -61,9 +61,7 @@ type _PostsShape = Expect<
 >
 
 type Invalid = SqlStatements<ParseSqlTokens<"select * from users;">>
-type _Invalid = Expect<
-	Matches<Invalid, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
->
+type _Invalid = Expect<Matches<Invalid, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
 type WithConstraints = SqlStatements<
 	ParseSqlTokens<`
@@ -112,7 +110,7 @@ type _BadUniqueRef = Expect<
 	Matches<
 		BadUniqueRef,
 		[
-			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
+			SqlParserError<`Unknown column "missing_col" referenced in table constraint`>,
 			ParseSqlTokens<`
 	create table bad_unique (
 		id int not null,
@@ -136,7 +134,7 @@ type _BadForeignKeyRef = Expect<
 	Matches<
 		BadForeignKeyRef,
 		[
-			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
+			SqlParserError<`Unknown column "missing_col" referenced in table constraint`>,
 			ParseSqlTokens<`
 	create table bad_fk (
 		id int not null,
@@ -201,7 +199,7 @@ type _BadRefWithComments = Expect<
 	Matches<
 		BadRefWithComments,
 		[
-			SqlParseError<`Unknown column "missing_col" referenced in table constraint`>,
+			SqlParserError<`Unknown column "missing_col" referenced in table constraint`>,
 			ParseSqlTokens<`
 	create table bad_ref_with_comments (
 		id int not null,
@@ -260,7 +258,7 @@ type _BadQuotedRef = Expect<
 	Matches<
 		BadQuotedRef,
 		[
-			SqlParseError<`Unknown column "missing id" referenced in table constraint`>,
+			SqlParserError<`Unknown column "missing id" referenced in table constraint`>,
 			ParseSqlTokens<`
 	create table q_bad (
 		"id" int not null,

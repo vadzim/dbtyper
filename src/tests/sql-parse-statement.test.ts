@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type ParseCreate = SqlStatements<
@@ -116,24 +116,19 @@ type _ParseDropSchema = Expect<
 >
 
 type ParseUnknown = SqlStatements<ParseSqlTokens<`create view v as select 1;`>>
-type _ParseUnknown = Expect<
-	Matches<ParseUnknown, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
->
+type _ParseUnknown = Expect<Matches<ParseUnknown, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
 type ParseInvalidCreate = SqlStatements<ParseSqlTokens<`create table broken (id)`>>
 type _ParseInvalidCreate = Expect<
 	Matches<
 		ParseInvalidCreate,
-		[SqlParseError<"Invalid column definition">, ParseSqlTokens<`create table broken (id)`>]
+		[SqlParserError<"Invalid column definition">, ParseSqlTokens<`create table broken (id)`>]
 	>
 >
 
 type ParseInvalidKeywordBoundary = SqlStatements<ParseSqlTokens<`createx table users (id int);`>>
 type _ParseInvalidKeywordBoundary = Expect<
-	Matches<
-		ParseInvalidKeywordBoundary,
-		[readonly [{ readonly kind: "ignorable" }], EmptyTokenList]
-	>
+	Matches<ParseInvalidKeywordBoundary, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
 type ParseInvalidDropBoundary = SqlStatements<ParseSqlTokens<`dropx table users;`>>
@@ -145,7 +140,7 @@ type ParseInvalidIfNot = SqlStatements<ParseSqlTokens<`create schema if not bill
 type _ParseInvalidIfNot = Expect<
 	Matches<
 		ParseInvalidIfNot,
-		[SqlParseError<"Expected EXISTS after IF NOT">, ParseSqlTokens<`create schema if not billing`>]
+		[SqlParserError<"Expected EXISTS after IF NOT">, ParseSqlTokens<`create schema if not billing`>]
 	>
 >
 
@@ -153,7 +148,7 @@ type ParseTrailingTokens = SqlStatements<ParseSqlTokens<`drop table users extra`
 type _ParseTrailingTokens = Expect<
 	Matches<
 		ParseTrailingTokens,
-		[SqlParseError<"Unable to parse DROP TABLE statement">, ParseSqlTokens<`drop table users extra`>]
+		[SqlParserError<"Unable to parse DROP TABLE statement">, ParseSqlTokens<`drop table users extra`>]
 	>
 >
 

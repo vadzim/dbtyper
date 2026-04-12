@@ -1,5 +1,5 @@
 import type { ReadExpectedToken, ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-parse-primitives.js"
-import type { TokensList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
+import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 type SqlScalarTypeToTs<T extends string> = T extends
 	| "int"
@@ -90,16 +90,16 @@ type ScanForNotNullWithRest<B extends TokensList, Start extends TokensList = B> 
 /**
  * Parses a column definition from a buffer.
  * Returns `[{ name, type, nullable }, rest]` on success,
- * or `[SqlParseError, B]` on failure.
+ * or `[SqlParserError, B]` on failure.
  */
 type ParseColumnFromBuffer<B extends TokensList> =
 	PeekToken<B> extends infer ColNameRaw extends string
 		? ColNameRaw extends ""
-			? [SqlParseError<"Invalid column definition">, B]
+			? [SqlParserError<"Invalid column definition">, B]
 			: SkipToken<B> extends infer AfterName extends TokensList
 				? PeekToken<AfterName> extends infer TypeRaw extends string
 					? TypeRaw extends "" | ")" | "," | ";"
-						? [SqlParseError<"Invalid column definition">, B]
+						? [SqlParserError<"Invalid column definition">, B]
 						: SkipOptionalTypeParams<SkipToken<AfterName>> extends infer RestParams extends TokensList
 							? ReadIsArray<RestParams> extends [
 									infer IsArr extends boolean,
@@ -119,10 +119,10 @@ type ParseColumnFromBuffer<B extends TokensList> =
 											},
 											RestAfterNullable,
 										]
-									: [SqlParseError<"Invalid column definition">, B]
-								: [SqlParseError<"Invalid column definition">, B]
-							: [SqlParseError<"Invalid column definition">, B]
-					: [SqlParseError<"Invalid column definition">, B]
+									: [SqlParserError<"Invalid column definition">, B]
+								: [SqlParserError<"Invalid column definition">, B]
+							: [SqlParserError<"Invalid column definition">, B]
+					: [SqlParserError<"Invalid column definition">, B]
 				: never
 		: never
 
@@ -141,6 +141,6 @@ export type AddColumn<B extends TokensList, Row, Names extends string> =
 		: {
 				row: Row
 				names: Names
-				error: SqlParseError<"Invalid column definition">
+				error: SqlParserError<"Invalid column definition">
 				rest: B
 			}

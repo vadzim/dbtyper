@@ -5,7 +5,7 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
@@ -128,7 +128,7 @@ type DropMissingNoIfExists = SqlApplyStatements<
 >
 
 type _DropMissingNoIfExists = Expect<
-	Matches<DropMissingNoIfExists, SqlParseError<`Unknown dropped table "test.missing" in database`>>
+	Matches<DropMissingNoIfExists, SqlParserError<`Unknown dropped table "test.missing" in database`>>
 >
 
 /** IF EXISTS makes dropping a missing table a no-op. */

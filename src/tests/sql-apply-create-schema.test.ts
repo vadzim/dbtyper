@@ -6,7 +6,7 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 
 // --- Create schema ---
 
@@ -46,7 +46,7 @@ type DuplicateSchema = SqlApplyStatements<
 	>[0]
 >
 
-type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParseError<"Duplicate schema name: auth">>>
+type _DuplicateSchema = Expect<Matches<DuplicateSchema, SqlParserError<"Duplicate schema name: auth">>>
 
 /** IF NOT EXISTS leaves the database unchanged when the schema exists. */
 

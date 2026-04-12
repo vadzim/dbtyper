@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // --- CREATE TABLE ---
@@ -185,21 +185,19 @@ type _DropSchema = Expect<
 	>
 >
 
-// --- Error cases: result is SqlParseError, rest is the original buffer ---
+// --- Error cases: result is SqlParserError, rest is the original buffer ---
 
 type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1;`>>
-type _UnknownStatement = Expect<
-	Matches<UnknownStatement, [{ readonly kind: "ignorable" }, EmptyTokenList]>
->
+type _UnknownStatement = Expect<Matches<UnknownStatement, [{ readonly kind: "ignorable" }, EmptyTokenList]>>
 
 type InvalidColumn = SqlStatement<ParseSqlTokens<`create table broken (id)`>>
-type _InvalidColumnResult = Expect<Matches<InvalidColumn[0], SqlParseError<"Invalid column definition">>>
+type _InvalidColumnResult = Expect<Matches<InvalidColumn[0], SqlParserError<"Invalid column definition">>>
 
 type TrailingTokens = SqlStatement<ParseSqlTokens<`drop table users extra`>>
-type _TrailingTokens = Expect<Matches<TrailingTokens[0], SqlParseError<"Unable to parse DROP TABLE statement">>>
+type _TrailingTokens = Expect<Matches<TrailingTokens[0], SqlParserError<"Unable to parse DROP TABLE statement">>>
 
 type InvalidIfNot = SqlStatement<ParseSqlTokens<`create schema if not billing`>>
-type _InvalidIfNot = Expect<Matches<InvalidIfNot[0], SqlParseError<"Expected EXISTS after IF NOT">>>
+type _InvalidIfNot = Expect<Matches<InvalidIfNot[0], SqlParserError<"Expected EXISTS after IF NOT">>>
 
 describe("sql statement buffer", () => {
 	it("should run", () => {})

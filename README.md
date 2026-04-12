@@ -39,7 +39,7 @@ Checks:
 
 - `SqlSchema` checks duplicate table names and foreign key references inside the same schema.
 - `SqlDatabase` checks foreign key references that point to another schema (for example `references public.users(id)`).
-- Any invalid case returns `SqlParseError<...>`.
+- Any invalid case returns `SqlParserError<...>`.
 
 ## Performance Rule
 

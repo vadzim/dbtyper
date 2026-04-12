@@ -1,5 +1,5 @@
 import type { SqlCreateIndex } from "../parser/sql-create-index.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
 
@@ -17,14 +17,14 @@ export type ApplyCreateIndex<Db extends SqlDatabaseLike, Stmt extends SqlCreateI
 						> extends infer Err
 						? [Err] extends [never]
 							? Db
-							: Err extends SqlParseError<string>
+							: Err extends SqlParserError<string>
 								? Err
-								: SqlParseError<"Internal CREATE INDEX validation error">
-						: SqlParseError<"Internal CREATE INDEX validation error">
-					: SqlParseError<`Unknown table for CREATE INDEX: "${Schema}.${Table}"`>
-				: SqlParseError<`Unknown schema for CREATE INDEX: "${Schema}"`>
-			: SqlParseError<"Internal CREATE INDEX schema shape error">
-		: SqlParseError<"Internal CREATE INDEX target error">
+								: SqlParserError<"Internal CREATE INDEX validation error">
+						: SqlParserError<"Internal CREATE INDEX validation error">
+					: SqlParserError<`Unknown table for CREATE INDEX: "${Schema}.${Table}"`>
+				: SqlParserError<`Unknown schema for CREATE INDEX: "${Schema}"`>
+			: SqlParserError<"Internal CREATE INDEX schema shape error">
+		: SqlParserError<"Internal CREATE INDEX target error">
 
 type ValidateIndexColumns<Row extends Record<string, unknown>, Cols extends readonly string[]> = Cols extends readonly [
 	infer H extends string,
@@ -32,7 +32,7 @@ type ValidateIndexColumns<Row extends Record<string, unknown>, Cols extends read
 ]
 	? H extends keyof Row
 		? ValidateIndexColumns<Row, R>
-		: SqlParseError<`Unknown column "${H}" in CREATE INDEX`>
+		: SqlParserError<`Unknown column "${H}" in CREATE INDEX`>
 	: Cols extends readonly []
 		? never
-		: SqlParseError<"Internal CREATE INDEX columns error">
+		: SqlParserError<"Internal CREATE INDEX columns error">

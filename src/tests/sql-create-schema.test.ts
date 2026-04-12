@@ -1,5 +1,5 @@
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -88,9 +88,7 @@ type _CreateQuoted = Expect<
 >
 
 type BadStatement = SqlStatements<ParseSqlTokens<`create view v as select 1;`>>
-type _BadStatement = Expect<
-	Matches<BadStatement, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
->
+type _BadStatement = Expect<Matches<BadStatement, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>>
 
 describe("sql create schema", () => {
 	it("should run", () => {})

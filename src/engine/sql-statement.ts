@@ -1,5 +1,5 @@
 import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
-import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
 import type { SqlApplyStatements, SqlStatementLike } from "./apply-statement.js"
 
@@ -36,7 +36,7 @@ export type Migrations = {
 	prev: Migrations | null
 }
 
-export class DBMigrations<Database extends SqlDatabaseLike | SqlParseError<string>> {
+export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<string>> {
 	constructor(defaultSchema: string, migrations: Migrations | null = null) {
 		this.#migrations = migrations
 		this.#defaultSchema = defaultSchema

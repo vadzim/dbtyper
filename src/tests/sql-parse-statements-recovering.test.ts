@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
-import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 type Empty = SqlStatementsRecovering<ParseSqlTokens<``>>
@@ -65,7 +65,7 @@ type _InvalidSecond = Expect<
 		[
 			readonly [
 				{ readonly kind: "create_schema"; readonly name: "a"; readonly ifNotExists: false },
-				SqlParseError<"Invalid column definition">,
+				SqlParserError<"Invalid column definition">,
 			],
 			ParseSqlTokens<`create table broken (id); create schema b`>,
 		]

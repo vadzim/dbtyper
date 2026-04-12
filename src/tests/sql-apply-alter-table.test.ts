@@ -5,7 +5,7 @@ import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { SqlParseError } from "../parser/sql-tokens.js"
+import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlStatements } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
@@ -91,7 +91,7 @@ type AddExistingColumnNoIfNotExists = SqlApplyStatements<
 >
 
 type _AddExistingColumnNoIfNotExists = Expect<
-	Matches<AddExistingColumnNoIfNotExists, SqlParseError<"Duplicate column name: age">>
+	Matches<AddExistingColumnNoIfNotExists, SqlParserError<"Duplicate column name: age">>
 >
 
 /** IF NOT EXISTS skips add when the column already exists. */
@@ -178,7 +178,7 @@ type DropMissingColumnNoIfExists = SqlApplyStatements<
 >
 
 type _DropMissingColumnNoIfExists = Expect<
-	Matches<DropMissingColumnNoIfExists, SqlParseError<`Unknown column "missing" in altered table`>>
+	Matches<DropMissingColumnNoIfExists, SqlParserError<`Unknown column "missing" in altered table`>>
 >
 
 /** IF EXISTS makes drop of a missing column a no-op. */
@@ -265,7 +265,7 @@ type RenameMissingColumn = SqlApplyStatements<
 >
 
 type _RenameMissingColumn = Expect<
-	Matches<RenameMissingColumn, SqlParseError<`Unknown column "missing" in altered table`>>
+	Matches<RenameMissingColumn, SqlParserError<`Unknown column "missing" in altered table`>>
 >
 
 /** Target name that collides with an existing column is an error. */
@@ -284,7 +284,7 @@ type RenameToExistingColumnName = SqlApplyStatements<
 >
 
 type _RenameToExistingColumnName = Expect<
-	Matches<RenameToExistingColumnName, SqlParseError<"Duplicate column name: id">>
+	Matches<RenameToExistingColumnName, SqlParserError<"Duplicate column name: id">>
 >
 
 // --- Rename table ---
@@ -336,7 +336,7 @@ type RenameTableDuplicate = SqlApplyStatements<
 	>[0]
 >
 
-type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParseError<"Duplicate table name: posts">>>
+type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParserError<"Duplicate table name: posts">>>
 
 // --- Table resolution ---
 
@@ -356,7 +356,7 @@ type AlterMissingNoIfExists = SqlApplyStatements<
 >
 
 type _AlterMissingNoIfExists = Expect<
-	Matches<AlterMissingNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
+	Matches<AlterMissingNoIfExists, SqlParserError<`Unknown altered table "test.missing" in database`>>
 >
 
 type AlterMissingSchemeNoIfExists = SqlApplyStatements<
@@ -369,7 +369,7 @@ type AlterMissingSchemeNoIfExists = SqlApplyStatements<
 >
 
 type _AlterMissingSchemeNoIfExists = Expect<
-	Matches<AlterMissingSchemeNoIfExists, SqlParseError<`Unknown altered table "test.missing" in database`>>
+	Matches<AlterMissingSchemeNoIfExists, SqlParserError<`Unknown altered table "test.missing" in database`>>
 >
 
 type AlterMissingSchemeIfExists = SqlApplyStatements<
@@ -442,7 +442,7 @@ type AlterDefaultSchemaUnqualified = SqlApplyStatements<
 >
 
 type _AlterDefaultSchemaUnqualified = Expect<
-	Matches<AlterDefaultSchemaUnqualified, SqlParseError<"Duplicate column name: age">>
+	Matches<AlterDefaultSchemaUnqualified, SqlParserError<"Duplicate column name: age">>
 >
 
 /** Qualified alter on a non-default schema adds a nullable timestamptz column. */
