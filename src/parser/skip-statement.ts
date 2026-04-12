@@ -11,20 +11,27 @@ export type SkipStatement<
 	EndToken = "" | ";",
 	ClosingBracketsStack extends ClosingBrackets[] = [],
 > =
-	PeekToken<Tokens> extends EndToken
-		? ClosingBracketsStack extends []
-			? [SkippedStatement<PeekToken<Tokens>>, SkipToken<Tokens>]
-			: [SqlParserError<"Unclosed statement">, Tokens]
-		: PeekToken<Tokens> extends ""
-			? [SqlParserError<"Token not found">, Tokens]
-			: PeekToken<Tokens> extends "("
-				? SkipStatement<SkipToken<Tokens>, EndToken, [")", ...ClosingBracketsStack]>
-				: PeekToken<Tokens> extends "["
-					? SkipStatement<SkipToken<Tokens>, EndToken, ["]", ...ClosingBracketsStack]>
-					: PeekToken<Tokens> extends ClosingBrackets
-						? ClosingBracketsStack extends [PeekToken<Tokens>, ...infer Tail extends ClosingBrackets[]]
-							? SkipStatement<SkipToken<Tokens>, EndToken, Tail>
-							: [SqlParserError<"Unmatched closing bracket">, Tokens]
-						: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+	PeekToken<Tokens> extends "("
+		? SkipStatement<SkipToken<Tokens>, EndToken, [")", ...ClosingBracketsStack]>
+		: PeekToken<Tokens> extends "["
+			? SkipStatement<SkipToken<Tokens>, EndToken, ["]", ...ClosingBracketsStack]>
+			: ClosingBracketsStack extends [
+						infer CurrentClosingBracket extends ClosingBrackets,
+						...infer Tail extends ClosingBrackets[],
+				  ]
+				? PeekToken<Tokens> extends ""
+					? [SqlParserError<`Closing bracket not found: ${CurrentClosingBracket}`>, Tokens]
+					: PeekToken<Tokens> extends CurrentClosingBracket
+						? SkipStatement<SkipToken<Tokens>, EndToken, Tail>
+						: PeekToken<Tokens> extends ClosingBrackets
+							? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
+							: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+				: PeekToken<Tokens> extends EndToken
+					? [SkippedStatement<PeekToken<Tokens>>, SkipToken<Tokens>]
+					: PeekToken<Tokens> extends ""
+						? [SqlParserError<"Token not found">, Tokens]
+						: PeekToken<Tokens> extends ClosingBrackets
+							? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
+							: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 
 type ClosingBrackets = ")" | "]"
