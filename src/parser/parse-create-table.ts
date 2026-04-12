@@ -12,7 +12,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SkipPastFirstTopLevelComma,
 	SqlQualifiedIdentifier,
-} from "./sql-parse-primitives.js"
+} from "./sql-primitives.js"
 import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 export type CreateTableStatement = {

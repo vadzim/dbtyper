@@ -2,7 +2,7 @@
  * Migration DDL: ALTER TABLE constraint adds/drops and RLS-related statements as ignorable.
  */
 import { describe, it } from "node:test"
-import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -47,7 +47,7 @@ type _ParseAlterRlsIgnorable = Expect<
 					readonly row: { id: number }
 					readonly refs: undefined
 				},
-				{ readonly kind: "ignorable" },
+				{ readonly kind: "skipped-statement" },
 			],
 			EmptyTokenList,
 		]

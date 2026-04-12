@@ -1,4 +1,4 @@
-import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfExists } from "./sql-parse-primitives.js"
+import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfExists } from "./sql-primitives.js"
 import type { TokensList, SqlParserError } from "./sql-tokens.js"
 
 export type DropSchemaStatement = {

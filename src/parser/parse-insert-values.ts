@@ -1,12 +1,12 @@
 import type { ParseColumnListToTuple } from "./sql-constraints-fk.js"
-import type { IgnorableStatement, SkipStatement } from "./sql-skip-statement.js"
+import type { SkippedStatement, SkipStatement } from "./skip-statement.js"
 import type {
 	ReadBufferEnd,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
-} from "./sql-parse-primitives.js"
+} from "./sql-primitives.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type InsertValuesStatement = {
@@ -62,7 +62,7 @@ type ParseInsertTuple<B extends TokensList> =
 								]
 								? TupleLenEq<Cols, Vals> extends true
 									? SkipStatement<Rest4> extends [
-											IgnorableStatement,
+											SkippedStatement,
 											infer RestFinal extends TokensList,
 										]
 										? [

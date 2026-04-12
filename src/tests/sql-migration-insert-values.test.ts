@@ -4,7 +4,7 @@
 import { describe, it } from "node:test"
 import type { SqlDatabase } from "../engine/sql-database.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
-import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -27,7 +27,7 @@ type _ParseInsertSelectIgnorable = Expect<
 					readonly row: { id: number }
 					readonly refs: undefined
 				},
-				{ readonly kind: "ignorable" },
+				{ readonly kind: "skipped-statement" },
 			],
 			EmptyTokenList,
 		]

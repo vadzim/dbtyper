@@ -1,4 +1,4 @@
-import type { SqlQualifiedIdentifier } from "../../parser/sql-parse-primitives.js"
+import type { SqlQualifiedIdentifier } from "../../parser/sql-primitives.js"
 
 export type SchemaExists<
 	Schemas extends Record<string, Record<string, unknown>>,

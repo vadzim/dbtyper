@@ -1,5 +1,5 @@
 import { describe, it } from "node:test"
-import type { ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
@@ -49,7 +49,7 @@ type _UnknownSecond = Expect<
 		[
 			readonly [
 				{ readonly kind: "create_schema"; readonly name: "a"; readonly ifNotExists: false },
-				{ readonly kind: "ignorable" },
+				{ readonly kind: "skipped-statement" },
 			],
 			EmptyTokenList,
 		]

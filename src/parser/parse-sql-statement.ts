@@ -5,7 +5,7 @@ import type { ParseCreateTable } from "./parse-create-table.js"
 import type { ParseDropSchema } from "./parse-drop-schema.js"
 import type { ParseDropTable } from "./parse-drop-table.js"
 import type { ParseInsertValues } from "./parse-insert-values.js"
-import type { SkipStatement } from "./sql-skip-statement.js"
+import type { SkipStatement } from "./skip-statement.js"
 import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 export type ParseSqlStatement<Tokens extends TokensList> =

@@ -3,7 +3,7 @@ import type {
 	ReadOptionalIfExists,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
-} from "./sql-parse-primitives.js"
+} from "./sql-primitives.js"
 import type { TokensList, SqlParserError } from "./sql-tokens.js"
 
 export type DropTableStatement = {

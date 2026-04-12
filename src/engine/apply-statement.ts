@@ -1,6 +1,6 @@
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { IgnorableStatement } from "../parser/sql-skip-statement.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 import type { CreateIndexStatement } from "../parser/parse-create-index.js"
 import type { InsertValuesStatement } from "../parser/parse-insert-values.js"
 import type { CreateSchemaStatement } from "../parser/parse-create-schema.js"
@@ -16,8 +16,8 @@ import type { ApplyDropSchema } from "./apply-drop-schema.js"
 import type { ApplyDropTable } from "./apply-drop-table.js"
 import type { ApplyInsertValues } from "./apply-insert-values.js"
 
-export type SqlStatementLike =
-	| IgnorableStatement
+export type SqlStatement =
+	| SkippedStatement
 	| CreateIndexStatement
 	| InsertValuesStatement
 	| AlterTableStatement
@@ -29,10 +29,10 @@ export type SqlStatementLike =
 
 export type SqlApplyStatement<
 	Db extends SqlDatabaseLike | SqlParserError<string>,
-	Statement extends SqlStatementLike,
+	Statement extends SqlStatement,
 > = Db extends SqlDatabaseLike
 	? FlattenDBType<
-			Statement extends IgnorableStatement
+			Statement extends SkippedStatement
 				? Db
 				: Statement extends CreateIndexStatement
 					? ApplyCreateIndex<Db, Statement>
@@ -56,14 +56,11 @@ export type SqlApplyStatement<
 
 export type SqlApplyStatements<
 	Db extends SqlDatabaseLike | SqlParserError<string>,
-	Statements extends readonly SqlStatementLike[] | SqlParserError<string>,
+	Statements extends readonly SqlStatement[] | SqlParserError<string>,
 > =
 	Statements extends SqlParserError<string>
 		? Statements
-		: Statements extends readonly [
-					infer First extends SqlStatementLike,
-					...infer Rest extends readonly SqlStatementLike[],
-			  ]
+		: Statements extends readonly [infer First extends SqlStatement, ...infer Rest extends readonly SqlStatement[]]
 			? SqlApplyStatements<SqlApplyStatement<Db, First>, Rest>
 			: Db
 

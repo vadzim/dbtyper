@@ -1,4 +1,4 @@
-import type { ReadExpectedToken, ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-parse-primitives.js"
+import type { ReadExpectedToken, ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-primitives.js"
 import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 type SqlScalarTypeToTs<T extends string> = T extends

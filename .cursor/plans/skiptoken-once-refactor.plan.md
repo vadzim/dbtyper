@@ -83,7 +83,7 @@ Existing guidance: [`.cursor/rules/parser-lookahead-tuples.mdc`](.cursor/rules/p
 
 **Optional primitive**
 
-- A small `ReadFirstKeyword<B>` → `[verb, AfterVerb]` or falsy + `B` tuple can centralize the one `SkipToken` at the top (mirrors existing tuple style in `sql-parse-primitives.ts`).
+- A small `ReadFirstKeyword<B>` → `[verb, AfterVerb]` or falsy + `B` tuple can centralize the one `SkipToken` at the top (mirrors existing tuple style in `sql-primitives.ts`).
 
 ### 2. [`src/parser/sql-column.ts`](src/parser/sql-column.ts)
 
@@ -91,7 +91,7 @@ Still needs helpers that bind **one** `SkipToken` per step instead of `PeekToken
 
 ### 3. Lower priority cleanups
 
-- `infer _` on [`ReadBufferEnd`](src/parser/sql-parse-primitives.ts) success branches in constraints (EOF rest).
+- `infer _` on [`ReadBufferEnd`](src/parser/sql-primitives.ts) success branches in constraints (EOF rest).
 - Dummy `infer _ extends TokensList` where second slot is `EmptyTokenList` — style only.
 
 ### 4. Cursor rule

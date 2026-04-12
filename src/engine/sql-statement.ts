@@ -1,7 +1,7 @@
-import type { ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
-import type { SqlApplyStatements, SqlStatementLike } from "./apply-statement.js"
+import type { SqlApplyStatements, SqlStatement } from "./apply-statement.js"
 
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
 	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
@@ -47,10 +47,10 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 	#migrations: Migrations | null
 	#defaultSchema: string
 
-	apply<Parsed extends readonly SqlStatementLike[]>(
+	apply<Parsed extends readonly SqlStatement[]>(
 		statement: string & { readonly __sql_parsed__: Parsed },
 	): DBMigrations<SqlApplyStatements<Database, Parsed>>
-	apply<Parsed extends readonly SqlStatementLike[]>(
+	apply<Parsed extends readonly SqlStatement[]>(
 		statement: Promise<{ default: { path: string; source: string & { readonly __sql_parsed__: Parsed } } }>,
 	): DBMigrations<SqlApplyStatements<Database, Parsed>>
 	apply(statement: string | Promise<{ default: { source: string; path: string } }>) {

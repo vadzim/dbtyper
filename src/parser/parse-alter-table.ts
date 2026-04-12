@@ -9,14 +9,14 @@ import type {
 	ReadFirstParenGroup,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
-} from "./sql-parse-primitives.js"
+} from "./sql-primitives.js"
 import type {
 	ForeignRefMeta,
 	ParseColumnListToTuple,
 	ParseForeignKeyMetaAndRest,
 	ReadConstraintEntryMatch,
 } from "./sql-constraints-fk.js"
-import type { SkipStatement, IgnorableStatement } from "./sql-skip-statement.js"
+import type { SkipStatement, SkippedStatement } from "./skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type AlterTableStatement = {
@@ -252,7 +252,7 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 		? Meta extends SqlParserError<string>
 			? [Meta, R3]
 			: Meta extends ForeignRefMeta
-				? SkipStatement<R3> extends [IgnorableStatement, infer RestFinal extends TokensList]
+				? SkipStatement<R3> extends [SkippedStatement, infer RestFinal extends TokensList]
 					? [{ readonly kind: "add_constraint_fk"; readonly refs: Meta }, RestFinal]
 					: SkipStatement<R3> extends [infer Err extends SqlParserError<string>, infer _R]
 						? [Err, R3]
@@ -262,7 +262,7 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 	: Kind extends "primary_key"
 		? ReadFirstParenGroup<AfterKw> extends [infer Inner extends TokensList, infer Tail extends TokensList]
 			? ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
-				? SkipStatement<Tail> extends [IgnorableStatement, infer RestFinal extends TokensList]
+				? SkipStatement<Tail> extends [SkippedStatement, infer RestFinal extends TokensList]
 					? [{ readonly kind: "add_constraint_primary"; readonly columns: Cols }, RestFinal]
 					: SkipStatement<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
 						? [Err, Tail]
@@ -272,7 +272,7 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 		: Kind extends "unique"
 			? ReadFirstParenGroup<AfterKw> extends [infer Inner2 extends TokensList, infer Tail2 extends TokensList]
 				? ParseColumnListToTuple<Inner2> extends [infer Cols2 extends readonly string[], infer __]
-					? SkipStatement<Tail2> extends [IgnorableStatement, infer RestFinal2 extends TokensList]
+					? SkipStatement<Tail2> extends [SkippedStatement, infer RestFinal2 extends TokensList]
 						? [{ readonly kind: "add_constraint_unique"; readonly columns: Cols2 }, RestFinal2]
 						: SkipStatement<Tail2> extends [infer Err2 extends SqlParserError<string>, infer _R2]
 							? [Err2, Tail2]

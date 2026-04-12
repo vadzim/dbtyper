@@ -1,4 +1,4 @@
-import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
@@ -196,7 +196,7 @@ type _AlterRenameColumn = Expect<
 
 type UnsupportedAlterAction = ParseSqlStatements<ParseSqlTokens<`alter table users set schema archive;`>>
 type _UnsupportedAlterAction = Expect<
-	Matches<UnsupportedAlterAction, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
+	Matches<UnsupportedAlterAction, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
 >
 
 describe("sql alter table", () => {

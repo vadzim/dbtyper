@@ -6,7 +6,7 @@ import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { ParseSqlStatements } from "../parser/sql-parse-statement.js"
+import type { ParseSqlStatements } from "../parser/parse-sql-statement.js"
 import type { ParseSqlTokens } from "../parser/sql-tokens.js"
 
 type DbApplyAlterFixture = SqlApplyStatements<
