@@ -1,8 +1,9 @@
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ForeignRefMeta,
-	ParseConstraintEntry,
-	ReadConstraintEntryMatch,
+	IntraTableConstraintRef,
+	ParseConstraintBody,
+	TryReadConstraintHead,
 } from "./sql-constraints-fk.js"
 import type {
 	ConsumeStatementEnd,
@@ -12,13 +13,14 @@ import type {
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.js"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.js"
-import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, PeekToken, SqlParserError } from "./sql-tokens.js"
 
 export type CreateTableStatement = {
 	readonly kind: "create_table"
 	readonly name: SqlQualifiedIdentifier | SqlParserError<string>
 	readonly row: unknown
 	readonly refs: ForeignRefMeta | undefined
+	readonly intraTableConstraints: readonly IntraTableConstraintRef[]
 }
 
 /** `Tokens` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
@@ -41,6 +43,7 @@ type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParserError<str
 								? { [K in keyof Row]: Row[K] }
 								: never
 							readonly refs: SqlCreateTableParsedRefs<Parsed>
+							readonly intraTableConstraints: SqlCreateTableParsedIntra<Parsed>
 						},
 						StatementRest,
 					]
@@ -49,11 +52,23 @@ type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParserError<str
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
 
-type CreateBodyState<Row, Names extends string, Error, Refs extends ForeignRefMeta> = {
+type AppendIntra<
+	I extends readonly IntraTableConstraintRef[],
+	X extends IntraTableConstraintRef,
+> = readonly [...I, X]
+
+type CreateBodyState<
+	Row,
+	Names extends string,
+	Error,
+	Refs extends ForeignRefMeta,
+	Intra extends readonly IntraTableConstraintRef[],
+> = {
 	row: Row
 	names: Names
 	error: Error
 	refs: Refs
+	intraTableConstraints: Intra
 }
 
 type ParseCreateBody<
@@ -62,43 +77,37 @@ type ParseCreateBody<
 	Names extends string,
 	Error = never,
 	Refs extends ForeignRefMeta = never,
+	Intra extends readonly IntraTableConstraintRef[] = readonly [],
 > =
 	PeekToken<Tokens> extends ""
-		? [CreateBodyState<Row, Names, Error, Refs>, Tokens]
-		: ReadConstraintEntryMatch<Tokens> extends [infer Kind, infer AfterKw extends TokensList]
-			? ParseCreateBodyEntry<Tokens, Kind, AfterKw, Row, Names, Error, Refs>
+		? [CreateBodyState<Row, Names, Error, Refs, Intra>, Tokens]
+		: TryReadConstraintHead<Tokens> extends infer H
+			? H extends readonly ["err", infer E extends SqlParserError<string>, infer ER extends TokensList]
+				? [CreateBodyState<Row, Names, MergeError<Error, E>, Refs, Intra>, ER]
+				: H extends readonly ["yes", infer P extends { kind: string; afterKw: TokensList }]
+					? ParseCreateBodyConstraint<P["kind"], P["afterKw"], Row, Names, Error, Refs, Intra>
+					: H extends readonly ["no", infer _Rest extends TokensList]
+						? ParseCreateBodyColumn<Tokens, Row, Names, Error, Refs, Intra>
+						: [
+								CreateBodyState<
+									Row,
+									Names,
+									MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
+									Refs,
+									Intra
+								>,
+								Tokens,
+							]
 			: [
 					CreateBodyState<
 						Row,
 						Names,
 						MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
-						Refs
+						Refs,
+						Intra
 					>,
 					Tokens,
 				]
-
-/** Dispatches on `Kind` (a named type-parameter so TypeScript can narrow it via `[Kind] extends [false]`). */
-type ParseCreateBodyEntry<
-	Tokens extends TokensList,
-	Kind,
-	AfterKw extends TokensList,
-	Row,
-	Names extends string,
-	Error,
-	Refs extends ForeignRefMeta,
-> = [Kind] extends [false]
-	? ParseCreateBodyColumn<Tokens, Row, Names, Error, Refs>
-	: Kind extends string
-		? ParseCreateBodyConstraint<Kind, AfterKw, Row, Names, Error, Refs>
-		: [
-				CreateBodyState<
-					Row,
-					Names,
-					MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
-					Refs
-				>,
-				Tokens,
-			]
 
 type ParseCreateBodyColumn<
 	Tokens extends TokensList,
@@ -106,6 +115,7 @@ type ParseCreateBodyColumn<
 	Names extends string,
 	Error,
 	Refs extends ForeignRefMeta,
+	Intra extends readonly IntraTableConstraintRef[],
 > = AddColumn<Tokens, Row, Names> extends infer Added extends {
 	row: unknown
 	names: string
@@ -115,11 +125,20 @@ type ParseCreateBodyColumn<
 	? [Added["error"]] extends [never]
 		? SkipStatement<Added["rest"], "," | ")" | ""> extends [SkippedStatement<infer EndTk>, infer NextTail extends TokensList]
 			? EndTk extends ","
-				? ParseCreateBody<NextTail, Added["row"], Added["names"], Error, Refs>
-				: [CreateBodyState<Added["row"], Added["names"], Error, Refs>, NextTail]
-			: [CreateBodyState<Added["row"], Added["names"], Error, Refs>, Added["rest"]]
-		: [CreateBodyState<Row, Names, MergeError<Error, Added["error"]>, Refs>, Added["rest"]]
-	: [CreateBodyState<Row, Names, MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>, Refs>, Tokens]
+				? ParseCreateBody<NextTail, Added["row"], Added["names"], Error, Refs, Intra>
+				: [CreateBodyState<Added["row"], Added["names"], Error, Refs, Intra>, NextTail]
+			: [CreateBodyState<Added["row"], Added["names"], Error, Refs, Intra>, Added["rest"]]
+		: [CreateBodyState<Row, Names, MergeError<Error, Added["error"]>, Refs, Intra>, Added["rest"]]
+	: [
+			CreateBodyState<
+				Row,
+				Names,
+				MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
+				Refs,
+				Intra
+			>,
+			Tokens,
+		]
 
 type ParseCreateBodyConstraint<
 	Kind extends string,
@@ -128,17 +147,86 @@ type ParseCreateBodyConstraint<
 	Names extends string,
 	Error,
 	Refs extends ForeignRefMeta,
-> = ParseConstraintEntry<Kind, AfterKw, Names> extends [infer EntryResult, infer BodyRest extends TokensList]
+	Intra extends readonly IntraTableConstraintRef[],
+> = ParseConstraintBody<Kind, AfterKw> extends [infer EntryResult, infer BodyRest extends TokensList]
 	? SkipStatement<BodyRest, "," | ")" | ""> extends [SkippedStatement<infer EndTk>, infer NextTail extends TokensList]
 		? EntryResult extends SqlParserError<string>
 			? EndTk extends ","
-				? ParseCreateBody<NextTail, Row, Names, MergeError<Error, EntryResult>, Refs>
-				: [CreateBodyState<Row, Names, MergeError<Error, EntryResult>, Refs>, NextTail]
-			: EndTk extends ","
-				? ParseCreateBody<NextTail, Row, Names, Error, Refs | (EntryResult extends ForeignRefMeta ? EntryResult : never)>
-				: [CreateBodyState<Row, Names, Error, Refs | (EntryResult extends ForeignRefMeta ? EntryResult : never)>, NextTail]
-		: [CreateBodyState<Row, Names, MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>, Refs>, BodyRest]
-	: [CreateBodyState<Row, Names, MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>, Refs>, AfterKw]
+				? ParseCreateBody<NextTail, Row, Names, MergeError<Error, EntryResult>, Refs, Intra>
+				: [CreateBodyState<Row, Names, MergeError<Error, EntryResult>, Refs, Intra>, NextTail]
+			: EntryResult extends ForeignRefMeta
+				? EndTk extends ","
+					? ParseCreateBody<NextTail, Row, Names, Error, Refs | EntryResult, Intra>
+					: [CreateBodyState<Row, Names, Error, Refs | EntryResult, Intra>, NextTail]
+				: EntryResult extends {
+							readonly kind: "primary_key"
+							readonly columns: infer Cols extends readonly string[]
+					  }
+					? EndTk extends ","
+						? ParseCreateBody<
+								NextTail,
+								Row,
+								Names,
+								Error,
+								Refs,
+								AppendIntra<Intra, { readonly kind: "primary_key"; readonly columns: Cols }>
+							>
+						: [
+								CreateBodyState<
+									Row,
+									Names,
+									Error,
+									Refs,
+									AppendIntra<Intra, { readonly kind: "primary_key"; readonly columns: Cols }>
+								>,
+								NextTail,
+							]
+					: EntryResult extends {
+								readonly kind: "unique"
+								readonly columns: infer Cols extends readonly string[]
+						  }
+						? EndTk extends ","
+							? ParseCreateBody<
+									NextTail,
+									Row,
+									Names,
+									Error,
+									Refs,
+									AppendIntra<Intra, { readonly kind: "unique"; readonly columns: Cols }>
+								>
+							: [
+									CreateBodyState<
+										Row,
+										Names,
+										Error,
+										Refs,
+										AppendIntra<Intra, { readonly kind: "unique"; readonly columns: Cols }>
+									>,
+									NextTail,
+								]
+						: EndTk extends ","
+							? ParseCreateBody<NextTail, Row, Names, Error, Refs, Intra>
+							: [CreateBodyState<Row, Names, Error, Refs, Intra>, NextTail]
+		: [
+				CreateBodyState<
+					Row,
+					Names,
+					MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
+					Refs,
+					Intra
+				>,
+				BodyRest,
+			]
+	: [
+			CreateBodyState<
+				Row,
+				Names,
+				MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
+				Refs,
+				Intra
+			>,
+			AfterKw,
+		]
 
 type ParseCreateTableTupleAfterTable<Tokens extends TokensList> = ParseCreateTableStatementBody<Tokens>
 
@@ -181,7 +269,12 @@ type SqlCreateTableParsed<Statement> = Statement extends {
 	body: infer Body extends TokensList
 }
 	? ParseCreateBody<Body, {}, never> extends [
-			infer Parsed extends { row: unknown; error: unknown; refs: ForeignRefMeta },
+			infer Parsed extends {
+				row: unknown
+				error: unknown
+				refs: unknown
+				intraTableConstraints: readonly IntraTableConstraintRef[]
+			},
 			infer BodyRest extends TokensList,
 		]
 		? [Parsed["error"]] extends [never]
@@ -206,3 +299,9 @@ type SqlCreateTableParsedRefs<Parsed> = Parsed extends { refs: infer Refs }
 		? undefined
 		: Extract<Refs, ForeignRefMeta>
 	: undefined
+
+type SqlCreateTableParsedIntra<Parsed> = Parsed extends {
+	intraTableConstraints: infer I extends readonly IntraTableConstraintRef[]
+}
+	? I
+	: readonly []

@@ -1,7 +1,50 @@
 import type { CreateTableStatement } from "../../parser/parse-create-table.js"
-import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../../parser/sql-constraints-fk.js"
+import type {
+	ForeignRefMeta,
+	IntraTableConstraintRef,
+	ValidateColumnTupleRefs,
+	ValidateFkLocalColumnPairs,
+	ValidateFkReferencedColumnPairs,
+} from "../../parser/sql-constraints-fk.js"
 import type { TokensList, SqlParserError } from "../../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "../sql-database.js"
+
+type ValidateIntraConstraintsOnRow<
+	Row,
+	Intra extends readonly IntraTableConstraintRef[],
+> = Intra extends readonly [infer Head extends IntraTableConstraintRef, ...infer Tail extends readonly IntraTableConstraintRef[]]
+	? Head extends { readonly columns: infer Cols extends readonly string[] }
+		? ValidateColumnTupleRefs<Cols, Extract<keyof Row, string>> extends [infer V, infer _ extends TokensList]
+			? V extends true
+				? ValidateIntraConstraintsOnRow<Row, Tail>
+				: V
+			: never
+		: never
+	: never
+
+type ValidateFkLocalsOnRow<Row, Refs> = [Refs] extends [undefined | never]
+	? never
+	: Refs extends ForeignRefMeta
+		? ValidateFkLocalColumnPairs<Refs["columnPairs"], Extract<keyof Row, string>> extends [
+				infer V,
+				infer __ extends TokensList,
+			]
+			? V extends true
+				? never
+				: V
+			: never
+		: never
+
+/** PRIMARY KEY / UNIQUE / FOREIGN KEY local columns vs the new table row (apply-time). */
+export type ValidateCreateTableLocalRefs<
+	Row,
+	Intra extends readonly IntraTableConstraintRef[],
+	Refs,
+> = ValidateIntraConstraintsOnRow<Row, Intra> extends infer E1
+	? [E1] extends [never]
+		? ValidateFkLocalsOnRow<Row, Refs>
+		: E1
+	: ValidateFkLocalsOnRow<Row, Refs>
 
 export type ValidateCreateTableFkRefs<
 	Db extends SqlDatabaseLike,
