@@ -63,32 +63,6 @@ export type ReadConstraintEntryMatch<Tokens extends TokensList> =
 		? [Kind, AfterKw]
 		: [false, Tokens]
 
-export type ValidateColumnRefs<Tokens extends TokensList, Names extends string> =
-	PeekToken<Tokens> extends ""
-		? [true, EmptyTokenList]
-		: ReadExpectedIdentifier<Tokens, "Expected column name in constraint list"> extends [
-					infer Col extends string,
-					infer AfterId extends TokensList,
-			  ]
-			? PeekToken<AfterId> extends ","
-				? Col extends Names
-					? ValidateColumnRefs<SkipToken<AfterId>, Names> extends [infer R, infer _ extends TokensList]
-						? R extends true
-							? [true, EmptyTokenList]
-							: [R, EmptyTokenList]
-						: never
-					: [SqlParserError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
-				: PeekToken<AfterId> extends "" | ")"
-					? Col extends Names
-						? [true, EmptyTokenList]
-						: [SqlParserError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
-					: IsBufferEnd<AfterId> extends true
-						? Col extends Names
-							? [true, EmptyTokenList]
-							: [SqlParserError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
-						: [SqlParserError<"Unable to parse column reference list in table constraint">, EmptyTokenList]
-			: [SqlParserError<"Unable to parse column reference list in table constraint">, EmptyTokenList]
-
 export type ParseColumnListToTuple<Tokens extends TokensList> =
 	PeekToken<Tokens> extends ""
 		? [readonly [], EmptyTokenList]
@@ -183,127 +157,60 @@ export type ValidateFkReferencedColumnPairs<
 		? [true, EmptyTokenList]
 		: [SqlParserError<"Unable to validate foreign key referenced columns">, EmptyTokenList]
 
-/** `Tokens` must be the buffer immediately after `FOREIGN KEY` — pointing at `(local_col_list)`. */
-type ValidateForeignKeyConstraintBodyBuffer<Tokens extends TokensList, Names extends string> =
-	ReadFirstParenGroup<Tokens> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
-		? ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
-				true,
-				infer R1b extends TokensList,
-			]
-			? ReadQualifiedIdentifierFromBuffer<R1b> extends [
-					infer Target extends SqlQualifiedIdentifier,
-					infer R2 extends TokensList,
-				]
-				? ReadFirstParenGroup<R2> extends [infer TargetColsBuf extends TokensList, infer _R3 extends TokensList]
-					? ParseColumnListToTuple<LocalBuf> extends [infer FC extends readonly string[], infer _]
-						? ParseColumnListToTuple<TargetColsBuf> extends [infer TCt extends readonly string[], infer __]
-							? ZipColumnListsToPairs<FC, TCt> extends [infer Pairs, infer ___ extends TokensList]
-								? Pairs extends SqlParserError<string>
-									? [Pairs, EmptyTokenList]
-									: Pairs extends readonly FkColumnPair[]
-										? ValidateFkLocalColumnPairs<Pairs, Names> extends [
-												infer V,
-												infer ____ extends TokensList,
-											]
-											? V extends true
-												? [true, EmptyTokenList]
-												: [V, EmptyTokenList]
-											: never
-										: [SqlParserError<"Unable to build foreign key column pairs">, EmptyTokenList]
-								: never
-							: [SqlParserError<"Unable to parse referenced column list in foreign key">, EmptyTokenList]
-						: [SqlParserError<"Unable to parse local column list in foreign key">, EmptyTokenList]
-					: [SqlParserError<"FOREIGN KEY must include a referenced column list">, EmptyTokenList]
-				: [SqlParserError<"FOREIGN KEY must specify a referenced table and columns">, EmptyTokenList]
-			: [SqlParserError<"FOREIGN KEY must include REFERENCES clause">, EmptyTokenList]
-		: [SqlParserError<"FOREIGN KEY must include a local column list">, EmptyTokenList]
-
 /**
- * Caller must pass `Kind` and `AfterKw` from `ReadConstraintEntryMatch` — tokens for the constraint type keywords have already been extracted once (no re-extraction here).
- * `AfterKw` is the buffer immediately after the constraint type keywords, e.g. after `PRIMARY KEY`, pointing at `(col_list)`.
+ * Parses the body of a table constraint and validates column refs against `Names`.
+ * `Kind` and `AfterKw` come from `ReadConstraintEntryMatch`; the constraint-type keywords have
+ * already been consumed, so `AfterKw` points straight at the body.
+ *
+ * Returns `[result, rest]` where `rest` is the actual buffer after the constraint body —
+ * pass it to `SkipStatement` to advance past any trailing options (e.g. `ON DELETE CASCADE`,
+ * `DEFERRABLE`) to the next comma or end.
+ *
+ * - `"primary_key"` / `"unique"`: `result` is `true` on success or `SqlParserError`.
+ * - `"foreign_key"`:              `result` is `ForeignRefMeta` on success or `SqlParserError`.
+ * - `"other"`:                    `result` is `true`; `rest` = `AfterKw` (body left to `SkipStatement`).
  */
-export type ValidateConstraintRefs<
+export type ParseConstraintEntry<
 	Kind extends string,
 	AfterKw extends TokensList,
 	Names extends string,
 > = Kind extends "primary_key"
-	? ReadFirstParenGroup<AfterKw> extends [infer Gr extends TokensList, infer _]
-		? ValidateColumnRefs<Gr, Names>
-		: [SqlParserError<"PRIMARY KEY must include a column list">, EmptyTokenList]
+	? ReadFirstParenGroup<AfterKw> extends [infer Inner extends TokensList, infer AfterClose extends TokensList]
+		? ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
+			? ValidateColumnTupleRefs<Cols, Names> extends [infer V, infer _unused extends TokensList]
+				? V extends true
+					? [true, AfterClose]
+					: [V, AfterClose]
+				: [SqlParserError<"Unable to validate PRIMARY KEY column refs">, AfterClose]
+			: [SqlParserError<"Unable to parse PRIMARY KEY column list">, AfterClose]
+		: [SqlParserError<"PRIMARY KEY must include a column list">, AfterKw]
 	: Kind extends "unique"
-		? ReadFirstParenGroup<AfterKw> extends [infer Gu extends TokensList, infer _]
-			? ValidateColumnRefs<Gu, Names>
-			: [SqlParserError<"UNIQUE must include a column list">, EmptyTokenList]
+		? ReadFirstParenGroup<AfterKw> extends [infer Inner extends TokensList, infer AfterClose extends TokensList]
+			? ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
+				? ValidateColumnTupleRefs<Cols, Names> extends [infer V, infer _unused extends TokensList]
+					? V extends true
+						? [true, AfterClose]
+						: [V, AfterClose]
+					: [SqlParserError<"Unable to validate UNIQUE column refs">, AfterClose]
+				: [SqlParserError<"Unable to parse UNIQUE column list">, AfterClose]
+			: [SqlParserError<"UNIQUE must include a column list">, AfterKw]
 		: Kind extends "foreign_key"
-			? ValidateForeignKeyConstraintBodyBuffer<AfterKw, Names>
-			: [true, EmptyTokenList]
+			? ParseFkConstraintEntry<AfterKw, Names>
+			: [true, AfterKw]
 
-type ParseForeignRefMetaBuildMeta<
-	Target extends SqlQualifiedIdentifier,
-	Pairs extends readonly FkColumnPair[],
-> = Target extends readonly [infer Table extends string]
-	? [
-			{
-				readonly from: ""
-				readonly columnPairs: Pairs
-				readonly toSchema: undefined
-				readonly toTable: Table
-			},
-			EmptyTokenList,
-		]
-	: Target extends readonly [infer Table extends string, infer Schema extends string]
-		? [
-				{
-					readonly from: ""
-					readonly columnPairs: Pairs
-					readonly toSchema: Schema
-					readonly toTable: Table
-				},
-				EmptyTokenList,
-			]
-		: never
+/** Parses a `FOREIGN KEY (local_cols) REFERENCES table (ref_cols)` body, validates local column refs, and returns `[ForeignRefMeta | error, rest]`. */
+type ParseFkConstraintEntry<AfterKw extends TokensList, Names extends string> =
+	ParseForeignKeyMetaAndRest<AfterKw> extends [infer Result, infer FkRest extends TokensList]
+		? Result extends ForeignRefMeta
+			? ValidateFkLocalColumnPairs<Result["columnPairs"], Names> extends [infer V, infer _unused extends TokensList]
+				? V extends true
+					? [Result, FkRest]
+					: [V, FkRest]
+				: [SqlParserError<"Unable to validate FK local column refs">, FkRest]
+			: [Result, FkRest]
+		: [SqlParserError<"Unable to parse FOREIGN KEY constraint">, AfterKw]
 
-type ParseForeignRefMetaFkTail<
-	LocalBuf extends TokensList,
-	Target extends SqlQualifiedIdentifier,
-	R2 extends TokensList,
-> =
-	ReadFirstParenGroup<R2> extends [infer TargetColsBuf extends TokensList, infer _R3 extends TokensList]
-		? ParseColumnListToTuple<LocalBuf> extends [infer FC extends readonly string[], infer _]
-			? ParseColumnListToTuple<TargetColsBuf> extends [infer TC extends readonly string[], infer __]
-				? ZipColumnListsToPairs<FC, TC> extends [infer Pairs, infer ___ extends TokensList]
-					? Pairs extends SqlParserError<string>
-						? never
-						: Pairs extends readonly FkColumnPair[]
-							? ParseForeignRefMetaBuildMeta<Target, Pairs>
-							: never
-					: never
-				: never
-			: never
-		: never
-
-/** `AfterKey` must be the buffer immediately after `FOREIGN KEY` — pointing at `(local_col_list)`. */
-type ParseForeignRefMetaAfterKey<AfterKey extends TokensList> =
-	ReadFirstParenGroup<AfterKey> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
-		? ReadExpectedToken<R1, "references", "Expected REFERENCES"> extends [true, infer R1b extends TokensList]
-			? ReadQualifiedIdentifierFromBuffer<R1b> extends [
-					infer Target extends SqlQualifiedIdentifier,
-					infer R2 extends TokensList,
-				]
-				? ParseForeignRefMetaFkTail<LocalBuf, Target, R2>
-				: never
-			: never
-		: never
-
-/**
- * Caller must pass `Kind` and `AfterKw` from `ReadConstraintEntryMatch`.
- * Returns FK metadata when `Kind` is `"foreign_key"`, otherwise `never`.
- */
-export type ParseForeignRefMeta<Kind extends string, AfterKw extends TokensList> = Kind extends "foreign_key"
-	? ParseForeignRefMetaAfterKey<AfterKw>
-	: never
-
-/** Like {@link ParseForeignRefMeta} but returns the buffer after the referenced-column `)` (before `ON DELETE`, `;`, etc.). */
+/** Returns the buffer after the referenced-column `)` (before `ON DELETE`, `;`, etc.). */
 export type ParseForeignKeyMetaAndRest<AfterKey extends TokensList> =
 	ReadFirstParenGroup<AfterKey> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
 		? ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [

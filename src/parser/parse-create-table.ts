@@ -1,18 +1,17 @@
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ForeignRefMeta,
-	ParseForeignRefMeta,
+	ParseConstraintEntry,
 	ReadConstraintEntryMatch,
-	ValidateConstraintRefs,
 } from "./sql-constraints-fk.js"
 import type {
 	ConsumeStatementEnd,
 	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
-	SkipPastFirstTopLevelComma,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.js"
+import type { SkipStatement, SkippedStatement } from "./skip-statement.js"
 import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 export type CreateTableStatement = {
@@ -57,44 +56,6 @@ type CreateBodyState<Row, Names extends string, Error, Refs extends ForeignRefMe
 	refs: Refs
 }
 
-type RefsWithOptionalFkMeta<Kind extends string, AfterKw extends TokensList, Refs extends ForeignRefMeta> =
-	ParseForeignRefMeta<Kind, AfterKw> extends [infer Meta extends ForeignRefMeta, infer FkRest extends TokensList]
-		? PeekToken<FkRest> extends ""
-			? Refs | Meta
-			: Refs
-		: Refs
-
-type ParseCreateBodyOneCommaSegment<
-	Tail extends TokensList,
-	Row,
-	Names extends string,
-	Error,
-	Refs extends ForeignRefMeta,
-	Kind,
-	ColStart extends TokensList,
-	AfterKw extends TokensList,
-> = [Kind] extends [false]
-	? AddColumn<ColStart, Row, Names> extends infer Next extends { row: unknown; names: string; error: unknown }
-		? [Next["error"]] extends [never]
-			? ParseCreateBody<Tail, Next["row"], Next["names"], MergeError<Error, Next["error"]>, Refs>
-			: [CreateBodyState<Row, Names, MergeError<Error, Next["error"]>, Refs>, Tail]
-		: [
-				CreateBodyState<
-					Row,
-					Names,
-					MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
-					Refs
-				>,
-				Tail,
-			]
-	: Kind extends string
-		? ValidateConstraintRefs<Kind, AfterKw, Names> extends [infer R, infer ValRest extends TokensList]
-			? PeekToken<ValRest> extends ""
-				? ParseCreateBody<Tail, Row, Names, MergeError<Error, R>, RefsWithOptionalFkMeta<Kind, AfterKw, Refs>>
-				: never
-			: never
-		: never
-
 type ParseCreateBody<
 	Tokens extends TokensList,
 	Row,
@@ -103,18 +64,9 @@ type ParseCreateBody<
 	Refs extends ForeignRefMeta = never,
 > =
 	PeekToken<Tokens> extends ""
-		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<Tokens>]
+		? [CreateBodyState<Row, Names, Error, Refs>, Tokens]
 		: ReadConstraintEntryMatch<Tokens> extends [infer Kind, infer AfterKw extends TokensList]
-			? ParseCreateBodyOneCommaSegment<
-					SkipPastFirstTopLevelComma<Tokens>,
-					Row,
-					Names,
-					Error,
-					Refs,
-					Kind,
-					Tokens,
-					AfterKw
-				>
+			? ParseCreateBodyEntry<Tokens, Kind, AfterKw, Row, Names, Error, Refs>
 			: [
 					CreateBodyState<
 						Row,
@@ -124,6 +76,69 @@ type ParseCreateBody<
 					>,
 					Tokens,
 				]
+
+/** Dispatches on `Kind` (a named type-parameter so TypeScript can narrow it via `[Kind] extends [false]`). */
+type ParseCreateBodyEntry<
+	Tokens extends TokensList,
+	Kind,
+	AfterKw extends TokensList,
+	Row,
+	Names extends string,
+	Error,
+	Refs extends ForeignRefMeta,
+> = [Kind] extends [false]
+	? ParseCreateBodyColumn<Tokens, Row, Names, Error, Refs>
+	: Kind extends string
+		? ParseCreateBodyConstraint<Kind, AfterKw, Row, Names, Error, Refs>
+		: [
+				CreateBodyState<
+					Row,
+					Names,
+					MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
+					Refs
+				>,
+				Tokens,
+			]
+
+type ParseCreateBodyColumn<
+	Tokens extends TokensList,
+	Row,
+	Names extends string,
+	Error,
+	Refs extends ForeignRefMeta,
+> = AddColumn<Tokens, Row, Names> extends infer Added extends {
+	row: unknown
+	names: string
+	error: unknown
+	rest: TokensList
+}
+	? [Added["error"]] extends [never]
+		? SkipStatement<Added["rest"], "," | ")" | ""> extends [SkippedStatement<infer EndTk>, infer NextTail extends TokensList]
+			? EndTk extends ","
+				? ParseCreateBody<NextTail, Added["row"], Added["names"], Error, Refs>
+				: [CreateBodyState<Added["row"], Added["names"], Error, Refs>, NextTail]
+			: [CreateBodyState<Added["row"], Added["names"], Error, Refs>, Added["rest"]]
+		: [CreateBodyState<Row, Names, MergeError<Error, Added["error"]>, Refs>, Added["rest"]]
+	: [CreateBodyState<Row, Names, MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>, Refs>, Tokens]
+
+type ParseCreateBodyConstraint<
+	Kind extends string,
+	AfterKw extends TokensList,
+	Row,
+	Names extends string,
+	Error,
+	Refs extends ForeignRefMeta,
+> = ParseConstraintEntry<Kind, AfterKw, Names> extends [infer EntryResult, infer BodyRest extends TokensList]
+	? SkipStatement<BodyRest, "," | ")" | ""> extends [SkippedStatement<infer EndTk>, infer NextTail extends TokensList]
+		? EntryResult extends SqlParserError<string>
+			? EndTk extends ","
+				? ParseCreateBody<NextTail, Row, Names, MergeError<Error, EntryResult>, Refs>
+				: [CreateBodyState<Row, Names, MergeError<Error, EntryResult>, Refs>, NextTail]
+			: EndTk extends ","
+				? ParseCreateBody<NextTail, Row, Names, Error, Refs | (EntryResult extends ForeignRefMeta ? EntryResult : never)>
+				: [CreateBodyState<Row, Names, Error, Refs | (EntryResult extends ForeignRefMeta ? EntryResult : never)>, NextTail]
+		: [CreateBodyState<Row, Names, MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>, Refs>, BodyRest]
+	: [CreateBodyState<Row, Names, MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>, Refs>, AfterKw]
 
 type ParseCreateTableTupleAfterTable<Tokens extends TokensList> = ParseCreateTableStatementBody<Tokens>
 
@@ -170,7 +185,7 @@ type SqlCreateTableParsed<Statement> = Statement extends {
 			infer BodyRest extends TokensList,
 		]
 		? [Parsed["error"]] extends [never]
-			? PeekToken<BodyRest> extends ""
+			? PeekToken<BodyRest> extends "" | ";"
 				? Parsed
 				: SqlParserError<"Unexpected trailing input in CREATE TABLE body">
 			: Parsed
