@@ -7,7 +7,7 @@ export function sqlDatabase<DefaultSchema extends string>(defaultSchema: Default
 }
 
 export function sqlStatement<S extends string>(source: S) {
-	return source as UnnamedMigration<S>
+	return source as MigrationText<S>
 }
 
 export function migration<Path extends string>(path: Path) {
@@ -34,13 +34,13 @@ export type SqlDatabaseLike = {
 }
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
-type UnnamedMigration<S extends string> = S & {
+type MigrationText<S extends string> = S & {
 	readonly __sql_parsed__: ParseSqlStatementsRecovering<ParseSqlTokens<S>>[0]
 }
 
 type NamedMigration<S extends string, Path extends string> = {
 	readonly kind: "migration"
-	readonly source: UnnamedMigration<S>
+	readonly source: MigrationText<S>
 	readonly path: Path
 }
 
