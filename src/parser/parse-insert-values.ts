@@ -1,7 +1,7 @@
 import type { ParseColumnListToTuple } from "./sql-constraints-fk.js"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.js"
 import type {
-	ReadBufferEnd,
+	IsBufferEnd,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
 	ReadQualifiedIdentifierFromBuffer,
@@ -73,12 +73,7 @@ type ParseInsertTuple<B extends TokensList> =
 												},
 												RestFinal,
 											]
-										: SkipStatement<Rest4> extends [
-													infer Err extends SqlParserError<string>,
-													infer _R,
-											  ]
-											? [Err, Rest4]
-											: [SqlParserError<"Unable to parse INSERT">, Rest4]
+										: [SqlParserError<"Unable to parse INSERT">, Rest4]
 									: [SqlParserError<"INSERT column count does not match value count">, Rest3]
 								: ParseValueListToTuple<ValInner> extends [
 											infer Err extends SqlParserError<string>,
@@ -124,7 +119,7 @@ type ParseValueListToTuple<B extends TokensList> =
 						: [SqlParserError<"Unable to parse INSERT values">, After]
 					: PeekToken<After> extends ")"
 						? [readonly [V], After]
-						: ReadBufferEnd<After> extends [true, infer _]
+						: IsBufferEnd<After> extends true
 							? [readonly [V], After]
 							: [SqlParserError<"Expected ) or comma after INSERT value">, After]
 				: [SqlParserError<"Unable to parse INSERT value">, B]

@@ -110,4 +110,4 @@ export type ReadQualifiedIdentifierFromBuffer<B extends TokensList> =
 		: never
 
 /** `[true, Rest]` when the next token is EOF; `[false, B]` when there is more input. Caller must branch on the first element and continue from `Rest` (on success) or `B` (on failure, unchanged). */
-export type ReadBufferEnd<B extends TokensList> = PeekToken<B> extends "" ? [true, SkipToken<B>] : [false, B]
+export type IsBufferEnd<Tokens extends TokensList> = PeekToken<Tokens> extends "" ? true : false

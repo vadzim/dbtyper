@@ -96,7 +96,5 @@ type ParseCreateIndexAfterParen<
 					},
 					RestFinal,
 				]
-			: SkipStatement<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
-				? [Err, Tail]
-				: [SqlParserError<"Unable to parse CREATE INDEX">, Tail]
+			: [SqlParserError<"Unable to parse CREATE INDEX">, Tail]
 		: [SqlParserError<"Unable to parse CREATE INDEX column list">, Tail]

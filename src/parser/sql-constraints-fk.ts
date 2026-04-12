@@ -1,5 +1,5 @@
 import type {
-	ReadBufferEnd,
+	IsBufferEnd,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadFirstParenGroup,
@@ -80,7 +80,7 @@ export type ValidateColumnRefs<B extends TokensList, Names extends string> =
 					? Col extends Names
 						? [true, EmptyTokenList]
 						: [SqlParserError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
-					: ReadBufferEnd<AfterId> extends [true, infer _EofRest extends TokensList]
+					: IsBufferEnd<AfterId> extends true
 						? Col extends Names
 							? [true, EmptyTokenList]
 							: [SqlParserError<`Unknown column "${Col}" referenced in table constraint`>, EmptyTokenList]
@@ -103,7 +103,7 @@ export type ParseColumnListToTuple<B extends TokensList> =
 					: never
 				: PeekToken<AfterId> extends "" | ")"
 					? [readonly [Col], EmptyTokenList]
-					: ReadBufferEnd<AfterId> extends [true, infer _EofRest extends TokensList]
+					: IsBufferEnd<AfterId> extends true
 						? [readonly [Col], EmptyTokenList]
 						: never
 			: never

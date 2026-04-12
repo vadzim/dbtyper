@@ -1,7 +1,7 @@
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ConsumeStatementEnd,
-	ReadBufferEnd,
+	IsBufferEnd,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadOptionalIfNotExists,
@@ -101,32 +101,30 @@ type ParseIdentifierToken<B extends TokensList> =
 		: never
 
 type ParseAlterAction<B extends TokensList> =
-	ReadBufferEnd<B> extends [infer AtEnd, infer Rem extends TokensList]
-		? AtEnd extends true
-			? SqlParserError<"Expected an ALTER TABLE action">
-			: ReadExpectedToken<Rem, "add", "Expected an ALTER TABLE action"> extends [
-						infer AddResult,
-						infer AddRest extends TokensList,
-				  ]
-				? AddResult extends SqlParserError<string>
-					? ReadExpectedToken<Rem, "drop", "Expected an ALTER TABLE action"> extends [
-							infer DropResult,
-							infer DropRest extends TokensList,
-						]
-						? DropResult extends SqlParserError<string>
-							? ReadExpectedToken<Rem, "rename", "Expected an ALTER TABLE action"> extends [
-									infer RenameResult,
-									infer RenameRest extends TokensList,
-								]
-								? RenameResult extends SqlParserError<string>
-									? SqlParserError<"Unsupported ALTER TABLE action">
-									: ParseAlterActionRename<RenameRest>
-								: SqlParserError<"Unsupported ALTER TABLE action">
-							: ParseAlterActionDrop<DropRest>
-						: SqlParserError<"Unsupported ALTER TABLE action">
-					: ParseAlterActionAdd<AddRest>
-				: SqlParserError<"Unsupported ALTER TABLE action">
-		: never
+	IsBufferEnd<B> extends true
+		? SqlParserError<"Expected an ALTER TABLE action">
+		: ReadExpectedToken<B, "add", "Expected an ALTER TABLE action"> extends [
+					infer AddResult,
+					infer AddRest extends TokensList,
+			  ]
+			? AddResult extends SqlParserError<string>
+				? ReadExpectedToken<B, "drop", "Expected an ALTER TABLE action"> extends [
+						infer DropResult,
+						infer DropRest extends TokensList,
+					]
+					? DropResult extends SqlParserError<string>
+						? ReadExpectedToken<B, "rename", "Expected an ALTER TABLE action"> extends [
+								infer RenameResult,
+								infer RenameRest extends TokensList,
+							]
+							? RenameResult extends SqlParserError<string>
+								? SqlParserError<"Unsupported ALTER TABLE action">
+								: ParseAlterActionRename<RenameRest>
+							: SqlParserError<"Unsupported ALTER TABLE action">
+						: ParseAlterActionDrop<DropRest>
+					: SqlParserError<"Unsupported ALTER TABLE action">
+				: ParseAlterActionAdd<AddRest>
+			: SqlParserError<"Unsupported ALTER TABLE action">
 
 type ParseAlterActionAdd<B extends TokensList> =
 	PeekToken<B> extends "column"
@@ -169,30 +167,28 @@ type ParseAlterActionAddColumn<B extends TokensList> =
 				: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends TokensList> =
-	ReadBufferEnd<Rest> extends [infer AtEnd, infer Rem extends TokensList]
-		? AtEnd extends true
-			? SqlParserError<"Expected a column definition in ALTER TABLE ADD COLUMN">
-			: AddColumn<Rem, {}, never> extends infer Added extends {
-						row: unknown
-						names: string
-						error: unknown
-						rest: TokensList
-				  }
-				? [Added["error"]] extends [never]
-					? Added["row"] extends Record<Added["names"], infer Definition>
-						? [
-								{
-									readonly kind: "add_column"
-									readonly ifNotExists: IfNotExists
-									readonly name: Added["names"]
-									readonly definition: Definition
-								},
-								Added["rest"],
-							]
-						: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
-					: Added["error"]
-				: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
-		: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
+	IsBufferEnd<Rest> extends true
+		? SqlParserError<"Expected a column definition in ALTER TABLE ADD COLUMN">
+		: AddColumn<Rest, {}, never> extends infer Added extends {
+					row: unknown
+					names: string
+					error: unknown
+					rest: TokensList
+			  }
+			? [Added["error"]] extends [never]
+				? Added["row"] extends Record<Added["names"], infer Definition>
+					? [
+							{
+								readonly kind: "add_column"
+								readonly ifNotExists: IfNotExists
+								readonly name: Added["names"]
+								readonly definition: Definition
+							},
+							Added["rest"],
+						]
+					: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
+				: Added["error"]
+			: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionDropColumn<B extends TokensList> =
 	ReadOptionalIfExists<B> extends [true, infer Rest extends TokensList]
@@ -254,9 +250,7 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 			: Meta extends ForeignRefMeta
 				? SkipStatement<R3> extends [SkippedStatement, infer RestFinal extends TokensList]
 					? [{ readonly kind: "add_constraint_fk"; readonly refs: Meta }, RestFinal]
-					: SkipStatement<R3> extends [infer Err extends SqlParserError<string>, infer _R]
-						? [Err, R3]
-						: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, R3]
+					: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, R3]
 				: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, R3]
 		: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, AfterKw]
 	: Kind extends "primary_key"
@@ -264,9 +258,7 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 			? ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
 				? SkipStatement<Tail> extends [SkippedStatement, infer RestFinal extends TokensList]
 					? [{ readonly kind: "add_constraint_primary"; readonly columns: Cols }, RestFinal]
-					: SkipStatement<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
-						? [Err, Tail]
-						: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, Tail]
+					: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, Tail]
 				: [SqlParserError<"Unable to parse PRIMARY KEY columns">, Tail]
 			: [SqlParserError<"Expected column list for PRIMARY KEY">, AfterKw]
 		: Kind extends "unique"
@@ -274,9 +266,7 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 				? ParseColumnListToTuple<Inner2> extends [infer Cols2 extends readonly string[], infer __]
 					? SkipStatement<Tail2> extends [SkippedStatement, infer RestFinal2 extends TokensList]
 						? [{ readonly kind: "add_constraint_unique"; readonly columns: Cols2 }, RestFinal2]
-						: SkipStatement<Tail2> extends [infer Err2 extends SqlParserError<string>, infer _R2]
-							? [Err2, Tail2]
-							: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, Tail2]
+						: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, Tail2]
 					: [SqlParserError<"Unable to parse UNIQUE columns">, Tail2]
 				: [SqlParserError<"Expected column list for UNIQUE">, AfterKw]
 			: Kind extends "other"
