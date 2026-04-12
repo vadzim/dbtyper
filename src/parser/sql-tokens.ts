@@ -18,40 +18,47 @@ type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 		? { __token__: `"${String}"`; __rest__: Rest; __buffer__: S }
 		: S extends `'${infer String}'${infer Rest}`
 			? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
-			: S extends `\`${infer String}\`${infer Rest}`
-				? { __token__: `\`${String}\``; __rest__: Rest; __buffer__: S }
-				: S extends `--${infer Comment}`
-					? Comment extends `${string}\n${infer Rest}`
-						? ReadTokenFromString<Rest>
-						: { __token__: ""; __rest__: ""; __buffer__: S }
-					: S extends `/*${infer Comment}`
-						? Comment extends `${string}*/${infer Rest}`
-							? ReadTokenFromString<Rest>
-							: { __token__: ""; __rest__: ""; __buffer__: S }
-						: S extends `${infer Head}${infer Rest}`
-							? Head extends StartTokenChar
-								? OptimizedBySpaceReadTokenChars<Rest> extends {
-										__token__: infer Word extends string
-										__rest__: infer Tail extends string
-									}
-									? {
-											__token__: CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>
-											__rest__: Tail
-											__buffer__: S
-										}
-									: { __token__: Head; __rest__: Rest; __buffer__: S }
-								: { __token__: Head; __rest__: Rest; __buffer__: S }
-							: { __token__: S; __rest__: ""; __buffer__: S }
+			: S extends `$$${infer String}$$${infer Rest}`
+				? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
+				: ReadTaggedDollar<S> extends {
+							__token__: infer String extends string
+							__rest__: infer Rest extends string
+					  }
+					? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
+					: S extends `\`${infer String}\`${infer Rest}`
+						? { __token__: `"${String}"`; __rest__: Rest; __buffer__: S }
+						: S extends `--${infer Comment}`
+							? Comment extends `${string}\n${infer Rest}`
+								? ReadTokenFromString<Rest>
+								: { __token__: ""; __rest__: ""; __buffer__: S }
+							: S extends `/*${infer Comment}`
+								? Comment extends `${string}*/${infer Rest}`
+									? ReadTokenFromString<Rest>
+									: { __token__: ""; __rest__: ""; __buffer__: S }
+								: S extends `${infer Head}${infer Rest}`
+									? Head extends StartTokenChar
+										? OptimizedBySpaceReadTokenChars<Rest> extends {
+												__token__: infer Word extends string
+												__rest__: infer Tail extends string
+											}
+											? {
+													__token__: CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>
+													__rest__: Tail
+													__buffer__: S
+												}
+											: { __token__: Head; __rest__: Rest; __buffer__: S }
+										: { __token__: Head; __rest__: Rest; __buffer__: S }
+									: { __token__: S; __rest__: ""; __buffer__: S }
+
+type ReadTaggedDollar<S extends string> = S extends `$${infer Tag}$${infer Rest}`
+	? ReadTokenChars<Tag>["__rest__"] extends ""
+		? Rest extends `${infer String}$${Tag}$${infer Rest2}`
+			? { __token__: String; __rest__: Rest2 }
+			: { __token__: Rest; __rest__: "" }
+		: null
+	: null
 
 type CheckDoubleQuotes<S extends string> = S extends ServiceWords ? S : `"${S}"`
-
-type OptimizedBySpaceReadTokenChars2<S extends string> = S extends `${infer SmallerBuffer} ${string}`
-	? ReadTokenChars<SmallerBuffer> extends { __token__: infer T extends string; __rest__: string }
-		? S extends `${T}${infer Rest}`
-			? { __token__: T; __rest__: Rest }
-			: ReadTokenChars<S>
-		: ReadTokenChars<S>
-	: ReadTokenChars<S>
 
 type OptimizedBySpaceReadTokenChars<S extends string> = S extends `${infer SmallerBuffer} ${infer Rest extends string}`
 	? ReadTokenChars<SmallerBuffer> extends {
@@ -64,16 +71,6 @@ type OptimizedBySpaceReadTokenChars<S extends string> = S extends `${infer Small
 		: ReadTokenChars<S>
 	: ReadTokenChars<S>
 
-// type ReadTokenChars<R0 extends string, Acc extends string = ""> = R0 extends `${infer C1}${infer R1}`
-// 	? C1 extends TokenChar
-// 		? R1 extends `${infer C2}${infer R2}`
-// 			? C2 extends TokenChar
-// 				? ReadTokenChars<R2, `${Acc}${C1}${C2}`>
-// 				: [`${Acc}${C1}`, R1]
-// 			: [`${Acc}${C1}`, R1]
-// 		: [Acc, R0]
-// : [Acc, ""]
-
 type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends TokenChar
 		? ReadTokenChars<Rest, `${Acc}${C}`>
@@ -82,7 +79,7 @@ type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${in
 
 type Ws = " " | "\n" | "\t" | "\r"
 
-type StartTokenChar = Letter | Digit | "$" | "_"
+type StartTokenChar = Letter | Digit | "_"
 
 type TokenChar = Letter | Digit | "$" | "_"
 
