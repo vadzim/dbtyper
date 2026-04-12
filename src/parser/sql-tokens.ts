@@ -1,54 +1,55 @@
-// const bufferKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
-// type BufferKey = typeof bufferKey // it's denied to export this type and use it outside this module in any directional or indirectional way
+const debugBufferKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 
 export type ParseSqlTokens<S extends string = string> = ReadTokenFromString<S> // opaque buffer type
-export type EmptyTokenList = { __token__: ""; __rest__: ""; __buffer__: "" }
-export type TokensList = { __token__: string; __rest__: string; __buffer__: string }
+export type EmptyTokenList = MakeTokensBuffer<"", "", "">
+export type TokensList = MakeTokensBuffer<string, string, string>
 export type SqlParserError<Message extends string> = {
 	readonly __sql_parser_error__: Message
 }
 
-export type PeekToken<B extends TokensList> = B["__token__"]
-export type SkipToken<B extends TokensList> = ParseSqlTokens<B["__rest__"]>
+export type PeekToken<Tokens extends TokensList> = Tokens["__token__"]
+export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens["__rest__"]>
 
-/** Lex one token from a string (internal). `__buffer__` is always `S` for this call (debug). */
+type MakeTokensBuffer<Token extends string, Rest extends string, Buffer extends string> = {
+	__token__: Token
+	__rest__: Rest
+	[debugBufferKey]: Buffer
+}
+
+/** Lex one token from a string (internal). [debugBufferKey] is always `S` for this call */
 type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 	? ReadTokenFromString<Rest>
 	: S extends `"${infer String}"${infer Rest}`
-		? { __token__: `"${String}"`; __rest__: Rest; __buffer__: S }
+		? MakeTokensBuffer<`"${String}"`, Rest, S>
 		: S extends `'${infer String}'${infer Rest}`
-			? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
+			? MakeTokensBuffer<`'${String}'`, Rest, S>
 			: S extends `$$${infer String}$$${infer Rest}`
-				? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
+				? MakeTokensBuffer<`'${String}'`, Rest, S>
 				: ReadTaggedDollar<S> extends {
 							__token__: infer String extends string
 							__rest__: infer Rest extends string
 					  }
-					? { __token__: `'${String}'`; __rest__: Rest; __buffer__: S }
+					? MakeTokensBuffer<`'${String}'`, Rest, S>
 					: S extends `\`${infer String}\`${infer Rest}`
-						? { __token__: `"${String}"`; __rest__: Rest; __buffer__: S }
+						? MakeTokensBuffer<`"${String}"`, Rest, S>
 						: S extends `--${infer Comment}`
 							? Comment extends `${string}\n${infer Rest}`
 								? ReadTokenFromString<Rest>
-								: { __token__: ""; __rest__: ""; __buffer__: S }
+								: MakeTokensBuffer<"", "", S>
 							: S extends `/*${infer Comment}`
 								? Comment extends `${string}*/${infer Rest}`
 									? ReadTokenFromString<Rest>
-									: { __token__: ""; __rest__: ""; __buffer__: S }
+									: MakeTokensBuffer<"", "", S>
 								: S extends `${infer Head}${infer Rest}`
 									? Head extends StartTokenChar
 										? OptimizedBySpaceReadTokenChars<Rest> extends {
 												__token__: infer Word extends string
 												__rest__: infer Tail extends string
 											}
-											? {
-													__token__: CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>
-													__rest__: Tail
-													__buffer__: S
-												}
-											: { __token__: Head; __rest__: Rest; __buffer__: S }
-										: { __token__: Head; __rest__: Rest; __buffer__: S }
-									: { __token__: S; __rest__: ""; __buffer__: S }
+											? MakeTokensBuffer<CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Tail, S>
+											: MakeTokensBuffer<Head, Rest, S>
+										: MakeTokensBuffer<Head, Rest, S>
+									: MakeTokensBuffer<S, "", S>
 
 type ReadTaggedDollar<S extends string> = S extends `$${infer Tag}$${infer Rest}`
 	? ReadTokenChars<Tag>["__rest__"] extends ""
