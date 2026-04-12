@@ -1,7 +1,7 @@
 import type { SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike, SqlDatabase } from "./sql-database.js"
-import type { SqlApplyStatements, SqlStatementLike } from "./sql-apply-statement.js"
+import type { SqlApplyStatements, SqlStatementLike } from "./apply-statement.js"
 
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
 	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)

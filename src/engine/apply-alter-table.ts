@@ -1,9 +1,11 @@
-import type { SqlAlterTableLike } from "../parser/sql-alter-table.js"
+import type { SqlAlterTable } from "../parser/sql-alter-table.js"
+import type { ForeignRefMeta } from "../parser/sql-constraints-fk.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
+import type { ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.js"
+import type { ValidateAlterTableFkRef } from "./helpers/validate-fk-refs.js"
 
-export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterTableLike> =
+export type ApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlterTable> =
 	ResolveQualifiedIdentifier<Alter["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,
@@ -23,6 +25,17 @@ export type SqlApplyAlterTable<Db extends SqlDatabaseLike, Alter extends SqlAlte
 			: SqlParseError<"Internal SqlApplyAlterTable schema shape error">
 		: SqlParseError<"Internal SqlApplyAlterTable target error">
 
+type ValidateConstraintColumnsExist<
+	Row extends Record<string, unknown>,
+	Cols extends readonly string[],
+> = Cols extends readonly [infer H extends string, ...infer R extends readonly string[]]
+	? H extends keyof Row
+		? ValidateConstraintColumnsExist<Row, R>
+		: SqlParseError<`Unknown column "${H}" in ALTER TABLE constraint`>
+	: Cols extends readonly []
+		? never
+		: SqlParseError<"Internal ALTER TABLE constraint columns error">
+
 type ApplyAlterOnExistingTable<
 	Db extends SqlDatabaseLike,
 	Schemas extends Record<string, Record<string, unknown>>,
@@ -30,7 +43,7 @@ type ApplyAlterOnExistingTable<
 	Table extends string,
 	Action,
 > =
-	ApplyTableAction<Schemas[Schema][Table], Action, Schemas[Schema], Table> extends infer Next
+	ApplyTableAction<Db, Schemas[Schema][Table], Action, Schemas[Schema], Schema, Table> extends infer Next
 		? Next extends SqlParseError<string>
 			? Next
 			: Next extends { mode: "row"; row: infer NextRow extends Record<string, unknown> }
@@ -49,10 +62,12 @@ type ApplyAlterOnExistingTable<
 		: SqlParseError<"Internal SqlApplyAlterTable action error">
 
 type ApplyTableAction<
+	Db extends SqlDatabaseLike,
 	Row,
 	Action,
 	SchemaTables extends Record<string, unknown>,
-	CurrentTable extends string = never,
+	Schema extends string,
+	CurrentTable extends string,
 > = Action extends {
 	kind: "add_column"
 	ifNotExists: infer IfNotExists extends boolean
@@ -86,7 +101,48 @@ type ApplyTableAction<
 						? Next
 						: { mode: "schema"; tables: Extract<Next, Record<string, unknown>> }
 					: SqlParseError<"Internal rename_to action error">
-				: SqlParseError<"Unsupported ALTER TABLE action">
+				: Action extends { readonly kind: "add_constraint_fk"; readonly refs: infer R extends ForeignRefMeta }
+					? ValidateAlterTableFkRef<
+							Db,
+							Schema,
+							CurrentTable,
+							Extract<Row, Record<string, unknown>>,
+							R
+						> extends infer Err
+						? [Err] extends [never]
+							? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
+							: Err extends SqlParseError<string>
+								? Err
+								: SqlParseError<"Internal ALTER TABLE add_constraint_fk validation error">
+						: SqlParseError<"Internal ALTER TABLE add_constraint_fk validation error">
+					: Action extends {
+								readonly kind: "add_constraint_primary"
+								readonly columns: infer Cols extends readonly string[]
+						  }
+						? ValidateConstraintColumnsExist<Extract<Row, Record<string, unknown>>, Cols> extends infer Err
+							? [Err] extends [never]
+								? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
+								: Err extends SqlParseError<string>
+									? Err
+									: SqlParseError<"Internal ALTER TABLE add_constraint_primary validation error">
+							: SqlParseError<"Internal ALTER TABLE add_constraint_primary validation error">
+						: Action extends {
+									readonly kind: "add_constraint_unique"
+									readonly columns: infer Cols extends readonly string[]
+							  }
+							? ValidateConstraintColumnsExist<
+									Extract<Row, Record<string, unknown>>,
+									Cols
+								> extends infer Err
+								? [Err] extends [never]
+									? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
+									: Err extends SqlParseError<string>
+										? Err
+										: SqlParseError<"Internal ALTER TABLE add_constraint_unique validation error">
+								: SqlParseError<"Internal ALTER TABLE add_constraint_unique validation error">
+							: Action extends { readonly kind: "drop_constraint" }
+								? { mode: "row"; row: Extract<Row, Record<string, unknown>> }
+								: SqlParseError<"Unsupported ALTER TABLE action">
 
 type AddColumnToRow<Row, Name extends string, Definition, IfNotExists extends boolean> = Name extends keyof Extract<
 	Row,

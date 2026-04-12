@@ -194,11 +194,11 @@ type _AlterRenameColumn = Expect<
 	>
 >
 
-type UnsupportedAlterAction = SqlStatements<ParseSqlTokens<`alter table users set schema archive`>>
+type UnsupportedAlterAction = SqlStatements<ParseSqlTokens<`alter table users set schema archive;`>>
 type _UnsupportedAlterAction = Expect<
 	Matches<
 		UnsupportedAlterAction,
-		[SqlParseError<"Unsupported ALTER TABLE action">, ParseSqlTokens<`alter table users set schema archive`>]
+		[readonly [{ readonly kind: "ignorable" }], EmptyTokenList]
 	>
 >
 

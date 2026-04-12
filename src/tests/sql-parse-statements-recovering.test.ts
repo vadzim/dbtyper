@@ -42,16 +42,16 @@ type _Two = Expect<
 	>
 >
 
-type UnknownSecond = SqlStatementsRecovering<ParseSqlTokens<`create schema a; select 1`>>
+type UnknownSecond = SqlStatementsRecovering<ParseSqlTokens<`create schema a; select 1;`>>
 type _UnknownSecond = Expect<
 	Matches<
 		UnknownSecond,
 		[
 			readonly [
 				{ readonly kind: "create_schema"; readonly name: "a"; readonly ifNotExists: false },
-				SqlParseError<"Unknown sql statement">,
+				{ readonly kind: "ignorable" },
 			],
-			ParseSqlTokens<`select 1`>,
+			EmptyTokenList,
 		]
 	>
 >

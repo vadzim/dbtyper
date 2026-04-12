@@ -16,7 +16,14 @@ import type {
 import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 /** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
-export type SqlCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
+export type ParseCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
+
+export type SqlCreateTable = {
+	readonly kind: "create_table"
+	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
+	readonly row: unknown
+	readonly refs: ForeignRefMeta | undefined
+}
 
 type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
 	? [E, R]
@@ -38,13 +45,6 @@ type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParseError<stri
 					]
 			: [SqlParseError<"Internal SQL parser error">, StatementRest]
 		: [SqlParseError<"Internal SQL parser error">, EmptyTokenList]
-
-export type SqlCreateTableLike = {
-	readonly kind: "create_table"
-	readonly name: SqlQualifiedIdentifier | SqlParseError<string>
-	readonly row: unknown
-	readonly refs: ForeignRefMeta | undefined
-}
 
 type MergeError<Current, Next> = Next extends true ? Current : Current | Next
 

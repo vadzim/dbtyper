@@ -87,9 +87,9 @@ type _CreateQuoted = Expect<
 	>
 >
 
-type BadStatement = SqlStatements<ParseSqlTokens<`create view v as select 1`>>
+type BadStatement = SqlStatements<ParseSqlTokens<`create view v as select 1;`>>
 type _BadStatement = Expect<
-	Matches<BadStatement, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`create view v as select 1`>]>
+	Matches<BadStatement, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
 describe("sql create schema", () => {

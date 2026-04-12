@@ -60,9 +60,9 @@ type _PostsShape = Expect<
 	>
 >
 
-type Invalid = SqlStatements<ParseSqlTokens<"select * from users">>
+type Invalid = SqlStatements<ParseSqlTokens<"select * from users;">>
 type _Invalid = Expect<
-	Matches<Invalid, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<"select * from users">]>
+	Matches<Invalid, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
 type WithConstraints = SqlStatements<

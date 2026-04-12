@@ -1,11 +1,11 @@
-import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
-import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../parser/sql-constraints-fk.js"
-import type { TokensList, SqlParseError } from "../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "./sql-database.js"
+import type { SqlCreateTable } from "../../parser/sql-create-table.js"
+import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../../parser/sql-constraints-fk.js"
+import type { TokensList, SqlParseError } from "../../parser/sql-tokens.js"
+import type { SqlDatabaseLike } from "../sql-database.js"
 
 export type ValidateCreateTableFkRefs<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTableLike,
+	Create extends SqlCreateTable,
 	NewSchema extends string,
 	NewTable extends string,
 > = Create["refs"] extends undefined ? never : ValidateFkRefsUnion<Db, Create, NewSchema, NewTable, Create["refs"]>
@@ -16,7 +16,7 @@ type ResolveFkTargetSchema<R extends ForeignRefMeta, DbDefault extends string> =
 
 type ValidateFkRefsUnion<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTableLike,
+	Create extends SqlCreateTable,
 	NewSchema extends string,
 	NewTable extends string,
 	Refs,
@@ -56,7 +56,7 @@ type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> =
 
 type ValidateOneCreateTableFkRef<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTableLike,
+	Create extends SqlCreateTable,
 	NewSchema extends string,
 	NewTable extends string,
 	R extends ForeignRefMeta,
@@ -68,5 +68,23 @@ type ValidateOneCreateTableFkRef<
 				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
 					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
 					: UnknownRefTableError<R, TargetSchema, NewSchema>
+				: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
+		: SqlParseError<"Internal FK target schema resolution error">
+
+/** FK validation for `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY` on an existing typed row. */
+export type ValidateAlterTableFkRef<
+	Db extends SqlDatabaseLike,
+	Schema extends string,
+	Table extends string,
+	Row extends Record<string, unknown>,
+	R extends ForeignRefMeta,
+> =
+	ResolveFkTargetSchema<R, Db["defaultSchema"]> extends infer TargetSchema extends string
+		? IsSelfRef<Schema, Table, TargetSchema, R> extends true
+			? ValidateFkTargetColumns<Row, R["columnPairs"]>
+			: TargetSchema extends keyof Db["schemas"]
+				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
+					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
+					: UnknownRefTableError<R, TargetSchema, Schema>
 				: SqlParseError<`Unknown referenced schema "${TargetSchema}" in database`>
 		: SqlParseError<"Internal FK target schema resolution error">

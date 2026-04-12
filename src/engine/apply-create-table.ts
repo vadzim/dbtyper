@@ -1,12 +1,12 @@
-import type { SqlCreateTableLike } from "../parser/sql-create-table.js"
+import type { SqlCreateTable } from "../parser/sql-create-table.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { ValidateCreateTableFkRefs } from "./sql-apply-validate-fk-refs.js"
-import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./sql-engine.js"
+import type { ValidateCreateTableFkRefs } from "./helpers/validate-fk-refs.js"
+import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
 
-export type SqlApplyCreateTable<
+export type ApplyCreateTable<
 	Db extends SqlDatabaseLike,
-	Create extends SqlCreateTableLike,
+	Create extends SqlCreateTable,
 > = Create["name"] extends infer Name
 	? Name extends SqlParseError<string>
 		? Name

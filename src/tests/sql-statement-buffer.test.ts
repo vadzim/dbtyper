@@ -187,9 +187,9 @@ type _DropSchema = Expect<
 
 // --- Error cases: result is SqlParseError, rest is the original buffer ---
 
-type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1`>>
+type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1;`>>
 type _UnknownStatement = Expect<
-	Matches<UnknownStatement, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`create view v as select 1`>]>
+	Matches<UnknownStatement, [{ readonly kind: "ignorable" }, EmptyTokenList]>
 >
 
 type InvalidColumn = SqlStatement<ParseSqlTokens<`create table broken (id)`>>

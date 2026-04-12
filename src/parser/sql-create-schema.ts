@@ -1,14 +1,14 @@
 import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfNotExists } from "./sql-parse-primitives.js"
 import type { TokensList, SqlParseError } from "./sql-tokens.js"
 
-export type SqlCreateSchemaLike = {
+export type SqlCreateSchema = {
 	readonly kind: "create_schema"
 	readonly name: string
 	readonly ifNotExists: boolean
 }
 
 /** `B` must be the buffer immediately after the `schema` token (caller routes with `PeekToken` then `SkipToken`). */
-export type SqlCreateSchema<B extends TokensList> = FinalizeCreateSchemaTuple<ParseCreateSchemaTupleAfterSchema<B>>
+export type ParseCreateSchema<B extends TokensList> = FinalizeCreateSchemaTuple<ParseCreateSchemaTupleAfterSchema<B>>
 
 type FinalizeCreateSchemaTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
 	? [E, R]

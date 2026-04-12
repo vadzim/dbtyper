@@ -43,9 +43,18 @@ type _Two = Expect<
 >
 
 /** First failure is only `[error, buffer]` — prior successful parses are not returned. */
-type UnknownSecond = SqlStatements<ParseSqlTokens<`create schema a; select 1`>>
+type UnknownSecond = SqlStatements<ParseSqlTokens<`create schema a; select 1;`>>
 type _UnknownSecond = Expect<
-	Matches<UnknownSecond, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`select 1`>]>
+	Matches<
+		UnknownSecond,
+		[
+			readonly [
+				{ readonly kind: "create_schema"; readonly name: "a"; readonly ifNotExists: false },
+				{ readonly kind: "ignorable" },
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 type InvalidSecond = SqlStatements<ParseSqlTokens<`create schema a; create table broken (id); create schema b`>>

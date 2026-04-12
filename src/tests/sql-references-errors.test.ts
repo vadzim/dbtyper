@@ -4,7 +4,7 @@
 import type { SqlDatabase } from "../engine/sql-database.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
-import type { SqlApplyStatements } from "../engine/sql-apply-statement.js"
+import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { SqlStatements, SqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 
@@ -32,9 +32,7 @@ type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	>[0]
 >
 
-type _DbSelectFromUsersAfterCreate = Expect<
-	Matches<DbSelectFromUsersAfterCreate, SqlParseError<"Unknown sql statement">>
->
+type _DbSelectFromUsersAfterCreate = Expect<Matches<DbSelectFromUsersAfterCreate, SqlParseError<"Unclosed statement">>>
 
 // --- Intra-schema FK ---
 
@@ -427,7 +425,7 @@ type _DbSalesDbArityShort = Expect<
 
 type WrongStatementBeforeIncompletedStatementWithRecovering = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatementsRecovering<ParseSqlTokens<`create schema a; create schema a; select 1`>>[0]
+	SqlStatementsRecovering<ParseSqlTokens<`create schema a; create schema a; select 1;`>>[0]
 >
 
 type _WrongStatementBeforeIncompletedStatementWithRecovering = Expect<
@@ -436,11 +434,11 @@ type _WrongStatementBeforeIncompletedStatementWithRecovering = Expect<
 
 type WrongStatementBeforeIncompletedStatementStrict = SqlApplyStatements<
 	SqlDatabase<"public">,
-	SqlStatements<ParseSqlTokens<`create schema a; create schema a; select 1`>>[0]
+	SqlStatements<ParseSqlTokens<`create schema a; create schema a; select 1;`>>[0]
 >
 
 type _WrongStatementBeforeIncompletedStatementStrict = Expect<
-	Matches<WrongStatementBeforeIncompletedStatementStrict, SqlParseError<"Unknown sql statement">>
+	Matches<WrongStatementBeforeIncompletedStatementStrict, SqlParseError<"Duplicate schema name: a">>
 >
 
 describe("sql references (errors)", () => {

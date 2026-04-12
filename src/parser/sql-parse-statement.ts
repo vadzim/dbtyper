@@ -1,8 +1,11 @@
-import type { SqlAlterTable } from "./sql-alter-table.js"
-import type { SqlCreateSchema } from "./sql-create-schema.js"
-import type { SqlCreateTable } from "./sql-create-table.js"
-import type { SqlDropSchema } from "./sql-drop-schema.js"
-import type { SqlDropTable } from "./sql-drop-table.js"
+import type { ParseAlterTable } from "./sql-alter-table.js"
+import type { ParseCreateIndex } from "./sql-create-index.js"
+import type { ParseCreateSchema } from "./sql-create-schema.js"
+import type { ParseCreateTable } from "./sql-create-table.js"
+import type { ParseDropSchema } from "./sql-drop-schema.js"
+import type { ParseDropTable } from "./sql-drop-table.js"
+import type { ParseInsertValues } from "./sql-insert-values.js"
+import type { SkipStatementFromBuffer } from "./sql-skip-statement.js"
 import type { TokensList, PeekToken, SkipToken, SqlParseError } from "./sql-tokens.js"
 
 export type SqlStatement<Buffer extends TokensList> =
@@ -14,27 +17,66 @@ export type SqlStatement<Buffer extends TokensList> =
 				? SqlStatementAfterDrop<SkipToken<Buffer>, Buffer>
 				: PeekToken<Buffer> extends "alter"
 					? SqlStatementAfterAlter<SkipToken<Buffer>, Buffer>
-					: [SqlParseError<"Unknown sql statement">, Buffer]
+					: PeekToken<Buffer> extends "insert"
+						? SqlStatementAfterInsert<SkipToken<Buffer>, Buffer>
+						: SkipStatementFromBuffer<Buffer>
+
+/** Non-validated `INSERT` shapes (e.g. `INSERT … SELECT`) → skip from `insert` for ignorable. */
+type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
+	| "Expected VALUES after column list"
+	| "Expected column list in INSERT"
+	| "Expected INTO after INSERT"
+	| "Expected table name in INSERT"
+	? true
+	: false
+
+type SqlStatementAfterInsert<AfterInsert extends TokensList, Orig extends TokensList> =
+	ParseInsertValues<AfterInsert> extends [infer Head, infer Rest extends TokensList]
+		? Head extends { readonly kind: "insert_values_validated" }
+			? [Head, Rest]
+			: Head extends SqlParseError<infer Msg extends string>
+				? InsertParseShapeMismatchAllowsSkip<Msg> extends true
+					? SkipStatementFromBuffer<Orig>
+					: [Head, Rest]
+				: [Head, Rest]
+		: SkipStatementFromBuffer<Orig>
 
 type SqlStatementAfterCreate<AfterCreate extends TokensList, Orig extends TokensList> =
 	PeekToken<AfterCreate> extends "table"
-		? SqlCreateTable<SkipToken<AfterCreate>>
+		? ParseCreateTable<SkipToken<AfterCreate>>
 		: PeekToken<AfterCreate> extends "schema"
-			? SqlCreateSchema<SkipToken<AfterCreate>>
-			: [SqlParseError<"Unknown sql statement">, Orig]
+			? ParseCreateSchema<SkipToken<AfterCreate>>
+			: PeekToken<AfterCreate> extends "unique"
+				? SqlStatementAfterCreateUniqueIndex<SkipToken<AfterCreate>, Orig>
+				: PeekToken<AfterCreate> extends "index"
+					? ParseCreateIndex<SkipToken<AfterCreate>, false>
+					: SkipStatementFromBuffer<Orig>
+
+type SqlStatementAfterCreateUniqueIndex<AfterUnique extends TokensList, Orig extends TokensList> =
+	PeekToken<AfterUnique> extends "index"
+		? ParseCreateIndex<SkipToken<AfterUnique>, true>
+		: SkipStatementFromBuffer<Orig>
 
 type SqlStatementAfterDrop<AfterDrop extends TokensList, Orig extends TokensList> =
 	PeekToken<AfterDrop> extends "table"
-		? SqlDropTable<SkipToken<AfterDrop>>
+		? ParseDropTable<SkipToken<AfterDrop>>
 		: PeekToken<AfterDrop> extends "schema"
-			? SqlDropSchema<SkipToken<AfterDrop>>
-			: [SqlParseError<"Unknown sql statement">, Orig]
+			? ParseDropSchema<SkipToken<AfterDrop>>
+			: SkipStatementFromBuffer<Orig>
 
-/** Second token after `alter` selects the statement kind; extend with more branches when new ALTER variants exist. */
 type SqlStatementAfterAlter<AfterAlter extends TokensList, Orig extends TokensList> =
 	PeekToken<AfterAlter> extends "table"
-		? SqlAlterTable<SkipToken<AfterAlter>>
-		: [SqlParseError<"Unknown sql statement">, Orig]
+		? SqlAlterWithMaybeSkipUnsupported<AfterAlter, Orig>
+		: SkipStatementFromBuffer<Orig>
+
+type SqlAlterWithMaybeSkipUnsupported<AfterAlter extends TokensList, Orig extends TokensList> =
+	ParseAlterTable<SkipToken<AfterAlter>> extends [infer Head, infer Rest extends TokensList]
+		? Head extends { readonly kind: "alter_table" }
+			? [Head, Rest]
+			: Head extends { readonly __sql_parse_error__: "Unsupported ALTER TABLE action" }
+				? SkipStatementFromBuffer<Orig>
+				: [Head, Rest]
+		: [SqlParseError<"Unable to parse ALTER TABLE statement">, Orig]
 
 /**
  * Parses zero or more statements from `B`. On **full** success returns `[readonly [...statements], rest]`

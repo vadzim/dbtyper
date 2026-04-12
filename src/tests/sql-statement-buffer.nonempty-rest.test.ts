@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { SqlStatement } from "../parser/sql-parse-statement.js"
-import type { ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
+import type { EmptyTokenList, ParseSqlTokens, SqlParseError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
 
 // Copy of sql-statement-buffer.test.ts, but with extra operations appended after ';'
@@ -210,9 +210,9 @@ type _DropSchema = Expect<
 
 // --- Error cases: keep as-is ---
 
-type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1`>>
+type UnknownStatement = SqlStatement<ParseSqlTokens<`create view v as select 1;`>>
 type _UnknownStatement = Expect<
-	Matches<UnknownStatement, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`create view v as select 1`>]>
+	Matches<UnknownStatement, [{ readonly kind: "ignorable" }, EmptyTokenList]>
 >
 
 describe("sql statement buffer (non-empty rest)", () => {

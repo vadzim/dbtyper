@@ -1,9 +1,9 @@
-import type { SqlDropTableLike } from "../parser/sql-drop-table.js"
+import type { SqlDropTable } from "../parser/sql-drop-table.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./sql-engine.js"
+import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.js"
 
-export type SqlApplyDropTable<Db extends SqlDatabaseLike, Drop extends SqlDropTableLike> =
+export type ApplyDropTable<Db extends SqlDatabaseLike, Drop extends SqlDropTable> =
 	ResolveQualifiedIdentifier<Drop["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,

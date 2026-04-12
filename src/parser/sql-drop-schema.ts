@@ -1,14 +1,14 @@
 import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfExists } from "./sql-parse-primitives.js"
 import type { TokensList, SqlParseError } from "./sql-tokens.js"
 
-export type SqlDropSchemaLike = {
+export type SqlDropSchema = {
 	readonly kind: "drop_schema"
 	readonly name: string
 	readonly ifExists: boolean
 }
 
 /** `B` must be the buffer immediately after the `schema` token (caller routes with `PeekToken` then `SkipToken`). */
-export type SqlDropSchema<B extends TokensList> = FinalizeDropSchemaTuple<ParseDropSchemaTupleAfterSchema<B>>
+export type ParseDropSchema<B extends TokensList> = FinalizeDropSchemaTuple<ParseDropSchemaTupleAfterSchema<B>>
 
 type FinalizeDropSchemaTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
 	? [E, R]

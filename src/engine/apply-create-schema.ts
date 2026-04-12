@@ -1,9 +1,9 @@
-import type { SqlCreateSchemaLike } from "../parser/sql-create-schema.js"
+import type { SqlCreateSchema } from "../parser/sql-create-schema.js"
 import type { SqlParseError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
-import type { SchemaExists } from "./sql-engine.js"
+import type { SchemaExists } from "./helpers/engine-helpers.js"
 
-export type SqlApplyCreateSchema<Db extends SqlDatabaseLike, Create extends SqlCreateSchemaLike> =
+export type ApplyCreateSchema<Db extends SqlDatabaseLike, Create extends SqlCreateSchema> =
 	Db["schemas"] extends Record<string, Record<string, unknown>>
 		? SchemaExists<Extract<Db["schemas"], Record<string, Record<string, unknown>>>, Create["name"]> extends true
 			? Create["ifNotExists"] extends true

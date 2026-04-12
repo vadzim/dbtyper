@@ -300,3 +300,56 @@ type ParseForeignRefMetaAfterKey<AfterKey extends TokensList> =
 export type ParseForeignRefMeta<Kind extends string, AfterKw extends TokensList> = Kind extends "foreign_key"
 	? ParseForeignRefMetaAfterKey<AfterKw>
 	: never
+
+/** Like {@link ParseForeignRefMeta} but returns the buffer after the referenced-column `)` (before `ON DELETE`, `;`, etc.). */
+export type ParseForeignKeyMetaAndRest<AfterKey extends TokensList> =
+	ReadFirstParenGroup<AfterKey> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
+		? ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
+				true,
+				infer R1b extends TokensList,
+		  ]
+			? ReadQualifiedIdentifierFromBuffer<R1b> extends [
+					infer Target extends SqlQualifiedIdentifier,
+					infer R2 extends TokensList,
+			  ]
+				? ReadFirstParenGroup<R2> extends [infer TargetColsBuf extends TokensList, infer R3 extends TokensList]
+					? ParseColumnListToTuple<LocalBuf> extends [infer FC extends readonly string[], infer _]
+						? ParseColumnListToTuple<TargetColsBuf> extends [infer TC extends readonly string[], infer __]
+							? ZipColumnListsToPairs<FC, TC> extends [infer Pairs, infer ___ extends TokensList]
+								? Pairs extends SqlParseError<string>
+									? [Pairs, R3]
+									: Pairs extends readonly FkColumnPair[]
+										? Target extends readonly [infer Table extends string]
+											? [
+													{
+														readonly from: ""
+														readonly columnPairs: Pairs
+														readonly toSchema: undefined
+														readonly toTable: Table
+													},
+													R3,
+												]
+											: Target extends readonly [infer Table extends string, infer Schema extends string]
+												? [
+														{
+															readonly from: ""
+															readonly columnPairs: Pairs
+															readonly toSchema: Schema
+															readonly toTable: Table
+														},
+														R3,
+													]
+												: never
+										: [SqlParseError<"Unable to build foreign key column pairs">, R3]
+								: [SqlParseError<"Unable to build foreign key column pairs">, R3]
+							: [SqlParseError<"Unable to parse referenced column list in foreign key">, R3]
+						: [SqlParseError<"Unable to parse local column list in foreign key">, R3]
+					: [SqlParseError<"FOREIGN KEY must include a referenced column list">, R2]
+				: [SqlParseError<"FOREIGN KEY must specify a referenced table and columns">, R1b]
+			: ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
+					infer E extends SqlParseError<string>,
+					infer R extends TokensList,
+			  ]
+				? [E, R]
+				: [SqlParseError<"FOREIGN KEY must include REFERENCES clause">, R1]
+		: [SqlParseError<"FOREIGN KEY must include a local column list">, AfterKey]

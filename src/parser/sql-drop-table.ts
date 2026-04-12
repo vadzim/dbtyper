@@ -6,14 +6,14 @@ import type {
 } from "./sql-parse-primitives.js"
 import type { TokensList, SqlParseError } from "./sql-tokens.js"
 
-export type SqlDropTableLike = {
+export type SqlDropTable = {
 	readonly kind: "drop_table"
 	readonly target: SqlQualifiedIdentifier
 	readonly ifExists: boolean
 }
 
 /** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
-export type SqlDropTable<B extends TokensList> = FinalizeDropTableTuple<ParseDropTableTupleAfterTable<B>>
+export type ParseDropTable<B extends TokensList> = FinalizeDropTableTuple<ParseDropTableTupleAfterTable<B>>
 
 type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParseError<string>, infer R extends TokensList]
 	? [E, R]

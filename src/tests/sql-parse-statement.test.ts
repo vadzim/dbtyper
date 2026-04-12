@@ -115,9 +115,9 @@ type _ParseDropSchema = Expect<
 	>
 >
 
-type ParseUnknown = SqlStatements<ParseSqlTokens<`create view v as select 1`>>
+type ParseUnknown = SqlStatements<ParseSqlTokens<`create view v as select 1;`>>
 type _ParseUnknown = Expect<
-	Matches<ParseUnknown, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`create view v as select 1`>]>
+	Matches<ParseUnknown, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
 type ParseInvalidCreate = SqlStatements<ParseSqlTokens<`create table broken (id)`>>
@@ -128,17 +128,17 @@ type _ParseInvalidCreate = Expect<
 	>
 >
 
-type ParseInvalidKeywordBoundary = SqlStatements<ParseSqlTokens<`createx table users (id int)`>>
+type ParseInvalidKeywordBoundary = SqlStatements<ParseSqlTokens<`createx table users (id int);`>>
 type _ParseInvalidKeywordBoundary = Expect<
 	Matches<
 		ParseInvalidKeywordBoundary,
-		[SqlParseError<"Unknown sql statement">, ParseSqlTokens<`createx table users (id int)`>]
+		[readonly [{ readonly kind: "ignorable" }], EmptyTokenList]
 	>
 >
 
-type ParseInvalidDropBoundary = SqlStatements<ParseSqlTokens<`dropx table users`>>
+type ParseInvalidDropBoundary = SqlStatements<ParseSqlTokens<`dropx table users;`>>
 type _ParseInvalidDropBoundary = Expect<
-	Matches<ParseInvalidDropBoundary, [SqlParseError<"Unknown sql statement">, ParseSqlTokens<`dropx table users`>]>
+	Matches<ParseInvalidDropBoundary, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
 type ParseInvalidIfNot = SqlStatements<ParseSqlTokens<`create schema if not billing`>>
