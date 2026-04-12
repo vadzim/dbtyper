@@ -32,6 +32,7 @@ type _UsersShape = Expect<
 						meta: unknown | null
 					}
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 			],
 			EmptyTokenList,
@@ -56,6 +57,7 @@ type _PostsShape = Expect<
 						title: string | null
 					}
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 			],
 			EmptyTokenList,
@@ -107,6 +109,10 @@ type _WithConstraintsShape = Expect<
 						toSchema: undefined
 						toTable: "orgs"
 					}
+					intraTableConstraints: readonly [
+						{ readonly kind: "primary_key"; readonly columns: readonly ["id"] },
+						{ readonly kind: "unique"; readonly columns: readonly ["email"] },
+					]
 				},
 			],
 			EmptyTokenList,
@@ -126,13 +132,18 @@ type _BadUniqueRef = Expect<
 	Matches<
 		BadUniqueRef,
 		[
-			SqlParserError<`Unknown column "missing_col" referenced in table constraint`>,
-			ParseSqlTokens<`
-	create table bad_unique (
-		id int not null,
-		unique (missing_col)
-	)
-`>,
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["bad_unique"]
+					readonly row: { id: number }
+					readonly refs: undefined
+					readonly intraTableConstraints: readonly [
+						{ readonly kind: "unique"; readonly columns: readonly ["missing_col"] },
+					]
+				},
+			],
+			EmptyTokenList,
 		]
 	>
 >
@@ -150,14 +161,21 @@ type _BadForeignKeyRef = Expect<
 	Matches<
 		BadForeignKeyRef,
 		[
-			SqlParserError<`Unknown column "missing_col" referenced in table constraint`>,
-			ParseSqlTokens<`
-	create table bad_fk (
-		id int not null,
-		org_id int,
-		foreign key (missing_col) references orgs(id)
-	)
-`>,
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["bad_fk"]
+					readonly row: { org_id: number | null; id: number }
+					readonly refs: {
+						from: ""
+						columnPairs: [readonly ["missing_col", "id"]]
+						toSchema: undefined
+						toTable: "orgs"
+					}
+					readonly intraTableConstraints: readonly []
+				},
+			],
+			EmptyTokenList,
 		]
 	>
 >
@@ -195,6 +213,9 @@ type _WithCommentsShape = Expect<
 						toSchema: undefined
 						toTable: "orgs"
 					}
+					intraTableConstraints: readonly [
+						{ readonly kind: "primary_key"; readonly columns: readonly ["id"] },
+					]
 				},
 			],
 			EmptyTokenList,
@@ -215,14 +236,18 @@ type _BadRefWithComments = Expect<
 	Matches<
 		BadRefWithComments,
 		[
-			SqlParserError<`Unknown column "missing_col" referenced in table constraint`>,
-			ParseSqlTokens<`
-	create table bad_ref_with_comments (
-		id int not null,
-		/* wrong column should still fail */
-		unique (missing_col)
-	)
-`>,
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["bad_ref_with_comments"]
+					readonly row: { id: number }
+					readonly refs: undefined
+					readonly intraTableConstraints: readonly [
+						{ readonly kind: "unique"; readonly columns: readonly ["missing_col"] },
+					]
+				},
+			],
+			EmptyTokenList,
 		]
 	>
 >
@@ -255,6 +280,10 @@ type _QuotedIdentifiersShape = Expect<
 						toSchema: undefined
 						toTable: "orgs"
 					}
+					intraTableConstraints: readonly [
+						{ readonly kind: "primary_key"; readonly columns: readonly ["id"] },
+						{ readonly kind: "unique"; readonly columns: readonly ["user name"] },
+					]
 				},
 			],
 			EmptyTokenList,
@@ -274,13 +303,18 @@ type _BadQuotedRef = Expect<
 	Matches<
 		BadQuotedRef,
 		[
-			SqlParserError<`Unknown column "missing id" referenced in table constraint`>,
-			ParseSqlTokens<`
-	create table q_bad (
-		"id" int not null,
-		unique ("missing id")
-	)
-`>,
+			readonly [
+				{
+					readonly kind: "create_table"
+					readonly name: readonly ["q_bad"]
+					readonly row: { id: number }
+					readonly refs: undefined
+					readonly intraTableConstraints: readonly [
+						{ readonly kind: "unique"; readonly columns: readonly ["missing id"] },
+					]
+				},
+			],
+			EmptyTokenList,
 		]
 	>
 >
@@ -347,6 +381,7 @@ type _PostgresTypes = Expect<
 						numbers: number[] | null
 					}
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 			],
 			EmptyTokenList,
@@ -387,6 +422,7 @@ type _QuotedTypeNames = Expect<
 						g: unknown | null
 					}
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 			],
 			EmptyTokenList,
@@ -422,6 +458,7 @@ type _TypeNamesAsColumnNames = Expect<
 						inet: string | null
 					}
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 			],
 			EmptyTokenList,

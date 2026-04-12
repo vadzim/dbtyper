@@ -19,6 +19,7 @@ type _ParseCreate = Expect<
 					readonly name: readonly ["users"]
 					readonly row: { id: number; email: string | null }
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 			],
 			EmptyTokenList,

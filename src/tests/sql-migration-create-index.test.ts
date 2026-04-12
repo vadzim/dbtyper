@@ -26,6 +26,7 @@ type _ParseIndexOk = Expect<
 					readonly name: readonly ["items", "app"]
 					readonly row: { id: number; name: string }
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 				{
 					readonly kind: "create_index_validated"

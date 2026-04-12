@@ -47,6 +47,7 @@ type _ParseAlterRlsIgnorable = Expect<
 					readonly name: readonly ["u", "app"]
 					readonly row: { id: number }
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 				{
 					kind: "skipped-statement"

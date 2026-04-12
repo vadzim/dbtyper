@@ -27,6 +27,7 @@ type _ParseInsertSelectIgnorable = Expect<
 					readonly name: readonly ["t", "app"]
 					readonly row: { id: number }
 					readonly refs: undefined
+					readonly intraTableConstraints: readonly []
 				},
 				{
 					kind: "skipped-statement"

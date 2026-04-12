@@ -22,6 +22,7 @@ type _CreateTable = Expect<
 				readonly name: readonly ["users"]
 				readonly row: { id: number; email: string | null }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			ParseSqlTokens<`drop table users`>,
 		]
@@ -41,6 +42,7 @@ type _CreateTableSemicolon = Expect<
 				readonly name: readonly ["users"]
 				readonly row: { id: number }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			ParseSqlTokens<`drop schema if exists staging`>,
 		]
@@ -60,6 +62,7 @@ type _CreateTableSchemaQualified = Expect<
 				readonly name: readonly ["sessions", "auth"]
 				readonly row: { token: string; user_id: number }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			ParseSqlTokens<`alter table auth.sessions add column age int`>,
 		]
@@ -79,6 +82,7 @@ type _CreateTableWithArrays = Expect<
 				readonly name: readonly ["t"]
 				readonly row: { tags: string[] | null; nums: number[] }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			ParseSqlTokens<`create schema if not exists billing`>,
 		]

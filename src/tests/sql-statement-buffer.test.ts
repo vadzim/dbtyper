@@ -16,6 +16,7 @@ type _CreateTable = Expect<
 				readonly name: readonly ["users"]
 				readonly row: { id: number; email: string | null }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			EmptyTokenList,
 		]
@@ -32,6 +33,7 @@ type _CreateTableSemicolon = Expect<
 				readonly name: readonly ["users"]
 				readonly row: { id: number }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			EmptyTokenList,
 		]
@@ -50,6 +52,7 @@ type _CreateTableSchemaQualified = Expect<
 				readonly name: readonly ["sessions", "auth"]
 				readonly row: { token: string; user_id: number }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			EmptyTokenList,
 		]
@@ -66,6 +69,7 @@ type _CreateTableWithArrays = Expect<
 				readonly name: readonly ["t"]
 				readonly row: { tags: string[] | null; nums: number[] }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 			EmptyTokenList,
 		]

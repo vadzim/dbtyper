@@ -161,7 +161,8 @@ type CreateInvalidRowStatement = {
 	readonly name: readonly ["broken"]
 	readonly row: SqlParserError<"bad row">
 	readonly source: "create table broken (id)"
-	readonly refs: never
+	readonly refs: undefined
+	readonly intraTableConstraints: readonly []
 }
 
 /** Row parse error on create_table is propagated. */
@@ -220,9 +221,15 @@ type _CreateWithForeignKeyOk = Expect<
 type CreateWithForeignKeyBadLocalStatement = {
 	readonly kind: "create_table"
 	readonly name: readonly ["posts_bad"]
-	readonly row: SqlParserError<`Unknown column "missing_col" referenced in table constraint`>
+	readonly row: { id: number; user_id: number }
 	readonly source: "create table posts_bad (...)"
-	readonly refs: never
+	readonly refs: {
+		readonly from: ""
+		readonly columnPairs: readonly [readonly ["missing_col", "id"]]
+		readonly toSchema: undefined
+		readonly toTable: "users"
+	}
+	readonly intraTableConstraints: readonly []
 }
 
 /** FK referencing a non-existent local column is an error. */

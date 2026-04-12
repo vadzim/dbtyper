@@ -24,6 +24,7 @@ type _CreateUsersStatementParsedShape = Expect<
 				readonly name: readonly ["users"]
 				readonly row: { id: number; name: string | null }
 				readonly refs: undefined
+				readonly intraTableConstraints: readonly []
 			},
 		]
 	>
