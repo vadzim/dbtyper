@@ -233,15 +233,13 @@ type ParseAlterAddConstraint<Tokens extends TokensList> =
 		: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
 
 type ParseAlterAddConstraintAfterName<Rest0 extends TokensList> =
-	ReadConstraintEntryMatch<Rest0> extends [false, infer _, infer __]
-		? SqlParserError<"Expected constraint definition in ALTER TABLE">
-		: ReadConstraintEntryMatch<Rest0> extends [
-					infer Kind extends string,
-					infer _EB extends TokensList,
-					infer AfterKw extends TokensList,
-			  ]
-			? ParseAlterAddConstraintByKind<Kind, AfterKw>
-			: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
+	ReadConstraintEntryMatch<Rest0> extends [infer Kind, infer AfterKw extends TokensList]
+		? [Kind] extends [false]
+			? SqlParserError<"Expected constraint definition in ALTER TABLE">
+			: Kind extends string
+				? ParseAlterAddConstraintByKind<Kind, AfterKw>
+				: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
+		: SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">
 
 type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensList> = Kind extends "foreign_key"
 	? ParseForeignKeyMetaAndRest<AfterKw> extends [infer Meta, infer R3 extends TokensList]

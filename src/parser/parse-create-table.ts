@@ -104,11 +104,7 @@ type ParseCreateBody<
 > =
 	PeekToken<Tokens> extends ""
 		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<Tokens>]
-		: ReadConstraintEntryMatch<Tokens> extends [
-					infer Kind,
-					infer ColStart extends TokensList,
-					infer AfterKw extends TokensList,
-			  ]
+		: ReadConstraintEntryMatch<Tokens> extends [infer Kind, infer AfterKw extends TokensList]
 			? ParseCreateBodyOneCommaSegment<
 					SkipPastFirstTopLevelComma<Tokens>,
 					Row,
@@ -116,7 +112,7 @@ type ParseCreateBody<
 					Error,
 					Refs,
 					Kind,
-					ColStart,
+					Tokens,
 					AfterKw
 				>
 			: [

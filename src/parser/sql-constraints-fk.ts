@@ -18,15 +18,16 @@ export type ForeignRefMeta = {
 
 export type FkColumnPair = readonly [local: string, referenced: string]
 
-type StripConstraintPrefixBuffers<Tokens extends TokensList> =
+/** Strips any optional `CONSTRAINT name` prefix and returns the buffer starting at the constraint type keyword. Returns the original buffer if no such prefix is present or if parsing the name fails. */
+type StripConstraintPrefixBuffer<Tokens extends TokensList> =
 	ReadOptionalToken<Tokens, "constraint"> extends [true, infer AfterKw extends TokensList]
 		? ReadExpectedIdentifier<AfterKw, "Expected constraint name after CONSTRAINT"> extends [
 				infer _Name extends string,
 				infer EB extends TokensList,
 			]
-			? [EB, EmptyTokenList]
-			: [Tokens, EmptyTokenList]
-		: [Tokens, EmptyTokenList]
+			? EB
+			: Tokens
+		: Tokens
 
 /** Returns `[kind, afterKeyword]` when `EB` is a constraint clause head, or `false` otherwise. `afterKeyword` is the buffer after all constraint type keywords (e.g. after `PRIMARY KEY`, after `UNIQUE`), ready for body parsing without re-extracting those tokens. */
 type ReadConstraintKeywordOnStripped<EB extends TokensList> =
@@ -51,15 +52,16 @@ type ReadConstraintKeywordOnStripped<EB extends TokensList> =
 					: false
 
 /**
- * `[Kind, EB, AfterKw]` when matched — `Kind` is the constraint type (`"primary_key"` | `"unique"` | `"foreign_key"` | `"other"`), `EB` is the stripped buffer (after any `CONSTRAINT name` prefix), `AfterKw` is the buffer after all constraint type keywords, ready for body parsing.
- * `[false, Tokens, Tokens]` when not matched — `Tokens` is the original buffer (column definition start).
+ * `[Kind, AfterKw]` when matched — `Kind` is the constraint type (`"primary_key"` | `"unique"` | `"foreign_key"` | `"other"`), `AfterKw` is the buffer after all constraint type keywords, ready for body parsing.
+ * `[false, Tokens]` when not matched — `Tokens` is the original buffer (column definition start), unchanged.
  */
 export type ReadConstraintEntryMatch<Tokens extends TokensList> =
-	StripConstraintPrefixBuffers<Tokens> extends [infer EB extends TokensList, EmptyTokenList]
-		? ReadConstraintKeywordOnStripped<EB> extends [infer Kind extends string, infer AfterKw extends TokensList]
-			? [Kind, EB, AfterKw]
-			: [false, Tokens, Tokens]
-		: [false, Tokens, Tokens]
+	ReadConstraintKeywordOnStripped<StripConstraintPrefixBuffer<Tokens>> extends [
+		infer Kind extends string,
+		infer AfterKw extends TokensList,
+	]
+		? [Kind, AfterKw]
+		: [false, Tokens]
 
 export type ValidateColumnRefs<Tokens extends TokensList, Names extends string> =
 	PeekToken<Tokens> extends ""
