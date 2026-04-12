@@ -1,4 +1,5 @@
 import type { ParseColumnListToTuple } from "./sql-constraints-fk.js"
+import type { IgnorableStatement } from "./sql-ignorable.js"
 import type {
 	ReadBufferEnd,
 	ReadExpectedToken,
@@ -6,11 +7,11 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
+import type { SkipStatement } from "./sql-skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type InsertValuesStatement = {
-	readonly kind: "insert_values_validated"
+	readonly kind: "insert_values"
 	readonly target: SqlQualifiedIdentifier
 	readonly columns: readonly string[]
 	readonly valueTypes: readonly unknown[]
@@ -31,7 +32,7 @@ type FinalizeInsert<T> = T extends [infer E extends SqlParserError<string>, infe
 		  ]
 		? [
 				{
-					readonly kind: "insert_values_validated"
+					readonly kind: "insert_values"
 					readonly target: Q
 					readonly columns: Cols
 					readonly valueTypes: Vals
@@ -61,8 +62,8 @@ type ParseInsertTuple<B extends TokensList> =
 									infer _VRest,
 								]
 								? TupleLenEq<Cols, Vals> extends true
-									? SkipTailToSemicolonBuffer<Rest4> extends [
-											true,
+									? SkipStatement<Rest4> extends [
+											IgnorableStatement,
 											infer RestFinal extends TokensList,
 										]
 										? [
@@ -73,7 +74,7 @@ type ParseInsertTuple<B extends TokensList> =
 												},
 												RestFinal,
 											]
-										: SkipTailToSemicolonBuffer<Rest4> extends [
+										: SkipStatement<Rest4> extends [
 													infer Err extends SqlParserError<string>,
 													infer _R,
 											  ]

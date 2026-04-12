@@ -7,6 +7,7 @@ import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { IgnorableStatement } from "../parser/sql-ignorable.js"
 
 type SkipCommentGrantSet = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
@@ -44,21 +45,15 @@ type _SkipTaggedDollarFn = Expect<
 	Matches<SkipTaggedDollarFn, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type UnclosedStatement = ParseSqlStatementsRecovering<ParseSqlTokens<`select 1`>>
-type _UnclosedStatement = Expect<
-	Matches<UnclosedStatement, [readonly [SqlParserError<"Unclosed statement">], ParseSqlTokens<`select 1`>]>
+type BareSelectRecovering = ParseSqlStatementsRecovering<ParseSqlTokens<`select 1`>>
+type _BareSelectRecovering = Expect<
+	Matches<BareSelectRecovering, [readonly [{ readonly kind: "ignorable" }], EmptyTokenList]>
 >
 
-type UnclosedDollar = ParseSqlStatementsRecovering<ParseSqlTokens<`create function x() returns void as $fn$ select 1`>>
-type _UnclosedDollar = Expect<
-	Matches<
-		UnclosedDollar,
-		[
-			readonly [SqlParserError<"Unclosed dollar quote in skipped statement">],
-			ParseSqlTokens<`create function x() returns void as $fn$ select 1`>,
-		]
-	>
+type UnclosedDollarIgnored = ParseSqlStatementsRecovering<
+	ParseSqlTokens<`create function x() returns void as $fn$ select 1`>
 >
+type _UnclosedDollarIgnored = Expect<Matches<UnclosedDollarIgnored, [readonly [IgnorableStatement], EmptyTokenList]>>
 
 type CreateViewIgnorable = ParseSqlStatementsRecovering<ParseSqlTokens<`create view v as select 1;`>>
 type _CreateViewIgnorable = Expect<
@@ -145,7 +140,7 @@ type ParsedLen = ParsedInsertChainHead extends readonly unknown[] ? ParsedInsert
 type _ParsedInsertChainHeadLen3 = Expect<Matches<ParsedLen, 3>>
 type ThirdParsedStmt = ParsedInsertChainHead extends readonly [unknown, unknown, infer S3] ? S3 : never
 type ThirdStmtKind = ThirdParsedStmt extends { readonly kind: infer K } ? K : "none"
-type _Stmt2KindInsert = Expect<Matches<ThirdStmtKind, "insert_values_validated">>
+type _Stmt2KindInsert = Expect<Matches<ThirdStmtKind, "insert_values">>
 type _Stmt2ColumnsOrder = Expect<
 	Matches<ThirdParsedStmt extends { readonly columns: infer C } ? C : never, readonly ["id", "label"]>
 >

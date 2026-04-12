@@ -16,8 +16,9 @@ import type {
 	ParseForeignKeyMetaAndRest,
 	ReadConstraintEntryMatch,
 } from "./sql-constraints-fk.js"
-import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
+import type { SkipStatement } from "./sql-skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
+import type { IgnorableStatement } from "./sql-ignorable.js"
 
 export type AlterTableStatement = {
 	readonly kind: "alter_table"
@@ -252,9 +253,9 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 		? Meta extends SqlParserError<string>
 			? [Meta, R3]
 			: Meta extends ForeignRefMeta
-				? SkipTailToSemicolonBuffer<R3> extends [true, infer RestFinal extends TokensList]
+				? SkipStatement<R3> extends [IgnorableStatement, infer RestFinal extends TokensList]
 					? [{ readonly kind: "add_constraint_fk"; readonly refs: Meta }, RestFinal]
-					: SkipTailToSemicolonBuffer<R3> extends [infer Err extends SqlParserError<string>, infer _R]
+					: SkipStatement<R3> extends [infer Err extends SqlParserError<string>, infer _R]
 						? [Err, R3]
 						: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, R3]
 				: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, R3]
@@ -262,9 +263,9 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 	: Kind extends "primary_key"
 		? ReadFirstParenGroup<AfterKw> extends [infer Inner extends TokensList, infer Tail extends TokensList]
 			? ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
-				? SkipTailToSemicolonBuffer<Tail> extends [true, infer RestFinal extends TokensList]
+				? SkipStatement<Tail> extends [IgnorableStatement, infer RestFinal extends TokensList]
 					? [{ readonly kind: "add_constraint_primary"; readonly columns: Cols }, RestFinal]
-					: SkipTailToSemicolonBuffer<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
+					: SkipStatement<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
 						? [Err, Tail]
 						: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, Tail]
 				: [SqlParserError<"Unable to parse PRIMARY KEY columns">, Tail]
@@ -272,12 +273,9 @@ type ParseAlterAddConstraintByKind<Kind extends string, AfterKw extends TokensLi
 		: Kind extends "unique"
 			? ReadFirstParenGroup<AfterKw> extends [infer Inner2 extends TokensList, infer Tail2 extends TokensList]
 				? ParseColumnListToTuple<Inner2> extends [infer Cols2 extends readonly string[], infer __]
-					? SkipTailToSemicolonBuffer<Tail2> extends [true, infer RestFinal2 extends TokensList]
+					? SkipStatement<Tail2> extends [IgnorableStatement, infer RestFinal2 extends TokensList]
 						? [{ readonly kind: "add_constraint_unique"; readonly columns: Cols2 }, RestFinal2]
-						: SkipTailToSemicolonBuffer<Tail2> extends [
-									infer Err2 extends SqlParserError<string>,
-									infer _R2,
-							  ]
+						: SkipStatement<Tail2> extends [infer Err2 extends SqlParserError<string>, infer _R2]
 							? [Err2, Tail2]
 							: [SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">, Tail2]
 					: [SqlParserError<"Unable to parse UNIQUE columns">, Tail2]

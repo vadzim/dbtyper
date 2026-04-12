@@ -1,4 +1,5 @@
 import type { ParseColumnListToTuple } from "./sql-constraints-fk.js"
+import type { IgnorableStatement } from "./sql-ignorable.js"
 import type {
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
@@ -7,7 +8,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-parse-primitives.js"
-import type { SkipTailToSemicolonBuffer } from "./sql-skip-statement.js"
+import type { SkipStatement } from "./sql-skip-statement.js"
 import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type CreateIndexStatement = {
@@ -86,7 +87,7 @@ type ParseCreateIndexAfterParen<
 	Table extends SqlQualifiedIdentifier,
 > =
 	ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
-		? SkipTailToSemicolonBuffer<Tail> extends [true, infer RestFinal extends TokensList]
+		? SkipStatement<Tail> extends [IgnorableStatement, infer RestFinal extends TokensList]
 			? [
 					{
 						readonly unique: Unique
@@ -96,7 +97,7 @@ type ParseCreateIndexAfterParen<
 					},
 					RestFinal,
 				]
-			: SkipTailToSemicolonBuffer<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
+			: SkipStatement<Tail> extends [infer Err extends SqlParserError<string>, infer _R]
 				? [Err, Tail]
 				: [SqlParserError<"Unable to parse CREATE INDEX">, Tail]
 		: [SqlParserError<"Unable to parse CREATE INDEX column list">, Tail]

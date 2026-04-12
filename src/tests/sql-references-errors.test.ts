@@ -32,7 +32,20 @@ type DbSelectFromUsersAfterCreate = SqlApplyStatements<
 	>[0]
 >
 
-type _DbSelectFromUsersAfterCreate = Expect<Matches<DbSelectFromUsersAfterCreate, SqlParserError<"Unclosed statement">>>
+type _DbSelectFromUsersAfterCreate = Expect<
+	Matches<
+		DbSelectFromUsersAfterCreate,
+		{
+			readonly kind: "database"
+			readonly defaultSchema: "public"
+			readonly schemas: {
+				public: {
+					users: { id: number; email: string }
+				}
+			}
+		}
+	>
+>
 
 // --- Intra-schema FK ---
 
