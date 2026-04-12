@@ -1,5 +1,9 @@
 import type { PeekToken, SkipToken, SqlParserError, TokensList } from "./sql-tokens.js"
-import type { IgnorableStatement } from "./sql-ignorable.js"
+
+/** Parsed marker for SQL that is skipped for the internal table model (no-op on apply). */
+export type IgnorableStatement = {
+	readonly kind: "ignorable"
+}
 
 export type SkipStatement<Tokens extends TokensList, ClosingBracketsStack extends ClosingBrackets[] = []> =
 	PeekToken<Tokens> extends "" | ";"

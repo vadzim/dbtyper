@@ -16,9 +16,8 @@ import type {
 	ParseForeignKeyMetaAndRest,
 	ReadConstraintEntryMatch,
 } from "./sql-constraints-fk.js"
-import type { SkipStatement } from "./sql-skip-statement.js"
+import type { SkipStatement, IgnorableStatement } from "./sql-skip-statement.js"
 import type { PeekToken, SkipToken, TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
-import type { IgnorableStatement } from "./sql-ignorable.js"
 
 export type AlterTableStatement = {
 	readonly kind: "alter_table"

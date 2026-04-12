@@ -1,4 +1,4 @@
-import type { CreateTableStatement } from "../parser/sql-create-table.js"
+import type { CreateTableStatement } from "../parser/parse-create-table.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ValidateCreateTableFkRefs } from "./helpers/validate-fk-refs.js"

@@ -5,7 +5,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlStatementsRecovering } from "../parser/sql-parse-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
-import type { IgnorableStatement } from "../parser/sql-ignorable.js"
+import type { IgnorableStatement } from "../parser/sql-skip-statement.js"
 
 type SkipCommentGrantSet = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`

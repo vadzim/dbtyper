@@ -1,4 +1,4 @@
-import type { CreateIndexStatement } from "../parser/sql-create-index.js"
+import type { CreateIndexStatement } from "../parser/parse-create-index.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"

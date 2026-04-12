@@ -1,4 +1,4 @@
-import type { DropTableStatement } from "../parser/sql-drop-table.js"
+import type { DropTableStatement } from "../parser/parse-drop-table.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.js"

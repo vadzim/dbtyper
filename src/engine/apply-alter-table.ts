@@ -1,4 +1,4 @@
-import type { AlterTableStatement } from "../parser/sql-alter-table.js"
+import type { AlterTableStatement } from "../parser/parse-alter-table.js"
 import type { ForeignRefMeta } from "../parser/sql-constraints-fk.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"

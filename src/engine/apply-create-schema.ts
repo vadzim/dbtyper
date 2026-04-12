@@ -1,4 +1,4 @@
-import type { CreateSchemaStatement } from "../parser/sql-create-schema.js"
+import type { CreateSchemaStatement } from "../parser/parse-create-schema.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { SchemaExists } from "./helpers/engine-helpers.js"

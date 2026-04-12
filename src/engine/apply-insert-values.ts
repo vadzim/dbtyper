@@ -1,4 +1,4 @@
-import type { InsertValuesStatement } from "../parser/sql-insert-values.js"
+import type { InsertValuesStatement } from "../parser/parse-insert-values.js"
 import type { SqlParserError } from "../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "./sql-database.js"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"

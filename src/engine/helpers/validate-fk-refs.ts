@@ -1,4 +1,4 @@
-import type { CreateTableStatement } from "../../parser/sql-create-table.js"
+import type { CreateTableStatement } from "../../parser/parse-create-table.js"
 import type { ForeignRefMeta, ValidateFkReferencedColumnPairs } from "../../parser/sql-constraints-fk.js"
 import type { TokensList, SqlParserError } from "../../parser/sql-tokens.js"
 import type { SqlDatabaseLike } from "../sql-database.js"
