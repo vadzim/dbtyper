@@ -2,6 +2,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 // --- CREATE TABLE ---
 
@@ -188,7 +189,18 @@ type _DropSchema = Expect<
 // --- Error cases: result is SqlParserError, rest is the original buffer ---
 
 type UnknownStatement = ParseSqlStatement<ParseSqlTokens<`create view v as select 1;`>>
-type _UnknownStatement = Expect<Matches<UnknownStatement, [{ readonly kind: "skipped-statement" }, EmptyTokenList]>>
+type _UnknownStatement = Expect<
+	Matches<
+		UnknownStatement,
+		[
+			{
+				kind: "skipped-statement"
+				token: ";"
+			},
+			EmptyTokenList,
+		]
+	>
+>
 
 type InvalidColumn = ParseSqlStatement<ParseSqlTokens<`create table broken (id)`>>
 type _InvalidColumnResult = Expect<Matches<InvalidColumn[0], SqlParserError<"Invalid column definition">>>

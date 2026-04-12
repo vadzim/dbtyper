@@ -2,6 +2,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlStatements } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 type ParseCreate = ParseSqlStatements<
 	ParseSqlTokens<`
@@ -116,7 +117,20 @@ type _ParseDropSchema = Expect<
 >
 
 type ParseUnknown = ParseSqlStatements<ParseSqlTokens<`create view v as select 1;`>>
-type _ParseUnknown = Expect<Matches<ParseUnknown, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>>
+type _ParseUnknown = Expect<
+	Matches<
+		ParseUnknown,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
+>
 
 type ParseInvalidCreate = ParseSqlStatements<ParseSqlTokens<`create table broken (id)`>>
 type _ParseInvalidCreate = Expect<
@@ -128,12 +142,34 @@ type _ParseInvalidCreate = Expect<
 
 type ParseInvalidKeywordBoundary = ParseSqlStatements<ParseSqlTokens<`createx table users (id int);`>>
 type _ParseInvalidKeywordBoundary = Expect<
-	Matches<ParseInvalidKeywordBoundary, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
+	Matches<
+		ParseInvalidKeywordBoundary,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 type ParseInvalidDropBoundary = ParseSqlStatements<ParseSqlTokens<`dropx table users;`>>
 type _ParseInvalidDropBoundary = Expect<
-	Matches<ParseInvalidDropBoundary, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
+	Matches<
+		ParseInvalidDropBoundary,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 type ParseInvalidIfNot = ParseSqlStatements<ParseSqlTokens<`create schema if not billing`>>

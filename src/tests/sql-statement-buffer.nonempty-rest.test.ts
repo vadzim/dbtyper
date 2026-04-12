@@ -2,6 +2,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 // Copy of sql-statement-buffer.test.ts, but with extra operations appended after ';'
 // and the expected Rest changed from EmptyBuffer -> InitBuffer<...>.
@@ -219,7 +220,18 @@ type _DropSchema = Expect<
 // --- Error cases: keep as-is ---
 
 type UnknownStatement = ParseSqlStatement<ParseSqlTokens<`create view v as select 1;`>>
-type _UnknownStatement = Expect<Matches<UnknownStatement, [{ readonly kind: "skipped-statement" }, EmptyTokenList]>>
+type _UnknownStatement = Expect<
+	Matches<
+		UnknownStatement,
+		[
+			{
+				kind: "skipped-statement"
+				token: ";"
+			},
+			EmptyTokenList,
+		]
+	>
+>
 
 describe("sql statement buffer (non-empty rest)", () => {
 	it("should run", () => {})

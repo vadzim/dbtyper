@@ -2,6 +2,7 @@ const debugBufferKey = Symbol() // it's denied to export this symbol and use it 
 
 export type ParseSqlTokens<S extends string = string> = ReadTokenFromString<S> // opaque buffer type
 export type EmptyTokenList = MakeTokensBuffer<"", "", "">
+export type TokenType = string
 export type TokensList = MakeTokensBuffer<string, string, string>
 export type SqlParserError<Message extends string> = {
 	readonly __sql_parser_error__: Message
@@ -9,8 +10,6 @@ export type SqlParserError<Message extends string> = {
 
 export type PeekToken<Tokens extends TokensList> = Tokens["__token__"]
 export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens["__rest__"]>
-
-type TokenType = string
 
 type MakeTokensBuffer<Token extends TokenType, Rest extends string, Buffer extends string> = {
 	__token__: Token

@@ -1,8 +1,9 @@
-import type { PeekToken, SkipToken, SqlParserError, TokensList } from "./sql-tokens.js"
+import type { PeekToken, SkipToken, SqlParserError, TokensList, TokenType } from "./sql-tokens.js"
 
 /** Parsed marker for SQL that is skipped for the internal table model (no-op on apply). */
-export type SkippedStatement = {
-	readonly kind: "skipped-statement"
+export type SkippedStatement<Token extends TokenType = TokenType> = {
+	kind: "skipped-statement"
+	token: Token
 }
 
 export type SkipStatement<
@@ -12,7 +13,7 @@ export type SkipStatement<
 > =
 	PeekToken<Tokens> extends EndToken
 		? ClosingBracketsStack extends []
-			? [SkippedStatement, SkipToken<Tokens>]
+			? [SkippedStatement<PeekToken<Tokens>>, SkipToken<Tokens>]
 			: [SqlParserError<"Unclosed statement">, Tokens]
 		: PeekToken<Tokens> extends ""
 			? [SqlParserError<"Token not found">, Tokens]

@@ -2,6 +2,7 @@ import type { ParseSqlStatements } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 type Users = ParseSqlStatements<
 	ParseSqlTokens<`
@@ -63,7 +64,20 @@ type _PostsShape = Expect<
 >
 
 type Invalid = ParseSqlStatements<ParseSqlTokens<"select * from users;">>
-type _Invalid = Expect<Matches<Invalid, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>>
+type _Invalid = Expect<
+	Matches<
+		Invalid,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
+>
 
 type WithConstraints = ParseSqlStatements<
 	ParseSqlTokens<`

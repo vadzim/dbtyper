@@ -7,6 +7,7 @@ import type { SqlApplyStatements } from "../engine/apply-statement.js"
 import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 type ParseInsertSelectIgnorable = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`
@@ -27,7 +28,10 @@ type _ParseInsertSelectIgnorable = Expect<
 					readonly row: { id: number }
 					readonly refs: undefined
 				},
-				{ readonly kind: "skipped-statement" },
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
 			],
 			EmptyTokenList,
 		]

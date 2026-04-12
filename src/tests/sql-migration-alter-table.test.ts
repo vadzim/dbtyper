@@ -5,6 +5,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 type ParseAlterOnlyPk = ParseSqlStatements<ParseSqlTokens<`alter table app.u add constraint u_pkey primary key (id);`>>
 type PkAlterStmt = ParseAlterOnlyPk[0] extends readonly [infer H] ? H : never
@@ -47,7 +48,10 @@ type _ParseAlterRlsIgnorable = Expect<
 					readonly row: { id: number }
 					readonly refs: undefined
 				},
-				{ readonly kind: "skipped-statement" },
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
 			],
 			EmptyTokenList,
 		]

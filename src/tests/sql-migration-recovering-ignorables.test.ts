@@ -19,9 +19,18 @@ type _SkipCommentGrantSet = Expect<
 		SkipCommentGrantSet,
 		[
 			readonly [
-				{ readonly kind: "skipped-statement" },
-				{ readonly kind: "skipped-statement" },
-				{ readonly kind: "skipped-statement" },
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
 			],
 			EmptyTokenList,
 		]
@@ -32,34 +41,104 @@ type SkipAlterDefaultPrivileges = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`alter default privileges in schema public grant select on tables to anon;`>
 >
 type _SkipAlterDefaultPrivileges = Expect<
-	Matches<SkipAlterDefaultPrivileges, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
+	Matches<
+		SkipAlterDefaultPrivileges,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 type SkipDollarFn = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`create function app.f() returns int language sql as $$ select 1 $$;`>
 >
-type _SkipDollarFn = Expect<Matches<SkipDollarFn, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>>
+type _SkipDollarFn = Expect<
+	Matches<
+		SkipDollarFn,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
+>
 
 type SkipTaggedDollarFn = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`create function app.g() returns int language sql as $fn$ select 1 $fn$;`>
 >
 type _SkipTaggedDollarFn = Expect<
-	Matches<SkipTaggedDollarFn, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
+	Matches<
+		SkipTaggedDollarFn,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 type BareSelectRecovering = ParseSqlStatementsRecovering<ParseSqlTokens<`select 1`>>
 type _BareSelectRecovering = Expect<
-	Matches<BareSelectRecovering, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
+	Matches<
+		BareSelectRecovering,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ""
+				},
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 type UnclosedDollarIgnored = ParseSqlStatementsRecovering<
 	ParseSqlTokens<`create function x() returns void as $fn$ select 1`>
 >
-type _UnclosedDollarIgnored = Expect<Matches<UnclosedDollarIgnored, [readonly [SkippedStatement], EmptyTokenList]>>
+type _UnclosedDollarIgnored = Expect<
+	Matches<
+		UnclosedDollarIgnored,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ""
+				},
+			],
+			EmptyTokenList,
+		]
+	>
+>
 
 type CreateViewIgnorable = ParseSqlStatementsRecovering<ParseSqlTokens<`create view v as select 1;`>>
 type _CreateViewIgnorable = Expect<
-	Matches<CreateViewIgnorable, [readonly [{ readonly kind: "skipped-statement" }], EmptyTokenList]>
+	Matches<
+		CreateViewIgnorable,
+		[
+			readonly [
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
+			],
+			EmptyTokenList,
+		]
+	>
 >
 
 describe("sql migration recovering ignorables (type tests)", () => {

@@ -2,6 +2,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
 import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
 import type { Expect, Matches } from "../test-utils/type-test-utils.js"
+import type { SkippedStatement } from "../parser/skip-statement.js"
 
 type Empty = ParseSqlStatementsRecovering<ParseSqlTokens<``>>
 type _Empty = Expect<Matches<Empty, [readonly [], EmptyTokenList]>>
@@ -49,7 +50,10 @@ type _UnknownSecond = Expect<
 		[
 			readonly [
 				{ readonly kind: "create_schema"; readonly name: "a"; readonly ifNotExists: false },
-				{ readonly kind: "skipped-statement" },
+				{
+					kind: "skipped-statement"
+					token: ";"
+				},
 			],
 			EmptyTokenList,
 		]
