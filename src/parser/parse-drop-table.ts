@@ -12,8 +12,8 @@ export type DropTableStatement = {
 	readonly ifExists: boolean
 }
 
-/** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
-export type ParseDropTable<B extends TokensList> = FinalizeDropTableTuple<ParseDropTableTupleAfterTable<B>>
+/** `Tokens` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
+export type ParseDropTable<Tokens extends TokensList> = FinalizeDropTableTuple<ParseDropTableTupleAfterTable<Tokens>>
 
 type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
@@ -21,20 +21,20 @@ type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParserError<strin
 		? [Result, Rest]
 		: never
 
-type ParseDropTableTupleAfterTable<B extends TokensList> =
-	ReadOptionalIfExists<B> extends [true, infer RestFlag extends TokensList]
+type ParseDropTableTupleAfterTable<Tokens extends TokensList> =
+	ReadOptionalIfExists<Tokens> extends [true, infer RestFlag extends TokensList]
 		? ParseDropTableWithFlag<true, RestFlag>
-		: ReadOptionalIfExists<B> extends [false, infer RestFlag extends TokensList]
+		: ReadOptionalIfExists<Tokens> extends [false, infer RestFlag extends TokensList]
 			? ParseDropTableWithFlag<false, RestFlag>
-			: ReadOptionalIfExists<B> extends [
+			: ReadOptionalIfExists<Tokens> extends [
 						infer FlagError extends SqlParserError<string>,
 						infer RestFlag extends TokensList,
 				  ]
 				? [FlagError, RestFlag]
-				: [SqlParserError<"Unable to parse DROP TABLE statement">, B]
+				: [SqlParserError<"Unable to parse DROP TABLE statement">, Tokens]
 
-type ParseDropTableWithFlag<IfExists extends boolean, B extends TokensList> =
-	ReadQualifiedIdentifierFromBuffer<B> extends [
+type ParseDropTableWithFlag<IfExists extends boolean, Tokens extends TokensList> =
+	ReadQualifiedIdentifierFromBuffer<Tokens> extends [
 		infer Name extends SqlQualifiedIdentifier,
 		infer RestName extends TokensList,
 	]
@@ -48,4 +48,4 @@ type ParseDropTableWithFlag<IfExists extends boolean, B extends TokensList> =
 					Tail,
 				]
 			: [SqlParserError<"Unable to parse DROP TABLE statement">, RestName]
-		: [SqlParserError<"Unable to parse DROP TABLE statement">, B]
+		: [SqlParserError<"Unable to parse DROP TABLE statement">, Tokens]

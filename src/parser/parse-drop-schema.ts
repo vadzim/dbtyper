@@ -7,8 +7,10 @@ export type DropSchemaStatement = {
 	readonly ifExists: boolean
 }
 
-/** `B` must be the buffer immediately after the `schema` token (caller routes with `PeekToken` then `SkipToken`). */
-export type ParseDropSchema<B extends TokensList> = FinalizeDropSchemaTuple<ParseDropSchemaTupleAfterSchema<B>>
+/** `Tokens` must be the buffer immediately after the `schema` token (caller routes with `PeekToken` then `SkipToken`). */
+export type ParseDropSchema<Tokens extends TokensList> = FinalizeDropSchemaTuple<
+	ParseDropSchemaTupleAfterSchema<Tokens>
+>
 
 type FinalizeDropSchemaTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
@@ -16,20 +18,20 @@ type FinalizeDropSchemaTuple<T> = T extends [infer E extends SqlParserError<stri
 		? [Result, Rest]
 		: never
 
-type ParseDropSchemaTupleAfterSchema<B extends TokensList> =
-	ReadOptionalIfExists<B> extends [true, infer RestFlag extends TokensList]
+type ParseDropSchemaTupleAfterSchema<Tokens extends TokensList> =
+	ReadOptionalIfExists<Tokens> extends [true, infer RestFlag extends TokensList]
 		? ParseDropSchemaWithFlag<true, RestFlag>
-		: ReadOptionalIfExists<B> extends [false, infer RestFlag extends TokensList]
+		: ReadOptionalIfExists<Tokens> extends [false, infer RestFlag extends TokensList]
 			? ParseDropSchemaWithFlag<false, RestFlag>
-			: ReadOptionalIfExists<B> extends [
+			: ReadOptionalIfExists<Tokens> extends [
 						infer FlagError extends SqlParserError<string>,
 						infer RestFlag extends TokensList,
 				  ]
 				? [FlagError, RestFlag]
-				: [SqlParserError<"Unable to parse DROP SCHEMA statement">, B]
+				: [SqlParserError<"Unable to parse DROP SCHEMA statement">, Tokens]
 
-type ParseDropSchemaWithFlag<IfExists extends boolean, B extends TokensList> =
-	ReadExpectedIdentifier<B, "Unable to parse DROP SCHEMA statement"> extends [
+type ParseDropSchemaWithFlag<IfExists extends boolean, Tokens extends TokensList> =
+	ReadExpectedIdentifier<Tokens, "Unable to parse DROP SCHEMA statement"> extends [
 		infer NameResult extends string | SqlParserError<string>,
 		infer RestName extends TokensList,
 	]
@@ -45,4 +47,4 @@ type ParseDropSchemaWithFlag<IfExists extends boolean, B extends TokensList> =
 						Tail,
 					]
 				: [SqlParserError<"Unable to parse DROP SCHEMA statement">, RestName]
-		: [SqlParserError<"Unable to parse DROP SCHEMA statement">, B]
+		: [SqlParserError<"Unable to parse DROP SCHEMA statement">, Tokens]

@@ -16,8 +16,8 @@ export type InsertValuesStatement = {
 	readonly valueTypes: readonly unknown[]
 }
 
-/** `B` must point at `insert` (caller routes on first keyword). */
-export type ParseInsertValues<B extends TokensList> = FinalizeInsert<ParseInsertTuple<B>>
+/** `Tokens` must point at `insert` (caller routes on first keyword). */
+export type ParseInsertValues<Tokens extends TokensList> = FinalizeInsert<ParseInsertTuple<Tokens>>
 
 type FinalizeInsert<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
@@ -40,8 +40,8 @@ type FinalizeInsert<T> = T extends [infer E extends SqlParserError<string>, infe
 			]
 		: [SqlParserError<"Unable to parse INSERT">, EmptyTokenList]
 
-type ParseInsertTuple<B extends TokensList> =
-	ReadExpectedToken<B, "into", "Expected INTO after INSERT"> extends [true, infer Rest0 extends TokensList]
+type ParseInsertTuple<Tokens extends TokensList> =
+	ReadExpectedToken<Tokens, "into", "Expected INTO after INSERT"> extends [true, infer Rest0 extends TokensList]
 		? ReadQualifiedIdentifierFromBuffer<Rest0> extends [
 				infer Table extends SqlQualifiedIdentifier,
 				infer Rest1 extends TokensList,
@@ -91,12 +91,12 @@ type ParseInsertTuple<B extends TokensList> =
 					: [SqlParserError<"Unable to parse INSERT column list">, Rest1]
 				: [SqlParserError<"Expected column list in INSERT">, Rest0]
 			: [SqlParserError<"Expected table name in INSERT">, Rest0]
-		: ReadExpectedToken<B, "into", "Expected INTO after INSERT"> extends [
+		: ReadExpectedToken<Tokens, "into", "Expected INTO after INSERT"> extends [
 					infer E extends SqlParserError<string>,
 					infer R extends TokensList,
 			  ]
 			? [E, R]
-			: [SqlParserError<"Unable to parse INSERT">, B]
+			: [SqlParserError<"Unable to parse INSERT">, Tokens]
 
 type TupleLenEq<A extends readonly unknown[], B extends readonly unknown[]> = A["length"] extends B["length"]
 	? B["length"] extends A["length"]
@@ -104,12 +104,12 @@ type TupleLenEq<A extends readonly unknown[], B extends readonly unknown[]> = A[
 		: false
 	: false
 
-type ParseValueListToTuple<B extends TokensList> =
-	PeekToken<B> extends ""
-		? [SqlParserError<"Unclosed value list in INSERT">, B]
-		: PeekToken<B> extends ")"
-			? [readonly [], B]
-			: ParseOneValue<B> extends [infer V, infer After extends TokensList]
+type ParseValueListToTuple<Tokens extends TokensList> =
+	PeekToken<Tokens> extends ""
+		? [SqlParserError<"Unclosed value list in INSERT">, Tokens]
+		: PeekToken<Tokens> extends ")"
+			? [readonly [], Tokens]
+			: ParseOneValue<Tokens> extends [infer V, infer After extends TokensList]
 				? PeekToken<After> extends ","
 					? ParseValueListToTuple<SkipToken<After>> extends [
 							infer Rest extends readonly unknown[],
@@ -122,21 +122,21 @@ type ParseValueListToTuple<B extends TokensList> =
 						: IsBufferEnd<After> extends true
 							? [readonly [V], After]
 							: [SqlParserError<"Expected ) or comma after INSERT value">, After]
-				: [SqlParserError<"Unable to parse INSERT value">, B]
+				: [SqlParserError<"Unable to parse INSERT value">, Tokens]
 
-type ParseOneValue<B extends TokensList> =
-	PeekToken<B> extends infer T extends string
+type ParseOneValue<Tokens extends TokensList> =
+	PeekToken<Tokens> extends infer T extends string
 		? T extends "null"
-			? [null, SkipToken<B>]
+			? [null, SkipToken<Tokens>]
 			: T extends "true"
-				? [true, SkipToken<B>]
+				? [true, SkipToken<Tokens>]
 				: T extends "false"
-					? [false, SkipToken<B>]
+					? [false, SkipToken<Tokens>]
 					: T extends `"${string}"`
-						? [string, SkipToken<B>]
+						? [string, SkipToken<Tokens>]
 						: T extends `'${string}'`
-							? [string, SkipToken<B>]
+							? [string, SkipToken<Tokens>]
 							: T extends `${number}`
-								? [number, SkipToken<B>]
-								: [SqlParserError<"Unsupported value in INSERT">, B]
-		: [SqlParserError<"Unsupported value in INSERT">, B]
+								? [number, SkipToken<Tokens>]
+								: [SqlParserError<"Unsupported value in INSERT">, Tokens]
+		: [SqlParserError<"Unsupported value in INSERT">, Tokens]

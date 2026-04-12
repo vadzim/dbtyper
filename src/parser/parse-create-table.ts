@@ -22,8 +22,10 @@ export type CreateTableStatement = {
 	readonly refs: ForeignRefMeta | undefined
 }
 
-/** `B` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
-export type ParseCreateTable<B extends TokensList> = FinalizeCreateTableTuple<ParseCreateTableTupleAfterTable<B>>
+/** `Tokens` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
+export type ParseCreateTable<Tokens extends TokensList> = FinalizeCreateTableTuple<
+	ParseCreateTableTupleAfterTable<Tokens>
+>
 
 type FinalizeCreateTableTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
 	? [E, R]
@@ -94,21 +96,21 @@ type ParseCreateBodyOneCommaSegment<
 		: never
 
 type ParseCreateBody<
-	B extends TokensList,
+	Tokens extends TokensList,
 	Row,
 	Names extends string,
 	Error = never,
 	Refs extends ForeignRefMeta = never,
 > =
-	PeekToken<B> extends ""
-		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<B>]
-		: ReadConstraintEntryMatch<B> extends [
+	PeekToken<Tokens> extends ""
+		? [CreateBodyState<Row, Names, Error, Refs>, SkipToken<Tokens>]
+		: ReadConstraintEntryMatch<Tokens> extends [
 					infer Kind,
 					infer ColStart extends TokensList,
 					infer AfterKw extends TokensList,
 			  ]
 			? ParseCreateBodyOneCommaSegment<
-					SkipPastFirstTopLevelComma<B>,
+					SkipPastFirstTopLevelComma<Tokens>,
 					Row,
 					Names,
 					Error,
@@ -124,25 +126,25 @@ type ParseCreateBody<
 						MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
 						Refs
 					>,
-					B,
+					Tokens,
 				]
 
-type ParseCreateTableTupleAfterTable<B extends TokensList> = ParseCreateTableStatementBody<B>
+type ParseCreateTableTupleAfterTable<Tokens extends TokensList> = ParseCreateTableStatementBody<Tokens>
 
-type ParseCreateTableStatementBody<B extends TokensList> =
-	ReadOptionalIfNotExists<B> extends [true, infer RestAfterFlag extends TokensList]
+type ParseCreateTableStatementBody<Tokens extends TokensList> =
+	ReadOptionalIfNotExists<Tokens> extends [true, infer RestAfterFlag extends TokensList]
 		? ParseCreateTableWithFlag<true, RestAfterFlag>
-		: ReadOptionalIfNotExists<B> extends [false, infer RestAfterFlag extends TokensList]
+		: ReadOptionalIfNotExists<Tokens> extends [false, infer RestAfterFlag extends TokensList]
 			? ParseCreateTableWithFlag<false, RestAfterFlag>
-			: ReadOptionalIfNotExists<B> extends [
+			: ReadOptionalIfNotExists<Tokens> extends [
 						infer FlagError extends SqlParserError<string>,
 						infer RestAfterFlag extends TokensList,
 				  ]
 				? [FlagError, RestAfterFlag]
-				: [SqlParserError<"Unable to parse CREATE TABLE statement">, B]
+				: [SqlParserError<"Unable to parse CREATE TABLE statement">, Tokens]
 
-type ParseCreateTableWithFlag<IfNotExists extends boolean, B extends TokensList> =
-	ReadQualifiedIdentifierFromBuffer<B> extends [
+type ParseCreateTableWithFlag<IfNotExists extends boolean, Tokens extends TokensList> =
+	ReadQualifiedIdentifierFromBuffer<Tokens> extends [
 		infer Name extends SqlQualifiedIdentifier,
 		infer RestAfterName extends TokensList,
 	]
@@ -158,7 +160,7 @@ type ParseCreateTableWithFlag<IfNotExists extends boolean, B extends TokensList>
 					]
 				: [SqlParserError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
 			: [SqlParserError<"Expected CREATE TABLE body in parentheses">, RestAfterName]
-		: [SqlParserError<"Expected a CREATE TABLE statement with a table name">, B]
+		: [SqlParserError<"Expected a CREATE TABLE statement with a table name">, Tokens]
 
 type SqlCreateTableName<Statement> = Statement extends { name: infer Name extends SqlQualifiedIdentifier }
 	? Name

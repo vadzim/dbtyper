@@ -18,15 +18,15 @@ export type ForeignRefMeta = {
 
 export type FkColumnPair = readonly [local: string, referenced: string]
 
-type StripConstraintPrefixBuffers<B extends TokensList> =
-	ReadOptionalToken<B, "constraint"> extends [true, infer AfterKw extends TokensList]
+type StripConstraintPrefixBuffers<Tokens extends TokensList> =
+	ReadOptionalToken<Tokens, "constraint"> extends [true, infer AfterKw extends TokensList]
 		? ReadExpectedIdentifier<AfterKw, "Expected constraint name after CONSTRAINT"> extends [
 				infer _Name extends string,
 				infer EB extends TokensList,
 			]
 			? [EB, EmptyTokenList]
-			: [B, EmptyTokenList]
-		: [B, EmptyTokenList]
+			: [Tokens, EmptyTokenList]
+		: [Tokens, EmptyTokenList]
 
 /** Returns `[kind, afterKeyword]` when `EB` is a constraint clause head, or `false` otherwise. `afterKeyword` is the buffer after all constraint type keywords (e.g. after `PRIMARY KEY`, after `UNIQUE`), ready for body parsing without re-extracting those tokens. */
 type ReadConstraintKeywordOnStripped<EB extends TokensList> =
@@ -52,19 +52,19 @@ type ReadConstraintKeywordOnStripped<EB extends TokensList> =
 
 /**
  * `[Kind, EB, AfterKw]` when matched — `Kind` is the constraint type (`"primary_key"` | `"unique"` | `"foreign_key"` | `"other"`), `EB` is the stripped buffer (after any `CONSTRAINT name` prefix), `AfterKw` is the buffer after all constraint type keywords, ready for body parsing.
- * `[false, B, B]` when not matched — `B` is the original buffer (column definition start).
+ * `[false, Tokens, Tokens]` when not matched — `Tokens` is the original buffer (column definition start).
  */
-export type ReadConstraintEntryMatch<B extends TokensList> =
-	StripConstraintPrefixBuffers<B> extends [infer EB extends TokensList, EmptyTokenList]
+export type ReadConstraintEntryMatch<Tokens extends TokensList> =
+	StripConstraintPrefixBuffers<Tokens> extends [infer EB extends TokensList, EmptyTokenList]
 		? ReadConstraintKeywordOnStripped<EB> extends [infer Kind extends string, infer AfterKw extends TokensList]
 			? [Kind, EB, AfterKw]
-			: [false, B, B]
-		: [false, B, B]
+			: [false, Tokens, Tokens]
+		: [false, Tokens, Tokens]
 
-export type ValidateColumnRefs<B extends TokensList, Names extends string> =
-	PeekToken<B> extends ""
+export type ValidateColumnRefs<Tokens extends TokensList, Names extends string> =
+	PeekToken<Tokens> extends ""
 		? [true, EmptyTokenList]
-		: ReadExpectedIdentifier<B, "Expected column name in constraint list"> extends [
+		: ReadExpectedIdentifier<Tokens, "Expected column name in constraint list"> extends [
 					infer Col extends string,
 					infer AfterId extends TokensList,
 			  ]
@@ -87,10 +87,10 @@ export type ValidateColumnRefs<B extends TokensList, Names extends string> =
 						: [SqlParserError<"Unable to parse column reference list in table constraint">, EmptyTokenList]
 			: [SqlParserError<"Unable to parse column reference list in table constraint">, EmptyTokenList]
 
-export type ParseColumnListToTuple<B extends TokensList> =
-	PeekToken<B> extends ""
+export type ParseColumnListToTuple<Tokens extends TokensList> =
+	PeekToken<Tokens> extends ""
 		? [readonly [], EmptyTokenList]
-		: ReadExpectedIdentifier<B, "Expected column name in column list"> extends [
+		: ReadExpectedIdentifier<Tokens, "Expected column name in column list"> extends [
 					infer Col extends string,
 					infer AfterId extends TokensList,
 			  ]
@@ -181,9 +181,9 @@ export type ValidateFkReferencedColumnPairs<
 		? [true, EmptyTokenList]
 		: [SqlParserError<"Unable to validate foreign key referenced columns">, EmptyTokenList]
 
-/** `B` must be the buffer immediately after `FOREIGN KEY` — pointing at `(local_col_list)`. */
-type ValidateForeignKeyConstraintBodyBuffer<B extends TokensList, Names extends string> =
-	ReadFirstParenGroup<B> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
+/** `Tokens` must be the buffer immediately after `FOREIGN KEY` — pointing at `(local_col_list)`. */
+type ValidateForeignKeyConstraintBodyBuffer<Tokens extends TokensList, Names extends string> =
+	ReadFirstParenGroup<Tokens> extends [infer LocalBuf extends TokensList, infer R1 extends TokensList]
 		? ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
 				true,
 				infer R1b extends TokensList,

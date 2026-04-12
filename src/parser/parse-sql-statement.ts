@@ -77,34 +77,37 @@ type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList> =
 		: [SqlParserError<"Unable to parse ALTER TABLE statement">, Tokens]
 
 /**
- * Parses zero or more statements from `B`. On **full** success returns `[readonly [...statements], rest]`
+ * Parses zero or more statements from `Tokens`. On **full** success returns `[readonly [...statements], rest]`
  * with `PeekToken<rest>` empty. On the first `SqlStatement` failure returns **`[error, buffer]`** only:
  * no tuple of prior successes, and `buffer` is the cursor at the **start** of the statement that failed.
  */
-export type ParseSqlStatements<B extends TokensList> = InternalParseStatements<B, readonly []>
+export type ParseSqlStatements<Tokens extends TokensList> = InternalParseStatements<Tokens, readonly []>
 
-type InternalParseStatements<B extends TokensList, Acc extends readonly unknown[]> =
-	PeekToken<B> extends ""
-		? [Acc, B]
-		: ParseSqlStatement<B> extends [infer Head, infer Rest extends TokensList]
+type InternalParseStatements<Tokens extends TokensList, Acc extends readonly unknown[]> =
+	PeekToken<Tokens> extends ""
+		? [Acc, Tokens]
+		: ParseSqlStatement<Tokens> extends [infer Head, infer Rest extends TokensList]
 			? Head extends SqlParserError<string>
-				? [Head, B]
+				? [Head, Tokens]
 				: InternalParseStatements<Rest, readonly [...Acc, Head]>
-			: [SqlParserError<"Unknown sql statement">, B]
+			: [SqlParserError<"Unknown sql statement">, Tokens]
 
 /**
- * Parses statements from `B`, keeping every successful parse in order. On failure, returns
- * `[readonly [...parsed, error], buffer]` where `buffer` is `B` at the **start** of the failing
+ * Parses statements from `Tokens`, keeping every successful parse in order. On failure, returns
+ * `[readonly [...parsed, error], buffer]` where `buffer` is `Tokens` at the **start** of the failing
  * statement (so later input after a bad statement is still visible). Use {@link ParseSqlStatements}
  * when you only need either a full success tuple or a single `[error, buffer]` with no partial list.
  */
-export type ParseSqlStatementsRecovering<B extends TokensList> = InternalParseSqlStatementsRecovering<B, readonly []>
+export type ParseSqlStatementsRecovering<Tokens extends TokensList> = InternalParseSqlStatementsRecovering<
+	Tokens,
+	readonly []
+>
 
-type InternalParseSqlStatementsRecovering<B extends TokensList, Acc extends readonly unknown[]> =
-	PeekToken<B> extends ""
-		? [Acc, B]
-		: ParseSqlStatement<B> extends [infer Head, infer Rest extends TokensList]
+type InternalParseSqlStatementsRecovering<Tokens extends TokensList, Acc extends readonly unknown[]> =
+	PeekToken<Tokens> extends ""
+		? [Acc, Tokens]
+		: ParseSqlStatement<Tokens> extends [infer Head, infer Rest extends TokensList]
 			? Head extends SqlParserError<string>
-				? [readonly [...Acc, Head], B]
+				? [readonly [...Acc, Head], Tokens]
 				: InternalParseSqlStatementsRecovering<Rest, readonly [...Acc, Head]>
-			: [readonly [...Acc, SqlParserError<"Unknown sql statement">], B]
+			: [readonly [...Acc, SqlParserError<"Unknown sql statement">], Tokens]
