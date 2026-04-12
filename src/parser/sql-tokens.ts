@@ -60,16 +60,17 @@ type ReadTaggedDollar<S extends string> = S extends `$${infer Tag}$${infer Rest}
 
 type CheckDoubleQuotes<S extends string> = S extends ServiceWords ? S : `"${S}"`
 
-type OptimizedBySpaceReadTokenChars<S extends string> = S extends `${infer SmallerBuffer} ${infer Rest extends string}`
-	? ReadTokenChars<SmallerBuffer> extends {
-			__token__: infer T extends string
-			__rest__: infer SmallerRest extends string
-		}
-		? SmallerRest extends ""
-			? { __token__: T; __rest__: Rest }
-			: { __token__: T; __rest__: `${SmallerRest} ${Rest}` }
+type OptimizedBySpaceReadTokenChars<S extends string> =
+	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
+		? ReadTokenChars<SmallerBuffer> extends {
+				__token__: infer T extends string
+				__rest__: infer SmallerRest extends string
+			}
+			? SmallerRest extends ""
+				? { __token__: T; __rest__: Rest }
+				: { __token__: T; __rest__: `${SmallerRest}\x20${Rest}` }
+			: ReadTokenChars<S>
 		: ReadTokenChars<S>
-	: ReadTokenChars<S>
 
 type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends TokenChar
@@ -77,15 +78,15 @@ type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${in
 		: { __token__: Acc; __rest__: S }
 	: { __token__: Acc; __rest__: "" }
 
-type Ws = " " | "\n" | "\t" | "\r"
+type Ws = "\x20" | "\n" | "\t" | "\r"
 
 type StartTokenChar = Letter | Digit | "_"
 
 type TokenChar = Letter | Digit | "$" | "_"
 
-type Letter = LowerCaseLetter | UpperCaseLetter
-
 type Digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+type Letter = LowerCaseLetter | UpperCaseLetter
 
 type UpperCaseLetter = Uppercase<LowerCaseLetter>
 
