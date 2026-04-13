@@ -6,7 +6,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.js"
-import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 export type ForeignRefMeta = {
 	from: string
@@ -54,7 +54,7 @@ export type ParseConstraintBody<Kind extends string, AfterKw extends TokensList>
 
 export type ParseColumnListToTuple<Tokens extends TokensList> =
 	PeekToken<Tokens> extends ""
-		? [readonly [], EmptyTokenList]
+		? [readonly [], Tokens]
 		: ReadExpectedIdentifier<Tokens, "Expected column name in column list"> extends [
 					infer Col extends string,
 					infer AfterId extends TokensList,
@@ -62,14 +62,14 @@ export type ParseColumnListToTuple<Tokens extends TokensList> =
 			? PeekToken<AfterId> extends ","
 				? ParseColumnListToTuple<SkipToken<AfterId>> extends [
 						infer Rest extends readonly string[],
-						infer _ extends TokensList,
+						infer Tail extends TokensList,
 					]
-					? [readonly [Col, ...Rest], EmptyTokenList]
+					? [readonly [Col, ...Rest], Tail]
 					: never
 				: PeekToken<AfterId> extends "" | ")"
-					? [readonly [Col], EmptyTokenList]
+					? [readonly [Col], AfterId]
 					: IsBufferEnd<AfterId> extends true
-						? [readonly [Col], EmptyTokenList]
+						? [readonly [Col], AfterId]
 						: never
 			: never
 
@@ -78,15 +78,11 @@ export type ValidateColumnTupleRefs<Cols extends readonly string[], Names extend
 	...infer R extends readonly string[],
 ]
 	? H extends Names
-		? ValidateColumnTupleRefs<R, Names> extends [infer V, infer _ extends TokensList]
-			? V extends true
-				? [true, EmptyTokenList]
-				: [V, EmptyTokenList]
-			: never
-		: [SqlParserError<`Unknown column "${H}" referenced in table constraint`>, EmptyTokenList]
+		? ValidateColumnTupleRefs<R, Names>
+		: SqlParserError<`Unknown column "${H}" referenced in table constraint`>
 	: Cols extends readonly []
-		? [true, EmptyTokenList]
-		: [SqlParserError<"Unable to parse column reference list in table constraint">, EmptyTokenList]
+		? true
+		: SqlParserError<"Unable to parse column reference list in table constraint">
 
 export type ZipColumnListsToPairs<
 	From extends readonly string[],
@@ -94,57 +90,37 @@ export type ZipColumnListsToPairs<
 	Acc extends readonly FkColumnPair[] = readonly [],
 > = From extends readonly []
 	? To extends readonly []
-		? [Acc, EmptyTokenList]
-		: [
-				SqlParserError<"Foreign key referenced column list has more entries than the local column list">,
-				EmptyTokenList,
-			]
+		? Acc
+		: SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 	: To extends readonly []
-		? [
-				SqlParserError<"Foreign key local column list has more entries than the referenced column list">,
-				EmptyTokenList,
-			]
+		? SqlParserError<"Foreign key local column list has more entries than the referenced column list">
 		: From extends readonly [infer FH extends string, ...infer FT extends readonly string[]]
 			? To extends readonly [infer TH extends string, ...infer TT extends readonly string[]]
 				? ZipColumnListsToPairs<FT, TT, [...Acc, readonly [FH, TH]]>
-				: [
-						SqlParserError<"Foreign key referenced column list has more entries than the local column list">,
-						EmptyTokenList,
-					]
-			: [
-					SqlParserError<"Foreign key referenced column list has more entries than the local column list">,
-					EmptyTokenList,
-				]
+				: SqlParserError<"Foreign key referenced column list has more entries than the local column list">
+			: SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 
 export type ValidateFkLocalColumnPairs<
 	Pairs extends readonly FkColumnPair[],
 	Names extends string,
 > = Pairs extends readonly [readonly [infer L extends string, string], ...infer Rest extends readonly FkColumnPair[]]
 	? L extends Names
-		? ValidateFkLocalColumnPairs<Rest, Names> extends [infer R, infer _ extends TokensList]
-			? R extends true
-				? [true, EmptyTokenList]
-				: [R, EmptyTokenList]
-			: never
-		: [SqlParserError<`Unknown column "${L}" referenced in table constraint`>, EmptyTokenList]
+		? ValidateFkLocalColumnPairs<Rest, Names>
+		: SqlParserError<`Unknown column "${L}" referenced in table constraint`>
 	: Pairs extends readonly []
-		? [true, EmptyTokenList]
-		: [SqlParserError<"Unable to validate foreign key local columns">, EmptyTokenList]
+		? true
+		: SqlParserError<"Unable to validate foreign key local columns">
 
 export type ValidateFkReferencedColumnPairs<
 	Pairs extends readonly FkColumnPair[],
 	TargetNames extends string,
 > = Pairs extends readonly [readonly [string, infer R extends string], ...infer Rest extends readonly FkColumnPair[]]
 	? R extends TargetNames
-		? ValidateFkReferencedColumnPairs<Rest, TargetNames> extends [infer V, infer _ extends TokensList]
-			? V extends true
-				? [true, EmptyTokenList]
-				: [V, EmptyTokenList]
-			: never
-		: [SqlParserError<`Unknown column "${R}" referenced in table constraint`>, EmptyTokenList]
+		? ValidateFkReferencedColumnPairs<Rest, TargetNames>
+		: SqlParserError<`Unknown column "${R}" referenced in table constraint`>
 	: Pairs extends readonly []
-		? [true, EmptyTokenList]
-		: [SqlParserError<"Unable to validate foreign key referenced columns">, EmptyTokenList]
+		? true
+		: SqlParserError<"Unable to validate foreign key referenced columns">
 
 /** Returns the buffer after the referenced-column `)` (before `ON DELETE`, `;`, etc.). */
 export type ParseForeignKeyMetaAndRest<AfterKey extends TokensList> =
@@ -160,7 +136,7 @@ export type ParseForeignKeyMetaAndRest<AfterKey extends TokensList> =
 				? ReadFirstParenGroup<R2> extends [infer TargetColsBuf extends TokensList, infer R3 extends TokensList]
 					? ParseColumnListToTuple<LocalBuf> extends [infer FC extends readonly string[], infer _]
 						? ParseColumnListToTuple<TargetColsBuf> extends [infer TC extends readonly string[], infer __]
-							? ZipColumnListsToPairs<FC, TC> extends [infer Pairs, infer ___ extends TokensList]
+							? ZipColumnListsToPairs<FC, TC> extends infer Pairs
 								? Pairs extends SqlParserError<string>
 									? [Pairs, R3]
 									: Pairs extends readonly FkColumnPair[]

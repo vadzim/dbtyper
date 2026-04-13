@@ -1,21 +1,5 @@
 import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
-/** Walks from `Tokens` and returns the buffer **after** the first top-level `,` token. If none, returns the buffer at EOF (`PeekToken` is `""`). */
-export type SkipPastFirstTopLevelComma<Tokens extends TokensList, Depth extends 0[] = []> =
-	PeekToken<Tokens> extends ""
-		? Tokens
-		: PeekToken<Tokens> extends "("
-			? SkipPastFirstTopLevelComma<SkipToken<Tokens>, [0, ...Depth]>
-			: PeekToken<Tokens> extends ")"
-				? Depth extends [0, ...infer Tail extends 0[]]
-					? SkipPastFirstTopLevelComma<SkipToken<Tokens>, Tail>
-					: SkipPastFirstTopLevelComma<SkipToken<Tokens>, Depth>
-				: PeekToken<Tokens> extends ","
-					? Depth["length"] extends 0
-						? SkipToken<Tokens>
-						: SkipPastFirstTopLevelComma<SkipToken<Tokens>, Depth>
-					: SkipPastFirstTopLevelComma<SkipToken<Tokens>, Depth>
-
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
 
 type FindFirstOpenParen<Tokens extends TokensList> =

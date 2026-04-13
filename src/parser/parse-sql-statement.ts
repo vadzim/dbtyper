@@ -9,17 +9,19 @@ import type { SkipStatement } from "./skip-statement.js"
 import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 export type ParseSqlStatement<Tokens extends TokensList> =
-	PeekToken<Tokens> extends ""
-		? [SqlParserError<"Unknown sql statement">, Tokens]
-		: PeekToken<Tokens> extends "create"
-			? ParseCreate<SkipToken<Tokens>>
-			: PeekToken<Tokens> extends "drop"
-				? ParseDrop<SkipToken<Tokens>>
-				: PeekToken<Tokens> extends "alter"
-					? ParseAlter<SkipToken<Tokens>>
-					: PeekToken<Tokens> extends "insert"
-						? ParseInsert<SkipToken<Tokens>>
-						: SkipStatement<Tokens>
+	PeekToken<Tokens> extends infer Head extends string ? ParseSqlStatementByHead<Head, Tokens> : SkipStatement<Tokens>
+
+type ParseSqlStatementByHead<Head extends string, Tokens extends TokensList> = Head extends ""
+	? [SqlParserError<"Unknown sql statement">, Tokens]
+	: Head extends "create"
+		? ParseCreate<SkipToken<Tokens>>
+		: Head extends "drop"
+			? ParseDrop<SkipToken<Tokens>>
+			: Head extends "alter"
+				? ParseAlter<SkipToken<Tokens>>
+				: Head extends "insert"
+					? ParseInsert<SkipToken<Tokens>>
+					: SkipStatement<Tokens>
 
 // TODO:
 /** Non-validated `INSERT` shapes (e.g. `INSERT … SELECT`) → skip from `insert` for ignorable. */
@@ -64,11 +66,11 @@ type ParseDrop<Tokens extends TokensList> =
 			: SkipStatement<Tokens>
 
 type ParseAlter<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "table" ? SqlAlterWithMaybeSkipUnsupported<Tokens> : SkipStatement<Tokens>
+	PeekToken<Tokens> extends "table" ? SqlAlterWithMaybeSkipUnsupported<SkipToken<Tokens>> : SkipStatement<Tokens>
 
 // TODO:
 type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList> =
-	ParseAlterTable<SkipToken<Tokens>> extends [infer Head, infer Rest extends TokensList]
+	ParseAlterTable<Tokens> extends [infer Head, infer Rest extends TokensList]
 		? Head extends { readonly kind: "alter_table" }
 			? [Head, Rest]
 			: Head extends SqlParserError<"Unsupported ALTER TABLE action">

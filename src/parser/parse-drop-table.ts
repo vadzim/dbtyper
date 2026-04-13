@@ -22,16 +22,16 @@ type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParserError<strin
 		: never
 
 type ParseDropTableTupleAfterTable<Tokens extends TokensList> =
-	ReadOptionalIfExists<Tokens> extends [true, infer RestFlag extends TokensList]
-		? ParseDropTableWithFlag<true, RestFlag>
-		: ReadOptionalIfExists<Tokens> extends [false, infer RestFlag extends TokensList]
-			? ParseDropTableWithFlag<false, RestFlag>
-			: ReadOptionalIfExists<Tokens> extends [
-						infer FlagError extends SqlParserError<string>,
-						infer RestFlag extends TokensList,
-				  ]
-				? [FlagError, RestFlag]
-				: [SqlParserError<"Unable to parse DROP TABLE statement">, Tokens]
+	ReadOptionalIfExists<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer RestFlag extends TokensList,
+	]
+		? FlagOrError extends SqlParserError<string>
+			? [FlagOrError, RestFlag]
+			: FlagOrError extends true
+				? ParseDropTableWithFlag<true, RestFlag>
+				: ParseDropTableWithFlag<false, RestFlag>
+		: [SqlParserError<"Unable to parse DROP TABLE statement">, Tokens]
 
 type ParseDropTableWithFlag<IfExists extends boolean, Tokens extends TokensList> =
 	ReadQualifiedIdentifierFromBuffer<Tokens> extends [

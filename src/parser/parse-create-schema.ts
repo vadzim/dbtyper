@@ -19,16 +19,16 @@ type FinalizeCreateSchemaTuple<T> = T extends [infer E extends SqlParserError<st
 		: never
 
 type ParseCreateSchemaTupleAfterSchema<Tokens extends TokensList> =
-	ReadOptionalIfNotExists<Tokens> extends [true, infer RestFlag extends TokensList]
-		? ParseCreateSchemaWithFlag<true, RestFlag>
-		: ReadOptionalIfNotExists<Tokens> extends [false, infer RestFlag extends TokensList]
-			? ParseCreateSchemaWithFlag<false, RestFlag>
-			: ReadOptionalIfNotExists<Tokens> extends [
-						infer FlagError extends SqlParserError<string>,
-						infer RestFlag extends TokensList,
-				  ]
-				? [FlagError, RestFlag]
-				: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, Tokens]
+	ReadOptionalIfNotExists<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer RestFlag extends TokensList,
+	]
+		? FlagOrError extends SqlParserError<string>
+			? [FlagOrError, RestFlag]
+			: FlagOrError extends true
+				? ParseCreateSchemaWithFlag<true, RestFlag>
+				: ParseCreateSchemaWithFlag<false, RestFlag>
+		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, Tokens]
 
 type ParseCreateSchemaWithFlag<IfNotExists extends boolean, Tokens extends TokensList> =
 	ReadExpectedIdentifier<Tokens, "Unable to parse CREATE SCHEMA statement"> extends [

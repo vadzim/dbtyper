@@ -1,7 +1,6 @@
 import type { AddColumn } from "./sql-column.js"
 import type {
 	ConsumeStatementEnd,
-	IsBufferEnd,
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadOptionalIfNotExists,
@@ -100,30 +99,18 @@ type ParseIdentifierToken<Tokens extends TokensList> =
 		? [Name, Rest]
 		: never
 
-type ParseAlterAction<Tokens extends TokensList> =
-	IsBufferEnd<Tokens> extends true
-		? SqlParserError<"Expected an ALTER TABLE action">
-		: ReadExpectedToken<Tokens, "add", "Expected an ALTER TABLE action"> extends [
-					infer AddResult,
-					infer AddRest extends TokensList,
-			  ]
-			? AddResult extends SqlParserError<string>
-				? ReadExpectedToken<Tokens, "drop", "Expected an ALTER TABLE action"> extends [
-						infer DropResult,
-						infer DropRest extends TokensList,
-					]
-					? DropResult extends SqlParserError<string>
-						? ReadExpectedToken<Tokens, "rename", "Expected an ALTER TABLE action"> extends [
-								infer RenameResult,
-								infer RenameRest extends TokensList,
-							]
-							? RenameResult extends SqlParserError<string>
-								? SqlParserError<"Unsupported ALTER TABLE action">
-								: ParseAlterActionRename<RenameRest>
-							: SqlParserError<"Unsupported ALTER TABLE action">
-						: ParseAlterActionDrop<DropRest>
-					: SqlParserError<"Unsupported ALTER TABLE action">
-				: ParseAlterActionAdd<AddRest>
+type ParseAlterAction<Tokens extends TokensList> = PeekToken<Tokens> extends ""
+	? SqlParserError<"Expected an ALTER TABLE action">
+	: PeekToken<Tokens> extends infer Action extends string
+		? ParseAlterActionByHead<Action, Tokens>
+		: SqlParserError<"Unsupported ALTER TABLE action">
+
+type ParseAlterActionByHead<Action extends string, Tokens extends TokensList> = Action extends "add"
+	? ParseAlterActionAdd<SkipToken<Tokens>>
+	: Action extends "drop"
+		? ParseAlterActionDrop<SkipToken<Tokens>>
+		: Action extends "rename"
+			? ParseAlterActionRename<SkipToken<Tokens>>
 			: SqlParserError<"Unsupported ALTER TABLE action">
 
 type ParseAlterActionAdd<Tokens extends TokensList> =
@@ -141,33 +128,26 @@ type ParseAlterActionDrop<Tokens extends TokensList> =
 			: SqlParserError<"Unsupported ALTER TABLE action">
 
 type ParseAlterActionRename<Tokens extends TokensList> =
-	ReadExpectedToken<Tokens, "to", "Unsupported ALTER TABLE action"> extends [
-		infer ToResult,
-		infer ToTail extends TokensList,
-	]
-		? ToResult extends SqlParserError<string>
-			? ReadExpectedToken<Tokens, "column", "Unsupported ALTER TABLE action"> extends [
-					infer ColumnResult,
-					infer ColumnTail extends TokensList,
-				]
-				? ColumnResult extends SqlParserError<string>
-					? SqlParserError<"Unsupported ALTER TABLE action">
-					: ParseAlterActionRenameColumn<ColumnTail>
-				: SqlParserError<"Unsupported ALTER TABLE action">
-			: ParseAlterActionRenameTo<ToTail>
-		: SqlParserError<"Unsupported ALTER TABLE action">
+	PeekToken<Tokens> extends "to"
+		? ParseAlterActionRenameTo<SkipToken<Tokens>>
+		: PeekToken<Tokens> extends "column"
+			? ParseAlterActionRenameColumn<SkipToken<Tokens>>
+			: SqlParserError<"Unsupported ALTER TABLE action">
 
 type ParseAlterActionAddColumn<Tokens extends TokensList> =
-	ReadOptionalIfNotExists<Tokens> extends [true, infer Rest extends TokensList]
-		? ParseAlterActionAddColumnWithFlag<true, Rest>
-		: ReadOptionalIfNotExists<Tokens> extends [false, infer Rest extends TokensList]
-			? ParseAlterActionAddColumnWithFlag<false, Rest>
-			: ReadOptionalIfNotExists<Tokens> extends [infer Error extends SqlParserError<string>, TokensList]
-				? Error
-				: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
+	ReadOptionalIfNotExistsOnce<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer Rest extends TokensList,
+	]
+		? FlagOrError extends SqlParserError<string>
+			? FlagOrError
+			: FlagOrError extends true
+				? ParseAlterActionAddColumnWithFlag<true, Rest>
+				: ParseAlterActionAddColumnWithFlag<false, Rest>
+		: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends TokensList> =
-	IsBufferEnd<Rest> extends true
+	PeekToken<Rest> extends ""
 		? SqlParserError<"Expected a column definition in ALTER TABLE ADD COLUMN">
 		: AddColumn<Rest, {}, never> extends infer Added extends {
 					row: unknown
@@ -191,13 +171,16 @@ type ParseAlterActionAddColumnWithFlag<IfNotExists extends boolean, Rest extends
 			: SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">
 
 type ParseAlterActionDropColumn<Tokens extends TokensList> =
-	ReadOptionalIfExists<Tokens> extends [true, infer Rest extends TokensList]
-		? ParseAlterActionDropColumnWithFlag<true, Rest>
-		: ReadOptionalIfExists<Tokens> extends [false, infer Rest extends TokensList]
-			? ParseAlterActionDropColumnWithFlag<false, Rest>
-			: ReadOptionalIfExists<Tokens> extends [infer Error extends SqlParserError<string>, TokensList]
-				? Error
-				: SqlParserError<"Unable to parse ALTER TABLE DROP COLUMN action">
+	ReadOptionalIfExistsOnce<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer Rest extends TokensList,
+	]
+		? FlagOrError extends SqlParserError<string>
+			? FlagOrError
+			: FlagOrError extends true
+				? ParseAlterActionDropColumnWithFlag<true, Rest>
+				: ParseAlterActionDropColumnWithFlag<false, Rest>
+		: SqlParserError<"Unable to parse ALTER TABLE DROP COLUMN action">
 
 type ParseAlterActionDropColumnWithFlag<IfExists extends boolean, Rest extends TokensList> =
 	ParseIdentifierToken<Rest> extends [infer Name extends string, infer Tail extends TokensList]
@@ -302,16 +285,16 @@ type ParseAlterActionRenameColumn<Tokens extends TokensList> =
 		: SqlParserError<"Unable to parse ALTER TABLE RENAME COLUMN action">
 
 type ParseAlterTableTupleAfterTable<Tokens extends TokensList> =
-	ReadOptionalIfExists<Tokens> extends [true, infer RestFlag extends TokensList]
-		? ParseAlterTableWithFlag<true, RestFlag>
-		: ReadOptionalIfExists<Tokens> extends [false, infer RestFlag extends TokensList]
-			? ParseAlterTableWithFlag<false, RestFlag>
-			: ReadOptionalIfExists<Tokens> extends [
-						infer FlagError extends SqlParserError<string>,
-						infer RestFlag extends TokensList,
-				  ]
-				? [FlagError, RestFlag]
-				: [SqlParserError<"Unable to parse ALTER TABLE statement">, Tokens]
+	ReadOptionalIfExistsOnce<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer RestFlag extends TokensList,
+	]
+		? FlagOrError extends SqlParserError<string>
+			? [FlagOrError, RestFlag]
+			: FlagOrError extends true
+				? ParseAlterTableWithFlag<true, RestFlag>
+				: ParseAlterTableWithFlag<false, RestFlag>
+		: [SqlParserError<"Unable to parse ALTER TABLE statement">, Tokens]
 
 type ParseAlterTableWithFlag<IfExists extends boolean, Tokens extends TokensList> =
 	AlterTableAfterOptionalOnly<Tokens> extends infer RestOnly extends TokensList
@@ -342,3 +325,19 @@ type ParseAlterTableWithFlag<IfExists extends boolean, Tokens extends TokensList
 /** `ONLY` may appear with different lexer casing; skip it before the qualified table name. */
 type AlterTableAfterOptionalOnly<Tokens extends TokensList> =
 	Lowercase<PeekToken<Tokens>> extends "only" ? SkipToken<Tokens> : Tokens
+
+type ReadOptionalIfExistsOnce<Tokens extends TokensList> =
+	ReadOptionalIfExists<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer Rest extends TokensList,
+	]
+		? [FlagOrError, Rest]
+		: [SqlParserError<"Unable to parse ALTER TABLE statement">, Tokens]
+
+type ReadOptionalIfNotExistsOnce<Tokens extends TokensList> =
+	ReadOptionalIfNotExists<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer Rest extends TokensList,
+	]
+		? [FlagOrError, Rest]
+		: [SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">, Tokens]

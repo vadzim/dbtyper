@@ -231,16 +231,16 @@ type ParseCreateBodyConstraint<
 type ParseCreateTableTupleAfterTable<Tokens extends TokensList> = ParseCreateTableStatementBody<Tokens>
 
 type ParseCreateTableStatementBody<Tokens extends TokensList> =
-	ReadOptionalIfNotExists<Tokens> extends [true, infer RestAfterFlag extends TokensList]
-		? ParseCreateTableWithFlag<true, RestAfterFlag>
-		: ReadOptionalIfNotExists<Tokens> extends [false, infer RestAfterFlag extends TokensList]
-			? ParseCreateTableWithFlag<false, RestAfterFlag>
-			: ReadOptionalIfNotExists<Tokens> extends [
-						infer FlagError extends SqlParserError<string>,
-						infer RestAfterFlag extends TokensList,
-				  ]
-				? [FlagError, RestAfterFlag]
-				: [SqlParserError<"Unable to parse CREATE TABLE statement">, Tokens]
+	ReadOptionalIfNotExists<Tokens> extends [
+		infer FlagOrError extends boolean | SqlParserError<string>,
+		infer RestAfterFlag extends TokensList,
+	]
+		? FlagOrError extends SqlParserError<string>
+			? [FlagOrError, RestAfterFlag]
+			: FlagOrError extends true
+				? ParseCreateTableWithFlag<true, RestAfterFlag>
+				: ParseCreateTableWithFlag<false, RestAfterFlag>
+		: [SqlParserError<"Unable to parse CREATE TABLE statement">, Tokens]
 
 type ParseCreateTableWithFlag<IfNotExists extends boolean, Tokens extends TokensList> =
 	ReadQualifiedIdentifierFromBuffer<Tokens> extends [

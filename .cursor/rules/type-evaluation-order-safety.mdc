@@ -1,0 +1,41 @@
+---
+description: Avoid relying on lazy vs eager conditional type evaluation
+alwaysApply: true
+---
+
+# Type Evaluation Order Safety
+
+In TypeScript type-level code, do not rely on whether conditional types are evaluated lazily or eagerly.
+
+1. **No evaluation-order assumptions.**
+   - Avoid patterns that are only correct if one branch is not instantiated.
+   - Prefer formulations that are correct regardless of branch instantiation strategy.
+
+2. **Prefer explicit filters and guards.**
+   - Use small helper aliases like:
+     - `type NonTrue<T> = T extends true ? never : T`
+   - Then compose with them instead of deep nested conditionals whose safety depends on timing.
+
+3. **Avoid no-op wrapper conditionals.**
+   - Replace `X extends infer V ? V extends true ? true : V : never` with `X` when equivalent.
+   - Keep `infer` only when it materially improves readability or reuse.
+
+4. **Keep recursion direct and stable.**
+   - For recursive validators, recurse directly and return discriminated outcomes (`true | SqlParserError<...>`).
+   - Do not thread dummy tuple tails or wrapper branches that obscure semantics.
+
+## Examples
+
+```ts
+// ❌ Avoid (no-op wrapper)
+type Validate<T> = Next<T> extends infer V ? (V extends true ? true : V) : never
+
+// ✅ Prefer
+type Validate<T> = Next<T>
+```
+
+```ts
+// ✅ Prefer explicit filter helper
+type NonTrue<T> = T extends true ? never : T
+type ErrorOnly<T> = NonTrue<T>
+```
