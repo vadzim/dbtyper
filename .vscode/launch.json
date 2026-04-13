@@ -1,0 +1,32 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Debug check-consumption (test-data/1)",
+			"program": "${workspaceFolder}/src/type-checker/check-consumption.ts",
+			"args": ["src/type-checker/test-data/1/*.ts"],
+			"cwd": "${workspaceFolder}",
+			"runtimeArgs": [
+				"--experimental-strip-types",
+				"--enable-source-maps"
+			],
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"]
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Debug Current File (Node)",
+			"program": "${file}",
+			"cwd": "${workspaceFolder}",
+			"runtimeArgs": [
+				"--experimental-strip-types",
+				"--enable-source-maps"
+			],
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"]
+		}
+	]
+}

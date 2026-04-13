@@ -9,14 +9,18 @@
 	"scripts": {
 		"typecheck": "time tsgo --noEmit -p tsconfig.json",
 		"tsc": "time tsc --noEmit -p tsconfig.json",
-		"test": "time tsgo --noEmit -p tsconfig.json && node --test \"src/tests/**/*.test.ts\"",
+		"test": "time tsgo --noEmit -p tsconfig.json && node --test \"src/**/*.test.ts\"",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"check-consumption": "node src/type-checker/check-consumption.ts"
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
 		"prettier": "^3.8.1",
 		"typescript": "^6.0.2"
+	},
+	"dependencies": {
+		"fast-glob": "^3.3.3"
 	}
 }

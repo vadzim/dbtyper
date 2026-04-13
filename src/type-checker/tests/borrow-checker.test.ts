@@ -1,0 +1,57 @@
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
+import { getConsumingViolations } from "../borrow-checker.ts"
+import { readTypes } from "../read-types.ts"
+
+/** Minimal conditional + @consumes overlap (only B-style case). */
+const borrowCheckerMinimalSource = `
+type X</*@consumes*/T> = 1
+type A<T> = T extends infer P ? 1 extends T ? [1, X<P>] : [2, T] : never
+type B<T> = A<T> extends [infer T1, infer T2] ? [T1, T2] : [0, T]
+`
+
+/** Same shape as test-data/1/fail1.ts (B, C, D each violate @consumes). */
+const borrowCheckerFail1ShapeSource = `
+type X</*@consumes*/ T> = [1, T]
+type A<T> = T extends infer P ? (1 extends T ? [1, X<P>] : [2, T]) : never
+type B<TT> = A<TT> extends [infer T1, infer T2] ? [T1, T2] : [0, TT]
+type C<TT> = TT extends [infer T1, infer T2] ? [A<T1>, TT] : []
+type D<TT> = TT extends [infer T1, infer T2] ? [A<T1>, T2] : []
+`
+
+describe("getConsumingViolations", () => {
+	it("flags alias overlap for @consumes in the commented conditional example", () => {
+		const result = readTypes("./x.ts", borrowCheckerMinimalSource)
+		const typesById = new Map(result.types.map(t => [t.id, t]))
+		const violations = [...getConsumingViolations(result)]
+
+		assert.equal(violations.length, 1)
+		const v = violations[0]
+		assert.ok(v)
+		assert.equal(typesById.get(v.errorneousUsage.typeId)?.sourceKind, "typeParam")
+		assert.equal(typesById.get(v.borrower.typeId)?.name, "A")
+		assert.equal(v.borrower.argumentIndex, 0)
+		assert.ok(v.commonIds.length > 0)
+		assert.ok(typesById.get(v.borrowedValue.typeId))
+	})
+
+	it("flags B, C, and D when infer splits TT and T1 is consumed by A before another use", () => {
+		const result = readTypes("./fail1.ts", borrowCheckerFail1ShapeSource)
+		const typesById = new Map(result.types.map(t => [t.id, t]))
+		const violations = [...getConsumingViolations(result)]
+
+		assert.equal(violations.length, 3)
+
+		const cStyle = violations.filter(
+			v =>
+				typesById.get(v.borrower.typeId)?.name === "A" &&
+				typesById.get(v.borrowedValue.typeId)?.name === "T1" &&
+				typesById.get(v.errorneousUsage.typeId)?.name === "TT",
+		)
+		assert.equal(
+			cStyle.length,
+			1,
+			"expected exactly one violation for C: A consumes T1 (inferred from TT) then TT is reused",
+		)
+	})
+})

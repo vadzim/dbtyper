@@ -9,7 +9,7 @@ export type SqlParserError<Message extends string> = {
 }
 
 export type PeekToken<Tokens extends TokensList> = Tokens["__token__"]
-export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens["__rest__"]>
+export type SkipToken</*@consume*/ Tokens extends TokensList> = ParseSqlTokens<Tokens["__rest__"]>
 
 type MakeTokensBuffer<Token extends TokenType, Rest extends string, Buffer extends string> = {
 	__token__: Token
