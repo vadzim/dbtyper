@@ -1,29 +1,40 @@
 #!/usr/bin/env node
 // CLI: parse repeatable opaque identities + glob sources, then report getOpaqueViolations().
-// Example: node src/borrow-checker/check-opaque.ts --opaque "./opaque.ts" "Opaque" --opaque "./id.ts" "UserId" "src/**/*.ts"
+// Example: node src/opaque-checker/check-opaque.ts --opaque "./opaque.ts" "Opaque" --consumer "./dual.ts" "Dual:0" "src/**/*.ts"
 import { readFile } from "node:fs/promises"
-import path from "node:path"
 import fg from "fast-glob"
+import {
+	normalizeLogicalPath,
+	OpaqueCliParseError,
+	parseOpaqueCliArgs,
+} from "./opaque-cli-args.ts"
 import { getOpaqueViolations } from "./opaque-type-checker.ts"
 import { DEFAULT_SNIPPET_TAB_WIDTH, formatSourceSnippet } from "./format-source-snippet.ts"
+import { occurrenceLabelRelativeToOther } from "./opaque-diagnostic-labels.ts"
 import { readTypes, type ReadTypesResult, type TypeEntry } from "./read-types.ts"
 
 function usage(): never {
-	console.error(`Usage: node src/borrow-checker/check-opaque.ts [--opaque <opaque-file> <opaque-type-name>]... <glob> [glob...]
+	console.error(`Usage: node src/opaque-checker/check-opaque.ts [options] <glob> [glob...]
+
+  Options (repeatable):
+    --opaque <file> <type-name>
+        Branded / leaf opaque identity to enforce.
+    --consumer <file> <spec>
+        Consumer generic (or leaf) that carries opaque values. <spec> is
+        TypeName or TypeName:0 or TypeName:1:2 (0-based type parameter indices).
+        With no indices, all type parameters of that declaration are consumer slots.
+    --consume <file> <spec>
+        Alias for --consumer (backwards compatible).
+    --opaque-consumer <file> <spec>
+        Alias for --consumer (older name).
 
   Resolves files with fast-glob, runs readTypes per file, then reports
-  getOpaqueViolations() for each provided opaque type identity.
-  --opaque can be repeated and may appear before, after, or between globs.
-  Exit 1 if any violation, if no opaque type is provided, if globs are
-  missing, or if no files match.`)
-	process.exit(1)
-}
+  getOpaqueViolations() for each provided opaque type identity (each run
+  receives the same --consumer list).
 
-/** Same logical path key as readTypes uses for TypeEntry.file/refFile. */
-function normalizeLogicalPath(filePath: string): string {
-	const normalized = path.posix.normalize(filePath)
-	if (normalized.startsWith("/")) return normalized
-	return normalized === "." || normalized.startsWith("./") ? normalized : `./${normalized}`
+  --opaque and globs may appear in any order. Exit 1 if any violation, if
+  no --opaque is provided, if globs are missing, or if no files match.`)
+	process.exit(1)
 }
 
 async function readTypesWithSources(paths: readonly string[]): Promise<{
@@ -64,10 +75,28 @@ function printViolationSnippet(
 		printIndentedStderr(`note: ${renderedMessage.note}`)
 	}
 	console.error()
+	if (isDuplicateUsageViolation(violation.message) && violation.relatedFile && violation.relatedRef) {
+		const primaryLabel = occurrenceLabelRelativeToOther(
+			violation.file,
+			violation.ref,
+			violation.relatedFile,
+			violation.relatedRef,
+		)
+		printIndentedStderr(
+			`${violation.file}:${violation.ref.pos.line}:${violation.ref.pos.column}: ${primaryLabel}`,
+		)
+		printIndentedStderr("")
+	}
 	printReferenceSnippet(sourcesByPath, types, violation.file, violation.ref)
 	if (isDuplicateUsageViolation(violation.message) && violation.relatedFile && violation.relatedRef) {
+		const relatedLabel = occurrenceLabelRelativeToOther(
+			violation.relatedFile,
+			violation.relatedRef,
+			violation.file,
+			violation.ref,
+		)
 		printIndentedStderr(
-			`${violation.relatedFile}:${violation.relatedRef.pos.line}:${violation.relatedRef.pos.column}: second usage`,
+			`${violation.relatedFile}:${violation.relatedRef.pos.line}:${violation.relatedRef.pos.column}: ${relatedLabel}`,
 		)
 		printIndentedStderr("")
 		printReferenceSnippet(sourcesByPath, types, violation.relatedFile, violation.relatedRef, true)
@@ -144,11 +173,28 @@ function renderOpaqueMessage(message: string): { primary: string; note?: string 
 			note: "The callee argument must be constrained by the same opaque type.",
 		}
 	}
+	if (message.includes("without a configured opaque or consumer extends only")) {
+		const callee = message.match(/generic (\S+) without a configured opaque or consumer extends only/)?.[1] ?? "generic"
+		return {
+			primary: `Type "${variable}" cannot be passed to "${callee}".`,
+			note: "The callee parameter must extend only a configured opaque or consumer type.",
+		}
+	}
 	if (message.includes("that destructures this argument")) {
 		const callee = message.match(/generic (\S+) that destructures this argument/)?.[1] ?? "generic"
 		return {
 			primary: `Type "${variable}" cannot be passed to "${callee}".`,
 			note: "The callee destructures this opaque-constrained argument.",
+		}
+	}
+	if (message.includes("cannot be consumed by") && message.includes("more than once in the same branch")) {
+		const m = message.match(
+			/^Opaque-constrained type variable (\S+) cannot be consumed by (\S+) more than once in the same branch$/,
+		)
+		const consumer = m?.[2] ?? "consumer"
+		return {
+			primary: `Type "${variable}" is consumed by "${consumer}" more than once in one branch.`,
+			note: "Registered opaque consumers may appear at most once per opaque argument per branch.",
 		}
 	}
 	return { primary: message }
@@ -158,39 +204,23 @@ function isDuplicateUsageViolation(message: string): boolean {
 	return (
 		message.includes("cannot be used more than once in the same ternary branch") ||
 		message.includes("cannot be used more than once in one conditional body") ||
-		message.includes("cannot be used more than once outside ternary body")
+		message.includes("cannot be used more than once outside ternary body") ||
+		(message.includes("cannot be consumed by") && message.includes("more than once in the same branch"))
 	)
 }
 
-type OpaqueTypeOption = {
-	fileName: string
-	typeName: string
-}
-
-function parseArgs(argv: readonly string[]): {
-	opaqueTypes: OpaqueTypeOption[]
-	globs: string[]
-} {
-	const opaqueTypes: OpaqueTypeOption[] = []
-	const globs: string[] = []
-	for (let index = 0; index < argv.length; index++) {
-		const token = argv[index]
-		if (!token) continue
-		if (token === "--opaque") {
-			const fileName = argv[index + 1]
-			const typeName = argv[index + 2]
-			if (!fileName || !typeName) usage()
-			opaqueTypes.push({ fileName: normalizeLogicalPath(fileName), typeName })
-			index += 2
-			continue
-		}
-		if (token.length > 0) globs.push(token)
-	}
-	return { opaqueTypes, globs }
-}
-
 async function main() {
-	const { opaqueTypes, globs } = parseArgs(process.argv.slice(2))
+	let parsed: ReturnType<typeof parseOpaqueCliArgs>
+	try {
+		parsed = parseOpaqueCliArgs(process.argv.slice(2))
+	} catch (err) {
+		if (err instanceof OpaqueCliParseError) {
+			console.error(err.message)
+			usage()
+		}
+		throw err
+	}
+	const { opaqueTypes, opaqueConsumers, globs } = parsed
 	if (opaqueTypes.length === 0) {
 		console.error("At least one opaque type must be specified via --opaque <file> <name>.")
 		usage()
@@ -208,7 +238,9 @@ async function main() {
 
 	const { result, sourcesByPath } = await readTypesWithSources(paths)
 	const types = indexById(result.types)
-	const violations = opaqueTypes.flatMap(opaqueType => getOpaqueViolations(result, opaqueType))
+	const violations = opaqueTypes.flatMap(opaqueType =>
+		getOpaqueViolations(result, { ...opaqueType, opaqueConsumers }),
+	)
 
 	if (violations.length > 0) {
 		const filesWithViolations = new Set<string>()

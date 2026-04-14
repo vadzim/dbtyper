@@ -95,7 +95,12 @@ export type TypeEntry = {
 	scopeId: string
 	refScopes: { scopeId: string }[]
 	builtFrom: { typeId: string }[]
-	arguments: { comments: string[]; refs: { typeId: string }[] }[]
+	arguments: {
+		comments: string[]
+		refs: { typeId: string }[]
+		/** Refs from `extends` only (not default); used for opaque / constraint checks. */
+		constraintRefs: { typeId: string }[]
+	}[]
 	pos: SourcePos
 	ast?: TypeAstNode
 	scope: {
@@ -125,7 +130,10 @@ export function readTypes(
 	const globalRefs = new Map<string, string[]>()
 	const scopeTypeRefs = new Map<string, TypeReference[]>()
 	const scopeCalls = new Map<string, ScopeCall[]>()
-	const pendingTypeArguments = new Map<string, { comments: string[]; refNames: string[] }[]>()
+	const pendingTypeArguments = new Map<
+		string,
+		{ comments: string[]; constraintRefNames: string[]; defaultRefNames: string[] }[]
+	>()
 	const conditionalScopeInferEntryIds = new Map<string, string[]>()
 	const conditionalScopeCheckNode = new Map<string, TypeAstNode>()
 	let anonymousCounter = 0
@@ -265,10 +273,8 @@ export function readTypes(
 			const commentText = sourceFile.text.slice(rangeStart, rangeEnd)
 			return {
 				comments: extractCommentsFromText(commentText),
-				refNames: [
-					...collectRefNamesFromTypeNode(typeParameter.constraint),
-					...collectRefNamesFromTypeNode(typeParameter.default),
-				],
+				constraintRefNames: collectRefNamesFromTypeNode(typeParameter.constraint),
+				defaultRefNames: collectRefNamesFromTypeNode(typeParameter.default),
 			}
 		})
 	}
@@ -305,7 +311,11 @@ export function readTypes(
 		ast: TypeAstNode,
 		scopeBindings: string[],
 		scopeId: string,
-		typeArguments?: { comments: string[]; refNames: string[] }[],
+		typeArguments?: {
+			comments: string[]
+			constraintRefNames: string[]
+			defaultRefNames: string[]
+		}[],
 		refFile?: string,
 		parentLink?: TypeEntryParent,
 	) => {
@@ -1077,11 +1087,15 @@ export function readTypes(
 		}
 		const pendingArgs = pendingTypeArguments.get(entry.id) ?? []
 		entry.arguments = pendingArgs.map(pendingArg => {
-			const refs = [...new Set(pendingArg.refNames)]
-				.map(refName => resolveRef(entry, refName, entry.scope.bindings, entry.pos))
-				.filter((refId): refId is string => !!refId)
-				.map(typeId => ({ typeId }))
-			return { comments: pendingArg.comments, refs }
+			const resolveRefNames = (refNames: readonly string[]) =>
+				[...new Set(refNames)]
+					.map(refName => resolveRef(entry, refName, entry.scope.bindings, entry.pos))
+					.filter((refId): refId is string => !!refId)
+					.map(typeId => ({ typeId }))
+			const mergedNames = [...pendingArg.constraintRefNames, ...pendingArg.defaultRefNames]
+			const refs = resolveRefNames(mergedNames)
+			const constraintRefs = resolveRefNames(pendingArg.constraintRefNames)
+			return { comments: pendingArg.comments, refs, constraintRefs }
 		})
 	}
 
