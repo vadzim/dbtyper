@@ -47,7 +47,9 @@ export class BorrowChecker {
 				const scope = this.scopes.get(scopeId) ?? never()
 				for (const call of scope.calls) {
 					if (ids.has(call.calleeTypeId)) {
-						const argument = call.arguments[argumentIndex] ?? never()
+						const argument = call.arguments[argumentIndex]
+
+						if (!argument) continue
 
 						const outterRefIds = argument.refs.map(ref => ({
 							ref,
