@@ -1,5 +1,5 @@
 import type { ReadExpectedToken, ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-primitives.js"
-import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 type SqlScalarTypeToTs<T extends string> = T extends
 	| "int"
@@ -60,15 +60,22 @@ type SkipOptionalTypeParams<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "("
 		? ReadFirstParenGroup<Tokens> extends [infer _, infer R extends TokensList]
 			? R
-			: Tokens
+			: EmptyTokenList
 		: Tokens
 
 /** Checks whether the buffer starts with `[]` (array suffix). Returns `[isArray, rest]`. */
 type ReadIsArray<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "["
-		? ReadExpectedToken<SkipToken<Tokens>, "]", "Expected ] after ["> extends [true, infer R extends TokensList]
-			? [true, R]
-			: [false, Tokens]
+		? SkipToken<Tokens> extends infer AfterOpenBracket extends TokensList
+			? ReadExpectedToken<AfterOpenBracket, "]", "Expected ] after ["> extends [
+					infer Ok,
+					infer U extends TokensList,
+				]
+				? Ok extends true
+					? [true, U]
+					: [false, U]
+				: never
+			: never
 		: [false, Tokens]
 
 /**
@@ -83,13 +90,52 @@ type ScanForNotNullWithRest<Tokens extends TokensList, Start extends TokensList 
 		: PeekToken<Tokens> extends "," | ")"
 			? [false, Start]
 			: PeekToken<Tokens> extends "not"
-				? ReadExpectedToken<SkipToken<Tokens>, "null", "Expected NULL after NOT"> extends [
-						true,
-						infer AfterNull extends TokensList,
-					]
-					? [true, AfterNull]
-					: ScanForNotNullWithRest<SkipToken<Tokens>, Start>
-				: ScanForNotNullWithRest<SkipToken<Tokens>, Start>
+				? SkipToken<Tokens> extends infer AfterNot extends TokensList
+					? ReadExpectedToken<AfterNot, "null", "Expected NULL after NOT"> extends [
+							infer OkNull,
+							infer UNull extends TokensList,
+						]
+						? OkNull extends true
+							? [true, UNull]
+							: ScanForNotNullWithRest<UNull, Start>
+						: never
+					: [false, Start]
+				: SkipToken<Tokens> extends infer AfterStep extends TokensList
+					? ScanForNotNullWithRest<AfterStep, Start>
+					: [false, Start]
+
+type ParseColumnAfterTypeTok<
+	ColNameRaw extends string,
+	TypeRaw extends string,
+	AfterTypeTok extends TokensList,
+> = SkipOptionalTypeParams<AfterTypeTok> extends infer RestParams extends TokensList
+	? ReadIsArray<RestParams> extends [infer IsArr extends boolean, infer RestArray extends TokensList]
+		? ScanForNotNullWithRest<RestArray> extends [
+				infer FoundNotNull extends boolean,
+				infer RestAfterNullable extends TokensList,
+			]
+			? [
+					{
+						name: StripIdentifierQuotes<ColNameRaw>
+						type: IsArr extends true
+							? SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>[]
+							: SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>
+						nullable: FoundNotNull extends true ? false : true
+					},
+					RestAfterNullable,
+				]
+			: never
+		: never
+	: never
+
+type ParseColumnRestAfterName<ColNameRaw extends string, AfterName extends TokensList> =
+	PeekToken<AfterName> extends infer TypeRaw extends string
+		? TypeRaw extends "" | ")" | "," | ";"
+			? [SqlParserError<"Invalid column definition">, AfterName]
+			: SkipToken<AfterName> extends infer AfterTypeTok extends TokensList
+				? ParseColumnAfterTypeTok<ColNameRaw, TypeRaw, AfterTypeTok>
+				: never
+		: never
 
 /**
  * Parses a column definition from a buffer.
@@ -101,32 +147,7 @@ type ParseColumnFromBuffer<Tokens extends TokensList> =
 		? ColNameRaw extends ""
 			? [SqlParserError<"Invalid column definition">, Tokens]
 			: SkipToken<Tokens> extends infer AfterName extends TokensList
-				? PeekToken<AfterName> extends infer TypeRaw extends string
-					? TypeRaw extends "" | ")" | "," | ";"
-						? [SqlParserError<"Invalid column definition">, Tokens]
-						: SkipOptionalTypeParams<SkipToken<AfterName>> extends infer RestParams extends TokensList
-							? ReadIsArray<RestParams> extends [
-									infer IsArr extends boolean,
-									infer RestArray extends TokensList,
-								]
-								? ScanForNotNullWithRest<RestArray> extends [
-										infer FoundNotNull extends boolean,
-										infer RestAfterNullable extends TokensList,
-									]
-									? [
-											{
-												name: StripIdentifierQuotes<ColNameRaw>
-												type: IsArr extends true
-													? SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>[]
-													: SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>
-												nullable: FoundNotNull extends true ? false : true
-											},
-											RestAfterNullable,
-										]
-									: [SqlParserError<"Invalid column definition">, Tokens]
-								: [SqlParserError<"Invalid column definition">, Tokens]
-							: [SqlParserError<"Invalid column definition">, Tokens]
-					: [SqlParserError<"Invalid column definition">, Tokens]
+				? ParseColumnRestAfterName<ColNameRaw, AfterName>
 				: never
 		: never
 
@@ -137,14 +158,18 @@ type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }
 type Merge<A, B> = A & B
 
 export type AddColumn<Tokens extends TokensList, Row, Names extends string> =
-	ParseColumnFromBuffer<Tokens> extends [
-		infer C extends { name: string; type: unknown; nullable: boolean },
-		infer Rest extends TokensList,
-	]
-		? { row: Merge<Row, ColumnToRecord<C>>; names: Names | C["name"]; error: never; rest: Rest }
+	ParseColumnFromBuffer<Tokens> extends [infer F, infer Rest extends TokensList]
+		? F extends { name: string; type: unknown; nullable: boolean }
+			? { row: Merge<Row, ColumnToRecord<F>>; names: Names | F["name"]; error: never; rest: Rest }
+			: {
+					row: Row
+					names: Names
+					error: SqlParserError<"Invalid column definition">
+					rest: Rest
+				}
 		: {
 				row: Row
 				names: Names
 				error: SqlParserError<"Invalid column definition">
-				rest: Tokens
+				rest: EmptyTokenList
 			}
