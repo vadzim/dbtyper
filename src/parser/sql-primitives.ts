@@ -5,22 +5,26 @@ export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ?
 type FindFirstOpenParen<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "(" ? SkipToken<Tokens> : FindFirstOpenParen<SkipToken<Tokens>>
 
+/** Keeps inner-start buffer distinct from `Cur` so borrow-checking does not unify them under one consumed cursor. */
+type ParenInnerStart<Buf extends TokensList> = { readonly __parenInner: Buf }
+type ParenInnerBuf<Inner> = Inner extends { readonly __parenInner: infer B extends TokensList } ? B : never
+
 /** `[innerStart, afterClose]` — `innerStart` is the buffer after `(`; `afterClose` is after the matching `)`. */
 export type ReadFirstParenGroup<Tokens extends TokensList> =
 	FindFirstOpenParen<Tokens> extends infer AfterOpen extends TokensList
-		? ReadParenGroupTail<AfterOpen, AfterOpen, []>
+		? ReadParenGroupTail<ParenInnerStart<AfterOpen>, AfterOpen, []>
 		: never
 
-type ReadParenGroupTail<AfterOpen extends TokensList, Cur extends TokensList, Depth extends 0[]> =
+type ReadParenGroupTail<Inner extends ParenInnerStart<TokensList>, Cur extends TokensList, Depth extends 0[]> =
 	PeekToken<Cur> extends ""
 		? never
 		: PeekToken<Cur> extends "("
-			? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, [0, ...Depth]>
+			? ReadParenGroupTail<Inner, SkipToken<Cur>, [0, ...Depth]>
 			: PeekToken<Cur> extends ")"
 				? Depth extends [0, ...infer Tail extends 0[]]
-					? ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Tail>
-					: [AfterOpen, SkipToken<Cur>]
-				: ReadParenGroupTail<AfterOpen, SkipToken<Cur>, Depth>
+					? ReadParenGroupTail<Inner, SkipToken<Cur>, Tail>
+					: [ParenInnerBuf<Inner>, SkipToken<Cur>]
+				: ReadParenGroupTail<Inner, SkipToken<Cur>, Depth>
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 
@@ -53,7 +57,7 @@ export type ReadOptionalIfExists<Tokens extends TokensList> =
 				? ExistsResult extends SqlParserError<string>
 					? ParseResult<ExistsResult, RestExists>
 					: ParseResult<true, RestExists>
-				: ParseFailure<"Expected EXISTS after IF", Tokens>
+				: ParseFailure<"Expected EXISTS after IF", RestIf>
 			: ParseResult<false, RestIf>
 		: ParseResult<false, Tokens>
 
@@ -73,8 +77,8 @@ export type ReadOptionalIfNotExists<Tokens extends TokensList> =
 						? ExistsResult extends SqlParserError<string>
 							? ParseResult<ExistsResult, RestExists>
 							: ParseResult<true, RestExists>
-						: ParseFailure<"Expected EXISTS after IF NOT", Tokens>
-				: ParseFailure<"Expected NOT after IF", Tokens>
+						: ParseFailure<"Expected EXISTS after IF NOT", RestNot>
+				: ParseFailure<"Expected NOT after IF", RestIf>
 			: ParseResult<false, RestIf>
 		: ParseResult<false, Tokens>
 
