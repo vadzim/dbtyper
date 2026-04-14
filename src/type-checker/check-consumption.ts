@@ -6,7 +6,7 @@ import { inspect } from "node:util"
 import fg from "fast-glob"
 import path from "node:path"
 import { getConsumingViolations, type ConsumingViolation } from "./borrow-checker.ts"
-import { formatSourceSnippet } from "./format-source-snippet.ts"
+import { DEFAULT_SNIPPET_TAB_WIDTH, formatSourceSnippet } from "./format-source-snippet.ts"
 import { readTypes, type ReadTypesResult, type ScopeEntry, type TypeEntry, type TypeReference } from "./read-types.ts"
 
 function usage(): never {
@@ -124,11 +124,15 @@ function printLocatedTypeSnippet(
 	line(`${loc}: ${message}`)
 	console.error()
 	block(
-		formatSourceSnippet(source, {
-			line: ref.pos.line,
-			startPos: ref.pos.start,
-			textLength: t.name.length > 0 ? t.name.length : 1,
-		}),
+		formatSourceSnippet(
+			source,
+			{
+				line: ref.pos.line,
+				startPos: ref.pos.start,
+				textLength: t.name.length > 0 ? t.name.length : 1,
+			},
+			{ tabWidth: DEFAULT_SNIPPET_TAB_WIDTH },
+		),
 	)
 	console.error()
 }

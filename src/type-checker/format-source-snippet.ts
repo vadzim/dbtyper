@@ -28,7 +28,12 @@ export type FormatSourceSnippetOptions = {
 	forceColor?: boolean
 	/** Strip ANSI sequences (no colors / no reversed line numbers). */
 	noColor?: boolean
+	/** Tab width for aligning markers when lines contain tab characters (default {@link DEFAULT_SNIPPET_TAB_WIDTH}). */
+	tabWidth?: number
 }
+
+/** Tab size in spaces: each tab advances to the next tab stop; used by {@link formatSourceSnippet} unless `tabWidth` is set. */
+export const DEFAULT_SNIPPET_TAB_WIDTH = 4
 
 export type SourcePosLike = {
 	line: number
@@ -66,6 +71,39 @@ function formatGutterLine(
 
 function blankGutter(gutterW: number): string {
 	return `${" ".repeat(gutterW)} | `
+}
+
+/** Visual column (0-based) after processing `line[0..end)`; tabs advance to tab stops. */
+function visualWidthUpTo(line: string, end: number, tabWidth: number): number {
+	let w = 0
+	const n = Math.max(0, Math.min(end, line.length))
+	for (let i = 0; i < n; i++) {
+		const c = line[i]
+		if (c === "\t") {
+			w += tabWidth - (w % tabWidth)
+		} else {
+			w += 1
+		}
+	}
+	return w
+}
+
+/** Replace tabs with spaces so printed width matches {@link visualWidthUpTo}. */
+function expandTabsInLine(line: string, tabWidth: number): string {
+	let out = ""
+	let col = 0
+	for (let i = 0; i < line.length; i++) {
+		const c = line[i]
+		if (c === "\t") {
+			const n = tabWidth - (col % tabWidth)
+			out += " ".repeat(n)
+			col += n
+		} else {
+			out += c
+			col += 1
+		}
+	}
+	return out
 }
 
 /** Prefer when `readTypes` already filled `line` / `column` / `start` / `end`. */
@@ -118,6 +156,10 @@ export function formatSourceSnippet(
 ): string {
 	const before = options?.contextBefore ?? 3
 	const after = options?.contextAfter ?? 0
+	const tabWidth =
+		typeof options?.tabWidth === "number" && Number.isFinite(options.tabWidth) && options.tabWidth >= 1
+			? Math.floor(options.tabWidth)
+			: DEFAULT_SNIPPET_TAB_WIDTH
 	const color = useAnsi(options)
 	const lines = splitLines(source)
 	const lineIndex = anchor.line - 1
@@ -131,11 +173,14 @@ export function formatSourceSnippet(
 	}
 
 	const lineStart = lineStartOffset(source, lines, anchor.line)
-	const relCol = anchor.startPos - lineStart + 1
-	const col = Math.max(1, Math.min(relCol, text.length + 1))
+	const rel0 = Math.max(0, Math.min(anchor.startPos - lineStart, text.length))
 	const rawLen = anchor.textLength
-	const tildeCount =
+	const tildeCodeUnits =
 		typeof rawLen === "number" && Number.isFinite(rawLen) && rawLen >= 1 ? Math.floor(rawLen) : 1
+	const rel1 = Math.min(rel0 + tildeCodeUnits, text.length)
+	const visualStart = visualWidthUpTo(text, rel0, tabWidth)
+	const visualEnd = visualWidthUpTo(text, rel1, tabWidth)
+	const tildeCount = Math.max(1, visualEnd - visualStart)
 
 	const start = Math.max(0, lineIndex - before)
 	const end = Math.min(lines.length - 1, lineIndex + after)
@@ -147,17 +192,17 @@ export function formatSourceSnippet(
 		const lineText = lines[i]
 		if (lineText === undefined) continue
 		const displayLine = i + 1
+		const displayText = expandTabsInLine(lineText, tabWidth)
 
 		if (i < lineIndex) {
-			out.push(formatGutterLine(displayLine, gutterW, lineText, color))
+			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
 		} else if (i === lineIndex) {
-			out.push(formatGutterLine(displayLine, gutterW, text, color))
-			const pad = col - 1
+			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
 			const tildes = "~".repeat(tildeCount)
 			const marker = color ? `${ansi.red}${tildes}${ansi.reset}` : tildes
-			out.push(`${blank}${" ".repeat(pad)}${marker}`)
+			out.push(`${blank}${" ".repeat(visualStart)}${marker}`)
 		} else {
-			out.push(formatGutterLine(displayLine, gutterW, lineText, color))
+			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
 		}
 	}
 

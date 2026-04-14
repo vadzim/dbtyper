@@ -9,7 +9,7 @@
 	"scripts": {
 		"typecheck": "time tsgo --noEmit -p tsconfig.json",
 		"tsc": "time tsc --noEmit -p tsconfig.json",
-		"test": "npm run --silent typecheck && node --test \"src/**/*.test.ts\"",
+		"test": "npm run --silent typecheck && npm run --silent borrowcheck && node --test \"src/**/*.test.ts\"",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"borrowcheck": "node src/type-checker/check-consumption.ts 'src/parser/**/*.ts' 'src/engine/**/*.ts'",

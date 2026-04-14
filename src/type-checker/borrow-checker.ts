@@ -65,7 +65,7 @@ export class BorrowChecker {
 
 						const infers = new Set(
 							scope.kind === "conditionalCondition"
-								? (this.typesByScope.get(scope.id) ?? never()).map(t => t.id)
+								? (this.typesByScope.get(scope.id) ?? []).map(t => t.id)
 								: [],
 						)
 
@@ -90,6 +90,8 @@ export class BorrowChecker {
 									.filter(v => v.commonIds.length > 0),
 							)
 							.toArray()
+							// for now only report violations where the borrowed value is the same as the errorneous usage
+							.filter(v => v.borrowedValue.typeId === v.errorneousUsage.typeId)
 
 						yield* violations
 					}
