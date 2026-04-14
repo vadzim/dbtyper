@@ -1,0 +1,21 @@
+---
+description: Use optional chaining only for genuinely nullish roots
+alwaysApply: true
+---
+
+# Optional Chaining Nullish Only
+
+- Use `?.` only when the root expression is truly nullable/optional by type.
+- Do not use `?.` on values that should exist; prefer direct access or explicit guards.
+- When a value should exist by invariant, prefer `(expr ?? never())` over optional chaining.
+- Keep nullability handling explicit and local so unsafe paths are obvious.
+
+## Example
+
+```ts
+// ❌ Avoid (hides a required invariant)
+const refs = callee.arguments[argumentIndex]?.refs
+
+// ✅ Prefer
+const refs = (callee.arguments[argumentIndex] ?? never()).refs
+```
