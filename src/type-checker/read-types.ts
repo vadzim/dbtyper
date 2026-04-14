@@ -137,6 +137,13 @@ export function readTypes(
 	}
 	const resolveRelativeImportPath = (fromFile: string, specifier: string) =>
 		normalizeLogicalPath(path.posix.join(path.posix.dirname(fromFile), specifier))
+
+	/** TS often imports `./x.js` while `readTypes` entry paths use `.ts` (NodeNext emit). */
+	const refFileForTypeScriptTypeImport = (resolved: string) => {
+		if (resolved.endsWith(".js")) return `${resolved.slice(0, -3)}.ts`
+		if (resolved.endsWith(".jsx")) return `${resolved.slice(0, -4)}.tsx`
+		return resolved
+	}
 	const resolveNodeImportSpecifier = (specifier: string) => {
 		const exact = imports[specifier]
 		if (exact) return exact
@@ -623,9 +630,9 @@ export function readTypes(
 			const modulePath = from.replace(/^['"]|['"]$/g, "")
 			const currentFilePath = getLogicalFilePath(sourceFile)
 			const resolvedRefFile = modulePath.startsWith(".")
-				? resolveRelativeImportPath(currentFilePath, modulePath)
+				? refFileForTypeScriptTypeImport(resolveRelativeImportPath(currentFilePath, modulePath))
 				: modulePath.startsWith("#")
-					? (resolveNodeImportSpecifier(modulePath) ?? modulePath)
+					? refFileForTypeScriptTypeImport(resolveNodeImportSpecifier(modulePath) ?? modulePath)
 					: modulePath
 			for (const specifier of node.importClause.namedBindings.elements) {
 				const importedName = specifier.name.text

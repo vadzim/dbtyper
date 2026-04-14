@@ -28,6 +28,12 @@ export type A<T> = T extends infer P ? (1 extends T ? [1, X<P>] : [2, T]) : neve
 export type B<TT> = A<TT> extends [infer T1, infer T2] ? [T1, T2] : [0, TT]
 `
 
+const crossFileFail2JsSpecifier = `import type { X } from "./fail1.js"
+
+export type A<T> = T extends infer P ? (1 extends T ? [1, X<P>] : [2, T]) : never
+export type B<TT> = A<TT> extends [infer T1, infer T2] ? [T1, T2] : [0, TT]
+`
+
 describe("getConsumingViolations", () => {
 	it("flags alias overlap for @consume in the commented conditional example", () => {
 		const result = readTypes("./x.ts", borrowCheckerMinimalSource)
@@ -76,5 +82,15 @@ describe("getConsumingViolations", () => {
 		const v = violations[0]
 		assert.ok(v)
 		assert.equal(typesById.get(v.borrower.typeId)?.name, "A")
+	})
+
+	it("flags B when X is imported via ./fail1.js (refFile must map to .ts for NodeNext-style imports)", () => {
+		const base = "./src/type-checker/test-data/2/"
+		const part0 = readTypes(`${base}fail1.ts`, crossFileFail1, { idPrefix: "f0:" })
+		const part1 = readTypes(`${base}fail2.ts`, crossFileFail2JsSpecifier, { idPrefix: "f1:" })
+		const merged = { types: [...part0.types, ...part1.types], scopes: [...part0.scopes, ...part1.scopes] }
+		const violations = [...getConsumingViolations(merged)]
+
+		assert.equal(violations.length, 1)
 	})
 })

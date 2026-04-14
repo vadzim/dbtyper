@@ -273,6 +273,19 @@ describe("readTypes", () => {
 		assert.equal(packageImport.refFile, "zod")
 	})
 
+	it("maps .js type-only import specifier to .ts refFile", () => {
+		const { types } = readTypesWithAst(
+			"./f/client.ts",
+			`
+          import type { Api } from "./api.js"
+          type U = Api
+        `,
+		)
+		const imp = types.find(x => x.sourceKind === "typeImport" && x.name === "Api")
+		assert.ok(imp)
+		assert.equal(imp.refFile, "./f/api.ts")
+	})
+
 	it("keeps file as provided entryPath", () => {
 		const entryPath = "./folder/../entry.ts"
 		const { types } = readTypesWithAst(
