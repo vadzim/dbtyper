@@ -3,16 +3,16 @@ import assert from "node:assert/strict"
 import { getConsumingViolations } from "../borrow-checker.ts"
 import { readTypes } from "../read-types.ts"
 
-/** Minimal conditional + @consumes overlap (only B-style case). */
+/** Minimal conditional + @consume overlap (only B-style case). */
 const borrowCheckerMinimalSource = `
-type X</*@consumes*/T> = 1
+type X</*@consume*/T> = 1
 type A<T> = T extends infer P ? 1 extends T ? [1, X<P>] : [2, T] : never
 type B<T> = A<T> extends [infer T1, infer T2] ? [T1, T2] : [0, T]
 `
 
-/** Same shape as test-data/1/fail1.ts (B, C, D each violate @consumes). */
+/** Same shape as test-data/1/fail1.ts (B, C, D each violate @consume). */
 const borrowCheckerFail1ShapeSource = `
-type X</*@consumes*/ T> = [1, T]
+type X</*@consume*/ T> = [1, T]
 type A<T> = T extends infer P ? (1 extends T ? [1, X<P>] : [2, T]) : never
 type B<TT> = A<TT> extends [infer T1, infer T2] ? [T1, T2] : [0, TT]
 type C<TT> = TT extends [infer T1, infer T2] ? [A<T1>, TT] : []
@@ -20,7 +20,7 @@ type D<TT> = TT extends [infer T1, infer T2] ? [A<T1>, T2] : []
 `
 
 describe("getConsumingViolations", () => {
-	it("flags alias overlap for @consumes in the commented conditional example", () => {
+	it("flags alias overlap for @consume in the commented conditional example", () => {
 		const result = readTypes("./x.ts", borrowCheckerMinimalSource)
 		const typesById = new Map(result.types.map(t => [t.id, t]))
 		const violations = [...getConsumingViolations(result)]

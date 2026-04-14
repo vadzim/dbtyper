@@ -13,7 +13,7 @@ function usage(): never {
 	console.error(`Usage: node src/type-checker/check-consumption.ts <glob> [glob...]
 
   Resolves files with fast-glob, runs readTypes per file, then reports
-  getConsumingViolations() (@consumes overlap). Exit 1 if any violation or if no globs.`)
+  getConsumingViolations() (@consume overlap). Exit 1 if any violation or if no globs.`)
 	process.exit(1)
 }
 
@@ -172,25 +172,9 @@ function messageConsumptionSite(types: Map<string, TypeEntry>, v: ConsumingViola
 	}
 }
 
-function messageSharedRootDeclaration(
-	_types: Map<string, TypeEntry>,
-	_v: ConsumingViolation,
-	decl: TypeEntry,
-): string {
+function messageSharedRootDeclaration(_types: Map<string, TypeEntry>, _v: ConsumingViolation, decl: TypeEntry): string {
 	const root = decl.name || "(anonymous)"
 	return `Type "${root}" is declared here`
-}
-
-function toPrintable(violations: ConsumingViolation[], types: Map<string, TypeEntry>) {
-	return violations.map(v => ({
-		borrower: v.borrower,
-		borrowerTypeName: types.get(v.borrower.typeId)?.name,
-		borrowedValue: v.borrowedValue,
-		borrowedValueName: types.get(v.borrowedValue.typeId)?.name,
-		errorneousUsage: v.errorneousUsage,
-		errorneousUsageName: types.get(v.errorneousUsage.typeId)?.name,
-		commonIds: v.commonIds,
-	}))
 }
 
 async function main() {
@@ -203,37 +187,21 @@ async function main() {
 		process.exit(1)
 	}
 
-	console.log("Matched files:\n", paths.map(p => `  ${p}`).join("\n"), "\n")
-
 	const { result, sourcesByPath } = await readTypesWithSources(paths)
 	const types = indexById(result.types)
 	const scopes = indexById(result.scopes)
 	const violations = [...getConsumingViolations(result)]
 
-	const printable = toPrintable(violations, types)
-	console.log(
-		inspect(printable, {
-			depth: null,
-			colors: process.stdout.isTTY,
-			maxArrayLength: null,
-			maxStringLength: null,
-		}),
-	)
-
 	if (violations.length > 0) {
-		console.error("\n@consumes violations:\n")
+		const filesWithViolations = new Set<string>()
 		for (const [i, v] of violations.entries()) {
 			if (i > 0) console.error()
 			const rel = commonIdRelation(v)
 			const usageFile = findScopeFileContainingRef(scopes, v.errorneousUsage)
-			printLocatedTypeSnippet(
-				sourcesByPath,
-				types,
-				usageFile,
-				v.errorneousUsage,
-				messageUsageSite(types, v),
-			)
+			if (usageFile !== undefined) filesWithViolations.add(normalizeLogicalPath(usageFile))
+			printLocatedTypeSnippet(sourcesByPath, types, usageFile, v.errorneousUsage, messageUsageSite(types, v))
 			const borrowedFile = findScopeFileContainingRef(scopes, v.borrowedValue)
+			if (borrowedFile !== undefined) filesWithViolations.add(normalizeLogicalPath(borrowedFile))
 			printLocatedTypeSnippet(
 				sourcesByPath,
 				types,
@@ -246,6 +214,7 @@ async function main() {
 				const rootId = v.commonIds[0]
 				const decl = rootId !== undefined ? types.get(rootId) : undefined
 				if (decl !== undefined) {
+					if (decl.file !== undefined) filesWithViolations.add(normalizeLogicalPath(decl.file))
 					printLocatedTypeSnippet(
 						sourcesByPath,
 						types,
@@ -257,10 +226,17 @@ async function main() {
 				}
 			}
 		}
-		console.error(`\n${violations.length} consuming violation(s).`)
+		const n = violations.length
+		const f = filesWithViolations.size
+		const errorLabel = n === 1 ? "error" : "errors"
+		const fileLabel = f === 1 ? "file" : "files"
+		console.error(`\nFound ${n} ${errorLabel} in ${f} ${fileLabel}.`)
 		process.exit(1)
 	}
-	console.error("\nNo consuming violations.")
+
+	const scanned = paths.length
+	const scannedLabel = scanned === 1 ? "file" : "files"
+	console.log(`No errors found (${scanned} ${scannedLabel} checked).`)
 }
 
 main().catch(err => {

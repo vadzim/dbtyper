@@ -144,7 +144,7 @@ function getInitialConsumingTypes(types: Map<string, TypeEntry>): TypeEntryParen
 		.flatMap(type =>
 			type.arguments
 				.entries()
-				.filter(([_, arg]) => arg.comments.includes("@consumes"))
+				.filter(([_, arg]) => arg.comments.includes("@consume"))
 				.map(([index]) => ({ typeId: type.id, argumentIndex: index })),
 		)
 		.toArray()
@@ -155,10 +155,12 @@ function createTypeDefsById(types: Map<string, TypeEntry>) {
 
 	const getType = (typeId: string): TypeEntry => {
 		let type = types.get(typeId)
-		while (type && type.file !== type.refFile) {
-			type = typesByName.get(fullTypeName({ name: type.name, file: type.refFile }))
-		}
 		if (!type) throw new Error(`Type ${typeId} not found`)
+		while (type.file !== type.refFile) {
+			const next = typesByName.get(fullTypeName({ name: type.name, file: type.refFile }))
+			if (next === undefined) break
+			type = next
+		}
 		return type
 	}
 
