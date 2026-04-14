@@ -12,7 +12,9 @@
 		"test": "npm run --silent typecheck && node --test \"src/**/*.test.ts\"",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"borrowcheck": "node src/type-checker/check-consumption.ts 'src/parser/**/*.ts' 'src/engine/**/*.ts'"
+		"borrowcheck": "node src/type-checker/check-consumption.ts 'src/parser/**/*.ts' 'src/engine/**/*.ts'",
+		"borrowcheck-test-1": "node src/type-checker/check-consumption.ts 'src/type-checker/test-data/1/*.ts'",
+		"borrowcheck-test-2": "node src/type-checker/check-consumption.ts 'src/type-checker/test-data/2/*.ts'"
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.2",

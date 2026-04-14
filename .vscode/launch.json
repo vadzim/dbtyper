@@ -6,12 +6,20 @@
 			"request": "launch",
 			"name": "Debug check-consumption (test-data/1)",
 			"program": "${workspaceFolder}/src/type-checker/check-consumption.ts",
-			"args": ["src/type-checker/test-data/1/*.ts"],
+			"args": ["src/type-checker/test-data/2/*.ts"],
 			"cwd": "${workspaceFolder}",
-			"runtimeArgs": [
-				"--experimental-strip-types",
-				"--enable-source-maps"
-			],
+			"runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"]
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Run check-consumption",
+			"program": "${workspaceFolder}/src/type-checker/check-consumption.ts",
+			"args": ["src/parser/**/*.ts", "src/engine/**/*.ts"],
+			"cwd": "${workspaceFolder}",
+			"runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
 			"console": "integratedTerminal",
 			"skipFiles": ["<node_internals>/**"]
 		},
@@ -21,10 +29,7 @@
 			"name": "Debug Current File (Node)",
 			"program": "${file}",
 			"cwd": "${workspaceFolder}",
-			"runtimeArgs": [
-				"--experimental-strip-types",
-				"--enable-source-maps"
-			],
+			"runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
 			"console": "integratedTerminal",
 			"skipFiles": ["<node_internals>/**"]
 		}

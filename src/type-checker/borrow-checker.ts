@@ -41,7 +41,7 @@ export class BorrowChecker {
 			checkedConsumingTypes.add(key)
 
 			const ids = this.typeIds.get(typeId) ?? never()
-			const refScopes = getAllRefScopes(ids, this.typeDefsById).toArray()
+			const refScopes = getAllRefScopes(ids, this.types)
 
 			for (const { scopeId } of refScopes) {
 				const scope = this.scopes.get(scopeId) ?? never()
@@ -125,8 +125,17 @@ function* listAllBuiltFrom(id: string, types: Map<string, TypeEntry>): Generator
 	}
 }
 
-function getAllRefScopes(ids: Iterable<string>, types: Map<string, TypeEntry>) {
-	return new Set(ids).values().flatMap(id => (types.get(id) ?? never()).refScopes)
+function getAllRefScopes(ids: Iterable<string>, types: Map<string, TypeEntry>): { scopeId: string }[] {
+	const seen = new Set<string>()
+	const out: { scopeId: string }[] = []
+	for (const id of new Set(ids)) {
+		for (const rs of (types.get(id) ?? never()).refScopes) {
+			if (seen.has(rs.scopeId)) continue
+			seen.add(rs.scopeId)
+			out.push(rs)
+		}
+	}
+	return out
 }
 
 function createTypeIds(typeDefsById: Map<string, TypeEntry>) {
