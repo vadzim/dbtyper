@@ -1,30 +1,39 @@
-import type { TokensList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
 
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
 
 type FindFirstOpenParen<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "(" ? SkipToken<Tokens> : FindFirstOpenParen<SkipToken<Tokens>>
 
-/** Keeps inner-start buffer distinct from `Cur` so borrow-checking does not unify them under one consumed cursor. */
-type ParenInnerStart<Buf extends TokensList> = { readonly __parenInner: Buf }
-type ParenInnerBuf<Inner> = Inner extends { readonly __parenInner: infer B extends TokensList } ? B : never
+/** Fixed inner cursor + moving cursor as one tuple so `AfterOpen` is not passed to two `@consume` parameters. */
+type ParenScanState = readonly [inner: TokensList, cur: TokensList]
 
 /** `[innerStart, afterClose]` — `innerStart` is the buffer after `(`; `afterClose` is after the matching `)`. */
 export type ReadFirstParenGroup<Tokens extends TokensList> =
 	FindFirstOpenParen<Tokens> extends infer AfterOpen extends TokensList
-		? ReadParenGroupTail<ParenInnerStart<AfterOpen>, AfterOpen, []>
+		? ReadParenGroupTail<readonly [AfterOpen, AfterOpen], []>
 		: never
 
-type ReadParenGroupTail<Inner extends ParenInnerStart<TokensList>, Cur extends TokensList, Depth extends 0[]> =
-	PeekToken<Cur> extends ""
-		? never
-		: PeekToken<Cur> extends "("
-			? ReadParenGroupTail<Inner, SkipToken<Cur>, [0, ...Depth]>
-			: PeekToken<Cur> extends ")"
-				? Depth extends [0, ...infer Tail extends 0[]]
-					? ReadParenGroupTail<Inner, SkipToken<Cur>, Tail>
-					: [ParenInnerBuf<Inner>, SkipToken<Cur>]
-				: ReadParenGroupTail<Inner, SkipToken<Cur>, Depth>
+type ReadParenGroupTail<State extends ParenScanState, Depth extends 0[]> =
+	State extends readonly [infer Inner extends TokensList, infer Cur extends TokensList]
+		? PeekToken<Cur> extends ""
+			? never
+			: PeekToken<Cur> extends "("
+				? SkipToken<Cur> extends infer Next extends TokensList
+					? ReadParenGroupTail<readonly [Inner, Next], [0, ...Depth]>
+					: never
+				: PeekToken<Cur> extends ")"
+					? Depth extends [0, ...infer Tail extends 0[]]
+						? SkipToken<Cur> extends infer Next extends TokensList
+							? ReadParenGroupTail<readonly [Inner, Next], Tail>
+							: never
+						: SkipToken<Cur> extends infer Next extends TokensList
+							? [Inner, Next]
+							: never
+					: SkipToken<Cur> extends infer Next extends TokensList
+						? ReadParenGroupTail<readonly [Inner, Next], Depth>
+						: never
+		: never
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 
@@ -57,9 +66,9 @@ export type ReadOptionalIfExists<Tokens extends TokensList> =
 				? ExistsResult extends SqlParserError<string>
 					? ParseResult<ExistsResult, RestExists>
 					: ParseResult<true, RestExists>
-				: ParseFailure<"Expected EXISTS after IF", RestIf>
+				: ParseFailure<"Expected EXISTS after IF", EmptyTokenList>
 			: ParseResult<false, RestIf>
-		: ParseResult<false, Tokens>
+		: ParseResult<false, EmptyTokenList>
 
 export type ReadOptionalIfNotExists<Tokens extends TokensList> =
 	ReadOptionalToken<Tokens, "if"> extends [infer HasIf extends boolean, infer RestIf extends TokensList]
@@ -77,24 +86,29 @@ export type ReadOptionalIfNotExists<Tokens extends TokensList> =
 						? ExistsResult extends SqlParserError<string>
 							? ParseResult<ExistsResult, RestExists>
 							: ParseResult<true, RestExists>
-						: ParseFailure<"Expected EXISTS after IF NOT", RestNot>
-				: ParseFailure<"Expected NOT after IF", RestIf>
+						: ParseFailure<"Expected EXISTS after IF NOT", EmptyTokenList>
+				: ParseFailure<"Expected NOT after IF", EmptyTokenList>
 			: ParseResult<false, RestIf>
-		: ParseResult<false, Tokens>
+		: ParseResult<false, EmptyTokenList>
 
 export type ReadQualifiedIdentifierFromBuffer<Tokens extends TokensList> =
 	ReadExpectedIdentifier<Tokens, "Unable to parse identifier"> extends [
 		infer A extends string,
 		infer RestA extends TokensList,
 	]
-		? ReadOptionalToken<RestA, "."> extends [true, infer RestDot extends TokensList]
+		? ReadQualifiedIdentifierTail<A, readonly [RestA]>
+		: never
+
+type ReadQualifiedIdentifierTail<A extends string, RestCell extends readonly [TokensList]> =
+	ReadOptionalToken<RestCell[0], "."> extends [infer HasDot extends boolean, infer RestDot extends TokensList]
+		? HasDot extends true
 			? ReadExpectedIdentifier<RestDot, "Unable to parse identifier"> extends [
 					infer B2 extends string,
 					infer RestB extends TokensList,
 				]
 				? [readonly [B2, A], RestB]
-				: [readonly [A], RestA]
-			: [readonly [A], RestA]
+				: [readonly [A], RestCell[0]]
+			: [readonly [A], RestCell[0]]
 		: never
 
 /** `[true, Rest]` when the next token is EOF; `[false, Tokens]` when there is more input. Caller must branch on the first element and continue from `Rest` (on success) or `Tokens` (on failure, unchanged). */

@@ -1,5 +1,5 @@
 import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfNotExists } from "./sql-primitives.js"
-import type { TokensList, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type CreateSchemaStatement = {
 	readonly kind: "create_schema"
@@ -28,7 +28,7 @@ type ParseCreateSchemaTupleAfterSchema<Tokens extends TokensList> =
 			: FlagOrError extends true
 				? ParseCreateSchemaWithFlag<true, RestFlag>
 				: ParseCreateSchemaWithFlag<false, RestFlag>
-		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, Tokens]
+		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, EmptyTokenList]
 
 type ParseCreateSchemaWithFlag<IfNotExists extends boolean, Tokens extends TokensList> =
 	ReadExpectedIdentifier<Tokens, "Unable to parse CREATE SCHEMA statement"> extends [
@@ -46,5 +46,5 @@ type ParseCreateSchemaWithFlag<IfNotExists extends boolean, Tokens extends Token
 						},
 						Tail,
 					]
-				: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, RestName]
-		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, Tokens]
+				: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, EmptyTokenList]
+		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, EmptyTokenList]

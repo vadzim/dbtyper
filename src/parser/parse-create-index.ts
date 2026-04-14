@@ -62,21 +62,23 @@ type ParseCreateIndexAfterIfNotExists<Tokens extends TokensList, Unique extends 
 		: never
 
 type ParseCreateIndexAfterOn<Tokens extends TokensList, Unique extends boolean, IfNotExists extends boolean> =
-	ReadExpectedToken<Tokens, "on", "Expected ON in CREATE INDEX"> extends [true, infer Rest2 extends TokensList]
-		? ReadQualifiedIdentifierFromBuffer<Rest2> extends [
-				infer Table extends SqlQualifiedIdentifier,
-				infer Rest3 extends TokensList,
-			]
-			? ReadFirstParenGroup<Rest3> extends [infer Inner extends TokensList, infer Tail extends TokensList]
-				? ParseCreateIndexAfterParen<Inner, Tail, Unique, IfNotExists, Table>
-				: [SqlParserError<"Expected column list in CREATE INDEX">, Rest3]
-			: [SqlParserError<"Expected table name after ON in CREATE INDEX">, Rest2]
-		: ReadExpectedToken<Tokens, "on", "Expected ON in CREATE INDEX"> extends [
-					infer E extends SqlParserError<string>,
-					infer R extends TokensList,
-			  ]
-			? [E, R]
-			: [SqlParserError<"Unable to parse CREATE INDEX">, Tokens]
+	ReadExpectedToken<Tokens, "on", "Expected ON in CREATE INDEX"> extends [
+		infer OkOn,
+		infer Rest2 extends TokensList,
+	]
+		? OkOn extends true
+			? ReadQualifiedIdentifierFromBuffer<Rest2> extends [
+					infer Table extends SqlQualifiedIdentifier,
+					infer Rest3 extends TokensList,
+				]
+				? ReadFirstParenGroup<Rest3> extends [infer Inner extends TokensList, infer Tail extends TokensList]
+					? ParseCreateIndexAfterParen<Inner, Tail, Unique, IfNotExists, Table>
+					: [SqlParserError<"Expected column list in CREATE INDEX">, EmptyTokenList]
+				: [SqlParserError<"Expected table name after ON in CREATE INDEX">, EmptyTokenList]
+			: OkOn extends SqlParserError<string>
+				? [OkOn, Rest2]
+				: [SqlParserError<"Unable to parse CREATE INDEX">, Rest2]
+		: never
 
 type ParseCreateIndexAfterParen<
 	Inner extends TokensList,
@@ -96,5 +98,5 @@ type ParseCreateIndexAfterParen<
 					},
 					RestFinal,
 				]
-			: [SqlParserError<"Unable to parse CREATE INDEX">, Tail]
-		: [SqlParserError<"Unable to parse CREATE INDEX column list">, Tail]
+			: [SqlParserError<"Unable to parse CREATE INDEX">, EmptyTokenList]
+		: [SqlParserError<"Unable to parse CREATE INDEX column list">, EmptyTokenList]

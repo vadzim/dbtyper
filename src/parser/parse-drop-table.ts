@@ -4,7 +4,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.js"
-import type { TokensList, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type DropTableStatement = {
 	readonly kind: "drop_table"
@@ -31,7 +31,7 @@ type ParseDropTableTupleAfterTable<Tokens extends TokensList> =
 			: FlagOrError extends true
 				? ParseDropTableWithFlag<true, RestFlag>
 				: ParseDropTableWithFlag<false, RestFlag>
-		: [SqlParserError<"Unable to parse DROP TABLE statement">, Tokens]
+		: [SqlParserError<"Unable to parse DROP TABLE statement">, EmptyTokenList]
 
 type ParseDropTableWithFlag<IfExists extends boolean, Tokens extends TokensList> =
 	ReadQualifiedIdentifierFromBuffer<Tokens> extends [
@@ -47,5 +47,5 @@ type ParseDropTableWithFlag<IfExists extends boolean, Tokens extends TokensList>
 					},
 					Tail,
 				]
-			: [SqlParserError<"Unable to parse DROP TABLE statement">, RestName]
-		: [SqlParserError<"Unable to parse DROP TABLE statement">, Tokens]
+			: [SqlParserError<"Unable to parse DROP TABLE statement">, EmptyTokenList]
+		: [SqlParserError<"Unable to parse DROP TABLE statement">, EmptyTokenList]

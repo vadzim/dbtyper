@@ -26,14 +26,16 @@ export type SkipStatement<
 						: PeekToken<Tokens> extends ClosingBrackets
 							? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
 							: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
-				: PeekToken<Tokens> extends infer EndTok extends EndToken
-					? SkipToken<Tokens> extends infer Rest extends TokensList
-						? [SkippedStatement<EndTok>, Rest]
-						: never
-					: PeekToken<Tokens> extends ""
-						? [SqlParserError<"Token not found">, Tokens]
-						: PeekToken<Tokens> extends ClosingBrackets
-							? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
-							: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+				: PeekToken<Tokens> extends infer EndTok extends TokenType
+					? EndTok extends EndToken
+						? SkipToken<Tokens> extends infer Rest extends TokensList
+							? [SkippedStatement<EndTok>, Rest]
+							: never
+						: PeekToken<Tokens> extends ""
+							? [SqlParserError<"Token not found">, Tokens]
+							: PeekToken<Tokens> extends ClosingBrackets
+								? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
+								: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+					: never
 
 type ClosingBrackets = ")" | "]"

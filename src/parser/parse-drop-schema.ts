@@ -1,5 +1,5 @@
 import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfExists } from "./sql-primitives.js"
-import type { TokensList, SqlParserError } from "./sql-tokens.js"
+import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
 
 export type DropSchemaStatement = {
 	readonly kind: "drop_schema"
@@ -28,7 +28,7 @@ type ParseDropSchemaTupleAfterSchema<Tokens extends TokensList> =
 			: FlagOrError extends true
 				? ParseDropSchemaWithFlag<true, RestFlag>
 				: ParseDropSchemaWithFlag<false, RestFlag>
-		: [SqlParserError<"Unable to parse DROP SCHEMA statement">, Tokens]
+		: [SqlParserError<"Unable to parse DROP SCHEMA statement">, EmptyTokenList]
 
 type ParseDropSchemaWithFlag<IfExists extends boolean, Tokens extends TokensList> =
 	ReadExpectedIdentifier<Tokens, "Unable to parse DROP SCHEMA statement"> extends [
@@ -46,5 +46,5 @@ type ParseDropSchemaWithFlag<IfExists extends boolean, Tokens extends TokensList
 						},
 						Tail,
 					]
-				: [SqlParserError<"Unable to parse DROP SCHEMA statement">, RestName]
-		: [SqlParserError<"Unable to parse DROP SCHEMA statement">, Tokens]
+				: [SqlParserError<"Unable to parse DROP SCHEMA statement">, EmptyTokenList]
+		: [SqlParserError<"Unable to parse DROP SCHEMA statement">, EmptyTokenList]
