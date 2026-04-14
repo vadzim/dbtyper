@@ -35,6 +35,19 @@ export type FormatSourceSnippetOptions = {
 /** Tab size in spaces: each tab advances to the next tab stop; used by {@link formatSourceSnippet} unless `tabWidth` is set. */
 export const DEFAULT_SNIPPET_TAB_WIDTH = 4
 
+const DIAG_ANSI = {
+	reset: "\x1b[0m",
+	lightCyan: "\x1b[96m",
+	lightYellow: "\x1b[93m",
+} as const
+
+export function formatDiagnosticHeader(file: string, line: number, column: number, message: string): string {
+	if (!useAnsiForStderr()) {
+		return `${file}:${line}:${column} - ${message}`
+	}
+	return `${DIAG_ANSI.lightCyan}${file}${DIAG_ANSI.reset}:${DIAG_ANSI.lightYellow}${line}${DIAG_ANSI.reset}:${DIAG_ANSI.lightYellow}${column}${DIAG_ANSI.reset} - ${message}`
+}
+
 export type SourcePosLike = {
 	line: number
 	column: number
@@ -42,10 +55,74 @@ export type SourcePosLike = {
 	end: number
 }
 
+/**
+ * Renders numbered context lines (reversed line numbers when ANSI enabled), the highlighted line,
+ * then a red `~` marker of length `anchor.textLength` starting at column derived from `anchor.startPos`
+ * on `anchor.line`.
+ */
+export function formatSourceSnippet(
+	source: string,
+	anchor: FormatSourceSnippetAnchor,
+	options?: FormatSourceSnippetOptions,
+): string {
+	const before = options?.contextBefore ?? 3
+	const after = options?.contextAfter ?? 0
+	const tabWidth =
+		typeof options?.tabWidth === "number" && Number.isFinite(options.tabWidth) && options.tabWidth >= 1
+			? Math.floor(options.tabWidth)
+			: DEFAULT_SNIPPET_TAB_WIDTH
+	const color = useAnsi(options)
+	const lines = splitLines(source)
+	const lineIndex = anchor.line - 1
+	if (lineIndex < 0 || lineIndex >= lines.length) {
+		return ""
+	}
+
+	const text = lines[lineIndex]
+	if (text === undefined) {
+		return ""
+	}
+
+	const lineStart = lineStartOffset(source, lines, anchor.line)
+	const rel0 = Math.max(0, Math.min(anchor.startPos - lineStart, text.length))
+	const rawLen = anchor.textLength
+	const tildeCodeUnits = typeof rawLen === "number" && Number.isFinite(rawLen) && rawLen >= 1 ? Math.floor(rawLen) : 1
+	const rel1 = Math.min(rel0 + tildeCodeUnits, text.length)
+	const visualStart = visualWidthUpTo(text, rel0, tabWidth)
+	const visualEnd = visualWidthUpTo(text, rel1, tabWidth)
+	const tildeCount = Math.max(1, visualEnd - visualStart)
+
+	const start = Math.max(0, lineIndex - before)
+	const end = Math.min(lines.length - 1, lineIndex + after)
+	const gutterW = gutterWidthForRange(start + 1, end + 1)
+	const blank = blankGutter(gutterW, color)
+	const out: string[] = []
+
+	for (let i = start; i <= end; i++) {
+		const lineText = lines[i]
+		if (lineText === undefined) continue
+		const displayLine = i + 1
+		const displayText = expandTabsInLine(lineText, tabWidth)
+
+		if (i < lineIndex) {
+			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
+		} else if (i === lineIndex) {
+			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
+			const tildes = "~".repeat(tildeCount)
+			const marker = color ? `${ansi.lightRed}${tildes}${ansi.reset}` : tildes
+			out.push(`${blank}${" ".repeat(visualStart)}${marker}`)
+		} else {
+			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
+		}
+	}
+
+	return out.join("\n")
+}
+
 const ansi = {
 	reset: "\x1b[0m",
 	reverse: "\x1b[7m",
-	red: "\x1b[31m",
+	lightRed: "\x1b[91m",
 } as const
 
 function useAnsi(options?: FormatSourceSnippetOptions): boolean {
@@ -54,22 +131,25 @@ function useAnsi(options?: FormatSourceSnippetOptions): boolean {
 	return typeof process !== "undefined" && Boolean(process.stdout?.isTTY)
 }
 
+function useAnsiForStderr(): boolean {
+	return typeof process !== "undefined" && Boolean(process.stderr?.isTTY)
+}
+
 function gutterWidthForRange(startLine: number, endLine: number): number {
 	return Math.max(String(startLine).length, String(endLine).length)
 }
 
-function formatGutterLine(
-	lineNo: number,
-	gutterW: number,
-	sourceText: string,
-	color: boolean,
-): string {
+function formatGutterLine(lineNo: number, gutterW: number, sourceText: string, color: boolean): string {
 	const padded = String(lineNo).padStart(gutterW, " ")
 	const num = color ? `${ansi.reverse}${padded}${ansi.reset}` : padded
 	return `${num} | ${sourceText}`
 }
 
-function blankGutter(gutterW: number): string {
+function blankGutter(gutterW: number, color: boolean): string {
+	if (color) {
+		const padded = " ".repeat(gutterW)
+		return `${ansi.reverse}${padded}${ansi.reset} | `
+	}
 	return `${" ".repeat(gutterW)} | `
 }
 
@@ -142,71 +222,6 @@ export function highlightFromOffsets(source: string, pos: SourcePosLike): Source
 		offset = contentEnd + newlineLen(source, contentEnd)
 	}
 	return { line: 1, column: 1, endColumn: 1 }
-}
-
-/**
- * Renders numbered context lines (reversed line numbers when ANSI enabled), the highlighted line,
- * then a red `~` marker of length `anchor.textLength` starting at column derived from `anchor.startPos`
- * on `anchor.line`.
- */
-export function formatSourceSnippet(
-	source: string,
-	anchor: FormatSourceSnippetAnchor,
-	options?: FormatSourceSnippetOptions,
-): string {
-	const before = options?.contextBefore ?? 3
-	const after = options?.contextAfter ?? 0
-	const tabWidth =
-		typeof options?.tabWidth === "number" && Number.isFinite(options.tabWidth) && options.tabWidth >= 1
-			? Math.floor(options.tabWidth)
-			: DEFAULT_SNIPPET_TAB_WIDTH
-	const color = useAnsi(options)
-	const lines = splitLines(source)
-	const lineIndex = anchor.line - 1
-	if (lineIndex < 0 || lineIndex >= lines.length) {
-		return ""
-	}
-
-	const text = lines[lineIndex]
-	if (text === undefined) {
-		return ""
-	}
-
-	const lineStart = lineStartOffset(source, lines, anchor.line)
-	const rel0 = Math.max(0, Math.min(anchor.startPos - lineStart, text.length))
-	const rawLen = anchor.textLength
-	const tildeCodeUnits =
-		typeof rawLen === "number" && Number.isFinite(rawLen) && rawLen >= 1 ? Math.floor(rawLen) : 1
-	const rel1 = Math.min(rel0 + tildeCodeUnits, text.length)
-	const visualStart = visualWidthUpTo(text, rel0, tabWidth)
-	const visualEnd = visualWidthUpTo(text, rel1, tabWidth)
-	const tildeCount = Math.max(1, visualEnd - visualStart)
-
-	const start = Math.max(0, lineIndex - before)
-	const end = Math.min(lines.length - 1, lineIndex + after)
-	const gutterW = gutterWidthForRange(start + 1, end + 1)
-	const blank = blankGutter(gutterW)
-	const out: string[] = []
-
-	for (let i = start; i <= end; i++) {
-		const lineText = lines[i]
-		if (lineText === undefined) continue
-		const displayLine = i + 1
-		const displayText = expandTabsInLine(lineText, tabWidth)
-
-		if (i < lineIndex) {
-			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
-		} else if (i === lineIndex) {
-			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
-			const tildes = "~".repeat(tildeCount)
-			const marker = color ? `${ansi.red}${tildes}${ansi.reset}` : tildes
-			out.push(`${blank}${" ".repeat(visualStart)}${marker}`)
-		} else {
-			out.push(formatGutterLine(displayLine, gutterW, displayText, color))
-		}
-	}
-
-	return out.join("\n")
 }
 
 function splitLines(source: string): string[] {

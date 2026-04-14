@@ -47,7 +47,7 @@ export function parseOpaqueCliArgs(argv: readonly string[]): {
 			index += 2
 			continue
 		}
-		if (token === "--consumer" || token === "--consume" || token === "--opaque-consumer") {
+		if (token === "--consumer") {
 			const fileName = argv[index + 1]
 			const spec = argv[index + 2]
 			if (!fileName || !spec) {

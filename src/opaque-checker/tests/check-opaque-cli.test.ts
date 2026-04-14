@@ -48,17 +48,8 @@ describe("parseOpaqueCliArgs", () => {
 		])
 	})
 
-	it("treats --consume as an alias of --consumer", () => {
-		const withConsumer = parseOpaqueCliArgs([
-			"--opaque",
-			"o.ts",
-			"O",
-			"--consumer",
-			"x.ts",
-			"Foo:0",
-			"g",
-		])
-		const withConsumeAlias = parseOpaqueCliArgs([
+	it("does not treat --consume as an alias", () => {
+		const r = parseOpaqueCliArgs([
 			"--opaque",
 			"o.ts",
 			"O",
@@ -67,10 +58,11 @@ describe("parseOpaqueCliArgs", () => {
 			"Foo:0",
 			"g",
 		])
-		assert.deepEqual(withConsumer, withConsumeAlias)
+		assert.deepEqual(r.opaqueConsumers, [])
+		assert.deepEqual(r.globs, ["--consume", "x.ts", "Foo:0", "g"])
 	})
 
-	it("accepts --opaque-consumer as an alias", () => {
+	it("does not accept --opaque-consumer alias", () => {
 		const r = parseOpaqueCliArgs([
 			"--opaque",
 			"o.ts",
@@ -80,6 +72,7 @@ describe("parseOpaqueCliArgs", () => {
 			"Bar",
 			"g",
 		])
-		assert.deepEqual(r.opaqueConsumers, [{ fileName: "./y.ts", typeName: "Bar" }])
+		assert.deepEqual(r.opaqueConsumers, [])
+		assert.deepEqual(r.globs, ["--opaque-consumer", "y.ts", "Bar", "g"])
 	})
 })

@@ -321,10 +321,7 @@ export function getOpaqueViolations(
 					calleeParamArg !== undefined &&
 					calleeParamArg.constraintRefs.length === 1 &&
 					constraintLeafTypeIds.has((calleeParamArg.constraintRefs[0] ?? never()).typeId)
-				const destructuresArgument = calleeParam
-					? isTypeParamUsedInConditionalCheck(calleeParam.id, callee.ast)
-					: false
-				if (exactOpaqueOrConsumerConstraint && !destructuresArgument) continue
+				if (exactOpaqueOrConsumerConstraint) continue
 				const variable = typesById.get(passedOpaqueVariable.typeId)
 				const variableName = variable ? variable.name : "unknown"
 				const calleeName = callee.name || "unknown"
@@ -336,11 +333,6 @@ export function getOpaqueViolations(
 					)
 					continue
 				}
-				pushViolation(
-					`Opaque-constrained type variable ${variableName} cannot be passed to generic ${calleeName} that destructures this argument`,
-					scope.file,
-					passedOpaqueVariable,
-				)
 			}
 		}
 	}
@@ -548,10 +540,7 @@ function passesGenericOpaquePassRuleForArgument(
 		calleeParamArg !== undefined &&
 		calleeParamArg.constraintRefs.length === 1 &&
 		constraintLeafTypeIds.has((calleeParamArg.constraintRefs[0] ?? never()).typeId)
-	const destructuresArgument = calleeParam
-		? isTypeParamUsedInConditionalCheck(calleeParam.id, callee.ast)
-		: false
-	return exactOpaqueOrConsumerConstraint && !destructuresArgument
+	return exactOpaqueOrConsumerConstraint
 }
 
 function pushConsumerLinearityViolations(
@@ -745,29 +734,6 @@ function groupRefsByTypeId(
 		else groups.set(entry.ref.typeId, [entry])
 	}
 	return groups
-}
-
-function isTypeParamUsedInConditionalCheck(typeParamId: string, declarationAst?: TypeAstNode): boolean {
-	if (!declarationAst) return false
-	const checkRefTypeIds = new Set<string>()
-	collectConditionalCheckTypeIds(declarationAst, checkRefTypeIds)
-	return checkRefTypeIds.has(typeParamId)
-}
-
-function collectConditionalCheckTypeIds(node: TypeAstNode, out: Set<string>) {
-	if (node.kind === "conditional" && node.nodes && node.nodes[0]) {
-		collectAllRefTypeIds(node.nodes[0], out)
-	}
-	for (const child of node.nodes ?? []) {
-		collectConditionalCheckTypeIds(child, out)
-	}
-}
-
-function collectAllRefTypeIds(node: TypeAstNode, out: Set<string>) {
-	if (node.refId) out.add(node.refId)
-	for (const child of node.nodes ?? []) {
-		collectAllRefTypeIds(child, out)
-	}
 }
 
 function isInferEntryConstrainedByOpaque(
