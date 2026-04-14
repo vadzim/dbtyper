@@ -92,7 +92,7 @@ export class BorrowChecker {
 									.filter(v => v.commonIds.length > 0),
 							)
 							.toArray()
-							// for now only report violations where the borrowed value is the same as the errorneous usage
+							// For now, only report direct same-reference reuse.
 							.filter(v => v.borrowedValue.typeId === v.errorneousUsage.typeId)
 
 						yield* violations

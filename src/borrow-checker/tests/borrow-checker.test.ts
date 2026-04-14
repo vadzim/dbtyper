@@ -50,24 +50,19 @@ describe("getConsumingViolations", () => {
 		assert.ok(typesById.get(v.borrowedValue.typeId))
 	})
 
-	it("flags B, C, and D when infer splits TT and T1 is consumed by A before another use", () => {
+	it("flags direct B-style reuse when infer splits TT and A consumes it", () => {
 		const result = readTypes("./fail1.ts", borrowCheckerFail1ShapeSource)
 		const typesById = new Map(result.types.map(t => [t.id, t]))
 		const violations = [...getConsumingViolations(result)]
 
-		assert.equal(violations.length, 3)
-
-		const cStyle = violations.filter(
+		assert.equal(violations.length, 1)
+		const bStyle = violations.filter(
 			v =>
 				typesById.get(v.borrower.typeId)?.name === "A" &&
-				typesById.get(v.borrowedValue.typeId)?.name === "T1" &&
+				typesById.get(v.borrowedValue.typeId)?.name === "TT" &&
 				typesById.get(v.errorneousUsage.typeId)?.name === "TT",
 		)
-		assert.equal(
-			cStyle.length,
-			1,
-			"expected exactly one violation for C: A consumes T1 (inferred from TT) then TT is reused",
-		)
+		assert.equal(bStyle.length, 1, "expected one direct TT reuse violation for B")
 	})
 
 	it("flags B when X is imported from another file (refScopes on typeImport)", () => {

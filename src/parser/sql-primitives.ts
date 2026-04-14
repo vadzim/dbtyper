@@ -14,26 +14,20 @@ export type ReadFirstParenGroup<Tokens extends TokensList> =
 		? ReadParenGroupTail<readonly [AfterOpen, AfterOpen], []>
 		: never
 
-type ReadParenGroupTail<State extends ParenScanState, Depth extends 0[]> =
-	State extends readonly [infer Inner extends TokensList, infer Cur extends TokensList]
-		? PeekToken<Cur> extends ""
-			? never
-			: PeekToken<Cur> extends "("
-				? SkipToken<Cur> extends infer Next extends TokensList
-					? ReadParenGroupTail<readonly [Inner, Next], [0, ...Depth]>
-					: never
-				: PeekToken<Cur> extends ")"
-					? Depth extends [0, ...infer Tail extends 0[]]
-						? SkipToken<Cur> extends infer Next extends TokensList
-							? ReadParenGroupTail<readonly [Inner, Next], Tail>
-							: never
-						: SkipToken<Cur> extends infer Next extends TokensList
-							? [Inner, Next]
-							: never
-					: SkipToken<Cur> extends infer Next extends TokensList
-						? ReadParenGroupTail<readonly [Inner, Next], Depth>
-						: never
-		: never
+type ReadParenGroupTail<State extends ParenScanState, Depth extends 0[]> = State extends readonly [
+	infer Inner extends TokensList,
+	infer Cur extends TokensList,
+]
+	? PeekToken<Cur> extends ""
+		? never
+		: PeekToken<Cur> extends "("
+			? ReadParenGroupTail<readonly [Inner, SkipToken<Cur>], [0, ...Depth]>
+			: PeekToken<Cur> extends ")"
+				? Depth extends [0, ...infer Tail extends 0[]]
+					? ReadParenGroupTail<readonly [Inner, SkipToken<Cur>], Tail>
+					: [Inner, SkipToken<Cur>]
+				: ReadParenGroupTail<readonly [Inner, SkipToken<Cur>], Depth>
+	: never
 
 export type SqlQualifiedIdentifier = readonly [name: string] | readonly [name: string, schema: string]
 
