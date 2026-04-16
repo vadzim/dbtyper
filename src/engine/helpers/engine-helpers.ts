@@ -1,4 +1,4 @@
-import type { SqlQualifiedIdentifier } from "../../parser/sql-primitives.js"
+import type { SqlQualifiedIdentifier } from "../../parser/sql-primitives.ts"
 
 export type SchemaExists<
 	Schemas extends Record<string, Record<string, unknown>>,
@@ -33,9 +33,9 @@ export type DropFromSchemas<
 export type ResolveQualifiedIdentifier<
 	Name extends SqlQualifiedIdentifier,
 	DefaultSchema extends string,
-> = Name extends readonly [infer Table extends string]
+> = Name extends [infer Table extends string]
 	? [DefaultSchema, Table]
-	: Name extends readonly [infer Table extends string, infer Schema extends string]
+	: Name extends [infer Table extends string, infer Schema extends string]
 		? [Schema, Table]
 		: never
 

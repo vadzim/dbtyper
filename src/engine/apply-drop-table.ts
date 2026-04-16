@@ -1,7 +1,7 @@
-import type { DropTableStatement } from "../parser/parse-drop-table.js"
-import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "./sql-database.js"
-import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.js"
+import type { DropTableStatement } from "../parser/parse-drop-table.ts"
+import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyDropTable<Db extends SqlDatabaseLike, Drop extends DropTableStatement> =
 	ResolveQualifiedIdentifier<Drop["target"], Db["defaultSchema"]> extends [
@@ -11,9 +11,9 @@ export type ApplyDropTable<Db extends SqlDatabaseLike, Drop extends DropTableSta
 		? Db["schemas"] extends Record<string, Record<string, unknown>>
 			? TableExists<Db["schemas"], Schema, Table> extends true
 				? {
-						readonly kind: "database"
-						readonly defaultSchema: Db["defaultSchema"]
-						readonly schemas: DropFromSchemas<
+						kind: "database"
+						defaultSchema: Db["defaultSchema"]
+						schemas: DropFromSchemas<
 							Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
 							Schema,
 							Table

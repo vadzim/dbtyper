@@ -1,7 +1,7 @@
-import type { InsertValuesStatement } from "../parser/parse-insert-values.js"
-import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "./sql-database.js"
-import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
+import type { InsertValuesStatement } from "../parser/parse-insert-values.ts"
+import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends InsertValuesStatement> =
 	ResolveQualifiedIdentifier<Stmt["target"], Db["defaultSchema"]> extends [
@@ -29,16 +29,16 @@ export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends InsertVal
 
 type ValidateInsertValues<
 	Row extends Record<string, unknown>,
-	Cols extends readonly string[],
-	Vals extends readonly unknown[],
-> = Cols extends readonly [infer C extends string, ...infer CR extends readonly string[]]
-	? Vals extends readonly [infer _V, ...infer VR extends readonly unknown[]]
+	Cols extends string[],
+	Vals extends unknown[],
+> = Cols extends [infer C extends string, ...infer CR extends string[]]
+	? Vals extends [infer _V, ...infer VR extends unknown[]]
 		? C extends keyof Row
 			? ValidateInsertValues<Row, CR, VR>
 			: SqlParserError<`Unknown column "${C & string}" in INSERT`>
 		: SqlParserError<"INSERT column count does not match value count">
-	: Cols extends readonly []
-		? Vals extends readonly []
+	: Cols extends []
+		? Vals extends []
 			? never
 			: SqlParserError<"INSERT column count does not match value count">
 		: SqlParserError<"INSERT column count does not match value count">

@@ -1,6 +1,5 @@
-import type { PeekToken, SkipToken, SqlParserError, TokensList, TokenType } from "./sql-tokens.js"
+import type { PeekToken, SkipToken, SqlParserError, TokensList, TokenType } from "../../core/sql-tokens.ts"
 
-/** Parsed marker for SQL that is skipped for the internal table model (no-op on apply). */
 export type SkippedStatement<Token extends TokenType = TokenType> = {
 	kind: "skipped-statement"
 	token: Token
@@ -20,21 +19,19 @@ export type SkipStatement<
 						...infer Tail extends ClosingBrackets[],
 				  ]
 				? PeekToken<Tokens> extends ""
-					? [SqlParserError<`Closing bracket not found: ${CurrentClosingBracket}`>, Tokens]
+					? [Tokens, SqlParserError<`Closing bracket not found: ${CurrentClosingBracket}`>]
 					: PeekToken<Tokens> extends CurrentClosingBracket
 						? SkipStatement<SkipToken<Tokens>, EndToken, Tail>
 						: PeekToken<Tokens> extends ClosingBrackets
-							? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
+							? [Tokens, SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>]
 							: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 				: PeekToken<Tokens> extends infer EndTok extends TokenType
 					? EndTok extends EndToken
-						? SkipToken<Tokens> extends infer Rest extends TokensList
-							? [SkippedStatement<EndTok>, Rest]
-							: never
+						? [SkipToken<Tokens>, SkippedStatement<EndTok>]
 						: PeekToken<Tokens> extends ""
-							? [SqlParserError<"Token not found">, Tokens]
+							? [Tokens, SqlParserError<"Token not found">]
 							: PeekToken<Tokens> extends ClosingBrackets
-								? [SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>, Tokens]
+								? [Tokens, SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>}`>]
 								: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 					: never
 

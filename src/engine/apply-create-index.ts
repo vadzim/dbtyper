@@ -1,7 +1,7 @@
-import type { CreateIndexStatement } from "../parser/parse-create-index.js"
-import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "./sql-database.js"
-import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
+import type { CreateIndexStatement } from "../parser/parse-create-index.ts"
+import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyCreateIndex<Db extends SqlDatabaseLike, Stmt extends CreateIndexStatement> =
 	ResolveQualifiedIdentifier<Stmt["target"], Db["defaultSchema"]> extends [
@@ -26,13 +26,13 @@ export type ApplyCreateIndex<Db extends SqlDatabaseLike, Stmt extends CreateInde
 			: SqlParserError<"Internal CREATE INDEX schema shape error">
 		: SqlParserError<"Internal CREATE INDEX target error">
 
-type ValidateIndexColumns<Row extends Record<string, unknown>, Cols extends readonly string[]> = Cols extends readonly [
+type ValidateIndexColumns<Row extends Record<string, unknown>, Cols extends string[]> = Cols extends [
 	infer H extends string,
-	...infer R extends readonly string[],
+	...infer R extends string[],
 ]
 	? H extends keyof Row
 		? ValidateIndexColumns<Row, R>
 		: SqlParserError<`Unknown column "${H}" in CREATE INDEX`>
-	: Cols extends readonly []
+	: Cols extends []
 		? never
 		: SqlParserError<"Internal CREATE INDEX columns error">

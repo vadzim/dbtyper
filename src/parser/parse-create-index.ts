@@ -1,5 +1,5 @@
-import type { ParseColumnListToTuple } from "./sql-constraints-fk.js"
-import type { SkippedStatement, SkipStatement } from "./skip-statement.js"
+import type { ParseColumnListToTuple } from "./sql-constraints-fk.ts"
+import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type {
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
@@ -7,96 +7,73 @@ import type {
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
-} from "./sql-primitives.js"
-import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
+} from "./sql-primitives.ts"
+import type { TokensList, SqlParserError, ParseSqlTokens } from "../../core/sql-tokens.ts"
 
 export type CreateIndexStatement = {
-	readonly kind: "create_index_validated"
-	readonly unique: boolean
-	readonly ifNotExists: boolean
-	readonly target: SqlQualifiedIdentifier
-	readonly columns: readonly string[]
+	kind: "create_index_validated"
+	unique: boolean
+	ifNotExists: boolean
+	target: SqlQualifiedIdentifier
+	columns: string[]
 }
 
-/** `Tokens` is immediately after the `index` token. `Unique` is true for `CREATE UNIQUE INDEX`. */
-export type ParseCreateIndex<Tokens extends TokensList, Unique extends boolean = false> = FinalizeCreateIndex<
-	ParseCreateIndexTuple<Tokens, Unique>
->
-
-type FinalizeCreateIndex<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
-	? [E, R]
-	: T extends [
-				{
-					readonly unique: infer U extends boolean
-					readonly ifNotExists: infer I extends boolean
-					readonly target: infer Q extends SqlQualifiedIdentifier
-					readonly columns: infer Cols extends readonly string[]
-				},
-				infer Rest extends TokensList,
-		  ]
-		? [
-				{
-					readonly kind: "create_index_validated"
-					readonly unique: U
-					readonly ifNotExists: I
-					readonly target: Q
-					readonly columns: Cols
-				},
-				Rest,
-			]
-		: [SqlParserError<"Unable to parse CREATE INDEX">, EmptyTokenList]
-
-type ParseCreateIndexTuple<Tokens extends TokensList, Unique extends boolean> =
-	ReadOptionalIfNotExists<Tokens> extends [infer IfNotExists extends boolean, infer Rest0 extends TokensList]
-		? ParseCreateIndexAfterIfNotExists<Rest0, Unique, IfNotExists>
+export type ParseCreateIndex<Tokens extends TokensList, Unique extends boolean = false> =
+	ReadOptionalIfNotExists<Tokens> extends [
+		infer Rest0 extends TokensList,
+		infer IfNotExists extends boolean | SqlParserError<string>,
+	]
+		? IfNotExists extends SqlParserError<string>
+			? [Rest0, IfNotExists]
+			: IfNotExists extends boolean
+				? ParseCreateIndexAfterIfNotExists<Rest0, Unique, IfNotExists>
+				: never
 		: never
 
 type ParseCreateIndexAfterIfNotExists<Tokens extends TokensList, Unique extends boolean, IfNotExists extends boolean> =
 	ReadExpectedIdentifier<Tokens, "Expected index name in CREATE INDEX"> extends [
-		infer IdxName,
 		infer Rest1 extends TokensList,
+		infer IdxName,
 	]
 		? IdxName extends SqlParserError<string>
-			? [IdxName, Rest1]
+			? [Rest1, IdxName]
 			: ParseCreateIndexAfterOn<Rest1, Unique, IfNotExists>
 		: never
 
 type ParseCreateIndexAfterOn<Tokens extends TokensList, Unique extends boolean, IfNotExists extends boolean> =
-	ReadExpectedToken<Tokens, "on", "Expected ON in CREATE INDEX"> extends [
-		infer OkOn,
-		infer Rest2 extends TokensList,
-	]
+	ReadExpectedToken<Tokens, "on", "Expected ON in CREATE INDEX"> extends [infer Rest2 extends TokensList, infer OkOn]
 		? OkOn extends true
 			? ReadQualifiedIdentifierFromBuffer<Rest2> extends [
-					infer Table extends SqlQualifiedIdentifier,
 					infer Rest3 extends TokensList,
+					infer TableResult extends SqlQualifiedIdentifier | SqlParserError<string>,
 				]
-				? ReadFirstParenGroup<Rest3> extends [infer Inner extends TokensList, infer Tail extends TokensList]
-					? ParseCreateIndexAfterParen<Inner, Tail, Unique, IfNotExists, Table>
-					: [SqlParserError<"Expected column list in CREATE INDEX">, EmptyTokenList]
-				: [SqlParserError<"Expected table name after ON in CREATE INDEX">, EmptyTokenList]
+				? TableResult extends SqlParserError<string>
+					? [Rest3, SqlParserError<"Unable to parse CREATE INDEX">]
+					: ReadFirstParenGroup<Rest3> extends [infer Tail extends TokensList, infer Inner extends string]
+						? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [
+								infer _RestCols extends TokensList,
+								infer ColsResult,
+							]
+							? ColsResult extends string[]
+								? SkipStatement<Tail> extends [infer RestFinal extends TokensList, infer SkipResult]
+									? SkipResult extends SkippedStatement
+										? [
+												RestFinal,
+												{
+													kind: "create_index_validated"
+													unique: Unique
+													ifNotExists: IfNotExists
+													target: TableResult
+													columns: ColsResult
+												},
+											]
+										: [RestFinal, SqlParserError<"Unable to parse CREATE INDEX">]
+									: never
+								: [Tail, SqlParserError<"Unable to parse CREATE INDEX column list">]
+							: never
+						: never
+				: never
 			: OkOn extends SqlParserError<string>
-				? [OkOn, Rest2]
-				: [SqlParserError<"Unable to parse CREATE INDEX">, Rest2]
+				? [Rest2, OkOn]
+				: never
 		: never
-
-type ParseCreateIndexAfterParen<
-	Inner extends TokensList,
-	Tail extends TokensList,
-	Unique extends boolean,
-	IfNotExists extends boolean,
-	Table extends SqlQualifiedIdentifier,
-> =
-	ParseColumnListToTuple<Inner> extends [infer Cols extends readonly string[], infer _]
-		? SkipStatement<Tail> extends [SkippedStatement, infer RestFinal extends TokensList]
-			? [
-					{
-						readonly unique: Unique
-						readonly ifNotExists: IfNotExists
-						readonly target: Table
-						readonly columns: Cols
-					},
-					RestFinal,
-				]
-			: [SqlParserError<"Unable to parse CREATE INDEX">, EmptyTokenList]
-		: [SqlParserError<"Unable to parse CREATE INDEX column list">, EmptyTokenList]

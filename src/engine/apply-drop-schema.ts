@@ -1,15 +1,15 @@
-import type { DropSchemaStatement } from "../parser/parse-drop-schema.js"
-import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "./sql-database.js"
-import type { DropSchemaFromSchemas, SchemaExists } from "./helpers/engine-helpers.js"
+import type { DropSchemaStatement } from "../parser/parse-drop-schema.ts"
+import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { DropSchemaFromSchemas, SchemaExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyDropSchema<Db extends SqlDatabaseLike, Drop extends DropSchemaStatement> =
 	Db["schemas"] extends Record<string, Record<string, unknown>>
 		? SchemaExists<Extract<Db["schemas"], Record<string, Record<string, unknown>>>, Drop["name"]> extends true
 			? {
-					readonly kind: "database"
-					readonly defaultSchema: Db["defaultSchema"]
-					readonly schemas: DropSchemaFromSchemas<
+					kind: "database"
+					defaultSchema: Db["defaultSchema"]
+					schemas: DropSchemaFromSchemas<
 						Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
 						Drop["name"]
 					>

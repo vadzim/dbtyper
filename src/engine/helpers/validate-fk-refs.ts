@@ -1,21 +1,21 @@
-import type { CreateTableStatement } from "../../parser/parse-create-table.js"
+import type { CreateTableStatement } from "../../parser/parse-create-table.ts"
 import type {
 	ForeignRefMeta,
 	IntraTableConstraintRef,
 	ValidateColumnTupleRefs,
 	ValidateFkLocalColumnPairs,
 	ValidateFkReferencedColumnPairs,
-} from "../../parser/sql-constraints-fk.js"
-import type { SqlParserError } from "../../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "../sql-database.js"
+} from "../../parser/sql-constraints-fk.ts"
+import type { SqlParserError } from "../../../core/sql-tokens.ts"
+import type { SqlDatabaseLike } from "../sql-database.ts"
 
 type NonTrue<Value> = Value extends true ? never : Value
 
-type ValidateIntraConstraintsOnRow<
-	Row,
-	Intra extends readonly IntraTableConstraintRef[],
-> = Intra extends readonly [infer Head extends IntraTableConstraintRef, ...infer Tail extends readonly IntraTableConstraintRef[]]
-	? Head extends { readonly columns: infer Cols extends readonly string[] }
+type ValidateIntraConstraintsOnRow<Row, Intra extends IntraTableConstraintRef[]> = Intra extends [
+	infer Head extends IntraTableConstraintRef,
+	...infer Tail extends IntraTableConstraintRef[],
+]
+	? Head extends { columns: infer Cols extends string[] }
 		? ValidateColumnTupleRefs<Cols, Extract<keyof Row, string>> extends infer V
 			? V extends true
 				? ValidateIntraConstraintsOnRow<Row, Tail>
@@ -31,15 +31,12 @@ type ValidateFkLocalsOnRow<Row, Refs> = [Refs] extends [undefined | never]
 		: never
 
 /** PRIMARY KEY / UNIQUE / FOREIGN KEY local columns vs the new table row (apply-time). */
-export type ValidateCreateTableLocalRefs<
-	Row,
-	Intra extends readonly IntraTableConstraintRef[],
-	Refs,
-> = ValidateIntraConstraintsOnRow<Row, Intra> extends infer E1
-	? [E1] extends [never]
-		? ValidateFkLocalsOnRow<Row, Refs>
-		: E1
-	: ValidateFkLocalsOnRow<Row, Refs>
+export type ValidateCreateTableLocalRefs<Row, Intra extends IntraTableConstraintRef[], Refs> =
+	ValidateIntraConstraintsOnRow<Row, Intra> extends infer E1
+		? [E1] extends [never]
+			? ValidateFkLocalsOnRow<Row, Refs>
+			: E1
+		: ValidateFkLocalsOnRow<Row, Refs>
 
 export type ValidateCreateTableFkRefs<
 	Db extends SqlDatabaseLike,
@@ -85,8 +82,9 @@ type UnknownRefTableError<R extends ForeignRefMeta, TargetSchema extends string,
 		: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
 	: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
 
-type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> =
-	NonTrue<ValidateFkReferencedColumnPairs<Pairs, Extract<keyof Row, string>>>
+type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> = NonTrue<
+	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof Row, string>>
+>
 
 type ValidateOneCreateTableFkRef<
 	Db extends SqlDatabaseLike,

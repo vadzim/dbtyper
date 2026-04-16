@@ -1,0 +1,484 @@
+/**
+ * SqlApplyStatements: ALTER TABLE apply type tests (add/drop/rename column, rename table, IF EXISTS).
+ */
+import type { SqlDatabase } from "../src/engine/sql-database.ts"
+import { describe, it } from "node:test"
+import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
+import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
+import type { SqlParserError } from "../core/sql-tokens.ts"
+import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
+import type { ParseSqlTokens } from "../core/sql-tokens.ts"
+
+type DbApplyAlterFixture = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null)
+`>
+	>[1]
+>
+
+type _DbApplyAlterFixture = Expect<
+	Matches<
+		DbApplyAlterFixture,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+// --- Add column ---
+
+/** Add a new NOT NULL column on an existing table. */
+
+type AddNewColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users add column email text not null`>
+	>[1]
+>
+
+type _AddNewColumn = Expect<
+	Matches<
+		AddNewColumn,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; age: number; email: string }
+					posts: { id: number; user_id: number }
+				}
+				auth: { sessions: { id: string } }
+			}
+		}
+	>
+>
+
+/** Duplicate column without IF NOT EXISTS is an error. */
+
+type AddExistingColumnNoIfNotExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users add column age int`>
+	>[1]
+>
+
+type _AddExistingColumnNoIfNotExists = Expect<
+	Matches<AddExistingColumnNoIfNotExists, SqlParserError<"Duplicate column name: age">>
+>
+
+/** IF NOT EXISTS skips add when the column already exists. */
+
+type AddExistingColumnIfNotExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users add column if not exists age int`>
+	>[1]
+>
+
+type _AddExistingColumnIfNotExists = Expect<
+	Matches<
+		AddExistingColumnIfNotExists,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+// --- Drop column ---
+
+/** Drop an existing column. */
+
+type DropExistingColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users drop column age`>
+	>[1]
+>
+
+type _DropExistingColumn = Expect<
+	Matches<
+		DropExistingColumn,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: { sessions: { id: string } }
+			}
+		}
+	>
+>
+
+/** Unknown column without IF EXISTS is an error. */
+
+type DropMissingColumnNoIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users drop column missing`>
+	>[1]
+>
+
+type _DropMissingColumnNoIfExists = Expect<
+	Matches<DropMissingColumnNoIfExists, SqlParserError<`Unknown column "missing" in altered table`>>
+>
+
+/** IF EXISTS makes drop of a missing column a no-op. */
+
+type DropMissingColumnIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users drop column if exists missing`>
+	>[1]
+>
+
+type _DropMissingColumnIfExists = Expect<
+	Matches<
+		DropMissingColumnIfExists,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+// --- Rename column ---
+
+/** Rename an existing column. */
+
+type RenameExistingColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename column age to years`>
+	>[1]
+>
+
+type _RenameExistingColumn = Expect<
+	Matches<
+		RenameExistingColumn,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; years: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: { sessions: { id: string } }
+			}
+		}
+	>
+>
+
+/** Rename from a missing column is an error. */
+
+type RenameMissingColumn = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename column missing to years`>
+	>[1]
+>
+
+type _RenameMissingColumn = Expect<
+	Matches<RenameMissingColumn, SqlParserError<`Unknown column "missing" in altered table`>>
+>
+
+/** Target name that collides with an existing column is an error. */
+
+type RenameToExistingColumnName = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename column age to id`>
+	>[1]
+>
+
+type _RenameToExistingColumnName = Expect<
+	Matches<RenameToExistingColumnName, SqlParserError<"Duplicate column name: id">>
+>
+
+// --- Rename table ---
+
+/** Rename a table within its schema. */
+
+type RenameTableOk = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename to members`>
+	>[1]
+>
+
+type _RenameTableOk = Expect<
+	Matches<
+		RenameTableOk,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					members: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: { sessions: { id: string } }
+			}
+		}
+	>
+>
+
+/** New table name that already exists in the schema is an error. */
+
+type RenameTableDuplicate = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.users rename to posts`>
+	>[1]
+>
+
+type _RenameTableDuplicate = Expect<Matches<RenameTableDuplicate, SqlParserError<"Duplicate table name: posts">>>
+
+// --- Table resolution ---
+
+/** Alter a missing table without IF EXISTS is an error. */
+
+type AlterMissingNoIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table test.missing add column age int`>
+	>[1]
+>
+
+type _AlterMissingNoIfExists = Expect<
+	Matches<AlterMissingNoIfExists, SqlParserError<`Unknown altered table "test.missing" in database`>>
+>
+
+type AlterMissingSchemeNoIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	alter table test.missing add column age int
+`>
+	>[1]
+>
+
+type _AlterMissingSchemeNoIfExists = Expect<
+	Matches<AlterMissingSchemeNoIfExists, SqlParserError<`Unknown altered table "test.missing" in database`>>
+>
+
+type AlterMissingSchemeIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	alter table if exists test.missing add column age int
+`>
+	>[1]
+>
+
+type _AlterMissingSchemeIfExists = Expect<
+	Matches<
+		AlterMissingSchemeIfExists,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {}
+		}
+	>
+>
+
+/** IF EXISTS skips alter when the table is missing. */
+
+type AlterMissingIfExists = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table if exists test.missing add column age int`>
+	>[1]
+>
+
+type _AlterMissingIfExists = Expect<
+	Matches<
+		AlterMissingIfExists,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string }
+				}
+			}
+		}
+	>
+>
+
+/** Unqualified name resolves to default schema; duplicate column is an error. */
+
+type AlterDefaultSchemaUnqualified = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table users add column age int`>
+	>[1]
+>
+
+type _AlterDefaultSchemaUnqualified = Expect<
+	Matches<AlterDefaultSchemaUnqualified, SqlParserError<"Duplicate column name: age">>
+>
+
+/** Qualified alter on a non-default schema adds a nullable timestamptz column. */
+
+type AlterExplicitSchemaQualified = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create schema auth;
+	create table test.users (id int not null, age int not null);
+	create table test.posts (id int not null, user_id int not null);
+	create table auth.sessions (id text not null);
+	alter table auth.sessions add column expires_at timestamptz`>
+	>[1]
+>
+
+type _AlterExplicitSchemaQualified = Expect<
+	Matches<
+		AlterExplicitSchemaQualified,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: { id: number; age: number }
+					posts: { id: number; user_id: number }
+				}
+				auth: {
+					sessions: { id: string; expires_at: Date | null }
+				}
+			}
+		}
+	>
+>
+
+describe("sql apply alter table", () => {
+	it("should run", () => {})
+})

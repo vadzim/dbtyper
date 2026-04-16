@@ -1,6 +1,6 @@
-import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.js"
-import type { ParseSqlTokens, SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlApplyStatements, SqlStatement } from "./apply-statement.js"
+import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.ts"
+import type { ParseSqlTokens, SqlParserError, TokensList } from "../../core/sql-tokens.ts"
+import type { SqlApplyStatements, SqlStatement } from "./apply-statement.ts"
 
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
 	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
@@ -22,25 +22,30 @@ export function migration<Path extends string>(path: Path) {
 }
 
 export type SqlDatabase<DefaultSchema extends string = "public"> = {
-	readonly kind: "database"
-	readonly defaultSchema: DefaultSchema
-	readonly schemas: {}
+	kind: "database"
+	defaultSchema: DefaultSchema
+	schemas: {}
 }
 
 export type SqlDatabaseLike = {
-	readonly kind: "database"
-	readonly defaultSchema: string
-	readonly schemas: Record<string, Record<string, unknown>>
+	kind: "database"
+	defaultSchema: string
+	schemas: Record<string, Record<string, unknown>>
 }
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 type MigrationText<S extends string> = S & {
-	readonly __sql_parsed__: ParseSqlStatementsRecovering<ParseSqlTokens<S>>[0]
+	__sql_parsed__: ParseSqlStatementsRecovering<ParseSqlTokens<S>> extends [
+		infer _Rest extends TokensList,
+		infer Parsed,
+	]
+		? Parsed
+		: never
 }
 
 type NamedMigration<S extends string, Path extends string> = {
-	readonly source: MigrationText<S>
-	readonly path: Path
+	source: MigrationText<S>
+	path: Path
 }
 
 type Migrations = {
@@ -57,11 +62,11 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 	#migrations: Migrations | null
 	#defaultSchema: string
 
-	apply<Parsed extends readonly SqlStatement[]>(
-		statement: string & { readonly __sql_parsed__: Parsed },
+	apply<Parsed extends SqlStatement[]>(
+		statement: string & { __sql_parsed__: Parsed },
 	): DBMigrations<SqlApplyStatements<Database, Parsed>>
-	apply<Parsed extends readonly SqlStatement[]>(
-		statement: Promise<{ default: { path: string; source: string & { readonly __sql_parsed__: Parsed } } }>,
+	apply<Parsed extends SqlStatement[]>(
+		statement: Promise<{ default: { path: string; source: string & { __sql_parsed__: Parsed } } }>,
 	): DBMigrations<SqlApplyStatements<Database, Parsed>>
 	apply(statement: string | Promise<{ default: { source: string; path: string } }>) {
 		return new DBMigrations(this.#defaultSchema, {

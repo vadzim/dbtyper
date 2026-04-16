@@ -4,23 +4,6 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Run check-opaque (opaquecheck)",
-			"program": "${workspaceFolder}/src/opaque-checker/check-opaque.ts",
-			"args": [
-				"src/parser/**/*.ts",
-				"src/engine/**/*.ts",
-				"--opaque",
-				"src/parser/sql-tokens.ts",
-				"TokensList"
-			],
-			"cwd": "${workspaceFolder}",
-			"runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
-			"console": "integratedTerminal",
-			"skipFiles": ["<node_internals>/**"]
-		},
-		{
-			"type": "node",
-			"request": "launch",
 			"name": "Debug Current File (Node)",
 			"program": "${file}",
 			"cwd": "${workspaceFolder}",

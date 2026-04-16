@@ -1,8 +1,8 @@
-import type { CreateTableStatement } from "../parser/parse-create-table.js"
-import type { SqlParserError } from "../parser/sql-tokens.js"
-import type { SqlDatabaseLike } from "./sql-database.js"
-import type { ValidateCreateTableFkRefs, ValidateCreateTableLocalRefs } from "./helpers/validate-fk-refs.js"
-import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.js"
+import type { CreateTableStatement } from "../parser/parse-create-table.ts"
+import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { ValidateCreateTableFkRefs, ValidateCreateTableLocalRefs } from "./helpers/validate-fk-refs.ts"
+import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyCreateTable<
 	Db extends SqlDatabaseLike,
@@ -10,7 +10,7 @@ export type ApplyCreateTable<
 > = Create["name"] extends infer Name
 	? Name extends SqlParserError<string>
 		? Name
-		: Name extends Create["name"] & (readonly [string] | readonly [string, string])
+		: Name extends [string] | [string, string]
 			? Create["row"] extends infer Row
 				? Row extends SqlParserError<string>
 					? Row
@@ -29,14 +29,19 @@ export type ApplyCreateTable<
 												Row,
 												Create["intraTableConstraints"],
 												Create["refs"]
-											> extends infer LocalValidationError
+										  > extends infer LocalValidationError
 										? [LocalValidationError] extends [never]
-											? ValidateCreateTableFkRefs<Db, Create, Schema, Table> extends infer ValidationError
+											? ValidateCreateTableFkRefs<
+													Db,
+													Create,
+													Schema,
+													Table
+												> extends infer ValidationError
 												? [ValidationError] extends [never]
 													? {
-															readonly kind: "database"
-															readonly defaultSchema: Db["defaultSchema"]
-															readonly schemas: MergeSchemas<
+															kind: "database"
+															defaultSchema: Db["defaultSchema"]
+															schemas: MergeSchemas<
 																Extract<
 																	Db["schemas"],
 																	Record<string, Record<string, unknown>>

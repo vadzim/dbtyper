@@ -3,49 +3,44 @@ import type {
 	ReadOptionalIfExists,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
-} from "./sql-primitives.js"
-import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
+} from "./sql-primitives.ts"
+import type { TokensList, SqlParserError } from "../../core/sql-tokens.ts"
 
 export type DropTableStatement = {
-	readonly kind: "drop_table"
-	readonly target: SqlQualifiedIdentifier
-	readonly ifExists: boolean
+	kind: "drop_table"
+	target: SqlQualifiedIdentifier
+	ifExists: boolean
 }
 
-/** `Tokens` must be the buffer immediately after the `table` token (caller routes with `PeekToken` then `SkipToken`). */
-export type ParseDropTable<Tokens extends TokensList> = FinalizeDropTableTuple<ParseDropTableTupleAfterTable<Tokens>>
-
-type FinalizeDropTableTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
-	? [E, R]
-	: T extends [infer Result, infer Rest extends TokensList]
-		? [Result, Rest]
-		: never
-
-type ParseDropTableTupleAfterTable<Tokens extends TokensList> =
+export type ParseDropTable<Tokens extends TokensList> =
 	ReadOptionalIfExists<Tokens> extends [
-		infer FlagOrError extends boolean | SqlParserError<string>,
 		infer RestFlag extends TokensList,
+		infer FlagOrError extends boolean | SqlParserError<string>,
 	]
 		? FlagOrError extends SqlParserError<string>
-			? [FlagOrError, RestFlag]
+			? [RestFlag, FlagOrError]
 			: FlagOrError extends true
-				? ParseDropTableWithFlag<true, RestFlag>
-				: ParseDropTableWithFlag<false, RestFlag>
-		: [SqlParserError<"Unable to parse DROP TABLE statement">, EmptyTokenList]
+				? ParseDropTableWithFlag<RestFlag, true>
+				: ParseDropTableWithFlag<RestFlag, false>
+		: never
 
-type ParseDropTableWithFlag<IfExists extends boolean, Tokens extends TokensList> =
+type ParseDropTableWithFlag<Tokens extends TokensList, IfExists extends boolean> =
 	ReadQualifiedIdentifierFromBuffer<Tokens> extends [
-		infer Name extends SqlQualifiedIdentifier,
 		infer RestName extends TokensList,
+		infer NameResult extends SqlQualifiedIdentifier | SqlParserError<string>,
 	]
-		? ConsumeStatementEnd<RestName> extends [true, infer Tail extends TokensList]
-			? [
-					{
-						readonly kind: "drop_table"
-						readonly ifExists: IfExists
-						readonly target: Name
-					},
-					Tail,
-				]
-			: [SqlParserError<"Unable to parse DROP TABLE statement">, EmptyTokenList]
-		: [SqlParserError<"Unable to parse DROP TABLE statement">, EmptyTokenList]
+		? NameResult extends SqlParserError<string>
+			? [RestName, SqlParserError<"Unable to parse DROP TABLE statement">]
+			: ConsumeStatementEnd<RestName> extends [infer Tail extends TokensList, infer EndOk extends boolean]
+				? EndOk extends true
+					? [
+							Tail,
+							{
+								kind: "drop_table"
+								ifExists: IfExists
+								target: NameResult
+							},
+						]
+					: [Tail, SqlParserError<"Unable to parse DROP TABLE statement">]
+				: never
+		: never

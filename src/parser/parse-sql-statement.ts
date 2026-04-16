@@ -1,18 +1,20 @@
-import type { ParseAlterTable } from "./parse-alter-table.js"
-import type { ParseCreateIndex } from "./parse-create-index.js"
-import type { ParseCreateSchema } from "./parse-create-schema.js"
-import type { ParseCreateTable } from "./parse-create-table.js"
-import type { ParseDropSchema } from "./parse-drop-schema.js"
-import type { ParseDropTable } from "./parse-drop-table.js"
-import type { ParseInsertValues } from "./parse-insert-values.js"
-import type { SkipStatement } from "./skip-statement.js"
-import type { TokensList, EmptyTokenList, PeekToken, SkipToken, SqlParserError } from "./sql-tokens.js"
+import type { ParseAlterTable } from "./parse-alter-table.ts"
+import type { ParseCreateIndex } from "./parse-create-index.ts"
+import type { ParseCreateSchema } from "./parse-create-schema.ts"
+import type { ParseCreateTable } from "./parse-create-table.ts"
+import type { ParseDropSchema } from "./parse-drop-schema.ts"
+import type { ParseDropTable } from "./parse-drop-table.ts"
+import type { ParseInsertValues } from "./parse-insert-values.ts"
+import type { SkipStatement } from "./skip-statement.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError } from "../../core/sql-tokens.ts"
+
+export type ParseSqlStatements<Tokens extends TokensList> = InternalParseStatements<Tokens, []>
 
 export type ParseSqlStatement<Tokens extends TokensList> =
-	PeekToken<Tokens> extends infer Head extends string ? ParseSqlStatementByHead<Head, Tokens> : SkipStatement<Tokens>
+	PeekToken<Tokens> extends infer Head extends string ? ParseSqlStatementByHead<Tokens, Head> : SkipStatement<Tokens>
 
-type ParseSqlStatementByHead<Head extends string, Tokens extends TokensList> = Head extends ""
-	? [SqlParserError<"Unknown sql statement">, Tokens]
+type ParseSqlStatementByHead<Tokens extends TokensList, Head extends string> = Head extends ""
+	? [Tokens, SqlParserError<"Unknown sql statement">]
 	: Head extends "create"
 		? ParseCreate<SkipToken<Tokens>>
 		: Head extends "drop"
@@ -23,8 +25,6 @@ type ParseSqlStatementByHead<Head extends string, Tokens extends TokensList> = H
 					? ParseInsert<SkipToken<Tokens>>
 					: SkipStatement<Tokens>
 
-// TODO:
-/** Non-validated `INSERT` shapes (e.g. `INSERT … SELECT`) → skip from `insert` for ignorable. */
 type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
 	| "Expected VALUES after column list"
 	| "Expected column list in INSERT"
@@ -34,15 +34,15 @@ type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
 	: false
 
 type ParseInsert<Tokens extends TokensList> =
-	ParseInsertValues<Tokens> extends [infer Head, infer Rest extends TokensList]
-		? Head extends { readonly kind: "insert_values" }
-			? [Head, Rest]
+	ParseInsertValues<Tokens> extends [infer Rest extends TokensList, infer Head]
+		? Head extends { kind: "insert_values" }
+			? [Rest, Head]
 			: Head extends SqlParserError<infer Msg extends string>
 				? InsertParseShapeMismatchAllowsSkip<Msg> extends true
 					? SkipStatement<Rest>
-					: [Head, Rest]
-				: [Head, Rest]
-		: SkipStatement<EmptyTokenList>
+					: [Rest, Head]
+				: [Rest, Head]
+		: never
 
 type ParseCreate<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "table"
@@ -68,56 +68,36 @@ type ParseDrop<Tokens extends TokensList> =
 type ParseAlter<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "table" ? SqlAlterWithMaybeSkipUnsupported<SkipToken<Tokens>> : SkipStatement<Tokens>
 
-// TODO:
-type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList, Start extends TokensList = Tokens> =
-	ParseAlterTable<Tokens> extends [infer Head, infer Rest extends TokensList]
-		? Head extends { readonly kind: "alter_table" }
-			? [Head, Rest]
+type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList> =
+	ParseAlterTable<Tokens> extends [infer Rest extends TokensList, infer Head]
+		? Head extends { kind: "alter_table" }
+			? [Rest, Head]
 			: Head extends SqlParserError<"Unsupported ALTER TABLE action">
-				? SkipStatement<Start>
-				: [Head, Rest]
-		: [SqlParserError<"Unable to parse ALTER TABLE statement">, EmptyTokenList]
+				? SkipStatement<Rest>
+				: [Rest, Head]
+		: never
 
-/**
- * Parses zero or more statements from `Tokens`. On **full** success returns `[readonly [...statements], rest]`
- * with `PeekToken<rest>` empty. On the first `SqlStatement` failure returns **`[error, buffer]`** only:
- * no tuple of prior successes, and `buffer` is the cursor at the **start** of the statement that failed.
- */
-export type ParseSqlStatements<Tokens extends TokensList> = InternalParseStatements<Tokens, readonly []>
-
-type InternalParseStatements<
-	Tokens extends TokensList,
-	Acc extends readonly unknown[],
-	Start extends TokensList = Tokens,
-> =
+type InternalParseStatements<Tokens extends TokensList, Acc extends unknown[]> =
 	PeekToken<Tokens> extends ""
-		? [Acc, Tokens]
-		: ParseSqlStatement<Tokens> extends [infer Head, infer Rest extends TokensList]
+		? [Tokens, Acc]
+		: ParseSqlStatement<Tokens> extends [infer Rest extends TokensList, infer Head]
 			? Head extends SqlParserError<string>
-				? [Head, Start]
-				: InternalParseStatements<Rest, readonly [...Acc, Head]>
-			: [SqlParserError<"Unknown sql statement">, Start]
+				? [Rest, Head]
+				: InternalParseStatements<Rest, [...Acc, Head]>
+			: never
 
-/**
- * Parses statements from `Tokens`, keeping every successful parse in order. On failure, returns
- * `[readonly [...parsed, error], buffer]` where `buffer` is `Tokens` at the **start** of the failing
- * statement (so later input after a bad statement is still visible). Use {@link ParseSqlStatements}
- * when you only need either a full success tuple or a single `[error, buffer]` with no partial list.
- */
-export type ParseSqlStatementsRecovering<Tokens extends TokensList> = InternalParseSqlStatementsRecovering<
-	Tokens,
-	readonly []
->
+export type ParseSqlStatementsRecovering<Tokens extends TokensList> = InternalParseSqlStatementsRecovering<Tokens, []>
 
-type InternalParseSqlStatementsRecovering<
-	Tokens extends TokensList,
-	Acc extends readonly unknown[],
-	Start extends TokensList = Tokens,
-> =
+type InternalParseSqlStatementsRecovering<Tokens extends TokensList, Acc extends unknown[]> =
 	PeekToken<Tokens> extends ""
-		? [Acc, Tokens]
-		: ParseSqlStatement<Tokens> extends [infer Head, infer Rest extends TokensList]
+		? [Tokens, Acc]
+		: ParseSqlStatement<Tokens> extends [infer Rest extends TokensList, infer Head]
 			? Head extends SqlParserError<string>
-				? [readonly [...Acc, Head], Start]
-				: InternalParseSqlStatementsRecovering<Rest, readonly [...Acc, Head]>
-			: [readonly [...Acc, SqlParserError<"Unknown sql statement">], Start]
+				? [Rest, [...Acc, Head]]
+				: InternalParseSqlStatementsRecovering<Rest, [...Acc, Head]> extends [
+							infer Rest2 extends TokensList,
+							infer Result,
+					  ]
+					? [Rest2, Result]
+					: never
+			: never

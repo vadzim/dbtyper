@@ -1,50 +1,41 @@
-import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfNotExists } from "./sql-primitives.js"
-import type { TokensList, EmptyTokenList, SqlParserError } from "./sql-tokens.js"
+import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfNotExists } from "./sql-primitives.ts"
+import type { TokensList, SqlParserError } from "../../core/sql-tokens.ts"
 
 export type CreateSchemaStatement = {
-	readonly kind: "create_schema"
-	readonly name: string
-	readonly ifNotExists: boolean
+	kind: "create_schema"
+	name: string
+	ifNotExists: boolean
 }
 
-/** `Tokens` must be the buffer immediately after the `schema` token (caller routes with `PeekToken` then `SkipToken`). */
-export type ParseCreateSchema<Tokens extends TokensList> = FinalizeCreateSchemaTuple<
-	ParseCreateSchemaTupleAfterSchema<Tokens>
->
-
-type FinalizeCreateSchemaTuple<T> = T extends [infer E extends SqlParserError<string>, infer R extends TokensList]
-	? [E, R]
-	: T extends [infer Result, infer Rest extends TokensList]
-		? [Result, Rest]
-		: never
-
-type ParseCreateSchemaTupleAfterSchema<Tokens extends TokensList> =
+export type ParseCreateSchema<Tokens extends TokensList> =
 	ReadOptionalIfNotExists<Tokens> extends [
-		infer FlagOrError extends boolean | SqlParserError<string>,
 		infer RestFlag extends TokensList,
+		infer FlagOrError extends boolean | SqlParserError<string>,
 	]
 		? FlagOrError extends SqlParserError<string>
-			? [FlagOrError, RestFlag]
+			? [RestFlag, FlagOrError]
 			: FlagOrError extends true
-				? ParseCreateSchemaWithFlag<true, RestFlag>
-				: ParseCreateSchemaWithFlag<false, RestFlag>
-		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, EmptyTokenList]
+				? ParseCreateSchemaWithFlag<RestFlag, true>
+				: ParseCreateSchemaWithFlag<RestFlag, false>
+		: never
 
-type ParseCreateSchemaWithFlag<IfNotExists extends boolean, Tokens extends TokensList> =
+type ParseCreateSchemaWithFlag<Tokens extends TokensList, IfNotExists extends boolean> =
 	ReadExpectedIdentifier<Tokens, "Unable to parse CREATE SCHEMA statement"> extends [
-		infer NameResult extends string | SqlParserError<string>,
 		infer RestName extends TokensList,
+		infer NameResult extends string | SqlParserError<string>,
 	]
 		? NameResult extends SqlParserError<string>
-			? [NameResult, RestName]
-			: ConsumeStatementEnd<RestName> extends [true, infer Tail extends TokensList]
-				? [
-						{
-							readonly kind: "create_schema"
-							readonly name: NameResult
-							readonly ifNotExists: IfNotExists
-						},
-						Tail,
-					]
-				: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, EmptyTokenList]
-		: [SqlParserError<"Unable to parse CREATE SCHEMA statement">, EmptyTokenList]
+			? [RestName, NameResult]
+			: ConsumeStatementEnd<RestName> extends [infer Tail extends TokensList, infer EndOk extends boolean]
+				? EndOk extends true
+					? [
+							Tail,
+							{
+								kind: "create_schema"
+								name: NameResult
+								ifNotExists: IfNotExists
+							},
+						]
+					: [Tail, SqlParserError<"Unable to parse CREATE SCHEMA statement">]
+				: never
+		: never
