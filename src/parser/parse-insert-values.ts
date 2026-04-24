@@ -7,7 +7,7 @@ export type InsertValuesStatement = {
 	kind: "insert_values"
 	target: SqlQualifiedIdentifier
 	columns: string[]
-	valueTypes: unknown[]
+	valueTypes: unknown[][]
 }
 
 export type ParseInsertValues<Tokens extends TokensList> =
@@ -30,11 +30,11 @@ type ParseInsertAfterValuesKeyword<
 		infer OkVals,
 	]
 		? OkVals extends true
-			? ParseValueList<Rest3> extends [infer Rest4 extends TokensList, infer ParsedValues]
+			? ParseValuesRows<Rest3> extends [infer Rest4 extends TokensList, infer ParsedValues]
 				? ParsedValues extends SqlParserError<string>
 					? [Rest4, ParsedValues]
-					: ParsedValues extends unknown[]
-						? TupleLenEq<Cols, ParsedValues> extends true
+					: ParsedValues extends unknown[][]
+						? ValidateRowsLen<Cols, ParsedValues> extends true
 							? SkipStatement<Rest4> extends [infer RestFinal extends TokensList, infer SkipResult]
 								? SkipResult extends SkippedStatement
 									? [
@@ -74,6 +74,40 @@ type TupleLenEq<A extends unknown[], B extends unknown[]> = A["length"] extends 
 		: false
 	: false
 
+type ValidateRowsLen<Cols extends string[], Rows extends unknown[][]> = Rows extends [
+	infer First extends unknown[],
+	...infer Rest extends unknown[][],
+]
+	? TupleLenEq<Cols, First> extends true
+		? ValidateRowsLen<Cols, Rest>
+		: false
+	: true
+
+type ParseValuesRows<Tokens extends TokensList> =
+	ParseValueList<Tokens> extends [infer Rest extends TokensList, infer Row]
+		? Row extends SqlParserError<string>
+			? [Rest, Row]
+			: Row extends unknown[]
+				? ParseValuesRowsTail<Rest, [Row]>
+				: [Rest, SqlParserError<"Unable to parse INSERT values">]
+		: never
+
+type ParseValuesRowsTail<Tokens extends TokensList, Acc extends unknown[][]> =
+	PeekToken<Tokens> extends TokenType<",">
+		? ParseValuesRowsAfterComma<SkipToken<Tokens>, Acc>
+		: [Tokens, Acc]
+
+type ParseValuesRowsAfterComma<Tokens extends TokensList, Acc extends unknown[][]> =
+	PeekToken<Tokens> extends TokenType<"(">
+		? ParseValueList<Tokens> extends [infer Rest extends TokensList, infer Row]
+			? Row extends SqlParserError<string>
+				? [Rest, Row]
+				: Row extends unknown[]
+					? ParseValuesRowsTail<Rest, [...Acc, Row]>
+					: [Rest, SqlParserError<"Unable to parse INSERT values">]
+			: never
+		: [Tokens, SqlParserError<"Expected ( before next INSERT values row">]
+
 type ParseValueList<Tokens extends TokensList> =
 	ReadExpectedToken<Tokens, "(", "Expected ( before INSERT values"> extends [
 		infer Rest extends TokensList,
@@ -105,11 +139,78 @@ type ParseOneValue<Tokens extends TokensList> =
 				? [SkipToken<Tokens>, true]
 				: T extends "false"
 					? [SkipToken<Tokens>, false]
+					: T extends "("
+						? ParseParenthesizedValue<SkipToken<Tokens>>
+					: T extends "default"
+						? [SkipToken<Tokens>, unknown]
+						: T extends "current_timestamp" | "current_date" | "current_time"
+							? [SkipToken<Tokens>, unknown]
+							: T extends "now"
+								? ParseNowFunctionValue<SkipToken<Tokens>>
+								: T extends "+" | "-"
+									? ParseSignedNumberValue<SkipToken<Tokens>>
+									: NumericTokenToNumberLike<T> extends true
+										? ParseNumberishTail<Tokens>
 					: T extends `"${string}"`
 						? [SkipToken<Tokens>, string]
 						: T extends `'${string}'`
 							? [SkipToken<Tokens>, string]
-							: T extends `${number}`
-								? [SkipToken<Tokens>, number]
-								: [Tokens, SqlParserError<"Unsupported value in INSERT">]
+							: [Tokens, SqlParserError<"Unsupported value in INSERT">]
 		: [Tokens, SqlParserError<"Unsupported value in INSERT">]
+
+type ParseParenthesizedValue<Tokens extends TokensList> =
+	ParseOneValue<Tokens> extends [infer Rest extends TokensList, infer V]
+		? V extends SqlParserError<string>
+			? [Rest, V]
+			: ReadExpectedToken<Rest, ")", "Expected ) after parenthesized INSERT value"> extends [
+					infer RestClose extends TokensList,
+					infer OkClose,
+				]
+				? OkClose extends true
+					? [RestClose, V]
+					: [RestClose, Extract<OkClose, SqlParserError<string>>]
+				: never
+		: never
+
+type ParseNowFunctionValue<Tokens extends TokensList> =
+	ReadExpectedToken<Tokens, "(", "Expected ( after NOW"> extends [infer RestOpen extends TokensList, infer OpenOk]
+		? OpenOk extends true
+			? ReadExpectedToken<RestOpen, ")", "Expected ) after NOW("> extends [
+					infer RestClose extends TokensList,
+					infer CloseOk,
+				]
+				? CloseOk extends true
+					? [RestClose, unknown]
+					: [RestClose, Extract<CloseOk, SqlParserError<string>>]
+				: never
+			: [RestOpen, Extract<OpenOk, SqlParserError<string>>]
+		: never
+
+type ParseSignedNumberValue<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenType<infer T extends string>
+		? NumericTokenToNumberLike<T> extends true
+			? ParseNumberishTail<Tokens>
+			: [Tokens, SqlParserError<"Expected number after sign in INSERT value">]
+		: [Tokens, SqlParserError<"Expected number after sign in INSERT value">]
+
+type ParseNumberishTail<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenType<infer T extends string>
+		? NumericTokenToNumberLike<T> extends true
+			? ParseNumberishAfterInt<SkipToken<Tokens>>
+			: [Tokens, SqlParserError<"Unsupported value in INSERT">]
+		: [Tokens, SqlParserError<"Unsupported value in INSERT">]
+
+type ParseNumberishAfterInt<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenType<".">
+		? ParseNumberishDecimalTail<SkipToken<Tokens>>
+		: [Tokens, number]
+
+type ParseNumberishDecimalTail<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenType<infer T extends string>
+		? NumericTokenToNumberLike<T> extends true
+			? [SkipToken<Tokens>, number]
+			: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
+		: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
+
+type NumericTokenToNumberLike<T extends string> = StripWrappedDoubleQuotes<T> extends `${number}` ? true : false
+type StripWrappedDoubleQuotes<T extends string> = T extends `"${infer Inner}"` ? Inner : T

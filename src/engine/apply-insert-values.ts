@@ -30,11 +30,23 @@ export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends InsertVal
 type ValidateInsertValues<
 	Row extends Record<string, unknown>,
 	Cols extends string[],
+	ValsRows extends unknown[][],
+> = ValsRows extends [infer RowVals extends unknown[], ...infer RestRows extends unknown[][]]
+	? ValidateInsertValuesRow<Row, Cols, RowVals> extends infer Err
+		? [Err] extends [never]
+			? ValidateInsertValues<Row, Cols, RestRows>
+			: Err
+		: SqlParserError<"Internal INSERT validation error">
+	: never
+
+type ValidateInsertValuesRow<
+	Row extends Record<string, unknown>,
+	Cols extends string[],
 	Vals extends unknown[],
 > = Cols extends [infer C extends string, ...infer CR extends string[]]
 	? Vals extends [infer _V, ...infer VR extends unknown[]]
 		? C extends keyof Row
-			? ValidateInsertValues<Row, CR, VR>
+			? ValidateInsertValuesRow<Row, CR, VR>
 			: SqlParserError<`Unknown column "${C & string}" in INSERT`>
 		: SqlParserError<"INSERT column count does not match value count">
 	: Cols extends []

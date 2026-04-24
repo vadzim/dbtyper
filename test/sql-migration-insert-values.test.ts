@@ -48,9 +48,113 @@ type ThirdParsedStmt = ParsedInsertChainHead extends [unknown, unknown, infer S3
 type ThirdStmtKind = ThirdParsedStmt extends { kind: infer K } ? K : "none"
 type _Stmt2KindInsert = Expect<Matches<ThirdStmtKind, "insert_values">>
 type _Stmt2ColumnsOrder = Expect<Matches<ThirdParsedStmt extends { columns: infer C } ? C : never, ["id", "label"]>>
+type ThirdParsedValueRows = ThirdParsedStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type _Stmt2ValuesSingleRowCount = Expect<Matches<ThirdParsedValueRows["length"], 1>>
+type _Stmt2ValuesSingleRowLen = Expect<Matches<ThirdParsedValueRows[0]["length"], 2>>
+
+type ParseInsertMultiRow = ParseSqlStatements<
+	ParseSqlTokens<`
+		create schema app;
+		create table app.t (id int not null, label text not null);
+		insert into app.t (id, label) values (1, 'a'), (2, 'b');
+	`>
+>
+type ParseInsertMultiRowStmt = ParseInsertMultiRow[1] extends [unknown, unknown, infer S3] ? S3 : never
+type _ParseInsertMultiRowStmtKind = Expect<
+	Matches<ParseInsertMultiRowStmt extends { kind: infer K } ? K : never, "insert_values">
+>
+type ParseInsertMultiRowValueRows =
+	ParseInsertMultiRowStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type _ParseInsertMultiRowValuesCount = Expect<Matches<ParseInsertMultiRowValueRows["length"], 2>>
+type _ParseInsertMultiRowValuesFirstRowLen = Expect<Matches<ParseInsertMultiRowValueRows[0]["length"], 2>>
+type _ParseInsertMultiRowValuesSecondRowLen = Expect<Matches<ParseInsertMultiRowValueRows[1]["length"], 2>>
+
+type ParseInsertMultiRowMismatched = ParseSqlStatements<
+	ParseSqlTokens<`
+		create schema app;
+		create table app.t (id int not null, label text not null);
+		insert into app.t (id, label) values (1, 'a'), (2);
+	`>
+>
+type _ParseInsertMultiRowMismatched = Expect<
+	Matches<ParseInsertMultiRowMismatched[1], SqlParserError<"INSERT column count does not match value count">>
+>
 
 type ApplyInsertOk = SqlApplyStatements<SqlDatabase<"app">, ParsedInsertChain[1]>
 type _ApplyInsertOkRow = Expect<Matches<ApplyInsertOk["schemas"]["app"]["t"], { id: number; label: string }>>
+
+type ApplyInsertMultiRowOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertMultiRow[1]>
+type _ApplyInsertMultiRowOkRow = Expect<
+	Matches<ApplyInsertMultiRowOk["schemas"]["app"]["t"], { id: number; label: string }>
+>
+
+type ParseInsertDefaultValue = ParseSqlStatements<
+	ParseSqlTokens<`
+		create schema app;
+		create table app.t (id int not null, label text not null);
+		insert into app.t (id, label) values (default, 'a');
+	`>
+>
+type ParseInsertDefaultValueStmt = ParseInsertDefaultValue[1] extends [unknown, unknown, infer S3] ? S3 : never
+type _ParseInsertDefaultValueStmtKind = Expect<
+	Matches<ParseInsertDefaultValueStmt extends { kind: infer K } ? K : never, "insert_values">
+>
+type ParseInsertDefaultRows =
+	ParseInsertDefaultValueStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type _ParseInsertDefaultRowsCount = Expect<Matches<ParseInsertDefaultRows["length"], 1>>
+type _ParseInsertDefaultRowLen = Expect<Matches<ParseInsertDefaultRows[0]["length"], 2>>
+
+type ApplyInsertDefaultValueOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertDefaultValue[1]>
+type _ApplyInsertDefaultValueOkRow = Expect<
+	Matches<ApplyInsertDefaultValueOk["schemas"]["app"]["t"], { id: number; label: string }>
+>
+
+type ParseInsertExtendedLiterals = ParseSqlStatements<
+	ParseSqlTokens<`
+		create schema app;
+		create table app.literal_features (
+			a int not null,
+			b int not null,
+			c numeric not null,
+			d numeric not null,
+			e numeric not null,
+			f int not null,
+			g timestamp not null,
+			h date not null,
+			i time not null,
+			j timestamptz not null
+		);
+		insert into app.literal_features (a, b, c, d, e, f, g, h, i, j) values ((1), +2, 3.5, -4.5, +5.5, -6, current_timestamp, current_date, current_time, now());
+	`>
+>
+type ParseInsertExtendedLiteralsStmt =
+	ParseInsertExtendedLiterals[1] extends [unknown, unknown, infer S3] ? S3 : never
+type _ParseInsertExtendedLiteralsKind = Expect<
+	Matches<ParseInsertExtendedLiteralsStmt extends { kind: infer K } ? K : never, "insert_values">
+>
+type ParseInsertExtendedLiteralsRows =
+	ParseInsertExtendedLiteralsStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type _ParseInsertExtendedLiteralsRowCount = Expect<Matches<ParseInsertExtendedLiteralsRows["length"], 1>>
+type _ParseInsertExtendedLiteralsValueCount = Expect<Matches<ParseInsertExtendedLiteralsRows[0]["length"], 10>>
+
+type ApplyInsertExtendedLiteralsOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertExtendedLiterals[1]>
+type _ApplyInsertExtendedLiteralsOkRow = Expect<
+	Matches<
+		ApplyInsertExtendedLiteralsOk["schemas"]["app"]["literal_features"],
+		{
+			a: number
+			b: number
+			c: number
+			d: number
+			e: number
+			f: number
+			g: Date
+			h: Date
+			i: Date
+			j: Date
+		}
+	>
+>
 
 type ApplyInsertWrongType = SqlApplyStatements<
 	SqlDatabase<"app">,

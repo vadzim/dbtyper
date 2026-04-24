@@ -137,6 +137,9 @@ type ServiceWords = keyof {
 	check: true
 	column: true
 	constraint: true
+	current_date: true
+	current_time: true
+	current_timestamp: true
 	create: true
 	cross: true
 	database: true
@@ -168,6 +171,7 @@ type ServiceWords = keyof {
 	limit: true
 	natural: true
 	not: true
+	now: true
 	null: true
 	offset: true
 	on: true
