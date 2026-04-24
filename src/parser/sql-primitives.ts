@@ -2,28 +2,6 @@ import type { TokensList, PeekToken, SkipToken, SqlParserError } from "../../cor
 
 export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
 
-type AppendToken<Acc extends string, Tok extends string> = Acc extends "" ? Tok : `${Acc} ${Tok}`
-
-type FindFirstOpenParen<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "(" ? [SkipToken<Tokens>, ""] : FindFirstOpenParen<SkipToken<Tokens>>
-
-/** `[afterClose, innerSource]` — `innerSource` is the source text inside `(`; `afterClose` is after the matching `)`. */
-export type ReadFirstParenGroup<Tokens extends TokensList> =
-	FindFirstOpenParen<Tokens> extends [infer AfterOpen extends TokensList, infer InnerSource extends string]
-		? ReadParenGroupTail<AfterOpen, InnerSource, []>
-		: never
-
-type ReadParenGroupTail<Tokens extends TokensList, InnerSource extends string, Depth extends 0[]> =
-	PeekToken<Tokens> extends ""
-		? never
-		: PeekToken<Tokens> extends "("
-			? ReadParenGroupTail<SkipToken<Tokens>, AppendToken<InnerSource, "(">, [0, ...Depth]>
-			: PeekToken<Tokens> extends ")"
-				? Depth extends [0, ...infer Tail extends 0[]]
-					? ReadParenGroupTail<SkipToken<Tokens>, AppendToken<InnerSource, ")">, Tail>
-					: [SkipToken<Tokens>, InnerSource]
-				: ReadParenGroupTail<SkipToken<Tokens>, AppendToken<InnerSource, PeekToken<Tokens>>, Depth>
-
 export type SqlQualifiedIdentifier = [name: string] | [name: string, schema: string]
 
 export type ConsumeStatementEnd<Tokens extends TokensList> =

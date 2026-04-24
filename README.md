@@ -49,3 +49,11 @@ Type-level utilities in this project are helpers and must never become the bottl
 - Keep `SqlCreateTable["source"]` as the original input literal by default.
 - Avoid expensive template-literal reconstruction or formatting work unless it is required.
 - Put heavy or diagnostic-only type features behind explicit opt-in helper types.
+
+## Parser Rule
+
+Parsers must work directly on `TokensList` and report errors as soon as they are knowable.
+
+- Do not collect inner SQL text into a string or `string[]` buffer and then parse that buffer later.
+- Do not delay parse errors until after a matching closing bracket is found if the error can be detected earlier while traversing tokens.
+- When parsing bracketed structures like column lists, value lists, or `CREATE TABLE` bodies, build the target structure directly during token traversal and return the remaining token tail.

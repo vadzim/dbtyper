@@ -1,13 +1,11 @@
 import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type {
-	IsBufferEnd,
 	ReadExpectedToken,
-	ReadFirstParenGroup,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError, ParseSqlTokens } from "../../core/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokensList, SqlParserError } from "../../core/sql-tokens.ts"
 
 export type InsertValuesStatement = {
 	kind: "insert_values"
@@ -36,31 +34,26 @@ type ParseInsertAfterValuesKeyword<
 		infer OkVals,
 	]
 		? OkVals extends true
-			? ReadFirstParenGroup<Rest3> extends [infer Rest4 extends TokensList, infer ValInner extends string]
-				? ParseValueListToTuple<ParseSqlTokens<ValInner>> extends [
-						infer _ParsedRest extends TokensList,
-						infer ParsedValues,
-					]
-					? ParsedValues extends SqlParserError<string>
-						? [Rest4, ParsedValues]
-						: ParsedValues extends unknown[]
-							? TupleLenEq<Cols, ParsedValues> extends true
-								? SkipStatement<Rest4> extends [infer RestFinal extends TokensList, infer SkipResult]
-									? SkipResult extends SkippedStatement
-										? [
-												RestFinal,
-												{
-													kind: "insert_values"
-													target: Table
-													columns: Cols
-													valueTypes: ParsedValues
-												},
-											]
-										: [RestFinal, SqlParserError<"Unable to parse INSERT">]
-									: never
-								: [Rest4, SqlParserError<"INSERT column count does not match value count">]
-							: [Rest4, SqlParserError<"Unable to parse INSERT values">]
-					: never
+			? ParseValueList<Rest3> extends [infer Rest4 extends TokensList, infer ParsedValues]
+				? ParsedValues extends SqlParserError<string>
+					? [Rest4, ParsedValues]
+					: ParsedValues extends unknown[]
+						? TupleLenEq<Cols, ParsedValues> extends true
+							? SkipStatement<Rest4> extends [infer RestFinal extends TokensList, infer SkipResult]
+								? SkipResult extends SkippedStatement
+									? [
+											RestFinal,
+											{
+												kind: "insert_values"
+												target: Table
+												columns: Cols
+												valueTypes: ParsedValues
+											},
+										]
+									: [RestFinal, SqlParserError<"Unable to parse INSERT">]
+								: never
+							: [Rest4, SqlParserError<"INSERT column count does not match value count">]
+						: [Rest4, SqlParserError<"Unable to parse INSERT values">]
 				: never
 			: [Rest3, Extract<OkVals, SqlParserError<string>>]
 		: never
@@ -85,31 +78,28 @@ type TupleLenEq<A extends unknown[], B extends unknown[]> = A["length"] extends 
 		: false
 	: false
 
-type ParseValueListToTuple<Tokens extends TokensList> =
-	PeekToken<Tokens> extends ""
-		? [Tokens, SqlParserError<"Unclosed value list in INSERT">]
-		: PeekToken<Tokens> extends ")"
-			? [Tokens, []]
-			: ParseOneValue<Tokens> extends [infer After extends TokensList, infer V]
-				? V extends SqlParserError<string>
-					? [After, V]
-					: PeekToken<After> extends ","
-						? ParseValueListToTuple<SkipToken<After>> extends [
-								infer Tail extends TokensList,
-								infer RestValues,
-							]
-							? RestValues extends unknown[]
-								? [Tail, [V, ...RestValues]]
-								: [Tail, Extract<RestValues, SqlParserError<string>>]
-							: never
-						: PeekToken<After> extends ")"
-							? [After, [V]]
-							: IsBufferEnd<After> extends [infer RestEnd extends TokensList, infer Ended extends boolean]
-								? Ended extends true
-									? [RestEnd, [V]]
-									: [RestEnd, SqlParserError<"Expected ) or comma after INSERT value">]
-								: never
-				: never
+type ParseValueList<Tokens extends TokensList> =
+	ReadExpectedToken<Tokens, "(", "Expected ( before INSERT values"> extends [
+		infer Rest extends TokensList,
+		infer OpenOk,
+	]
+		? OpenOk extends true
+			? ParseValueListTail<Rest>
+			: [Rest, Extract<OpenOk, SqlParserError<string>>]
+		: never
+
+type ParseValueListTail<Tokens extends TokensList, Acc extends unknown[] = []> =
+	PeekToken<Tokens> extends ")"
+		? [SkipToken<Tokens>, Acc]
+		: ParseOneValue<Tokens> extends [infer After extends TokensList, infer V]
+			? V extends SqlParserError<string>
+				? [After, V]
+				: PeekToken<After> extends ","
+					? ParseValueListTail<SkipToken<After>, [...Acc, V]>
+					: PeekToken<After> extends ")"
+						? [SkipToken<After>, [...Acc, V]]
+						: [After, SqlParserError<"Expected ) or comma after INSERT value">]
+			: never
 
 type ParseOneValue<Tokens extends TokensList> =
 	PeekToken<Tokens> extends infer T extends string

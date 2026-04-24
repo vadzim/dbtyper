@@ -1,8 +1,6 @@
 import type {
-	IsBufferEnd,
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
-	ReadFirstParenGroup,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
@@ -11,7 +9,6 @@ import type {
 	PeekToken,
 	SkipToken,
 	SqlParserError,
-	ParseSqlTokens,
 	ReadToken,
 } from "../../core/sql-tokens.ts"
 
@@ -48,33 +45,28 @@ export type ParseConstraintBody<Tokens extends TokensList, Kind extends string> 
 			: [Tokens, { kind: "other" }]
 
 export type ParseColumnList<Tokens extends TokensList> =
-	ReadFirstParenGroup<Tokens> extends [infer Tail extends TokensList, infer Inner extends string]
-		? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [infer _RestCols extends TokensList, infer Cols]
-			? [Tail, Cols]
-			: never
+	ReadExpectedToken<Tokens, "(", "Expected ( before column list"> extends [
+		infer Rest extends TokensList,
+		infer OpenOk,
+	]
+		? OpenOk extends true
+			? ParseColumnListTail<Rest>
+			: [Rest, Extract<OpenOk, SqlParserError<string>>]
 		: never
 
-type ParseColumnListToTuple<Tokens extends TokensList> =
-	PeekToken<Tokens> extends ""
-		? [Tokens, []]
+type ParseColumnListTail<Tokens extends TokensList, Acc extends string[] = []> =
+	PeekToken<Tokens> extends ")"
+		? [SkipToken<Tokens>, Acc]
 		: ReadExpectedIdentifier<Tokens, "Expected column name in column list"> extends [
 					infer AfterId extends TokensList,
 					infer Col,
 			  ]
 			? Col extends string
 				? PeekToken<AfterId> extends ","
-					? ParseColumnListToTuple<SkipToken<AfterId>> extends [infer Tail extends TokensList, infer Rest]
-						? Rest extends string[]
-							? [Tail, [Col, ...Rest]]
-							: [Tail, SqlParserError<"Expected column name in column list">]
-						: never
-					: PeekToken<AfterId> extends "" | ")"
-						? [AfterId, [Col]]
-						: IsBufferEnd<AfterId> extends [infer RestEnd extends TokensList, infer Ended extends boolean]
-							? Ended extends true
-								? [RestEnd, [Col]]
-								: [RestEnd, SqlParserError<"Expected column name in column list">]
-							: never
+					? ParseColumnListTail<SkipToken<AfterId>, [...Acc, Col]>
+					: PeekToken<AfterId> extends ")"
+						? [SkipToken<AfterId>, [...Acc, Col]]
+						: [AfterId, SqlParserError<"Expected ) after column list">]
 				: [AfterId, Extract<Col, SqlParserError<string>>]
 			: never
 
@@ -128,67 +120,59 @@ export type ValidateFkReferencedColumnPairs<Pairs extends FkColumnPair[], Target
 		: SqlParserError<"Unable to validate foreign key referenced columns">
 
 export type ParseForeignKeyMetaAndRest<Tokens extends TokensList> =
-	ReadFirstParenGroup<Tokens> extends [infer R1 extends TokensList, infer LocalBuf extends string]
-		? ReadExpectedToken<R1, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
-				infer URef extends TokensList,
-				infer OkRef,
-			]
-			? OkRef extends true
-				? ReadQualifiedIdentifierFromBuffer<URef> extends [
-						infer R2 extends TokensList,
-						infer Target extends SqlQualifiedIdentifier,
-					]
-					? ReadFirstParenGroup<R2> extends [infer R3 extends TokensList, infer TargetColsBuf extends string]
-						? ParseColumnListToTuple<ParseSqlTokens<LocalBuf>> extends [
-								infer _RestLocal extends TokensList,
-								infer FC,
-							]
-							? ParseForeignKeyMetaWithLocalCols<R3, Target, FC, TargetColsBuf>
-							: never
+	ParseColumnList<Tokens> extends [infer AfterLocalCols extends TokensList, infer LocalCols]
+		? LocalCols extends string[]
+			? ReadExpectedToken<AfterLocalCols, "references", "Expected REFERENCES in FOREIGN KEY"> extends [
+					infer URef extends TokensList,
+					infer OkRef,
+				]
+				? OkRef extends true
+					? ReadQualifiedIdentifierFromBuffer<URef> extends [
+							infer AfterTarget extends TokensList,
+							infer Target extends SqlQualifiedIdentifier,
+						]
+						? ParseForeignKeyMetaWithLocalCols<AfterTarget, Target, LocalCols>
 						: never
-					: never
-				: [URef, Extract<OkRef, SqlParserError<string>>]
-			: never
+					: [URef, Extract<OkRef, SqlParserError<string>>]
+				: never
+			: [AfterLocalCols, SqlParserError<"Unable to parse local column list in foreign key">]
 		: never
 
 type ParseForeignKeyMetaWithLocalCols<
 	Tokens extends TokensList,
 	Target extends SqlQualifiedIdentifier,
-	FC,
-	TargetColsBuf extends string,
-> = FC extends string[]
-	? ParseColumnListToTuple<ParseSqlTokens<TargetColsBuf>> extends [infer _RestTarget extends TokensList, infer TC]
-		? TC extends string[]
-			? ZipColumnListsToPairs<FC, TC> extends infer Pairs
-				? Pairs extends SqlParserError<string>
-					? [Tokens, Pairs]
-					: Pairs extends FkColumnPair[]
-						? Target extends [infer Table extends string]
+	FC extends string[],
+> = ParseColumnList<Tokens> extends [infer AfterTargetCols extends TokensList, infer TargetCols]
+	? TargetCols extends string[]
+		? ZipColumnListsToPairs<FC, TargetCols> extends infer Pairs
+			? Pairs extends SqlParserError<string>
+				? [AfterTargetCols, Pairs]
+				: Pairs extends FkColumnPair[]
+					? Target extends [infer Table extends string]
+						? [
+								AfterTargetCols,
+								{
+									from: ""
+									columnPairs: Pairs
+									toSchema: undefined
+									toTable: Table
+								},
+							]
+						: Target extends [infer Table extends string, infer Schema extends string]
 							? [
-									Tokens,
+									AfterTargetCols,
 									{
 										from: ""
 										columnPairs: Pairs
-										toSchema: undefined
+										toSchema: Schema
 										toTable: Table
 									},
 								]
-							: Target extends [infer Table extends string, infer Schema extends string]
-								? [
-										Tokens,
-										{
-											from: ""
-											columnPairs: Pairs
-											toSchema: Schema
-											toTable: Table
-										},
-									]
-								: [Tokens, SqlParserError<"Unable to build foreign key column pairs">]
-						: [Tokens, SqlParserError<"Unable to build foreign key column pairs">]
-				: [Tokens, SqlParserError<"Unable to build foreign key column pairs">]
-			: [Tokens, SqlParserError<"Unable to parse referenced column list in foreign key">]
-		: never
-	: [Tokens, SqlParserError<"Unable to parse local column list in foreign key">]
+							: [AfterTargetCols, SqlParserError<"Unable to build foreign key column pairs">]
+					: [AfterTargetCols, SqlParserError<"Unable to build foreign key column pairs">]
+			: [AfterTargetCols, SqlParserError<"Unable to build foreign key column pairs">]
+		: [AfterTargetCols, SqlParserError<"Unable to parse referenced column list in foreign key">]
+	: never
 
 type TryReadConstraintHeadUnprefixed<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "primary"

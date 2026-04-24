@@ -7,13 +7,13 @@ import type {
 } from "./sql-constraints-fk.ts"
 import type {
 	ConsumeStatementEnd,
-	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
+	ReadExpectedToken,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.ts"
-import type { TokensList, PeekToken, SqlParserError, ParseSqlTokens } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SqlParserError } from "../../core/sql-tokens.ts"
 
 export type CreateTableStatement = {
 	kind: "create_table"
@@ -64,6 +64,8 @@ type ParseCreateBody<
 > =
 	PeekToken<Tokens> extends ""
 		? [Tokens, CreateBodyState<Row, Names, Error, Refs, Intra>]
+		: PeekToken<Tokens> extends ")"
+			? [Tokens, CreateBodyState<Row, Names, Error, Refs, Intra>]
 		: PeekToken<Tokens> extends ConstraintHeadToken
 			? ParseCreateBodyConstraintOrError<Tokens, Row, Names, Error, Refs, Intra>
 			: ParseCreateBodyColumn<Tokens, Row, Names, Error, Refs, Intra>
@@ -196,11 +198,12 @@ type ParseCreateTableWithFlag<Tokens extends TokensList, IfNotExists extends boo
 	]
 		? NameResult extends SqlParserError<string>
 			? [RestAfterName, NameResult]
-			: ReadFirstParenGroup<RestAfterName> extends [
-						infer TailAfterBody extends TokensList,
-						infer Inner extends string,
+			: ReadExpectedToken<RestAfterName, "(", "Expected CREATE TABLE body in parentheses"> extends [
+						infer AfterOpen extends TokensList,
+						infer OpenOk,
 				  ]
-				? ParseCreateBody<ParseSqlTokens<Inner>, {}, never> extends [
+				? OpenOk extends true
+					? ParseCreateBody<AfterOpen, {}, never> extends [
 						infer BodyRest extends TokensList,
 						infer Parsed extends {
 							row: unknown
@@ -209,12 +212,12 @@ type ParseCreateTableWithFlag<Tokens extends TokensList, IfNotExists extends boo
 							intraTableConstraints: IntraTableConstraintRef[]
 						},
 					]
-					? ConsumeStatementEnd<TailAfterBody> extends [
-							infer RestTail extends TokensList,
-							infer EndOk extends boolean,
-						]
-						? EndOk extends true
-							? [Parsed["error"]] extends [never]
+					? [Parsed["error"]] extends [never]
+						? ConsumeStatementEnd<BodyRest> extends [
+								infer RestTail extends TokensList,
+								infer EndOk extends boolean,
+							]
+							? EndOk extends true
 								? [
 										RestTail,
 										{
@@ -227,9 +230,10 @@ type ParseCreateTableWithFlag<Tokens extends TokensList, IfNotExists extends boo
 											intraTableConstraints: Parsed["intraTableConstraints"]
 										},
 									]
-								: [BodyRest, Parsed["error"]]
-							: [RestTail, SqlParserError<"Expected CREATE TABLE body in parentheses">]
-						: never
+								: [RestTail, SqlParserError<"Expected CREATE TABLE body in parentheses">]
+							: never
+						: [BodyRest, Parsed["error"]]
 					: never
+					: [AfterOpen, Extract<OpenOk, SqlParserError<string>>]
 				: never
 		: never
