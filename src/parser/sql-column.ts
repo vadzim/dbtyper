@@ -1,5 +1,5 @@
 import type { ReadExpectedToken, StripIdentifierQuotes } from "./sql-primitives.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 import type { SkipStatement } from "./skip-statement.ts"
 
 type SqlScalarTypeToTs<T extends string> = T extends
@@ -63,7 +63,7 @@ type ColumnDef = {
 }
 
 type ReadOptionalTypeParams<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "("
+	PeekToken<Tokens> extends TokenType<"(">
 		? SkipStatement<SkipToken<Tokens>, ")"> extends [infer Rest extends TokensList, infer SkipResult]
 			? SkipResult extends SqlParserError<string>
 				? [Rest, SkipResult]
@@ -72,7 +72,7 @@ type ReadOptionalTypeParams<Tokens extends TokensList> =
 		: [Tokens, false]
 
 type ReadIsArray<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "["
+	PeekToken<Tokens> extends TokenType<"[">
 		? ReadExpectedToken<SkipToken<Tokens>, "]", "Expected ] after ["> extends [
 				infer Rest extends TokensList,
 				infer Ok,
@@ -84,11 +84,11 @@ type ReadIsArray<Tokens extends TokensList> =
 		: [Tokens, false]
 
 type ScanForNotNull<Tokens extends TokensList> =
-	PeekToken<Tokens> extends ""
+	PeekToken<Tokens> extends TokenType<"">
 		? [Tokens, false]
-		: PeekToken<Tokens> extends "," | ")" | ";"
+		: PeekToken<Tokens> extends TokenType<"," | ")" | ";">
 			? [Tokens, false]
-			: PeekToken<Tokens> extends "not"
+			: PeekToken<Tokens> extends TokenType<"not">
 				? ReadExpectedToken<SkipToken<Tokens>, "null", "Expected NULL after NOT"> extends [
 						infer RestNull extends TokensList,
 						infer OkNull,
@@ -109,10 +109,10 @@ type ParseColumnAfterTypeTok<Tokens extends TokensList, ColNameRaw extends strin
 				? [
 						RestAfterNullable,
 						{
-							name: StripIdentifierQuotes<ColNameRaw>
+							name: StripIdentifierQuotes<TokenType<ColNameRaw>>
 							type: IsArr extends true
-								? SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>[]
-								: SqlScalarTypeToTs<StripIdentifierQuotes<TypeRaw>>
+								? SqlScalarTypeToTs<StripIdentifierQuotes<TokenType<TypeRaw>>>[]
+								: SqlScalarTypeToTs<StripIdentifierQuotes<TokenType<TypeRaw>>>
 							nullable: FoundNotNull extends true ? false : true
 						},
 					]
@@ -121,14 +121,14 @@ type ParseColumnAfterTypeTok<Tokens extends TokensList, ColNameRaw extends strin
 		: never
 
 type ParseColumnRestAfterName<Tokens extends TokensList, ColNameRaw extends string> =
-	PeekToken<Tokens> extends infer TypeRaw extends string
+	PeekToken<Tokens> extends TokenType<infer TypeRaw extends string>
 		? TypeRaw extends "" | ")" | "," | ";"
 			? [Tokens, SqlParserError<"Invalid column definition">]
 			: ParseColumnAfterTypeTok<SkipToken<Tokens>, ColNameRaw, TypeRaw>
 		: never
 
 type ParseColumnFromBuffer<Tokens extends TokensList> =
-	PeekToken<Tokens> extends infer ColNameRaw extends string
+	PeekToken<Tokens> extends TokenType<infer ColNameRaw extends string>
 		? ColNameRaw extends ""
 			? [Tokens, SqlParserError<"Invalid column definition">]
 			: ParseColumnRestAfterName<SkipToken<Tokens>, ColNameRaw>

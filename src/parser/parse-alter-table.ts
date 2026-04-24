@@ -15,7 +15,7 @@ import type {
 	TryReadConstraintHead,
 } from "./sql-constraints-fk.ts"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError } from "../../core/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 
 export type AlterTableStatement = {
 	kind: "alter_table"
@@ -99,9 +99,9 @@ type ParseIdentifierToken<Tokens extends TokensList> =
 		: never
 
 type ParseAlterAction<Tokens extends TokensList> =
-	PeekToken<Tokens> extends ""
+	PeekToken<Tokens> extends TokenType<"">
 		? [Tokens, SqlParserError<"Expected an ALTER TABLE action">]
-		: PeekToken<Tokens> extends infer Action extends string
+		: PeekToken<Tokens> extends TokenType<infer Action extends string>
 			? ParseAlterActionByHead<Tokens, Action>
 			: never
 
@@ -114,23 +114,23 @@ type ParseAlterActionByHead<Tokens extends TokensList, Action extends string> = 
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
 type ParseAlterActionAdd<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "column"
+	PeekToken<Tokens> extends TokenType<"column">
 		? ParseAlterActionAddColumn<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends "constraint"
+		: PeekToken<Tokens> extends TokenType<"constraint">
 			? ParseAlterAddConstraint<SkipToken<Tokens>>
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
 type ParseAlterActionDrop<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "column"
+	PeekToken<Tokens> extends TokenType<"column">
 		? ParseAlterActionDropColumn<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends "constraint"
+		: PeekToken<Tokens> extends TokenType<"constraint">
 			? ParseAlterDropConstraint<SkipToken<Tokens>>
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
 type ParseAlterActionRename<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "to"
+	PeekToken<Tokens> extends TokenType<"to">
 		? ParseAlterActionRenameTo<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends "column"
+		: PeekToken<Tokens> extends TokenType<"column">
 			? ParseAlterActionRenameColumn<SkipToken<Tokens>>
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
@@ -147,7 +147,7 @@ type ParseAlterActionAddColumn<Tokens extends TokensList> =
 		: never
 
 type ParseAlterActionAddColumnWithFlag<Tokens extends TokensList, IfNotExists extends boolean> =
-	PeekToken<Tokens> extends ""
+	PeekToken<Tokens> extends TokenType<"">
 		? [Tokens, SqlParserError<"Expected a column definition in ALTER TABLE ADD COLUMN">]
 		: AddColumn<Tokens, {}, never> extends [
 					infer RestAfter extends TokensList,
@@ -331,6 +331,6 @@ type ParseAlterTableWithFlag<Tokens extends TokensList, IfExists extends boolean
 		: never
 
 type ReadAlterTableTarget<Tokens extends TokensList> =
-	Lowercase<PeekToken<Tokens>> extends "only"
+	PeekToken<Tokens> extends TokenType<"only">
 		? ReadQualifiedIdentifierFromBuffer<SkipToken<Tokens>>
 		: ReadQualifiedIdentifierFromBuffer<Tokens>

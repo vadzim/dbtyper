@@ -1,17 +1,21 @@
-import type { TokensList, PeekToken, SkipToken, SqlParserError } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 
-export type StripIdentifierQuotes<S extends string> = S extends `"${infer X}"` ? X : S extends `\`${infer X}\`` ? X : S
+export type StripIdentifierQuotes<S extends TokenType<string>> = S["value"] extends `"${infer X}"`
+	? X
+	: S["value"] extends `\`${infer X}\``
+		? X
+		: S["value"]
 
 export type SqlQualifiedIdentifier = [name: string] | [name: string, schema: string]
 
 export type ConsumeStatementEnd<Tokens extends TokensList> =
-	PeekToken<Tokens> extends ";" | "" ? [SkipToken<Tokens>, true] : [Tokens, false]
+	PeekToken<Tokens> extends TokenType<";" | ""> ? [SkipToken<Tokens>, true] : [Tokens, false]
 
 export type ReadExpectedToken<Tokens extends TokensList, Expected extends string, Message extends string> =
-	PeekToken<Tokens> extends Expected ? [SkipToken<Tokens>, true] : [Tokens, SqlParserError<Message>]
+	PeekToken<Tokens> extends TokenType<Expected> ? [SkipToken<Tokens>, true] : [Tokens, SqlParserError<Message>]
 
 export type ReadOptionalToken<Tokens extends TokensList, Expected extends string> =
-	PeekToken<Tokens> extends Expected ? [SkipToken<Tokens>, true] : [Tokens, false]
+	PeekToken<Tokens> extends TokenType<Expected> ? [SkipToken<Tokens>, true] : [Tokens, false]
 
 export type ReadExpectedIdentifier<Tokens extends TokensList, Message extends string> =
 	StripIdentifierQuotes<PeekToken<Tokens>> extends infer Name extends string
@@ -79,4 +83,4 @@ type ReadQualifiedIdentifierTail<Tokens extends TokensList, A extends string> =
 
 /** `[rest, true]` when the next token is EOF; `[tokens, false]` when there is more input. */
 export type IsBufferEnd<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "" ? [SkipToken<Tokens>, true] : [Tokens, false]
+	PeekToken<Tokens> extends TokenType<""> ? [SkipToken<Tokens>, true] : [Tokens, false]

@@ -6,12 +6,14 @@ import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop-table.ts"
 import type { ParseInsertValues } from "./parse-insert-values.ts"
 import type { SkipStatement } from "./skip-statement.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 
 export type ParseSqlStatements<Tokens extends TokensList> = InternalParseStatements<Tokens, []>
 
 export type ParseSqlStatement<Tokens extends TokensList> =
-	PeekToken<Tokens> extends infer Head extends string ? ParseSqlStatementByHead<Tokens, Head> : SkipStatement<Tokens>
+	PeekToken<Tokens> extends TokenType<infer Head extends string>
+		? ParseSqlStatementByHead<Tokens, Head>
+		: SkipStatement<Tokens>
 
 type ParseSqlStatementByHead<Tokens extends TokensList, Head extends string> = Head extends ""
 	? [Tokens, SqlParserError<"Unknown sql statement">]
@@ -45,28 +47,30 @@ type ParseInsert<Tokens extends TokensList> =
 		: never
 
 type ParseCreate<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "table"
+	PeekToken<Tokens> extends TokenType<"table">
 		? ParseCreateTable<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends "schema"
+		: PeekToken<Tokens> extends TokenType<"schema">
 			? ParseCreateSchema<SkipToken<Tokens>>
-			: PeekToken<Tokens> extends "unique"
+			: PeekToken<Tokens> extends TokenType<"unique">
 				? ParseCreateUnique<SkipToken<Tokens>>
-				: PeekToken<Tokens> extends "index"
+				: PeekToken<Tokens> extends TokenType<"index">
 					? ParseCreateIndex<SkipToken<Tokens>, false>
 					: SkipStatement<Tokens>
 
 type ParseCreateUnique<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "index" ? ParseCreateIndex<SkipToken<Tokens>, true> : SkipStatement<Tokens>
+	PeekToken<Tokens> extends TokenType<"index"> ? ParseCreateIndex<SkipToken<Tokens>, true> : SkipStatement<Tokens>
 
 type ParseDrop<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "table"
+	PeekToken<Tokens> extends TokenType<"table">
 		? ParseDropTable<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends "schema"
+		: PeekToken<Tokens> extends TokenType<"schema">
 			? ParseDropSchema<SkipToken<Tokens>>
 			: SkipStatement<Tokens>
 
 type ParseAlter<Tokens extends TokensList> =
-	PeekToken<Tokens> extends "table" ? SqlAlterWithMaybeSkipUnsupported<SkipToken<Tokens>> : SkipStatement<Tokens>
+	PeekToken<Tokens> extends TokenType<"table">
+		? SqlAlterWithMaybeSkipUnsupported<SkipToken<Tokens>>
+		: SkipStatement<Tokens>
 
 type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList> =
 	ParseAlterTable<Tokens> extends [infer Rest extends TokensList, infer Head]
@@ -78,7 +82,7 @@ type SqlAlterWithMaybeSkipUnsupported<Tokens extends TokensList> =
 		: never
 
 type InternalParseStatements<Tokens extends TokensList, Acc extends unknown[]> =
-	PeekToken<Tokens> extends ""
+	PeekToken<Tokens> extends TokenType<"">
 		? [Tokens, Acc]
 		: ParseSqlStatement<Tokens> extends [infer Rest extends TokensList, infer Head]
 			? Head extends SqlParserError<string>
@@ -89,7 +93,7 @@ type InternalParseStatements<Tokens extends TokensList, Acc extends unknown[]> =
 export type ParseSqlStatementsRecovering<Tokens extends TokensList> = InternalParseSqlStatementsRecovering<Tokens, []>
 
 type InternalParseSqlStatementsRecovering<Tokens extends TokensList, Acc extends unknown[]> =
-	PeekToken<Tokens> extends ""
+	PeekToken<Tokens> extends TokenType<"">
 		? [Tokens, Acc]
 		: ParseSqlStatement<Tokens> extends [infer Rest extends TokensList, infer Head]
 			? Head extends SqlParserError<string>

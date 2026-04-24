@@ -1,11 +1,7 @@
 import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
-import type {
-	ReadExpectedToken,
-	ReadQualifiedIdentifierFromBuffer,
-	SqlQualifiedIdentifier,
-} from "./sql-primitives.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError } from "../../core/sql-tokens.ts"
+import type { ReadExpectedToken, ReadQualifiedIdentifierFromBuffer, SqlQualifiedIdentifier } from "./sql-primitives.ts"
+import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 
 export type InsertValuesStatement = {
 	kind: "insert_values"
@@ -89,20 +85,20 @@ type ParseValueList<Tokens extends TokensList> =
 		: never
 
 type ParseValueListTail<Tokens extends TokensList, Acc extends unknown[] = []> =
-	PeekToken<Tokens> extends ")"
+	PeekToken<Tokens> extends TokenType<")">
 		? [SkipToken<Tokens>, Acc]
 		: ParseOneValue<Tokens> extends [infer After extends TokensList, infer V]
 			? V extends SqlParserError<string>
 				? [After, V]
-				: PeekToken<After> extends ","
+				: PeekToken<After> extends TokenType<",">
 					? ParseValueListTail<SkipToken<After>, [...Acc, V]>
-					: PeekToken<After> extends ")"
+					: PeekToken<After> extends TokenType<")">
 						? [SkipToken<After>, [...Acc, V]]
 						: [After, SqlParserError<"Expected ) or comma after INSERT value">]
 			: never
 
 type ParseOneValue<Tokens extends TokensList> =
-	PeekToken<Tokens> extends infer T extends string
+	PeekToken<Tokens> extends TokenType<infer T extends string>
 		? T extends "null"
 			? [SkipToken<Tokens>, null]
 			: T extends "true"

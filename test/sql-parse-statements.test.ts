@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyTokenList, ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError, TokenType } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 type Empty = ParseSqlStatements<ParseSqlTokens<``>>
@@ -53,7 +53,7 @@ type _UnknownSecond = Expect<
 				{ kind: "create_schema"; name: "a"; ifNotExists: false },
 				{
 					kind: "skipped-statement"
-					token: ";"
+					token: TokenType<";">
 				},
 			],
 		]
