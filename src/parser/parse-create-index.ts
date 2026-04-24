@@ -1,14 +1,13 @@
-import type { ParseColumnListToTuple } from "./sql-constraints-fk.ts"
+import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type {
 	ReadExpectedIdentifier,
 	ReadExpectedToken,
-	ReadFirstParenGroup,
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
-import type { TokensList, SqlParserError, ParseSqlTokens } from "../../core/sql-tokens.ts"
+import type { TokensList, SqlParserError } from "../../core/sql-tokens.ts"
 
 export type CreateIndexStatement = {
 	kind: "create_index_validated"
@@ -49,28 +48,23 @@ type ParseCreateIndexAfterOn<Tokens extends TokensList, Unique extends boolean, 
 				]
 				? TableResult extends SqlParserError<string>
 					? [Rest3, SqlParserError<"Unable to parse CREATE INDEX">]
-					: ReadFirstParenGroup<Rest3> extends [infer Tail extends TokensList, infer Inner extends string]
-						? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [
-								infer _RestCols extends TokensList,
-								infer ColsResult,
-							]
-							? ColsResult extends string[]
-								? SkipStatement<Tail> extends [infer RestFinal extends TokensList, infer SkipResult]
-									? SkipResult extends SkippedStatement
-										? [
-												RestFinal,
-												{
-													kind: "create_index_validated"
-													unique: Unique
-													ifNotExists: IfNotExists
-													target: TableResult
-													columns: ColsResult
-												},
-											]
-										: [RestFinal, SqlParserError<"Unable to parse CREATE INDEX">]
-									: never
-								: [Tail, SqlParserError<"Unable to parse CREATE INDEX column list">]
-							: never
+					: ParseColumnList<Rest3> extends [infer Tail extends TokensList, infer ColsResult]
+						? ColsResult extends string[]
+							? SkipStatement<Tail> extends [infer RestFinal extends TokensList, infer SkipResult]
+								? SkipResult extends SkippedStatement
+									? [
+											RestFinal,
+											{
+												kind: "create_index_validated"
+												unique: Unique
+												ifNotExists: IfNotExists
+												target: TableResult
+												columns: ColsResult
+											},
+										]
+									: [RestFinal, SqlParserError<"Unable to parse CREATE INDEX">]
+								: never
+							: [Tail, SqlParserError<"Unable to parse CREATE INDEX column list">]
 						: never
 				: never
 			: OkOn extends SqlParserError<string>

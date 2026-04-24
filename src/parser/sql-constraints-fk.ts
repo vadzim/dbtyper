@@ -32,26 +32,29 @@ export type TryReadConstraintHead<Tokens extends TokensList> =
 		: TryReadConstraintHeadUnprefixed<Tokens>
 
 export type ParseConstraintBody<Tokens extends TokensList, Kind extends string> = Kind extends "primary_key"
-	? ReadFirstParenGroup<Tokens> extends [infer AfterClose extends TokensList, infer Inner extends string]
-		? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [infer _RestCols extends TokensList, infer Cols]
-			? Cols extends string[]
-				? [AfterClose, { kind: "primary_key"; columns: Cols }]
-				: [AfterClose, SqlParserError<"Unable to parse PRIMARY KEY column list">]
-			: never
+	? ParseColumnList<Tokens> extends [infer AfterClose extends TokensList, infer Cols]
+		? Cols extends string[]
+			? [AfterClose, { kind: "primary_key"; columns: Cols }]
+			: [AfterClose, SqlParserError<"Unable to parse PRIMARY KEY column list">]
 		: never
 	: Kind extends "unique"
-		? ReadFirstParenGroup<Tokens> extends [infer AfterClose extends TokensList, infer Inner extends string]
-			? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [infer _RestCols extends TokensList, infer Cols]
-				? Cols extends string[]
-					? [AfterClose, { kind: "unique"; columns: Cols }]
-					: [AfterClose, SqlParserError<"Unable to parse UNIQUE column list">]
-				: never
+		? ParseColumnList<Tokens> extends [infer AfterClose extends TokensList, infer Cols]
+			? Cols extends string[]
+				? [AfterClose, { kind: "unique"; columns: Cols }]
+				: [AfterClose, SqlParserError<"Unable to parse UNIQUE column list">]
 			: never
 		: Kind extends "foreign_key"
 			? ParseForeignKeyMetaAndRest<Tokens>
 			: [Tokens, { kind: "other" }]
 
-export type ParseColumnListToTuple<Tokens extends TokensList> =
+export type ParseColumnList<Tokens extends TokensList> =
+	ReadFirstParenGroup<Tokens> extends [infer Tail extends TokensList, infer Inner extends string]
+		? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [infer _RestCols extends TokensList, infer Cols]
+			? [Tail, Cols]
+			: never
+		: never
+
+type ParseColumnListToTuple<Tokens extends TokensList> =
 	PeekToken<Tokens> extends ""
 		? [Tokens, []]
 		: ReadExpectedIdentifier<Tokens, "Expected column name in column list"> extends [

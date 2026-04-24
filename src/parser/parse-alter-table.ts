@@ -5,18 +5,17 @@ import type {
 	ReadOptionalIfExists,
 	ReadOptionalIfNotExists,
 	ReadExpectedIdentifier,
-	ReadFirstParenGroup,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
 import type {
 	ForeignRefMeta,
-	ParseColumnListToTuple,
+	ParseColumnList,
 	ParseForeignKeyMetaAndRest,
 	TryReadConstraintHead,
 } from "./sql-constraints-fk.ts"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError, ParseSqlTokens } from "../../core/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokensList, SqlParserError } from "../../core/sql-tokens.ts"
 
 export type AlterTableStatement = {
 	kind: "alter_table"
@@ -238,28 +237,24 @@ type ParseAlterAddConstraintByKind<Tokens extends TokensList, Kind extends strin
 			: [R3, Extract<Meta, SqlParserError<string>>]
 		: never
 	: Kind extends "primary_key"
-		? ReadFirstParenGroup<Tokens> extends [infer Tail extends TokensList, infer Inner extends string]
-			? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [infer _RestCols extends TokensList, infer Cols]
+		? ParseColumnList<Tokens> extends [infer Tail extends TokensList, infer Cols]
+			? Cols extends string[]
+				? SkipStatement<Tail> extends [infer RestFinal extends TokensList, infer SkipResult]
+					? SkipResult extends SkippedStatement
+						? [RestFinal, { kind: "add_constraint_primary"; columns: Cols }]
+						: [RestFinal, SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">]
+					: never
+				: [Tail, Extract<Cols, SqlParserError<string>>]
+			: never
+		: Kind extends "unique"
+			? ParseColumnList<Tokens> extends [infer Tail extends TokensList, infer Cols]
 				? Cols extends string[]
 					? SkipStatement<Tail> extends [infer RestFinal extends TokensList, infer SkipResult]
 						? SkipResult extends SkippedStatement
-							? [RestFinal, { kind: "add_constraint_primary"; columns: Cols }]
+							? [RestFinal, { kind: "add_constraint_unique"; columns: Cols }]
 							: [RestFinal, SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">]
 						: never
 					: [Tail, Extract<Cols, SqlParserError<string>>]
-				: never
-			: never
-		: Kind extends "unique"
-			? ReadFirstParenGroup<Tokens> extends [infer Tail extends TokensList, infer Inner extends string]
-				? ParseColumnListToTuple<ParseSqlTokens<Inner>> extends [infer _RestCols extends TokensList, infer Cols]
-					? Cols extends string[]
-						? SkipStatement<Tail> extends [infer RestFinal extends TokensList, infer SkipResult]
-							? SkipResult extends SkippedStatement
-								? [RestFinal, { kind: "add_constraint_unique"; columns: Cols }]
-								: [RestFinal, SqlParserError<"Unable to parse ALTER TABLE ADD CONSTRAINT">]
-							: never
-						: [Tail, Extract<Cols, SqlParserError<string>>]
-					: never
 				: never
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 

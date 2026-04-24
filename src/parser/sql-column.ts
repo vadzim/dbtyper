@@ -1,5 +1,6 @@
-import type { ReadExpectedToken, ReadFirstParenGroup, StripIdentifierQuotes } from "./sql-primitives.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError, ParseSqlTokens } from "../../core/sql-tokens.ts"
+import type { ReadExpectedToken, StripIdentifierQuotes } from "./sql-primitives.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError } from "../../core/sql-tokens.ts"
+import type { SkipStatement } from "./skip-statement.ts"
 
 type SqlScalarTypeToTs<T extends string> = T extends
 	| "int"
@@ -63,8 +64,10 @@ type ColumnDef = {
 
 type ReadOptionalTypeParams<Tokens extends TokensList> =
 	PeekToken<Tokens> extends "("
-		? ReadFirstParenGroup<Tokens> extends [infer Rest extends TokensList, infer _Inner extends string]
-			? [Rest, true]
+		? SkipStatement<SkipToken<Tokens>, ")"> extends [infer Rest extends TokensList, infer SkipResult]
+			? SkipResult extends SqlParserError<string>
+				? [Rest, SkipResult]
+				: [Rest, true]
 			: never
 		: [Tokens, false]
 

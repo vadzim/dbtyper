@@ -1,4 +1,4 @@
-import type { ParseColumnListToTuple } from "./sql-constraints-fk.ts"
+import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type {
 	IsBufferEnd,
@@ -72,15 +72,10 @@ type ParseInsertAfterInto<Tokens extends TokensList> =
 	]
 		? TableResult extends SqlParserError<string>
 			? [Rest1, SqlParserError<"Expected table name in INSERT">]
-			: ReadFirstParenGroup<Rest1> extends [infer Rest2 extends TokensList, infer ColInner extends string]
-				? ParseColumnListToTuple<ParseSqlTokens<ColInner>> extends [
-						infer _RestCols extends TokensList,
-						infer Cols,
-					]
-					? Cols extends string[]
-						? ParseInsertAfterValuesKeyword<Rest2, Extract<TableResult, SqlQualifiedIdentifier>, Cols>
-						: [Rest2, SqlParserError<"Unable to parse INSERT column list">]
-					: never
+			: ParseColumnList<Rest1> extends [infer Rest2 extends TokensList, infer Cols]
+				? Cols extends string[]
+					? ParseInsertAfterValuesKeyword<Rest2, Extract<TableResult, SqlQualifiedIdentifier>, Cols>
+					: [Rest2, SqlParserError<"Unable to parse INSERT column list">]
 				: never
 		: never
 
