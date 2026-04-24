@@ -188,6 +188,7 @@ type ServiceWords = keyof {
 	right: true
 	schema: true
 	select: true
+	set: true
 	table: true
 	to: true
 	true: true

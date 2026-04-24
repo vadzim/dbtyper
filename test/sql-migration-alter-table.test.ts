@@ -10,7 +10,10 @@ type ParseAlterOnlyPk = ParseSqlStatements<ParseSqlTokens<`alter table app.u add
 type PkAlterStmt = ParseAlterOnlyPk[1] extends [infer H] ? H : never
 type _PkAlterStmtKind = Expect<Matches<PkAlterStmt extends { kind: infer K } ? K : never, "alter_table">>
 type _PkAlterPrimary = Expect<
-	Matches<PkAlterStmt extends { action: infer A } ? A : never, { kind: "add_constraint_primary"; columns: ["id"] }>
+	Matches<
+		PkAlterStmt extends { action: infer A } ? A : never,
+		{ kind: "add_constraint_primary"; name: "u_pkey"; columns: ["id"] }
+	>
 >
 
 type ParseAlterDropConstraintOnly = ParseSqlStatements<

@@ -8,6 +8,7 @@ import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
 import type { SqlParserError } from "../core/sql-tokens.ts"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens } from "../core/sql-tokens.ts"
+import type { JsqlGetConstraintMap, JsqlTableConstraintsKey } from "../src/engine/table-constraint-meta.ts"
 
 type DbApplyAlterFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
@@ -473,6 +474,140 @@ type _AlterExplicitSchemaQualified = Expect<
 				}
 				auth: {
 					sessions: { id: string; expires_at: Date | null }
+				}
+			}
+		}
+	>
+>
+
+// --- ALTER COLUMN SET / DROP NOT NULL ---
+
+type AlterSetNotNullOnNullable = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create table test.t (label text);
+	alter table test.t alter column label set not null
+`>
+	>[1]
+>
+type _AlterSetNotNullOnNullable = Expect<
+	Matches<
+		AlterSetNotNullOnNullable,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: { test: { t: { label: string } } }
+		}
+	>
+>
+
+type AlterDropNotNull = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create table test.t (n int not null);
+	alter table test.t alter column n drop not null
+`>
+	>[1]
+>
+type _AlterDropNotNull = Expect<
+	Matches<
+		AlterDropNotNull,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: { test: { t: { n: number | null } } }
+		}
+	>
+>
+
+// --- ADD / DROP CONSTRAINT metadata ---
+
+type AddUniqueConstraint = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create table test.u (id int not null, email text);
+	alter table test.u add constraint u_email_key unique (email)
+`>
+	>[1]
+>
+type Jsql = JsqlTableConstraintsKey
+type UAfterAddConstraint = AddUniqueConstraint extends { schemas: { test: { u: infer U } } } ? U : never
+type _JsqlMapAfterAdd = Expect<
+	Matches<
+		JsqlGetConstraintMap<UAfterAddConstraint>,
+		{ u_email_key: { kind: "unique"; columns: ["email"] } }
+	>
+>
+type _AddUniqueConstraint = Expect<
+	Matches<
+		AddUniqueConstraint,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					u: {
+						id: number
+						email: string | null
+					} & {
+						[J in Jsql]: { u_email_key: { kind: "unique"; columns: ["email"] } }
+					}
+				}
+			}
+		}
+	>
+>
+
+type AddThenDropStmts = ParseSqlStatements<
+	ParseSqlTokens<`
+	create schema test;
+	create table test.u (id int not null, email text);
+	alter table test.u add constraint u_email_key unique (email);
+	alter table test.u drop constraint u_email_key
+`>
+>[1]
+type _AddThenDropStmts = Expect<Matches<AddThenDropStmts["length"], 4>>
+type AddThenDropConstraint = SqlApplyStatements<SqlDatabase<"test">, AddThenDropStmts>
+type DropConstraintOnly = ParseSqlStatements<ParseSqlTokens<`alter table test.u drop constraint u_email_key`>>[1]
+type DropOnDbWithConstraint = SqlApplyStatements<AddUniqueConstraint, DropConstraintOnly>
+type _DropInIsolation = Expect<
+	Matches<
+		DropOnDbWithConstraint,
+		{ kind: "database"; defaultSchema: "test"; schemas: { test: { u: { id: number; email: string | null } } } }
+	>
+>
+type _AddThenDropConstraint = Expect<
+	Matches<
+		AddThenDropConstraint,
+		{ kind: "database"; defaultSchema: "test"; schemas: { test: { u: { id: number; email: string | null } } } }
+	>
+>
+
+type AddPrimaryNamed = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create table test.u (id int not null);
+	alter table test.u add constraint u_pkey primary key (id)
+`>
+	>[1]
+>
+type _AddPrimaryNamed = Expect<
+	Matches<
+		AddPrimaryNamed,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					u: { id: number } & { [J in Jsql]: { u_pkey: { kind: "primary_key"; columns: ["id"] } } }
 				}
 			}
 		}

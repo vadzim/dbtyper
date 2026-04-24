@@ -208,6 +208,46 @@ type _UnsupportedAlterAction = Expect<
 	>
 >
 
+type AlterColumnSetNotNull = ParseSqlStatements<
+	ParseSqlTokens<`alter table users alter column email set not null`>
+>
+type _AlterColumnSetNotNull = Expect<
+	Matches<
+		AlterColumnSetNotNull,
+		[
+			EmptyTokenList,
+			[
+				{
+					kind: "alter_table"
+					ifExists: false
+					target: ["users"]
+					action: { kind: "alter_column_set_not_null"; name: "email" }
+				},
+			],
+		]
+	>
+>
+
+type AlterColumnDropNotNull = ParseSqlStatements<
+	ParseSqlTokens<`alter table public.posts alter column "body" drop not null`>
+>
+type _AlterColumnDropNotNull = Expect<
+	Matches<
+		AlterColumnDropNotNull,
+		[
+			EmptyTokenList,
+			[
+				{
+					kind: "alter_table"
+					ifExists: false
+					target: ["posts", "public"]
+					action: { kind: "alter_column_drop_not_null"; name: "body" }
+				},
+			],
+		]
+	>
+>
+
 describe("sql alter table", () => {
 	it("should run", () => {})
 })
