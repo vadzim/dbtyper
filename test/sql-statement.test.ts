@@ -53,6 +53,8 @@ describe("sql statement", () => {
 										id: number
 										name: string | null
 									}
+									column_facts: {}
+									constraints: {}
 								}
 							}
 						}

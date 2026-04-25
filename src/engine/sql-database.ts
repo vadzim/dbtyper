@@ -42,16 +42,6 @@ export type SqlDatabaseLike = {
 	schemas: { [K: string]: SqlSchemaLike }
 }
 
-export type SimplifyDeep<T> = T extends (...args: never[]) => unknown
-	? T
-	: T extends Date
-		? T
-		: T extends readonly unknown[]
-			? { [K in keyof T]: SimplifyDeep<T[K]> }
-			: T extends object
-				? { [K in keyof T]: SimplifyDeep<T[K]> }
-				: T
-
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 type MigrationText<S extends string> = S & {
 	parsedSql: ParseSqlStatementsRecovering<ParseSqlTokens<S>> extends [infer _Rest extends TokensList, infer Parsed]
@@ -111,11 +101,60 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 
 	async compile() {
 		const migrations = await this.#getMigrations()
-		return new CompiledDataBase<Database>(migrations, this.#defaultSchema)
+
+		// This type is needed to see Dtabase type in the IDE hint in an unwrapped form.
+		// Please never remove it, update it if needed.
+		type DatabaseFlattenedType = Database extends SqlDatabaseLike
+			? {
+					defaultSchema: Database["defaultSchema"]
+					schemas: Database["schemas"] extends infer Schemas
+						? {
+								[K in keyof Schemas]: Schemas[K] extends infer Schema extends SqlSchemaLike
+									? {
+											tables: Schema["tables"] extends infer Tables
+												? {
+														[K in keyof Tables]: Tables[K] extends infer Table extends
+															SqlTableLike
+															? {
+																	columns: Table["columns"] extends infer Columns
+																		? {
+																				[K in keyof Columns]: Columns[K]
+																			}
+																		: never
+																	column_facts: [
+																		keyof Table["column_facts"],
+																	] extends [never]
+																		? {}
+																		: Table["column_facts"] extends infer ColumnFacts
+																			? {
+																					[K in keyof ColumnFacts]: ColumnFacts[K]
+																				}
+																			: never
+																	constraints: [keyof Table["constraints"]] extends [
+																		never,
+																	]
+																		? {}
+																		: Table["constraints"] extends infer Constraints
+																			? {
+																					[K in keyof Constraints]: Constraints[K]
+																				}
+																			: never
+																}
+															: never
+													}
+												: never
+										}
+									: never
+							}
+						: never
+				}
+			: Database
+
+		return new CompiledDataBase<DatabaseFlattenedType>(migrations, this.#defaultSchema)
 	}
 }
 
-export class CompiledDataBase<Database> {
+export class CompiledDataBase<Database extends SqlDatabaseLike | SqlParserError<string>> {
 	get $db(): Database {
 		return null as unknown as Database
 	}
