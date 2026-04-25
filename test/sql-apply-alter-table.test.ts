@@ -8,12 +8,7 @@ import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
 import type { SqlParserError } from "../core/sql-tokens.ts"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens } from "../core/sql-tokens.ts"
-import type {
-	JsqlGetColumnFactsMap,
-	JsqlGetConstraintMap,
-	JsqlTableColumnFactsKey,
-	JsqlTableConstraintsKey,
-} from "../src/engine/table-constraint-meta.ts"
+import type { JsqlGetColumnFactsMap, JsqlGetConstraintMap } from "../src/engine/table-constraint-meta.ts"
 
 type DbApplyAlterFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
@@ -36,11 +31,15 @@ type _DbApplyAlterFixture = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; age: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; age: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -72,10 +71,13 @@ type _AddNewColumn = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; age: number; email: string }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; age: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: { sessions: { id: string } }
+				auth: { tables: { sessions: { columns: { id: string } } } }
 			}
 		}
 	>
@@ -91,9 +93,13 @@ type AddColumnWithFacts = SqlApplyStatements<
 `>
 	>[1]
 >
-type AddColumnWithFactsRow = AddColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
+type AddColumnWithFactsTable = AddColumnWithFacts extends {
+	schemas: { test: { tables: { users: infer T } } }
+}
+	? T
+	: never
 type _AddColumnFactsMap = Expect<
-	Matches<JsqlGetColumnFactsMap<AddColumnWithFactsRow>, { created_at: { default: true } }>
+	Matches<JsqlGetColumnFactsMap<AddColumnWithFactsTable>, { created_at: { default: true } }>
 >
 type _AddColumnWithFacts = Expect<
 	Matches<
@@ -103,11 +109,14 @@ type _AddColumnWithFacts = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: {
-						id: number
-						created_at: Date
-					} & {
-						[J in JsqlTableColumnFactsKey]: { created_at: { default: true } }
+					tables: {
+						users: {
+							columns: {
+								id: number
+								created_at: Date
+							}
+							column_facts: { created_at: { default: true } }
+						}
 					}
 				}
 			}
@@ -157,11 +166,15 @@ type _AddExistingColumnIfNotExists = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; age: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; age: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -193,10 +206,12 @@ type _DropExistingColumn = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: { sessions: { id: string } }
+				auth: { tables: { sessions: { columns: { id: string } } } }
 			}
 		}
 	>
@@ -244,11 +259,15 @@ type _DropMissingColumnIfExists = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; age: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; age: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -280,10 +299,12 @@ type _RenameExistingColumn = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; years: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; years: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: { sessions: { id: string } }
+				auth: { tables: { sessions: { columns: { id: string } } } }
 			}
 		}
 	>
@@ -299,9 +320,13 @@ type RenameColumnWithFacts = SqlApplyStatements<
 `>
 	>[1]
 >
-type RenameColumnWithFactsRow = RenameColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
+type RenameColumnWithFactsTable = RenameColumnWithFacts extends {
+	schemas: { test: { tables: { users: infer T } } }
+}
+	? T
+	: never
 type _RenameColumnFactsMap = Expect<
-	Matches<JsqlGetColumnFactsMap<RenameColumnWithFactsRow>, { inserted_at: { default: true } }>
+	Matches<JsqlGetColumnFactsMap<RenameColumnWithFactsTable>, { inserted_at: { default: true } }>
 >
 type _RenameColumnWithFacts = Expect<
 	Matches<
@@ -311,11 +336,14 @@ type _RenameColumnWithFacts = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: {
-						id: number
-						inserted_at: Date
-					} & {
-						[J in JsqlTableColumnFactsKey]: { inserted_at: { default: true } }
+					tables: {
+						users: {
+							columns: {
+								id: number
+								inserted_at: Date
+							}
+							column_facts: { inserted_at: { default: true } }
+						}
 					}
 				}
 			}
@@ -333,15 +361,19 @@ type DropColumnWithFacts = SqlApplyStatements<
 `>
 	>[1]
 >
-type DropColumnWithFactsRow = DropColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
-type _DropColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<DropColumnWithFactsRow>, {}>>
+type DropColumnWithFactsTable = DropColumnWithFacts extends {
+	schemas: { test: { tables: { users: infer T } } }
+}
+	? T
+	: never
+type _DropColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<DropColumnWithFactsTable>, {}>>
 type _DropColumnWithFacts = Expect<
 	Matches<
 		DropColumnWithFacts,
 		{
 			kind: "database"
 			defaultSchema: "test"
-			schemas: { test: { users: { id: number } } }
+			schemas: { test: { tables: { users: { columns: { id: number } } } } }
 		}
 	>
 >
@@ -409,10 +441,12 @@ type _RenameTableOk = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					members: { id: number; age: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						members: { columns: { id: number; age: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: { sessions: { id: string } }
+				auth: { tables: { sessions: { columns: { id: string } } } }
 			}
 		}
 	>
@@ -512,11 +546,15 @@ type _AlterMissingIfExists = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; age: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; age: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -565,11 +603,15 @@ type _AlterExplicitSchemaQualified = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; age: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; age: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string; expires_at: Date | null }
+					tables: {
+						sessions: { columns: { id: string; expires_at: Date | null } }
+					}
 				}
 			}
 		}
@@ -594,7 +636,7 @@ type _AlterSetNotNullOnNullable = Expect<
 		{
 			kind: "database"
 			defaultSchema: "test"
-			schemas: { test: { t: { label: string } } }
+			schemas: { test: { tables: { t: { columns: { label: string } } } } }
 		}
 	>
 >
@@ -615,7 +657,7 @@ type _AlterDropNotNull = Expect<
 		{
 			kind: "database"
 			defaultSchema: "test"
-			schemas: { test: { t: { n: number | null } } }
+			schemas: { test: { tables: { t: { columns: { n: number | null } } } } }
 		}
 	>
 >
@@ -632,8 +674,7 @@ type AddUniqueConstraint = SqlApplyStatements<
 `>
 	>[1]
 >
-type Jsql = JsqlTableConstraintsKey
-type UAfterAddConstraint = AddUniqueConstraint extends { schemas: { test: { u: infer U } } } ? U : never
+type UAfterAddConstraint = AddUniqueConstraint extends { schemas: { test: { tables: { u: infer T } } } } ? T : never
 type _JsqlMapAfterAdd = Expect<
 	Matches<JsqlGetConstraintMap<UAfterAddConstraint>, { u_email_key: { kind: "unique"; columns: ["email"] } }>
 >
@@ -645,11 +686,14 @@ type _AddUniqueConstraint = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					u: {
-						id: number
-						email: string | null
-					} & {
-						[J in Jsql]: { u_email_key: { kind: "unique"; columns: ["email"] } }
+					tables: {
+						u: {
+							columns: {
+								id: number
+								email: string | null
+							}
+							constraints: { u_email_key: { kind: "unique"; columns: ["email"] } }
+						}
 					}
 				}
 			}
@@ -672,13 +716,21 @@ type DropOnDbWithConstraint = SqlApplyStatements<AddUniqueConstraint, DropConstr
 type _DropInIsolation = Expect<
 	Matches<
 		DropOnDbWithConstraint,
-		{ kind: "database"; defaultSchema: "test"; schemas: { test: { u: { id: number; email: string | null } } } }
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: { test: { tables: { u: { columns: { id: number; email: string | null } } } } }
+		}
 	>
 >
 type _AddThenDropConstraint = Expect<
 	Matches<
 		AddThenDropConstraint,
-		{ kind: "database"; defaultSchema: "test"; schemas: { test: { u: { id: number; email: string | null } } } }
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: { test: { tables: { u: { columns: { id: number; email: string | null } } } } }
+		}
 	>
 >
 
@@ -700,7 +752,12 @@ type _AddPrimaryNamed = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					u: { id: number } & { [J in Jsql]: { u_pkey: { kind: "primary_key"; columns: ["id"] } } }
+					tables: {
+						u: {
+							columns: { id: number }
+							constraints: { u_pkey: { kind: "primary_key"; columns: ["id"] } }
+						}
+					}
 				}
 			}
 		}

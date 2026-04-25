@@ -7,12 +7,7 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
-import type {
-	JsqlGetColumnFactsMap,
-	JsqlGetConstraintMap,
-	JsqlTableColumnFactsKey,
-	JsqlTableConstraintsKey,
-} from "../src/engine/table-constraint-meta.ts"
+import type { JsqlGetColumnFactsMap, JsqlGetConstraintMap } from "../src/engine/table-constraint-meta.ts"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
@@ -33,9 +28,11 @@ type _DbApplyCreateTableFixture = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; email: string }
+					tables: {
+						users: { columns: { id: number; email: string } }
+					}
 				}
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>
@@ -55,7 +52,11 @@ type CreateWithNamedConstraints = SqlApplyStatements<
 `>
 	>[1]
 >
-type AccountsNamed = CreateWithNamedConstraints extends { schemas: { test: { accounts: infer A } } } ? A : never
+type AccountsNamed = CreateWithNamedConstraints extends {
+	schemas: { test: { tables: { accounts: infer T } } }
+}
+	? T
+	: never
 type _AccountsConstraintMap = Expect<
 	Matches<
 		JsqlGetConstraintMap<AccountsNamed>,
@@ -73,13 +74,16 @@ type _CreateWithNamedConstraints = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					accounts: {
-						id: number
-						email: string
-					} & {
-						[J in JsqlTableConstraintsKey]: {
-							accounts_pk: { kind: "primary_key"; columns: ["id"] }
-							accounts_email_key: { kind: "unique"; columns: ["email"] }
+					tables: {
+						accounts: {
+							columns: {
+								id: number
+								email: string
+							}
+							constraints: {
+								accounts_pk: { kind: "primary_key"; columns: ["id"] }
+								accounts_email_key: { kind: "unique"; columns: ["email"] }
+							}
 						}
 					}
 				}
@@ -102,10 +106,14 @@ type CreateWithColumnFacts = SqlApplyStatements<
 `>
 	>[1]
 >
-type ColumnFactsRow = CreateWithColumnFacts extends { schemas: { test: { column_facts: infer R } } } ? R : never
+type ColumnFactsTable = CreateWithColumnFacts extends {
+	schemas: { test: { tables: { column_facts: infer T } } }
+}
+	? T
+	: never
 type _ColumnFactsMap = Expect<
 	Matches<
-		JsqlGetColumnFactsMap<ColumnFactsRow>,
+		JsqlGetColumnFactsMap<ColumnFactsTable>,
 		{
 			id: { default: true }
 			label: { default: true }
@@ -122,17 +130,20 @@ type _CreateWithColumnFacts = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					column_facts: {
-						id: number
-						label: string | null
-						score: number | null
-						total: number | null
-					} & {
-						[J in JsqlTableColumnFactsKey]: {
-							id: { default: true }
-							label: { default: true }
-							score: { check: true }
-							total: { generated: { mode: "stored" } }
+					tables: {
+						column_facts: {
+							columns: {
+								id: number
+								label: string | null
+								score: number | null
+								total: number | null
+							}
+							column_facts: {
+								id: { default: true }
+								label: { default: true }
+								score: { check: true }
+								total: { generated: { mode: "stored" } }
+							}
 						}
 					}
 				}
@@ -159,7 +170,9 @@ type _MixedCaseColumns = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { Id: number; id: number; "Main\x20\x20\x20Title": string }
+					tables: {
+						users: { columns: { Id: number; id: number; "Main\x20\x20\x20Title": string } }
+					}
 				}
 			}
 		}
@@ -190,10 +203,12 @@ type _CreateInDefaultSchema = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; email: string } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>
@@ -221,10 +236,14 @@ type _CreateInExplicitSchema = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; email: string }
+					tables: {
+						users: { columns: { id: number; email: string } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -315,10 +334,12 @@ type _CreateWithForeignKeyOk = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number; email: string } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>
@@ -385,10 +406,13 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number; email: string }
-					pair_refs: { id: number; u_id: number; u_email: string }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						pair_refs: { columns: { id: number; u_id: number; u_email: string } }
+					}
 				}
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>

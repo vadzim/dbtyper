@@ -29,10 +29,14 @@ type _DbApplyDropSchemaFixture = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number }
+					tables: {
+						users: { columns: { id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -64,7 +68,9 @@ type _DropAuth = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number }
+					tables: {
+						users: { columns: { id: number } }
+					}
 				}
 			}
 		}
@@ -111,10 +117,14 @@ type _DropMissingIfExists = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number }
+					tables: {
+						users: { columns: { id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}

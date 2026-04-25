@@ -1,5 +1,6 @@
 import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.ts"
 import type { ParseSqlTokens, SqlParserError, TokensList } from "../../core/sql-tokens.ts"
+import type { JsqlColumnFactsEntry, JsqlConstraintEntry } from "./table-constraint-meta.ts"
 import type { SqlApplyStatements, SqlStatement } from "./apply-statement.ts"
 
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
@@ -27,11 +28,31 @@ export type SqlDatabase<DefaultSchema extends string = "public"> = {
 	schemas: {}
 }
 
+export type SqlTableLike = {
+	columns: Record<string, unknown>
+	constraints?: { [K: string]: JsqlConstraintEntry }
+	column_facts?: { [K: string]: JsqlColumnFactsEntry }
+}
+
+export type SqlSchemaLike = {
+	tables: Record<string, SqlTableLike>
+}
+
 export type SqlDatabaseLike = {
 	kind: "database"
 	defaultSchema: string
-	schemas: Record<string, Record<string, unknown>>
+	schemas: Record<string, SqlSchemaLike>
 }
+
+export type SimplifyDeep<T> = T extends (...args: never[]) => unknown
+	? T
+	: T extends Date
+		? T
+		: T extends readonly unknown[]
+			? { [K in keyof T]: SimplifyDeep<T[K]> }
+			: T extends object
+				? { [K in keyof T]: SimplifyDeep<T[K]> }
+				: T
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 type MigrationText<S extends string> = S & {
@@ -93,34 +114,11 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 	async compile() {
 		const migrations = await this.#getMigrations()
 
-		type D = (
-			Omit<Database, "schemas"> & {
-				// make structure plain in IDE hints
-				schemas: Database["schemas" & keyof Database] extends infer L1
-					? {
-							[K1 in keyof L1]: L1[K1] extends infer L2
-								? {
-										[K2 in keyof L2]: L2[K2] extends infer L3
-											? {
-													[K3 in keyof L3]: L3[K3]
-												}
-											: never
-									}
-								: never
-						}
-					: never
-			} extends infer T
-				? { [K in keyof T]: T[K] }
-				: never
-		) extends infer T extends SqlDatabaseLike
-			? T
-			: never
-
-		return new CompiledDataBase<D>(migrations, this.#defaultSchema)
+		return new CompiledDataBase<Database>(migrations, this.#defaultSchema)
 	}
 }
 
-export class CompiledDataBase<Database extends SqlDatabaseLike | SqlParserError<string>> {
+export class CompiledDataBase<Database> {
 	get $db(): Database {
 		return null as unknown as Database
 	}

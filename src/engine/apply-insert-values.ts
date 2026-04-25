@@ -1,6 +1,6 @@
 import type { InsertValuesStatement } from "../parser/parse-insert-values.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { SqlDatabaseLike, SqlSchemaLike } from "./sql-database.ts"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends InsertValuesStatement> =
@@ -8,11 +8,11 @@ export type ApplyInsertValues<Db extends SqlDatabaseLike, Stmt extends InsertVal
 		infer Schema extends string,
 		infer Table extends string,
 	]
-		? Db["schemas"] extends Record<string, Record<string, unknown>>
-			? SchemaExists<Extract<Db["schemas"], Record<string, Record<string, unknown>>>, Schema> extends true
+		? Db["schemas"] extends Record<string, SqlSchemaLike>
+			? SchemaExists<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Schema> extends true
 				? TableExists<Db["schemas"], Schema, Table> extends true
 					? ValidateInsertValues<
-							Extract<Db["schemas"][Schema][Table], Record<string, unknown>>,
+							Extract<Db["schemas"][Schema]["tables"][Table]["columns"], Record<string, unknown>>,
 							Stmt["columns"],
 							Stmt["valueTypes"]
 						> extends infer Err

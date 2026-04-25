@@ -97,8 +97,11 @@ type ValidateOneCreateTableFkRef<
 		? IsSelfRef<NewSchema, NewTable, TargetSchema, R> extends true
 			? ValidateFkTargetColumns<Create["row"], R["columnPairs"]>
 			: TargetSchema extends keyof Db["schemas"]
-				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
-					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
+				? R["toTable"] extends keyof Db["schemas"][TargetSchema]["tables"]
+					? ValidateFkTargetColumns<
+							Db["schemas"][TargetSchema]["tables"][R["toTable"]]["columns"],
+							R["columnPairs"]
+						>
 					: UnknownRefTableError<R, TargetSchema, NewSchema>
 				: SqlParserError<`Unknown referenced schema "${TargetSchema}" in database`>
 		: SqlParserError<"Internal FK target schema resolution error">
@@ -115,8 +118,11 @@ export type ValidateAlterTableFkRef<
 		? IsSelfRef<Schema, Table, TargetSchema, R> extends true
 			? ValidateFkTargetColumns<Row, R["columnPairs"]>
 			: TargetSchema extends keyof Db["schemas"]
-				? R["toTable"] extends keyof Db["schemas"][TargetSchema]
-					? ValidateFkTargetColumns<Db["schemas"][TargetSchema][R["toTable"]], R["columnPairs"]>
+				? R["toTable"] extends keyof Db["schemas"][TargetSchema]["tables"]
+					? ValidateFkTargetColumns<
+							Db["schemas"][TargetSchema]["tables"][R["toTable"]]["columns"],
+							R["columnPairs"]
+						>
 					: UnknownRefTableError<R, TargetSchema, Schema>
 				: SqlParserError<`Unknown referenced schema "${TargetSchema}" in database`>
 		: SqlParserError<"Internal FK target schema resolution error">

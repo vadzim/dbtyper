@@ -27,8 +27,11 @@ type _DbFromSchemasKind = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number; title: string | null } }
+					}
 				}
 			}
 		}
@@ -62,8 +65,10 @@ type _DbPostRefsIntraFk = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					post_refs: { id: number; author_id: number }
+					tables: {
+						users: { columns: { id: number; email: string } }
+						post_refs: { columns: { id: number; author_id: number } }
+					}
 				}
 			}
 		}
@@ -94,7 +99,9 @@ type _DbCategoriesSelfRef = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					categories: { id: number; parent_id: number | null }
+					tables: {
+						categories: { columns: { id: number; parent_id: number | null } }
+					}
 				}
 			}
 		}
@@ -127,8 +134,11 @@ type _DbCompositeFkPairRefs = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					pair_refs: { id: number; u_id: number; u_email: string }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						pair_refs: { columns: { id: number; u_id: number; u_email: string } }
+					}
 				}
 			}
 		}
@@ -163,9 +173,13 @@ type _DbMembershipsMultiFk = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
-					memberships: { id: number; user_id: number; post_id: number }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number; title: string | null } }
+
+						memberships: { columns: { id: number; user_id: number; post_id: number } }
+					}
 				}
 			}
 		}
@@ -199,11 +213,16 @@ type _DbSalesOrders = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number; title: string | null } }
+					}
 				}
 				sales: {
-					orders: { id: number; user_id: number }
+					tables: {
+						orders: { columns: { id: number; user_id: number } }
+					}
 				}
 			}
 		}
@@ -239,11 +258,16 @@ type _DbSalesLinkRows = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number; title: string | null } }
+					}
 				}
 				sales: {
-					link_rows: { id: number; u: number; p: number }
+					tables: {
+						link_rows: { columns: { id: number; u: number; p: number } }
+					}
 				}
 			}
 		}
@@ -275,11 +299,16 @@ type _DbSalesOrdersDefaultSchema = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number; title: string | null } }
+					}
 				}
 				sales: {
-					orders_default_schema: { id: number; user_id: number }
+					tables: {
+						orders_default_schema: { columns: { id: number; user_id: number } }
+					}
 				}
 			}
 		}
@@ -313,14 +342,21 @@ type _DbSharedDefaultWithSalesOrders = Expect<
 			defaultSchema: "shared"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
-					posts: { id: number; user_id: number; title: string | null }
+					tables: {
+						users: { columns: { id: number; email: string } }
+
+						posts: { columns: { id: number; user_id: number; title: string | null } }
+					}
 				}
 				shared: {
-					users: { id: number }
+					tables: {
+						users: { columns: { id: number } }
+					}
 				}
 				sales: {
-					orders_default_schema: { id: number; user_id: number }
+					tables: {
+						orders_default_schema: { columns: { id: number; user_id: number } }
+					}
 				}
 			}
 		}

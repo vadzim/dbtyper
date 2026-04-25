@@ -1,4 +1,4 @@
-import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { SimplifyDeep, SqlDatabaseLike } from "./sql-database.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
 import type { SkippedStatement } from "../parser/skip-statement.ts"
 import type { CreateIndexStatement } from "../parser/parse-create-index.ts"
@@ -28,6 +28,11 @@ export type SqlStatement =
 	| SqlParserError<string>
 
 export type SqlApplyStatement<
+	Db extends SqlDatabaseLike | SqlParserError<string>,
+	Statement extends SqlStatement,
+> = SimplifyDeep<SqlApplyStatementRaw<Db, Statement>>
+
+type SqlApplyStatementRaw<
 	Db extends SqlDatabaseLike | SqlParserError<string>,
 	Statement extends SqlStatement,
 > = Db extends SqlDatabaseLike

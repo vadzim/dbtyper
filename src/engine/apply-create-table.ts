@@ -1,17 +1,12 @@
 import type { CreateTableStatement } from "../parser/parse-create-table.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { SqlDatabaseLike, SqlSchemaLike } from "./sql-database.ts"
 import type { ValidateCreateTableFkRefs, ValidateCreateTableLocalRefs } from "./helpers/validate-fk-refs.ts"
 import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
-import type {
-	JsqlAddConstraint,
-	JsqlColumnFactsEntry,
-	JsqlTableColumnFactsKey,
-	JsqlTableConstraintsKey,
-} from "./table-constraint-meta.ts"
+import type { JsqlAddConstraint, JsqlColumnFactsEntry } from "./table-constraint-meta.ts"
 
 type TableRow<Row> = Extract<Row, Record<string, unknown>>
-type DataColumns<Row> = Omit<TableRow<Row>, JsqlTableConstraintsKey | JsqlTableColumnFactsKey>
+type InitialTable<Row> = { columns: TableRow<Row> }
 
 type ConstraintEntryFor<C extends { kind: "primary_key" | "unique"; columns: string[] }> =
 	C["kind"] extends "primary_key"
@@ -39,24 +34,24 @@ type CombinedLocalConstraints<Create extends CreateTableStatement> = [
 ]
 
 type AddNamedConstraints<
-	Row,
+	Table extends { columns: unknown },
 	Constraints extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
 > = Constraints extends [
 	infer H extends { name: string; kind: "primary_key" | "unique"; columns: string[] },
 	...infer R extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
 ]
-	? JsqlAddConstraint<Row, H["name"], ConstraintEntryFor<H>> extends infer Added
+	? JsqlAddConstraint<Table, H["name"], ConstraintEntryFor<H>> extends infer Added
 		? Added extends SqlParserError<string>
 			? Added
-			: AddNamedConstraints<Added, R>
+			: AddNamedConstraints<Added & { columns: unknown }, R>
 		: SqlParserError<"Internal create table constraint metadata error">
-	: Row
+	: Table
 
-type AddColumnFacts<Row, Facts> = [Facts] extends [never]
-	? Row
+type AddColumnFacts<Table, Facts> = [Facts] extends [never]
+	? Table
 	: keyof Extract<Facts, Record<string, JsqlColumnFactsEntry>> extends never
-		? Row
-		: Row & { [K in JsqlTableColumnFactsKey]: Extract<Facts, Record<string, JsqlColumnFactsEntry>> }
+		? Table
+		: Table & { column_facts: Extract<Facts, Record<string, JsqlColumnFactsEntry>> }
 
 export type ApplyCreateTable<
 	Db extends SqlDatabaseLike,
@@ -72,11 +67,8 @@ export type ApplyCreateTable<
 								infer Schema extends string,
 								infer Table extends string,
 						  ]
-						? Db["schemas"] extends Record<string, Record<string, unknown>>
-							? SchemaExists<
-									Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
-									Schema
-								> extends true
+						? Db["schemas"] extends Record<string, SqlSchemaLike>
+							? SchemaExists<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Schema> extends true
 								? TableExists<Db["schemas"], Schema, Table> extends true
 									? SqlParserError<`Duplicate table name: ${Table}`>
 									: ValidateCreateTableLocalRefs<
@@ -93,7 +85,7 @@ export type ApplyCreateTable<
 												> extends infer ValidationError
 												? [ValidationError] extends [never]
 													? AddNamedConstraints<
-															TableRow<Row>,
+															InitialTable<Row>,
 															NamedConstraintList<Create>
 														> extends infer WithConstraints
 														? WithConstraints extends SqlParserError<string>
@@ -104,7 +96,7 @@ export type ApplyCreateTable<
 																	schemas: MergeSchemas<
 																		Extract<
 																			Db["schemas"],
-																			Record<string, Record<string, unknown>>
+																			Record<string, SqlSchemaLike>
 																		>,
 																		Schema,
 																		Table,

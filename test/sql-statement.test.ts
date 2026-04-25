@@ -48,9 +48,13 @@ describe("sql statement", () => {
 					defaultSchema: "public"
 					schemas: {
 						public: {
-							users: {
-								id: number
-								name: string | null
+							tables: {
+								users: {
+									columns: {
+										id: number
+										name: string | null
+									}
+								}
 							}
 						}
 					}

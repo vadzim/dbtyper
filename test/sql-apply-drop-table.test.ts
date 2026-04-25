@@ -30,11 +30,15 @@ type _DbApplyDropTableFixture = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -67,10 +71,14 @@ type _DropExistingNoIfExists = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					posts: { id: number; user_id: number }
+					tables: {
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -101,10 +109,14 @@ type _DropExistingIfExists = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					posts: { id: number; user_id: number }
+					tables: {
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -155,11 +167,15 @@ type _DropMissingIfExists = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -190,10 +206,14 @@ type _DropDefaultSchemaUnqualified = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					posts: { id: number; user_id: number }
+					tables: {
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
 				auth: {
-					sessions: { id: string }
+					tables: {
+						sessions: { columns: { id: string } }
+					}
 				}
 			}
 		}
@@ -224,10 +244,12 @@ type _DropExplicitSchemaQualified = Expect<
 			defaultSchema: "test"
 			schemas: {
 				test: {
-					users: { id: number }
-					posts: { id: number; user_id: number }
+					tables: {
+						users: { columns: { id: number } }
+						posts: { columns: { id: number; user_id: number } }
+					}
 				}
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>

@@ -82,11 +82,13 @@ type _ParseInsertMultiRowMismatched = Expect<
 >
 
 type ApplyInsertOk = SqlApplyStatements<SqlDatabase<"app">, ParsedInsertChain[1]>
-type _ApplyInsertOkRow = Expect<Matches<ApplyInsertOk["schemas"]["app"]["t"], { id: number; label: string }>>
+type _ApplyInsertOkRow = Expect<
+	Matches<ApplyInsertOk["schemas"]["app"]["tables"]["t"]["columns"], { id: number; label: string }>
+>
 
 type ApplyInsertMultiRowOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertMultiRow[1]>
 type _ApplyInsertMultiRowOkRow = Expect<
-	Matches<ApplyInsertMultiRowOk["schemas"]["app"]["t"], { id: number; label: string }>
+	Matches<ApplyInsertMultiRowOk["schemas"]["app"]["tables"]["t"]["columns"], { id: number; label: string }>
 >
 
 type ParseInsertDefaultValue = ParseSqlStatements<
@@ -108,7 +110,7 @@ type _ParseInsertDefaultRowLen = Expect<Matches<ParseInsertDefaultRows[0]["lengt
 
 type ApplyInsertDefaultValueOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertDefaultValue[1]>
 type _ApplyInsertDefaultValueOkRow = Expect<
-	Matches<ApplyInsertDefaultValueOk["schemas"]["app"]["t"], { id: number; label: string }>
+	Matches<ApplyInsertDefaultValueOk["schemas"]["app"]["tables"]["t"]["columns"], { id: number; label: string }>
 >
 
 type ParseInsertExtendedLiterals = ParseSqlStatements<
@@ -144,7 +146,7 @@ type _ParseInsertExtendedLiteralsValueCount = Expect<Matches<ParseInsertExtended
 type ApplyInsertExtendedLiteralsOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertExtendedLiterals[1]>
 type _ApplyInsertExtendedLiteralsOkRow = Expect<
 	Matches<
-		ApplyInsertExtendedLiteralsOk["schemas"]["app"]["literal_features"],
+		ApplyInsertExtendedLiteralsOk["schemas"]["app"]["tables"]["literal_features"]["columns"],
 		{
 			a: number
 			b: number

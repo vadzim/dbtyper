@@ -1,9 +1,6 @@
 import type { ForeignRefMeta } from "../parser/sql-constraints-fk.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
 
-export type JsqlTableConstraintsKey = "$jsql:constraints"
-export type JsqlTableColumnFactsKey = "$jsql:column_facts"
-
 export type JsqlConstraintEntry =
 	| { kind: "primary_key"; columns: string[] }
 	| { kind: "unique"; columns: string[] }
@@ -18,40 +15,29 @@ export type JsqlColumnFactsEntry = {
 
 type JsqlColumnFactsMap = { [K: string]: JsqlColumnFactsEntry }
 
-/** Presence of the `"$jsql:constraints"` key is required; optional lookup would mistake plain rows for an empty map. */
-export type JsqlGetConstraintMap<Row> = JsqlTableConstraintsKey extends keyof Row
-	? Row[JsqlTableConstraintsKey] extends JsqlConstraintMap
-		? Row[JsqlTableConstraintsKey]
+export type JsqlGetConstraintMap<Table> = Table extends { constraints: infer M }
+	? M extends JsqlConstraintMap
+		? M
 		: {}
 	: {}
 
-export type JsqlGetColumnFactsMap<Row> = JsqlTableColumnFactsKey extends keyof Row
-	? Row[JsqlTableColumnFactsKey] extends JsqlColumnFactsMap
-		? Row[JsqlTableColumnFactsKey]
+export type JsqlGetColumnFactsMap<Table> = Table extends { column_facts: infer M }
+	? M extends JsqlColumnFactsMap
+		? M
 		: {}
 	: {}
 
-type JsqlHasConstraint<Row, Name extends string> = Name extends keyof JsqlGetConstraintMap<Row>
-	? JsqlGetConstraintMap<Row>[Name] extends JsqlConstraintEntry
+type JsqlHasConstraint<Table, Name extends string> = Name extends keyof JsqlGetConstraintMap<Table>
+	? JsqlGetConstraintMap<Table>[Name] extends JsqlConstraintEntry
 		? true
 		: false
 	: false
 
-type JsqlRowWithoutMap<Row> = Omit<Extract<Row, Record<string, unknown>>, JsqlTableConstraintsKey>
-type JsqlRowWithoutColumnFactsMap<Row> = Omit<Extract<Row, Record<string, unknown>>, JsqlTableColumnFactsKey>
-
-export type JsqlAddConstraint<Row, Name extends string, Entry extends JsqlConstraintEntry> =
-	JsqlHasConstraint<Row, Name> extends true
-		? SqlParserError<`Duplicate constraint name: ${Name & string}`>
-		: JsqlRowWithoutMap<Row> & {
-				[k in JsqlTableConstraintsKey]: JsqlGetConstraintMap<Row> & { [K in Name]: Entry }
-			}
-
-type JsqlMapAfterDrop<Row, Name extends string> = Omit<JsqlGetConstraintMap<Row>, Name>
+type JsqlMapAfterDrop<Table, Name extends string> = Omit<JsqlGetConstraintMap<Table>, Name>
 
 /** `Exclude<keyof M, k>` is `never` when `k` is the only key (or the map is empty, which cannot happen with Has). */
-type JsqlMapHasKeysOtherThan<Row, Name extends string> =
-	JsqlGetConstraintMap<Row> extends infer M
+type JsqlMapHasKeysOtherThan<Table, Name extends string> =
+	JsqlGetConstraintMap<Table> extends infer M
 		? M extends JsqlConstraintMap
 			? [Exclude<keyof M, Name>] extends [never]
 				? false
@@ -59,26 +45,37 @@ type JsqlMapHasKeysOtherThan<Row, Name extends string> =
 			: false
 		: false
 
-export type JsqlDropConstraint<Row, Name extends string, IfExists extends boolean> =
-	JsqlHasConstraint<Row, Name> extends true
-		? JsqlMapHasKeysOtherThan<Row, Name> extends true
-			? JsqlRowWithoutMap<Row> & { [K in JsqlTableConstraintsKey]: JsqlMapAfterDrop<Row, Name> }
-			: JsqlRowWithoutMap<Row>
+type MergeWithOptionalMeta<Table extends { columns: unknown }, NextConstraints extends JsqlConstraintMap> = {
+	columns: Table["columns"]
+	constraints: NextConstraints
+} & (Table extends { column_facts: infer F extends JsqlColumnFactsMap } ? { column_facts: F } : unknown)
+
+export type JsqlAddConstraint<
+	Table extends { columns: unknown },
+	Name extends string,
+	Entry extends JsqlConstraintEntry,
+> =
+	JsqlHasConstraint<Table, Name> extends true
+		? SqlParserError<`Duplicate constraint name: ${Name & string}`>
+		: MergeWithOptionalMeta<Table, JsqlGetConstraintMap<Table> & { [K in Name]: Entry }>
+
+export type JsqlDropConstraint<Table extends { columns: unknown }, Name extends string, IfExists extends boolean> =
+	JsqlHasConstraint<Table, Name> extends true
+		? JsqlMapHasKeysOtherThan<Table, Name> extends true
+			? {
+					columns: Table["columns"]
+				} & {
+					constraints: JsqlMapAfterDrop<Table, Name>
+				} & (Table extends { column_facts: infer F extends JsqlColumnFactsMap } ? { column_facts: F } : unknown)
+			: Omit<Table, "constraints">
 		: IfExists extends true
-			? Row
+			? Table
 			: SqlParserError<`Unknown constraint "${Name & string}" in table`>
 
-export type JsqlAddColumnFacts<Row, Name extends string, Entry extends JsqlColumnFactsEntry> =
-	JsqlGetColumnFactsMap<Row> extends infer Existing extends JsqlColumnFactsMap
-		? JsqlRowWithoutColumnFactsMap<Row> & {
-				[K in JsqlTableColumnFactsKey]: Existing & { [N in Name]: Entry }
-			}
-		: SqlParserError<"Internal column facts map error">
+type JsqlColumnFactsAfterDrop<Table, Name extends string> = Omit<JsqlGetColumnFactsMap<Table>, Name>
 
-type JsqlColumnFactsAfterDrop<Row, Name extends string> = Omit<JsqlGetColumnFactsMap<Row>, Name>
-
-type JsqlColumnFactsHasKeysOtherThan<Row, Name extends string> =
-	JsqlGetColumnFactsMap<Row> extends infer M
+type JsqlColumnFactsHasKeysOtherThan<Table, Name extends string> =
+	JsqlGetColumnFactsMap<Table> extends infer M
 		? M extends JsqlColumnFactsMap
 			? [Exclude<keyof M, Name>] extends [never]
 				? false
@@ -86,21 +83,47 @@ type JsqlColumnFactsHasKeysOtherThan<Row, Name extends string> =
 			: false
 		: false
 
-export type JsqlDropColumnFacts<Row, Name extends string> = Name extends keyof JsqlGetColumnFactsMap<Row>
-	? JsqlColumnFactsHasKeysOtherThan<Row, Name> extends true
-		? JsqlRowWithoutColumnFactsMap<Row> & { [K in JsqlTableColumnFactsKey]: JsqlColumnFactsAfterDrop<Row, Name> }
-		: JsqlRowWithoutColumnFactsMap<Row>
-	: JsqlRowWithoutColumnFactsMap<Row>
+type TableWithNewColumnFacts<Table extends { columns: unknown }, NextFacts extends JsqlColumnFactsMap> = {
+	columns: Table["columns"]
+} & (Table extends { constraints: infer M extends JsqlConstraintMap } ? { constraints: M } : unknown) & {
+		column_facts: NextFacts
+	}
 
-export type JsqlRenameColumnFacts<Row, From extends string, To extends string> =
-	JsqlGetColumnFactsMap<Row> extends infer M
+export type JsqlAddColumnFacts<
+	Table extends { columns: unknown },
+	Name extends string,
+	Entry extends JsqlColumnFactsEntry,
+> =
+	JsqlGetColumnFactsMap<Table> extends infer Existing extends JsqlColumnFactsMap
+		? TableWithNewColumnFacts<Table, Existing & { [N in Name]: Entry }>
+		: SqlParserError<"Internal column facts map error">
+
+export type JsqlDropColumnFacts<
+	Table extends { columns: unknown },
+	Name extends string,
+> = Name extends keyof JsqlGetColumnFactsMap<Table>
+	? JsqlColumnFactsHasKeysOtherThan<Table, Name> extends true
+		? {
+				columns: Table["columns"]
+			} & (Table extends { constraints: infer M extends JsqlConstraintMap } ? { constraints: M } : unknown) & {
+					column_facts: JsqlColumnFactsAfterDrop<Table, Name>
+				}
+		: Omit<Table, "column_facts">
+	: Table
+
+export type JsqlRenameColumnFacts<Table extends { columns: unknown }, From extends string, To extends string> =
+	JsqlGetColumnFactsMap<Table> extends infer M
 		? M extends JsqlColumnFactsMap
 			? [keyof M] extends [never]
-				? Row
-				: JsqlRowWithoutColumnFactsMap<Row> & {
-						[K in JsqlTableColumnFactsKey]: {
-							[Kn in keyof M as Kn extends From ? To : Kn]: M[Kn]
+				? Table
+				: {
+						columns: Table["columns"]
+					} & (Table extends { constraints: infer Cons extends JsqlConstraintMap }
+						? { constraints: Cons }
+						: unknown) & {
+							column_facts: {
+								[Kn in keyof M as Kn extends From ? To : Kn]: M[Kn]
+							}
 						}
-					}
-			: Row
-		: Row
+			: Table
+		: Table

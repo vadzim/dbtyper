@@ -40,7 +40,9 @@ type _DbSelectFromUsersAfterCreate = Expect<
 			defaultSchema: "public"
 			schemas: {
 				public: {
-					users: { id: number; email: string }
+					tables: {
+						users: { columns: { id: number; email: string } }
+					}
 				}
 			}
 		}

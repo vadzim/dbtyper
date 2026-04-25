@@ -28,7 +28,7 @@ type _AfterCreateSchema = Expect<
 			kind: "database"
 			defaultSchema: "public"
 			schemas: {
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>
@@ -67,7 +67,7 @@ type _DuplicateIfNotExists = Expect<
 			kind: "database"
 			defaultSchema: "public"
 			schemas: {
-				auth: {}
+				auth: { tables: {} }
 			}
 		}
 	>
@@ -95,7 +95,9 @@ type _DbAuthThenTable = Expect<
 			defaultSchema: "public"
 			schemas: {
 				auth: {
-					users: { id: number }
+					tables: {
+						users: { columns: { id: number } }
+					}
 				}
 			}
 		}

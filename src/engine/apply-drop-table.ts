@@ -1,6 +1,6 @@
 import type { DropTableStatement } from "../parser/parse-drop-table.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { SqlDatabaseLike, SqlSchemaLike } from "./sql-database.ts"
 import type { DropFromSchemas, ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.ts"
 
 export type ApplyDropTable<Db extends SqlDatabaseLike, Drop extends DropTableStatement> =
@@ -8,16 +8,12 @@ export type ApplyDropTable<Db extends SqlDatabaseLike, Drop extends DropTableSta
 		infer Schema extends string,
 		infer Table extends string,
 	]
-		? Db["schemas"] extends Record<string, Record<string, unknown>>
+		? Db["schemas"] extends Record<string, SqlSchemaLike>
 			? TableExists<Db["schemas"], Schema, Table> extends true
 				? {
 						kind: "database"
 						defaultSchema: Db["defaultSchema"]
-						schemas: DropFromSchemas<
-							Extract<Db["schemas"], Record<string, Record<string, unknown>>>,
-							Schema,
-							Table
-						>
+						schemas: DropFromSchemas<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Schema, Table>
 					}
 				: Drop["ifExists"] extends true
 					? Db
