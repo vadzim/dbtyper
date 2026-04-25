@@ -38,27 +38,32 @@ export type ApplyAlterTable<Db extends SqlDatabaseLike, Alter extends AlterTable
 type TableRow<Row> = Extract<Row, Record<string, unknown>>
 type DataColumns<Row> = Omit<TableRow<Row>, JsqlTableConstraintsKey | JsqlTableColumnFactsKey>
 
-type ConstraintEntryFor<C extends { kind: "primary_key" | "unique"; columns: string[] }> = C["kind"] extends "primary_key"
-	? { kind: "primary_key"; columns: C["columns"] }
-	: { kind: "unique"; columns: C["columns"] }
+type ConstraintEntryFor<C extends { kind: "primary_key" | "unique"; columns: string[] }> =
+	C["kind"] extends "primary_key"
+		? { kind: "primary_key"; columns: C["columns"] }
+		: { kind: "unique"; columns: C["columns"] }
 
 type ReattachMetadata<Row, Data extends Record<string, unknown>> = (JsqlTableConstraintsKey extends keyof TableRow<Row>
 	? { [K in JsqlTableConstraintsKey]: TableRow<Row>[JsqlTableConstraintsKey] }
 	: {}) &
-	(JsqlTableColumnFactsKey extends keyof TableRow<Row> ? { [K in JsqlTableColumnFactsKey]: TableRow<Row>[JsqlTableColumnFactsKey] } : {}) &
+	(JsqlTableColumnFactsKey extends keyof TableRow<Row>
+		? { [K in JsqlTableColumnFactsKey]: TableRow<Row>[JsqlTableColumnFactsKey] }
+		: {}) &
 	Data
 
-type RowWithConstraints<Row, Constraints extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[]> =
-	Constraints extends [
-		infer H extends { name: string; kind: "primary_key" | "unique"; columns: string[] },
-		...infer R extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
-	]
-		? JsqlAddConstraint<Row, H["name"], ConstraintEntryFor<H>> extends infer Added
-			? Added extends SqlParserError<string>
-				? Added
-				: RowWithConstraints<Added, R>
-			: SqlParserError<"Internal ALTER TABLE add_constraint_fk jsql error">
-		: Row
+type RowWithConstraints<
+	Row,
+	Constraints extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
+> = Constraints extends [
+	infer H extends { name: string; kind: "primary_key" | "unique"; columns: string[] },
+	...infer R extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
+]
+	? JsqlAddConstraint<Row, H["name"], ConstraintEntryFor<H>> extends infer Added
+		? Added extends SqlParserError<string>
+			? Added
+			: RowWithConstraints<Added, R>
+		: SqlParserError<"Internal ALTER TABLE add_constraint_fk jsql error">
+	: Row
 
 type ValidateConstraintColumnsExist<Row extends Record<string, unknown>, Cols extends string[]> = Cols extends [
 	infer H extends string,
@@ -115,13 +120,20 @@ type ApplyTableAction<
 			? Next
 			: Name extends keyof DataColumns<Row>
 				? { mode: "row"; row: Extract<Next, Record<string, unknown>> }
-				: Facts extends Record<Name, infer Entry extends { default?: true; check?: true; generated?: true | { mode: "stored" | "virtual" } }>
-				? JsqlAddColumnFacts<Extract<Next, Record<string, unknown>>, Name, Entry> extends infer WithFacts
-					? WithFacts extends SqlParserError<string>
-						? WithFacts
-						: { mode: "row"; row: Extract<WithFacts, Record<string, unknown>> }
-					: SqlParserError<"Internal add_column action error">
-				: { mode: "row"; row: Extract<Next, Record<string, unknown>> }
+				: Facts extends Record<
+							Name,
+							infer Entry extends {
+								default?: true
+								check?: true
+								generated?: true | { mode: "stored" | "virtual" }
+							}
+					  >
+					? JsqlAddColumnFacts<Extract<Next, Record<string, unknown>>, Name, Entry> extends infer WithFacts
+						? WithFacts extends SqlParserError<string>
+							? WithFacts
+							: { mode: "row"; row: Extract<WithFacts, Record<string, unknown>> }
+						: SqlParserError<"Internal add_column action error">
+					: { mode: "row"; row: Extract<Next, Record<string, unknown>> }
 		: SqlParserError<"Internal add_column action error">
 	: Action extends {
 				kind: "drop_column"
@@ -160,13 +172,7 @@ type ApplyTableAction<
 							name: infer Cn extends string
 							refs: infer R extends ForeignRefMeta
 					  }
-					? ValidateAlterTableFkRef<
-							Db,
-							Schema,
-							CurrentTable,
-							DataColumns<Row>,
-							R
-						> extends infer Err
+					? ValidateAlterTableFkRef<Db, Schema, CurrentTable, DataColumns<Row>, R> extends infer Err
 						? [Err] extends [never]
 							? JsqlAddConstraint<TableRow<Row>, Cn, { kind: "foreign_key"; refs: R }> extends infer Added
 								? Added extends SqlParserError<string>
@@ -184,7 +190,11 @@ type ApplyTableAction<
 						  }
 						? ValidateConstraintColumnsExist<DataColumns<Row>, Cols> extends infer Err2
 							? [Err2] extends [never]
-								? JsqlAddConstraint<TableRow<Row>, Cn, { kind: "primary_key"; columns: Cols }> extends infer Added
+								? JsqlAddConstraint<
+										TableRow<Row>,
+										Cn,
+										{ kind: "primary_key"; columns: Cols }
+									> extends infer Added
 									? Added extends SqlParserError<string>
 										? Added
 										: { mode: "row"; row: Added }
@@ -200,7 +210,11 @@ type ApplyTableAction<
 							  }
 							? ValidateConstraintColumnsExist<DataColumns<Row>, Cols> extends infer Err2
 								? [Err2] extends [never]
-									? JsqlAddConstraint<TableRow<Row>, Cn, { kind: "unique"; columns: Cols }> extends infer Added
+									? JsqlAddConstraint<
+											TableRow<Row>,
+											Cn,
+											{ kind: "unique"; columns: Cols }
+										> extends infer Added
 										? Added extends SqlParserError<string>
 											? Added
 											: { mode: "row"; row: Added }
@@ -225,7 +239,10 @@ type ApplyTableAction<
 											? N
 											: { mode: "row"; row: Extract<N, Record<string, unknown>> }
 										: SqlParserError<"Internal alter_column_set_not_null error">
-									: Action extends { kind: "alter_column_drop_not_null"; name: infer C extends string }
+									: Action extends {
+												kind: "alter_column_drop_not_null"
+												name: infer C extends string
+										  }
 										? ApplyAlterDropNotNull<TableRow<Row>, C> extends infer N2
 											? N2 extends SqlParserError<string>
 												? N2
@@ -233,35 +250,37 @@ type ApplyTableAction<
 											: SqlParserError<"Internal alter_column_drop_not_null error">
 										: SqlParserError<"Unsupported ALTER TABLE action">
 
-type ApplyAlterSetNotNull<Row extends Record<string, unknown>, Col extends string> = Col extends JsqlTableConstraintsKey | JsqlTableColumnFactsKey
+type ApplyAlterSetNotNull<Row extends Record<string, unknown>, Col extends string> = Col extends
+	| JsqlTableConstraintsKey
+	| JsqlTableColumnFactsKey
 	? SqlParserError<`Unknown column "${Col & string}" in altered table`>
 	: Col extends keyof DataColumns<Row>
 		? null extends TableRow<Row>[Col]
 			? {
-					[K in keyof DataColumns<Row>]: K extends Col
-							? Exclude<TableRow<Row>[K], null>
-							: TableRow<Row>[K]
+					[K in keyof DataColumns<Row>]: K extends Col ? Exclude<TableRow<Row>[K], null> : TableRow<Row>[K]
 				} extends infer Out extends Record<string, unknown>
 				? ReattachMetadata<Row, Out>
 				: never
 			: TableRow<Row>
 		: SqlParserError<`Unknown column "${Col & string}" in altered table`>
 
-type ApplyAlterDropNotNull<Row extends Record<string, unknown>, Col extends string> = Col extends JsqlTableConstraintsKey | JsqlTableColumnFactsKey
+type ApplyAlterDropNotNull<Row extends Record<string, unknown>, Col extends string> = Col extends
+	| JsqlTableConstraintsKey
+	| JsqlTableColumnFactsKey
 	? SqlParserError<`Unknown column "${Col & string}" in altered table`>
 	: Col extends keyof DataColumns<Row>
 		? null extends TableRow<Row>[Col]
 			? TableRow<Row>
 			: {
-					[K in keyof DataColumns<Row>]: K extends Col
-							? TableRow<Row>[K] | null
-							: TableRow<Row>[K]
-				} extends infer Out extends Record<string, unknown>
+						[K in keyof DataColumns<Row>]: K extends Col ? TableRow<Row>[K] | null : TableRow<Row>[K]
+				  } extends infer Out extends Record<string, unknown>
 				? ReattachMetadata<Row, Out>
 				: never
 		: SqlParserError<`Unknown column "${Col & string}" in altered table`>
 
-type AddColumnToRow<Row, Name extends string, Definition, IfNotExists extends boolean> = Name extends JsqlTableConstraintsKey | JsqlTableColumnFactsKey
+type AddColumnToRow<Row, Name extends string, Definition, IfNotExists extends boolean> = Name extends
+	| JsqlTableConstraintsKey
+	| JsqlTableColumnFactsKey
 	? SqlParserError<`Invalid column name: ${Name & string}`>
 	: Name extends keyof DataColumns<Row>
 		? IfNotExists extends true
@@ -269,7 +288,9 @@ type AddColumnToRow<Row, Name extends string, Definition, IfNotExists extends bo
 			: SqlParserError<`Duplicate column name: ${Name}`>
 		: ReattachMetadata<Row, DataColumns<Row> & { [K in Name]: Definition }>
 
-type DropColumnFromRow<Row, Name extends string, IfExists extends boolean> = Name extends JsqlTableConstraintsKey | JsqlTableColumnFactsKey
+type DropColumnFromRow<Row, Name extends string, IfExists extends boolean> = Name extends
+	| JsqlTableConstraintsKey
+	| JsqlTableColumnFactsKey
 	? IfExists extends true
 		? Row
 		: SqlParserError<`Unknown column "${Name}" in altered table`>
@@ -283,7 +304,9 @@ type RenameStringList<Col extends string[], From extends string, To extends stri
 	infer A extends string,
 	...infer R extends string[],
 ]
-	? A extends From ? [To, ...RenameStringList<R, From, To>] : [A, ...RenameStringList<R, From, To>]
+	? A extends From
+		? [To, ...RenameStringList<R, From, To>]
+		: [A, ...RenameStringList<R, From, To>]
 	: Col
 
 type RenamePairs<P extends FkColumnPair[], From extends string, To extends string> = P extends [
@@ -293,7 +316,9 @@ type RenamePairs<P extends FkColumnPair[], From extends string, To extends strin
 	? L extends From
 		? [[To, Rc], ...RenamePairs<Rest, From, To>]
 		: [[L, Rc], ...RenamePairs<Rest, From, To>]
-	: P extends [] ? [] : P
+	: P extends []
+		? []
+		: P
 
 type RenameJsqlMap<M extends { [K: string]: JsqlConstraintEntry }, From extends string, To extends string> = {
 	[Kn in keyof M]: M[Kn] extends { kind: "primary_key" | "unique"; columns: infer C extends string[] }
@@ -316,24 +341,24 @@ type RenameColumnInRow<Row, From extends string, To extends string> = From exten
 	: From extends JsqlTableColumnFactsKey
 		? SqlParserError<`Unknown column "${From}" in altered table`>
 		: To extends JsqlTableConstraintsKey | JsqlTableColumnFactsKey
-		? SqlParserError<`Duplicate column name: ${To}`>
-		: From extends keyof DataColumns<Row>
-			? To extends keyof Omit<DataColumns<Row>, From>
-				? SqlParserError<`Duplicate column name: ${To}`>
-				: Omit<DataColumns<Row>, From> & { [K in To]: DataColumns<Row>[From] } extends infer Renamed extends Record<
-						string,
-						unknown
-					>
-					? JsqlTableConstraintsKey extends keyof TableRow<Row>
-						? TableRow<Row>[JsqlTableConstraintsKey] extends infer Js extends { [K: string]: JsqlConstraintEntry }
-							? ReattachMetadata<
-									Row,
-									Renamed & { [J in JsqlTableConstraintsKey]: RenameJsqlMap<Js, From, To> }
-								>
+			? SqlParserError<`Duplicate column name: ${To}`>
+			: From extends keyof DataColumns<Row>
+				? To extends keyof Omit<DataColumns<Row>, From>
+					? SqlParserError<`Duplicate column name: ${To}`>
+					: Omit<DataColumns<Row>, From> & { [K in To]: DataColumns<Row>[From] } extends infer Renamed extends
+								Record<string, unknown>
+						? JsqlTableConstraintsKey extends keyof TableRow<Row>
+							? TableRow<Row>[JsqlTableConstraintsKey] extends infer Js extends {
+									[K: string]: JsqlConstraintEntry
+								}
+								? ReattachMetadata<
+										Row,
+										Renamed & { [J in JsqlTableConstraintsKey]: RenameJsqlMap<Js, From, To> }
+									>
+								: ReattachMetadata<Row, Renamed>
 							: ReattachMetadata<Row, Renamed>
-						: ReattachMetadata<Row, Renamed>
-					: never
-			: SqlParserError<`Unknown column "${From}" in altered table`>
+						: never
+				: SqlParserError<`Unknown column "${From}" in altered table`>
 
 type RenameTableInSchema<
 	SchemaTables extends Record<string, unknown>,

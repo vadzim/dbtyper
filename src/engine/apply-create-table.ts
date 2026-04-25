@@ -13,9 +13,10 @@ import type {
 type TableRow<Row> = Extract<Row, Record<string, unknown>>
 type DataColumns<Row> = Omit<TableRow<Row>, JsqlTableConstraintsKey | JsqlTableColumnFactsKey>
 
-type ConstraintEntryFor<C extends { kind: "primary_key" | "unique"; columns: string[] }> = C["kind"] extends "primary_key"
-	? { kind: "primary_key"; columns: C["columns"] }
-	: { kind: "unique"; columns: C["columns"] }
+type ConstraintEntryFor<C extends { kind: "primary_key" | "unique"; columns: string[] }> =
+	C["kind"] extends "primary_key"
+		? { kind: "primary_key"; columns: C["columns"] }
+		: { kind: "unique"; columns: C["columns"] }
 
 type StripNamedConstraints<Constraints> = Constraints extends [
 	infer H extends { kind: "primary_key" | "unique"; columns: string[] },
@@ -37,17 +38,19 @@ type CombinedLocalConstraints<Create extends CreateTableStatement> = [
 	...StripNamedConstraints<NamedConstraintList<Create>>,
 ]
 
-type AddNamedConstraints<Row, Constraints extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[]> =
-	Constraints extends [
-		infer H extends { name: string; kind: "primary_key" | "unique"; columns: string[] },
-		...infer R extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
-	]
-		? JsqlAddConstraint<Row, H["name"], ConstraintEntryFor<H>> extends infer Added
-			? Added extends SqlParserError<string>
-				? Added
-				: AddNamedConstraints<Added, R>
-			: SqlParserError<"Internal create table constraint metadata error">
-		: Row
+type AddNamedConstraints<
+	Row,
+	Constraints extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
+> = Constraints extends [
+	infer H extends { name: string; kind: "primary_key" | "unique"; columns: string[] },
+	...infer R extends { name: string; kind: "primary_key" | "unique"; columns: string[] }[],
+]
+	? JsqlAddConstraint<Row, H["name"], ConstraintEntryFor<H>> extends infer Added
+		? Added extends SqlParserError<string>
+			? Added
+			: AddNamedConstraints<Added, R>
+		: SqlParserError<"Internal create table constraint metadata error">
+	: Row
 
 type AddColumnFacts<Row, Facts> = [Facts] extends [never]
 	? Row
@@ -76,7 +79,11 @@ export type ApplyCreateTable<
 								> extends true
 								? TableExists<Db["schemas"], Schema, Table> extends true
 									? SqlParserError<`Duplicate table name: ${Table}`>
-									: ValidateCreateTableLocalRefs<Row, CombinedLocalConstraints<Create>, Create["refs"]> extends infer LocalValidationError
+									: ValidateCreateTableLocalRefs<
+												Row,
+												CombinedLocalConstraints<Create>,
+												Create["refs"]
+										  > extends infer LocalValidationError
 										? [LocalValidationError] extends [never]
 											? ValidateCreateTableFkRefs<
 													Db,
@@ -85,7 +92,10 @@ export type ApplyCreateTable<
 													Table
 												> extends infer ValidationError
 												? [ValidationError] extends [never]
-													? AddNamedConstraints<TableRow<Row>, NamedConstraintList<Create>> extends infer WithConstraints
+													? AddNamedConstraints<
+															TableRow<Row>,
+															NamedConstraintList<Create>
+														> extends infer WithConstraints
 														? WithConstraints extends SqlParserError<string>
 															? WithConstraints
 															: {
@@ -100,7 +110,9 @@ export type ApplyCreateTable<
 																		Table,
 																		AddColumnFacts<
 																			WithConstraints,
-																			Create extends { columnFacts?: infer Facts } ? Facts : never
+																			Create extends { columnFacts?: infer Facts }
+																				? Facts
+																				: never
 																		>
 																	>
 																}

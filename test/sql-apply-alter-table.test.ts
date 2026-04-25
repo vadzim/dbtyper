@@ -92,7 +92,9 @@ type AddColumnWithFacts = SqlApplyStatements<
 	>[1]
 >
 type AddColumnWithFactsRow = AddColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
-type _AddColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<AddColumnWithFactsRow>, { created_at: { default: true } }>>
+type _AddColumnFactsMap = Expect<
+	Matches<JsqlGetColumnFactsMap<AddColumnWithFactsRow>, { created_at: { default: true } }>
+>
 type _AddColumnWithFacts = Expect<
 	Matches<
 		AddColumnWithFacts,
@@ -298,7 +300,9 @@ type RenameColumnWithFacts = SqlApplyStatements<
 	>[1]
 >
 type RenameColumnWithFactsRow = RenameColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
-type _RenameColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<RenameColumnWithFactsRow>, { inserted_at: { default: true } }>>
+type _RenameColumnFactsMap = Expect<
+	Matches<JsqlGetColumnFactsMap<RenameColumnWithFactsRow>, { inserted_at: { default: true } }>
+>
 type _RenameColumnWithFacts = Expect<
 	Matches<
 		RenameColumnWithFacts,
@@ -631,10 +635,7 @@ type AddUniqueConstraint = SqlApplyStatements<
 type Jsql = JsqlTableConstraintsKey
 type UAfterAddConstraint = AddUniqueConstraint extends { schemas: { test: { u: infer U } } } ? U : never
 type _JsqlMapAfterAdd = Expect<
-	Matches<
-		JsqlGetConstraintMap<UAfterAddConstraint>,
-		{ u_email_key: { kind: "unique"; columns: ["email"] } }
-	>
+	Matches<JsqlGetConstraintMap<UAfterAddConstraint>, { u_email_key: { kind: "unique"; columns: ["email"] } }>
 >
 type _AddUniqueConstraint = Expect<
 	Matches<
