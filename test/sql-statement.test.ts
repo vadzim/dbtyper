@@ -1,8 +1,9 @@
 import { describe, it } from "node:test"
-import type { sqlDatabase, sqlStatement } from "../src/engine/sql-database.ts"
+import { sqlDatabase, sqlStatement } from "../src/engine/sql-database.ts"
 import type { ParseSqlStatementsRecovering } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
+import assert from "node:assert"
 
 // --- sqlStatement: brands a string with its parsed type ---
 
@@ -32,43 +33,34 @@ type _CreateUsersStatementParsedShape = Expect<
 
 // --- sqlDatabase().apply(): only accepts branded strings, not plain strings ---
 
-type Db = ReturnType<typeof sqlDatabase<"public">>
-
-type _ApplyAcceptsBrandedStatement = Expect<
-	Db extends {
-		apply(statement: ReturnType<typeof sqlStatement<"create schema app">>): unknown
-	}
-		? true
-		: false
->
-
-// --- sqlDatabase() methods ---
-
-type _GetDefaultSchemaReturnsString = Expect<Matches<ReturnType<Db["getDefaultSchema"]>, string>>
-type _GetMigrationsReturnsPromise = Expect<
-	Matches<ReturnType<Db["getMigrations"]>, Promise<{ source: string; path: string }[]>>
->
-
-// --- apply chain type-checks: each step narrows the database type ---
-
-type DbWithSchema = ReturnType<
-	Db["apply"] extends (statement: ReturnType<typeof sqlStatement<"create schema public">>) => infer Next
-		? () => Next
-		: never
->
-
-type DbWithUsers = ReturnType<
-	DbWithSchema["apply"] extends (
-		statement: ReturnType<typeof sqlStatement<"create table users (id int not null)">>,
-	) => infer Next
-		? () => Next
-		: never
->
-
-type _GetMigrationsAfterApplyChain = Expect<
-	Matches<ReturnType<DbWithUsers["getMigrations"]>, Promise<{ source: string; path: string }[]>>
->
-
 describe("sql statement", () => {
-	it("should run", () => {})
+	it("should run", async () => {
+		const db = await sqlDatabase("public")
+			.apply(sqlStatement("create schema public"))
+			.apply(sqlStatement("create table users (id int not null, name text)"))
+			.compile()
+
+		type _DbShape = Expect<
+			Matches<
+				typeof db.$db,
+				{
+					kind: "database"
+					defaultSchema: "public"
+					schemas: {
+						public: {
+							users: {
+								id: number
+								name: string | null
+							}
+						}
+					}
+				}
+			>
+		>
+
+		assert.deepEqual(db.getMigrations(), [
+			{ source: "create schema public", path: "" },
+			{ source: "create table users (id int not null, name text)", path: "" },
+		])
+	})
 })

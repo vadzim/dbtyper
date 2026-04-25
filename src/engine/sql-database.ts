@@ -82,13 +82,65 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 		return this.#defaultSchema
 	}
 
-	async getMigrations() {
+	async #getMigrations() {
 		const result: { source: string; path: string }[] = []
 		let current = this.#migrations
 		while (current) {
 			result.push(await current.last)
 			current = current.prev
 		}
-		return result.reverse()
+		result.reverse()
+		return result
 	}
+
+	async compile() {
+		const migrations = await this.#getMigrations()
+
+		type D = (
+			Omit<Database, "schemas"> & {
+				// make structure plain in IDE hints
+				schemas: Database["schemas" & keyof Database] extends infer L1
+					? {
+							[K1 in keyof L1]: L1[K1] extends infer L2
+								? {
+										[K2 in keyof L2]: L2[K2] extends infer L3
+											? {
+													[K3 in keyof L3]: L3[K3]
+												}
+											: never
+									}
+								: never
+						}
+					: never
+			} extends infer T
+				? { [K in keyof T]: T[K] }
+				: never
+		) extends infer T extends SqlDatabaseLike
+			? T
+			: never
+
+		return new CompiledDataBase<D>(migrations, this.#defaultSchema)
+	}
+}
+
+export class CompiledDataBase<Database extends SqlDatabaseLike | SqlParserError<string>> {
+	get $db(): Database {
+		return null as unknown as Database
+	}
+
+	constructor(migrations: readonly { source: string; path: string }[], defaultSchema: string) {
+		this.#migrations = migrations
+		this.#defaultSchema = defaultSchema
+	}
+
+	getMigrations() {
+		return this.#migrations
+	}
+
+	getDefaultSchema() {
+		return this.#defaultSchema
+	}
+
+	#migrations: readonly { source: string; path: string }[]
+	#defaultSchema: string
 }
