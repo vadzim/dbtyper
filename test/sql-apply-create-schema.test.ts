@@ -25,7 +25,6 @@ type _AfterCreateSchema = Expect<
 	Matches<
 		AfterCreateSchema,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				auth: { tables: {} }
@@ -64,7 +63,6 @@ type _DuplicateIfNotExists = Expect<
 	Matches<
 		DuplicateIfNotExists,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				auth: { tables: {} }
@@ -91,7 +89,6 @@ type _DbAuthThenTable = Expect<
 	Matches<
 		DbAuthThenTable,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				auth: {

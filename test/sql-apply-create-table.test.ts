@@ -24,7 +24,6 @@ type _DbApplyCreateTableFixture = Expect<
 	Matches<
 		DbApplyCreateTableFixture,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -70,7 +69,6 @@ type _CreateWithNamedConstraints = Expect<
 	Matches<
 		CreateWithNamedConstraints,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -126,7 +124,6 @@ type _CreateWithColumnFacts = Expect<
 	Matches<
 		CreateWithColumnFacts,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -166,7 +163,6 @@ type _MixedCaseColumns = Expect<
 	Matches<
 		MixedCaseColumns,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -199,7 +195,6 @@ type _CreateInDefaultSchema = Expect<
 	Matches<
 		CreateInDefaultSchema,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -232,7 +227,6 @@ type _CreateInExplicitSchema = Expect<
 	Matches<
 		CreateInExplicitSchema,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -330,7 +324,6 @@ type _CreateWithForeignKeyOk = Expect<
 	Matches<
 		CreateWithForeignKeyOk,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -402,7 +395,6 @@ type _CreateWithCompositeForeignKeyOk = Expect<
 	Matches<
 		CreateWithCompositeForeignKeyOk,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {

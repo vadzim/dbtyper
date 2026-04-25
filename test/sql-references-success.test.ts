@@ -23,7 +23,6 @@ type _DbFromSchemasKind = Expect<
 	Matches<
 		DbFromSchemasKind,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -61,7 +60,6 @@ type _DbPostRefsIntraFk = Expect<
 	Matches<
 		DbPostRefsIntraFk,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -95,7 +93,6 @@ type _DbCategoriesSelfRef = Expect<
 	Matches<
 		DbCategoriesSelfRef,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -130,7 +127,6 @@ type _DbCompositeFkPairRefs = Expect<
 	Matches<
 		DbCompositeFkPairRefs,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -169,7 +165,6 @@ type _DbMembershipsMultiFk = Expect<
 	Matches<
 		DbMembershipsMultiFk,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -209,7 +204,6 @@ type _DbSalesOrders = Expect<
 	Matches<
 		DbSalesOrders,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -254,7 +248,6 @@ type _DbSalesLinkRows = Expect<
 	Matches<
 		DbSalesLinkRows,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -295,7 +288,6 @@ type _DbSalesOrdersDefaultSchema = Expect<
 	Matches<
 		DbSalesOrdersDefaultSchema,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -338,7 +330,6 @@ type _DbSharedDefaultWithSalesOrders = Expect<
 	Matches<
 		DbSharedDefaultWithSalesOrders,
 		{
-			kind: "database"
 			defaultSchema: "shared"
 			schemas: {
 				public: {

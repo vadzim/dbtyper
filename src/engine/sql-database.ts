@@ -23,25 +23,23 @@ export function migration<Path extends string>(path: Path) {
 }
 
 export type SqlDatabase<DefaultSchema extends string = "public"> = {
-	kind: "database"
 	defaultSchema: DefaultSchema
 	schemas: {}
 }
 
 export type SqlTableLike = {
-	columns: Record<string, unknown>
+	columns: { [K: string]: unknown }
 	constraints?: { [K: string]: JsqlConstraintEntry }
 	column_facts?: { [K: string]: JsqlColumnFactsEntry }
 }
 
 export type SqlSchemaLike = {
-	tables: Record<string, SqlTableLike>
+	tables: { [K: string]: SqlTableLike }
 }
 
 export type SqlDatabaseLike = {
-	kind: "database"
 	defaultSchema: string
-	schemas: Record<string, SqlSchemaLike>
+	schemas: { [K: string]: SqlSchemaLike }
 }
 
 export type SimplifyDeep<T> = T extends (...args: never[]) => unknown

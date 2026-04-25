@@ -26,7 +26,6 @@ type _DbApplyDropTableFixture = Expect<
 	Matches<
 		DbApplyDropTableFixture,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -67,7 +66,6 @@ type _DropExistingNoIfExists = Expect<
 	Matches<
 		DropExistingNoIfExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -105,7 +103,6 @@ type _DropExistingIfExists = Expect<
 	Matches<
 		DropExistingIfExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -163,7 +160,6 @@ type _DropMissingIfExists = Expect<
 	Matches<
 		DropMissingIfExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -202,7 +198,6 @@ type _DropDefaultSchemaUnqualified = Expect<
 	Matches<
 		DropDefaultSchemaUnqualified,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -240,7 +235,6 @@ type _DropExplicitSchemaQualified = Expect<
 	Matches<
 		DropExplicitSchemaQualified,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {

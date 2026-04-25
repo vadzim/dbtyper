@@ -7,7 +7,6 @@ export type ApplyDropSchema<Db extends SqlDatabaseLike, Drop extends DropSchemaS
 	Db["schemas"] extends Record<string, SqlSchemaLike>
 		? SchemaExists<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Drop["name"]> extends true
 			? {
-					kind: "database"
 					defaultSchema: Db["defaultSchema"]
 					schemas: DropSchemaFromSchemas<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Drop["name"]>
 				}

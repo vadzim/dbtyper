@@ -18,7 +18,6 @@ type Db = SqlDatabase<{ public: PublicSchema }>
 
 ```ts
 {
-	kind: "database"
 	schemas: {
 		public: {
 			users: {

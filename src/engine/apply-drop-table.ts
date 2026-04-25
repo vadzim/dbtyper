@@ -11,7 +11,6 @@ export type ApplyDropTable<Db extends SqlDatabaseLike, Drop extends DropTableSta
 		? Db["schemas"] extends Record<string, SqlSchemaLike>
 			? TableExists<Db["schemas"], Schema, Table> extends true
 				? {
-						kind: "database"
 						defaultSchema: Db["defaultSchema"]
 						schemas: DropFromSchemas<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Schema, Table>
 					}

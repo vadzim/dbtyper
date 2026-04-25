@@ -36,7 +36,6 @@ type _DbSelectFromUsersAfterCreate = Expect<
 	Matches<
 		DbSelectFromUsersAfterCreate,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {

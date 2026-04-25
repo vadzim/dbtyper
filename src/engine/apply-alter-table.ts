@@ -75,13 +75,11 @@ type ApplyAlterOnExistingTable<
 			? Next
 			: Next extends { mode: "row"; row: infer NextTable }
 				? {
-						kind: "database"
 						defaultSchema: Db["defaultSchema"]
 						schemas: UpdateSchemaTableRow<Schemas, Schema, Table, NextTable>
 					}
 				: Next extends { mode: "schema"; tables: infer NextTables extends Record<string, unknown> }
 					? {
-							kind: "database"
 							defaultSchema: Db["defaultSchema"]
 							schemas: ReplaceSchema<Schemas, Schema, NextTables>
 						}

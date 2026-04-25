@@ -25,7 +25,6 @@ type _DbApplyDropSchemaFixture = Expect<
 	Matches<
 		DbApplyDropSchemaFixture,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -64,7 +63,6 @@ type _DropAuth = Expect<
 	Matches<
 		DropAuth,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {
@@ -113,7 +111,6 @@ type _DropMissingIfExists = Expect<
 	Matches<
 		DropMissingIfExists,
 		{
-			kind: "database"
 			defaultSchema: "public"
 			schemas: {
 				public: {

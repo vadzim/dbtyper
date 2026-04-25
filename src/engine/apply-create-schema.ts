@@ -10,7 +10,6 @@ export type ApplyCreateSchema<Db extends SqlDatabaseLike, Create extends CreateS
 				? Db
 				: SqlParserError<`Duplicate schema name: ${Create["name"]}`>
 			: {
-					kind: "database"
 					defaultSchema: Db["defaultSchema"]
 					schemas: Extract<Db["schemas"], Record<string, SqlSchemaLike>> & {
 						[K in Create["name"]]: { tables: {} }

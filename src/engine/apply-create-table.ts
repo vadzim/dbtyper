@@ -91,7 +91,6 @@ export type ApplyCreateTable<
 														? WithConstraints extends SqlParserError<string>
 															? WithConstraints
 															: {
-																	kind: "database"
 																	defaultSchema: Db["defaultSchema"]
 																	schemas: MergeSchemas<
 																		Extract<

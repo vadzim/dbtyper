@@ -44,7 +44,6 @@ describe("sql statement", () => {
 			Matches<
 				typeof db.$db,
 				{
-					kind: "database"
 					defaultSchema: "public"
 					schemas: {
 						public: {

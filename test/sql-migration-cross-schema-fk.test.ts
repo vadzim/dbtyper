@@ -24,7 +24,6 @@ type _ApplyCrossSchemaFkOk = Expect<
 	Matches<
 		ApplyCrossSchemaFkOk,
 		{
-			kind: "database"
 			defaultSchema: "app"
 			schemas: {
 				auth: { tables: { users: { columns: { id: number } } } }

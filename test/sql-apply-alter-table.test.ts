@@ -27,7 +27,6 @@ type _DbApplyAlterFixture = Expect<
 	Matches<
 		DbApplyAlterFixture,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -67,7 +66,6 @@ type _AddNewColumn = Expect<
 	Matches<
 		AddNewColumn,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -105,7 +103,6 @@ type _AddColumnWithFacts = Expect<
 	Matches<
 		AddColumnWithFacts,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -162,7 +159,6 @@ type _AddExistingColumnIfNotExists = Expect<
 	Matches<
 		AddExistingColumnIfNotExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -202,7 +198,6 @@ type _DropExistingColumn = Expect<
 	Matches<
 		DropExistingColumn,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -255,7 +250,6 @@ type _DropMissingColumnIfExists = Expect<
 	Matches<
 		DropMissingColumnIfExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -295,7 +289,6 @@ type _RenameExistingColumn = Expect<
 	Matches<
 		RenameExistingColumn,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -332,7 +325,6 @@ type _RenameColumnWithFacts = Expect<
 	Matches<
 		RenameColumnWithFacts,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -371,7 +363,6 @@ type _DropColumnWithFacts = Expect<
 	Matches<
 		DropColumnWithFacts,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: { test: { tables: { users: { columns: { id: number } } } } }
 		}
@@ -437,7 +428,6 @@ type _RenameTableOk = Expect<
 	Matches<
 		RenameTableOk,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -516,7 +506,6 @@ type _AlterMissingSchemeIfExists = Expect<
 	Matches<
 		AlterMissingSchemeIfExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {}
 		}
@@ -542,7 +531,6 @@ type _AlterMissingIfExists = Expect<
 	Matches<
 		AlterMissingIfExists,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -599,7 +587,6 @@ type _AlterExplicitSchemaQualified = Expect<
 	Matches<
 		AlterExplicitSchemaQualified,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -634,7 +621,6 @@ type _AlterSetNotNullOnNullable = Expect<
 	Matches<
 		AlterSetNotNullOnNullable,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: { test: { tables: { t: { columns: { label: string } } } } }
 		}
@@ -655,7 +641,6 @@ type _AlterDropNotNull = Expect<
 	Matches<
 		AlterDropNotNull,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: { test: { tables: { t: { columns: { n: number | null } } } } }
 		}
@@ -682,7 +667,6 @@ type _AddUniqueConstraint = Expect<
 	Matches<
 		AddUniqueConstraint,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
@@ -717,7 +701,6 @@ type _DropInIsolation = Expect<
 	Matches<
 		DropOnDbWithConstraint,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: { test: { tables: { u: { columns: { id: number; email: string | null } } } } }
 		}
@@ -727,7 +710,6 @@ type _AddThenDropConstraint = Expect<
 	Matches<
 		AddThenDropConstraint,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: { test: { tables: { u: { columns: { id: number; email: string | null } } } } }
 		}
@@ -748,7 +730,6 @@ type _AddPrimaryNamed = Expect<
 	Matches<
 		AddPrimaryNamed,
 		{
-			kind: "database"
 			defaultSchema: "test"
 			schemas: {
 				test: {
