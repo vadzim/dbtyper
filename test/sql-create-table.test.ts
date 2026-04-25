@@ -64,16 +64,17 @@ type _PostsShape = Expect<
 	>
 >
 
-type Invalid = ParseSqlStatements<ParseSqlTokens<"select * from users;">>
-type _Invalid = Expect<
+type SelectStarFromUnqualified = ParseSqlStatements<ParseSqlTokens<"select * from users;">>
+type _SelectStarFromUnqualified = Expect<
 	Matches<
-		Invalid,
+		SelectStarFromUnqualified,
 		[
 			EmptyTokenList,
 			[
 				{
-					kind: "skipped-statement"
-					token: TokenKey<";">
+					kind: "select"
+					columns: "star"
+					from: ["users"]
 				},
 			],
 		]

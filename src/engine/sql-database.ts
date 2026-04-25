@@ -2,6 +2,7 @@ import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement
 import type { ParseSqlTokens, SqlParserError, TokensList } from "../../core/sql-tokens.ts"
 import type { JsqlColumnFactsEntry, JsqlConstraintEntry } from "./table-constraint-meta.ts"
 import type { SqlApplyStatements, SqlStatement } from "./apply-statement.ts"
+import type { SqlApplyQueryText } from "./apply-query.ts"
 
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
 	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
@@ -158,6 +159,12 @@ export class CompiledDataBase<Database extends SqlDatabaseLike | SqlParserError<
 	constructor(migrations: readonly { source: string; path: string }[], defaultSchema: string) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema
+	}
+
+	async query<Stmt extends string>(
+		statement: Stmt,
+	): Promise<Array<SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never>> {
+		return []
 	}
 
 	migrations: readonly { source: string; path: string }[]

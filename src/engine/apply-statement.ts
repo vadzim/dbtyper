@@ -8,6 +8,7 @@ import type { CreateTableStatement } from "../parser/parse-create-table.ts"
 import type { DropSchemaStatement } from "../parser/parse-drop-schema.ts"
 import type { DropTableStatement } from "../parser/parse-drop-table.ts"
 import type { AlterTableStatement } from "../parser/parse-alter-table.ts"
+import type { SelectStatement } from "../parser/parse-select.ts"
 import type { ApplyAlterTable } from "./apply-alter-table.ts"
 import type { ApplyCreateIndex } from "./apply-create-index.ts"
 import type { ApplyCreateSchema } from "./apply-create-schema.ts"
@@ -15,6 +16,7 @@ import type { ApplyCreateTable } from "./apply-create-table.ts"
 import type { ApplyDropSchema } from "./apply-drop-schema.ts"
 import type { ApplyDropTable } from "./apply-drop-table.ts"
 import type { ApplyInsertValues } from "./apply-insert-values.ts"
+import type { ApplySelect } from "./apply-select.ts"
 
 export type SqlStatement =
 	| SkippedStatement
@@ -25,6 +27,7 @@ export type SqlStatement =
 	| CreateTableStatement
 	| DropSchemaStatement
 	| DropTableStatement
+	| SelectStatement
 	| SqlParserError<string>
 
 export type SqlApplyStatement<
@@ -47,9 +50,11 @@ export type SqlApplyStatement<
 								? ApplyDropTable<Db, Statement>
 								: Statement extends DropSchemaStatement
 									? ApplyDropSchema<Db, Statement>
-									: Statement extends SqlParserError<string>
-										? Statement
-										: SqlParserError<"Unsupported SqlApply statement">
+									: Statement extends SelectStatement
+										? ApplySelect<Db, Statement>
+										: Statement extends SqlParserError<string>
+											? Statement
+											: SqlParserError<"Unsupported SqlApply statement">
 	: Db
 
 export type SqlApplyStatements<

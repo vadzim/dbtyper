@@ -155,6 +155,7 @@ type ServiceWords = keyof {
 	declare: true
 	default: true
 	delete: true
+	distinct: true
 	drop: true
 	end: true
 	exclude: true

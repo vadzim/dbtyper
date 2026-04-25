@@ -5,8 +5,17 @@ import type { ParseCreateTable } from "./parse-create-table.ts"
 import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop-table.ts"
 import type { ParseInsertValues } from "./parse-insert-values.ts"
+import type { ParseSelect } from "./parse-select.ts"
 import type { SkipStatement } from "./skip-statement.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenEot, TokenKey } from "../../core/sql-tokens.ts"
+import type {
+	TokensList,
+	PeekToken,
+	SkipToken,
+	SqlParserError,
+	TokenEot,
+	TokenKey,
+	EmptyTokenList,
+} from "../../core/sql-tokens.ts"
 
 export type ParseSqlStatements<Tokens extends TokensList> = InternalParseStatements<Tokens, []>
 
@@ -21,7 +30,40 @@ export type ParseSqlStatement<Tokens extends TokensList> =
 					? ParseAlter<SkipToken<Tokens>>
 					: PeekToken<Tokens> extends TokenKey<"insert">
 						? ParseInsert<SkipToken<Tokens>>
-						: SkipStatement<Tokens>
+						: PeekToken<Tokens> extends TokenKey<"select">
+							? ParseSelectWithMaybeSkip<Tokens>
+							: SkipStatement<Tokens>
+
+export type ParseSingleStatement<Tokens extends TokensList> =
+	ParseSqlStatement<Tokens> extends [infer Rest extends TokensList, infer Result]
+		? PeekToken<Rest> extends TokenEot
+			? [EmptyTokenList, Result]
+			: [EmptyTokenList, SqlParserError<"Expected single sql statement">]
+		: never
+
+type SelectListOrFromMismatchAllowsSkip<Msg extends string> = Msg extends
+	| "Expected * or column name in SELECT list"
+	| "Expected column name after , in SELECT list"
+	| "Expected FROM after SELECT list"
+	| "Unable to parse identifier"
+	? true
+	: false
+
+/**
+ * v1: buffer at `select`. If list/`FROM`/table id fails, `Rest` is already past `select` (as in
+ * `ParseInsert` fallbacks) — re-skip from `Rest` to `;` to finish the same statement the old
+ * `SkipStatement<AtSelect>` would have consumed, without a second `Skip` on the original `AtSelect`.
+ */
+type ParseSelectWithMaybeSkip<AtSelect extends TokensList> =
+	ParseSelect<SkipToken<AtSelect>> extends [infer Rest extends TokensList, infer Head]
+		? Head extends { kind: "select" }
+			? [Rest, Head]
+			: Head extends SqlParserError<infer Msg extends string>
+				? SelectListOrFromMismatchAllowsSkip<Msg> extends true
+					? SkipStatement<Rest>
+					: [Rest, Head]
+				: [Rest, Head]
+		: never
 
 type InsertParseShapeMismatchAllowsSkip<Msg extends string> = Msg extends
 	| "Expected VALUES after column list"
