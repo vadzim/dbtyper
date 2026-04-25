@@ -4,6 +4,11 @@ import type { JsqlColumnFactsEntry, JsqlConstraintEntry } from "./table-constrai
 import type { SqlApplyStatements, SqlStatement } from "./apply-statement.ts"
 import type { SqlApplyQueryText } from "./apply-query.ts"
 
+export type SqlDriver = {
+	query(sql: string): Promise<Array<unknown>>
+	stream?(sql: string): AsyncIterable<unknown>
+}
+
 export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
 	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
 }
@@ -161,12 +166,48 @@ export class CompiledDataBase<Database extends SqlDatabaseLike | SqlParserError<
 		this.defaultSchema = defaultSchema
 	}
 
-	async query<Stmt extends string>(
-		statement: Stmt,
-	): Promise<Array<SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never>> {
-		return []
+	connect(dbInterface: SqlDriver) {
+		return new ConnectedDataBase<Database>(this.migrations, this.defaultSchema, dbInterface)
 	}
 
 	migrations: readonly { source: string; path: string }[]
 	defaultSchema: string
+}
+
+export class ConnectedDataBase<Database extends SqlDatabaseLike | SqlParserError<string>> {
+	get $db(): Database {
+		return null as unknown as Database
+	}
+
+	constructor(
+		migrations: readonly { source: string; path: string }[],
+		defaultSchema: string,
+		dbInterface: SqlDriver,
+	) {
+		this.migrations = migrations
+		this.defaultSchema = defaultSchema
+		this.dbInterface = dbInterface
+	}
+
+	query<Stmt extends string>(statement: Stmt) {
+		return this.dbInterface.query(statement) as Promise<
+			Array<SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never>
+		>
+	}
+
+	stream<Stmt extends string>(statement: Stmt) {
+		return this.dbInterface.stream
+			? (this.dbInterface.stream(statement) as AsyncIterable<
+					SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never
+				>)
+			: async(this.query(statement))
+	}
+
+	migrations: readonly { source: string; path: string }[]
+	defaultSchema: string
+	dbInterface: SqlDriver
+}
+
+async function* async<T>(items: Promise<Iterable<T>>) {
+	yield* await items
 }

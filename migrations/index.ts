@@ -7,5 +7,12 @@ export const appDB = await sqlDatabase("public")
 	.apply(import("./20260409093400_agenda.ts"))
 	.compile()
 
-// const agenda = await appDB.query("select * from agenda")
-// const users = await appDB.query("select id, email, created_at from auth.users")
+// const wiredDB = appDB.connect({
+// 	async query(sql: string) {
+// 		return []
+// 	},
+// 	async *stream(sql: string) {},
+// })
+
+// const agenda = await wiredDB.query("select * from agenda")
+// const users = wiredDB.stream("select id, email, created_at from auth.users")
