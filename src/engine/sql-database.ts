@@ -111,7 +111,6 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 
 	async compile() {
 		const migrations = await this.#getMigrations()
-
 		return new CompiledDataBase<Database>(migrations, this.#defaultSchema)
 	}
 }
