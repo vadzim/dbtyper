@@ -40,6 +40,7 @@ type SqlAlterTableActionAddColumn = {
 	ifNotExists: boolean
 	name: string
 	definition: unknown
+	columnFacts?: unknown
 }
 
 type SqlAlterTableActionDropColumn = {
@@ -223,10 +224,10 @@ type ParseAlterActionAddColumn<Tokens extends TokensList> =
 type ParseAlterActionAddColumnWithFlag<Tokens extends TokensList, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends TokenType<"">
 		? [Tokens, SqlParserError<"Expected a column definition in ALTER TABLE ADD COLUMN">]
-		: AddColumn<Tokens, {}, never> extends [
-					infer RestAfter extends TokensList,
-					infer Added extends { row: unknown; names: string; error: unknown },
-			  ]
+	: AddColumn<Tokens, {}, never> extends [
+				infer RestAfter extends TokensList,
+				infer Added extends { row: unknown; names: string; error: unknown; facts: unknown },
+		  ]
 			? [Added["error"]] extends [never]
 				? Added["row"] extends Record<Added["names"], infer Definition>
 					? [
@@ -236,7 +237,8 @@ type ParseAlterActionAddColumnWithFlag<Tokens extends TokensList, IfNotExists ex
 								ifNotExists: IfNotExists
 								name: Added["names"]
 								definition: Definition
-							},
+							}
+								& ([Added["facts"]] extends [never] ? {} : { columnFacts: Added["facts"] }),
 						]
 					: [RestAfter, SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">]
 				: [RestAfter, Extract<Added["error"], SqlParserError<string>>]

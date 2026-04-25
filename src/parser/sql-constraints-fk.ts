@@ -195,28 +195,30 @@ type TryReadConstraintHeadAfterConstraintKeyword<Tokens extends TokensList> =
 	]
 		? NameResult extends SqlParserError<string>
 			? [RestName, NameResult]
-			: ReadConstraintKeywordOnStripped<RestName>
+			: NameResult extends string
+				? ReadConstraintKeywordOnStripped<RestName, NameResult>
+				: [RestName, SqlParserError<"Expected constraint name after CONSTRAINT">]
 		: never
 
-type ReadConstraintKeywordOnStripped<Tokens extends TokensList> =
+type ReadConstraintKeywordOnStripped<Tokens extends TokensList, Name extends string | SqlParserError<string> = never> =
 	PeekToken<Tokens> extends TokenType<"primary">
 		? ReadExpectedToken<SkipToken<Tokens>, "key", "Expected KEY after PRIMARY"> extends [
 				infer AfterKey extends TokensList,
 				infer KeyOk,
 			]
 			? KeyOk extends true
-				? [AfterKey, { kind: "yes"; constraintKind: "primary_key" }]
+				? [AfterKey, Name extends string ? { kind: "yes"; constraintKind: "primary_key"; name: Name } : { kind: "yes"; constraintKind: "primary_key" }]
 				: [AfterKey, { kind: "no" }]
 			: never
 		: PeekToken<Tokens> extends TokenType<"unique">
-			? [SkipToken<Tokens>, { kind: "yes"; constraintKind: "unique" }]
+			? [SkipToken<Tokens>, Name extends string ? { kind: "yes"; constraintKind: "unique"; name: Name } : { kind: "yes"; constraintKind: "unique" }]
 			: PeekToken<Tokens> extends TokenType<"foreign">
 				? ReadExpectedToken<SkipToken<Tokens>, "key", "Expected KEY after FOREIGN"> extends [
 						infer AfterKey extends TokensList,
 						infer KeyOk,
 					]
 					? KeyOk extends true
-						? [AfterKey, { kind: "yes"; constraintKind: "foreign_key" }]
+						? [AfterKey, Name extends string ? { kind: "yes"; constraintKind: "foreign_key"; name: Name } : { kind: "yes"; constraintKind: "foreign_key" }]
 						: [AfterKey, { kind: "no" }]
 					: never
 				: PeekToken<Tokens> extends TokenType<"check" | "exclude" | "constraint">

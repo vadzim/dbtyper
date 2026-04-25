@@ -8,7 +8,12 @@ import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
 import type { SqlParserError } from "../core/sql-tokens.ts"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens } from "../core/sql-tokens.ts"
-import type { JsqlGetConstraintMap, JsqlTableConstraintsKey } from "../src/engine/table-constraint-meta.ts"
+import type {
+	JsqlGetColumnFactsMap,
+	JsqlGetConstraintMap,
+	JsqlTableColumnFactsKey,
+	JsqlTableConstraintsKey,
+} from "../src/engine/table-constraint-meta.ts"
 
 type DbApplyAlterFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
@@ -71,6 +76,38 @@ type _AddNewColumn = Expect<
 					posts: { id: number; user_id: number }
 				}
 				auth: { sessions: { id: string } }
+			}
+		}
+	>
+>
+
+type AddColumnWithFacts = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+		create schema test;
+		create table test.users (id int not null);
+		alter table test.users add column created_at timestamptz default now() not null
+`>
+	>[1]
+>
+type AddColumnWithFactsRow = AddColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
+type _AddColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<AddColumnWithFactsRow>, { created_at: { default: true } }>>
+type _AddColumnWithFacts = Expect<
+	Matches<
+		AddColumnWithFacts,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: {
+						id: number
+						created_at: Date
+					} & {
+						[J in JsqlTableColumnFactsKey]: { created_at: { default: true } }
+					}
+				}
 			}
 		}
 	>
@@ -246,6 +283,61 @@ type _RenameExistingColumn = Expect<
 				}
 				auth: { sessions: { id: string } }
 			}
+		}
+	>
+>
+
+type RenameColumnWithFacts = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+		create schema test;
+		create table test.users (id int not null, created_at timestamptz default now() not null);
+		alter table test.users rename column created_at to inserted_at
+`>
+	>[1]
+>
+type RenameColumnWithFactsRow = RenameColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
+type _RenameColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<RenameColumnWithFactsRow>, { inserted_at: { default: true } }>>
+type _RenameColumnWithFacts = Expect<
+	Matches<
+		RenameColumnWithFacts,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					users: {
+						id: number
+						inserted_at: Date
+					} & {
+						[J in JsqlTableColumnFactsKey]: { inserted_at: { default: true } }
+					}
+				}
+			}
+		}
+	>
+>
+
+type DropColumnWithFacts = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+		create schema test;
+		create table test.users (id int not null, created_at timestamptz default now() not null);
+		alter table test.users drop column created_at
+`>
+	>[1]
+>
+type DropColumnWithFactsRow = DropColumnWithFacts extends { schemas: { test: { users: infer U } } } ? U : never
+type _DropColumnFactsMap = Expect<Matches<JsqlGetColumnFactsMap<DropColumnWithFactsRow>, {}>>
+type _DropColumnWithFacts = Expect<
+	Matches<
+		DropColumnWithFacts,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: { test: { users: { id: number } } }
 		}
 	>
 >

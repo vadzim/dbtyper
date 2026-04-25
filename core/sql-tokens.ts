@@ -132,6 +132,7 @@ type ServiceWords = keyof {
 	alter: true
 	and: true
 	as: true
+	always: true
 	begin: true
 	by: true
 	check: true
@@ -187,11 +188,13 @@ type ServiceWords = keyof {
 	returns: true
 	right: true
 	schema: true
+	stored: true
 	select: true
 	set: true
 	table: true
 	to: true
 	true: true
+	virtual: true
 	unique: true
 	use: true
 	using: true

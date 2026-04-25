@@ -115,6 +115,58 @@ type _AlterAddColumnIfNotExists = Expect<
 	>
 >
 
+type AlterAddColumnDefault = ParseSqlStatements<
+	ParseSqlTokens<`alter table users add column created_at timestamptz default now() not null`>
+>
+type _AlterAddColumnDefault = Expect<
+	Matches<
+		AlterAddColumnDefault,
+		[
+			EmptyTokenList,
+			[
+				{
+					kind: "alter_table"
+					ifExists: false
+					target: ["users"]
+					action: {
+						kind: "add_column"
+						ifNotExists: false
+						name: "created_at"
+						definition: Date
+						columnFacts: { created_at: { default: true } }
+					}
+				},
+			],
+		]
+	>
+>
+
+type AlterAddColumnGenerated = ParseSqlStatements<
+	ParseSqlTokens<`alter table users add column total int generated always as (1 + 2) stored`>
+>
+type _AlterAddColumnGenerated = Expect<
+	Matches<
+		AlterAddColumnGenerated,
+		[
+			EmptyTokenList,
+			[
+				{
+					kind: "alter_table"
+					ifExists: false
+					target: ["users"]
+					action: {
+						kind: "add_column"
+						ifNotExists: false
+						name: "total"
+						definition: number | null
+						columnFacts: { total: { generated: { mode: "stored" } } }
+					}
+				},
+			],
+		]
+	>
+>
+
 type AlterDropColumn = ParseSqlStatements<
 	ParseSqlTokens<`
 	alter table users drop column if exists age

@@ -7,6 +7,12 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
+import type {
+	JsqlGetColumnFactsMap,
+	JsqlGetConstraintMap,
+	JsqlTableColumnFactsKey,
+	JsqlTableConstraintsKey,
+} from "../src/engine/table-constraint-meta.ts"
 
 type DbApplyCreateTableFixture = SqlApplyStatements<
 	SqlDatabase<"test">,
@@ -30,6 +36,106 @@ type _DbApplyCreateTableFixture = Expect<
 					users: { id: number; email: string }
 				}
 				auth: {}
+			}
+		}
+	>
+>
+
+type CreateWithNamedConstraints = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create table test.accounts (
+		id int not null,
+		email text not null,
+		constraint accounts_pk primary key (id),
+		constraint accounts_email_key unique (email)
+	)
+`>
+	>[1]
+>
+type AccountsNamed = CreateWithNamedConstraints extends { schemas: { test: { accounts: infer A } } } ? A : never
+type _AccountsConstraintMap = Expect<
+	Matches<
+		JsqlGetConstraintMap<AccountsNamed>,
+		{
+			accounts_pk: { kind: "primary_key"; columns: ["id"] }
+			accounts_email_key: { kind: "unique"; columns: ["email"] }
+		}
+	>
+>
+type _CreateWithNamedConstraints = Expect<
+	Matches<
+		CreateWithNamedConstraints,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					accounts: {
+						id: number
+						email: string
+					} & {
+						[J in JsqlTableConstraintsKey]: {
+							accounts_pk: { kind: "primary_key"; columns: ["id"] }
+							accounts_email_key: { kind: "unique"; columns: ["email"] }
+						}
+					}
+				}
+			}
+		}
+	>
+>
+
+type CreateWithColumnFacts = SqlApplyStatements<
+	SqlDatabase<"test">,
+	ParseSqlStatements<
+		ParseSqlTokens<`
+	create schema test;
+	create table test.column_facts (
+		id int default 1 not null,
+		label text default 'hello',
+		score int check (score > 0),
+		total int generated always as (id + score) stored
+	)
+`>
+	>[1]
+>
+type ColumnFactsRow = CreateWithColumnFacts extends { schemas: { test: { column_facts: infer R } } } ? R : never
+type _ColumnFactsMap = Expect<
+	Matches<
+		JsqlGetColumnFactsMap<ColumnFactsRow>,
+		{
+			id: { default: true }
+			label: { default: true }
+			score: { check: true }
+			total: { generated: { mode: "stored" } }
+		}
+	>
+>
+type _CreateWithColumnFacts = Expect<
+	Matches<
+		CreateWithColumnFacts,
+		{
+			kind: "database"
+			defaultSchema: "test"
+			schemas: {
+				test: {
+					column_facts: {
+						id: number
+						label: string | null
+						score: number | null
+						total: number | null
+					} & {
+						[J in JsqlTableColumnFactsKey]: {
+							id: { default: true }
+							label: { default: true }
+							score: { check: true }
+							total: { generated: { mode: "stored" } }
+						}
+					}
+				}
 			}
 		}
 	>
