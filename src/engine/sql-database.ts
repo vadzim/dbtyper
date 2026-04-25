@@ -121,24 +121,20 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 																				[K in keyof Columns]: Columns[K]
 																			}
 																		: never
-																	column_facts: [
-																		keyof Table["column_facts"],
-																	] extends [never]
-																		? {}
-																		: Table["column_facts"] extends infer ColumnFacts
-																			? {
+																	column_facts: Table["column_facts"] extends infer ColumnFacts
+																		? [keyof ColumnFacts] extends [never]
+																			? {}
+																			: {
 																					[K in keyof ColumnFacts]: ColumnFacts[K]
 																				}
-																			: never
-																	constraints: [keyof Table["constraints"]] extends [
-																		never,
-																	]
-																		? {}
-																		: Table["constraints"] extends infer Constraints
-																			? {
+																		: never
+																	constraints: Table["constraints"] extends infer Constraints
+																		? [keyof Constraints] extends [never]
+																			? {}
+																			: {
 																					[K in keyof Constraints]: Constraints[K]
 																				}
-																			: never
+																		: never
 																}
 															: never
 													}
