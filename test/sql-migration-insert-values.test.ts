@@ -5,7 +5,7 @@ import { describe, it } from "node:test"
 import type { SqlDatabase } from "../src/engine/sql-database.ts"
 import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
 import type { ParseSqlStatements, ParseSqlStatementsRecovering } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyTokenList, ParseSqlTokens, SqlParserError, TokenType } from "../core/sql-tokens.ts"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError, TokenKey } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 type ParseInsertSelectIgnorable = ParseSqlStatementsRecovering<
@@ -31,7 +31,7 @@ type _ParseInsertSelectIgnorable = Expect<
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]

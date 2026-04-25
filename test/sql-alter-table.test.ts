@@ -1,5 +1,5 @@
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyTokenList, ParseSqlTokens, TokenType } from "../core/sql-tokens.ts"
+import type { EmptyTokenList, ParseSqlTokens, TokenKey } from "../core/sql-tokens.ts"
 import type { SqlParserError } from "../core/sql-tokens.ts"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
@@ -253,7 +253,7 @@ type _UnsupportedAlterAction = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]

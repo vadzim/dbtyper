@@ -13,7 +13,7 @@ import type {
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.ts"
-import type { TokensList, PeekToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SqlParserError, TokenEot, TokenKey } from "../../core/sql-tokens.ts"
 
 export type CreateTableStatement = {
 	kind: "create_table"
@@ -82,11 +82,11 @@ type ParseCreateBody<
 	Named extends NamedIntraTableConstraint[] = [],
 	ColumnFacts = never,
 > =
-	PeekToken<Tokens> extends TokenType<"eot">
+	PeekToken<Tokens> extends TokenEot
 		? [Tokens, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
-		: PeekToken<Tokens> extends TokenType<"key", ")">
+		: PeekToken<Tokens> extends TokenKey<")">
 			? [Tokens, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
-			: PeekToken<Tokens> extends TokenType<"key", ConstraintHeadToken>
+			: PeekToken<Tokens> extends TokenKey<ConstraintHeadToken>
 				? ParseCreateBodyConstraintOrError<Tokens, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
 				: ParseCreateBodyColumn<Tokens, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
 
@@ -123,12 +123,12 @@ type ParseCreateBodyColumn<
 		infer Added extends { row: unknown; names: string; error: unknown; facts: unknown },
 	]
 		? [Added["error"]] extends [never]
-			? SkipStatement<RestAfterCol, TokenType<"key", ","> | TokenType<"key", ")"> | TokenType<"eot">> extends [
+			? SkipStatement<RestAfterCol, TokenKey<","> | TokenKey<")"> | TokenEot> extends [
 					infer NextTail extends TokensList,
 					infer SkipResult,
 				]
 				? SkipResult extends SkippedStatement<infer EndTk>
-					? EndTk extends TokenType<"key", ",">
+					? EndTk extends TokenKey<",">
 						? ParseCreateBody<
 								NextTail,
 								Added["row"],
@@ -183,13 +183,13 @@ type ParseCreateBodyConstraint<
 	Head,
 > =
 	ParseConstraintBody<Tokens, Kind> extends [infer BodyRest extends TokensList, infer EntryResult]
-		? SkipStatement<BodyRest, TokenType<"key", ","> | TokenType<"key", ")"> | TokenType<"eot">> extends [
+		? SkipStatement<BodyRest, TokenKey<","> | TokenKey<")"> | TokenEot> extends [
 				infer NextTail extends TokensList,
 				infer SkipResult,
 			]
 			? SkipResult extends SkippedStatement<infer EndTk>
 				? EntryResult extends SqlParserError<string>
-					? EndTk extends TokenType<"key", ",">
+					? EndTk extends TokenKey<",">
 						? ParseCreateBody<
 								NextTail,
 								Row,
@@ -213,7 +213,7 @@ type ParseCreateBodyConstraint<
 								>,
 							]
 					: EntryResult extends ForeignRefMeta
-						? EndTk extends TokenType<"key", ",">
+						? EndTk extends TokenKey<",">
 							? ParseCreateBody<
 									NextTail,
 									Row,
@@ -233,7 +233,7 @@ type ParseCreateBodyConstraint<
 									columns: infer Cols extends string[]
 							  }
 							? Head extends { name: infer CName extends string }
-								? EndTk extends TokenType<"key", ",">
+								? EndTk extends TokenKey<",">
 									? ParseCreateBody<
 											NextTail,
 											Row,
@@ -256,7 +256,7 @@ type ParseCreateBodyConstraint<
 												ColumnFacts
 											>,
 										]
-								: EndTk extends TokenType<"key", ",">
+								: EndTk extends TokenKey<",">
 									? ParseCreateBody<
 											NextTail,
 											Row,
@@ -284,7 +284,7 @@ type ParseCreateBodyConstraint<
 										columns: infer Cols extends string[]
 								  }
 								? Head extends { name: infer CName extends string }
-									? EndTk extends TokenType<"key", ",">
+									? EndTk extends TokenKey<",">
 										? ParseCreateBody<
 												NextTail,
 												Row,
@@ -307,7 +307,7 @@ type ParseCreateBodyConstraint<
 													ColumnFacts
 												>,
 											]
-									: EndTk extends TokenType<"key", ",">
+									: EndTk extends TokenKey<",">
 										? ParseCreateBody<
 												NextTail,
 												Row,
@@ -330,7 +330,7 @@ type ParseCreateBodyConstraint<
 													ColumnFacts
 												>,
 											]
-								: EndTk extends TokenType<"key", ",">
+								: EndTk extends TokenKey<",">
 									? ParseCreateBody<NextTail, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
 									: [NextTail, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
 				: [

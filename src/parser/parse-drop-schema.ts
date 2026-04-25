@@ -1,5 +1,5 @@
 import type { ConsumeStatementEnd, ReadOptionalIfExists } from "./sql-primitives.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenIdent } from "../../core/sql-tokens.ts"
 
 export type DropSchemaStatement = {
 	kind: "drop_schema"
@@ -20,7 +20,7 @@ export type ParseDropSchema<Tokens extends TokensList> =
 		: never
 
 type ParseDropSchemaWithFlag<Tokens extends TokensList, IfExists extends boolean> =
-	PeekToken<Tokens> extends TokenType<"ident", infer NameResult extends string>
+	PeekToken<Tokens> extends TokenIdent<infer NameResult extends string>
 		? ConsumeStatementEnd<SkipToken<Tokens>> extends [infer Tail extends TokensList, infer EndOk extends boolean]
 			? EndOk extends true
 				? [

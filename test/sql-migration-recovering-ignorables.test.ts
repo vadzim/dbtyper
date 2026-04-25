@@ -3,7 +3,7 @@
  */
 import { describe, it } from "node:test"
 import type { ParseSqlStatementsRecovering } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyTokenList, ParseSqlTokens, TokenType } from "../core/sql-tokens.ts"
+import type { EmptyTokenList, ParseSqlTokens, TokenEot, TokenKey } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 type SkipCommentGrantSet = ParseSqlStatementsRecovering<
@@ -21,15 +21,15 @@ type _SkipCommentGrantSet = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]
@@ -47,7 +47,7 @@ type _SkipAlterDefaultPrivileges = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]
@@ -65,7 +65,7 @@ type _SkipDollarFn = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]
@@ -83,7 +83,7 @@ type _SkipTaggedDollarFn = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]
@@ -99,7 +99,7 @@ type _BareSelectRecovering = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"eot">
+					token: TokenEot
 				},
 			],
 		]
@@ -117,7 +117,7 @@ type _UnclosedDollarIgnored = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"eot">
+					token: TokenEot
 				},
 			],
 		]
@@ -133,7 +133,7 @@ type _CreateViewIgnorable = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]

@@ -10,6 +10,10 @@ export type ParseSqlTokens<S extends string = string> = [ReadTokenFromString<S>]
 export type EmptyTokenList = ParseSqlTokens<"">
 export type TokenKind = "ident" | "string" | "key" | "eot"
 export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
+export type TokenKey<Key extends string> = TokenType<"key", Key>
+export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
+export type TokenString<String extends string> = TokenType<"string", String>
+export type TokenEot = TokenType<"eot">
 export type TokensList = MakeTokensBuffer<TokenType<TokenKind, string>, string>
 export type SqlParserError<Message extends string> = {
 	__sql_parser_error__: Message
@@ -28,26 +32,26 @@ type MakeTokensBuffer<Token extends TokenType<TokenKind, string>, Rest extends s
 type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 	? ReadTokenFromString<Rest>
 	: S extends `"${infer String}"${infer Rest}`
-		? MakeTokensBuffer<TokenType<"ident", String>, Rest>
+		? MakeTokensBuffer<TokenIdent<String>, Rest>
 		: S extends `'${infer String}'${infer Rest}`
-			? MakeTokensBuffer<TokenType<"string", String>, Rest>
+			? MakeTokensBuffer<TokenString<String>, Rest>
 			: S extends `$$${infer String}$$${infer Rest}`
-				? MakeTokensBuffer<TokenType<"string", String>, Rest>
+				? MakeTokensBuffer<TokenString<String>, Rest>
 				: ReadTaggedDollar<S> extends {
 							__token__: infer String extends string
 							__rest__: infer Rest extends string
 					  }
-					? MakeTokensBuffer<TokenType<"string", String>, Rest>
+					? MakeTokensBuffer<TokenString<String>, Rest>
 					: S extends `\`${infer String}\`${infer Rest}`
-						? MakeTokensBuffer<TokenType<"ident", String>, Rest>
+						? MakeTokensBuffer<TokenIdent<String>, Rest>
 						: S extends `--${infer Comment}`
 							? Comment extends `${string}\n${infer Rest}`
 								? ReadTokenFromString<Rest>
-								: MakeTokensBuffer<TokenType<"eot">, "">
+								: MakeTokensBuffer<TokenEot, "">
 							: S extends `/*${infer Comment}`
 								? Comment extends `${string}*/${infer Rest}`
 									? ReadTokenFromString<Rest>
-									: MakeTokensBuffer<TokenType<"eot">, "">
+									: MakeTokensBuffer<TokenEot, "">
 								: S extends `${infer Head}${infer Rest}`
 									? Head extends StartTokenChar
 										? OptimizedBySpaceReadTokenChars<Rest> extends {
@@ -55,9 +59,9 @@ type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 												__rest__: infer Tail extends string
 											}
 											? MakeTokensBuffer<CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Tail>
-											: MakeTokensBuffer<TokenType<"key", Head>, Rest>
-										: MakeTokensBuffer<TokenType<"key", Head>, Rest>
-									: MakeTokensBuffer<TokenType<"eot">, "">
+											: MakeTokensBuffer<TokenKey<Head>, Rest>
+										: MakeTokensBuffer<TokenKey<Head>, Rest>
+									: MakeTokensBuffer<TokenEot, "">
 
 type ReadTaggedDollar<S extends string> = S extends `$${infer Tag}$${infer Rest}`
 	? ReadTokenChars<Tag>["__rest__"] extends ""
@@ -68,10 +72,10 @@ type ReadTaggedDollar<S extends string> = S extends `$${infer Tag}$${infer Rest}
 	: null
 
 type CheckDoubleQuotes<S extends string> = S extends ServiceWords
-	? TokenType<"key", S>
+	? TokenKey<S>
 	: S extends `${number}`
-		? TokenType<"key", S>
-		: TokenType<"ident", S>
+		? TokenKey<S>
+		: TokenIdent<S>
 
 type OptimizedBySpaceReadTokenChars<S extends string> =
 	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`

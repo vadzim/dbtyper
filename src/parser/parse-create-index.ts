@@ -6,7 +6,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenIdent } from "../../core/sql-tokens.ts"
 
 export type CreateIndexStatement = {
 	kind: "create_index_validated"
@@ -29,7 +29,7 @@ export type ParseCreateIndex<Tokens extends TokensList, Unique extends boolean =
 		: never
 
 type ParseCreateIndexAfterIfNotExists<Tokens extends TokensList, Unique extends boolean, IfNotExists extends boolean> =
-	PeekToken<Tokens> extends TokenType<"ident", string>
+	PeekToken<Tokens> extends TokenIdent<string>
 		? ParseCreateIndexAfterOn<SkipToken<Tokens>, Unique, IfNotExists>
 		: [Tokens, SqlParserError<"Expected index name in CREATE INDEX">]
 

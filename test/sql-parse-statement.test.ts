@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlStatements } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyTokenList, ParseSqlTokens, SqlParserError, TokenType } from "../core/sql-tokens.ts"
+import type { EmptyTokenList, ParseSqlTokens, SqlParserError, TokenKey } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 type ParseCreate = ParseSqlStatements<
@@ -125,7 +125,7 @@ type _ParseUnknown = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]
@@ -144,7 +144,7 @@ type _ParseInvalidKeywordBoundary = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]
@@ -160,7 +160,7 @@ type _ParseInvalidDropBoundary = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"key", ";">
+					token: TokenKey<";">
 				},
 			],
 		]

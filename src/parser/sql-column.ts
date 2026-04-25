@@ -1,5 +1,13 @@
 import type { ReadExpectedToken } from "./sql-primitives.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
+import type {
+	TokensList,
+	PeekToken,
+	SkipToken,
+	SqlParserError,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+} from "../../core/sql-tokens.ts"
 import type { SkipStatement } from "./skip-statement.ts"
 
 type SqlScalarTypeToTs<T extends string> = T extends
@@ -70,11 +78,8 @@ type ColumnDef = {
 }
 
 type ReadOptionalTypeParams<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", "(">
-		? SkipStatement<SkipToken<Tokens>, TokenType<"key", ")">> extends [
-				infer Rest extends TokensList,
-				infer SkipResult,
-			]
+	PeekToken<Tokens> extends TokenKey<"(">
+		? SkipStatement<SkipToken<Tokens>, TokenKey<")">> extends [infer Rest extends TokensList, infer SkipResult]
 			? SkipResult extends SqlParserError<string>
 				? [Rest, SkipResult]
 				: [Rest, true]
@@ -82,7 +87,7 @@ type ReadOptionalTypeParams<Tokens extends TokensList> =
 		: [Tokens, false]
 
 type ReadIsArray<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", "[">
+	PeekToken<Tokens> extends TokenKey<"[">
 		? ReadExpectedToken<SkipToken<Tokens>, "]", "Expected ] after ["> extends [
 				infer Rest extends TokensList,
 				infer Ok,
@@ -106,14 +111,14 @@ type ScanForColumnFacts<
 	Facts extends Record<string, unknown> = {},
 	ParenStack extends ")"[] = [],
 > =
-	PeekToken<Tokens> extends TokenType<"eot">
+	PeekToken<Tokens> extends TokenEot
 		? [Tokens, { nullable: Nullable; facts: Facts }]
 		: ParenStack extends []
-			? PeekToken<Tokens> extends TokenType<"key", "," | ")" | ";">
+			? PeekToken<Tokens> extends TokenKey<"," | ")" | ";">
 				? [Tokens, { nullable: Nullable; facts: Facts }]
-				: PeekToken<Tokens> extends TokenType<"key", "(">
+				: PeekToken<Tokens> extends TokenKey<"(">
 					? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, [")"]>
-					: PeekToken<Tokens> extends TokenType<"key", "not">
+					: PeekToken<Tokens> extends TokenKey<"not">
 						? ReadExpectedToken<SkipToken<Tokens>, "null", "Expected NULL after NOT"> extends [
 								infer RestNull extends TokensList,
 								infer OkNull,
@@ -122,46 +127,46 @@ type ScanForColumnFacts<
 								? ScanForColumnFacts<RestNull, false, Facts, ParenStack>
 								: ScanForColumnFacts<RestNull, Nullable, Facts, ParenStack>
 							: never
-						: PeekToken<Tokens> extends TokenType<"key", "null">
+						: PeekToken<Tokens> extends TokenKey<"null">
 							? ScanForColumnFacts<SkipToken<Tokens>, true, Facts, ParenStack>
-							: PeekToken<Tokens> extends TokenType<"key", "default">
+							: PeekToken<Tokens> extends TokenKey<"default">
 								? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts & { default: true }, ParenStack>
-								: PeekToken<Tokens> extends TokenType<"key", "check">
+								: PeekToken<Tokens> extends TokenKey<"check">
 									? ScanForColumnFacts<
 											SkipToken<Tokens>,
 											Nullable,
 											Facts & { check: true },
 											ParenStack
 										>
-									: PeekToken<Tokens> extends TokenType<"key", "generated">
+									: PeekToken<Tokens> extends TokenKey<"generated">
 										? ScanForColumnFacts<
 												SkipToken<Tokens>,
 												Nullable,
 												Facts & { generated: true },
 												ParenStack
 											>
-										: PeekToken<Tokens> extends TokenType<"key", "stored">
+										: PeekToken<Tokens> extends TokenKey<"stored">
 											? ScanForColumnFacts<
 													SkipToken<Tokens>,
 													Nullable,
 													SetGeneratedMode<Facts, "stored">,
 													ParenStack
 												>
-											: PeekToken<Tokens> extends TokenType<"key", "virtual">
+											: PeekToken<Tokens> extends TokenKey<"virtual">
 												? ScanForColumnFacts<
 														SkipToken<Tokens>,
 														Nullable,
 														SetGeneratedMode<Facts, "virtual">,
 														ParenStack
 													>
-												: PeekToken<Tokens> extends TokenType<"key", "always" | "as">
+												: PeekToken<Tokens> extends TokenKey<"always" | "as">
 													? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, ParenStack>
 													: ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, ParenStack>
-			: PeekToken<Tokens> extends TokenType<"key", "(">
+			: PeekToken<Tokens> extends TokenKey<"(">
 				? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, [")", ...ParenStack]>
-				: PeekToken<Tokens> extends TokenType<"key", ")">
+				: PeekToken<Tokens> extends TokenKey<")">
 					? ParenStack extends [infer Current extends ")", ...infer Tail extends ")"[]]
-						? PeekToken<Tokens> extends TokenType<"key", Current>
+						? PeekToken<Tokens> extends TokenKey<Current>
 							? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, Tail>
 							: ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, Tail>
 						: [Tokens, { nullable: Nullable; facts: Facts }]
@@ -188,12 +193,12 @@ type ParseColumnAfterTypeTok<Tokens extends TokensList, ColName extends string, 
 		: never
 
 type ParseColumnRestAfterName<Tokens extends TokensList, ColNameRaw extends string> =
-	PeekToken<Tokens> extends TokenType<"ident", infer TypeName extends string>
+	PeekToken<Tokens> extends TokenIdent<infer TypeName extends string>
 		? ParseColumnAfterTypeTok<SkipToken<Tokens>, ColNameRaw, TypeName>
 		: [Tokens, SqlParserError<"Invalid column definition">]
 
 type ParseColumnFromBuffer<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"ident", infer ColName extends string>
+	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
 		? ParseColumnRestAfterName<SkipToken<Tokens>, ColName>
 		: [Tokens, SqlParserError<"Invalid column definition">]
 

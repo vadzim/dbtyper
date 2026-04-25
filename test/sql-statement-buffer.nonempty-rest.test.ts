@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyTokenList, ParseSqlTokens, TokenType } from "../core/sql-tokens.ts"
+import type { EmptyTokenList, ParseSqlTokens, TokenKey } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 // Copy of sql-statement-buffer.test.ts, but with extra operations appended after ';'
@@ -230,7 +230,7 @@ type _UnknownStatement = Expect<
 			EmptyTokenList,
 			{
 				kind: "skipped-statement"
-				token: TokenType<"key", ";">
+				token: TokenKey<";">
 			},
 		]
 	>

@@ -1,7 +1,7 @@
 import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type { ReadExpectedToken, ReadQualifiedIdentifierFromBuffer, SqlQualifiedIdentifier } from "./sql-primitives.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenKey, TokenString } from "../../core/sql-tokens.ts"
 
 export type InsertValuesStatement = {
 	kind: "insert_values"
@@ -93,10 +93,10 @@ type ParseValuesRows<Tokens extends TokensList> =
 		: never
 
 type ParseValuesRowsTail<Tokens extends TokensList, Acc extends unknown[][]> =
-	PeekToken<Tokens> extends TokenType<"key", ","> ? ParseValuesRowsAfterComma<SkipToken<Tokens>, Acc> : [Tokens, Acc]
+	PeekToken<Tokens> extends TokenKey<","> ? ParseValuesRowsAfterComma<SkipToken<Tokens>, Acc> : [Tokens, Acc]
 
 type ParseValuesRowsAfterComma<Tokens extends TokensList, Acc extends unknown[][]> =
-	PeekToken<Tokens> extends TokenType<"key", "(">
+	PeekToken<Tokens> extends TokenKey<"(">
 		? ParseValueList<Tokens> extends [infer Rest extends TokensList, infer Row]
 			? Row extends SqlParserError<string>
 				? [Rest, Row]
@@ -117,41 +117,38 @@ type ParseValueList<Tokens extends TokensList> =
 		: never
 
 type ParseValueListTail<Tokens extends TokensList, Acc extends unknown[] = []> =
-	PeekToken<Tokens> extends TokenType<"key", ")">
+	PeekToken<Tokens> extends TokenKey<")">
 		? [SkipToken<Tokens>, Acc]
 		: ParseOneValue<Tokens> extends [infer After extends TokensList, infer V]
 			? V extends SqlParserError<string>
 				? [After, V]
-				: PeekToken<After> extends TokenType<"key", ",">
+				: PeekToken<After> extends TokenKey<",">
 					? ParseValueListTail<SkipToken<After>, [...Acc, V]>
-					: PeekToken<After> extends TokenType<"key", ")">
+					: PeekToken<After> extends TokenKey<")">
 						? [SkipToken<After>, [...Acc, V]]
 						: [After, SqlParserError<"Expected ) or comma after INSERT value">]
 			: never
 
 type ParseOneValue<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", "null">
+	PeekToken<Tokens> extends TokenKey<"null">
 		? [SkipToken<Tokens>, null]
-		: PeekToken<Tokens> extends TokenType<"key", "true">
+		: PeekToken<Tokens> extends TokenKey<"true">
 			? [SkipToken<Tokens>, true]
-			: PeekToken<Tokens> extends TokenType<"key", "false">
+			: PeekToken<Tokens> extends TokenKey<"false">
 				? [SkipToken<Tokens>, false]
-				: PeekToken<Tokens> extends TokenType<"key", "(">
+				: PeekToken<Tokens> extends TokenKey<"(">
 					? ParseParenthesizedValue<SkipToken<Tokens>>
-					: PeekToken<Tokens> extends TokenType<"key", "default">
+					: PeekToken<Tokens> extends TokenKey<"default">
 						? [SkipToken<Tokens>, unknown]
-						: PeekToken<Tokens> extends TokenType<
-									"key",
-									"current_timestamp" | "current_date" | "current_time"
-							  >
+						: PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
 							? [SkipToken<Tokens>, unknown]
-							: PeekToken<Tokens> extends TokenType<"key", "now">
+							: PeekToken<Tokens> extends TokenKey<"now">
 								? ParseNowFunctionValue<SkipToken<Tokens>>
-								: PeekToken<Tokens> extends TokenType<"key", "+" | "-">
+								: PeekToken<Tokens> extends TokenKey<"+" | "-">
 									? ParseSignedNumberValue<SkipToken<Tokens>>
-									: PeekToken<Tokens> extends TokenType<"key", `${number}`>
+									: PeekToken<Tokens> extends TokenKey<`${number}`>
 										? ParseNumberishTail<Tokens>
-										: PeekToken<Tokens> extends TokenType<"string", string>
+										: PeekToken<Tokens> extends TokenString<string>
 											? [SkipToken<Tokens>, string]
 											: [Tokens, SqlParserError<"Unsupported value in INSERT">]
 
@@ -184,19 +181,17 @@ type ParseNowFunctionValue<Tokens extends TokensList> =
 		: never
 
 type ParseSignedNumberValue<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", `${number}`>
+	PeekToken<Tokens> extends TokenKey<`${number}`>
 		? ParseNumberishTail<Tokens>
 		: [Tokens, SqlParserError<"Expected number after sign in INSERT value">]
 
 type ParseNumberishTail<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", `${number}`>
-		? ParseNumberishAfterInt<SkipToken<Tokens>>
-		: [Tokens, number]
+	PeekToken<Tokens> extends TokenKey<`${number}`> ? ParseNumberishAfterInt<SkipToken<Tokens>> : [Tokens, number]
 
 type ParseNumberishAfterInt<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", "."> ? ParseNumberishDecimalTail<SkipToken<Tokens>> : [Tokens, number]
+	PeekToken<Tokens> extends TokenKey<"."> ? ParseNumberishDecimalTail<SkipToken<Tokens>> : [Tokens, number]
 
 type ParseNumberishDecimalTail<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"key", `${number}`>
+	PeekToken<Tokens> extends TokenKey<`${number}`>
 		? [SkipToken<Tokens>, number]
 		: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
