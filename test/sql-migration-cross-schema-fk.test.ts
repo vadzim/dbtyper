@@ -4,6 +4,7 @@
 import { describe, it } from "node:test"
 import type { SqlDatabase } from "../src/engine/sql-database.ts"
 import type { SqlApplyStatements } from "../src/engine/apply-statement.ts"
+import type { JsqlTableConstraintsKey } from "../src/engine/table-constraint-meta.ts"
 import type { ParseSqlStatementsRecovering } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
@@ -28,7 +29,21 @@ type _ApplyCrossSchemaFkOk = Expect<
 			defaultSchema: "app"
 			schemas: {
 				auth: { users: { id: number } }
-				app: { members: { uid: number } }
+				app: {
+					members: { uid: number } & {
+						[J in JsqlTableConstraintsKey]: {
+							m_uid_fk: {
+								kind: "foreign_key"
+								refs: {
+									from: ""
+									columnPairs: [["uid", "id"]]
+									toSchema: "auth"
+									toTable: "users"
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	>

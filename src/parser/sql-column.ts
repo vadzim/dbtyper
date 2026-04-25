@@ -1,4 +1,4 @@
-import type { ReadExpectedToken, StripIdentifierQuotes } from "./sql-primitives.ts"
+import type { ReadExpectedToken } from "./sql-primitives.ts"
 import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 import type { SkipStatement } from "./skip-statement.ts"
 
@@ -70,8 +70,11 @@ type ColumnDef = {
 }
 
 type ReadOptionalTypeParams<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"(">
-		? SkipStatement<SkipToken<Tokens>, ")"> extends [infer Rest extends TokensList, infer SkipResult]
+	PeekToken<Tokens> extends TokenType<"key", "(">
+		? SkipStatement<SkipToken<Tokens>, TokenType<"key", ")">> extends [
+				infer Rest extends TokensList,
+				infer SkipResult,
+			]
 			? SkipResult extends SqlParserError<string>
 				? [Rest, SkipResult]
 				: [Rest, true]
@@ -79,7 +82,7 @@ type ReadOptionalTypeParams<Tokens extends TokensList> =
 		: [Tokens, false]
 
 type ReadIsArray<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"[">
+	PeekToken<Tokens> extends TokenType<"key", "[">
 		? ReadExpectedToken<SkipToken<Tokens>, "]", "Expected ] after ["> extends [
 				infer Rest extends TokensList,
 				infer Ok,
@@ -90,7 +93,10 @@ type ReadIsArray<Tokens extends TokensList> =
 			: never
 		: [Tokens, false]
 
-type SetGeneratedMode<Facts extends Record<string, unknown>, Mode extends "stored" | "virtual"> = Omit<Facts, "generated"> & {
+type SetGeneratedMode<Facts extends Record<string, unknown>, Mode extends "stored" | "virtual"> = Omit<
+	Facts,
+	"generated"
+> & {
 	generated: { mode: Mode }
 }
 
@@ -100,14 +106,14 @@ type ScanForColumnFacts<
 	Facts extends Record<string, unknown> = {},
 	ParenStack extends ")"[] = [],
 > =
-	PeekToken<Tokens> extends TokenType<"">
+	PeekToken<Tokens> extends TokenType<"eot">
 		? [Tokens, { nullable: Nullable; facts: Facts }]
 		: ParenStack extends []
-			? PeekToken<Tokens> extends TokenType<"," | ")" | ";">
+			? PeekToken<Tokens> extends TokenType<"key", "," | ")" | ";">
 				? [Tokens, { nullable: Nullable; facts: Facts }]
-				: PeekToken<Tokens> extends TokenType<"(">
-						? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, [")"]>
-					: PeekToken<Tokens> extends TokenType<"not">
+				: PeekToken<Tokens> extends TokenType<"key", "(">
+					? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, [")"]>
+					: PeekToken<Tokens> extends TokenType<"key", "not">
 						? ReadExpectedToken<SkipToken<Tokens>, "null", "Expected NULL after NOT"> extends [
 								infer RestNull extends TokensList,
 								infer OkNull,
@@ -116,76 +122,80 @@ type ScanForColumnFacts<
 								? ScanForColumnFacts<RestNull, false, Facts, ParenStack>
 								: ScanForColumnFacts<RestNull, Nullable, Facts, ParenStack>
 							: never
-						: PeekToken<Tokens> extends TokenType<"null">
+						: PeekToken<Tokens> extends TokenType<"key", "null">
 							? ScanForColumnFacts<SkipToken<Tokens>, true, Facts, ParenStack>
-						: PeekToken<Tokens> extends TokenType<"default">
+							: PeekToken<Tokens> extends TokenType<"key", "default">
 								? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts & { default: true }, ParenStack>
-							: PeekToken<Tokens> extends TokenType<"check">
-									? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts & { check: true }, ParenStack>
-									: PeekToken<Tokens> extends TokenType<"generated">
-										? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts & { generated: true }, ParenStack>
-										: PeekToken<Tokens> extends TokenType<"stored">
+								: PeekToken<Tokens> extends TokenType<"key", "check">
+									? ScanForColumnFacts<
+											SkipToken<Tokens>,
+											Nullable,
+											Facts & { check: true },
+											ParenStack
+										>
+									: PeekToken<Tokens> extends TokenType<"key", "generated">
+										? ScanForColumnFacts<
+												SkipToken<Tokens>,
+												Nullable,
+												Facts & { generated: true },
+												ParenStack
+											>
+										: PeekToken<Tokens> extends TokenType<"key", "stored">
 											? ScanForColumnFacts<
 													SkipToken<Tokens>,
 													Nullable,
 													SetGeneratedMode<Facts, "stored">,
 													ParenStack
 												>
-											: PeekToken<Tokens> extends TokenType<"virtual">
+											: PeekToken<Tokens> extends TokenType<"key", "virtual">
 												? ScanForColumnFacts<
 														SkipToken<Tokens>,
 														Nullable,
 														SetGeneratedMode<Facts, "virtual">,
 														ParenStack
 													>
-												: PeekToken<Tokens> extends TokenType<"always" | "as">
+												: PeekToken<Tokens> extends TokenType<"key", "always" | "as">
 													? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, ParenStack>
 													: ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, ParenStack>
-			: PeekToken<Tokens> extends TokenType<"(">
+			: PeekToken<Tokens> extends TokenType<"key", "(">
 				? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, [")", ...ParenStack]>
-				: PeekToken<Tokens> extends TokenType<")">
+				: PeekToken<Tokens> extends TokenType<"key", ")">
 					? ParenStack extends [infer Current extends ")", ...infer Tail extends ")"[]]
-						? PeekToken<Tokens> extends TokenType<Current>
+						? PeekToken<Tokens> extends TokenType<"key", Current>
 							? ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, Tail>
 							: ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, Tail>
 						: [Tokens, { nullable: Nullable; facts: Facts }]
 					: ScanForColumnFacts<SkipToken<Tokens>, Nullable, Facts, ParenStack>
 
-type ParseColumnAfterTypeTok<Tokens extends TokensList, ColNameRaw extends string, TypeRaw extends string> =
+type ParseColumnAfterTypeTok<Tokens extends TokensList, ColName extends string, TypeName extends string> =
 	ReadOptionalTypeParams<Tokens> extends [infer RestParams extends TokensList, infer _HasTypeParams extends boolean]
 		? ReadIsArray<RestParams> extends [infer RestArray extends TokensList, infer IsArr extends boolean]
 			? ScanForColumnFacts<RestArray> extends [
-						infer RestAfterNullable extends TokensList,
-						infer ColumnTail extends { nullable: boolean; facts: Record<string, unknown> },
+					infer RestAfterNullable extends TokensList,
+					infer ColumnTail extends { nullable: boolean; facts: Record<string, unknown> },
+				]
+				? [
+						RestAfterNullable,
+						{
+							name: ColName
+							type: IsArr extends true ? SqlScalarTypeToTs<TypeName>[] : SqlScalarTypeToTs<TypeName>
+							nullable: ColumnTail["nullable"]
+							facts: ColumnTail["facts"]
+						},
 					]
-					? [
-							RestAfterNullable,
-							{
-								name: StripIdentifierQuotes<TokenType<ColNameRaw>>
-								type: IsArr extends true
-									? SqlScalarTypeToTs<StripIdentifierQuotes<TokenType<TypeRaw>>>[]
-									: SqlScalarTypeToTs<StripIdentifierQuotes<TokenType<TypeRaw>>>
-								nullable: ColumnTail["nullable"]
-								facts: ColumnTail["facts"]
-							},
-						]
-					: never
 				: never
+			: never
 		: never
 
 type ParseColumnRestAfterName<Tokens extends TokensList, ColNameRaw extends string> =
-	PeekToken<Tokens> extends TokenType<infer TypeRaw extends string>
-		? TypeRaw extends "" | ")" | "," | ";"
-			? [Tokens, SqlParserError<"Invalid column definition">]
-			: ParseColumnAfterTypeTok<SkipToken<Tokens>, ColNameRaw, TypeRaw>
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", infer TypeName extends string>
+		? ParseColumnAfterTypeTok<SkipToken<Tokens>, ColNameRaw, TypeName>
+		: [Tokens, SqlParserError<"Invalid column definition">]
 
 type ParseColumnFromBuffer<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<infer ColNameRaw extends string>
-		? ColNameRaw extends ""
-			? [Tokens, SqlParserError<"Invalid column definition">]
-			: ParseColumnRestAfterName<SkipToken<Tokens>, ColNameRaw>
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", infer ColName extends string>
+		? ParseColumnRestAfterName<SkipToken<Tokens>, ColName>
+		: [Tokens, SqlParserError<"Invalid column definition">]
 
 type ColumnToRecord<C extends { name: string; type: unknown; nullable: boolean }> = {
 	[K in C["name"]]: C["nullable"] extends true ? C["type"] | null : C["type"]
@@ -205,13 +215,13 @@ export type AddColumn<Tokens extends TokensList, Row, Names extends string> =
 						facts: keyof F["facts"] extends never ? never : { [K in F["name"]]: F["facts"] }
 					},
 				]
-		: [
-				Rest,
-				{
-					row: Row
-					names: Names
-					error: SqlParserError<"Invalid column definition">
-					facts: never
-				},
-			]
-	: never
+			: [
+					Rest,
+					{
+						row: Row
+						names: Names
+						error: SqlParserError<"Invalid column definition">
+						facts: never
+					},
+				]
+		: never

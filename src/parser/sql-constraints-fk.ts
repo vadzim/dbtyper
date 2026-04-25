@@ -1,9 +1,4 @@
-import type {
-	ReadExpectedIdentifier,
-	ReadExpectedToken,
-	ReadQualifiedIdentifierFromBuffer,
-	SqlQualifiedIdentifier,
-} from "./sql-primitives.ts"
+import type { ReadExpectedToken, ReadQualifiedIdentifierFromBuffer, SqlQualifiedIdentifier } from "./sql-primitives.ts"
 import type { TokensList, PeekToken, SkipToken, SqlParserError, ReadToken, TokenType } from "../../core/sql-tokens.ts"
 
 export type ForeignRefMeta = {
@@ -18,7 +13,7 @@ export type FkColumnPair = [local: string, referenced: string]
 export type IntraTableConstraintRef = { kind: "primary_key"; columns: string[] } | { kind: "unique"; columns: string[] }
 
 export type TryReadConstraintHead<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"constraint">
+	PeekToken<Tokens> extends TokenType<"key", "constraint">
 		? TryReadConstraintHeadAfterConstraintKeyword<SkipToken<Tokens>>
 		: TryReadConstraintHeadUnprefixed<Tokens>
 
@@ -49,20 +44,18 @@ export type ParseColumnList<Tokens extends TokensList> =
 		: never
 
 type ParseColumnListTail<Tokens extends TokensList, Acc extends string[] = []> =
-	PeekToken<Tokens> extends TokenType<")">
+	PeekToken<Tokens> extends TokenType<"key", ")">
 		? [SkipToken<Tokens>, Acc]
-		: ReadExpectedIdentifier<Tokens, "Expected column name in column list"> extends [
-					infer AfterId extends TokensList,
-					infer Col,
-			  ]
-			? Col extends string
-				? PeekToken<AfterId> extends TokenType<",">
-					? ParseColumnListTail<SkipToken<AfterId>, [...Acc, Col]>
-					: PeekToken<AfterId> extends TokenType<")">
-						? [SkipToken<AfterId>, [...Acc, Col]]
-						: [AfterId, SqlParserError<"Expected ) after column list">]
-				: [AfterId, Extract<Col, SqlParserError<string>>]
-			: never
+		: PeekToken<Tokens> extends TokenType<"ident", infer Col extends string>
+			? ParseColumnListTailAfterColumn<SkipToken<Tokens>, [...Acc, Col]>
+			: [Tokens, SqlParserError<"Expected column name in column list">]
+
+type ParseColumnListTailAfterColumn<Tokens extends TokensList, Acc extends string[]> =
+	PeekToken<Tokens> extends TokenType<"key", ",">
+		? ParseColumnListTail<SkipToken<Tokens>, Acc>
+		: PeekToken<Tokens> extends TokenType<"key", ")">
+			? [SkipToken<Tokens>, Acc]
+			: [Tokens, SqlParserError<"Expected ) after column list">]
 
 export type ValidateColumnTupleRefs<Cols extends string[], Names extends string> = Cols extends [
 	infer H extends string,
@@ -170,58 +163,66 @@ type ParseForeignKeyMetaWithLocalCols<
 		: never
 
 type TryReadConstraintHeadUnprefixed<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"primary">
+	PeekToken<Tokens> extends TokenType<"key", "primary">
 		? ReadToken<Tokens> extends [infer AfterPrimary extends TokensList, infer _X]
-			? PeekToken<AfterPrimary> extends TokenType<"key">
+			? PeekToken<AfterPrimary> extends TokenType<"key", "key">
 				? [SkipToken<AfterPrimary>, { kind: "yes"; constraintKind: "primary_key" }]
 				: [AfterPrimary, { kind: "no" }]
 			: never
-		: PeekToken<Tokens> extends TokenType<"unique">
+		: PeekToken<Tokens> extends TokenType<"key", "unique">
 			? [SkipToken<Tokens>, { kind: "yes"; constraintKind: "unique" }]
-			: PeekToken<Tokens> extends TokenType<"foreign">
+			: PeekToken<Tokens> extends TokenType<"key", "foreign">
 				? ReadToken<Tokens> extends [infer AfterForeign extends TokensList, infer _X]
-					? PeekToken<AfterForeign> extends TokenType<"key">
+					? PeekToken<AfterForeign> extends TokenType<"key", "key">
 						? [SkipToken<AfterForeign>, { kind: "yes"; constraintKind: "foreign_key" }]
 						: [AfterForeign, { kind: "no" }]
 					: never
-				: PeekToken<Tokens> extends TokenType<"check" | "exclude">
+				: PeekToken<Tokens> extends TokenType<"key", "check" | "exclude">
 					? [SkipToken<Tokens>, { kind: "yes"; constraintKind: "other" }]
 					: [Tokens, { kind: "no" }]
 
 type TryReadConstraintHeadAfterConstraintKeyword<Tokens extends TokensList> =
-	ReadExpectedIdentifier<Tokens, "Expected constraint name after CONSTRAINT"> extends [
-		infer RestName extends TokensList,
-		infer NameResult,
-	]
-		? NameResult extends SqlParserError<string>
-			? [RestName, NameResult]
-			: NameResult extends string
-				? ReadConstraintKeywordOnStripped<RestName, NameResult>
-				: [RestName, SqlParserError<"Expected constraint name after CONSTRAINT">]
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", infer NameResult extends string>
+		? ReadConstraintKeywordOnStripped<SkipToken<Tokens>, NameResult>
+		: [Tokens, SqlParserError<"Expected constraint name after CONSTRAINT">]
 
 type ReadConstraintKeywordOnStripped<Tokens extends TokensList, Name extends string | SqlParserError<string> = never> =
-	PeekToken<Tokens> extends TokenType<"primary">
+	PeekToken<Tokens> extends TokenType<"key", "primary">
 		? ReadExpectedToken<SkipToken<Tokens>, "key", "Expected KEY after PRIMARY"> extends [
 				infer AfterKey extends TokensList,
 				infer KeyOk,
 			]
 			? KeyOk extends true
-				? [AfterKey, Name extends string ? { kind: "yes"; constraintKind: "primary_key"; name: Name } : { kind: "yes"; constraintKind: "primary_key" }]
+				? [
+						AfterKey,
+						Name extends string
+							? { kind: "yes"; constraintKind: "primary_key"; name: Name }
+							: { kind: "yes"; constraintKind: "primary_key" },
+					]
 				: [AfterKey, { kind: "no" }]
 			: never
-		: PeekToken<Tokens> extends TokenType<"unique">
-			? [SkipToken<Tokens>, Name extends string ? { kind: "yes"; constraintKind: "unique"; name: Name } : { kind: "yes"; constraintKind: "unique" }]
-			: PeekToken<Tokens> extends TokenType<"foreign">
+		: PeekToken<Tokens> extends TokenType<"key", "unique">
+			? [
+					SkipToken<Tokens>,
+					Name extends string
+						? { kind: "yes"; constraintKind: "unique"; name: Name }
+						: { kind: "yes"; constraintKind: "unique" },
+				]
+			: PeekToken<Tokens> extends TokenType<"key", "foreign">
 				? ReadExpectedToken<SkipToken<Tokens>, "key", "Expected KEY after FOREIGN"> extends [
 						infer AfterKey extends TokensList,
 						infer KeyOk,
 					]
 					? KeyOk extends true
-						? [AfterKey, Name extends string ? { kind: "yes"; constraintKind: "foreign_key"; name: Name } : { kind: "yes"; constraintKind: "foreign_key" }]
+						? [
+								AfterKey,
+								Name extends string
+									? { kind: "yes"; constraintKind: "foreign_key"; name: Name }
+									: { kind: "yes"; constraintKind: "foreign_key" },
+							]
 						: [AfterKey, { kind: "no" }]
 					: never
-				: PeekToken<Tokens> extends TokenType<"check" | "exclude" | "constraint">
+				: PeekToken<Tokens> extends TokenType<"key", "check" | "exclude" | "constraint">
 					? [SkipToken<Tokens>, { kind: "yes"; constraintKind: "other" }]
 					: [
 							Tokens,

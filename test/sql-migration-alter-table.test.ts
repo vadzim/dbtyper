@@ -51,7 +51,7 @@ type _ParseAlterRlsIgnorable = Expect<
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]

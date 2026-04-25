@@ -53,7 +53,7 @@ type _UnknownSecond = Expect<
 				{ kind: "create_schema"; name: "a"; ifNotExists: false },
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]

@@ -47,7 +47,11 @@ type MergeError<Current, Next> = Next extends true ? Current : Current | Next
 
 type AppendIntra<I extends IntraTableConstraintRef[], X extends IntraTableConstraintRef> = [...I, X]
 type AppendNamed<I extends NamedIntraTableConstraint[], X extends NamedIntraTableConstraint> = [...I, X]
-type MergeColumnFacts<Current, Next> = [Next] extends [never] ? Current : [Current] extends [never] ? Next : Current & Next
+type MergeColumnFacts<Current, Next> = [Next] extends [never]
+	? Current
+	: [Current] extends [never]
+		? Next
+		: Current & Next
 type ConstraintHeadToken = "constraint" | "primary" | "unique" | "foreign" | "check" | "exclude"
 
 type CreateBodyState<
@@ -78,11 +82,11 @@ type ParseCreateBody<
 	Named extends NamedIntraTableConstraint[] = [],
 	ColumnFacts = never,
 > =
-	PeekToken<Tokens> extends TokenType<"">
+	PeekToken<Tokens> extends TokenType<"eot">
 		? [Tokens, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
-		: PeekToken<Tokens> extends TokenType<")">
+		: PeekToken<Tokens> extends TokenType<"key", ")">
 			? [Tokens, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
-			: PeekToken<Tokens> extends TokenType<ConstraintHeadToken>
+			: PeekToken<Tokens> extends TokenType<"key", ConstraintHeadToken>
 				? ParseCreateBodyConstraintOrError<Tokens, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
 				: ParseCreateBodyColumn<Tokens, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
 
@@ -99,9 +103,9 @@ type ParseCreateBodyConstraintOrError<
 	TryReadConstraintHead<Tokens> extends [infer HeadRest extends TokensList, infer Head]
 		? Head extends SqlParserError<string>
 			? [HeadRest, CreateBodyState<Row, Names, MergeError<Error, Head>, Refs, Intra, Named, ColumnFacts>]
-		: Head extends { kind: "yes"; constraintKind: infer K extends string }
-			? ParseCreateBodyConstraint<HeadRest, K, Row, Names, Error, Refs, Intra, Named, ColumnFacts, Head>
-			: ParseCreateBodyColumn<HeadRest, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
+			: Head extends { kind: "yes"; constraintKind: infer K extends string }
+				? ParseCreateBodyConstraint<HeadRest, K, Row, Names, Error, Refs, Intra, Named, ColumnFacts, Head>
+				: ParseCreateBodyColumn<HeadRest, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
 		: never
 
 type ParseCreateBodyColumn<
@@ -119,9 +123,12 @@ type ParseCreateBodyColumn<
 		infer Added extends { row: unknown; names: string; error: unknown; facts: unknown },
 	]
 		? [Added["error"]] extends [never]
-			? SkipStatement<RestAfterCol, "," | ")" | ""> extends [infer NextTail extends TokensList, infer SkipResult]
+			? SkipStatement<RestAfterCol, TokenType<"key", ","> | TokenType<"key", ")"> | TokenType<"eot">> extends [
+					infer NextTail extends TokensList,
+					infer SkipResult,
+				]
 				? SkipResult extends SkippedStatement<infer EndTk>
-					? EndTk extends TokenType<",">
+					? EndTk extends TokenType<"key", ",">
 						? ParseCreateBody<
 								NextTail,
 								Added["row"],
@@ -157,8 +164,11 @@ type ParseCreateBodyColumn<
 							>,
 						]
 				: never
-				: [RestAfterCol, CreateBodyState<Row, Names, MergeError<Error, Added["error"]>, Refs, Intra, Named, ColumnFacts>]
-			: never
+			: [
+					RestAfterCol,
+					CreateBodyState<Row, Names, MergeError<Error, Added["error"]>, Refs, Intra, Named, ColumnFacts>,
+				]
+		: never
 
 type ParseCreateBodyConstraint<
 	Tokens extends TokensList,
@@ -173,22 +183,57 @@ type ParseCreateBodyConstraint<
 	Head,
 > =
 	ParseConstraintBody<Tokens, Kind> extends [infer BodyRest extends TokensList, infer EntryResult]
-			? SkipStatement<BodyRest, "," | ")" | ""> extends [infer NextTail extends TokensList, infer SkipResult]
-				? SkipResult extends SkippedStatement<infer EndTk>
-					? EntryResult extends SqlParserError<string>
-					? EndTk extends TokenType<",">
-						? ParseCreateBody<NextTail, Row, Names, MergeError<Error, EntryResult>, Refs, Intra, Named, ColumnFacts>
-						: [NextTail, CreateBodyState<Row, Names, MergeError<Error, EntryResult>, Refs, Intra, Named, ColumnFacts>]
+		? SkipStatement<BodyRest, TokenType<"key", ","> | TokenType<"key", ")"> | TokenType<"eot">> extends [
+				infer NextTail extends TokensList,
+				infer SkipResult,
+			]
+			? SkipResult extends SkippedStatement<infer EndTk>
+				? EntryResult extends SqlParserError<string>
+					? EndTk extends TokenType<"key", ",">
+						? ParseCreateBody<
+								NextTail,
+								Row,
+								Names,
+								MergeError<Error, EntryResult>,
+								Refs,
+								Intra,
+								Named,
+								ColumnFacts
+							>
+						: [
+								NextTail,
+								CreateBodyState<
+									Row,
+									Names,
+									MergeError<Error, EntryResult>,
+									Refs,
+									Intra,
+									Named,
+									ColumnFacts
+								>,
+							]
 					: EntryResult extends ForeignRefMeta
-						? EndTk extends TokenType<",">
-							? ParseCreateBody<NextTail, Row, Names, Error, Refs | EntryResult, Intra, Named, ColumnFacts>
-							: [NextTail, CreateBodyState<Row, Names, Error, Refs | EntryResult, Intra, Named, ColumnFacts>]
+						? EndTk extends TokenType<"key", ",">
+							? ParseCreateBody<
+									NextTail,
+									Row,
+									Names,
+									Error,
+									Refs | EntryResult,
+									Intra,
+									Named,
+									ColumnFacts
+								>
+							: [
+									NextTail,
+									CreateBodyState<Row, Names, Error, Refs | EntryResult, Intra, Named, ColumnFacts>,
+								]
 						: EntryResult extends {
 									kind: "primary_key"
 									columns: infer Cols extends string[]
 							  }
 							? Head extends { name: infer CName extends string }
-								? EndTk extends TokenType<",">
+								? EndTk extends TokenType<"key", ",">
 									? ParseCreateBody<
 											NextTail,
 											Row,
@@ -211,7 +256,7 @@ type ParseCreateBodyConstraint<
 												ColumnFacts
 											>,
 										]
-								: EndTk extends TokenType<",">
+								: EndTk extends TokenType<"key", ",">
 									? ParseCreateBody<
 											NextTail,
 											Row,
@@ -234,38 +279,38 @@ type ParseCreateBodyConstraint<
 												ColumnFacts
 											>,
 										]
-									: EntryResult extends {
-												kind: "unique"
-												columns: infer Cols extends string[]
-										  }
-										? Head extends { name: infer CName extends string }
-											? EndTk extends TokenType<",">
-												? ParseCreateBody<
-														NextTail,
-														Row,
+							: EntryResult extends {
+										kind: "unique"
+										columns: infer Cols extends string[]
+								  }
+								? Head extends { name: infer CName extends string }
+									? EndTk extends TokenType<"key", ",">
+										? ParseCreateBody<
+												NextTail,
+												Row,
+												Names,
+												Error,
+												Refs,
+												AppendIntra<Intra, { kind: "unique"; columns: Cols }>,
+												AppendNamed<Named, { name: CName; kind: "unique"; columns: Cols }>,
+												ColumnFacts
+											>
+										: [
+												NextTail,
+												CreateBodyState<
+													Row,
 													Names,
 													Error,
 													Refs,
 													AppendIntra<Intra, { kind: "unique"; columns: Cols }>,
 													AppendNamed<Named, { name: CName; kind: "unique"; columns: Cols }>,
 													ColumnFacts
-												>
-											: [
-													NextTail,
-													CreateBodyState<
-														Row,
-														Names,
-														Error,
-														Refs,
-														AppendIntra<Intra, { kind: "unique"; columns: Cols }>,
-														AppendNamed<Named, { name: CName; kind: "unique"; columns: Cols }>,
-														ColumnFacts
-													>,
-												]
-										: EndTk extends TokenType<",">
-											? ParseCreateBody<
-													NextTail,
-													Row,
+												>,
+											]
+									: EndTk extends TokenType<"key", ",">
+										? ParseCreateBody<
+												NextTail,
+												Row,
 												Names,
 												Error,
 												Refs,
@@ -285,23 +330,23 @@ type ParseCreateBodyConstraint<
 													ColumnFacts
 												>,
 											]
-									: EndTk extends TokenType<",">
-										? ParseCreateBody<NextTail, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
-										: [NextTail, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
-					: [
-							NextTail,
-							CreateBodyState<
-								Row,
-								Names,
-								MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
-								Refs,
-								Intra,
-								Named,
-								ColumnFacts
-							>,
-						]
-				: never
+								: EndTk extends TokenType<"key", ",">
+									? ParseCreateBody<NextTail, Row, Names, Error, Refs, Intra, Named, ColumnFacts>
+									: [NextTail, CreateBodyState<Row, Names, Error, Refs, Intra, Named, ColumnFacts>]
+				: [
+						NextTail,
+						CreateBodyState<
+							Row,
+							Names,
+							MergeError<Error, SqlParserError<"Unable to parse CREATE TABLE body">>,
+							Refs,
+							Intra,
+							Named,
+							ColumnFacts
+						>,
+					]
 			: never
+		: never
 
 type ParseCreateTableWithFlag<Tokens extends TokensList, IfNotExists extends boolean> =
 	ReadQualifiedIdentifierFromBuffer<Tokens> extends [
@@ -332,32 +377,41 @@ type ParseCreateTableWithFlag<Tokens extends TokensList, IfNotExists extends boo
 									infer EndOk extends boolean,
 								]
 								? EndOk extends true
-											? [
-													RestTail,
-													{
-														kind: "create_table"
-														name: NameResult
-														row: Parsed["row"] extends infer Row
-															? { [K in keyof Row]: Row[K] }
-															: never
-														refs: [Parsed["refs"]] extends [never]
-															? undefined
-															: Extract<Parsed["refs"], ForeignRefMeta>
-														intraTableConstraints: Parsed["intraTableConstraints"]
-													}
-														& ([Parsed["namedIntraTableConstraints"]] extends [never]
-															? {}
-															: Parsed["namedIntraTableConstraints"] extends []
-																? {}
-																: { namedIntraTableConstraints: Parsed["namedIntraTableConstraints"] })
-														& ([Parsed["columnFacts"]] extends [never]
-															? {}
-															: keyof Extract<Parsed["columnFacts"], Record<string, ColumnFactsEntry>> extends never
-																? {}
-																: { columnFacts: Extract<Parsed["columnFacts"], Record<string, ColumnFactsEntry>> }),
-												]
-										: [RestTail, SqlParserError<"Expected CREATE TABLE body in parentheses">]
-									: never
+									? [
+											RestTail,
+											{
+												kind: "create_table"
+												name: NameResult
+												row: Parsed["row"] extends infer Row
+													? { [K in keyof Row]: Row[K] }
+													: never
+												refs: [Parsed["refs"]] extends [never]
+													? undefined
+													: Extract<Parsed["refs"], ForeignRefMeta>
+												intraTableConstraints: Parsed["intraTableConstraints"]
+											} & ([Parsed["namedIntraTableConstraints"]] extends [never]
+												? {}
+												: Parsed["namedIntraTableConstraints"] extends []
+													? {}
+													: {
+															namedIntraTableConstraints: Parsed["namedIntraTableConstraints"]
+														}) &
+												([Parsed["columnFacts"]] extends [never]
+													? {}
+													: keyof Extract<
+																Parsed["columnFacts"],
+																Record<string, ColumnFactsEntry>
+														  > extends never
+														? {}
+														: {
+																columnFacts: Extract<
+																	Parsed["columnFacts"],
+																	Record<string, ColumnFactsEntry>
+																>
+															}),
+										]
+									: [RestTail, SqlParserError<"Expected CREATE TABLE body in parentheses">]
+								: never
 							: [BodyRest, Parsed["error"]]
 						: never
 					: [AfterOpen, Extract<OpenOk, SqlParserError<string>>]

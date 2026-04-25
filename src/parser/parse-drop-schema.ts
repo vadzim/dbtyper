@@ -1,5 +1,5 @@
-import type { ConsumeStatementEnd, ReadExpectedIdentifier, ReadOptionalIfExists } from "./sql-primitives.ts"
-import type { TokensList, SqlParserError } from "../../core/sql-tokens.ts"
+import type { ConsumeStatementEnd, ReadOptionalIfExists } from "./sql-primitives.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 
 export type DropSchemaStatement = {
 	kind: "drop_schema"
@@ -20,22 +20,17 @@ export type ParseDropSchema<Tokens extends TokensList> =
 		: never
 
 type ParseDropSchemaWithFlag<Tokens extends TokensList, IfExists extends boolean> =
-	ReadExpectedIdentifier<Tokens, "Unable to parse DROP SCHEMA statement"> extends [
-		infer RestName extends TokensList,
-		infer NameResult extends string | SqlParserError<string>,
-	]
-		? NameResult extends SqlParserError<string>
-			? [RestName, NameResult]
-			: ConsumeStatementEnd<RestName> extends [infer Tail extends TokensList, infer EndOk extends boolean]
-				? EndOk extends true
-					? [
-							Tail,
-							{
-								kind: "drop_schema"
-								name: NameResult
-								ifExists: IfExists
-							},
-						]
-					: [Tail, SqlParserError<"Unable to parse DROP SCHEMA statement">]
-				: never
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", infer NameResult extends string>
+		? ConsumeStatementEnd<SkipToken<Tokens>> extends [infer Tail extends TokensList, infer EndOk extends boolean]
+			? EndOk extends true
+				? [
+						Tail,
+						{
+							kind: "drop_schema"
+							name: NameResult
+							ifExists: IfExists
+						},
+					]
+				: [Tail, SqlParserError<"Unable to parse DROP SCHEMA statement">]
+			: never
+		: [Tokens, SqlParserError<"Unable to parse DROP SCHEMA statement">]

@@ -21,15 +21,15 @@ type _SkipCommentGrantSet = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -47,7 +47,7 @@ type _SkipAlterDefaultPrivileges = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -65,7 +65,7 @@ type _SkipDollarFn = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -83,7 +83,7 @@ type _SkipTaggedDollarFn = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -99,7 +99,7 @@ type _BareSelectRecovering = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"">
+					token: TokenType<"eot">
 				},
 			],
 		]
@@ -117,7 +117,7 @@ type _UnclosedDollarIgnored = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<"">
+					token: TokenType<"eot">
 				},
 			],
 		]
@@ -133,7 +133,7 @@ type _CreateViewIgnorable = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]

@@ -4,7 +4,6 @@ import type {
 	ReadExpectedToken,
 	ReadOptionalIfExists,
 	ReadOptionalIfNotExists,
-	ReadExpectedIdentifier,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
@@ -107,47 +106,44 @@ type SqlAlterTableAction =
 	| SqlAlterTableActionAlterColumnDropNotNull
 
 type ParseIdentifierToken<Tokens extends TokensList> =
-	ReadExpectedIdentifier<Tokens, "Unable to parse identifier"> extends [infer Rest extends TokensList, infer Name]
-		? Name extends string
-			? [Rest, Name]
-			: [Rest, Extract<Name, SqlParserError<string>>]
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", infer Name extends string>
+		? [SkipToken<Tokens>, Name]
+		: [Tokens, SqlParserError<"Unable to parse identifier">]
 
 type ParseAlterAction<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"">
+	PeekToken<Tokens> extends TokenType<"eot">
 		? [Tokens, SqlParserError<"Expected an ALTER TABLE action">]
-		: PeekToken<Tokens> extends TokenType<infer Action extends string>
-			? ParseAlterActionByHead<Tokens, Action>
-			: never
+		: ParseAlterActionByHead<Tokens, PeekToken<Tokens>>
 
-type ParseAlterActionByHead<Tokens extends TokensList, Action extends string> = Action extends "add"
-	? ParseAlterActionAdd<SkipToken<Tokens>>
-	: Action extends "drop"
-		? ParseAlterActionDrop<SkipToken<Tokens>>
-		: Action extends "rename"
-			? ParseAlterActionRename<SkipToken<Tokens>>
-			: Action extends "alter"
-				? ParseAlterActionAlter<SkipToken<Tokens>>
-				: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
+type ParseAlterActionByHead<Tokens extends TokensList, Action> =
+	Action extends TokenType<"key", "add">
+		? ParseAlterActionAdd<SkipToken<Tokens>>
+		: Action extends TokenType<"key", "drop">
+			? ParseAlterActionDrop<SkipToken<Tokens>>
+			: Action extends TokenType<"key", "rename">
+				? ParseAlterActionRename<SkipToken<Tokens>>
+				: Action extends TokenType<"key", "alter">
+					? ParseAlterActionAlter<SkipToken<Tokens>>
+					: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
 type ParseAlterActionAdd<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"column">
+	PeekToken<Tokens> extends TokenType<"key", "column">
 		? ParseAlterActionAddColumn<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends TokenType<"constraint">
+		: PeekToken<Tokens> extends TokenType<"key", "constraint">
 			? ParseAlterAddConstraint<SkipToken<Tokens>>
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
 type ParseAlterActionDrop<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"column">
+	PeekToken<Tokens> extends TokenType<"key", "column">
 		? ParseAlterActionDropColumn<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends TokenType<"constraint">
+		: PeekToken<Tokens> extends TokenType<"key", "constraint">
 			? ParseAlterDropConstraint<SkipToken<Tokens>>
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
 type ParseAlterActionRename<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"to">
+	PeekToken<Tokens> extends TokenType<"key", "to">
 		? ParseAlterActionRenameTo<SkipToken<Tokens>>
-		: PeekToken<Tokens> extends TokenType<"column">
+		: PeekToken<Tokens> extends TokenType<"key", "column">
 			? ParseAlterActionRenameColumn<SkipToken<Tokens>>
 			: [Tokens, SqlParserError<"Unsupported ALTER TABLE action">]
 
@@ -159,11 +155,12 @@ type ParseAlterActionAlter<Tokens extends TokensList> =
 		? ColKwOk extends true
 			? ParseIdentifierToken<AfterColumn> extends [infer AfterId extends TokensList, infer ColName]
 				? ColName extends string
-					? PeekToken<AfterId> extends TokenType<"set">
-						? ReadExpectedToken<SkipToken<AfterId>, "not", "Expected NOT after SET in ALTER COLUMN"> extends [
-									infer AfterNot extends TokensList,
-									infer NotOk,
-								]
+					? PeekToken<AfterId> extends TokenType<"key", "set">
+						? ReadExpectedToken<
+								SkipToken<AfterId>,
+								"not",
+								"Expected NOT after SET in ALTER COLUMN"
+							> extends [infer AfterNot extends TokensList, infer NotOk]
 							? NotOk extends true
 								? ReadExpectedToken<AfterNot, "null", "Expected NULL after NOT NULL"> extends [
 										infer AfterNull extends TokensList,
@@ -181,16 +178,18 @@ type ParseAlterActionAlter<Tokens extends TokensList> =
 									: never
 								: [AfterNot, Extract<NotOk, SqlParserError<string>>]
 							: never
-						: PeekToken<AfterId> extends TokenType<"drop">
-							? ReadExpectedToken<SkipToken<AfterId>, "not", "Expected NOT after DROP in ALTER COLUMN"> extends [
-									infer AfterNot2 extends TokensList,
-									infer NotOk2,
-								]
+						: PeekToken<AfterId> extends TokenType<"key", "drop">
+							? ReadExpectedToken<
+									SkipToken<AfterId>,
+									"not",
+									"Expected NOT after DROP in ALTER COLUMN"
+								> extends [infer AfterNot2 extends TokensList, infer NotOk2]
 								? NotOk2 extends true
-									? ReadExpectedToken<AfterNot2, "null", "Expected NULL after NOT in DROP NOT NULL"> extends [
-											infer AfterNull2 extends TokensList,
-											infer NullOk2,
-										]
+									? ReadExpectedToken<
+											AfterNot2,
+											"null",
+											"Expected NULL after NOT in DROP NOT NULL"
+										> extends [infer AfterNull2 extends TokensList, infer NullOk2]
 										? NullOk2 extends true
 											? [
 													AfterNull2,
@@ -204,10 +203,10 @@ type ParseAlterActionAlter<Tokens extends TokensList> =
 									: [AfterNot2, Extract<NotOk2, SqlParserError<string>>]
 								: never
 							: [AfterId, SqlParserError<"Expected SET NOT NULL or DROP NOT NULL in ALTER COLUMN">]
-				: [AfterId, Extract<ColName, SqlParserError<string>>]
-			: never
-		: [AfterColumn, Extract<ColKwOk, SqlParserError<string>>]
-	: never
+					: [AfterId, Extract<ColName, SqlParserError<string>>]
+				: never
+			: [AfterColumn, Extract<ColKwOk, SqlParserError<string>>]
+		: never
 
 type ParseAlterActionAddColumn<Tokens extends TokensList> =
 	ReadOptionalIfNotExists<Tokens> extends [
@@ -222,12 +221,12 @@ type ParseAlterActionAddColumn<Tokens extends TokensList> =
 		: never
 
 type ParseAlterActionAddColumnWithFlag<Tokens extends TokensList, IfNotExists extends boolean> =
-	PeekToken<Tokens> extends TokenType<"">
+	PeekToken<Tokens> extends TokenType<"eot">
 		? [Tokens, SqlParserError<"Expected a column definition in ALTER TABLE ADD COLUMN">]
-	: AddColumn<Tokens, {}, never> extends [
-				infer RestAfter extends TokensList,
-				infer Added extends { row: unknown; names: string; error: unknown; facts: unknown },
-		  ]
+		: AddColumn<Tokens, {}, never> extends [
+					infer RestAfter extends TokensList,
+					infer Added extends { row: unknown; names: string; error: unknown; facts: unknown },
+			  ]
 			? [Added["error"]] extends [never]
 				? Added["row"] extends Record<Added["names"], infer Definition>
 					? [
@@ -237,8 +236,7 @@ type ParseAlterActionAddColumnWithFlag<Tokens extends TokensList, IfNotExists ex
 								ifNotExists: IfNotExists
 								name: Added["names"]
 								definition: Definition
-							}
-								& ([Added["facts"]] extends [never] ? {} : { columnFacts: Added["facts"] }),
+							} & ([Added["facts"]] extends [never] ? {} : { columnFacts: Added["facts"] }),
 						]
 					: [RestAfter, SqlParserError<"Unable to parse ALTER TABLE ADD COLUMN action">]
 				: [RestAfter, Extract<Added["error"], SqlParserError<string>>]
@@ -284,16 +282,9 @@ type ParseAlterActionRenameTo<Tokens extends TokensList> =
 		: never
 
 type ParseAlterAddConstraint<Tokens extends TokensList> =
-	ReadExpectedIdentifier<Tokens, "Expected constraint name in ALTER TABLE ADD CONSTRAINT"> extends [
-		infer Rest0 extends TokensList,
-		infer CName,
-	]
-		? CName extends SqlParserError<string>
-			? [Rest0, CName]
-			: CName extends string
-				? ParseAlterAddConstraintAfterName<Rest0, CName>
-				: [Rest0, SqlParserError<"Expected constraint name in ALTER TABLE ADD CONSTRAINT">]
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", infer CName extends string>
+		? ParseAlterAddConstraintAfterName<SkipToken<Tokens>, CName>
+		: [Tokens, SqlParserError<"Expected constraint name in ALTER TABLE ADD CONSTRAINT">]
 
 type ParseAlterAddConstraintAfterName<Tokens extends TokensList, CName extends string> =
 	TryReadConstraintHead<Tokens> extends [infer RestHead extends TokensList, infer Head]
@@ -304,7 +295,11 @@ type ParseAlterAddConstraintAfterName<Tokens extends TokensList, CName extends s
 				: [RestHead, SqlParserError<"Expected constraint definition in ALTER TABLE">]
 		: never
 
-type ParseAlterAddConstraintByKind<Tokens extends TokensList, Kind extends string, CName extends string> = Kind extends "foreign_key"
+type ParseAlterAddConstraintByKind<
+	Tokens extends TokensList,
+	Kind extends string,
+	CName extends string,
+> = Kind extends "foreign_key"
 	? ParseForeignKeyMetaAndRest<Tokens> extends [infer R3 extends TokensList, infer Meta]
 		? Meta extends ForeignRefMeta
 			? [R3, { kind: "add_constraint_fk"; name: CName; refs: Meta }]
@@ -397,6 +392,6 @@ type ParseAlterTableWithFlag<Tokens extends TokensList, IfExists extends boolean
 		: never
 
 type ReadAlterTableTarget<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<"only">
+	PeekToken<Tokens> extends TokenType<"key", "only">
 		? ReadQualifiedIdentifierFromBuffer<SkipToken<Tokens>>
 		: ReadQualifiedIdentifierFromBuffer<Tokens>

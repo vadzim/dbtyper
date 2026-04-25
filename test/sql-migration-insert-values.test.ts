@@ -31,7 +31,7 @@ type _ParseInsertSelectIgnorable = Expect<
 				},
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -63,8 +63,9 @@ type ParseInsertMultiRowStmt = ParseInsertMultiRow[1] extends [unknown, unknown,
 type _ParseInsertMultiRowStmtKind = Expect<
 	Matches<ParseInsertMultiRowStmt extends { kind: infer K } ? K : never, "insert_values">
 >
-type ParseInsertMultiRowValueRows =
-	ParseInsertMultiRowStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type ParseInsertMultiRowValueRows = ParseInsertMultiRowStmt extends { valueTypes: infer V extends unknown[][] }
+	? V
+	: never
 type _ParseInsertMultiRowValuesCount = Expect<Matches<ParseInsertMultiRowValueRows["length"], 2>>
 type _ParseInsertMultiRowValuesFirstRowLen = Expect<Matches<ParseInsertMultiRowValueRows[0]["length"], 2>>
 type _ParseInsertMultiRowValuesSecondRowLen = Expect<Matches<ParseInsertMultiRowValueRows[1]["length"], 2>>
@@ -99,8 +100,9 @@ type ParseInsertDefaultValueStmt = ParseInsertDefaultValue[1] extends [unknown, 
 type _ParseInsertDefaultValueStmtKind = Expect<
 	Matches<ParseInsertDefaultValueStmt extends { kind: infer K } ? K : never, "insert_values">
 >
-type ParseInsertDefaultRows =
-	ParseInsertDefaultValueStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type ParseInsertDefaultRows = ParseInsertDefaultValueStmt extends { valueTypes: infer V extends unknown[][] }
+	? V
+	: never
 type _ParseInsertDefaultRowsCount = Expect<Matches<ParseInsertDefaultRows["length"], 1>>
 type _ParseInsertDefaultRowLen = Expect<Matches<ParseInsertDefaultRows[0]["length"], 2>>
 
@@ -127,13 +129,15 @@ type ParseInsertExtendedLiterals = ParseSqlStatements<
 		insert into app.literal_features (a, b, c, d, e, f, g, h, i, j) values ((1), +2, 3.5, -4.5, +5.5, -6, current_timestamp, current_date, current_time, now());
 	`>
 >
-type ParseInsertExtendedLiteralsStmt =
-	ParseInsertExtendedLiterals[1] extends [unknown, unknown, infer S3] ? S3 : never
+type ParseInsertExtendedLiteralsStmt = ParseInsertExtendedLiterals[1] extends [unknown, unknown, infer S3] ? S3 : never
 type _ParseInsertExtendedLiteralsKind = Expect<
 	Matches<ParseInsertExtendedLiteralsStmt extends { kind: infer K } ? K : never, "insert_values">
 >
-type ParseInsertExtendedLiteralsRows =
-	ParseInsertExtendedLiteralsStmt extends { valueTypes: infer V extends unknown[][] } ? V : never
+type ParseInsertExtendedLiteralsRows = ParseInsertExtendedLiteralsStmt extends {
+	valueTypes: infer V extends unknown[][]
+}
+	? V
+	: never
 type _ParseInsertExtendedLiteralsRowCount = Expect<Matches<ParseInsertExtendedLiteralsRows["length"], 1>>
 type _ParseInsertExtendedLiteralsValueCount = Expect<Matches<ParseInsertExtendedLiteralsRows[0]["length"], 10>>
 

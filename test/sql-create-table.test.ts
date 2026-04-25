@@ -73,7 +73,7 @@ type _Invalid = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -109,16 +109,16 @@ type _WithConstraintsShape = Expect<
 						toSchema: undefined
 						toTable: "orgs"
 					}
-						intraTableConstraints: [
-							{ kind: "primary_key"; columns: ["id"] },
-							{ kind: "unique"; columns: ["email"] },
-						]
-						namedIntraTableConstraints: [{ name: "accounts_pk"; kind: "primary_key"; columns: ["id"] }]
-					},
-				],
-			]
-		>
+					intraTableConstraints: [
+						{ kind: "primary_key"; columns: ["id"] },
+						{ kind: "unique"; columns: ["email"] },
+					]
+					namedIntraTableConstraints: [{ name: "accounts_pk"; kind: "primary_key"; columns: ["id"] }]
+				},
+			],
+		]
 	>
+>
 
 type BadUniqueRef = ParseSqlStatements<
 	ParseSqlTokens<`
@@ -205,20 +205,20 @@ type _WithCommentsShape = Expect<
 				{
 					kind: "create_table"
 					name: ["commented_users"]
-						row: { email: string; id: number; org_id: number | null }
-						refs: {
-							from: ""
-							columnPairs: [["org_id", "id"]]
-							toSchema: undefined
-							toTable: "orgs"
-						}
-						intraTableConstraints: [{ kind: "primary_key"; columns: ["id"] }]
-						namedIntraTableConstraints: [{ name: "users_pk"; kind: "primary_key"; columns: ["id"] }]
-					},
-				],
-			]
-		>
+					row: { email: string; id: number; org_id: number | null }
+					refs: {
+						from: ""
+						columnPairs: [["org_id", "id"]]
+						toSchema: undefined
+						toTable: "orgs"
+					}
+					intraTableConstraints: [{ kind: "primary_key"; columns: ["id"] }]
+					namedIntraTableConstraints: [{ name: "users_pk"; kind: "primary_key"; columns: ["id"] }]
+				},
+			],
+		]
 	>
+>
 
 type BadRefWithComments = ParseSqlStatements<
 	ParseSqlTokens<`
@@ -238,11 +238,11 @@ type _BadRefWithComments = Expect<
 				{
 					kind: "create_table"
 					name: ["bad_ref_with_comments"]
-						row: { id: number }
-						refs: undefined
-						intraTableConstraints: [{ kind: "unique"; columns: ["missing_col"] }]
-					},
-				],
+					row: { id: number }
+					refs: undefined
+					intraTableConstraints: [{ kind: "unique"; columns: ["missing_col"] }]
+				},
+			],
 		]
 	>
 >
@@ -270,22 +270,22 @@ type _QuotedIdentifiersShape = Expect<
 					kind: "create_table"
 					name: ["account users"]
 					row: { id: number; "org-id": number | null; "user name": string | null }
-						refs: {
-							from: ""
-							columnPairs: [["org-id", "id"]]
-							toSchema: undefined
-							toTable: "orgs"
-						}
-						intraTableConstraints: [
-							{ kind: "primary_key"; columns: ["id"] },
-							{ kind: "unique"; columns: ["user name"] },
-						]
-						namedIntraTableConstraints: [{ name: "users pk"; kind: "primary_key"; columns: ["id"] }]
-					},
-				],
-			]
-		>
+					refs: {
+						from: ""
+						columnPairs: [["org-id", "id"]]
+						toSchema: undefined
+						toTable: "orgs"
+					}
+					intraTableConstraints: [
+						{ kind: "primary_key"; columns: ["id"] },
+						{ kind: "unique"; columns: ["user name"] },
+					]
+					namedIntraTableConstraints: [{ name: "users pk"; kind: "primary_key"; columns: ["id"] }]
+				},
+			],
+		]
 	>
+>
 
 type BadQuotedRef = ParseSqlStatements<
 	ParseSqlTokens<`
@@ -304,14 +304,14 @@ type _BadQuotedRef = Expect<
 				{
 					kind: "create_table"
 					name: ["q_bad"]
-						row: { id: number }
-						refs: undefined
-						intraTableConstraints: [{ kind: "unique"; columns: ["missing id"] }]
-					},
-				],
+					row: { id: number }
+					refs: undefined
+					intraTableConstraints: [{ kind: "unique"; columns: ["missing id"] }]
+				},
+			],
 		]
 	>
-	>
+>
 
 type ColumnFacts = ParseSqlStatements<
 	ParseSqlTokens<`

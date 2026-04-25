@@ -253,16 +253,14 @@ type _UnsupportedAlterAction = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
 	>
 >
 
-type AlterColumnSetNotNull = ParseSqlStatements<
-	ParseSqlTokens<`alter table users alter column email set not null`>
->
+type AlterColumnSetNotNull = ParseSqlStatements<ParseSqlTokens<`alter table users alter column email set not null`>>
 type _AlterColumnSetNotNull = Expect<
 	Matches<
 		AlterColumnSetNotNull,

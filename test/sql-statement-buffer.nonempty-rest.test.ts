@@ -230,7 +230,7 @@ type _UnknownStatement = Expect<
 			EmptyTokenList,
 			{
 				kind: "skipped-statement"
-				token: TokenType<";">
+				token: TokenType<"key", ";">
 			},
 		]
 	>

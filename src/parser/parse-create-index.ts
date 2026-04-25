@@ -1,13 +1,12 @@
 import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type {
-	ReadExpectedIdentifier,
 	ReadExpectedToken,
 	ReadOptionalIfNotExists,
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
-import type { TokensList, SqlParserError } from "../../core/sql-tokens.ts"
+import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenType } from "../../core/sql-tokens.ts"
 
 export type CreateIndexStatement = {
 	kind: "create_index_validated"
@@ -30,14 +29,9 @@ export type ParseCreateIndex<Tokens extends TokensList, Unique extends boolean =
 		: never
 
 type ParseCreateIndexAfterIfNotExists<Tokens extends TokensList, Unique extends boolean, IfNotExists extends boolean> =
-	ReadExpectedIdentifier<Tokens, "Expected index name in CREATE INDEX"> extends [
-		infer Rest1 extends TokensList,
-		infer IdxName,
-	]
-		? IdxName extends SqlParserError<string>
-			? [Rest1, IdxName]
-			: ParseCreateIndexAfterOn<Rest1, Unique, IfNotExists>
-		: never
+	PeekToken<Tokens> extends TokenType<"ident", string>
+		? ParseCreateIndexAfterOn<SkipToken<Tokens>, Unique, IfNotExists>
+		: [Tokens, SqlParserError<"Expected index name in CREATE INDEX">]
 
 type ParseCreateIndexAfterOn<Tokens extends TokensList, Unique extends boolean, IfNotExists extends boolean> =
 	ReadExpectedToken<Tokens, "on", "Expected ON in CREATE INDEX"> extends [infer Rest2 extends TokensList, infer OkOn]

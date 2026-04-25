@@ -125,7 +125,7 @@ type _ParseUnknown = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -144,7 +144,7 @@ type _ParseInvalidKeywordBoundary = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]
@@ -160,7 +160,7 @@ type _ParseInvalidDropBoundary = Expect<
 			[
 				{
 					kind: "skipped-statement"
-					token: TokenType<";">
+					token: TokenType<"key", ";">
 				},
 			],
 		]

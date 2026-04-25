@@ -93,12 +93,10 @@ type ParseValuesRows<Tokens extends TokensList> =
 		: never
 
 type ParseValuesRowsTail<Tokens extends TokensList, Acc extends unknown[][]> =
-	PeekToken<Tokens> extends TokenType<",">
-		? ParseValuesRowsAfterComma<SkipToken<Tokens>, Acc>
-		: [Tokens, Acc]
+	PeekToken<Tokens> extends TokenType<"key", ","> ? ParseValuesRowsAfterComma<SkipToken<Tokens>, Acc> : [Tokens, Acc]
 
 type ParseValuesRowsAfterComma<Tokens extends TokensList, Acc extends unknown[][]> =
-	PeekToken<Tokens> extends TokenType<"(">
+	PeekToken<Tokens> extends TokenType<"key", "(">
 		? ParseValueList<Tokens> extends [infer Rest extends TokensList, infer Row]
 			? Row extends SqlParserError<string>
 				? [Rest, Row]
@@ -119,53 +117,52 @@ type ParseValueList<Tokens extends TokensList> =
 		: never
 
 type ParseValueListTail<Tokens extends TokensList, Acc extends unknown[] = []> =
-	PeekToken<Tokens> extends TokenType<")">
+	PeekToken<Tokens> extends TokenType<"key", ")">
 		? [SkipToken<Tokens>, Acc]
 		: ParseOneValue<Tokens> extends [infer After extends TokensList, infer V]
 			? V extends SqlParserError<string>
 				? [After, V]
-				: PeekToken<After> extends TokenType<",">
+				: PeekToken<After> extends TokenType<"key", ",">
 					? ParseValueListTail<SkipToken<After>, [...Acc, V]>
-					: PeekToken<After> extends TokenType<")">
+					: PeekToken<After> extends TokenType<"key", ")">
 						? [SkipToken<After>, [...Acc, V]]
 						: [After, SqlParserError<"Expected ) or comma after INSERT value">]
 			: never
 
 type ParseOneValue<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<infer T extends string>
-		? T extends "null"
-			? [SkipToken<Tokens>, null]
-			: T extends "true"
-				? [SkipToken<Tokens>, true]
-				: T extends "false"
-					? [SkipToken<Tokens>, false]
-					: T extends "("
-						? ParseParenthesizedValue<SkipToken<Tokens>>
-					: T extends "default"
+	PeekToken<Tokens> extends TokenType<"key", "null">
+		? [SkipToken<Tokens>, null]
+		: PeekToken<Tokens> extends TokenType<"key", "true">
+			? [SkipToken<Tokens>, true]
+			: PeekToken<Tokens> extends TokenType<"key", "false">
+				? [SkipToken<Tokens>, false]
+				: PeekToken<Tokens> extends TokenType<"key", "(">
+					? ParseParenthesizedValue<SkipToken<Tokens>>
+					: PeekToken<Tokens> extends TokenType<"key", "default">
 						? [SkipToken<Tokens>, unknown]
-						: T extends "current_timestamp" | "current_date" | "current_time"
+						: PeekToken<Tokens> extends TokenType<
+									"key",
+									"current_timestamp" | "current_date" | "current_time"
+							  >
 							? [SkipToken<Tokens>, unknown]
-							: T extends "now"
+							: PeekToken<Tokens> extends TokenType<"key", "now">
 								? ParseNowFunctionValue<SkipToken<Tokens>>
-								: T extends "+" | "-"
+								: PeekToken<Tokens> extends TokenType<"key", "+" | "-">
 									? ParseSignedNumberValue<SkipToken<Tokens>>
-									: NumericTokenToNumberLike<T> extends true
+									: PeekToken<Tokens> extends TokenType<"key", `${number}`>
 										? ParseNumberishTail<Tokens>
-					: T extends `"${string}"`
-						? [SkipToken<Tokens>, string]
-						: T extends `'${string}'`
-							? [SkipToken<Tokens>, string]
-							: [Tokens, SqlParserError<"Unsupported value in INSERT">]
-		: [Tokens, SqlParserError<"Unsupported value in INSERT">]
+										: PeekToken<Tokens> extends TokenType<"string", string>
+											? [SkipToken<Tokens>, string]
+											: [Tokens, SqlParserError<"Unsupported value in INSERT">]
 
 type ParseParenthesizedValue<Tokens extends TokensList> =
 	ParseOneValue<Tokens> extends [infer Rest extends TokensList, infer V]
 		? V extends SqlParserError<string>
 			? [Rest, V]
 			: ReadExpectedToken<Rest, ")", "Expected ) after parenthesized INSERT value"> extends [
-					infer RestClose extends TokensList,
-					infer OkClose,
-				]
+						infer RestClose extends TokensList,
+						infer OkClose,
+				  ]
 				? OkClose extends true
 					? [RestClose, V]
 					: [RestClose, Extract<OkClose, SqlParserError<string>>]
@@ -187,30 +184,19 @@ type ParseNowFunctionValue<Tokens extends TokensList> =
 		: never
 
 type ParseSignedNumberValue<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<infer T extends string>
-		? NumericTokenToNumberLike<T> extends true
-			? ParseNumberishTail<Tokens>
-			: [Tokens, SqlParserError<"Expected number after sign in INSERT value">]
+	PeekToken<Tokens> extends TokenType<"key", `${number}`>
+		? ParseNumberishTail<Tokens>
 		: [Tokens, SqlParserError<"Expected number after sign in INSERT value">]
 
 type ParseNumberishTail<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<infer T extends string>
-		? NumericTokenToNumberLike<T> extends true
-			? ParseNumberishAfterInt<SkipToken<Tokens>>
-			: [Tokens, SqlParserError<"Unsupported value in INSERT">]
-		: [Tokens, SqlParserError<"Unsupported value in INSERT">]
-
-type ParseNumberishAfterInt<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<".">
-		? ParseNumberishDecimalTail<SkipToken<Tokens>>
+	PeekToken<Tokens> extends TokenType<"key", `${number}`>
+		? ParseNumberishAfterInt<SkipToken<Tokens>>
 		: [Tokens, number]
 
-type ParseNumberishDecimalTail<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenType<infer T extends string>
-		? NumericTokenToNumberLike<T> extends true
-			? [SkipToken<Tokens>, number]
-			: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
-		: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
+type ParseNumberishAfterInt<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenType<"key", "."> ? ParseNumberishDecimalTail<SkipToken<Tokens>> : [Tokens, number]
 
-type NumericTokenToNumberLike<T extends string> = StripWrappedDoubleQuotes<T> extends `${number}` ? true : false
-type StripWrappedDoubleQuotes<T extends string> = T extends `"${infer Inner}"` ? Inner : T
+type ParseNumberishDecimalTail<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenType<"key", `${number}`>
+		? [SkipToken<Tokens>, number]
+		: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
