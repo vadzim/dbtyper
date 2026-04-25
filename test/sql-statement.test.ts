@@ -11,14 +11,14 @@ type CreateUsersStatement = ReturnType<typeof sqlStatement<"create table users (
 
 type _CreateUsersStatementParsedType = Expect<
 	Matches<
-		CreateUsersStatement["__sql_parsed__"],
+		CreateUsersStatement["parsedSql"],
 		ParseSqlStatementsRecovering<ParseSqlTokens<"create table users (id int not null, name text)">>[1]
 	>
 >
 
 type _CreateUsersStatementParsedShape = Expect<
 	Matches<
-		CreateUsersStatement["__sql_parsed__"],
+		CreateUsersStatement["parsedSql"],
 		[
 			{
 				kind: "create_table"
@@ -58,7 +58,7 @@ describe("sql statement", () => {
 			>
 		>
 
-		assert.deepEqual(db.getMigrations(), [
+		assert.deepEqual(db.migrations, [
 			{ source: "create schema public", path: "" },
 			{ source: "create table users (id int not null, name text)", path: "" },
 		])

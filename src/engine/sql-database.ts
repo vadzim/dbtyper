@@ -35,10 +35,7 @@ export type SqlDatabaseLike = {
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 type MigrationText<S extends string> = S & {
-	__sql_parsed__: ParseSqlStatementsRecovering<ParseSqlTokens<S>> extends [
-		infer _Rest extends TokensList,
-		infer Parsed,
-	]
+	parsedSql: ParseSqlStatementsRecovering<ParseSqlTokens<S>> extends [infer _Rest extends TokensList, infer Parsed]
 		? Parsed
 		: never
 }
@@ -63,10 +60,10 @@ export class DBMigrations<Database extends SqlDatabaseLike | SqlParserError<stri
 	#defaultSchema: string
 
 	apply<Parsed extends SqlStatement[]>(
-		statement: string & { __sql_parsed__: Parsed },
+		statement: string & { parsedSql: Parsed },
 	): DBMigrations<SqlApplyStatements<Database, Parsed>>
 	apply<Parsed extends SqlStatement[]>(
-		statement: Promise<{ default: { path: string; source: string & { __sql_parsed__: Parsed } } }>,
+		statement: Promise<{ default: { path: string; source: string & { parsedSql: Parsed } } }>,
 	): DBMigrations<SqlApplyStatements<Database, Parsed>>
 	apply(statement: string | Promise<{ default: { source: string; path: string } }>) {
 		return new DBMigrations(this.#defaultSchema, {
@@ -129,18 +126,10 @@ export class CompiledDataBase<Database extends SqlDatabaseLike | SqlParserError<
 	}
 
 	constructor(migrations: readonly { source: string; path: string }[], defaultSchema: string) {
-		this.#migrations = migrations
-		this.#defaultSchema = defaultSchema
+		this.migrations = migrations
+		this.defaultSchema = defaultSchema
 	}
 
-	getMigrations() {
-		return this.#migrations
-	}
-
-	getDefaultSchema() {
-		return this.#defaultSchema
-	}
-
-	#migrations: readonly { source: string; path: string }[]
-	#defaultSchema: string
+	migrations: readonly { source: string; path: string }[]
+	defaultSchema: string
 }
