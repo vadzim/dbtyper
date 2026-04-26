@@ -29,39 +29,34 @@ type MakeTokensBuffer<Token extends TokenType<TokenKind, string>, Rest extends s
 }
 
 /** Lex one token from a string (internal) */
-type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
-	? ReadTokenFromString<Rest>
-	: S extends `"${infer String}"${infer Rest}`
-		? MakeTokensBuffer<TokenIdent<String>, Rest>
-		: S extends `'${infer String}'${infer Rest}`
-			? MakeTokensBuffer<TokenString<String>, Rest>
-			: S extends `$$${infer String}$$${infer Rest}`
+type ReadTokenFromString<Text extends string> =
+	SkipSpaces<Text> extends infer S
+		? S extends `"${infer String}"${infer Rest}`
+			? MakeTokensBuffer<TokenIdent<String>, Rest>
+			: S extends `'${infer String}'${infer Rest}`
 				? MakeTokensBuffer<TokenString<String>, Rest>
-				: ReadTaggedDollar<S> extends {
-							__token__: infer String extends string
-							__rest__: infer Rest extends string
-					  }
+				: S extends `$$${infer String}$$${infer Rest}`
 					? MakeTokensBuffer<TokenString<String>, Rest>
-					: S extends `\`${infer String}\`${infer Rest}`
-						? MakeTokensBuffer<TokenIdent<String>, Rest>
-						: S extends `--${infer Comment}`
-							? Comment extends `${string}\n${infer Rest}`
-								? ReadTokenFromString<Rest>
-								: MakeTokensBuffer<TokenEot, "">
-							: S extends `/*${infer Comment}`
-								? ReadTokenFromString<SkipMultiComment<Comment>>
-								: S extends `${infer Head}${infer Rest}`
-									? Head extends StartTokenChar
-										? OptimizedBySpaceReadTokenChars<Rest> extends {
-												__token__: infer Word extends string
-												__rest__: infer Tail extends string
-											}
-											? MakeTokensBuffer<CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Tail>
-											: MakeTokensBuffer<TokenKey<Head>, Rest>
+					: ReadTaggedDollar<S> extends {
+								__token__: infer String extends string
+								__rest__: infer Rest extends string
+						  }
+						? MakeTokensBuffer<TokenString<String>, Rest>
+						: S extends `\`${infer String}\`${infer Rest}`
+							? MakeTokensBuffer<TokenIdent<String>, Rest>
+							: S extends `${infer Head}${infer Rest}`
+								? Head extends StartTokenChar
+									? OptimizedBySpaceReadTokenChars<Rest> extends {
+											__token__: infer Word extends string
+											__rest__: infer Tail extends string
+										}
+										? MakeTokensBuffer<CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Tail>
 										: MakeTokensBuffer<TokenKey<Head>, Rest>
-									: MakeTokensBuffer<TokenEot, "">
+									: MakeTokensBuffer<TokenKey<Head>, Rest>
+								: MakeTokensBuffer<TokenEot, "">
+		: never
 
-type ReadTaggedDollar<S extends string> = S extends `$${infer Tag}$${infer Rest}`
+type ReadTaggedDollar<S> = S extends `$${infer Tag}$${infer Rest}`
 	? ReadTokenChars<Tag>["__rest__"] extends ""
 		? Rest extends `${infer String}$${Tag}$${infer Rest2}`
 			? { __token__: String; __rest__: Rest2 }
@@ -93,7 +88,26 @@ type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${in
 		: { __token__: Acc; __rest__: S }
 	: { __token__: Acc; __rest__: "" }
 
-type Ws = "\x20" | "\n" | "\t" | "\r"
+type SkipSpaces<S> =
+	SkipSomeSpaces<S> extends [infer R, infer HasMoreSpace] ? (HasMoreSpace extends true ? SkipSpaces<R> : R) : never
+
+type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
+	? [S, true]
+	: S extends `\x20${infer Rest}`
+		? SkipSomeSpaces<Rest, [...Acc, 1]>
+		: S extends `\n${infer Rest}`
+			? SkipSomeSpaces<Rest, [...Acc, 1]>
+			: S extends `\t${infer Rest}`
+				? SkipSomeSpaces<Rest, [...Acc, 1]>
+				: S extends `\r${infer Rest}`
+					? SkipSomeSpaces<Rest, [...Acc, 1]>
+					: S extends `--${infer Comment}`
+						? Comment extends `${string}\n${infer Rest}`
+							? SkipSomeSpaces<Rest, [...Acc, 1]>
+							: ["", false]
+						: S extends `/*${infer Comment}`
+							? SkipSomeSpaces<SkipMultiComment<Comment>, [...Acc, 1]>
+							: [S, false]
 
 type StartTokenChar = Letter | Digit | "_"
 
