@@ -139,8 +139,10 @@ type ServiceWords = keyof {
 	add: true
 	alter: true
 	and: true
+	"=": true
 	as: true
 	always: true
+	asc: true
 	begin: true
 	by: true
 	check: true
@@ -154,6 +156,7 @@ type ServiceWords = keyof {
 	database: true
 	declare: true
 	default: true
+	desc: true
 	delete: true
 	distinct: true
 	drop: true

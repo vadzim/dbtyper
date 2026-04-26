@@ -1,28 +1,32 @@
 import type { AlterTableStatement } from "../parser/parse-alter-table.ts"
-import type { ForeignRefMeta, FkColumnPair } from "../parser/sql-constraints-fk.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-import type { SqlDatabaseLike, SqlSchemaLike } from "./sql-database.ts"
+import type {
+	JsqlFkColumnPair,
+	JsqlForeignKeyRef,
+	JsqlConstraintEntry,
+	JsqlDatabaseShape,
+	JsqlSchemaShape,
+} from "./jsql-shapes.ts"
 import type { ResolveQualifiedIdentifier, TableExists } from "./helpers/engine-helpers.ts"
 import type { ValidateAlterTableFkRef } from "./helpers/validate-fk-refs.ts"
 import type {
 	JsqlAddConstraint,
 	JsqlAddColumnFacts,
-	JsqlConstraintEntry,
 	JsqlDropColumnFacts,
 	JsqlDropConstraint,
 	JsqlRenameColumnFacts,
 } from "./table-constraint-meta.ts"
 
-export type ApplyAlterTable<Db extends SqlDatabaseLike, Alter extends AlterTableStatement> =
+export type ApplyAlterTable<Db extends JsqlDatabaseShape, Alter extends AlterTableStatement> =
 	ResolveQualifiedIdentifier<Alter["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,
 	]
-		? Db["schemas"] extends Record<string, SqlSchemaLike>
+		? Db["schemas"] extends Record<string, JsqlSchemaShape>
 			? TableExists<Db["schemas"], Schema, Table> extends true
 				? ApplyAlterOnExistingTable<
 						Db,
-						Extract<Db["schemas"], Record<string, SqlSchemaLike>>,
+						Extract<Db["schemas"], Record<string, JsqlSchemaShape>>,
 						Schema,
 						Table,
 						Alter["action"]
@@ -57,8 +61,8 @@ type ValidateConstraintColumnsExist<Row extends Record<string, unknown>, Cols ex
 		: SqlParserError<"Internal ALTER TABLE constraint columns error">
 
 type ApplyAlterOnExistingTable<
-	Db extends SqlDatabaseLike,
-	Schemas extends Record<string, SqlSchemaLike>,
+	Db extends JsqlDatabaseShape,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Schema extends string,
 	Table extends string,
 	Action,
@@ -87,7 +91,7 @@ type ApplyAlterOnExistingTable<
 		: SqlParserError<"Internal SqlApplyAlterTable action error">
 
 type ApplyTableAction<
-	Db extends SqlDatabaseLike,
+	Db extends JsqlDatabaseShape,
 	Tbl extends { columns: unknown },
 	Action,
 	SchemaTables extends Record<string, unknown>,
@@ -155,7 +159,7 @@ type ApplyTableAction<
 				: Action extends {
 							kind: "add_constraint_fk"
 							name: infer Cn extends string
-							refs: infer R extends ForeignRefMeta
+							refs: infer R extends JsqlForeignKeyRef
 					  }
 					? ValidateAlterTableFkRef<Db, Schema, CurrentTable, DataColumns<Tbl>, R> extends infer Err
 						? [Err] extends [never]
@@ -277,9 +281,9 @@ type RenameStringList<Col extends string[], From extends string, To extends stri
 		: [A, ...RenameStringList<R, From, To>]
 	: Col
 
-type RenamePairs<P extends FkColumnPair[], From extends string, To extends string> = P extends [
+type RenamePairs<P extends JsqlFkColumnPair[], From extends string, To extends string> = P extends [
 	[infer L extends string, infer Rc],
-	...infer Rest extends FkColumnPair[],
+	...infer Rest extends JsqlFkColumnPair[],
 ]
 	? L extends From
 		? [[To, Rc], ...RenamePairs<Rest, From, To>]
@@ -291,7 +295,7 @@ type RenamePairs<P extends FkColumnPair[], From extends string, To extends strin
 type RenameJsqlMap<M extends { [K: string]: JsqlConstraintEntry }, From extends string, To extends string> = {
 	[Kn in keyof M]: M[Kn] extends { kind: "primary_key" | "unique"; columns: infer C extends string[] }
 		? { kind: M[Kn]["kind"]; columns: RenameStringList<C, From, To> }
-		: M[Kn] extends { kind: "foreign_key"; refs: infer R extends ForeignRefMeta }
+		: M[Kn] extends { kind: "foreign_key"; refs: infer R extends JsqlForeignKeyRef }
 			? {
 					kind: "foreign_key"
 					refs: {
@@ -334,7 +338,7 @@ type RenameTableInSchema<
 		: SqlParserError<`Unknown altered table "${CurrentTable}" in database`>
 
 type UpdateSchemaTableRow<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Schema extends string,
 	Table extends string,
 	NextTable,
@@ -347,7 +351,7 @@ type UpdateSchemaTableRow<
 }
 
 type ReplaceSchema<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Schema extends string,
 	NextSchemaTables extends Record<string, unknown>,
 > = {

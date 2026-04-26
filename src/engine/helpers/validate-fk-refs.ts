@@ -1,13 +1,12 @@
 import type { CreateTableStatement } from "../../parser/parse-create-table.ts"
 import type {
-	ForeignRefMeta,
 	IntraTableConstraintRef,
 	ValidateColumnTupleRefs,
 	ValidateFkLocalColumnPairs,
 	ValidateFkReferencedColumnPairs,
 } from "../../parser/sql-constraints-fk.ts"
 import type { SqlParserError } from "../../../core/sql-tokens.ts"
-import type { SqlDatabaseLike } from "../sql-database.ts"
+import type { JsqlForeignKeyRef, JsqlDatabaseShape } from "../jsql-shapes.ts"
 
 type NonTrue<Value> = Value extends true ? never : Value
 
@@ -26,7 +25,7 @@ type ValidateIntraConstraintsOnRow<Row, Intra extends IntraTableConstraintRef[]>
 
 type ValidateFkLocalsOnRow<Row, Refs> = [Refs] extends [undefined | never]
 	? never
-	: Refs extends ForeignRefMeta
+	: Refs extends JsqlForeignKeyRef
 		? NonTrue<ValidateFkLocalColumnPairs<Refs["columnPairs"], Extract<keyof Row, string>>>
 		: never
 
@@ -39,29 +38,29 @@ export type ValidateCreateTableLocalRefs<Row, Intra extends IntraTableConstraint
 		: ValidateFkLocalsOnRow<Row, Refs>
 
 export type ValidateCreateTableFkRefs<
-	Db extends SqlDatabaseLike,
+	Db extends JsqlDatabaseShape,
 	Create extends CreateTableStatement,
 	NewSchema extends string,
 	NewTable extends string,
 > = Create["refs"] extends undefined ? never : ValidateFkRefsUnion<Db, Create, NewSchema, NewTable, Create["refs"]>
 
-type ResolveFkTargetSchema<R extends ForeignRefMeta, DbDefault extends string> = [R["toSchema"]] extends [undefined]
+type ResolveFkTargetSchema<R extends JsqlForeignKeyRef, DbDefault extends string> = [R["toSchema"]] extends [undefined]
 	? DbDefault
 	: Extract<R["toSchema"], string>
 
 type ValidateFkRefsUnion<
-	Db extends SqlDatabaseLike,
+	Db extends JsqlDatabaseShape,
 	Create extends CreateTableStatement,
 	NewSchema extends string,
 	NewTable extends string,
 	Refs,
-> = Refs extends ForeignRefMeta ? ValidateOneCreateTableFkRef<Db, Create, NewSchema, NewTable, Refs> : never
+> = Refs extends JsqlForeignKeyRef ? ValidateOneCreateTableFkRef<Db, Create, NewSchema, NewTable, Refs> : never
 
 type IsSelfRef<
 	NewSchema extends string,
 	NewTable extends string,
 	TargetSchema extends string,
-	R extends ForeignRefMeta,
+	R extends JsqlForeignKeyRef,
 > = TargetSchema extends NewSchema
 	? NewSchema extends TargetSchema
 		? R["toTable"] extends NewTable
@@ -72,7 +71,7 @@ type IsSelfRef<
 		: false
 	: false
 
-type UnknownRefTableError<R extends ForeignRefMeta, TargetSchema extends string, NewSchema extends string> = [
+type UnknownRefTableError<R extends JsqlForeignKeyRef, TargetSchema extends string, NewSchema extends string> = [
 	R["toSchema"],
 ] extends [undefined]
 	? TargetSchema extends NewSchema
@@ -82,16 +81,16 @@ type UnknownRefTableError<R extends ForeignRefMeta, TargetSchema extends string,
 		: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
 	: SqlParserError<`Unknown referenced table "${TargetSchema}.${R["toTable"]}" in database`>
 
-type ValidateFkTargetColumns<Row, Pairs extends ForeignRefMeta["columnPairs"]> = NonTrue<
+type ValidateFkTargetColumns<Row, Pairs extends JsqlForeignKeyRef["columnPairs"]> = NonTrue<
 	ValidateFkReferencedColumnPairs<Pairs, Extract<keyof Row, string>>
 >
 
 type ValidateOneCreateTableFkRef<
-	Db extends SqlDatabaseLike,
+	Db extends JsqlDatabaseShape,
 	Create extends CreateTableStatement,
 	NewSchema extends string,
 	NewTable extends string,
-	R extends ForeignRefMeta,
+	R extends JsqlForeignKeyRef,
 > =
 	ResolveFkTargetSchema<R, Db["defaultSchema"]> extends infer TargetSchema extends string
 		? IsSelfRef<NewSchema, NewTable, TargetSchema, R> extends true
@@ -108,11 +107,11 @@ type ValidateOneCreateTableFkRef<
 
 /** FK validation for `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY` on an existing typed row. */
 export type ValidateAlterTableFkRef<
-	Db extends SqlDatabaseLike,
+	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
 	Row extends Record<string, unknown>,
-	R extends ForeignRefMeta,
+	R extends JsqlForeignKeyRef,
 > =
 	ResolveFkTargetSchema<R, Db["defaultSchema"]> extends infer TargetSchema extends string
 		? IsSelfRef<Schema, Table, TargetSchema, R> extends true

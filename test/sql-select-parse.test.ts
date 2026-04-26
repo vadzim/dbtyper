@@ -16,8 +16,9 @@ type _OneStmt = Expect<
 			[
 				{
 					kind: "select"
+					distinct: false
 					columns: "star"
-					from: ["b", "a"]
+					from: { primary: ["b", "a"]; joins: [] }
 				},
 			],
 		]
@@ -33,8 +34,9 @@ type _NamedCols = Expect<
 			[
 				{
 					kind: "select"
-					columns: ["x", "y"]
-					from: ["t"]
+					distinct: false
+					columns: [{ name: "x" }, { name: "y" }]
+					from: { primary: ["t"]; joins: [] }
 				},
 			],
 		]
@@ -44,25 +46,36 @@ type _NamedCols = Expect<
 /** Buffer after the `select` keyword; stop at `;`. */
 type AfterSelectSemicolon = ParseSelect<ParseSqlTokens<"* from app.users;">>
 type _AfterSelectSemicolon = Expect<
-	Matches<AfterSelectSemicolon, [EmptyTokenList, { kind: "select"; columns: "star"; from: ["users", "app"] }]>
+	Matches<
+		AfterSelectSemicolon,
+		[EmptyTokenList, { kind: "select"; distinct: false; columns: "star"; from: { primary: ["users", "app"]; joins: [] } }]
+	>
 >
 
 /** Subselect end: `)`; rest is after the closing paren. */
 type AfterSelectParen = ParseSelect<ParseSqlTokens<"* from t )">>
 type _AfterSelectParen = Expect<
-	Matches<AfterSelectParen, [ParseSqlTokens<"">, { kind: "select"; columns: "star"; from: ["t"] }]>
+	Matches<
+		AfterSelectParen,
+		[ParseSqlTokens<"">, { kind: "select"; distinct: false; columns: "star"; from: { primary: ["t"]; joins: [] } }]
+	>
 >
 
 type _ParenRestIsEmpty = Expect<Matches<AfterSelectParen[0], ParseSqlTokens<"">>>
 
 type DistinctStar = ParseSelect<ParseSqlTokens<"distinct * from t;">>
-type _DistinctStar = Expect<Matches<DistinctStar, [EmptyTokenList, { kind: "select"; columns: "star"; from: ["t"] }]>>
+type _DistinctStar = Expect<
+	Matches<DistinctStar, [EmptyTokenList, { kind: "select"; distinct: true; columns: "star"; from: { primary: ["t"]; joins: [] } }]>
+>
 
 type SelectThenComma = ParseSqlTokens<"select a, b from t;">
 type _TopLevelStillWorks = Expect<
 	Matches<
 		ParseSqlStatements<SelectThenComma>,
-		[EmptyTokenList, [{ kind: "select"; columns: ["a", "b"]; from: ["t"] }]]
+		[
+			EmptyTokenList,
+			[{ kind: "select"; distinct: false; columns: [{ name: "a" }, { name: "b" }]; from: { primary: ["t"]; joins: [] } }],
+		]
 	>
 >
 

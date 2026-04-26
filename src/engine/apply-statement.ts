@@ -1,4 +1,4 @@
-import type { SqlDatabaseLike } from "./sql-database.ts"
+import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
 import type { SkippedStatement } from "../parser/skip-statement.ts"
 import type { CreateIndexStatement } from "../parser/parse-create-index.ts"
@@ -31,9 +31,9 @@ export type SqlStatement =
 	| SqlParserError<string>
 
 export type SqlApplyStatement<
-	Db extends SqlDatabaseLike | SqlParserError<string>,
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Statement extends SqlStatement,
-> = Db extends SqlDatabaseLike
+> = Db extends JsqlDatabaseShape
 	? Statement extends SkippedStatement
 		? Db
 		: Statement extends CreateIndexStatement
@@ -58,7 +58,7 @@ export type SqlApplyStatement<
 	: Db
 
 export type SqlApplyStatements<
-	Db extends SqlDatabaseLike | SqlParserError<string>,
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Statements extends SqlStatement[] | SqlParserError<string>,
 > =
 	Statements extends SqlParserError<string>

@@ -7,12 +7,7 @@ import type {
 	ReadQualifiedIdentifierFromBuffer,
 	SqlQualifiedIdentifier,
 } from "./sql-primitives.ts"
-import type {
-	ForeignRefMeta,
-	ParseColumnList,
-	ParseForeignKeyMetaAndRest,
-	TryReadConstraintHead,
-} from "./sql-constraints-fk.ts"
+import type { ParseColumnList, ParseForeignKeyMetaAndRest, TryReadConstraintHead } from "./sql-constraints-fk.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -22,6 +17,7 @@ import type {
 	TokenIdent,
 	TokenKey,
 } from "../../core/sql-tokens.ts"
+import type { JsqlForeignKeyRef } from "../engine/jsql-shapes.ts"
 
 export type AlterTableStatement = {
 	kind: "alter_table"
@@ -70,7 +66,7 @@ type SqlAlterTableActionRenameColumn = {
 type SqlAlterTableActionAddConstraintFk = {
 	kind: "add_constraint_fk"
 	name: string
-	refs: ForeignRefMeta
+	refs: JsqlForeignKeyRef
 }
 
 type SqlAlterTableActionAddConstraintPk = {
@@ -309,7 +305,7 @@ type ParseAlterAddConstraintByKind<
 	CName extends string,
 > = Kind extends "foreign_key"
 	? ParseForeignKeyMetaAndRest<Tokens> extends [infer R3 extends TokensList, infer Meta]
-		? Meta extends ForeignRefMeta
+		? Meta extends JsqlForeignKeyRef
 			? [R3, { kind: "add_constraint_fk"; name: CName; refs: Meta }]
 			: [R3, Extract<Meta, SqlParserError<string>>]
 		: never

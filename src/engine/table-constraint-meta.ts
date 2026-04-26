@@ -1,19 +1,10 @@
-import type { ForeignRefMeta } from "../parser/sql-constraints-fk.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-
-export type JsqlConstraintEntry =
-	| { kind: "primary_key"; columns: string[] }
-	| { kind: "unique"; columns: string[] }
-	| { kind: "foreign_key"; refs: ForeignRefMeta }
-
-type JsqlConstraintMap = { [K: string]: JsqlConstraintEntry }
-export type JsqlColumnFactsEntry = {
-	default?: true
-	check?: true
-	generated?: true | { mode: "stored" | "virtual" }
-}
-
-type JsqlColumnFactsMap = { [K: string]: JsqlColumnFactsEntry }
+import type {
+	JsqlColumnFactsEntry,
+	JsqlColumnFactsMap,
+	JsqlConstraintEntry,
+	JsqlConstraintMap,
+} from "./jsql-shapes.ts"
 
 export type JsqlGetConstraintMap<Table> = Table extends { constraints: infer M }
 	? M extends JsqlConstraintMap

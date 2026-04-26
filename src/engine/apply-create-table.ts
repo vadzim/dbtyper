@@ -1,9 +1,9 @@
 import type { CreateTableStatement } from "../parser/parse-create-table.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-import type { SqlDatabaseLike, SqlSchemaLike } from "./sql-database.ts"
+import type { JsqlColumnFactsEntry, JsqlDatabaseShape, JsqlSchemaShape } from "./jsql-shapes.ts"
 import type { ValidateCreateTableFkRefs, ValidateCreateTableLocalRefs } from "./helpers/validate-fk-refs.ts"
 import type { MergeSchemas, ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
-import type { JsqlAddConstraint, JsqlColumnFactsEntry } from "./table-constraint-meta.ts"
+import type { JsqlAddConstraint } from "./table-constraint-meta.ts"
 
 type TableRow<Row> = Extract<Row, Record<string, unknown>>
 type InitialTable<Row> = { columns: TableRow<Row> }
@@ -54,7 +54,7 @@ type AddColumnFacts<Table, Facts> = [Facts] extends [never]
 		: Table & { column_facts: Extract<Facts, Record<string, JsqlColumnFactsEntry>> }
 
 export type ApplyCreateTable<
-	Db extends SqlDatabaseLike,
+	Db extends JsqlDatabaseShape,
 	Create extends CreateTableStatement,
 > = Create["name"] extends infer Name
 	? Name extends SqlParserError<string>
@@ -67,8 +67,8 @@ export type ApplyCreateTable<
 								infer Schema extends string,
 								infer Table extends string,
 						  ]
-						? Db["schemas"] extends Record<string, SqlSchemaLike>
-							? SchemaExists<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Schema> extends true
+						? Db["schemas"] extends Record<string, JsqlSchemaShape>
+							? SchemaExists<Extract<Db["schemas"], Record<string, JsqlSchemaShape>>, Schema> extends true
 								? TableExists<Db["schemas"], Schema, Table> extends true
 									? SqlParserError<`Duplicate table name: ${Table}`>
 									: ValidateCreateTableLocalRefs<
@@ -95,7 +95,7 @@ export type ApplyCreateTable<
 																	schemas: MergeSchemas<
 																		Extract<
 																			Db["schemas"],
-																			Record<string, SqlSchemaLike>
+																			Record<string, JsqlSchemaShape>
 																		>,
 																		Schema,
 																		Table,

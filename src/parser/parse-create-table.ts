@@ -1,10 +1,5 @@
 import type { AddColumn, ColumnFactsEntry } from "./sql-column.ts"
-import type {
-	ForeignRefMeta,
-	IntraTableConstraintRef,
-	ParseConstraintBody,
-	TryReadConstraintHead,
-} from "./sql-constraints-fk.ts"
+import type { IntraTableConstraintRef, ParseConstraintBody, TryReadConstraintHead } from "./sql-constraints-fk.ts"
 import type {
 	ConsumeStatementEnd,
 	ReadOptionalIfNotExists,
@@ -14,12 +9,13 @@ import type {
 } from "./sql-primitives.ts"
 import type { SkipStatement, SkippedStatement } from "./skip-statement.ts"
 import type { TokensList, PeekToken, SqlParserError, TokenEot, TokenKey } from "../../core/sql-tokens.ts"
+import type { JsqlForeignKeyRef } from "../engine/jsql-shapes.ts"
 
 export type CreateTableStatement = {
 	kind: "create_table"
 	name: SqlQualifiedIdentifier | SqlParserError<string>
 	row: unknown
-	refs: ForeignRefMeta | undefined
+	refs: JsqlForeignKeyRef | undefined
 	intraTableConstraints: IntraTableConstraintRef[]
 	namedIntraTableConstraints?: NamedIntraTableConstraint[]
 	columnFacts?: Record<string, ColumnFactsEntry>
@@ -58,7 +54,7 @@ type CreateBodyState<
 	Row,
 	Names extends string,
 	Error,
-	Refs extends ForeignRefMeta,
+	Refs extends JsqlForeignKeyRef,
 	Intra extends IntraTableConstraintRef[],
 	Named extends NamedIntraTableConstraint[],
 	ColumnFacts,
@@ -77,7 +73,7 @@ type ParseCreateBody<
 	Row,
 	Names extends string,
 	Error = never,
-	Refs extends ForeignRefMeta = never,
+	Refs extends JsqlForeignKeyRef = never,
 	Intra extends IntraTableConstraintRef[] = [],
 	Named extends NamedIntraTableConstraint[] = [],
 	ColumnFacts = never,
@@ -95,7 +91,7 @@ type ParseCreateBodyConstraintOrError<
 	Row,
 	Names extends string,
 	Error,
-	Refs extends ForeignRefMeta,
+	Refs extends JsqlForeignKeyRef,
 	Intra extends IntraTableConstraintRef[],
 	Named extends NamedIntraTableConstraint[],
 	ColumnFacts,
@@ -113,7 +109,7 @@ type ParseCreateBodyColumn<
 	Row,
 	Names extends string,
 	Error,
-	Refs extends ForeignRefMeta,
+	Refs extends JsqlForeignKeyRef,
 	Intra extends IntraTableConstraintRef[],
 	Named extends NamedIntraTableConstraint[],
 	ColumnFacts,
@@ -176,7 +172,7 @@ type ParseCreateBodyConstraint<
 	Row,
 	Names extends string,
 	Error,
-	Refs extends ForeignRefMeta,
+	Refs extends JsqlForeignKeyRef,
 	Intra extends IntraTableConstraintRef[],
 	Named extends NamedIntraTableConstraint[],
 	ColumnFacts,
@@ -212,7 +208,7 @@ type ParseCreateBodyConstraint<
 									ColumnFacts
 								>,
 							]
-					: EntryResult extends ForeignRefMeta
+					: EntryResult extends JsqlForeignKeyRef
 						? EndTk extends TokenKey<",">
 							? ParseCreateBody<
 									NextTail,
@@ -387,7 +383,7 @@ type ParseCreateTableWithFlag<Tokens extends TokensList, IfNotExists extends boo
 													: never
 												refs: [Parsed["refs"]] extends [never]
 													? undefined
-													: Extract<Parsed["refs"], ForeignRefMeta>
+													: Extract<Parsed["refs"], JsqlForeignKeyRef>
 												intraTableConstraints: Parsed["intraTableConstraints"]
 											} & ([Parsed["namedIntraTableConstraints"]] extends [never]
 												? {}

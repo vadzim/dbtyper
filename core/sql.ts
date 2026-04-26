@@ -10,4 +10,6 @@ export type {
 	ParseSqlStatementsRecovering,
 } from "../src/parser/parse-sql-statement.ts"
 
-export { type SqlDatabaseLike, sqlDatabase, sqlStatement, migration } from "../src/engine/sql-database.ts"
+export { sqlDatabase, sqlStatement, migration } from "../src/engine/sql-database.ts"
+
+export type { JsqlDatabaseShape } from "../src/engine/jsql-shapes.ts"

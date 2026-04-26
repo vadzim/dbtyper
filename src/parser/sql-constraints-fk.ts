@@ -8,15 +8,7 @@ import type {
 	TokenIdent,
 	TokenKey,
 } from "../../core/sql-tokens.ts"
-
-export type ForeignRefMeta = {
-	from: string
-	columnPairs: FkColumnPair[]
-	toSchema: string | undefined
-	toTable: string
-}
-
-export type FkColumnPair = [local: string, referenced: string]
+import type { JsqlFkColumnPair } from "../engine/jsql-shapes.ts"
 
 export type IntraTableConstraintRef = { kind: "primary_key"; columns: string[] } | { kind: "unique"; columns: string[] }
 
@@ -79,7 +71,7 @@ export type ValidateColumnTupleRefs<Cols extends string[], Names extends string>
 export type ZipColumnListsToPairs<
 	From extends string[],
 	To extends string[],
-	Acc extends FkColumnPair[] = [],
+	Acc extends JsqlFkColumnPair[] = [],
 > = From extends []
 	? To extends []
 		? Acc
@@ -92,9 +84,9 @@ export type ZipColumnListsToPairs<
 				: SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 			: SqlParserError<"Foreign key referenced column list has more entries than the local column list">
 
-export type ValidateFkLocalColumnPairs<Pairs extends FkColumnPair[], Names extends string> = Pairs extends [
+export type ValidateFkLocalColumnPairs<Pairs extends JsqlFkColumnPair[], Names extends string> = Pairs extends [
 	[infer L extends string, string],
-	...infer Rest extends FkColumnPair[],
+	...infer Rest extends JsqlFkColumnPair[],
 ]
 	? L extends Names
 		? ValidateFkLocalColumnPairs<Rest, Names>
@@ -103,9 +95,9 @@ export type ValidateFkLocalColumnPairs<Pairs extends FkColumnPair[], Names exten
 		? true
 		: SqlParserError<"Unable to validate foreign key local columns">
 
-export type ValidateFkReferencedColumnPairs<Pairs extends FkColumnPair[], TargetNames extends string> = Pairs extends [
+export type ValidateFkReferencedColumnPairs<Pairs extends JsqlFkColumnPair[], TargetNames extends string> = Pairs extends [
 	[string, infer R extends string],
-	...infer Rest extends FkColumnPair[],
+	...infer Rest extends JsqlFkColumnPair[],
 ]
 	? R extends TargetNames
 		? ValidateFkReferencedColumnPairs<Rest, TargetNames>
@@ -143,7 +135,7 @@ type ParseForeignKeyMetaWithLocalCols<
 			? ZipColumnListsToPairs<FC, TargetCols> extends infer Pairs
 				? Pairs extends SqlParserError<string>
 					? [AfterTargetCols, Pairs]
-					: Pairs extends FkColumnPair[]
+					: Pairs extends JsqlFkColumnPair[]
 						? Target extends [infer Table extends string]
 							? [
 									AfterTargetCols,

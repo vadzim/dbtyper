@@ -1,24 +1,24 @@
 import type { SqlQualifiedIdentifier } from "../../parser/sql-primitives.ts"
-import type { SqlSchemaLike } from "../sql-database.ts"
+import type { JsqlSchemaShape } from "../jsql-shapes.ts"
 
 export type SchemaExists<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Name extends string,
 > = Name extends keyof Schemas ? true : false
 
 export type TableExists<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Schema extends string,
 	Table extends string,
 > = Schema extends keyof Schemas ? (Table extends keyof Schemas[Schema]["tables"] ? true : false) : false
 
 export type DropSchemaFromSchemas<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Name extends string,
 > = Name extends keyof Schemas ? Omit<Schemas, Name> : Schemas
 
 export type DropFromSchemas<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Schema extends string,
 	Table extends string,
 > = Schema extends keyof Schemas
@@ -45,7 +45,7 @@ export type ResolveQualifiedIdentifier<
 		: never
 
 export type MergeSchemas<
-	Schemas extends Record<string, SqlSchemaLike>,
+	Schemas extends Record<string, JsqlSchemaShape>,
 	Schema extends string,
 	Table extends string,
 	TableDef,

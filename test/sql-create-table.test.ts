@@ -73,8 +73,9 @@ type _SelectStarFromUnqualified = Expect<
 			[
 				{
 					kind: "select"
+					distinct: false
 					columns: "star"
-					from: ["users"]
+					from: { primary: ["users"]; joins: [] }
 				},
 			],
 		]

@@ -1,15 +1,15 @@
 import type { CreateIndexStatement } from "../parser/parse-create-index.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
-import type { SqlDatabaseLike, SqlSchemaLike } from "./sql-database.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape } from "./jsql-shapes.ts"
 import type { ResolveQualifiedIdentifier, SchemaExists, TableExists } from "./helpers/engine-helpers.ts"
 
-export type ApplyCreateIndex<Db extends SqlDatabaseLike, Stmt extends CreateIndexStatement> =
+export type ApplyCreateIndex<Db extends JsqlDatabaseShape, Stmt extends CreateIndexStatement> =
 	ResolveQualifiedIdentifier<Stmt["target"], Db["defaultSchema"]> extends [
 		infer Schema extends string,
 		infer Table extends string,
 	]
-		? Db["schemas"] extends Record<string, SqlSchemaLike>
-			? SchemaExists<Extract<Db["schemas"], Record<string, SqlSchemaLike>>, Schema> extends true
+		? Db["schemas"] extends Record<string, JsqlSchemaShape>
+			? SchemaExists<Extract<Db["schemas"], Record<string, JsqlSchemaShape>>, Schema> extends true
 				? TableExists<Db["schemas"], Schema, Table> extends true
 					? ValidateIndexColumns<
 							Extract<Db["schemas"][Schema]["tables"][Table]["columns"], Record<string, unknown>>,
