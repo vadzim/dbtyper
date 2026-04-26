@@ -14,7 +14,7 @@ export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
 export type TokenString<String extends string> = TokenType<"string", String>
 export type TokenEot = TokenType<"eot">
-export type TokensList = MakeTokensBuffer<TokenType<TokenKind, string>, string>
+export type TokensList = Buffer<TokenType<TokenKind, string>, string>
 export type SqlParserError<Message extends string> = {
 	__sql_parser_error__: Message
 }
@@ -23,44 +23,113 @@ export type PeekToken<Tokens extends TokensList> = Tokens[typeof tokenKey]
 export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens[typeof restKey]>
 export type ReadToken<Tokens extends TokensList> = [SkipToken<Tokens>, PeekToken<Tokens>]
 
-type MakeTokensBuffer<Token extends TokenType<TokenKind, string>, Rest extends string> = {
+type Buffer<Token extends TokenType<TokenKind, string>, Rest extends string> = {
 	[tokenKey]: Token
 	[restKey]: Rest
 }
 
 /** Lex one token from a string (internal) */
-type ReadTokenFromString<Text extends string> =
-	SkipSpaces<Text> extends infer S
-		? S extends `"${infer String}"${infer Rest}`
-			? MakeTokensBuffer<TokenIdent<String>, Rest>
-			: S extends `'${infer String}'${infer Rest}`
-				? MakeTokensBuffer<TokenString<String>, Rest>
-				: S extends `$$${infer String}$$${infer Rest}`
-					? MakeTokensBuffer<TokenString<String>, Rest>
-					: ReadTaggedDollar<S> extends {
-								__token__: infer String extends string
-								__rest__: infer Rest extends string
-						  }
-						? MakeTokensBuffer<TokenString<String>, Rest>
-						: S extends `\`${infer String}\`${infer Rest}`
-							? MakeTokensBuffer<TokenIdent<String>, Rest>
-							: S extends `${infer Head}${infer Rest}`
-								? Head extends StartTokenChar
-									? OptimizedBySpaceReadTokenChars<Rest> extends {
-											__token__: infer Word extends string
-											__rest__: infer Tail extends string
-										}
-										? MakeTokensBuffer<CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Tail>
-										: MakeTokensBuffer<TokenKey<Head>, Rest>
-									: MakeTokensBuffer<TokenKey<Head>, Rest>
-								: MakeTokensBuffer<TokenEot, "">
-		: never
+type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Rest}`
+	? Head extends StartTokenChar
+		? OptimizedBySpaceReadTokenChars<Rest> extends {
+				token: infer Word extends string
+				rest: infer Tail extends string
+			}
+			? Buffer<CheckDoubleQuotes<Lowercase<`${Head}${Word}`>>, Tail>
+			: Buffer<TokenKey<Head>, Rest>
+		: Head extends '"'
+			? Rest extends `${infer String}"${infer Rest}`
+				? Buffer<TokenIdent<String>, Rest>
+				: Buffer<TokenIdent<Rest>, "">
+			: Head extends "\x20" | "\n" | "\r" | "\t"
+				? SkipSpaces<Rest>
+				: Head extends "'"
+					? Rest extends `${infer String}'${infer Rest}`
+						? Buffer<TokenString<String>, Rest>
+						: Buffer<TokenString<Rest>, "">
+					: Head extends "<"
+						? Rest extends `>${infer Rest}`
+							? Buffer<TokenKey<"<>">, Rest>
+							: Rest extends `=${infer Rest}`
+								? Buffer<TokenKey<"<=">, Rest>
+								: Rest extends `@${infer Rest}`
+									? Buffer<TokenKey<"<@">, Rest>
+									: Buffer<TokenKey<"<">, Rest>
+						: Head extends ">"
+							? Rest extends `=${infer Rest}`
+								? Buffer<TokenKey<">=">, Rest>
+								: Buffer<TokenKey<">">, Rest>
+							: Head extends "!"
+								? Rest extends `=${infer Rest}`
+									? Buffer<TokenKey<"!=">, Rest>
+									: Rest extends `~*${infer Rest}`
+										? Buffer<TokenKey<"!~*">, Rest>
+										: Rest extends `~~${infer Rest}`
+											? Buffer<TokenKey<"!~~">, Rest>
+											: Rest extends `~${infer Rest}`
+												? Buffer<TokenKey<"!~">, Rest>
+												: Buffer<TokenKey<"!">, Rest>
+								: Head extends "|"
+									? Rest extends `|${infer Rest}`
+										? Buffer<TokenKey<"||">, Rest>
+										: Buffer<TokenKey<"|">, Rest>
+									: Head extends ":"
+										? Rest extends `:${infer Rest}`
+											? Buffer<TokenKey<"::">, Rest>
+											: Buffer<TokenKey<":">, Rest>
+										: Head extends "#"
+											? Rest extends `>>${infer Rest}`
+												? Buffer<TokenKey<"#>>">, Rest>
+												: Rest extends `>${infer Rest}`
+													? Buffer<TokenKey<"#>">, Rest>
+													: Buffer<TokenKey<"#">, Rest>
+											: Head extends "-"
+												? Rest extends `>>${infer Rest}`
+													? Buffer<TokenKey<"->>">, Rest>
+													: Rest extends `>${infer Rest}`
+														? Buffer<TokenKey<"->">, Rest>
+														: Rest extends `-${string}`
+															? SkipSpaces<S>
+															: Buffer<TokenKey<"-">, Rest>
+												: Head extends "~"
+													? Rest extends `~${infer Rest}`
+														? Buffer<TokenKey<"~~">, Rest>
+														: Rest extends `*${infer Rest}`
+															? Buffer<TokenKey<"~*">, Rest>
+															: Buffer<TokenKey<"~">, Rest>
+													: Head extends "@"
+														? Rest extends `>${infer Rest}`
+															? Buffer<TokenKey<"@>">, Rest>
+															: Buffer<TokenKey<"@">, Rest>
+														: Head extends "&"
+															? Rest extends `&${infer Rest}`
+																? Buffer<TokenKey<"&&">, Rest>
+																: Buffer<TokenKey<"&">, Rest>
+															: Head extends "/"
+																? Rest extends `*${infer Rest}`
+																	? SkipSpaces<SkipMultiComment<Rest>>
+																	: Buffer<TokenKey<"/">, Rest>
+																: Head extends "$"
+																	? S extends `$$${infer String}$$${infer Rest}`
+																		? Buffer<TokenString<String>, Rest>
+																		: ReadTaggedDollar<S> extends {
+																					token: infer String extends string
+																					rest: infer Rest extends string
+																			  }
+																			? Buffer<TokenString<String>, Rest>
+																			: Buffer<TokenKey<"$">, Rest>
+																	: Head extends "`"
+																		? Rest extends `${infer String}\`${infer Rest}`
+																			? Buffer<TokenIdent<String>, Rest>
+																			: Buffer<TokenKey<"`">, Rest>
+																		: Buffer<TokenKey<Head>, Rest>
+	: Buffer<TokenEot, "">
 
 type ReadTaggedDollar<S> = S extends `$${infer Tag}$${infer Rest}`
-	? ReadTokenChars<Tag>["__rest__"] extends ""
+	? ReadTokenChars<Tag>["rest"] extends ""
 		? Rest extends `${infer String}$${Tag}$${infer Rest2}`
-			? { __token__: String; __rest__: Rest2 }
-			: { __token__: Rest; __rest__: "" }
+			? { token: String; rest: Rest2 }
+			: { token: Rest; rest: "" }
 		: null
 	: null
 
@@ -73,23 +142,27 @@ type CheckDoubleQuotes<S extends string> = S extends ServiceWords
 type OptimizedBySpaceReadTokenChars<S extends string> =
 	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
 		? ReadTokenChars<SmallerBuffer> extends {
-				__token__: infer T extends string
-				__rest__: infer SmallerRest extends string
+				token: infer T extends string
+				rest: infer SmallerRest extends string
 			}
 			? SmallerRest extends ""
-				? { __token__: T; __rest__: Rest }
-				: { __token__: T; __rest__: `${SmallerRest}\x20${Rest}` }
+				? { token: T; rest: Rest }
+				: { token: T; rest: `${SmallerRest}\x20${Rest}` }
 			: ReadTokenChars<S>
 		: ReadTokenChars<S>
 
 type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
 	? C extends TokenChar
 		? ReadTokenChars<Rest, `${Acc}${C}`>
-		: { __token__: Acc; __rest__: S }
-	: { __token__: Acc; __rest__: "" }
+		: { token: Acc; rest: S }
+	: { token: Acc; rest: "" }
 
 type SkipSpaces<S> =
-	SkipSomeSpaces<S> extends [infer R, infer HasMoreSpace] ? (HasMoreSpace extends true ? SkipSpaces<R> : R) : never
+	SkipSomeSpaces<S> extends [infer R extends string, infer HasMoreSpace]
+		? HasMoreSpace extends true
+			? SkipSpaces<R>
+			: ReadTokenFromString<R>
+		: never
 
 type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
 	? [S, true]
