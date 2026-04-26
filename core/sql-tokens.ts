@@ -42,11 +42,9 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 				? Buffer<TokenIdent<String>, Rest>
 				: Buffer<TokenIdent<Rest>, "">
 			: Head extends "\x20" | "\n" | "\r" | "\t"
-				? SkipSpaces<Rest>
+				? ReadTokenFromString<SkipSpaces<Rest>>
 				: Head extends "'"
-					? Rest extends `${infer String}'${infer Rest}`
-						? Buffer<TokenString<String>, Rest>
-						: Buffer<TokenString<Rest>, "">
+					? ReadSingleQuotedString<Rest>
 					: Head extends "<"
 						? Rest extends `>${infer Rest}`
 							? Buffer<TokenKey<"<>">, Rest>
@@ -89,7 +87,7 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 													: Rest extends `>${infer Rest}`
 														? Buffer<TokenKey<"->">, Rest>
 														: Rest extends `-${string}`
-															? SkipSpaces<S>
+															? ReadTokenFromString<SkipSpaces<S>>
 															: Buffer<TokenKey<"-">, Rest>
 												: Head extends "~"
 													? Rest extends `~${infer Rest}`
@@ -107,7 +105,9 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 																: Buffer<TokenKey<"&">, Rest>
 															: Head extends "/"
 																? Rest extends `*${infer Rest}`
-																	? SkipSpaces<SkipMultiComment<Rest>>
+																	? ReadTokenFromString<
+																			SkipSpaces<SkipMultiComment<Rest>>
+																		>
 																	: Buffer<TokenKey<"/">, Rest>
 																: Head extends "$"
 																	? S extends `$$${infer String}$$${infer Rest}`
@@ -118,11 +118,7 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 																			  }
 																			? Buffer<TokenString<String>, Rest>
 																			: Buffer<TokenKey<"$">, Rest>
-																	: Head extends "`"
-																		? Rest extends `${infer String}\`${infer Rest}`
-																			? Buffer<TokenIdent<String>, Rest>
-																			: Buffer<TokenKey<"`">, Rest>
-																		: Buffer<TokenKey<Head>, Rest>
+																	: Buffer<TokenKey<Head>, Rest>
 	: Buffer<TokenEot, "">
 
 type ReadTaggedDollar<S> = S extends `$${infer Tag}$${infer Rest}`
@@ -132,6 +128,23 @@ type ReadTaggedDollar<S> = S extends `$${infer Tag}$${infer Rest}`
 			: { token: Rest; rest: "" }
 		: null
 	: null
+
+type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R1}`
+	? R1 extends `'${infer R2}`
+		? ReadSingleQuotedString<R2> extends Buffer<TokenString<infer P2 extends string>, infer R3 extends string>
+			? Buffer<TokenString<`${P1}'${P2}`>, R3>
+			: never
+		: SkipSpaces<R1> extends infer R4 extends string
+			? R4 extends `'${infer R5}`
+				? ReadSingleQuotedString<R5> extends Buffer<
+						TokenString<infer P6 extends string>,
+						infer R6 extends string
+					>
+					? Buffer<TokenString<`${P1}${P6}`>, R6>
+					: never
+				: Buffer<TokenString<P1>, R4>
+			: never
+	: Buffer<TokenString<S>, "">
 
 type CheckDoubleQuotes<S extends string> = S extends ServiceWords
 	? TokenKey<S>
@@ -161,7 +174,7 @@ type SkipSpaces<S> =
 	SkipSomeSpaces<S> extends [infer R extends string, infer HasMoreSpace]
 		? HasMoreSpace extends true
 			? SkipSpaces<R>
-			: ReadTokenFromString<R>
+			: R
 		: never
 
 type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100

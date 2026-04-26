@@ -282,10 +282,10 @@ type QuotedIdentifiers = ParseSqlStatements<
 	create table "account users" (
 		"id" int not null,
 		"user name" text,
-		\`org-id\` int,
+		"org-id" int,
 		constraint "users pk" primary key ("id"),
 		unique ("user name"),
-		foreign key (\`org-id\`) references orgs(id)
+		foreign key ("org-id") references orgs(id)
 	)
 `>
 >
