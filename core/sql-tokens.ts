@@ -49,9 +49,7 @@ type ReadTokenFromString<S extends string> = S extends `${Ws}${infer Rest}`
 								? ReadTokenFromString<Rest>
 								: MakeTokensBuffer<TokenEot, "">
 							: S extends `/*${infer Comment}`
-								? Comment extends `${string}*/${infer Rest}`
-									? ReadTokenFromString<Rest>
-									: MakeTokensBuffer<TokenEot, "">
+								? ReadTokenFromString<SkipMultiComment<Comment>>
 								: S extends `${infer Head}${infer Rest}`
 									? Head extends StartTokenChar
 										? OptimizedBySpaceReadTokenChars<Rest> extends {
@@ -135,32 +133,32 @@ type LowerCaseLetter =
 	| "y"
 	| "z"
 
-type ServiceWords = keyof {
+export type ServiceWords = keyof {
 	add: true
 	alter: true
-	and: true
-	"=": true
-	as: true
 	always: true
+	and: true
+	as: true
 	asc: true
 	begin: true
 	by: true
 	check: true
 	column: true
 	constraint: true
+	create: true
+	cross: true
 	current_date: true
 	current_time: true
 	current_timestamp: true
-	create: true
-	cross: true
 	database: true
 	declare: true
 	default: true
-	desc: true
 	delete: true
+	desc: true
 	distinct: true
 	drop: true
 	end: true
+	except: true
 	exclude: true
 	exists: true
 	false: true
@@ -176,6 +174,7 @@ type ServiceWords = keyof {
 	index: true
 	inner: true
 	insert: true
+	intersect: true
 	into: true
 	join: true
 	key: true
@@ -201,16 +200,29 @@ type ServiceWords = keyof {
 	returns: true
 	right: true
 	schema: true
-	stored: true
 	select: true
 	set: true
+	stored: true
 	table: true
 	to: true
 	true: true
-	virtual: true
+	union: true
 	unique: true
 	use: true
 	using: true
 	values: true
+	virtual: true
 	where: true
 }
+
+type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
+	? Comment extends `${string}/*${string}`
+		? S extends `${string}/*${infer Rest2}`
+			? SkipMultiComment<SkipMultiComment<Rest2>>
+			: never
+		: Comment extends `${string}/`
+			? S extends `${string}/*${infer Rest2}`
+				? SkipMultiComment<SkipMultiComment<Rest2>>
+				: never
+			: Rest
+	: ""

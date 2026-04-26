@@ -1,6 +1,7 @@
 import type {
 	ColRef,
 	FromClause,
+	FromTable,
 	JoinClause,
 	OrderByItem,
 	SelectColumn,
@@ -21,24 +22,18 @@ export type VisibleEntry = {
 	columns: Record<string, unknown>
 }
 
-type TableAliasFromQI<Qi extends SqlQualifiedIdentifier> = Qi extends [infer N extends string]
-	? N
-	: Qi extends [infer N extends string, string]
-		? N
-		: never
-
 type AddOneTable<
 	Db extends JsqlDatabaseShape,
-	Qi extends SqlQualifiedIdentifier,
+	T extends FromTable,
 	Acc extends readonly VisibleEntry[],
-> = ResolveQualifiedIdentifier<Qi, Db["defaultSchema"]> extends [infer Schema extends string, infer Table extends string]
+> = ResolveQualifiedIdentifier<T["table"], Db["defaultSchema"]> extends [infer Schema extends string, infer Table extends string]
 	? Db["schemas"] extends Record<string, JsqlSchemaShape>
 		? SchemaExists<Extract<Db["schemas"], Record<string, JsqlSchemaShape>>, Schema> extends true
 			? TableExists<Db["schemas"], Schema, Table> extends true
 				? [
 						...Acc,
 						{
-							alias: TableAliasFromQI<Qi>
+							alias: T["alias"]
 							schema: Schema
 							table: Table
 							columns: Extract<Db["schemas"][Schema]["tables"][Table]["columns"], Record<string, unknown>>
@@ -49,11 +44,7 @@ type AddOneTable<
 		: SqlParserError<"Internal SELECT schema shape error">
 	: SqlParserError<"Internal SELECT FROM resolution error">
 
-type BuildVisibleTables<Db extends JsqlDatabaseShape, From extends FromClause> = AddOneTable<
-	Db,
-	From["primary"],
-	[]
-> extends infer Acc
+type BuildVisibleTables<Db extends JsqlDatabaseShape, From extends FromClause> = AddOneTable<Db, From["primary"], []> extends infer Acc
 	? Acc extends SqlParserError<string>
 		? Acc
 		: Acc extends readonly VisibleEntry[]
@@ -66,7 +57,7 @@ type JoinTablesFold<
 	Acc extends readonly VisibleEntry[],
 	Joins extends readonly JoinClause[],
 > = Joins extends readonly [infer J extends JoinClause, ...infer Rest extends readonly JoinClause[]]
-	? AddOneTable<Db, J["table"], Acc> extends infer Acc2
+	? AddOneTable<Db, { table: J["table"]; alias: J["alias"] }, Acc> extends infer Acc2
 		? Acc2 extends SqlParserError<string>
 			? Acc2
 			: Acc2 extends readonly VisibleEntry[]
@@ -197,6 +188,17 @@ type ResolveProjectionColumn<
 			: SqlParserError<`Ambiguous column "${Name}" in SELECT`>
 	: SqlParserError<"Internal projection column">
 
+type ResolveQualifiedSelectColumn<Visible extends readonly VisibleEntry[], TabAlias extends string, Col extends string> =
+	FindTableByAlias<Visible, TabAlias> extends infer E
+		? E extends SqlParserError<string>
+			? E
+			: E extends VisibleEntry
+				? Col extends keyof E["columns"]
+					? E["columns"][Col]
+					: SqlParserError<`Unknown column "${Col}" in SELECT`>
+				: SqlParserError<"Internal qualified projection">
+		: SqlParserError<"Internal qualified projection">
+
 type SingleColumnType<
 	Visible extends readonly VisibleEntry[],
 	Col extends string,
@@ -211,11 +213,27 @@ type BuildProjectionRow<
 	Columns extends readonly SelectColumn[],
 	Seen extends string = never,
 > = Columns extends readonly [infer H extends SelectColumn, ...infer T extends readonly SelectColumn[]]
-	? H extends { name: infer N extends string; as?: infer A extends string | undefined }
-		? ResolveProjectionColumn<Visible, N> extends infer Ty
+	? H extends { name: infer N extends string; table: infer Tbl extends string; as?: infer A extends string | undefined }
+		? ResolveQualifiedSelectColumn<Visible, Tbl, N> extends infer Ty
 			? Ty extends SqlParserError<string>
 				? Ty
 				: (H extends { as: infer Out extends string } ? Out : N) extends infer Key extends string
+					? Key extends Seen
+						? SqlParserError<"Duplicate SELECT output column">
+						: BuildProjectionRow<Visible, T, Seen | Key> extends infer Sub
+							? Sub extends SqlParserError<string>
+								? Sub
+								: Sub extends Record<string, unknown>
+									? { [K in Key]: Ty } & Sub
+									: SqlParserError<"Internal SELECT projection row">
+							: never
+					: SqlParserError<"Internal SELECT output key">
+			: SqlParserError<"Internal projection">
+		: H extends { name: infer N2 extends string; as?: infer A2 extends string | undefined }
+		? ResolveProjectionColumn<Visible, N2> extends infer Ty
+			? Ty extends SqlParserError<string>
+				? Ty
+				: (H extends { as: infer Out extends string } ? Out : N2) extends infer Key extends string
 					? Key extends Seen
 						? SqlParserError<"Duplicate SELECT output column">
 						: BuildProjectionRow<Visible, T, Seen | Key> extends infer Sub

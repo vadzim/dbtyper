@@ -75,7 +75,7 @@ type _SelectStarFromUnqualified = Expect<
 					kind: "select"
 					distinct: false
 					columns: "star"
-					from: { primary: ["users"]; joins: [] }
+					from: { primary: { table: ["users"]; alias: "users" }; joins: [] }
 				},
 			],
 		]
@@ -216,6 +216,34 @@ type _WithCommentsShape = Expect<
 					}
 					intraTableConstraints: [{ kind: "primary_key"; columns: ["id"] }]
 					namedIntraTableConstraints: [{ name: "users_pk"; kind: "primary_key"; columns: ["id"] }]
+				},
+			],
+		]
+	>
+>
+
+type WithNestedBlockComments = ParseSqlStatements<
+	ParseSqlTokens<`
+	create table nested_block_comments (
+		id int not null,
+		/* /* inner */ after inner, still in outer */ label text,
+		-- nested comment without spaces and with overlapped /*/
+		/*/*//*a*//*b*/c*//*/d*/e*/ more text
+	);
+`>
+>
+type _WithNestedBlockCommentsShape = Expect<
+	Matches<
+		WithNestedBlockComments,
+		[
+			EmptyTokenList,
+			[
+				{
+					kind: "create_table"
+					name: ["nested_block_comments"]
+					row: { id: number; label: string | null; more: string | null }
+					refs: undefined
+					intraTableConstraints: []
 				},
 			],
 		]

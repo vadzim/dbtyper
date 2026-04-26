@@ -29,6 +29,19 @@ type TwoTableDb = {
 	}
 }
 
+/** Both joined tables define `id` so an unqualified `id` in SELECT is ambiguous. */
+type AmbigJoinDb = {
+	defaultSchema: "public"
+	schemas: {
+		public: {
+			tables: {
+				a: { columns: { id: number; only_a: string } }
+				b: { columns: { id: number; only_b: string } }
+			}
+		}
+	}
+}
+
 type StarStmt = ParseSqlStatements<ParseSqlTokens<"select * from t;">>[1][0]
 type _SelectRowStar = Expect<Matches<SelectRow<SmallDb, StarStmt>, { id: number; name: string }>>
 
@@ -59,7 +72,7 @@ type _JoinTwoColsNoAs = Expect<
 
 /** Same join, with `AS` aliases driving output keys. */
 type JoinTwoColsWithAs = ParseSqlStatements<
-	ParseSqlTokens<"select x as user_x, uid as order_uid, name as user_name, title as order_title from users join orders on users.id = orders.uid;">
+	ParseSqlTokens<"select x as user_x, uid as order_uid, name as user_name, o.title as order_title from users join orders o on users.id = o.uid;">
 >[1][0]
 type _JoinTwoColsWithAs = Expect<
 	Matches<
@@ -71,6 +84,72 @@ type _JoinTwoColsWithAs = Expect<
 			order_title: string
 		}
 	>
+>
+
+/** `JOIN` table with explicit `AS` and qualified `SELECT`; same as bare alias for typing. */
+type JoinExplicitAsKeyword = ParseSqlStatements<
+	ParseSqlTokens<"select o.title, users.name from users join orders as o on users.id = o.uid;">
+>[1][0]
+type _JoinExplicitAsKeyword = Expect<
+	Matches<SelectRow<TwoTableDb, JoinExplicitAsKeyword>, { title: string; name: string }>
+>
+
+/** Primary `FROM` uses `AS`; `WHERE` / `ORDER BY` use the same alias `u.…`. */
+type PrimaryTableAsAlias = ParseSqlStatements<
+	ParseSqlTokens<"select u.name from users as u where u.x = 0 order by u.id;">
+>[1][0]
+type _PrimaryTableAsAlias = Expect<Matches<SelectRow<TwoTableDb, PrimaryTableAsAlias>, { name: string }>>
+
+/** Default alias is the name segment (`users`); `users.id` works without a custom alias. */
+type DefaultQiAliasInSelect = ParseSqlStatements<ParseSqlTokens<"select users.id from users;">>[1][0]
+type _DefaultQiAliasInSelect = Expect<Matches<SelectRow<TwoTableDb, DefaultQiAliasInSelect>, { id: number }>>
+
+type BarePrimaryAlias = ParseSqlStatements<ParseSqlTokens<"select u.id, u.name from t u;">>[1][0]
+type _BarePrimaryAlias = Expect<Matches<SelectRow<SmallDb, BarePrimaryAlias>, { id: number; name: string }>>
+
+type UnknownTableAliasInSelect = ParseSqlStatements<ParseSqlTokens<"select z.id from users;">>[1][0]
+type _UnknownTableAliasInSelect = Expect<
+	Matches<SelectRow<TwoTableDb, UnknownTableAliasInSelect>, SqlParserError<`Unknown table alias "z" in WHERE or ORDER BY`>>
+>
+
+type UnknownColQualified = ParseSqlStatements<
+	ParseSqlTokens<"select o.nope from users join orders o on users.id = o.uid;">
+>[1][0]
+type _UnknownColQualified = Expect<
+	Matches<SelectRow<TwoTableDb, UnknownColQualified>, SqlParserError<`Unknown column "nope" in SELECT`>>
+>
+
+type WhereOrderUseJoinAlias = ParseSqlStatements<
+	ParseSqlTokens<"select o.uid as ou from users join orders o on users.id = o.uid where o.title = 'x' order by o.uid;">
+>[1][0]
+type _WhereOrderUseJoinAlias = Expect<Matches<SelectRow<TwoTableDb, WhereOrderUseJoinAlias>, { ou: number }>>
+
+type AmbigUnqualId = ParseSqlStatements<ParseSqlTokens<"select id from a join b on a.id = b.id;">>[1][0]
+type _AmbigUnqualId = Expect<
+	Matches<SelectRow<AmbigJoinDb, AmbigUnqualId>, SqlParserError<`Ambiguous column "id" in SELECT`>>
+>
+
+/** Table-qualified `a.id` / `b.id` still project under column name `id` unless `AS` renames. */
+type DisambigWithQualifiers = ParseSqlStatements<
+	ParseSqlTokens<"select a.id as id_a, b.id as id_b, a.only_a from a join b on a.id = b.id;">
+>[1][0]
+type _DisambigWithQualifiers = Expect<
+	Matches<SelectRow<AmbigJoinDb, DisambigWithQualifiers>, { id_a: number; id_b: number; only_a: string }>
+>
+
+/** Same output name twice in the list (unqualified, same key `id`). */
+type DuplicateOutputColumn = ParseSqlStatements<ParseSqlTokens<"select id, id from t;">>[1][0]
+type _DuplicateOutputColumn = Expect<Matches<SelectRow<SmallDb, DuplicateOutputColumn>, SqlParserError<"Duplicate SELECT output column">>>
+
+/**
+ * Two `table.id` items both map to the output name `id` (no `AS`); same duplicate error as
+ * unqualified `id, id` on a single table.
+ */
+type DuplicateFromTwoQualifiers = ParseSqlStatements<
+	ParseSqlTokens<"select a.id, b.id, a.only_a from a join b on a.id = b.id;">
+>[1][0]
+type _DuplicateFromTwoQualifiers = Expect<
+	Matches<SelectRow<AmbigJoinDb, DuplicateFromTwoQualifiers>, SqlParserError<"Duplicate SELECT output column">>
 >
 
 type StarJoin = ParseSqlStatements<ParseSqlTokens<"select * from users join orders on users.id = orders.uid;">>[1][0]
