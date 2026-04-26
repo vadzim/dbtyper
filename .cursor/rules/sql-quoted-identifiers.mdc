@@ -1,0 +1,14 @@
+---
+description: Unquoted SQL names are lexer idents; reserved (service) words that lex as token keys must be double-quoted to use as identifiers
+globs: "src/parser/**/*.ts,core/sql-tokens.ts"
+alwaysApply: false
+---
+
+# Quoted SQL identifiers (lexer: `TokenIdent` vs `TokenKey`)
+
+- **Unquoted names** (table/column/alias, `AS` target, first segment in `t.col` where a name is required) are **`TokenIdent`** and **`PeekToken` + `SkipToken`**, not `ReadToken` over “ident or key”.
+- **Bare `FROM` / `JOIN` table alias** (no `AS`): only a following **`TokenIdent`** is a real alias. Anything that lexes as **`TokenKey`** (including all `ServiceWords` and `;` / `)`) is **not** consumed; the QI’s default name is used, so the next token remains available for `WHERE`, `JOIN`, etc. Do not maintain a separate keyword list for that — rely on the lexer.
+- **`TokenKey`** covers **punctuation, numeric literals, and `ServiceWords`** in `core/sql-tokens.ts`. Those are **not** unquoted identifiers. To use the same spelling as a name, **use a quoted identifier** (e.g. `"key"`, `"select"` in dialects that support that).
+- **Exception used in the parser today:** a **numeric** `TokenKey` (e.g. `1` in `select 1`) is still accepted in **`ParseColRef`** as a column *label* for the same `select 1;` / recovery tests — that is a narrow carve-out, not a general “any key is an ident”.
+
+When adding new parsers, do **not** reintroduce `TokenKey<infer S>` as a stand-in for identifier names except where deliberately documented (e.g. the numeric `ParseColRef` case above).
