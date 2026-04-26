@@ -8,12 +8,12 @@
 	"main": "index.js",
 	"scripts": {
 		"typecheck": "time tsgo --noEmit -p tsconfig.json && time npm run --silent monadcheck-log",
-		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && CI=1 npm run typecheck'\"",
+		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
 		"test": "npm run --silent typecheck && node --test \"test/**/*.test.ts\"",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"monadcheck": "check-monad './core/**/*.ts' './src/**/*.ts' --monad ./core/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
-		"monadcheck-log": "mkdir -p .logs && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.CI||await appendFile(process.argv[1],c)}\" \".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\">&2)"
+		"monadcheck-log": "mkdir -p .logs && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||await appendFile(process.argv[1],c)}\" \".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\">&2)"
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.2",
