@@ -22,8 +22,8 @@ type TwoTableDb = {
 	schemas: {
 		public: {
 			tables: {
-				users: { columns: { id: number; x: number } }
-				orders: { columns: { uid: number } }
+				users: { columns: { id: number; x: number; name: string } }
+				orders: { columns: { uid: number; title: string } }
 			}
 		}
 	}
@@ -38,14 +38,42 @@ type _SelectRowNamed = Expect<Matches<SelectRow<SmallDb, IdNameStmt>, { id: numb
 type BadColStmt = ParseSqlStatements<ParseSqlTokens<"select nope from t;">>[1][0]
 type _SelectRowBad = Expect<Matches<SelectRow<SmallDb, BadColStmt>, SqlParserError<`Unknown column "nope" in SELECT`>>>
 
-type JoinProj = ParseSqlStatements<
-	ParseSqlTokens<"select uid from users join orders on users.id = orders.uid;">
->[1][0]
+type JoinProj = ParseSqlStatements<ParseSqlTokens<"select uid from users join orders on users.id = orders.uid;">>[1][0]
 type _JoinRow = Expect<Matches<SelectRow<TwoTableDb, JoinProj>, { uid: number }>>
 
-type StarJoin = ParseSqlStatements<
-	ParseSqlTokens<"select * from users join orders on users.id = orders.uid;">
+/** Two visible columns from two join tables; output keys = bare column names. */
+type JoinTwoColsNoAs = ParseSqlStatements<
+	ParseSqlTokens<"select x, uid, name, title from users join orders on users.id = orders.uid;">
 >[1][0]
+type _JoinTwoColsNoAs = Expect<
+	Matches<
+		SelectRow<TwoTableDb, JoinTwoColsNoAs>,
+		{
+			x: number
+			uid: number
+			name: string
+			title: string
+		}
+	>
+>
+
+/** Same join, with `AS` aliases driving output keys. */
+type JoinTwoColsWithAs = ParseSqlStatements<
+	ParseSqlTokens<"select x as user_x, uid as order_uid, name as user_name, title as order_title from users join orders on users.id = orders.uid;">
+>[1][0]
+type _JoinTwoColsWithAs = Expect<
+	Matches<
+		SelectRow<TwoTableDb, JoinTwoColsWithAs>,
+		{
+			user_x: number
+			order_uid: number
+			user_name: string
+			order_title: string
+		}
+	>
+>
+
+type StarJoin = ParseSqlStatements<ParseSqlTokens<"select * from users join orders on users.id = orders.uid;">>[1][0]
 type _StarJoinErr = Expect<
 	Matches<
 		SelectRow<TwoTableDb, StarJoin>,
