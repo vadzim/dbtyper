@@ -8,11 +8,15 @@ import type {
 	TokenKind,
 	TokenType,
 } from "../../core/sql-tokens.ts"
+import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
 
 export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenType<TokenKind, string>> = {
 	kind: "skipped-statement"
 	token: Token
 }
+
+export type ParseSkipStatement<Tokens extends TokensList, DB extends JsqlDatabaseShape> =
+	SkipStatement<Tokens> extends [infer Rest extends TokensList, infer Result] ? [Rest, DB, Result] : never
 
 export type SkipStatement<
 	Tokens extends TokensList,

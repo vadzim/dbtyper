@@ -1,36 +1,40 @@
-import type { ConsumeStatementEnd, ReadOptionalIfNotExists } from "./sql-primitives.ts"
-import type { TokensList, PeekToken, SkipToken, SqlParserError, TokenIdent } from "../../core/sql-tokens.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape } from "../../core/jsql-shapes.ts"
+import type {
+	ReadToken,
+	SqlParserError,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokensList,
+} from "../../core/sql-tokens.ts"
 
-export type CreateSchemaStatement = {
-	kind: "create_schema"
-	name: string
-	ifNotExists: boolean
+export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+	ReadToken<Tokens> extends [infer AfterIf extends TokensList, TokenKey<"if">]
+		? ReadToken<AfterIf> extends [infer AfterNot extends TokensList, TokenKey<"not">]
+			? ReadToken<AfterNot> extends [infer AfterExists extends TokensList, TokenKey<"exists">]
+				? ParseCreateSchemaName<AfterExists, Db, true>
+				: [AfterNot, Db, SqlParserError<"Expected `exists` after `IF NOT` in CREATE SCHEMA">]
+			: [AfterIf, Db, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">]
+		: ParseCreateSchemaName<Tokens, Db, false>
+
+type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = {
+	defaultSchema: Db["defaultSchema"]
+	schemas: Db["schemas"] & Record<Name, JsqlSchemaShape>
 }
 
-export type ParseCreateSchema<Tokens extends TokensList> =
-	ReadOptionalIfNotExists<Tokens> extends [
-		infer RestFlag extends TokensList,
-		infer FlagOrError extends boolean | SqlParserError<string>,
-	]
-		? FlagOrError extends SqlParserError<string>
-			? [RestFlag, FlagOrError]
-			: FlagOrError extends true
-				? ParseCreateSchemaWithFlag<RestFlag, true>
-				: ParseCreateSchemaWithFlag<RestFlag, false>
-		: never
-
-type ParseCreateSchemaWithFlag<Tokens extends TokensList, IfNotExists extends boolean> =
-	PeekToken<Tokens> extends TokenIdent<infer NameResult extends string>
-		? ConsumeStatementEnd<SkipToken<Tokens>> extends [infer Tail extends TokensList, infer EndOk extends boolean]
-			? EndOk extends true
-				? [
-						Tail,
-						{
-							kind: "create_schema"
-							name: NameResult
-							ifNotExists: IfNotExists
-						},
-					]
-				: [Tail, SqlParserError<"Unable to parse CREATE SCHEMA statement">]
-			: never
-		: [Tokens, SqlParserError<"Unable to parse CREATE SCHEMA statement">]
+type ParseCreateSchemaName<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	IfNotExists extends boolean,
+> =
+	ReadToken<Tokens> extends [infer AfterName extends TokensList, TokenIdent<infer SchemaName extends string>]
+		? ReadToken<AfterName> extends [infer AfterSemicolon extends TokensList, TokenKey<";"> | TokenEot]
+			? IfNotExists extends true
+				? [SchemaName] extends [keyof Db["schemas"]]
+					? [AfterSemicolon, Db, null]
+					: [AfterSemicolon, MergeSchema<Db, SchemaName>, null]
+				: [SchemaName] extends [keyof Db["schemas"]]
+					? [AfterSemicolon, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
+					: [AfterSemicolon, MergeSchema<Db, SchemaName>, null]
+			: [AfterName, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
+		: [Tokens, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]

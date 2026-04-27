@@ -1,8 +1,6 @@
-import type { ParseSqlStatementsRecovering } from "../parser/parse-sql-statement.ts"
-import type { ParseSqlTokens, SqlParserError, TokensList } from "../../core/sql-tokens.ts"
-import type { SqlApplyStatements, SqlStatement } from "./apply-statement.ts"
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "./jsql-shapes.ts"
-import type { SqlApplyQueryText } from "./apply-query.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
+import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 
 export type SqlDriver = {
 	query(sql: string): Promise<Array<unknown>>
@@ -13,16 +11,12 @@ export function sqlDatabase<DefaultSchema extends string>(defaultSchema: Default
 	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
 }
 
-export function sqlStatement<S extends string>(source: S) {
-	return source as MigrationText<S>
-}
-
 export function migration<Path extends string>(path: Path) {
 	return {
 		add<const S extends string>(source: S): NamedMigration<S, Path> {
 			return {
 				path,
-				source: source as MigrationText<S>,
+				source,
 			}
 		},
 	}
@@ -34,14 +28,9 @@ export type SqlDatabase<DefaultSchema extends string = "public"> = {
 }
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
-type MigrationText<S extends string> = S & {
-	parsedSql: ParseSqlStatementsRecovering<ParseSqlTokens<S>> extends [infer _Rest extends TokensList, infer Parsed]
-		? Parsed
-		: never
-}
 
 type NamedMigration<S extends string, Path extends string> = {
-	source: MigrationText<S>
+	source: S
 	path: Path
 }
 
@@ -59,20 +48,20 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 	#migrations: Migrations | null
 	#defaultSchema: string
 
-	apply<Parsed extends SqlStatement[]>(
-		statement: string & { parsedSql: Parsed },
-	): DBMigrations<SqlApplyStatements<Database, Parsed>>
-	apply<Parsed extends SqlStatement[]>(
-		statement: Promise<{ default: { path: string; source: string & { parsedSql: Parsed } } }>,
-	): DBMigrations<SqlApplyStatements<Database, Parsed>>
-	apply(statement: string | Promise<{ default: { source: string; path: string } }>) {
+	apply<Source extends string>(statement: Source): DBMigrations<ApplyStatements<Database, Source>>
+	apply<Path extends string, Source extends string>(
+		statement: Promise<{ default: { path: Path; source: Source } }>,
+	): DBMigrations<ApplyStatements<Database, Source>>
+	apply(
+		statement: string | Promise<{ default: { source: string; path: string } }>,
+	): DBMigrations<ApplyStatements<Database, string>> {
 		return new DBMigrations<Database>(this.#defaultSchema, {
 			last:
 				typeof statement === "string"
 					? Promise.resolve({ source: statement, path: "" })
 					: statement.then(d => d.default),
 			prev: this.#migrations,
-		})
+		}) as DBMigrations<ApplyStatements<Database, string>>
 	}
 
 	getDefaultSchema(): string {
@@ -174,19 +163,19 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		this.dbInterface = dbInterface
 	}
 
-	query<Stmt extends string>(statement: Stmt) {
-		return this.dbInterface.query(statement) as Promise<
-			Array<SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never>
-		>
-	}
+	// query<Stmt extends string>(statement: Stmt) {
+	// 	return this.dbInterface.query(statement) as Promise<
+	// 		Array<SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never>
+	// 	>
+	// }
 
-	stream<Stmt extends string>(statement: Stmt) {
-		return this.dbInterface.stream
-			? (this.dbInterface.stream(statement) as AsyncIterable<
-					SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never
-				>)
-			: async(this.query(statement))
-	}
+	// stream<Stmt extends string>(statement: Stmt) {
+	// 	return this.dbInterface.stream
+	// 		? (this.dbInterface.stream(statement) as AsyncIterable<
+	// 				SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never
+	// 			>)
+	// 		: async(this.query(statement))
+	// }
 
 	migrations: readonly { source: string; path: string }[]
 	defaultSchema: string
