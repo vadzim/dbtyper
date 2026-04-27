@@ -50,7 +50,7 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 				: Head extends '"'
 					? Rest extends `${infer String}"${infer Rest}`
 						? Buffer<TokenIdent<String>, Rest>
-						: Buffer<TokenIdent<Rest>, "">
+						: Buffer<TokenError<"Unclosed quoted identifier literal">, S>
 					: Head extends "\x20" | "\n" | "\r" | "\t"
 						? ReadTokenFromString<SkipSpaces<Rest>>
 						: Head extends "'"
@@ -145,7 +145,7 @@ type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R
 	? R1 extends `'${infer R2}`
 		? ReadSingleQuotedString<R2> extends Buffer<TokenString<infer P2 extends string>, infer R3 extends string>
 			? Buffer<TokenString<`${P1}'${P2}`>, R3>
-			: never
+			: Buffer<TokenError<"Unclosed string literal">, S>
 		: SkipSpaces<R1> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
 				? ReadSingleQuotedString<R5> extends Buffer<
@@ -153,10 +153,10 @@ type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R
 						infer R6 extends string
 					>
 					? Buffer<TokenString<`${P1}${P6}`>, R6>
-					: never
+					: Buffer<TokenError<"Unclosed string literal">, S>
 				: Buffer<TokenString<P1>, R4>
 			: never
-	: Buffer<TokenString<S>, "">
+	: Buffer<TokenError<"Unclosed string literal">, S>
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
@@ -329,15 +329,15 @@ export const serviceWords: ReadonlySet<string> = new Set(Object.keys(serviceWord
 
 type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
 	? Comment extends `${string}/*${string}`
-		? S extends `${string}/*${infer Rest2}`
-			? SkipMultiComment<SkipMultiComment<Rest2>>
-			: never
+		? Skip2Comments<S>
 		: Comment extends `${string}/`
-			? S extends `${string}/*${infer Rest2}`
-				? SkipMultiComment<SkipMultiComment<Rest2>>
-				: never
+			? Skip2Comments<S>
 			: Rest
 	: ""
+
+type Skip2Comments<S extends string> = S extends `${string}/*${infer Rest}`
+	? SkipMultiComment<SkipMultiComment<Rest>>
+	: never
 
 type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
