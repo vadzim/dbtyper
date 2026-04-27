@@ -33,7 +33,7 @@ type Buffer<Token extends TokenType<TokenKind, string>, Rest extends string> = {
 /** Lex one token from a string (internal) */
 type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends StartTokenChar
-		? OptimizedBySpaceReadTokenChars<Rest> extends {
+		? ReadTokenChars<Rest> extends {
 				token: infer Word extends string
 				rest: infer Tail extends string
 			}
@@ -120,26 +120,25 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 																				>
 																			: Buffer<TokenKey<"/">, Rest>
 																		: Head extends "$"
-																			? S extends `$$${infer String}$$${infer Rest}`
-																				? Buffer<TokenString<String>, Rest>
-																				: ReadTaggedDollar<S> extends {
-																							token: infer String extends
-																								string
-																							rest: infer Rest extends
-																								string
-																					  }
-																					? Buffer<TokenString<String>, Rest>
-																					: Buffer<TokenKey<"$">, Rest>
+																			? ReadDollar<Rest>
 																			: Buffer<TokenKey<Head>, Rest>
 	: Buffer<TokenEot, "">
 
-type ReadTaggedDollar<S> = S extends `$${infer Tag}$${infer Rest}`
-	? ReadTokenChars<Tag>["rest"] extends ""
-		? Rest extends `${infer String}$${Tag}$${infer Rest2}`
-			? { token: String; rest: Rest2 }
-			: { token: Rest; rest: "" }
-		: null
-	: null
+type ReadDollar<S extends string> = S extends `${infer Head}${infer Rest}`
+	? Head extends "$"
+		? Rest extends `${infer String}$$${infer Rest2}`
+			? Buffer<TokenString<String>, Rest2>
+			: Buffer<TokenError<"Unclosed tagged string">, S>
+		: Head extends StartTokenChar
+			? Rest extends `${infer Tag}$${infer Rest2}`
+				? ReadTokenChars<Tag> extends { rest: "" }
+					? Rest2 extends `${infer String}$${Head}${Tag}$${infer Rest3}`
+						? Buffer<TokenString<String>, Rest3>
+						: Buffer<TokenError<"Unclosed tagged string">, S>
+					: Buffer<TokenError<"Wrong string tag">, S>
+				: Buffer<TokenError<"Wrong string tag">, S>
+			: Buffer<TokenError<"Wrong string tag">, S>
+	: Buffer<TokenError<"Wrong string tag">, S>
 
 type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`
@@ -160,21 +159,31 @@ type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
-type OptimizedBySpaceReadTokenChars<S extends string> =
-	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
-		? ReadTokenChars<SmallerBuffer> extends {
-				token: infer T extends string
-				rest: infer SmallerRest extends string
-			}
-			? SmallerRest extends ""
-				? { token: T; rest: Rest }
-				: { token: T; rest: `${SmallerRest}\x20${Rest}` }
-			: ReadTokenChars<S>
-		: ReadTokenChars<S>
+type ReadTokenChars<S extends string, Chars = TokenChar> = OptimizedBySpaceReadTokenChars<S, Chars>
 
-type ReadTokenChars<S extends string, Acc extends string = ""> = S extends `${infer C}${infer Rest}`
-	? C extends TokenChar
-		? ReadTokenChars<Rest, `${Acc}${C}`>
+type OptimizedBySpaceReadTokenChars<
+	S extends string,
+	Chars = TokenChar,
+> = S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
+	? ReadTokenCharsRaw<SmallerBuffer, Chars> extends {
+			token: infer T extends string
+			rest: infer SmallerRest extends string
+		}
+		? SmallerRest extends ""
+			? { token: T; rest: Rest }
+			: S extends `${T}${infer Rest2}`
+				? { token: T; rest: Rest2 }
+				: never
+		: ReadTokenCharsRaw<S, Chars>
+	: ReadTokenCharsRaw<S, Chars>
+
+type ReadTokenCharsRaw<
+	S extends string,
+	Chars = TokenChar,
+	Acc extends string = "",
+> = S extends `${infer C}${infer Rest}`
+	? C extends Chars
+		? ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`>
 		: { token: Acc; rest: S }
 	: { token: Acc; rest: "" }
 
@@ -205,7 +214,7 @@ type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
 
 type StartTokenChar = Letter | "_"
 
-type TokenChar = Letter | Digit | "$" | "_"
+type TokenChar = Letter | Digit | "_"
 
 type Digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
