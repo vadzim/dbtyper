@@ -1,13 +1,24 @@
 import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type { ReadExpectedToken, ReadQualifiedIdentifierFromBuffer, SqlQualifiedIdentifier } from "./sql-primitives.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenKey, TokenString } from "../../core/sql-tokens.ts"
+import type { SqlQueryParameterDescription } from "./parse-select.ts"
+import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenIdent, TokenKey, TokenString } from "../../core/sql-tokens.ts"
+
+export type InsertStatementValueCell =
+	| null
+	| true
+	| false
+	| string
+	| number
+	| unknown
+	| { kind: "param"; name: string }
 
 export type InsertValuesStatement = {
 	kind: "insert_values"
 	target: SqlQualifiedIdentifier
 	columns: string[]
-	valueTypes: unknown[][]
+	valueTypes: InsertStatementValueCell[][]
+	queryParams: Record<string, SqlQueryParameterDescription>
 }
 
 export type ParseInsertValues<Tokens extends TokensList> =
@@ -33,7 +44,7 @@ type ParseInsertAfterValuesKeyword<
 			? ParseValuesRows<Rest3> extends [infer Rest4 extends TokensList, infer ParsedValues]
 				? ParsedValues extends SqlParserError<string>
 					? [Rest4, ParsedValues]
-					: ParsedValues extends unknown[][]
+					: ParsedValues extends InsertStatementValueCell[][]
 						? ValidateRowsLen<Cols, ParsedValues> extends true
 							? SkipStatement<Rest4> extends [infer RestFinal extends TokensList, infer SkipResult]
 								? SkipResult extends SkippedStatement
@@ -44,6 +55,7 @@ type ParseInsertAfterValuesKeyword<
 												target: Table
 												columns: Cols
 												valueTypes: ParsedValues
+												queryParams: InsertParamsFromRows<Cols, ParsedValues>
 											},
 										]
 									: [RestFinal, SqlParserError<"Unable to parse INSERT">]
@@ -68,6 +80,27 @@ type ParseInsertAfterInto<Tokens extends TokensList> =
 				: never
 		: never
 
+type InsertParamsFromRows<
+	Cols extends string[],
+	Rows extends InsertStatementValueCell[][],
+> = Rows extends readonly [
+	infer Row extends InsertStatementValueCell[],
+	...infer Rest extends InsertStatementValueCell[][],
+]
+	? InsertParamsFromRow<Cols, Row> & InsertParamsFromRows<Cols, Rest>
+	: {}
+
+type InsertParamsFromRow<
+	Cols extends string[],
+	Vals extends InsertStatementValueCell[],
+> = Cols extends [infer C extends string, ...infer CR extends string[]]
+	? Vals extends [infer V extends InsertStatementValueCell, ...infer VR extends InsertStatementValueCell[]]
+		? V extends { kind: "param"; name: infer N extends string }
+			? { [K in N]: { kind: "insert_value"; column: C } } & InsertParamsFromRow<CR, VR>
+			: InsertParamsFromRow<CR, VR>
+		: {}
+	: {}
+
 type TupleLenEq<A extends unknown[], B extends unknown[]> = A["length"] extends B["length"]
 	? B["length"] extends A["length"]
 		? true
@@ -87,12 +120,12 @@ type ParseValuesRows<Tokens extends TokensList> =
 	ParseValueList<Tokens> extends [infer Rest extends TokensList, infer Row]
 		? Row extends SqlParserError<string>
 			? [Rest, Row]
-			: Row extends unknown[]
+			: Row extends InsertStatementValueCell[]
 				? ParseValuesRowsTail<Rest, [Row]>
 				: [Rest, SqlParserError<"Unable to parse INSERT values">]
 		: never
 
-type ParseValuesRowsTail<Tokens extends TokensList, Acc extends unknown[][]> =
+type ParseValuesRowsTail<Tokens extends TokensList, Acc extends InsertStatementValueCell[][]> =
 	PeekToken<Tokens> extends TokenKey<","> ? ParseValuesRowsAfterComma<SkipToken<Tokens>, Acc> : [Tokens, Acc]
 
 type ParseValuesRowsAfterComma<Tokens extends TokensList, Acc extends unknown[][]> =
@@ -100,7 +133,7 @@ type ParseValuesRowsAfterComma<Tokens extends TokensList, Acc extends unknown[][
 		? ParseValueList<Tokens> extends [infer Rest extends TokensList, infer Row]
 			? Row extends SqlParserError<string>
 				? [Rest, Row]
-				: Row extends unknown[]
+				: Row extends InsertStatementValueCell[]
 					? ParseValuesRowsTail<Rest, [...Acc, Row]>
 					: [Rest, SqlParserError<"Unable to parse INSERT values">]
 			: never
@@ -116,7 +149,7 @@ type ParseValueList<Tokens extends TokensList> =
 			: [Rest, Extract<OpenOk, SqlParserError<string>>]
 		: never
 
-type ParseValueListTail<Tokens extends TokensList, Acc extends unknown[] = []> =
+type ParseValueListTail<Tokens extends TokensList, Acc extends InsertStatementValueCell[] = []> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? [SkipToken<Tokens>, Acc]
 		: ParseOneValue<Tokens> extends [infer After extends TokensList, infer V]
@@ -136,7 +169,13 @@ type ParseOneValue<Tokens extends TokensList> =
 			? [SkipToken<Tokens>, true]
 			: PeekToken<Tokens> extends TokenKey<"false">
 				? [SkipToken<Tokens>, false]
-				: PeekToken<Tokens> extends TokenKey<"(">
+				: PeekToken<Tokens> extends TokenKey<":">
+					? [SkipToken<Tokens>] extends [infer AfterColon extends TokensList]
+						? PeekToken<AfterColon> extends TokenIdent<infer N extends string>
+							? [SkipToken<AfterColon>, { kind: "param"; name: N }]
+							: [AfterColon, SqlParserError<"Expected identifier after :">]
+						: never
+					: PeekToken<Tokens> extends TokenKey<"(">
 					? ParseParenthesizedValue<SkipToken<Tokens>>
 					: PeekToken<Tokens> extends TokenKey<"default">
 						? [SkipToken<Tokens>, unknown]

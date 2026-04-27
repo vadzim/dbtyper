@@ -19,6 +19,7 @@ type _OneStmt = Expect<
 					distinct: false
 					columns: "star"
 					from: { primary: { table: ["b", "a"]; alias: "b" }; joins: [] }
+					queryParams: {}
 				},
 			],
 		]
@@ -37,6 +38,7 @@ type _NamedCols = Expect<
 					distinct: false
 					columns: [{ name: "x" }, { name: "y" }]
 					from: { primary: { table: ["t"]; alias: "t" }; joins: [] }
+					queryParams: {}
 				},
 			],
 		]
@@ -50,7 +52,13 @@ type _AfterSelectSemicolon = Expect<
 		AfterSelectSemicolon,
 		[
 			EmptyTokenList,
-			{ kind: "select"; distinct: false; columns: "star"; from: { primary: { table: ["users", "app"]; alias: "users" }; joins: [] } },
+			{
+				kind: "select"
+				distinct: false
+				columns: "star"
+				from: { primary: { table: ["users", "app"]; alias: "users" }; joins: [] }
+				queryParams: {}
+			},
 		]
 	>
 >
@@ -62,7 +70,13 @@ type _AfterSelectParen = Expect<
 		AfterSelectParen,
 		[
 			ParseSqlTokens<"">,
-			{ kind: "select"; distinct: false; columns: "star"; from: { primary: { table: ["t"]; alias: "t" }; joins: [] } },
+			{
+				kind: "select"
+				distinct: false
+				columns: "star"
+				from: { primary: { table: ["t"]; alias: "t" }; joins: [] }
+				queryParams: {}
+			},
 		]
 	>
 >
@@ -75,7 +89,13 @@ type _DistinctStar = Expect<
 		DistinctStar,
 		[
 			EmptyTokenList,
-			{ kind: "select"; distinct: true; columns: "star"; from: { primary: { table: ["t"]; alias: "t" }; joins: [] } },
+			{
+				kind: "select"
+				distinct: true
+				columns: "star"
+				from: { primary: { table: ["t"]; alias: "t" }; joins: [] }
+				queryParams: {}
+			},
 		]
 	>
 >
@@ -92,6 +112,7 @@ type _TopLevelStillWorks = Expect<
 					distinct: false
 					columns: [{ name: "a" }, { name: "b" }]
 					from: { primary: { table: ["t"]; alias: "t" }; joins: [] }
+					queryParams: {}
 				},
 			],
 		]
@@ -111,6 +132,7 @@ type _PrimaryBareAlias = Expect<
 					distinct: false
 					columns: [{ name: "x"; table: "u" }]
 					from: { primary: { table: ["t"]; alias: "u" }; joins: [] }
+					queryParams: {}
 				},
 			],
 		]
@@ -129,6 +151,42 @@ type _StarFromWithAs = Expect<
 					distinct: false
 					columns: "star"
 					from: { primary: { table: ["t"]; alias: "u" }; joins: [] }
+					queryParams: {}
+				},
+			],
+		]
+	>
+>
+
+/** Named parameters in WHERE; `queryParams` maps names to column context. */
+type NamedParamsSelect = ParseSqlStatements<ParseSqlTokens<"select a from t where b = :bb and c = :cc;">>
+type _NamedParamsSelect = Expect<
+	Matches<
+		NamedParamsSelect,
+		[
+			EmptyTokenList,
+			[
+				{
+					kind: "select"
+					distinct: false
+					columns: [{ name: "a" }]
+					from: { primary: { table: ["t"]; alias: "t" }; joins: [] }
+					where: readonly [
+						{
+							kind: "eq"
+							left: { kind: "col"; ref: { column: "b" } }
+							right: { kind: "param"; name: "bb" }
+						},
+						{
+							kind: "eq"
+							left: { kind: "col"; ref: { column: "c" } }
+							right: { kind: "param"; name: "cc" }
+						},
+					]
+					queryParams: {
+						bb: { kind: "eq_rhs"; compareTo: { column: "b" } }
+						cc: { kind: "eq_rhs"; compareTo: { column: "c" } }
+					}
 				},
 			],
 		]

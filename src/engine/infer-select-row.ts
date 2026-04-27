@@ -112,7 +112,9 @@ type ValidateWhereAtom<Visible extends readonly VisibleEntry[], A extends WhereA
 	? ValidateColRef<Visible, R>
 	: A extends { kind: "lit" }
 		? true
-		: SqlParserError<"Internal WHERE atom">
+		: A extends { kind: "param" }
+			? true
+			: SqlParserError<"Internal WHERE atom">
 
 type ValidateWhereEq<Visible extends readonly VisibleEntry[], E extends WhereEq> = ValidateWhereAtom<
 	Visible,

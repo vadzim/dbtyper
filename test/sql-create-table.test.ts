@@ -76,6 +76,7 @@ type _SelectStarFromUnqualified = Expect<
 					distinct: false
 					columns: "star"
 					from: { primary: { table: ["users"]; alias: "users" }; joins: [] }
+					queryParams: {}
 				},
 			],
 		]

@@ -19,7 +19,16 @@ import type {
 
 export type ColRef = { column: string; table?: string }
 
-export type WhereAtom = { kind: "col"; ref: ColRef } | { kind: "lit"; value: string }
+/** Metadata for named `:` placeholders, keyed by placeholder name (e.g. `bb` for `:bb`). */
+export type SqlQueryParameterDescription =
+	| { kind: "eq_rhs"; compareTo: ColRef }
+	| { kind: "placeholder" }
+	| { kind: "insert_value"; column: string }
+
+export type WhereAtom =
+	| { kind: "col"; ref: ColRef }
+	| { kind: "lit"; value: string }
+	| { kind: "param"; name: string }
 
 export type WhereEq = { kind: "eq"; left: WhereAtom; right: WhereAtom }
 
@@ -58,6 +67,7 @@ export type SelectStatement = {
 	orderBy?: readonly OrderByItem[]
 	limit?: string
 	offset?: string
+	queryParams: Record<string, SqlQueryParameterDescription>
 }
 
 /** End of `SELECT` tail: statement terminator, end of input, or closing paren (subselect). */
@@ -280,6 +290,55 @@ type FinalSelectSkip<
 				: [R4, SqlParserError<"Internal SELECT tail skip">]
 		: never
 
+type MergeParamRecords<
+	A extends Record<string, SqlQueryParameterDescription>,
+	B extends Record<string, SqlQueryParameterDescription>,
+> = {
+	[K in keyof A | keyof B]: K extends keyof B
+		? B[K]
+		: K extends keyof A
+			? A[K]
+			: never
+}
+
+type EqToParamRecord<E extends WhereEq> = E extends {
+	kind: "eq"
+	left: infer L extends WhereAtom
+	right: infer R extends WhereAtom
+}
+	? R extends { kind: "param"; name: infer N extends string }
+		? L extends { kind: "col"; ref: infer C extends ColRef }
+			? { [K in N]: { kind: "eq_rhs"; compareTo: C } }
+			: { [K in N]: { kind: "placeholder" } }
+		: L extends { kind: "param"; name: infer N extends string }
+			? R extends { kind: "col"; ref: infer C extends ColRef }
+				? { [K in N]: { kind: "eq_rhs"; compareTo: C } }
+				: { [K in N]: { kind: "placeholder" } }
+			: {}
+	: {}
+
+type ParamsFromWhere<W extends readonly WhereEq[]> = W extends readonly [
+	infer H extends WhereEq,
+	...infer T extends WhereEq[],
+]
+	? MergeParamRecords<EqToParamRecord<H>, ParamsFromWhere<T>>
+	: {}
+
+type ParamsFromJoins<J extends readonly JoinClause[]> = J extends readonly [
+	infer Head extends JoinClause,
+	...infer Tail extends JoinClause[],
+]
+	? MergeParamRecords<ParamsFromWhere<Head["on"]>, ParamsFromJoins<Tail>>
+	: {}
+
+type SelectQueryParams<
+	WhereVal extends WhereConjunction | undefined,
+	From extends FromClause,
+> = MergeParamRecords<
+	WhereVal extends WhereConjunction ? ParamsFromWhere<WhereVal> : {},
+	ParamsFromJoins<From["joins"]>
+>
+
 type BuildSelectStatement<
 	ListResult extends "star" | readonly SelectColumn[],
 	Distinct extends boolean,
@@ -293,6 +352,7 @@ type BuildSelectStatement<
 	distinct: Distinct
 	columns: ListResult
 	from: From
+	queryParams: SelectQueryParams<WhereVal, From>
 } & (undefined extends WhereVal ? {} : { where: WhereVal }) &
 	(undefined extends OrderVal ? {} : { orderBy: OrderVal }) &
 	(undefined extends LimitVal ? {} : { limit: LimitVal }) &
@@ -457,7 +517,13 @@ type ParseWhereEqExpr<Tokens extends TokensList> =
 type ParseWhereAtom<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenString<infer S extends string>
 		? [SkipToken<Tokens>, { kind: "lit"; value: S }]
-		: PeekToken<Tokens> extends TokenKey<infer K extends string>
+		: PeekToken<Tokens> extends TokenKey<":">
+			? [SkipToken<Tokens>] extends [infer AfterColon extends TokensList]
+				? PeekToken<AfterColon> extends TokenIdent<infer N extends string>
+					? [SkipToken<AfterColon>, { kind: "param"; name: N }]
+					: [AfterColon, SqlParserError<"Expected identifier after :">]
+				: never
+			: PeekToken<Tokens> extends TokenKey<infer K extends string>
 			? K extends `${number}`
 				? [SkipToken<Tokens>, { kind: "lit"; value: K }]
 				: ParseColRef<Tokens> extends [infer R extends TokensList, infer C]

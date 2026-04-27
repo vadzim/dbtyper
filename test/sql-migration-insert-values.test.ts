@@ -143,6 +143,32 @@ type ParseInsertExtendedLiteralsRows = ParseInsertExtendedLiteralsStmt extends {
 type _ParseInsertExtendedLiteralsRowCount = Expect<Matches<ParseInsertExtendedLiteralsRows["length"], 1>>
 type _ParseInsertExtendedLiteralsValueCount = Expect<Matches<ParseInsertExtendedLiteralsRows[0]["length"], 10>>
 
+type ParseInsertNamedParams = ParseSqlStatements<
+	ParseSqlTokens<`
+		create schema app;
+		create table app.t (id int not null, label text not null);
+		insert into app.t (id, label) values (:rid, :lbl);
+	`>
+>
+type ParseInsertNamedParamsStmt = ParseInsertNamedParams[1] extends [unknown, unknown, infer S3] ? S3 : never
+type _ParseInsertNamedParamsKind = Expect<
+	Matches<ParseInsertNamedParamsStmt extends { kind: infer K } ? K : never, "insert_values">
+>
+type InsertNamedParamsQP = ParseInsertNamedParamsStmt extends {
+	queryParams: infer Q
+}
+	? Q
+	: never
+type _ParseInsertNamedParamsQP = Expect<
+	Matches<
+		InsertNamedParamsQP,
+		{
+			rid: { kind: "insert_value"; column: "id" }
+			lbl: { kind: "insert_value"; column: "label" }
+		}
+	>
+>
+
 type ApplyInsertExtendedLiteralsOk = SqlApplyStatements<SqlDatabase<"app">, ParseInsertExtendedLiterals[1]>
 type _ApplyInsertExtendedLiteralsOkRow = Expect<
 	Matches<
