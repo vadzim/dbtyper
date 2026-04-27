@@ -2,7 +2,16 @@ import type { ParseColumnList } from "./sql-constraints-fk.ts"
 import type { SkippedStatement, SkipStatement } from "./skip-statement.ts"
 import type { ReadExpectedToken, ReadQualifiedIdentifierFromBuffer, SqlQualifiedIdentifier } from "./sql-primitives.ts"
 import type { SqlQueryParameterDescription } from "./parse-select.ts"
-import type { PeekToken, SkipToken, TokensList, SqlParserError, TokenIdent, TokenKey, TokenString } from "../../core/sql-tokens.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokensList,
+	SqlParserError,
+	TokenIdent,
+	TokenKey,
+	TokenNumber,
+	TokenString,
+} from "../../core/sql-tokens.ts"
 
 export type InsertStatementValueCell =
 	| null
@@ -185,11 +194,11 @@ type ParseOneValue<Tokens extends TokensList> =
 								? ParseNowFunctionValue<SkipToken<Tokens>>
 								: PeekToken<Tokens> extends TokenKey<"+" | "-">
 									? ParseSignedNumberValue<SkipToken<Tokens>>
-									: PeekToken<Tokens> extends TokenKey<`${number}`>
+									: PeekToken<Tokens> extends TokenNumber<string>
 										? ParseNumberishTail<Tokens>
 										: PeekToken<Tokens> extends TokenString<string>
-											? [SkipToken<Tokens>, string]
-											: [Tokens, SqlParserError<"Unsupported value in INSERT">]
+												? [SkipToken<Tokens>, string]
+												: [Tokens, SqlParserError<"Unsupported value in INSERT">]
 
 type ParseParenthesizedValue<Tokens extends TokensList> =
 	ParseOneValue<Tokens> extends [infer Rest extends TokensList, infer V]
@@ -220,17 +229,11 @@ type ParseNowFunctionValue<Tokens extends TokensList> =
 		: never
 
 type ParseSignedNumberValue<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenKey<`${number}`>
+	PeekToken<Tokens> extends TokenNumber<string>
 		? ParseNumberishTail<Tokens>
 		: [Tokens, SqlParserError<"Expected number after sign in INSERT value">]
 
 type ParseNumberishTail<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenKey<`${number}`> ? ParseNumberishAfterInt<SkipToken<Tokens>> : [Tokens, number]
-
-type ParseNumberishAfterInt<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenKey<"."> ? ParseNumberishDecimalTail<SkipToken<Tokens>> : [Tokens, number]
-
-type ParseNumberishDecimalTail<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenKey<`${number}`>
+	PeekToken<Tokens> extends TokenNumber<string>
 		? [SkipToken<Tokens>, number]
-		: [Tokens, SqlParserError<"Expected decimal part in INSERT numeric value">]
+		: [Tokens, SqlParserError<"Expected numeric literal">]

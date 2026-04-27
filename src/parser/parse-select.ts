@@ -14,6 +14,7 @@ import type {
 	TokenEot,
 	TokenIdent,
 	TokenKey,
+	TokenNumber,
 	TokenString,
 } from "../../core/sql-tokens.ts"
 
@@ -219,19 +220,17 @@ type AfterOptionalOrderBy<
 			? ReadToken<Rl> extends [infer Rafter extends TokensList, infer Tok]
 				? Tok extends TokenIdent<infer Lim extends string>
 					? ParseLimitOffsetTail<Rafter, ListResult, Distinct, From, WhereVal, OrderVal, Lim, EndToken>
-					: Tok extends TokenKey<infer Lim extends string>
-						? Lim extends `${number}`
-							? ParseLimitOffsetTail<
-									Rafter,
-									ListResult,
-									Distinct,
-									From,
-									WhereVal,
-									OrderVal,
-									Lim,
-									EndToken
-								>
-							: [Rafter, SqlParserError<"Expected LIMIT value">]
+					: Tok extends TokenNumber<infer Lim extends string>
+						? ParseLimitOffsetTail<
+								Rafter,
+								ListResult,
+								Distinct,
+								From,
+								WhereVal,
+								OrderVal,
+								Lim,
+								EndToken
+							>
 						: [Rafter, SqlParserError<"Expected LIMIT value">]
 				: never
 			: ParseLimitOffsetTail<Rl, ListResult, Distinct, From, WhereVal, OrderVal, undefined, EndToken>
@@ -252,20 +251,18 @@ type ParseLimitOffsetTail<
 			? ReadToken<Ro> extends [infer Rafter extends TokensList, infer Tok]
 				? Tok extends TokenIdent<infer Off extends string>
 					? FinalSelectSkip<Rafter, ListResult, Distinct, From, WhereVal, OrderVal, LimitVal, Off, EndToken>
-					: Tok extends TokenKey<infer Off extends string>
-						? Off extends `${number}`
-							? FinalSelectSkip<
-									Rafter,
-									ListResult,
-									Distinct,
-									From,
-									WhereVal,
-									OrderVal,
-									LimitVal,
-									Off,
-									EndToken
-								>
-							: [Rafter, SqlParserError<"Expected OFFSET value">]
+					: Tok extends TokenNumber<infer Off extends string>
+						? FinalSelectSkip<
+								Rafter,
+								ListResult,
+								Distinct,
+								From,
+								WhereVal,
+								OrderVal,
+								LimitVal,
+								Off,
+								EndToken
+							>
 						: [Rafter, SqlParserError<"Expected OFFSET value">]
 				: never
 			: FinalSelectSkip<Ro, ListResult, Distinct, From, WhereVal, OrderVal, LimitVal, undefined, EndToken>
@@ -440,13 +437,10 @@ type ParseColRefAfterFirst<Rest extends TokensList, A extends string> =
 			: [R1, { column: A }]
 		: never
 
-/**
- * Unquoted first segment: `TokenIdent`, or a numeric `TokenKey` (e.g. `select 1`) — not a
- * `ServiceWords` key; use a quoted ident for other spellings that lex as `TokenKey`.
- */
+/** Unquoted first segment: `TokenIdent`, or a numeric literal (`TokenNumber`, e.g. `select 1`). */
 export type ParseColRef<Tokens extends TokensList> = PeekToken<Tokens> extends TokenIdent<infer A extends string>
 	? ParseColRefAfterFirst<SkipToken<Tokens>, A>
-	: PeekToken<Tokens> extends TokenKey<infer K extends `${number}`>
+	: PeekToken<Tokens> extends TokenNumber<infer K extends string>
 		? ParseColRefAfterFirst<SkipToken<Tokens>, K>
 		: [Tokens, SqlParserError<"Expected column reference">]
 
@@ -523,8 +517,7 @@ type ParseWhereAtom<Tokens extends TokensList> =
 					? [SkipToken<AfterColon>, { kind: "param"; name: N }]
 					: [AfterColon, SqlParserError<"Expected identifier after :">]
 				: never
-			: PeekToken<Tokens> extends TokenKey<infer K extends string>
-			? K extends `${number}`
+			: PeekToken<Tokens> extends TokenNumber<infer K extends string>
 				? [SkipToken<Tokens>, { kind: "lit"; value: K }]
 				: ParseColRef<Tokens> extends [infer R extends TokensList, infer C]
 					? C extends SqlParserError<string>
@@ -533,13 +526,6 @@ type ParseWhereAtom<Tokens extends TokensList> =
 							? [R, { kind: "col"; ref: C }]
 							: never
 					: never
-			: ParseColRef<Tokens> extends [infer R extends TokensList, infer C]
-				? C extends SqlParserError<string>
-					? [R, C]
-					: C extends ColRef
-						? [R, { kind: "col"; ref: C }]
-						: never
-				: never
 
 type ParseOrderByList<Tokens extends TokensList> =
 	ParseOrderByItem<Tokens> extends [infer R extends TokensList, infer First]
