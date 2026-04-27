@@ -15,6 +15,7 @@ import type {
 	TokenIdent,
 	TokenKey,
 	TokenNumber,
+	TokenParam,
 	TokenString,
 } from "../../core/sql-tokens.ts"
 
@@ -511,12 +512,8 @@ type ParseWhereEqExpr<Tokens extends TokensList> =
 type ParseWhereAtom<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenString<infer S extends string>
 		? [SkipToken<Tokens>, { kind: "lit"; value: S }]
-		: PeekToken<Tokens> extends TokenKey<":">
-			? [SkipToken<Tokens>] extends [infer AfterColon extends TokensList]
-				? PeekToken<AfterColon> extends TokenIdent<infer N extends string>
-					? [SkipToken<AfterColon>, { kind: "param"; name: N }]
-					: [AfterColon, SqlParserError<"Expected identifier after :">]
-				: never
+		: PeekToken<Tokens> extends TokenParam<infer N extends string>
+			? [SkipToken<Tokens>, { kind: "param"; name: N }]
 			: PeekToken<Tokens> extends TokenNumber<infer K extends string>
 				? [SkipToken<Tokens>, { kind: "lit"; value: K }]
 				: ParseColRef<Tokens> extends [infer R extends TokensList, infer C]

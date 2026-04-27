@@ -7,9 +7,9 @@ import type {
 	SkipToken,
 	TokensList,
 	SqlParserError,
-	TokenIdent,
 	TokenKey,
 	TokenNumber,
+	TokenParam,
 	TokenString,
 } from "../../core/sql-tokens.ts"
 
@@ -178,12 +178,8 @@ type ParseOneValue<Tokens extends TokensList> =
 			? [SkipToken<Tokens>, true]
 			: PeekToken<Tokens> extends TokenKey<"false">
 				? [SkipToken<Tokens>, false]
-				: PeekToken<Tokens> extends TokenKey<":">
-					? [SkipToken<Tokens>] extends [infer AfterColon extends TokensList]
-						? PeekToken<AfterColon> extends TokenIdent<infer N extends string>
-							? [SkipToken<AfterColon>, { kind: "param"; name: N }]
-							: [AfterColon, SqlParserError<"Expected identifier after :">]
-						: never
+				: PeekToken<Tokens> extends TokenParam<infer N extends string>
+					? [SkipToken<Tokens>, { kind: "param"; name: N }]
 					: PeekToken<Tokens> extends TokenKey<"(">
 					? ParseParenthesizedValue<SkipToken<Tokens>>
 					: PeekToken<Tokens> extends TokenKey<"default">

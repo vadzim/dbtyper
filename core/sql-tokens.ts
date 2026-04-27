@@ -8,12 +8,13 @@ export type ParseSqlTokens<S extends string = string> = [ReadTokenFromString<S>]
 	: never
 
 export type EmptyTokenList = ParseSqlTokens<"">
-export type TokenKind = "ident" | "string" | "number" | "key" | "eot" | "error"
+export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "eot" | "error"
 export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
 export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
 export type TokenString<String extends string> = TokenType<"string", String>
 export type TokenNumber<Num extends string> = TokenType<"number", Num>
+export type TokenParam<Param extends string> = TokenType<"param", Param>
 export type TokenEot = TokenType<"eot">
 export type TokenError<Message extends string> = TokenType<"error", Message>
 export type TokensList = Buffer<TokenType<TokenKind, string>, string>
@@ -82,8 +83,17 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 												? Buffer<TokenKey<"||">, Rest>
 												: Buffer<TokenKey<"|">, Rest>
 											: Head extends ":"
-												? Rest extends `:${infer Rest}`
-													? Buffer<TokenKey<"::">, Rest>
+												? Rest extends `${infer Next}${infer Rest2}`
+													? Next extends ":"
+														? Buffer<TokenKey<"::">, Rest2>
+														: Next extends TokenChar
+															? ReadTokenChars<Rest2> extends {
+																	token: infer Token extends string
+																	rest: infer Rest3 extends string
+																}
+																? Buffer<TokenParam<`${Next}${Token}`>, Rest3>
+																: never
+															: Buffer<TokenKey<":">, Rest>
 													: Buffer<TokenKey<":">, Rest>
 												: Head extends "#"
 													? Rest extends `>>${infer Rest}`
