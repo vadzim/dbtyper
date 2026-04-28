@@ -7,7 +7,7 @@
 	"type": "module",
 	"main": "index.js",
 	"scripts": {
-		"typecheck": "time tsgo --noEmit -p tsconfig.json #&& time npm run --silent monadcheck-log",
+		"typecheck": "time tsgo --noEmit -p tsconfig.json && time npm run --silent monadcheck-log",
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
 		"test": "npm run --silent typecheck && node --test \"test/**/*.test.ts\"",
