@@ -68,7 +68,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 ## Tests — `INSERT` / `UPDATE` / `DELETE` wiring
 
-- [ ] **`test/parse-insert.test.ts`**: **`insert into public.users (id, name) values ('a','b');`** against a **`Db`** whose **`defaultSchema`** is not **`public`** (or inverse) so qualified resolution is exercised.
-- [ ] Same file: **`insert into users u (id, name) values ('a','b');`** if **`ParseInsert`** allows table alias — assert **`JsqlInsertStatementResult`** or document rejection with an error test.
-- [ ] **`test/parse-update.test.ts`**: **`update public.users set name = 'x', id = 'y' where …`** (two **`SET`** columns) success + one wrong-type **`SET`** error.
-- [ ] **`test/parse-delete.test.ts`** or **`parse-select.test.ts`**: **`delete from users where users.name between 'a' and 'z';`** and **`… where users.name like 'x%';`** — end-to-end **`ParseSqlStatement`**, not only **`ParseWhereExpression`**.
+- [x] **`test/parse-insert.test.ts`**: **`insert into public.users (id, name) values ('a','b');`** against a **`Db`** whose **`defaultSchema`** is not **`public`** (or inverse) so qualified resolution is exercised.
+- [x] Same file: **`insert into users u (id, name) values ('a','b');`** if **`ParseInsert`** allows table alias — assert **`JsqlInsertStatementResult`** or document rejection with an error test.
+- [x] **`test/parse-update.test.ts`**: **`update public.users set name = 'x', id = 'y' where …`** (two **`SET`** columns) success + one wrong-type **`SET`** error.
+- [x] **`test/parse-delete.test.ts`** or **`parse-select.test.ts`**: **`delete from users where users.name between 'a' and 'z';`** and **`… where users.name like 'x%';`** — end-to-end **`ParseSqlStatement`**, not only **`ParseWhereExpression`**.

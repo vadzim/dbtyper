@@ -54,6 +54,43 @@ type InsUnknownCol = ParseSqlStatement<
 >
 type _insUnknownCol = Expect<Extends<Tuple3At2<InsUnknownCol>, SqlParserError<"Unknown column in INSERT column list">>>
 
+/** Qualified `public.users` while `defaultSchema` is `app` (must not resolve via default only). */
+type DbAppDefaultPublicUsers = {
+	defaultSchema: "app"
+	schemas: {
+		app: { sets: {} }
+		public: {
+			sets: {
+				users: {
+					kind: "table"
+					columns: { id: string; name: string }
+					column_sql_types: { id: "uuid"; name: "text" }
+					column_facts: { id: { not_null: true } }
+				}
+			}
+		}
+	}
+}
+
+type InsQualified = ParseSqlStatement<
+	ParseSqlTokens<`insert into public.users (id, name) values ('a','b');`>,
+	DbAppDefaultPublicUsers
+>
+type _insQualified = Expect<Extends<Tuple3At2<InsQualified>, JsqlInsertStatementResult>>
+
+/** Table alias before `(` column list (scope for `VALUES` is still the base table). */
+type InsTableAlias = ParseSqlStatement<
+	ParseSqlTokens<`insert into users u (id, name) values ('a','b');`>,
+	DbUsers
+>
+type _insTableAlias = Expect<Extends<Tuple3At2<InsTableAlias>, JsqlInsertStatementResult>>
+
+type InsQualifiedTableAlias = ParseSqlStatement<
+	ParseSqlTokens<`insert into public.users u (id, name) values ('a','b');`>,
+	DbAppDefaultPublicUsers
+>
+type _insQualifiedTableAlias = Expect<Extends<Tuple3At2<InsQualifiedTableAlias>, JsqlInsertStatementResult>>
+
 describe("parse-insert (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

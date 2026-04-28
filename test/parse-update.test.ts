@@ -35,6 +35,40 @@ type _upBadSet = Expect<Extends<Tuple3At2<UpBadSet>, SqlParserError<"Incompatibl
 type UpBadWhere = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' where id = 1;`>, DbUsers>
 type _upBadWhere = Expect<Extends<Tuple3At2<UpBadWhere>, SqlParserError<"Incompatible types in comparison">>>
 
+type UpMultiOk = ParseSqlStatement<
+	ParseSqlTokens<`update users set name = 'x', id = 'y' where users.id = 'u';`>,
+	DbUsers
+>
+type _upMultiOk = Expect<Extends<Tuple3At2<UpMultiOk>, JsqlUpdateStatementResult>>
+
+type UpMultiBadSecond = ParseSqlStatement<
+	ParseSqlTokens<`update users set name = 'x', id = 1 where users.id = 'u';`>,
+	DbUsers
+>
+type _upMultiBadSecond = Expect<Extends<Tuple3At2<UpMultiBadSecond>, SqlParserError<"Incompatible value type for column">>>
+
+type DbAppDefaultPublicUsers = {
+	defaultSchema: "app"
+	schemas: {
+		app: { sets: {} }
+		public: {
+			sets: {
+				users: {
+					kind: "table"
+					columns: { id: string; name: string }
+					column_sql_types: { id: "uuid"; name: "text" }
+				}
+			}
+		}
+	}
+}
+
+type UpMultiQualified = ParseSqlStatement<
+	ParseSqlTokens<`update public.users set name = 'x', id = 'y' where public.users.id = 'u';`>,
+	DbAppDefaultPublicUsers
+>
+type _upMultiQualified = Expect<Extends<Tuple3At2<UpMultiQualified>, JsqlUpdateStatementResult>>
+
 describe("parse-update (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

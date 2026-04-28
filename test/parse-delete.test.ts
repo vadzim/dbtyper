@@ -54,6 +54,13 @@ type _tIsNull = Expect<Matches<Tuple3At2<TIsNull>, null>>
 type TIsNotNull = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name is not null;`>, DbUsers>
 type _tIsNotNull = Expect<Matches<Tuple3At2<TIsNotNull>, null>>
 
+/** End-to-end `ParseSqlStatement`: `BETWEEN` / `LIKE` (not only `ParseWhereExpression`). */
+type TDelBetween = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name between 'a' and 'z';`>, DbUsers>
+type _tDelBetween = Expect<Matches<Tuple3At2<TDelBetween>, null>>
+
+type TDelLike = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name like 'x%';`>, DbUsers>
+type _tDelLike = Expect<Matches<Tuple3At2<TDelLike>, null>>
+
 describe("parse-delete (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
