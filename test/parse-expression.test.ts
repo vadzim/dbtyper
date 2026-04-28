@@ -1,15 +1,21 @@
 import { describe, it } from "node:test"
+import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
-import type { Expect } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Tuple2At1, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
-import type { ExpressionParseContext, ParseExpression } from "../src/parser/parse-expression.ts"
+import type {
+	EmptyExpressionParams,
+	ExpressionParseContext,
+	ParseExpression,
+	ParseScalarExprUntyped,
+} from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 
 type DbUsers = {
 	defaultSchema: "public"
 	schemas: {
-		public: {
+		public: JsqlSchemaShape & {
 			sets: {
 				users: {
 					kind: "table"
@@ -30,10 +36,10 @@ type UsersEntry = {
 
 type UsersScope = Record<"users", UsersEntry>
 
-type WhereCtxEmpty = ExpressionParseContext<"three_part", {}>
+type WhereCtxEmpty = ExpressionParseContext<"three_part", EmptyExpressionParams>
 
-type WUnknownParam = ParseWhereExpression<ParseSqlTokens<`:n = 'x'`>, DbUsers, UsersScope, {}>
-type _wUnknownParam = Expect<WUnknownParam[1] extends SqlParserError<"Unknown query parameter"> ? true : false>
+type WUnknownParam = ParseWhereExpression<ParseSqlTokens<`:n = 'x'`>, DbUsers, UsersScope, EmptyExpressionParams>
+type _wUnknownParam = Expect<Extends<Tuple2At1<WUnknownParam>, SqlParserError<"Unknown query parameter">>>
 
 type WParamUnknownTs = ParseWhereExpression<
 	ParseSqlTokens<`:p = 'x'`>,
@@ -41,7 +47,7 @@ type WParamUnknownTs = ParseWhereExpression<
 	UsersScope,
 	{ p: { ts: unknown; sql: "text" } }
 >
-type _wParamUnknownTs = Expect<WParamUnknownTs[1] extends SqlParserError<"Parameter has unknown type"> ? true : false>
+type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, SqlParserError<"Parameter has unknown or any type">>>
 
 type WParamBoolOk = ParseWhereExpression<
 	ParseSqlTokens<`:flag`>,
@@ -49,18 +55,20 @@ type WParamBoolOk = ParseWhereExpression<
 	UsersScope,
 	{ flag: { ts: true; sql: "boolean" } }
 >
-type _wParamBoolOk = Expect<WParamBoolOk[1] extends null ? true : false>
+type _wParamBoolOk = Expect<Extends<Tuple2At1<WParamBoolOk>, null>>
 
 type WNonBoolRoot = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
-type _wNonBoolRoot = Expect<WNonBoolRoot[1] extends SqlParserError<"Expression must be boolean"> ? true : false>
+type _wNonBoolRoot = Expect<Extends<Tuple2At1<WNonBoolRoot>, SqlParserError<"Expression must be boolean">>>
 
-type ExprSelectCtx = ExpressionParseContext<"three_part", {}>
+type ExprSelectCtx = ExpressionParseContext<"three_part", EmptyExpressionParams>
 
 type SelBareCol = ParseExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope, ExprSelectCtx>
-type _selBareCol = Expect<SelBareCol[1] extends SqlParserError<"Expression must be boolean"> ? true : false>
+type _selBareCol = Expect<Extends<Tuple2At1<SelBareCol>, SqlParserError<"Expression must be boolean">>>
 
 type TSelectParamNoBind = ParseSqlStatement<ParseSqlTokens<`select :limit, users.id from users;`>, DbUsers>
-type _selectParamNoBind = Expect<TSelectParamNoBind[2] extends SqlParserError<"Unknown query parameter"> ? true : false>
+type _selectParamNoBind = Expect<
+	Extends<Tuple3At2<TSelectParamNoBind>, SqlParserError<"Unknown query parameter in SELECT">>
+>
 
 type InnerScope = Record<
 	"inner_t",
@@ -73,7 +81,10 @@ type OuterScope = Record<
 type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
 
 type ExprCross = ParseExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner, WhereCtxEmpty>
-type _exprCross = Expect<ExprCross[1] extends { ok: true; ts: boolean } ? true : false>
+type _exprCross = Expect<Extends<Tuple2At1<ExprCross>, { ok: true; ts: boolean }>>
+
+type UAdd = ParseScalarExprUntyped<ParseSqlTokens<`1 + 2`>>
+type _uAdd = Expect<Extends<Tuple2At1<UAdd>, { kind: "add" }>>
 
 describe("parse-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})

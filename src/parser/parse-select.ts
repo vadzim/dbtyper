@@ -12,19 +12,44 @@ import type {
 	TokenString,
 	TokensList,
 } from "../../core/sql-tokens.ts"
-import type { ExpressionParamsShape, ExprOk, IsUnknown, ParseAddValue } from "./parse-expression.ts"
+import type {
+	EmptyExpressionParams,
+	ExpressionParamsShape,
+	ExprOk,
+	IsUnknownOrAny,
+	ParseScalarExprUntyped,
+	ResolveScalarExprAst,
+	ScalarExprAst,
+	ScalarIdentParts,
+} from "./parse-expression.ts"
+import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, ValidateCol } from "./parser-scope.ts"
-import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
 type TokenKeyOn = TokenKey<"on">
 
+/**
+ * Third slot of `[Tokens, Mid, Third]` is not correlated with `Mid` under `infer`; it may union with
+ * `SqlParserError` from other branches. Strip non-scope constituents before `extends ScopeMap`.
+ */
+type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | SqlParserError<string>>
+
+type RawSelectItem =
+	| { kind: "star" }
+	| { kind: "param"; param: string; as?: string }
+	| { kind: "expr"; ast: ScalarExprAst; as?: string }
+
+/** With `exactOptionalPropertyTypes`, do not set `as: undefined` — omit the key instead. */
+type RawSelectParamItem<P extends string, As extends string | undefined> = [As] extends [undefined]
+	? { kind: "param"; param: P }
+	: { kind: "param"; param: P; as: As }
+
 export type ParseSelect<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape = {},
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenKey<"distinct">
 		? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params>
@@ -58,19 +83,24 @@ type ParseSelectAfterDistinct<
 									infer Tail,
 								]
 								? Mid extends SqlParserError<string>
-									? Tail extends never
+									? Tail extends ParserRefErrorThirdSentinel
 										? [R, Db, Mid]
 										: never
 									: Mid extends null
-										? Tail extends ScopeMap
-											? ResolveSelectList<Items, Db, Tail, Params> extends infer Res
-												? Res extends SqlParserError<string>
-													? [R, Db, Res]
-													: Res extends JsqlSelectStatementResult
-														? FinishSelectStatement<R, Db, Res>
-														: never
+										? [JoinScopeOnly<Tail>] extends [never]
+											? never
+											: JoinScopeOnly<Tail> extends ScopeMap
+												? ResolveSelectList<
+														Items,
+														Db,
+														JoinScopeOnly<Tail>,
+														Params
+													> extends infer Res
+													? Res extends SqlParserError<infer _Msg extends string>
+														? [R, Db, Res]
+														: FinishSelectStatement<R, Db, Res>
+													: never
 												: never
-											: never
 										: never
 								: never
 							: never
@@ -78,11 +108,7 @@ type ParseSelectAfterDistinct<
 				: never
 		: never
 
-type FinishSelectStatement<
-	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Res extends JsqlSelectStatementResult,
-> =
+type FinishSelectStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
 	SkipOptionalWhereToSemi<Tokens> extends [infer R1 extends TokensList, null]
 		? ReadToken<R1> extends [infer R2 extends TokensList, infer Tok]
 			? Tok extends TokenKey<";"> | TokenEot
@@ -97,16 +123,6 @@ type SkipOptionalWhereToSemi<Tokens extends TokensList> =
 			? [AfterSemi, null]
 			: never
 		: [Tokens, null]
-
-type RawSelectItem =
-	| { kind: "star" }
-	| { kind: "param"; param: string; as?: string }
-	| {
-			kind: "parts"
-			parts: readonly [string] | readonly [string, string] | readonly [string, string, string]
-			as?: string
-	  }
-	| { kind: "scalar"; ts: unknown; sql: string; as: string }
 
 type ParseRawSelectList<
 	Tokens extends TokensList,
@@ -133,19 +149,21 @@ type ParseRawSelectListAfterItem<
 	Acc extends readonly RawSelectItem[],
 > = PeekToken<Tokens> extends TokenKey<","> ? ParseRawSelectList<SkipToken<Tokens>, Db, Params, Acc> : [Tokens, Acc]
 
-type ParseOneRawSelectScalarItem<
+type ParseOneRawSelectExprItem<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	EvalSelectScalarExpression<Tokens, Db, {}, Params> extends [infer RExpr extends TokensList, infer E2]
-		? E2 extends SqlParserError<string>
-			? [RExpr, E2]
-			: E2 extends ExprOk<infer Ts, infer Sql extends string>
-				? ParseOptionalAs<RExpr> extends [infer AfterAs extends TokensList, infer As extends string | undefined]
+	ParseScalarExprUntyped<Tokens> extends [infer RExpr extends TokensList, infer Out]
+		? Out extends SqlParserError<infer _Msg extends string>
+			? [RExpr, Out]
+			: Out extends ScalarExprAst
+				? ParseOptionalAs<RExpr> extends [infer M2 extends TokensList, infer As extends string | undefined]
 					? As extends string
-						? [AfterAs, { kind: "scalar"; ts: Ts; sql: Sql; as: As }]
-						: [AfterAs, SqlParserError<"Scalar expression in SELECT requires AS alias">]
+						? [M2, { kind: "expr"; ast: Out; as: As }]
+						: Out extends { kind: "col"; parts: ScalarIdentParts }
+							? [M2, { kind: "expr"; ast: Out }]
+							: [M2, SqlParserError<"Scalar expression in SELECT requires AS alias">]
 					: never
 				: never
 		: never
@@ -155,56 +173,26 @@ type ParseOneRawSelectItem<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends infer Head
-		? Head extends
-				| TokenKey<"(">
-				| TokenNumber<string>
-				| TokenString<string>
-				| TokenKey<"true">
-				| TokenKey<"false">
-				| TokenKey<"null">
-				| TokenKey<"-">
-			? ParseOneRawSelectScalarItem<Tokens, Db, Params>
-			: ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
-				? Tok extends TokenParam<infer P extends string>
-					? ParseOptionalAs<R1> extends [
-							infer AfterAs extends TokensList,
-							infer As extends string | undefined,
-						]
-						? [AfterAs, { kind: "param"; param: P; as?: As }]
-						: never
-					: Tok extends TokenIdent<infer A extends string>
-						? ParseOneRawAfterLeadingIdent<R1, A>
-						: never
-				: never
-		: never
-
-type ParseOneRawAfterLeadingIdent<R1 extends TokensList, A extends string> =
-	PeekToken<R1> extends TokenKey<".">
-		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
-			? ReadToken<R2> extends [infer R3 extends TokensList, TokenIdent<infer B extends string>]
-				? PeekToken<R3> extends TokenKey<".">
-					? ReadToken<R3> extends [infer R4 extends TokensList, TokenKey<".">]
-						? ReadToken<R4> extends [infer R5 extends TokensList, TokenIdent<infer C extends string>]
-							? ParseOptionalAs<R5> extends [
-									infer AfterAs extends TokensList,
-									infer As extends string | undefined,
-								]
-								? [AfterAs, { kind: "parts"; parts: readonly [A, B, C]; as?: As }]
-								: never
-							: never
-						: never
-					: ParseOptionalAs<R3> extends [
-								infer AfterAs extends TokensList,
-								infer As extends string | undefined,
-						  ]
-						? [AfterAs, { kind: "parts"; parts: readonly [A, B]; as?: As }]
-						: never
+	PeekToken<Tokens> extends TokenParam<infer P extends string>
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenParam<P>]
+			? ParseOptionalAs<R1> extends [infer M2 extends TokensList, infer As extends string | undefined]
+				? [M2, RawSelectParamItem<P, As>]
 				: never
 			: never
-		: ParseOptionalAs<R1> extends [infer AfterAs extends TokensList, infer As extends string | undefined]
-			? [AfterAs, { kind: "parts"; parts: readonly [A]; as?: As }]
-			: never
+		: PeekToken<Tokens> extends TokenIdent<string>
+			? ParseOneRawSelectExprItem<Tokens, Db, Params>
+			: PeekToken<Tokens> extends infer Head
+				? Head extends
+						| TokenKey<"(">
+						| TokenNumber<string>
+						| TokenString<string>
+						| TokenKey<"true">
+						| TokenKey<"false">
+						| TokenKey<"null">
+						| TokenKey<"-">
+					? ParseOneRawSelectExprItem<Tokens, Db, Params>
+					: never
+				: never
 
 type ParseOptionalAs<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"as">
@@ -219,24 +207,26 @@ type ParseOptionalAs<Tokens extends TokensList> =
 				: never
 		: [Tokens, undefined]
 
-type ParseFromJoinScope<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
-	ParseFromTableRef<Tokens, Db, Scope> extends [infer R0 extends TokensList, infer Mid, infer Third]
-		? Mid extends SqlParserError<string>
-			? Third extends never
-				? [R0, Mid, never]
-				: never
-			: Mid extends null
-				? Third extends ScopeMap
-					? ParseJoinChain<R0, Db, Third>
-					: never
-				: never
-		: never
-
 type ParseFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
 		? Tok extends TokenIdent<infer A extends string>
 			? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
-			: [R1, SqlParserError<"Expected table name in FROM">, never]
+			: [R1, SqlParserError<"Expected table name in FROM">, ParserRefErrorThirdSentinel]
+		: never
+
+type ParseFromJoinScope<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+	ParseFromTableRef<Tokens, Db, Scope> extends [infer R0 extends TokensList, infer Mid, infer Third]
+		? Mid extends SqlParserError<string>
+			? Third extends ParserRefErrorThirdSentinel
+				? [R0, Mid, ParserRefErrorThirdSentinel]
+				: never
+			: Mid extends null
+				? [JoinScopeOnly<Third>] extends [never]
+					? never
+					: JoinScopeOnly<Third> extends ScopeMap
+						? ParseJoinChain<R0, Db, JoinScopeOnly<Third>>
+						: never
+				: never
 		: never
 
 type ParseFromTableAfterLeadingIdent<
@@ -251,13 +241,13 @@ type ParseFromTableAfterLeadingIdent<
 				? TokB extends TokenIdent<infer B extends string>
 					? ResolveTableShape<Db, A, B> extends infer Tbl extends JsqlTableShape
 						? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
-						: [R3, SqlParserError<"Unknown schema or table in FROM">, never]
-					: [R3, SqlParserError<"Expected table name after `.` in FROM">, never]
+						: [R3, SqlParserError<"Unknown schema or table in FROM">, ParserRefErrorThirdSentinel]
+					: [R3, SqlParserError<"Expected table name after `.` in FROM">, ParserRefErrorThirdSentinel]
 				: never
 			: never
 		: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
 			? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
-			: [R1, SqlParserError<"Unknown table in FROM">, never]
+			: [R1, SqlParserError<"Unknown table in FROM">, ParserRefErrorThirdSentinel]
 
 type EmptySqlTypes = Record<string, string>
 
@@ -297,26 +287,47 @@ type ParseAliasAfterTable<
 					>
 				>,
 			]
-		: ReadToken<Tokens> extends [infer Ra extends TokensList, infer TokAlias]
-			? TokAlias extends TokenIdent<infer Alias extends string>
-				? [
-						Ra,
-						null,
-						MergeScope<
-							Scope,
-							Record<
-								Alias,
-								{
-									schema: Sch
-									table: Tab
-									columns: Tbl["columns"]
-									column_sql_types: SqlTypesOf<Tbl>
-								}
-							>
-						>,
-					]
-				: [Ra, SqlParserError<"Expected alias or join clause after table">, never]
-			: never
+		: PeekToken<Tokens> extends TokenKey<"as">
+			? ReadToken<SkipToken<Tokens>> extends [infer Ra extends TokensList, infer TokName]
+				? TokName extends TokenIdent<infer Alias extends string>
+					? [
+							Ra,
+							null,
+							MergeScope<
+								Scope,
+								Record<
+									Alias,
+									{
+										schema: Sch
+										table: Tab
+										columns: Tbl["columns"]
+										column_sql_types: SqlTypesOf<Tbl>
+									}
+								>
+							>,
+						]
+					: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+				: never
+			: ReadToken<Tokens> extends [infer Ra extends TokensList, infer TokAlias]
+				? TokAlias extends TokenIdent<infer Alias extends string>
+					? [
+							Ra,
+							null,
+							MergeScope<
+								Scope,
+								Record<
+									Alias,
+									{
+										schema: Sch
+										table: Tab
+										columns: Tbl["columns"]
+										column_sql_types: SqlTypesOf<Tbl>
+									}
+								>
+							>,
+						]
+					: [Ra, SqlParserError<"Expected alias or join clause after table">, ParserRefErrorThirdSentinel]
+				: never
 
 type ParseJoinChain<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	PeekToken<Tokens> extends TokenKey<"inner">
@@ -330,50 +341,52 @@ type ParseJoinChain<Tokens extends TokensList, Db extends JsqlDatabaseShape, Sco
 type ParseJoinAfterOptionalInner<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope>
-		: [Tokens, SqlParserError<"Expected JOIN after INNER">, never]
+		: [Tokens, SqlParserError<"Expected JOIN after INNER">, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterLeft<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	PeekToken<Tokens> extends TokenKey<"outer">
 		? ParseJoinAfterOptionalOuter<SkipToken<Tokens>, Db, Scope>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope>
-			: [Tokens, SqlParserError<"Expected OUTER or JOIN after LEFT">, never]
+			: [Tokens, SqlParserError<"Expected OUTER or JOIN after LEFT">, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalOuter<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope>
-		: [Tokens, SqlParserError<"Expected JOIN after LEFT OUTER">, never]
+		: [Tokens, SqlParserError<"Expected JOIN after LEFT OUTER">, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterJoinKw<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? SkipToken<Tokens> extends infer AfterJ extends TokensList
 			? ParseFromTableRef<AfterJ, Db, Scope> extends [infer R0 extends TokensList, infer Mid, infer Third]
 				? Mid extends SqlParserError<string>
-					? Third extends never
-						? [R0, Mid, never]
+					? Third extends ParserRefErrorThirdSentinel
+						? [R0, Mid, ParserRefErrorThirdSentinel]
 						: never
 					: Mid extends null
-						? Third extends ScopeMap
-							? PeekToken<R0> extends TokenKeyOn
-								? ParseJoinOn<R0, Db, Third>
-								: [R0, SqlParserError<"Expected ON after JOIN table">, never]
-							: never
+						? [JoinScopeOnly<Third>] extends [never]
+							? never
+							: JoinScopeOnly<Third> extends ScopeMap
+								? PeekToken<R0> extends TokenKeyOn
+									? ParseJoinOn<R0, Db, JoinScopeOnly<Third>>
+									: [R0, SqlParserError<"Expected ON after JOIN table">, ParserRefErrorThirdSentinel]
+								: [R0, SqlParserError<"Expected ON after JOIN table">, ParserRefErrorThirdSentinel]
 						: never
 				: never
 			: never
-		: [Tokens, SqlParserError<"Expected JOIN keyword">, never]
+		: [Tokens, SqlParserError<"Expected JOIN keyword">, ParserRefErrorThirdSentinel]
 
 type ParseJoinOn<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokOn]
 		? TokOn extends TokenKeyOn
 			? ParseJoinEqPair<R1, Scope> extends [infer R2 extends TokensList, infer Tag]
 				? Tag extends SqlParserError<string>
-					? [R2, Tag, never]
+					? [R2, Tag, ParserRefErrorThirdSentinel]
 					: Tag extends true
 						? ParseJoinChain<R2, Db, Scope>
 						: never
 				: never
-			: [R1, SqlParserError<"Expected ON keyword">, never]
+			: [R1, SqlParserError<"Expected ON keyword">, ParserRefErrorThirdSentinel]
 		: never
 
 type ParseJoinEqPair<Tokens extends TokensList, Scope extends ScopeMap> =
@@ -405,8 +418,8 @@ type ResolveSelectList<
 > = ResolveSelectListAcc<Items, Db, Scope, Params, {}, {}>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? IsUnknown<Params[Name]["ts"]> extends true
-		? SqlParserError<"Parameter has unknown type in SELECT">
+	? IsUnknownOrAny<Params[Name]["ts"]> extends true
+		? SqlParserError<"Parameter has unknown or any type in SELECT">
 		: { ts: Params[Name]["ts"]; sql: Params[Name]["sql"] }
 	: SqlParserError<"Unknown query parameter in SELECT">
 
@@ -414,6 +427,70 @@ type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string
 type ParamSelectOut<As, P extends string, Ts, Sql extends string> = As extends string
 	? { out: As; ts: Ts; sql: Sql }
 	: { out: P; ts: Ts; sql: Sql }
+
+type OutNameFromExprAst<Ast extends ScalarExprAst, As> = As extends string
+	? As
+	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+		? OutNameFromParts<P, undefined>
+		: "__invalid_select_expr_alias__"
+
+type ResolveSelectListExprItem<
+	Ast extends ScalarExprAst,
+	As,
+	R extends readonly RawSelectItem[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Cols extends Record<string, unknown>,
+	Sqls extends Record<string, string>,
+> =
+	ResolveScalarExprAst<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer Ev
+		? Ev extends SqlParserError<string>
+			? Ev
+			: Ev extends ExprOk<infer Ts, infer Sql extends string>
+				? OutNameFromExprAst<Ast, As> extends infer O extends string
+					? ResolveSelectListAcc<
+							R,
+							Db,
+							Scope,
+							Params,
+							MergeRecords<Cols, Record<O, Ts>>,
+							MergeStringRecords<Sqls, Record<O, Sql>>
+						>
+					: never
+				: never
+		: never
+
+type ResolveSelectListParamItem<
+	P extends string,
+	As,
+	R extends readonly RawSelectItem[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Cols extends Record<string, unknown>,
+	Sqls extends Record<string, string>,
+> =
+	LookupSelectParam<Params, P> extends infer PV
+		? PV extends SqlParserError<string>
+			? PV
+			: PV extends { ts: infer TsP; sql: infer SqlP extends string }
+				? ParamSelectOut<As, P, TsP, SqlP> extends {
+						out: infer O extends string
+						ts: infer Ts
+						sql: infer Sql extends string
+					}
+					? ResolveSelectListAcc<
+							R,
+							Db,
+							Scope,
+							Params,
+							MergeRecords<Cols, Record<O, Ts>>,
+							MergeStringRecords<Sqls, Record<O, Sql>>
+						>
+					: never
+				: never
+		: never
 
 type ResolveSelectListAcc<
 	Items extends readonly RawSelectItem[],
@@ -436,67 +513,19 @@ type ResolveSelectListAcc<
 					>
 				: SqlParserError<"SELECT * requires a single FROM table">
 			: SqlParserError<"SELECT * requires a single FROM table">
-		: H extends {
-					kind: "parts"
-					parts: infer P extends
-						| readonly [string]
-						| readonly [string, string]
-						| readonly [string, string, string]
-					as?: infer As
-			  }
-			? ResolveOneItem<P, Db, Scope, As> extends infer One
-				? One extends SqlParserError<string>
-					? One
-					: One extends { out: infer O extends string; ts: infer Ts; sql: infer Sql extends string }
-						? ResolveSelectListAcc<
-								R,
-								Db,
-								Scope,
-								Params,
-								MergeRecords<Cols, Record<O, Ts>>,
-								MergeStringRecords<Sqls, Record<O, Sql>>
-							>
-						: never
+		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }
+			? ResolveSelectListExprItem<Ast, As, R, Db, Scope, Params, Cols, Sqls>
+			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
+				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Cols, Sqls>
 				: never
-			: H extends { kind: "scalar"; ts: infer Ts; sql: infer Sql extends string; as: infer A extends string }
-				? ResolveSelectListAcc<
-						R,
-						Db,
-						Scope,
-						Params,
-						MergeRecords<Cols, Record<A, Ts>>,
-						MergeStringRecords<Sqls, Record<A, Sql>>
-					>
-				: H extends { kind: "param"; param: infer P extends string; as?: infer As }
-					? LookupSelectParam<Params, P> extends infer PV
-						? PV extends SqlParserError<string>
-							? PV
-							: PV extends { ts: infer TsP; sql: infer SqlP extends string }
-								? ParamSelectOut<As, P, TsP, SqlP> extends {
-										out: infer O extends string
-										ts: infer Ts
-										sql: infer Sql extends string
-									}
-									? ResolveSelectListAcc<
-											R,
-											Db,
-											Scope,
-											Params,
-											MergeRecords<Cols, Record<O, Ts>>,
-											MergeStringRecords<Sqls, Record<O, Sql>>
-										>
-									: never
-								: never
-						: never
-					: never
 	: { kind: "select"; columns: Cols; column_sql_types: Sqls }
 
 type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
+	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : unknown
 }
 
 type MergeStringRecords<A extends Record<string, string>, B extends Record<string, string>> = {
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
+	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : string
 }
 
 type SingleAliasScope<Scope extends ScopeMap> = keyof Scope extends infer K
@@ -524,26 +553,4 @@ type OutNameFromParts<
 			? C2
 			: P extends readonly [infer C0 extends string]
 				? C0
-				: never
-
-type ResolveOneItem<
-	P extends readonly [string] | readonly [string, string] | readonly [string, string, string],
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	As,
-> =
-	ResolveColumnRefValue<Db, Scope, P, "three_part"> extends infer M
-		? M extends SqlParserError<string>
-			? M
-			: M extends { ts: infer Ts; sql: infer Sql extends string }
-				? { out: OutNameFromParts<P, As>; ts: Ts; sql: Sql }
-				: never
-		: never
-
-/** Scalar value / parenthesized arithmetic for `SELECT` projections (`+`, `-`, `*`, unary `-`). Not monad-registered. */
-export type EvalSelectScalarExpression<
-	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-> = ParseAddValue<Tokens, Db, Scope, { catalogAccess: "three_part"; params: Params }>
+				: "__bad_out_name_parts__"

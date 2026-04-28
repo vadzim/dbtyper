@@ -61,7 +61,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 
 - Optional **`DISTINCT`**.
 - **Select list**: `*`; **parameters** (`:name` per lexer); **`schema.table.column`**, **`alias.column`**, bare **`column`** resolved via the same **`ResolveColumnRefValue`** rules as expressions (catalog + `ScopeMap`): **unique** owning column succeeds; **zero** → error; **two or more** → ambiguous error. Optional **`AS alias`**. Comma-separated items.
-- **Scalar expressions** (when the first token is `(`, a numeric/string/boolean/`null` literal, or unary `-`): **`+`**, **`-`**, **`*`** on **`number`** operands only (via **`EvalSelectScalarExpression`**); result type is **`number`** unless the expression is a non-numeric literal alone (e.g. a string). **`AS name` is required** for these projections. Leading **`:param`** is still the **`param`** item kind, not this path. Bare identifiers (e.g. columns) use the existing **`parts`** path, not arithmetic — e.g. `users.id + 1` is not parsed as one expression yet.
+- **Two-phase scalar expressions** (`+`, `-`, `*`, unary `-`, literals, `:param` in the list, and **identifier-led** expressions such as **`users.row_count + 1`**): the list is parsed into an untyped **`ScalarExprAst`** (`ParseScalarExprUntyped` in [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts)) **before** `FROM`, then **`ResolveScalarExprAst`** runs after **`ScopeMap`** is known (same **`MergeNumericArithmetic`**, **`LookupParam`**, **`ResolveColumnRefValue`** rules as typed scalar math). Bare columns such as **`users.id`** use the same path with a **`col`** AST node (identifier chains are not resolved to catalog vs alias until the resolve pass). **`AS name` is required** for any projection that is not a **single `col` AST** (optional `AS` is allowed for bare **`users.id`**-style **`col`** projections). **`:param`** remains its own **`param`** raw item kind.
 - **`*` must be the only** projection in the list.
 - **`FROM` is required** after the select list.
 - **`FROM`**: `schema.table` or `table` (default schema); optional **table alias**.
@@ -88,7 +88,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 
 ## Typed expressions (`ParseExpression` / `EvalWhereClause`)
 
-- Shared logic lives in [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpression`** (boolean-oriented **`AND` / `OR` / `NOT`**) with **`ExpressionParseContext`** (`clause`: **`where`** | **`select`**, **`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`** map).
+- Shared logic lives in [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpression`** (boolean-oriented **`AND` / `OR` / `NOT`**) with **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`** map).
 - **`EvalWhereClause`** returns **`[RestTokens, SqlParserError | null]`** for statement wiring without the monad checker treating it as a `Parse*` token consumer.
 - Incremental vs full Postgres: no **`CAST`**, arithmetic, or **`||`** yet (see plan **Phase B** in-repo if added later).
 

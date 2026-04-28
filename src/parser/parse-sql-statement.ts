@@ -15,12 +15,12 @@ import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop-table.ts"
 import type { ParseSelect } from "./parse-select.ts"
 import type { ParseSkipStatement } from "./skip-statement.ts"
-import type { ExpressionParamsShape } from "./parse-expression.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 
 export type ApplyStatements<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Text extends string,
-	Params extends ExpressionParamsShape = {},
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Db extends JsqlDatabaseShape
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
 			infer _Rest extends TokensList,
@@ -33,7 +33,7 @@ export type ApplyStatements<
 export type ApplyParsedStatements<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape = {},
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db]
@@ -50,7 +50,7 @@ export type ApplyParsedStatements<
 export type ParseSqlStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape = {},
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, null]

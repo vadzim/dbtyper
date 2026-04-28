@@ -48,6 +48,7 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 	#migrations: Migrations | null
 	#defaultSchema: string
 
+	// @ts-expect-error TS2589 — `ApplyStatements` depth can exceed the checker limit on large sources; overload is still correct.
 	apply<Source extends string>(statement: Source): DBMigrations<ApplyStatements<Database, Source>>
 	apply<Path extends string, Source extends string>(
 		statement: Promise<{ default: { path: Path; source: Source } }>,

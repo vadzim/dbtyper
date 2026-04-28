@@ -8,8 +8,12 @@ export type ScopeEntry = {
 	column_sql_types: Record<string, string>
 }
 
-/** Map alias → scope entry (one lexical layer: merge scopes as parsing descends). */
-export type ScopeMap = { readonly [alias: string]: ScopeEntry }
+/**
+ * Map alias → scope entry (one lexical layer: merge scopes as parsing descends).
+ * Use `Record<string, ScopeEntry>` (not a `readonly` index signature) so intersections like
+ * `Record<"t1", E1> & Record<"t2", E2>` stay assignable and keep literal keys for `keyof`.
+ */
+export type ScopeMap = Record<string, ScopeEntry>
 
 export type MergeScope<A extends ScopeMap, B extends ScopeMap> = A & B
 

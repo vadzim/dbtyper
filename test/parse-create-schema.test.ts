@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
-import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type EmptyDb = {
@@ -31,18 +31,16 @@ type _ifNotNewAdds = Expect<Matches<IfNotNew[2], null>>
 type _ifNotNewHasOther = Expect<Matches<IfNotNew[1]["schemas"]["other"], JsqlSchemaShape>>
 
 type TIfExistsWrong = ParseSqlStatement<ParseSqlTokens<"create schema if exists should_fail;">, EmptyDb>
-type _ifExistsWrong = Expect<
-	TIfExistsWrong[2] extends SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA"> ? true : false
->
+type _ifExistsWrong = Expect<Extends<TIfExistsWrong[2], SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">>>
 
 type TSchemaMissingSemi = ParseSqlStatement<ParseSqlTokens<"create schema almost_schema trailing;">, EmptyDb>
 type _schemaMissingSemi = Expect<
-	TSchemaMissingSemi[2] extends SqlParserError<"Expected `;` after schema name in CREATE SCHEMA"> ? true : false
+	Extends<TSchemaMissingSemi[2], SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">>
 >
 
 type TSchemaMissingName = ParseSqlStatement<ParseSqlTokens<"create schema ;">, EmptyDb>
 type _schemaMissingName = Expect<
-	TSchemaMissingName[2] extends SqlParserError<"Expected schema name in CREATE SCHEMA"> ? true : false
+	Extends<TSchemaMissingName[2], SqlParserError<"Expected schema name in CREATE SCHEMA">>
 >
 
 describe("parse-create-schema (type tests)", () => {

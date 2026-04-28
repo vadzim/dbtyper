@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
-import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbAuth = {
@@ -31,18 +31,19 @@ type T1 = ParseSqlStatement<
 type T1Table = T1[1]["schemas"]["auth"]["sets"]["items"]
 type _t1null = Expect<Matches<T1[2], null>>
 type _t1shape = Expect<
-	T1Table extends {
-		kind: "table"
-		columns: { id: string; body: string }
-		column_sql_types: { id: "uuid"; body: "text" }
-	}
-		? true
-		: false
+	Extends<
+		T1Table,
+		{
+			kind: "table"
+			columns: { id: string; body: string }
+			column_sql_types: { id: "uuid"; body: "text" }
+		}
+	>
 >
 
 type T2 = ParseSqlStatement<ParseSqlTokens<`create table if not exists auth.users ( id uuid not null );`>, DbUsers>
 type _t2noop = Expect<Matches<T2[2], null>>
-type _t2db = Expect<T2[1] extends DbUsers ? (DbUsers extends T2[1] ? true : false) : false>
+type _t2db = Expect<Matches<T2[1], DbUsers>>
 
 type DbWithDup = {
 	defaultSchema: "public"
@@ -56,7 +57,7 @@ type DbWithDup = {
 }
 
 type T3 = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( n int not null );`>, DbWithDup>
-type _t3err = Expect<T3[2] extends SqlParserError<string> ? true : false>
+type _t3err = Expect<Extends<T3[2], SqlParserError<string>>>
 
 type T4 = ParseSqlStatement<
 	ParseSqlTokens<`create table logs.events ( at timestamp with time zone not null );`>,
@@ -68,13 +69,14 @@ type T4 = ParseSqlStatement<
 type T4Table = T4[1]["schemas"]["logs"]["sets"]["events"]
 type _t4null = Expect<Matches<T4[2], null>>
 type _t4shape = Expect<
-	T4Table extends {
-		kind: "table"
-		columns: { at: string }
-		column_sql_types: { at: "timestamp with time zone" }
-	}
-		? true
-		: false
+	Extends<
+		T4Table,
+		{
+			kind: "table"
+			columns: { at: string }
+			column_sql_types: { at: "timestamp with time zone" }
+		}
+	>
 >
 
 /**
@@ -93,13 +95,14 @@ type TExplicit = ParseSqlStatement<
 type TExplicitTable = TExplicit[1]["schemas"]["billing"]["sets"]["invoices"]
 type _tExplicitNull = Expect<Matches<TExplicit[2], null>>
 type _tExplicitShape = Expect<
-	TExplicitTable extends {
-		kind: "table"
-		columns: { amount: string; note: string }
-		column_sql_types: { amount: "numeric"; note: "text" }
-	}
-		? true
-		: false
+	Extends<
+		TExplicitTable,
+		{
+			kind: "table"
+			columns: { amount: string; note: string }
+			column_sql_types: { amount: "numeric"; note: "text" }
+		}
+	>
 >
 
 type TExplicitIfNot = ParseSqlStatement<
@@ -109,20 +112,21 @@ type TExplicitIfNot = ParseSqlStatement<
 type TExplicitIfNotTable = TExplicitIfNot[1]["schemas"]["billing"]["sets"]["credits"]
 type _tExplicitIfNotNull = Expect<Matches<TExplicitIfNot[2], null>>
 type _tExplicitIfNotShape = Expect<
-	TExplicitIfNotTable extends {
-		kind: "table"
-		columns: { id: number }
-		column_sql_types: { id: "int" }
-	}
-		? true
-		: false
+	Extends<
+		TExplicitIfNotTable,
+		{
+			kind: "table"
+			columns: { id: number }
+			column_sql_types: { id: "int" }
+		}
+	>
 >
 
 type TExplicitUnknownSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table missing_schema.widgets ( id uuid not null );`>,
 	DbBillingAndPublic
 >
-type _tExplicitUnknownSchema = Expect<TExplicitUnknownSchema[2] extends SqlParserError<string> ? true : false>
+type _tExplicitUnknownSchema = Expect<Extends<TExplicitUnknownSchema[2], SqlParserError<string>>>
 
 /** DB whose default schema is `public` and that schema exists (unqualified names land here). */
 type DbDefaultPublic = {
@@ -137,13 +141,14 @@ type T5 = ParseSqlStatement<
 type T5Table = T5[1]["schemas"]["public"]["sets"]["notifications"]
 type _t5null = Expect<Matches<T5[2], null>>
 type _t5shape = Expect<
-	T5Table extends {
-		kind: "table"
-		columns: { id: string; title: string }
-		column_sql_types: { id: "uuid"; title: "text" }
-	}
-		? true
-		: false
+	Extends<
+		T5Table,
+		{
+			kind: "table"
+			columns: { id: string; title: string }
+			column_sql_types: { id: "uuid"; title: "text" }
+		}
+	>
 >
 
 type T6 = ParseSqlStatement<
@@ -153,19 +158,18 @@ type T6 = ParseSqlStatement<
 type T6Table = T6[1]["schemas"]["public"]["sets"]["notifications"]
 type _t6null = Expect<Matches<T6[2], null>>
 type _t6shape = Expect<
-	T6Table extends {
-		kind: "table"
-		columns: { id: string; title: string }
-		column_sql_types: { id: "uuid"; title: "text" }
-	}
-		? true
-		: false
+	Extends<
+		T6Table,
+		{
+			kind: "table"
+			columns: { id: string; title: string }
+			column_sql_types: { id: "uuid"; title: "text" }
+		}
+	>
 >
 
 type TExpectedTableName = ParseSqlStatement<ParseSqlTokens<`create table( id int not null );`>, DbDefaultPublic>
-type _expectedTableName = Expect<
-	TExpectedTableName[2] extends SqlParserError<"Expected table name in CREATE TABLE"> ? true : false
->
+type _expectedTableName = Expect<Extends<TExpectedTableName[2], SqlParserError<"Expected table name in CREATE TABLE">>>
 
 type TDupWithoutIfNot = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( x int not null );`>, DbWithDup>
 type _dupNoIfNot = Expect<Matches<TDupWithoutIfNot[2], SqlParserError<"Table already exists; use IF NOT EXISTS">>>
@@ -174,22 +178,18 @@ type TGarbageAfterClose = ParseSqlStatement<
 	ParseSqlTokens<`create table n ( id int not null) extra ;`>,
 	DbDefaultPublic
 >
-type _garbageAfterClose = Expect<
-	TGarbageAfterClose[2] extends SqlParserError<"Expected `;` after CREATE TABLE"> ? true : false
->
+type _garbageAfterClose = Expect<Extends<TGarbageAfterClose[2], SqlParserError<"Expected `;` after CREATE TABLE">>>
 
 type TUnknownQualifiedSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table zzz.ghost ( id int not null );`>,
 	DbDefaultPublic
 >
 type _unknownQualifiedSchema = Expect<
-	TUnknownQualifiedSchema[2] extends SqlParserError<"Unknown schema for CREATE TABLE"> ? true : false
+	Extends<TUnknownQualifiedSchema[2], SqlParserError<"Unknown schema for CREATE TABLE">>
 >
 
 type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>
-type _missingOpenParen = Expect<
-	TMissingOpenParen[2] extends SqlParserError<"Expected `.` or `(` after table name"> ? true : false
->
+type _missingOpenParen = Expect<Extends<TMissingOpenParen[2], SqlParserError<"Expected `.` or `(` after table name">>>
 
 describe("parse-create-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

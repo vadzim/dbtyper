@@ -18,6 +18,9 @@ import type { SkipBracketedUntil } from "./skip-statement.ts"
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, { ts: unknown; sql: string }>
 
+/** Default `Params` for parsers: `keyof` is `never` (plain `{}` widens against `Record<string, …>`). */
+export type EmptyExpressionParams = Record<never, never>
+
 export type ExpressionParseContext<
 	Cat extends CatalogAccessMode = CatalogAccessMode,
 	Params extends ExpressionParamsShape = ExpressionParamsShape,
@@ -33,19 +36,8 @@ type SqlUnsupportedParenExpr = SqlParserError<"Unsupported parenthesized express
 /** Operand parsed to a value that is not a boolean (e.g. bare column, numeric comparison used as AND input). */
 type SqlExprMustBeBoolean = SqlParserError<"Expression must be boolean">
 
-type IsAny<T> = 0 extends 1 & T ? true : false
-
-/** True when `T` is exactly `unknown` (not `any`, not other types). */
-export type IsUnknown<T> =
-	IsAny<T> extends true
-		? false
-		: unknown extends T
-			? T extends unknown
-				? IsAny<T> extends true
-					? false
-					: true
-				: false
-			: false
+/** True when `T` is `unknown` or `any` (not other types). */
+export type IsUnknownOrAny<T> = 0 extends 1 & T ? true : unknown extends T ? (T extends unknown ? true : false) : false
 
 export type ExprOk<Ts, Sql extends string> = { ok: true; ts: Ts; sql: Sql }
 
@@ -54,7 +46,25 @@ export type ExprSqlNull = { ok: true; ts: null; sql: "null"; exprKind: "sql_null
 
 export type ExprAtom = ExprOk<unknown, string> | ExprSqlNull
 
-type MaximalIdentChain<Tokens extends TokensList> =
+/** Identifier chain in a scalar expression AST (syntax only until {@link ResolveScalarExprAst}). */
+export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
+
+/** Scalar expression without `Db` / `Scope` (SELECT list and tests); resolve with {@link ResolveScalarExprAst}. */
+export type ScalarExprAst =
+	| { kind: "true" }
+	| { kind: "false" }
+	| { kind: "sql_null" }
+	| { kind: "string"; value: string }
+	| { kind: "number"; raw: string }
+	| { kind: "param"; name: string }
+	| { kind: "col"; parts: ScalarIdentParts }
+	| { kind: "neg"; inner: ScalarExprAst }
+	| { kind: "add"; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "sub"; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "mul"; left: ScalarExprAst; right: ScalarExprAst }
+
+/** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path). */
+export type MaximalIdentChain<Tokens extends TokensList> =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenIdent<infer A extends string>]
 		? PeekToken<R1> extends TokenKey<".">
 			? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
@@ -72,8 +82,8 @@ type MaximalIdentChain<Tokens extends TokensList> =
 		: never
 
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? IsUnknown<Params[Name]["ts"]> extends true
-		? SqlParserError<"Parameter has unknown type">
+	? IsUnknownOrAny<Params[Name]["ts"]> extends true
+		? SqlParserError<"Parameter has unknown or any type">
 		: ExprOk<Params[Name]["ts"], Params[Name]["sql"]>
 	: SqlParserError<"Unknown query parameter">
 
@@ -418,6 +428,248 @@ type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends 
 					: SqlIncompatibleArithmetic
 				: never
 			: never
+
+type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: "string" }
+	? true
+	: E extends { kind: "true" }
+		? true
+		: E extends { kind: "false" }
+			? true
+			: E extends { kind: "sql_null" }
+				? true
+				: E extends { kind: "neg"; inner: infer I extends ScalarExprAst }
+					? ScalarAstNonNumericForMulHead<I>
+					: false
+
+type TryOperandScalarUntyped<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"(">
+		? ReadToken<Tokens> extends [infer Ri extends TokensList, TokenKey<"(">]
+			? ParseScalarExprUntyped<Ri> extends [infer Rj extends TokensList, infer Ej]
+				? Ej extends SqlParserError<string>
+					? [Rj, Ej]
+					: ReadToken<Rj> extends [infer Rk extends TokensList, infer TokCl]
+						? TokCl extends TokenKey<")">
+							? [Rk, Ej]
+							: [Rk, SqlParserError<"Expected `)`">]
+						: never
+				: never
+			: never
+		: PeekToken<Tokens> extends TokenKey<"true">
+			? ReadToken<Tokens> extends [infer Rt extends TokensList, TokenKey<"true">]
+				? [Rt, { kind: "true" }]
+				: never
+			: PeekToken<Tokens> extends TokenKey<"false">
+				? ReadToken<Tokens> extends [infer Rf extends TokensList, TokenKey<"false">]
+					? [Rf, { kind: "false" }]
+					: never
+				: PeekToken<Tokens> extends TokenKey<"null">
+					? ReadToken<Tokens> extends [infer Rn extends TokensList, TokenKey<"null">]
+						? [Rn, { kind: "sql_null" }]
+						: never
+					: PeekToken<Tokens> extends TokenString<infer Str>
+						? ReadToken<Tokens> extends [infer Rs extends TokensList, TokenString<Str>]
+							? [Rs, { kind: "string"; value: Str }]
+							: never
+						: PeekToken<Tokens> extends TokenNumber<infer Raw>
+							? ReadToken<Tokens> extends [infer Rnum extends TokensList, TokenNumber<Raw>]
+								? [Rnum, { kind: "number"; raw: Raw }]
+								: never
+							: PeekToken<Tokens> extends TokenParam<infer P extends string>
+								? ReadToken<Tokens> extends [infer Rp extends TokensList, unknown]
+									? [Rp, { kind: "param"; name: P }]
+									: never
+								: ReadToken<Tokens> extends [infer Rbad extends TokensList, infer _TokU]
+									? [Rbad, SqlParserError<"Unexpected token">]
+									: never
+
+type ParseUnaryScalarUntyped<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"-">
+		? ReadToken<Tokens> extends [infer Rn extends TokensList, TokenKey<"-">]
+			? ParseUnaryScalarUntyped<Rn> extends [infer Ru extends TokensList, infer U]
+				? U extends SqlParserError<string>
+					? [Ru, U]
+					: U extends ScalarExprAst
+						? [Ru, { kind: "neg"; inner: U }]
+						: never
+				: never
+			: never
+		: TryOperandScalarUntyped<Tokens>
+
+type ParseMulLoopAfterFirstScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	PeekToken<Tokens> extends TokenKey<"*">
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"*">]
+			? ParseUnaryScalarUntyped<R1> extends [infer R2 extends TokensList, infer E1]
+				? E1 extends SqlParserError<string>
+					? [R2, E1]
+					: E1 extends ScalarExprAst
+						? ParseMulLoopAfterFirstScalarUntyped<R2, { kind: "mul"; left: Acc; right: E1 }>
+						: never
+				: never
+			: never
+		: [Tokens, Acc]
+
+type ParseMulScalarUntypedEntry<Tokens extends TokensList> =
+	ParseUnaryScalarUntyped<Tokens> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ScalarExprAst
+				? ScalarAstNonNumericForMulHead<E0> extends true
+					? PeekToken<R0> extends infer P
+						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+							? [R0, SqlIncompatibleArithmetic]
+							: [R0, E0]
+						: never
+					: ParseMulLoopAfterFirstScalarUntyped<R0, E0>
+				: never
+		: never
+
+type ParseAddLoopAfterPlusScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"+">]
+		? ParseMulScalarUntypedEntry<R1> extends [infer R2 extends TokensList, infer E1]
+			? E1 extends SqlParserError<string>
+				? [R2, E1]
+				: E1 extends ScalarExprAst
+					? ParseAddLoopAfterFirstScalarUntyped<R2, MergeScalarAstAddSub<"add", Acc, E1>>
+					: never
+			: never
+		: never
+
+type ParseAddLoopAfterMinusScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	ReadToken<Tokens> extends [infer R3 extends TokensList, TokenKey<"-">]
+		? ParseMulScalarUntypedEntry<R3> extends [infer R4 extends TokensList, infer E2]
+			? E2 extends SqlParserError<string>
+				? [R4, E2]
+				: E2 extends ScalarExprAst
+					? ParseAddLoopAfterFirstScalarUntyped<R4, MergeScalarAstAddSub<"sub", Acc, E2>>
+					: never
+			: never
+		: never
+
+type MergeScalarAstAddSub<Op extends "add" | "sub", L extends ScalarExprAst, R extends ScalarExprAst> = Op extends "add"
+	? { kind: "add"; left: L; right: R }
+	: { kind: "sub"; left: L; right: R }
+
+type ParseAddLoopAfterFirstScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	PeekToken<Tokens> extends TokenKey<"+">
+		? ParseAddLoopAfterPlusScalarUntyped<Tokens, Acc>
+		: PeekToken<Tokens> extends TokenKey<"-">
+			? ParseAddLoopAfterMinusScalarUntyped<Tokens, Acc>
+			: [Tokens, Acc]
+
+type ParseScalarExprUntypedFromIdent<Tokens extends TokensList> =
+	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts extends readonly string[]]
+		? PeekToken<Rm> extends TokenKey<"(">
+			? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends TokensList, infer Rs]
+				? Rs extends SqlParserError<string>
+					? [After, SqlUnbalancedParens]
+					: [After, SqlUnsupportedParenExpr]
+				: never
+			: Parts extends ScalarIdentParts
+				? PeekToken<Rm> extends infer Pa
+					? Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+						? ParseAddLoopAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }>
+						: [Rm, { kind: "col"; parts: Parts }]
+					: never
+				: never
+		: never
+
+type ParseScalarExprUntypedNonIdent<Tokens extends TokensList> =
+	ParseMulScalarUntypedEntry<Tokens> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ScalarExprAst
+				? ScalarAstNonNumericForMulHead<E0> extends true
+					? PeekToken<R0> extends infer P
+						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+							? [R0, SqlIncompatibleArithmetic]
+							: [R0, E0]
+						: never
+					: ParseAddLoopAfterFirstScalarUntyped<R0, E0>
+				: never
+		: never
+
+/** Token-only scalar expression (`+` `-` `*` unary `-`, literals, `:param`, `a.b.c`); no column typing. */
+export type ParseScalarExprUntyped<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenIdent<string>
+		? ParseScalarExprUntypedFromIdent<Tokens>
+		: ParseScalarExprUntypedNonIdent<Tokens>
+
+type ResolveScalarExprAstPair<
+	L extends ScalarExprAst,
+	R extends ScalarExprAst,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> =
+	ResolveScalarExprAst<L, Db, Scope, Ctx> extends infer Lv
+		? Lv extends SqlParserError<string>
+			? Lv
+			: ResolveScalarExprAst<R, Db, Scope, Ctx> extends infer Rv
+				? Rv extends SqlParserError<string>
+					? Rv
+					: Lv extends ExprAtom
+						? Rv extends ExprAtom
+							? MergeNumericArithmetic<Lv, Rv>
+							: SqlParserError<"Invalid arithmetic operand">
+						: SqlParserError<"Invalid arithmetic operand">
+				: never
+		: never
+
+type ResolveScalarExprAstNeg<
+	I extends ScalarExprAst,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> =
+	ResolveScalarExprAst<I, Db, Scope, Ctx> extends infer U
+		? U extends SqlParserError<string>
+			? U
+			: U extends ExprOk<number, infer _Sn>
+				? ExprOk<number, "number">
+				: SqlUnaryMinusNonNumber
+		: never
+
+/** Resolve {@link ScalarExprAst} after `FROM` scope is known; same rules as {@link ParseAddValue}. */
+export type ResolveScalarExprAst<
+	Ast,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> = Ast extends { kind: "true" }
+	? ExprOk<true, "boolean">
+	: Ast extends { kind: "false" }
+		? ExprOk<false, "boolean">
+		: Ast extends { kind: "sql_null" }
+			? ExprSqlNull
+			: Ast extends { kind: "string"; value: string }
+				? ExprOk<string, "text">
+				: Ast extends { kind: "number"; raw: string }
+					? ExprOk<number, "number">
+					: Ast extends { kind: "param"; name: infer N extends string }
+						? LookupParam<Ctx["params"], N>
+						: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+							? ResolveIdentChainValue<Db, Scope, P, Ctx>
+							: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
+								? ResolveScalarExprAstNeg<I, Db, Scope, Ctx>
+								: Ast extends {
+											kind: "mul"
+											left: infer L extends ScalarExprAst
+											right: infer R extends ScalarExprAst
+									  }
+									? ResolveScalarExprAstPair<L, R, Db, Scope, Ctx>
+									: Ast extends {
+												kind: "add"
+												left: infer La extends ScalarExprAst
+												right: infer Ra extends ScalarExprAst
+										  }
+										? ResolveScalarExprAstPair<La, Ra, Db, Scope, Ctx>
+										: Ast extends {
+													kind: "sub"
+													left: infer Ls extends ScalarExprAst
+													right: infer Rs extends ScalarExprAst
+											  }
+											? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Ctx>
+											: SqlParserError<"Invalid scalar expression">
 
 /** Operand for scalar `+` / `-` / `*` (parenthesized subexpression is a value, not a boolean `OR` chain). */
 type TryValueOperand<

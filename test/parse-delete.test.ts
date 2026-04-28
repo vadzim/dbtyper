@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
-import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /** Concrete `sets` so `keyof columns` does not widen with an index signature. */
@@ -21,38 +21,38 @@ type DbUsers = {
 
 /** Tokens after `delete` (i.e. start with `from`). */
 type T1 = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u';`>, DbUsers>
-type _t1null = Expect<Matches<T1[2], null>>
+type _t1null = Expect<Matches<Tuple3At2<T1>, null>>
 
 type T2 = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u';`>, DbUsers>
-type _t2null = Expect<Matches<T2[2], null>>
+type _t2null = Expect<Matches<Tuple3At2<T2>, null>>
 
 type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where public.users.id = 'u';`>, DbUsers>
-type _t3null = Expect<Matches<T3[2], null>>
+type _t3null = Expect<Matches<Tuple3At2<T3>, null>>
 
 type TBad = ParseSqlStatement<ParseSqlTokens<`delete from users where users.nope = 'u';`>, DbUsers>
-type _tBad = Expect<TBad[2] extends SqlParserError<string> ? true : false>
+type _tBad = Expect<Extends<Tuple3At2<TBad>, SqlParserError<string>>>
 
 type TBadUnq = ParseSqlStatement<ParseSqlTokens<`delete from users where ghost = 'u';`>, DbUsers>
-type _tBadUnq = Expect<TBadUnq[2] extends SqlParserError<string> ? true : false>
+type _tBadUnq = Expect<Extends<Tuple3At2<TBadUnq>, SqlParserError<string>>>
 
 type TNoFrom = ParseSqlStatement<ParseSqlTokens<`delete users where id = 'u';`>, DbUsers>
-type _tNoFrom = Expect<TNoFrom[2] extends SqlParserError<string> ? true : false>
+type _tNoFrom = Expect<Extends<Tuple3At2<TNoFrom>, SqlParserError<string>>>
 
 /** End-of-input without `;` is accepted (same as `TokenEot` terminator elsewhere). */
 type TNoSemi = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u'`>, DbUsers>
-type _tNoSemi = Expect<Matches<TNoSemi[2], null>>
+type _tNoSemi = Expect<Matches<Tuple3At2<TNoSemi>, null>>
 
 type TUnknownTable = ParseSqlStatement<ParseSqlTokens<`delete from ghosts where id = 'u';`>, DbUsers>
-type _tUnknownTable = Expect<TUnknownTable[2] extends SqlParserError<string> ? true : false>
+type _tUnknownTable = Expect<Extends<Tuple3At2<TUnknownTable>, SqlParserError<string>>>
 
 type TAnd = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u' and users.name = 'a';`>, DbUsers>
-type _tAnd = Expect<Matches<TAnd[2], null>>
+type _tAnd = Expect<Matches<Tuple3At2<TAnd>, null>>
 
 type TIsNull = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name is null;`>, DbUsers>
-type _tIsNull = Expect<Matches<TIsNull[2], null>>
+type _tIsNull = Expect<Matches<Tuple3At2<TIsNull>, null>>
 
 type TIsNotNull = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name is not null;`>, DbUsers>
-type _tIsNotNull = Expect<Matches<TIsNotNull[2], null>>
+type _tIsNotNull = Expect<Matches<Tuple3At2<TIsNotNull>, null>>
 
 describe("parse-delete (type tests)", () => {
 	it("compile-time assertions above", () => {})

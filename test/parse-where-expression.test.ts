@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
-import type { Expect } from "./test-utils/type-test-utils.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
+import type { Expect, Extends, Tuple2At1 } from "./test-utils/type-test-utils.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { HasAmbiguousUnqualifiedColumn } from "../src/parser/scope-unqualified-helpers.ts"
 
@@ -30,16 +30,16 @@ type UsersEntry = {
 type UsersScope = Record<"users", UsersEntry>
 
 type W1 = ParseWhereExpression<ParseSqlTokens<`users.id = 'u'`>, DbUsers, UsersScope>
-type _w1 = Expect<W1[1] extends null ? true : false>
+type _w1 = Expect<Extends<Tuple2At1<W1>, null>>
 
 type WBadQual = ParseWhereExpression<ParseSqlTokens<`users.nope = 'x'`>, DbUsers, UsersScope>
-type _wBadQual = Expect<WBadQual[1] extends SqlParserError<"Unknown qualified column"> ? true : false>
+type _wBadQual = Expect<Extends<Tuple2At1<WBadQual>, SqlParserError<"Unknown qualified column">>>
 
 type WBadBare = ParseWhereExpression<ParseSqlTokens<`ghost = 'x'`>, DbUsers, UsersScope>
-type _wBadBare = Expect<WBadBare[1] extends SqlParserError<"Unknown column"> ? true : false>
+type _wBadBare = Expect<Extends<Tuple2At1<WBadBare>, SqlParserError<"Unknown column">>>
 
 type W3part = ParseWhereExpression<ParseSqlTokens<`public.users.id = 'u'`>, DbUsers, UsersScope>
-type _w3part = Expect<W3part[1] extends null ? true : false>
+type _w3part = Expect<Extends<Tuple2At1<W3part>, null>>
 
 type InnerScope = Record<
 	"inner_t",
@@ -53,117 +53,113 @@ type OuterScope = Record<
 /** Caller merges scopes (e.g. enclosing + inner `FROM`) — `outer_t.b` resolves in the combined map. */
 type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
 type WTwoLayer = ParseWhereExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner>
-type _wTwoLayer = Expect<WTwoLayer[1] extends null ? true : false>
+type _wTwoLayer = Expect<Extends<Tuple2At1<WTwoLayer>, null>>
 
 type WAnd = ParseWhereExpression<ParseSqlTokens<`users.id = 'u' and users.name is null`>, DbUsers, UsersScope>
-type _wAnd = Expect<WAnd[1] extends null ? true : false>
+type _wAnd = Expect<Extends<Tuple2At1<WAnd>, null>>
 
 /** Catalog three-part: missing table. */
 type W3badTab = ParseWhereExpression<ParseSqlTokens<`public.nope.id = 'u'`>, DbUsers, UsersScope>
-type _w3badTab = Expect<W3badTab[1] extends SqlParserError<"Unknown schema or table"> ? true : false>
+type _w3badTab = Expect<Extends<Tuple2At1<W3badTab>, SqlParserError<"Unknown schema or table">>>
 
 /** Catalog three-part: unknown schema. */
 type W3badSch = ParseWhereExpression<ParseSqlTokens<`missing.users.id = 'u'`>, DbUsers, UsersScope>
-type _w3badSch = Expect<W3badSch[1] extends SqlParserError<"Unknown schema or table"> ? true : false>
+type _w3badSch = Expect<Extends<Tuple2At1<W3badSch>, SqlParserError<"Unknown schema or table">>>
 
 /** Catalog three-part: known table, unknown column. */
 type W3badCol = ParseWhereExpression<ParseSqlTokens<`public.users.nope = 'u'`>, DbUsers, UsersScope>
-type _w3badCol = Expect<W3badCol[1] extends SqlParserError<"Unknown column (schema.table.column)"> ? true : false>
+type _w3badCol = Expect<Extends<Tuple2At1<W3badCol>, SqlParserError<"Unknown column (schema.table.column)">>>
 
 /** Two-part qualified: alias not in scope. */
 type W2badAlias = ParseWhereExpression<ParseSqlTokens<`nope.id = 'u'`>, DbUsers, UsersScope>
-type _w2badAlias = Expect<W2badAlias[1] extends SqlParserError<"Unknown qualified column"> ? true : false>
+type _w2badAlias = Expect<Extends<Tuple2At1<W2badAlias>, SqlParserError<"Unknown qualified column">>>
 
 /** RHS subexpression: missing closing `)`. */
 type WUnbalRhs = ParseWhereExpression<ParseSqlTokens<`users.id = ( 'u'`>, DbUsers, UsersScope>
-type _wUnbalRhs = Expect<WUnbalRhs[1] extends SqlParserError<"Unbalanced parentheses"> ? true : false>
+type _wUnbalRhs = Expect<Extends<Tuple2At1<WUnbalRhs>, SqlParserError<"Unbalanced parentheses">>>
 
 /** `IN` list: missing closing `)`. */
 type WUnbalIn = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'u'`>, DbUsers, UsersScope>
-type _wUnbalIn = Expect<WUnbalIn[1] extends SqlParserError<"Unbalanced parentheses IN"> ? true : false>
+type _wUnbalIn = Expect<Extends<Tuple2At1<WUnbalIn>, SqlParserError<"Unbalanced parentheses IN">>>
 
 /** `IN` without `(`. */
 type WInNoParen = ParseWhereExpression<ParseSqlTokens<`users.id in 'u'`>, DbUsers, UsersScope>
-type _wInNoParen = Expect<WInNoParen[1] extends SqlParserError<"Expected `(` after IN"> ? true : false>
+type _wInNoParen = Expect<Extends<Tuple2At1<WInNoParen>, SqlParserError<"Expected `(` after IN">>>
 
 /** `IS` must be followed by `NULL` (not arbitrary identifier). */
 type WIsBad = ParseWhereExpression<ParseSqlTokens<`users.name is users`>, DbUsers, UsersScope>
-type _wIsBad = Expect<WIsBad[1] extends SqlParserError<"Expected NULL after IS"> ? true : false>
+type _wIsBad = Expect<Extends<Tuple2At1<WIsBad>, SqlParserError<"Expected NULL after IS">>>
 
 /** `IS NOT` must be followed by `NULL`. */
 type WIsNotBad = ParseWhereExpression<ParseSqlTokens<`users.name is not true`>, DbUsers, UsersScope>
-type _wIsNotBad = Expect<WIsNotBad[1] extends SqlParserError<"Expected NULL after IS NOT"> ? true : false>
+type _wIsNotBad = Expect<Extends<Tuple2At1<WIsNotBad>, SqlParserError<"Expected NULL after IS NOT">>>
 
 /** Grouped WHERE: inner ok but outer `)` missing. */
 type WGrpNoClose = ParseWhereExpression<ParseSqlTokens<`( users.id = 'u'`>, DbUsers, UsersScope>
-type _wGrpNoClose = Expect<WGrpNoClose[1] extends SqlParserError<"Expected `)`"> ? true : false>
+type _wGrpNoClose = Expect<Extends<Tuple2At1<WGrpNoClose>, SqlParserError<"Expected `)`">>>
 
 /** Operand position: token stream not a valid operand (e.g. lone `+`). */
 type WUnexpectedRhs = ParseWhereExpression<ParseSqlTokens<`users.id = +`>, DbUsers, UsersScope>
-type _wUnexpectedRhs = Expect<WUnexpectedRhs[1] extends SqlParserError<"Unexpected token"> ? true : false>
+type _wUnexpectedRhs = Expect<Extends<Tuple2At1<WUnexpectedRhs>, SqlParserError<"Unexpected token">>>
 
 /** `OR` second conjunct: bad column. */
 type WOrBad = ParseWhereExpression<ParseSqlTokens<`users.id = 'u' or users.nope = 'v'`>, DbUsers, UsersScope>
-type _wOrBad = Expect<WOrBad[1] extends SqlParserError<"Unknown qualified column"> ? true : false>
+type _wOrBad = Expect<Extends<Tuple2At1<WOrBad>, SqlParserError<"Unknown qualified column">>>
 
 /** `AND` second conjunct: bad column. */
 type WAndBad = ParseWhereExpression<ParseSqlTokens<`users.id = 'u' and users.nope = 'v'`>, DbUsers, UsersScope>
-type _wAndBad = Expect<WAndBad[1] extends SqlParserError<"Unknown qualified column"> ? true : false>
+type _wAndBad = Expect<Extends<Tuple2At1<WAndBad>, SqlParserError<"Unknown qualified column">>>
 
 /** Unary `NOT` then invalid column ref. */
 type WNotBad = ParseWhereExpression<ParseSqlTokens<`not users.nope = 'u'`>, DbUsers, UsersScope>
-type _wNotBad = Expect<WNotBad[1] extends SqlParserError<"Unknown qualified column"> ? true : false>
+type _wNotBad = Expect<Extends<Tuple2At1<WNotBad>, SqlParserError<"Unknown qualified column">>>
 
 /** Function-like call on RHS: unbalanced parens inside skipped region. */
 type WFuncUnbal = ParseWhereExpression<ParseSqlTokens<`users.id = lower( 'x'`>, DbUsers, UsersScope>
-type _wFuncUnbal = Expect<WFuncUnbal[1] extends SqlParserError<"Unbalanced parentheses"> ? true : false>
+type _wFuncUnbal = Expect<Extends<Tuple2At1<WFuncUnbal>, SqlParserError<"Unbalanced parentheses">>>
 
 /** Success: comparison operators and literals. */
 type WNe = ParseWhereExpression<ParseSqlTokens<`users.id <> 'v'`>, DbUsers, UsersScope>
-type _wNe = Expect<WNe[1] extends null ? true : false>
+type _wNe = Expect<Extends<Tuple2At1<WNe>, null>>
 type WNeBang = ParseWhereExpression<ParseSqlTokens<`users.id != 'v'`>, DbUsers, UsersScope>
-type _wNeBang = Expect<WNeBang[1] extends null ? true : false>
+type _wNeBang = Expect<Extends<Tuple2At1<WNeBang>, null>>
 type WLe = ParseWhereExpression<ParseSqlTokens<`users.name <= 'z'`>, DbUsers, UsersScope>
-type _wLe = Expect<WLe[1] extends null ? true : false>
+type _wLe = Expect<Extends<Tuple2At1<WLe>, null>>
 type WStr = ParseWhereExpression<ParseSqlTokens<`users.name = 'a'`>, DbUsers, UsersScope>
-type _wStr = Expect<WStr[1] extends null ? true : false>
+type _wStr = Expect<Extends<Tuple2At1<WStr>, null>>
 type WBool = ParseWhereExpression<ParseSqlTokens<`users.id = true`>, DbUsers, UsersScope>
-type _wBool = Expect<WBool[1] extends SqlParserError<"Incompatible types in comparison"> ? true : false>
+type _wBool = Expect<Extends<Tuple2At1<WBool>, SqlParserError<"Incompatible types in comparison">>>
 type WNullRhs = ParseWhereExpression<ParseSqlTokens<`users.id = null`>, DbUsers, UsersScope>
-type _wNullRhs = Expect<WNullRhs[1] extends SqlParserError<"Use IS NULL instead of = null"> ? true : false>
+type _wNullRhs = Expect<Extends<Tuple2At1<WNullRhs>, SqlParserError<"Use IS NULL instead of = null">>>
 
 /** Success: `IS NOT NULL`, `IN (...)`, nested parens, `OR` inside parens. */
 type WIsNotNull = ParseWhereExpression<ParseSqlTokens<`users.name is not null`>, DbUsers, UsersScope>
-type _wIsNotNull = Expect<WIsNotNull[1] extends null ? true : false>
+type _wIsNotNull = Expect<Extends<Tuple2At1<WIsNotNull>, null>>
 type WInList = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'a' , 'b' )`>, DbUsers, UsersScope>
-type _wInList = Expect<WInList[1] extends null ? true : false>
+type _wInList = Expect<Extends<Tuple2At1<WInList>, null>>
 type WNested = ParseWhereExpression<ParseSqlTokens<`( ( users.id = 'u' ) )`>, DbUsers, UsersScope>
-type _wNested = Expect<WNested[1] extends null ? true : false>
+type _wNested = Expect<Extends<Tuple2At1<WNested>, null>>
 type WOrInParens = ParseWhereExpression<
 	ParseSqlTokens<`users.id = 'u' and ( users.name = 'a' or users.name = 'b' )`>,
 	DbUsers,
 	UsersScope
 >
-type _wOrInParens = Expect<WOrInParens[1] extends null ? true : false>
+type _wOrInParens = Expect<Extends<Tuple2At1<WOrInParens>, null>>
 
 type WNotNot = ParseWhereExpression<ParseSqlTokens<`not not users.id = 'u'`>, DbUsers, UsersScope>
-type _wNotNot = Expect<WNotNot[1] extends null ? true : false>
+type _wNotNot = Expect<Extends<Tuple2At1<WNotNot>, null>>
 
 /**
  * Bare-column ambiguity is decided with a literal `Col` in `ValidateWhereColumnParts`.
  * `ParseSqlTokens` widens bare identifiers to `string`, so full-parser ambiguity is not asserted here;
  * the helper below is the same predicate used for `"Ambiguous unqualified column"` / SELECT.
  */
-type AmbigT1 = Record<
-	"t1",
-	{ schema: "public"; table: "t1"; columns: { id: string }; column_sql_types: { id: "uuid" } }
+/** `MergeScope` keeps literal aliases (plain `{ t1, t2 }` can widen `keyof` under `Record` constraints). */
+type AmbigScope = MergeScope<
+	Record<"t1", { schema: "public"; table: "t1"; columns: { id: string }; column_sql_types: { id: "uuid" } }>,
+	Record<"t2", { schema: "public"; table: "t2"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
 >
-type AmbigT2 = Record<
-	"t2",
-	{ schema: "public"; table: "t2"; columns: { id: string }; column_sql_types: { id: "uuid" } }
->
-type AmbigScope = AmbigT1 & AmbigT2
-type _ambigHelper = Expect<HasAmbiguousUnqualifiedColumn<AmbigScope, "id"> extends true ? true : false>
+type _ambigHelper = Expect<Extends<HasAmbiguousUnqualifiedColumn<AmbigScope, "id">, true>>
 
 describe("parse-where-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})

@@ -8,21 +8,34 @@ export type Expect<T extends true> = T
  * The second parameter is the expected type, it always should be inlined in tests, except SqlParserError type. It is allowed to use SqlParserError as opaque type. The first parameter should be the actual type.
  */
 export type Matches<Actual, Expected> =
-	IsAny<Actual> extends true
+	HasNeverDeep<Actual> extends true
 		? false
-		: IsAny<Expected> extends true
+		: HasNeverDeep<Expected> extends true
 			? false
-			: HasNeverDeep<Actual> extends true
-				? false
-				: HasNeverDeep<Expected> extends true
-					? false
-					: Actual extends Expected
-						? Expected extends Actual
-							? true
-							: false
-						: false
+			: Actual extends Expected
+				? Expected extends Actual
+					? true
+					: false
+				: false
 
-type IsAny<T> = [0] extends [1 & T] ? true : false
+export type Extends<Actual, Expected> =
+	HasNeverDeep<Actual> extends true
+		? false
+		: HasNeverDeep<Expected> extends true
+			? false
+			: Actual extends Expected
+				? true
+				: false
+
+/**
+ * Tuple index access without `| undefined` from `noUncheckedIndexedAccess` on `[n]`.
+ * Use when asserting on `ParseSqlStatement` / `ParseWhereExpression` pairs/triples.
+ */
+export type Tuple2At1<T> = T extends readonly [infer _0, infer R] ? R : never
+export type Tuple3At2<T> = T extends readonly [infer _0, infer _1, infer R] ? R : never
+
+/** `unknown` must not count as `any` (`[0] extends [1 & unknown]` is wrongly true). */
+type IsAny<T> = 0 extends 1 & T ? (1 extends 0 & T ? true : false) : false
 type IsNeverOrAny<T> = [T] extends [never] ? true : IsAny<T>
 
 type HasNeverDeep<T> =
