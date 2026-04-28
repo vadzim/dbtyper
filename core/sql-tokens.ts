@@ -340,6 +340,7 @@ const serviceWordsMap = {
 	true: true,
 	union: true,
 	unique: true,
+	update: true,
 	use: true,
 	using: true,
 	values: true,

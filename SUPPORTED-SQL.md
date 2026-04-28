@@ -67,7 +67,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 - **`FROM`**: `schema.table` or `table` (default schema); optional **table alias**.
 - **`JOIN`**: **`INNER JOIN`**, **`LEFT [OUTER] JOIN`**, **`JOIN`**. Each joined table must be followed by **`ON alias.column = alias.column`** (equality only; columns validated against join scope).
 - Optional **`WHERE`**: bracket-aware **skip** to **`;`** (not type-checked at the statement level today).
-- **Query parameters**: every **`:name`** in the select list must appear in the optional third generic of **`ParseSqlStatement<…, Db, Params>`** (defaults to **`{}`** — then any `:name` is an error). Each binding is **`{ ts, sql }`**; if **`ts` is exactly `unknown`**, the projection errors (**no silent `unknown`**).
+- **Query parameters**: every **`:name`** in the select list must appear in the optional third generic of **`ParseSqlStatement<…, Db, Params>`** (defaults to **`{}`** — then any `:name` is an error). Each binding is **`{ ts, sql }`**; if **`ts` is exactly `unknown`**, the projection errors (**no silent `unknown`**). The same **`Params`** map applies to **`INSERT`** / **`UPDATE`** value expressions and their **`WHERE`** clauses.
 - Statement ends with **`;`** or end after the parsed tail.
 - Output type: **`JsqlSelectStatementResult`** (`kind`, `columns`, `column_sql_types`). Passing DB value is unchanged.
 
@@ -86,6 +86,24 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 - Column references use **`ResolveColumnRefValue`** (re-exported through **`EvalWhereClause`** / **`ParseWhereExpression`**; public entry in [`src/parser/parse-where-expression.ts`](src/parser/parse-where-expression.ts)). **Catalog** (`JsqlDatabaseShape`) plus **`ScopeMap`**. **`ParseSqlStatement<…, Db, Params>`** third generic supplies **`:name`** bindings for `WHERE` (default **`{}`** rejects any parameter).
 - Ends with **`;`** or end. Success does not alter the schema shape in the current model.
 
+---
+
+## `INSERT`
+
+- **`INSERT INTO`** qualified or default-schema **table name**, optional **table alias** before the column list, then **`(`** **column names** **`)`** **`VALUES (`** … **`)`** (one row only; multiple **`VALUES`** tuples are rejected).
+- Each **`VALUES`** expression is parsed with **`ParseAddValue`** (same typed scalar subset as **`WHERE`** operands: literals, **`:param`**, unqualified / qualified column refs via **`ScopeMap`** for the target table).
+- Each value is checked against the corresponding column’s **TypeScript type** in **`columns`** using the same **comparison-class** rules as **`=`**; **`NULL`** is rejected when **`column_facts`** marks the column **`not_null: true`**.
+- Success third slot: **`JsqlInsertStatementResult`** (`kind`, `schema`, `table`, **`columns`** as the declared name list). Schema shape is unchanged.
+
+---
+
+## `UPDATE`
+
+- **`UPDATE`** then the same **table reference** and **optional alias** style as **`DELETE`** / **`SELECT`** (default schema or **`schema.table`**).
+- **`SET`** one or more assignments: **unqualified** **`column_name =`** typed scalar (same **`ParseAddValue`** rules and **`Params`** as **`INSERT`**). Each assignment is type-checked against the column.
+- Optional **`WHERE`** — same **`ParseWhereExpression`** rules as **`DELETE`** over a **`ScopeMap`** that includes the updated table (alias if present).
+- Success third slot: **`JsqlUpdateStatementResult`** (`kind`, `schema`, `table`, **`set_columns`**). Schema shape is unchanged.
+
 ## Typed expressions (`ParseExpression` / `EvalWhereClause`)
 
 - Shared logic lives in [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpression`** (boolean-oriented **`AND` / `OR` / `NOT`**) with **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`** map).
@@ -96,4 +114,4 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 
 ## Not supported (skipped or absent)
 
-Statements such as **`INSERT`**, **`UPDATE`**, **`ALTER`**, **`CREATE INDEX`**, other **`CREATE`** variants, **`TRUNCATE`**, **`GRANT`**, etc. are **not** parsed structurally; the stream is advanced to the next **`;`** when they appear (unless they become first-class parsers later—**then update this file**).
+Statements such as **`ALTER`**, **`CREATE INDEX`**, other **`CREATE`** variants beyond **`TABLE`** / **`SCHEMA`**, **`TRUNCATE`**, **`GRANT`**, etc. are **not** parsed structurally; the stream is advanced to the next **`;`** when they appear (unless they become first-class parsers later—**then update this file**).

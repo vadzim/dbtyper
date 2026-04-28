@@ -14,7 +14,9 @@ import type { ParseCreateTable } from "./parse-create-table.ts"
 import type { ParseDelete } from "./parse-delete.ts"
 import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop-table.ts"
+import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseSelect } from "./parse-select.ts"
+import type { ParseUpdate } from "./parse-update.ts"
 import type { ParseSkipStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 
@@ -63,9 +65,13 @@ export type ParseSqlStatement<
 					? ParseDrop<SkipToken<Tokens>, Db>
 						: PeekToken<Tokens> extends TokenKey<"delete">
 							? ParseDelete<SkipToken<Tokens>, Db, Params>
-							: PeekToken<Tokens> extends TokenKey<"select">
-								? ParseSelect<SkipToken<Tokens>, Db, Params>
-								: ParseSkipStatement<Tokens, Db>
+							: PeekToken<Tokens> extends TokenKey<"insert">
+								? ParseInsert<SkipToken<Tokens>, Db, Params>
+								: PeekToken<Tokens> extends TokenKey<"select">
+									? ParseSelect<SkipToken<Tokens>, Db, Params>
+									: PeekToken<Tokens> extends TokenKey<"update">
+										? ParseUpdate<SkipToken<Tokens>, Db, Params>
+										: ParseSkipStatement<Tokens, Db>
 
 type ParseCreate<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">

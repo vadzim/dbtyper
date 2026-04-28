@@ -10,6 +10,23 @@ export type JsqlSelectStatementResult = {
 	column_sql_types: { [K: string]: string }
 }
 
+/** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */
+export type JsqlInsertStatementResult = {
+	kind: "insert"
+	table: string
+	schema: string
+	columns: readonly string[]
+}
+
+/** Type-level result of a parsed `UPDATE` (DB state unchanged in this model). */
+export type JsqlUpdateStatementResult = {
+	kind: "update"
+	table: string
+	schema: string
+	/** Column names that appeared in `SET` (each assignment is type-checked). */
+	set_columns: readonly string[]
+}
+
 export type JsqlSchemaShape = {
 	/** Named relations in the schema (base tables and views). */
 	sets: { [K: string]: JsqlTableShape }

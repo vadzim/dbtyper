@@ -553,7 +553,7 @@ type TryOperandIdentOrCall<
 			: TryOperandIdentColumnRefBody<Rm, Parts, Db, Scope, Ctx>
 		: never
 
-type SameComparisonClass<TsL, TsR> = TsL extends boolean
+export type SameComparisonClass<TsL, TsR> = TsL extends boolean
 	? TsR extends boolean
 		? true
 		: false
@@ -1358,7 +1358,8 @@ type ParseAddLoopAfterFirst<
 				: never
 			: [Tokens, Acc]
 
-type ParseAddValue<
+/** Typed scalar for INSERT/UPDATE cells (literals, columns, `:param`, parentheses, numeric ops). */
+export type ParseAddValue<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
