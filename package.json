@@ -2,11 +2,23 @@
 	"name": "typesql",
 	"version": "1.0.0",
 	"description": "Compile-time SQL parsing and schema typing for TypeScript.",
+	"keywords": ["sql", "typescript", "types", "schema", "migrations"],
 	"license": "ISC",
 	"author": "",
 	"type": "module",
-	"main": "index.js",
+	"main": "./dist/src/index.js",
+	"types": "./dist/src/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/src/index.js"
+		}
+	},
+	"files": ["dist", "README.md"],
 	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"prepack": "npm run build",
 		"typecheck": "time tsgo --noEmit -p tsconfig.json && time npm run --silent monadcheck-log",
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
@@ -22,8 +34,5 @@
 		"nodemon": "^3.1.14",
 		"prettier": "^3.8.1",
 		"typescript": "^6.0.2"
-	},
-	"dependencies": {
-		"fast-glob": "^3.3.3"
 	}
 }

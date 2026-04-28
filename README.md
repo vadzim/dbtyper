@@ -4,7 +4,19 @@ In this project we use TypeScript 7.0 preview.
 
 **typesql** is a set of TypeScript types that parse SQL strings and return proper types.
 
-**Where to look next:** supported surface area is summarized in [`SUPPORTED-SQL.md`](SUPPORTED-SQL.md). A short gap analysis vs the goal lives in [`CURRENT.md`](CURRENT.md). The minimal public barrel is [`core/sql.ts`](core/sql.ts); statement-level typing is implemented under `src/parser/` (e.g. `ParseSqlStatement` in [`src/parser/parse-sql-statement.ts`](src/parser/parse-sql-statement.ts)).
+**Where to look next:** supported surface area is summarized in [`SUPPORTED-SQL.md`](SUPPORTED-SQL.md). A short gap analysis vs the goal lives in [`CURRENT.md`](CURRENT.md). For **published** installs, import from the `typesql` package (see below). In-repo, the minimal type barrel is still [`core/sql.ts`](core/sql.ts); statement-level typing lives under `src/parser/` (e.g. [`src/parser/parse-sql-statement.ts`](src/parser/parse-sql-statement.ts)).
+
+## npm package
+
+The registry package is **compiled** (`dist/`) so Node can load `.js` from `node_modules`.
+
+- **Build:** `npm run build` (runs `tsc -p tsconfig.build.json`).
+- **Pack / publish:** `npm pack` or `npm publish` runs **`prepack`**, which runs the build first.
+
+```ts
+import { sqlDatabase, migration } from "typesql"
+import type { ApplyStatements, ParseSqlTokens, JsqlDatabaseShape } from "typesql"
+```
 
 ## Goal
 
