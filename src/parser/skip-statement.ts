@@ -16,17 +16,17 @@ export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenT
 }
 
 export type ParseSkipStatement<Tokens extends TokensList, DB extends JsqlDatabaseShape> =
-	SkipStatement<Tokens> extends [infer Rest extends TokensList, infer Result] ? [Rest, DB, Result] : never
+	SkipBracketedUntil<Tokens> extends [infer Rest extends TokensList, infer Result] ? [Rest, DB, Result] : never
 
-export type SkipStatement<
+export type SkipBracketedUntil<
 	Tokens extends TokensList,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 	ClosingBracketsStack extends ClosingBrackets[] = [],
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
-		? SkipStatement<SkipToken<Tokens>, EndToken, [")", ...ClosingBracketsStack]>
+		? SkipBracketedUntil<SkipToken<Tokens>, EndToken, [")", ...ClosingBracketsStack]>
 		: PeekToken<Tokens> extends TokenKey<"[">
-			? SkipStatement<SkipToken<Tokens>, EndToken, ["]", ...ClosingBracketsStack]>
+			? SkipBracketedUntil<SkipToken<Tokens>, EndToken, ["]", ...ClosingBracketsStack]>
 			: ClosingBracketsStack extends [
 						infer CurrentClosingBracket extends ClosingBrackets,
 						...infer Tail extends ClosingBrackets[],
@@ -34,10 +34,10 @@ export type SkipStatement<
 				? PeekToken<Tokens> extends TokenEot
 					? [Tokens, SqlParserError<`Closing bracket not found: ${CurrentClosingBracket}`>]
 					: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
-						? SkipStatement<SkipToken<Tokens>, EndToken, Tail>
+						? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
 						: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
 							? [Tokens, SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>["value"]}`>]
-							: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+							: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 				: PeekToken<Tokens> extends infer EndTok
 					? EndTok extends EndToken
 						? [SkipToken<Tokens>, SkippedStatement<EndTok>]
@@ -45,7 +45,7 @@ export type SkipStatement<
 							? [Tokens, SqlParserError<"Token not found">]
 							: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
 								? [Tokens, SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>["value"]}`>]
-								: SkipStatement<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+								: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 					: never
 
 type ClosingBrackets = ")" | "]"

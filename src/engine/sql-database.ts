@@ -101,6 +101,17 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 																				[K in keyof Columns]: Columns[K]
 																			}
 																		: never
+																	column_sql_types: "column_sql_types" extends keyof Table
+																		? Table["column_sql_types"] extends infer SqlCols
+																			? SqlCols extends { [k: string]: string }
+																				? [keyof SqlCols] extends [never]
+																					? {}
+																					: {
+																							[K in keyof SqlCols]: SqlCols[K]
+																						}
+																				: {}
+																			: {}
+																		: {}
 																	column_facts: Table["column_facts"] extends infer ColumnFacts
 																		? [keyof ColumnFacts] extends [never]
 																			? {}

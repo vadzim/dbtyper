@@ -1,6 +1,8 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../../core/jsql-shapes.ts"
 import type {
+	PeekToken,
 	ReadToken,
+	SkipToken,
 	SqlParserError,
 	TokenEot,
 	TokenIdent,
@@ -9,12 +11,18 @@ import type {
 } from "../../core/sql-tokens.ts"
 
 export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer AfterIf extends TokensList, TokenKey<"if">]
-		? ReadToken<AfterIf> extends [infer AfterNot extends TokensList, TokenKey<"not">]
-			? ReadToken<AfterNot> extends [infer AfterExists extends TokensList, TokenKey<"exists">]
-				? ParseCreateSchemaName<AfterExists, Db, true>
-				: [AfterNot, Db, SqlParserError<"Expected `exists` after `IF NOT` in CREATE SCHEMA">]
-			: [AfterIf, Db, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">]
+	PeekToken<Tokens> extends TokenKey<"if">
+		? SkipToken<Tokens> extends infer A0 extends TokensList
+			? PeekToken<A0> extends TokenKey<"not">
+				? SkipToken<A0> extends infer A1 extends TokensList
+					? PeekToken<A1> extends TokenKey<"exists">
+						? SkipToken<A1> extends infer A2 extends TokensList
+							? ParseCreateSchemaName<A2, Db, true>
+							: never
+						: [A1, Db, SqlParserError<"Expected `exists` after `IF NOT` in CREATE SCHEMA">]
+					: never
+				: [A0, Db, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">]
+			: never
 		: ParseCreateSchemaName<Tokens, Db, false>
 
 type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = {
@@ -22,19 +30,28 @@ type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = {
 	schemas: Db["schemas"] & Record<Name, JsqlSchemaShape>
 }
 
-type ParseCreateSchemaName<
-	Tokens extends TokensList,
+/** One `ReadToken` after schema name: must be `;` or end. */
+type ParseCreateSchemaAfterSchemaName<
+	AfterName extends TokensList,
 	Db extends JsqlDatabaseShape,
+	SchemaName extends string,
 	IfNotExists extends boolean,
 > =
-	ReadToken<Tokens> extends [infer AfterName extends TokensList, TokenIdent<infer SchemaName extends string>]
-		? ReadToken<AfterName> extends [infer AfterSemicolon extends TokensList, TokenKey<";"> | TokenEot]
+	ReadToken<AfterName> extends [infer R1 extends TokensList, infer Tok]
+		? Tok extends TokenKey<";"> | TokenEot
 			? IfNotExists extends true
 				? [SchemaName] extends [keyof Db["schemas"]]
-					? [AfterSemicolon, Db, null]
-					: [AfterSemicolon, MergeSchema<Db, SchemaName>, null]
+					? [R1, Db, null]
+					: [R1, MergeSchema<Db, SchemaName>, null]
 				: [SchemaName] extends [keyof Db["schemas"]]
-					? [AfterSemicolon, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
-					: [AfterSemicolon, MergeSchema<Db, SchemaName>, null]
-			: [AfterName, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
-		: [Tokens, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
+					? [R1, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
+					: [R1, MergeSchema<Db, SchemaName>, null]
+			: [R1, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
+		: never
+
+type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
+	ReadToken<Tokens> extends [infer AfterName extends TokensList, infer NameTok]
+		? NameTok extends TokenIdent<infer SchemaName extends string>
+			? ParseCreateSchemaAfterSchemaName<AfterName, Db, SchemaName, IfNotExists>
+			: [AfterName, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
+		: never

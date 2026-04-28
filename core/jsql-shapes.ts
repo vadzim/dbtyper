@@ -3,12 +3,21 @@ export type JsqlDatabaseShape = {
 	schemas: { [K: string]: JsqlSchemaShape }
 }
 
+/** Type-level result of a parsed `SELECT` (DB state unchanged). */
+export type JsqlSelectStatementResult = {
+	kind: "select"
+	columns: { [K: string]: unknown }
+	column_sql_types: { [K: string]: string }
+}
+
 export type JsqlSchemaShape = {
 	tables: { [K: string]: JsqlTableShape }
 }
 
 export type JsqlTableShape = {
 	columns: { [K: string]: unknown }
+	/** Original SQL type strings per column (normalized spacing, lowercased) for validation. */
+	column_sql_types?: { [K: string]: string }
 	constraints?: JsqlConstraintMap
 	column_facts?: JsqlColumnFactsMap
 }
