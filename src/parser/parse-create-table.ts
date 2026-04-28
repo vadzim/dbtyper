@@ -9,6 +9,8 @@ import type {
 	TokenKey,
 	TokensList,
 } from "../../core/sql-tokens.ts"
+import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
+import type { CollectSqlTypeWords, SqlJoinedToTs, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -79,34 +81,6 @@ type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabas
 		? E extends null
 			? ParseCreateTableQualifiedWhenNameOk<R, Db, IfNotExists, Sch, Tab>
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid CREATE TABLE name parse">]
-		: never
-
-/** After `schema.` — one `ReadToken` for the table name, then peek `(`. */
-type ParseQualifiedSecondIdent<AfterDot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	ReadToken<AfterDot> extends [infer R2 extends TokensList, infer Tok2]
-		? Tok2 extends TokenIdent<infer B extends string>
-			? PeekToken<R2> extends TokenKey<"(">
-				? [R2, null, A, B]
-				: [R2, SqlParserError<"Expected `(` after qualified table name">, never, never]
-			: [R2, SqlParserError<"Expected table name after `.` in qualified table name">, never, never]
-		: never
-
-/** After first ident `A` (unqualified or `A.`…). Unqualified names use {@link JsqlDatabaseShape["defaultSchema"]} as the schema key; it must exist under `schemas` (see {@link HasConcreteSchemaKey}). */
-type ParseQualifiedAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<"(">
-		? [AfterFirst, null, Db["defaultSchema"], A]
-		: ReadToken<AfterFirst> extends [infer AfterDot extends TokensList, infer Tdot]
-			? Tdot extends TokenKey<".">
-				? ParseQualifiedSecondIdent<AfterDot, Db, A>
-				: [AfterDot, SqlParserError<"Expected `.` or `(` after table name">, never, never]
-			: never
-
-/** `[rest, null, schema, table]` on success; `[rest, err, never, never]` on parse failure. */
-export type ParseQualifiedTableName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer AfterFirst extends TokensList, infer NameTok]
-		? NameTok extends TokenIdent<infer A extends string>
-			? ParseQualifiedAfterFirstIdent<AfterFirst, Db, A>
-			: [AfterFirst, SqlParserError<"Expected table name in CREATE TABLE">, never, never]
 		: never
 
 type ParseCreateTableOpenParen<
@@ -294,54 +268,6 @@ type ColumnsFromStack<S extends readonly ColumnTriple[]> = S extends readonly []
 								ColumnsFromStack<Rest>
 							>
 					: { cols: {}; sqls: {} }
-
-export type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
-	PeekToken<Tokens> extends TokenIdent<infer W extends string>
-		? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W]>
-		: [Tokens, Acc]
-
-export type TypeWordsToString<A extends readonly string[]> = A extends readonly [
-	infer H extends string,
-	...infer T extends readonly string[],
-]
-	? T extends readonly []
-		? H
-		: `${H} ${TypeWordsToString<T>}`
-	: ""
-
-export type SqlJoinedToTs<Joined extends string> =
-	Lowercase<Joined> extends infer K extends string
-		? K extends keyof SqlScalarTypeMap
-			? SqlScalarTypeMap[K]
-			: unknown
-		: unknown
-
-type SqlScalarTypeMap = {
-	uuid: string
-	text: string
-	integer: number
-	int: number
-	bigint: bigint
-	smallint: number
-	boolean: boolean
-	bool: boolean
-	numeric: string
-	decimal: string
-	real: number
-	float: number
-	"double precision": number
-	json: unknown
-	jsonb: unknown
-	date: string
-	timestamp: string
-	"timestamp with time zone": string
-	"timestamp without time zone": string
-	"time with time zone": string
-	"time without time zone": string
-	"character varying": string
-	varchar: string
-	char: string
-}
 
 type MergeTableIntoDb<
 	Db extends JsqlDatabaseShape,

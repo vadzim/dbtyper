@@ -9,7 +9,7 @@ import type {
 	TokenKey,
 	TokensList,
 } from "../../core/sql-tokens.ts"
-import type { CollectSqlTypeWords, SqlJoinedToTs, TypeWordsToString } from "./parse-create-table.ts"
+import type { CollectSqlTypeWords, SqlJoinedToTs, TypeWordsToString } from "./parse-sql-type-words.ts"
 
 /** True when `Tab` is a key of `sets` (including under `JsqlSchemaShape & { sets: { … } }` intersections). */
 type HasConcreteSet<Sets extends object, Tab extends string> = Tab extends keyof Sets ? true : false

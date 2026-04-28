@@ -1,5 +1,4 @@
 import type {
-	JsqlColumnFactsMap,
 	JsqlDatabaseShape,
 	JsqlInsertStatementResult,
 	JsqlSelectStatementResult,
@@ -17,6 +16,8 @@ import type {
 } from "../../core/sql-tokens.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { SqlTypesOf } from "./parser-sql-types-of.ts"
+import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
 	ExprAtom,
@@ -24,7 +25,6 @@ import type {
 	ExprSqlNull,
 	ExpressionParamsShape,
 	ParseAddValue,
-	SameComparisonClass,
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -33,46 +33,12 @@ import type { ResolveTableShape } from "./resolve-table-shape.ts"
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
 
-export type SqlTypesOf<Tbl extends JsqlTableShape> = Tbl["column_sql_types"] extends infer S
-	? S extends Record<string, string>
-		? S
-		: Record<string, string>
-	: Record<string, string>
-
 type InsertTableContext = {
 	scope: ScopeMap
 	tbl: JsqlTableShape
 	schema: string
 	table: string
 }
-
-type InsertColNotNull<Tbl extends JsqlTableShape, Col extends string> = Tbl extends {
-	column_facts: infer F extends JsqlColumnFactsMap
-}
-	? Col extends keyof F
-		? F[Col] extends { not_null: true }
-			? true
-			: false
-		: false
-	: false
-
-export type ValidateMutationValueForColumn<
-	Tbl extends JsqlTableShape,
-	Col extends string,
-	Val extends ExprAtom,
-> = Col extends keyof Tbl["columns"]
-	? Tbl["columns"][Col] extends infer ColTs
-		? Val extends ExprSqlNull
-			? InsertColNotNull<Tbl, Col> extends true
-				? SqlParserError<"NULL not allowed for NOT NULL column">
-				: true
-			: Val extends ExprOk<infer TsV, infer _Sv>
-				? SameComparisonClass<TsV, ColTs> extends true
-					? true
-					: SqlParserError<"Incompatible value type for column">
-				: SqlParserError<"Invalid value expression">
-		: never
-	: SqlParserError<"Unknown column in INSERT">
 
 type ParseInsertAliasAfterTable<
 	Tokens extends TokensList,

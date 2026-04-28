@@ -23,6 +23,7 @@ import type {
 	ScalarIdentParts,
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
+import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, ValidateCol } from "./parser-scope.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
@@ -605,14 +606,6 @@ type ParseFromTableAfterLeadingIdent<
 		: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
 			? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
 			: [R1, SqlParserError<"Unknown table in FROM">, ParserRefErrorThirdSentinel]
-
-type EmptySqlTypes = Record<string, string>
-
-type SqlTypesOf<Tbl extends JsqlTableShape> = Tbl["column_sql_types"] extends infer S
-	? S extends Record<string, string>
-		? S
-		: EmptySqlTypes
-	: EmptySqlTypes
 
 type ParseAliasAfterTable<
 	Tokens extends TokensList,

@@ -14,7 +14,8 @@ import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExprAtom, ExpressionParamsShape, ParseAddValue } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
-import type { SqlTypesOf, ValidateMutationValueForColumn } from "./parse-insert.ts"
+import type { SqlTypesOf } from "./parser-sql-types-of.ts"
+import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 
 type UpdateTableContext = {
 	scope: ScopeMap

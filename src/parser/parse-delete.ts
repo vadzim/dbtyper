@@ -11,6 +11,7 @@ import type {
 } from "../../core/sql-tokens.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -58,14 +59,6 @@ type FinishDeleteStatement<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			? [AfterSemi, Db, null]
 			: [AfterSemi, Db, SqlParserError<"Expected `;` after DELETE">]
 		: never
-
-type EmptySqlTypes = Record<string, string>
-
-type SqlTypesOf<Tbl extends JsqlTableShape> = Tbl["column_sql_types"] extends infer S
-	? S extends Record<string, string>
-		? S
-		: EmptySqlTypes
-	: EmptySqlTypes
 
 type ParseDeleteFromTableRef<
 	Tokens extends TokensList,
