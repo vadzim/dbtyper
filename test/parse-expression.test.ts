@@ -107,6 +107,14 @@ type RNotNum = ResolveExpressionAST<
 >
 type _rNotNum = Expect<Extends<RNotNum, SqlParserError<"NOT requires a boolean operand">>>
 
+type RUnaryMinusText = ResolveExpressionAST<
+	ParseExpressionAST<ParseSqlTokens<`-(users.name)`>> extends [infer _R, infer Ast] ? Ast : never,
+	DbUsers,
+	UsersScope,
+	ExprSelectCtx
+>
+type _rUnaryMinusText = Expect<Extends<RUnaryMinusText, SqlParserError<"Unary minus requires a number">>>
+
 type UCastPg = ParseExpressionAST<ParseSqlTokens<`1::text`>>
 type _uCastPg = Expect<Extends<Tuple2At1<UCastPg>, { kind: "pg_cast" }>>
 

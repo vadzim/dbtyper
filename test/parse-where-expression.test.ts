@@ -163,6 +163,42 @@ type _wBetween = Expect<Extends<Tuple2At1<WBetween>, null>>
 type WBetweenBad = ParseWhereExpression<ParseSqlTokens<`users.name between 1 and 2`>, DbUsers, UsersScope>
 type _wBetweenBad = Expect<Extends<Tuple2At1<WBetweenBad>, SqlParserError<"Incompatible types in BETWEEN">>>
 
+/** `BETWEEN`: numeric column vs string bounds (same as SQL type mismatch at resolve). */
+type DbUsersWithAmount = {
+	defaultSchema: "public"
+	schemas: {
+		public: {
+			sets: {
+				users: {
+					kind: "table"
+					columns: { id: string; name: string; amount: number }
+					column_sql_types: { id: "uuid"; name: "text"; amount: "numeric" }
+				}
+			}
+		}
+	}
+}
+type UsersScopeWithAmount = Record<
+	"users",
+	{
+		schema: "public"
+		table: "users"
+		columns: { id: string; name: string; amount: number }
+		column_sql_types: { id: "uuid"; name: "text"; amount: "numeric" }
+	}
+>
+type WBetweenNumColStringBounds = ParseWhereExpression<
+	ParseSqlTokens<`users.amount between 'a' and 'z'`>,
+	DbUsersWithAmount,
+	UsersScopeWithAmount
+>
+type _wBetweenNumColStringBounds = Expect<
+	Extends<Tuple2At1<WBetweenNumColStringBounds>, SqlParserError<"Incompatible types in BETWEEN">>
+>
+
+type WBetweenNullBound = ParseWhereExpression<ParseSqlTokens<`inner_t.a between null and 1`>, DbUsers, JoinedUsersInner>
+type _wBetweenNullBound = Expect<Extends<Tuple2At1<WBetweenNullBound>, SqlParserError<"NULL not allowed in BETWEEN">>>
+
 /** `LIKE` / `ILIKE`: both sides text. */
 type WLike = ParseWhereExpression<ParseSqlTokens<`users.name like '%x%'`>, DbUsers, UsersScope>
 type _wLike = Expect<Extends<Tuple2At1<WLike>, null>>
@@ -172,6 +208,15 @@ type _wILike = Expect<Extends<Tuple2At1<WILike>, null>>
 type JoinedUsersInner = MergeScope<UsersScope, InnerScope>
 type WLikeNum = ParseWhereExpression<ParseSqlTokens<`inner_t.a like '1'`>, DbUsers, JoinedUsersInner>
 type _wLikeNum = Expect<Extends<Tuple2At1<WLikeNum>, SqlParserError<"LIKE left operand must be text">>>
+
+type WLikePatternNonText = ParseWhereExpression<ParseSqlTokens<`users.name like 1`>, DbUsers, UsersScope>
+type _wLikePatternNonText = Expect<Extends<Tuple2At1<WLikePatternNonText>, SqlParserError<"LIKE pattern must be text">>>
+
+type WLikeNullPattern = ParseWhereExpression<ParseSqlTokens<`users.name like null`>, DbUsers, UsersScope>
+type _wLikeNullPattern = Expect<Extends<Tuple2At1<WLikeNullPattern>, SqlParserError<"NULL not allowed in LIKE">>>
+
+type WILikePatternNonText = ParseWhereExpression<ParseSqlTokens<`users.name ilike 1`>, DbUsers, UsersScope>
+type _wILikePatternNonText = Expect<Extends<Tuple2At1<WILikePatternNonText>, SqlParserError<"LIKE pattern must be text">>>
 
 /** Searched `CASE WHEN … THEN … [ELSE …] END`. */
 type WCase = ParseWhereExpression<
@@ -184,6 +229,21 @@ type WCaseWhenNotBool = ParseWhereExpression<ParseSqlTokens<`case when 1 then tr
 type _wCaseWhenNotBool = Expect<Extends<Tuple2At1<WCaseWhenNotBool>, SqlParserError<"CASE WHEN must be boolean">>>
 type WCaseIncompat = ParseWhereExpression<ParseSqlTokens<`case when true then 1 else 'x' end`>, DbUsers, UsersScope>
 type _wCaseIncompat = Expect<Extends<Tuple2At1<WCaseIncompat>, SqlParserError<"Incompatible types in CASE">>>
+
+/** Arithmetic (`ParseAddValue` chain): both operands must be numbers; NULL rejected. */
+type WArithNumPlusString = ParseWhereExpression<ParseSqlTokens<`inner_t.a + 'x'`>, DbUsers, JoinedUsersInner>
+type _wArithNumPlusString = Expect<Extends<Tuple2At1<WArithNumPlusString>, SqlParserError<"Incompatible types in arithmetic">>>
+type WArithStringPlusNum = ParseWhereExpression<ParseSqlTokens<`'x' + inner_t.a`>, DbUsers, JoinedUsersInner>
+type _wArithStringPlusNum = Expect<Extends<Tuple2At1<WArithStringPlusNum>, SqlParserError<"Incompatible types in arithmetic">>>
+type WArithNull = ParseWhereExpression<ParseSqlTokens<`inner_t.a + null`>, DbUsers, JoinedUsersInner>
+type _wArithNull = Expect<Extends<Tuple2At1<WArithNull>, SqlParserError<"NULL not allowed in arithmetic">>>
+
+type WCastTextToInteger = ParseWhereExpression<
+	ParseSqlTokens<`cast(users.name as integer) = 1`>,
+	DbUsers,
+	UsersScope
+>
+type _wCastTextToInteger = Expect<Extends<Tuple2At1<WCastTextToInteger>, SqlParserError<"Invalid cast to integer">>>
 
 /**
  * Bare-column ambiguity is decided with a literal `Col` in `ValidateWhereColumnParts`.
