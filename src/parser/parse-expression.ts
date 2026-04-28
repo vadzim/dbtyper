@@ -46,7 +46,7 @@ export type ScalarIdentParts = readonly [string] | readonly [string, string] | r
 export type ScalarCmpOp = "eq" | "ne" | "lt" | "le" | "gt" | "ge"
 
 /**
- * Expression AST for SELECT-list parsing (arithmetic, boolean `AND`/`OR`/`NOT`, comparisons, `IS [NOT] NULL`, `IN (...)`).
+ * Expression AST for SELECT-list parsing (arithmetic, boolean `AND`/`OR`/`NOT`, comparisons, `IS [NOT] NULL`, `IN (...)`, searched `CASE`, etc.).
  * Resolve with {@link ResolveExpressionAST} when `FROM` scope is known.
  */
 export type ScalarExprAst =
@@ -74,6 +74,12 @@ export type ScalarExprAst =
 	| { kind: "sql_cast"; expr: ScalarExprAst; type_parts: readonly string[] }
 	| { kind: "between"; expr: ScalarExprAst; low: ScalarExprAst; high: ScalarExprAst }
 	| { kind: "like"; expr: ScalarExprAst; pattern: ScalarExprAst; case_insensitive: boolean }
+	/** `CASE WHEN … THEN … [WHEN … THEN …]* [ELSE …] END` (searched form). */
+	| {
+			kind: "case_searched"
+			arms: readonly { when: ScalarExprAst; then: ScalarExprAst }[]
+			else_: ScalarExprAst | null
+	  }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
@@ -238,6 +244,68 @@ type ParseLikeAfterL<Tokens extends TokensList, L extends ScalarExprAst, CI exte
 				: never
 			: never
 		: never
+
+type ParseCaseExpectEndKeyword<
+	Tokens extends TokensList,
+	Acc extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+	ElseB extends ScalarExprAst | null,
+> =
+	PeekToken<Tokens> extends TokenKey<"end">
+		? ReadToken<Tokens> extends [infer Rend extends TokensList, TokenKey<"end">]
+			? Acc extends readonly []
+				? [Rend, SqlParserError<"CASE requires at least one WHEN">]
+				: [Rend, { kind: "case_searched"; arms: Acc; else_: ElseB }]
+			: never
+		: [Tokens, SqlParserError<"Expected END after CASE">]
+
+type ParseCaseAfterOneArm<
+	Tokens extends TokensList,
+	Acc extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+> =
+	PeekToken<Tokens> extends TokenKey<"when">
+		? ParseCaseWhenArmsThenElseEnd<Tokens, Acc>
+		: PeekToken<Tokens> extends TokenKey<"else">
+			? ReadToken<Tokens> extends [infer Re extends TokensList, TokenKey<"else">]
+				? ParseOrScalarUntyped<Re> extends [infer Rel extends TokensList, infer Ea]
+					? Ea extends SqlParserError<string>
+						? [Rel, Ea]
+						: Ea extends ScalarExprAst
+							? ParseCaseExpectEndKeyword<Rel, Acc, Ea>
+							: never
+						: never
+				: never
+			: PeekToken<Tokens> extends TokenKey<"end">
+				? ParseCaseExpectEndKeyword<Tokens, Acc, null>
+				: [Tokens, SqlParserError<"Expected WHEN ELSE or END in CASE">]
+
+type ParseCaseWhenArmsThenElseEnd<
+	Tokens extends TokensList,
+	Acc extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+> =
+	ReadToken<Tokens> extends [infer Rw extends TokensList, TokenKey<"when">]
+		? ParseOrScalarUntyped<Rw> extends [infer Rcond extends TokensList, infer Wast]
+			? Wast extends SqlParserError<string>
+				? [Rcond, Wast]
+				: Wast extends ScalarExprAst
+					? PeekToken<Rcond> extends TokenKey<"then">
+						? ReadToken<Rcond> extends [infer Rt extends TokensList, TokenKey<"then">]
+							? ParseOrScalarUntyped<Rt> extends [infer Rth extends TokensList, infer Thast]
+								? Thast extends SqlParserError<string>
+									? [Rth, Thast]
+									: Thast extends ScalarExprAst
+										? ParseCaseAfterOneArm<Rth, readonly [...Acc, { when: Wast; then: Thast }]>
+										: never
+									: never
+							: never
+						: [Rcond, SqlParserError<"Expected THEN after CASE WHEN">]
+					: never
+			: never
+		: never
+
+type ParseCaseSearchedAfterCaseKw<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"when">
+		? ParseCaseWhenArmsThenElseEnd<Tokens, readonly []>
+		: [Tokens, SqlParserError<"Expected WHEN after CASE">]
 
 type ParseAfterIsUntyped<Tokens extends TokensList, L extends ScalarExprAst> =
 	PeekToken<Tokens> extends TokenKey<"not">
@@ -537,10 +605,16 @@ export type ResolveExpressionAST<
 																									: never
 																								: never
 																					: Ast extends {
-																							kind: "in_list"
-																							expr: infer Eln extends ScalarExprAst
-																							items: infer Ins extends readonly ScalarExprAst[]
+																							kind: "case_searched"
+																							arms: infer Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[]
+																							else_: infer Elc extends ScalarExprAst | null
 																					  }
+																						? ResolveCaseSearched<Arms, Elc, Db, Scope, Ctx>
+																						: Ast extends {
+																								kind: "in_list"
+																								expr: infer Eln extends ScalarExprAst
+																								items: infer Ins extends readonly ScalarExprAst[]
+																						  }
 																						? ResolveExpressionAST<Eln, Db, Scope, Ctx> extends infer LvIn
 																							? LvIn extends SqlParserError<string>
 																								? LvIn
@@ -698,6 +772,90 @@ type MergeLikeOperands<Expr extends ExprAtom, Pat extends ExprAtom> = Expr exten
 				: SqlParserError<"Invalid LIKE pattern">
 			: SqlParserError<"Invalid LIKE operand">
 
+type MergeCaseThenAccum<Acc extends ExprAtom | null, Tv extends ExprAtom> = Acc extends null
+	? Tv
+	: Acc extends ExprSqlNull
+		? Tv extends ExprSqlNull
+			? ExprSqlNull
+			: Tv extends ExprOk<infer Tb, infer Sb>
+				? ExprOk<Tb | null, Sb>
+				: SqlParserError<"Invalid CASE branch">
+		: Acc extends ExprOk<infer Ta, infer Sa>
+			? Tv extends ExprSqlNull
+				? ExprOk<Ta | null, Sa>
+				: Tv extends ExprOk<infer Tb, infer Sb>
+					? SameComparisonClass<Ta, Tb> extends true
+						? ExprOk<Ta, Sa>
+						: SqlParserError<"Incompatible types in CASE">
+					: SqlParserError<"Invalid CASE branch">
+			: SqlParserError<"Invalid CASE branch">
+
+type ApplyCaseMissingElseNullability<E extends ExprAtom, MissingElse extends boolean> = MissingElse extends true
+	? E extends ExprOk<infer Ts, infer Ss>
+		? ExprOk<Ts | null, Ss>
+		: E extends ExprSqlNull
+			? ExprSqlNull
+			: SqlParserError<"Invalid CASE expression">
+	: E
+
+type ResolveCaseSearchedArms<
+	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+	ElseB extends ScalarExprAst | null,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+	Acc extends ExprAtom | null,
+> = Arms extends readonly [
+	infer A extends { when: ScalarExprAst; then: ScalarExprAst },
+	...infer Rest extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+]
+	? ResolveExpressionAST<A["when"], Db, Scope, Ctx> extends infer Wv
+		? Wv extends SqlParserError<string>
+			? Wv
+			: Wv extends ExprOk<infer Tw, infer _Sw>
+				? Tw extends boolean
+					? ResolveExpressionAST<A["then"], Db, Scope, Ctx> extends infer Tv
+						? Tv extends SqlParserError<string>
+							? Tv
+							: Tv extends ExprAtom
+								? MergeCaseThenAccum<Acc, Tv> extends infer Merged
+									? Merged extends SqlParserError<string>
+										? Merged
+										: Merged extends ExprAtom
+											? ResolveCaseSearchedArms<Rest, ElseB, Db, Scope, Ctx, Merged>
+											: SqlParserError<"Invalid CASE branch">
+									: never
+								: SqlParserError<"Invalid CASE branch">
+						: never
+					: SqlParserError<"CASE WHEN must be boolean">
+				: SqlParserError<"CASE WHEN must be boolean">
+			: never
+	: ElseB extends ScalarExprAst
+		? ResolveExpressionAST<ElseB, Db, Scope, Ctx> extends infer Ev
+			? Ev extends SqlParserError<string>
+				? Ev
+				: Ev extends ExprAtom
+					? MergeCaseThenAccum<Acc, Ev> extends infer F
+						? F extends SqlParserError<string>
+							? F
+							: F extends ExprAtom
+								? ApplyCaseMissingElseNullability<F, false>
+								: SqlParserError<"Invalid CASE expression">
+						: never
+					: SqlParserError<"Invalid CASE ELSE">
+				: never
+		: Acc extends ExprAtom
+			? ApplyCaseMissingElseNullability<Acc, true>
+			: SqlParserError<"Invalid CASE expression">
+
+type ResolveCaseSearched<
+	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+	ElseB extends ScalarExprAst | null,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> = ResolveCaseSearchedArms<Arms, ElseB, Db, Scope, Ctx, null>
+
 /** Per-element check for `expr IN (…)` (same class rules as `=`, but `NULL` list elements are rejected). */
 type ValidateInListElement<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
 	? SqlParserError<"Invalid IN left operand">
@@ -835,7 +993,11 @@ type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: 
 type TryOperandScalarUntyped<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"cast">
 		? ParseCastKeywordOperand<Tokens>
-		: PeekToken<Tokens> extends TokenKey<"(">
+		: PeekToken<Tokens> extends TokenKey<"case">
+			? ReadToken<Tokens> extends [infer Rcase extends TokensList, TokenKey<"case">]
+				? ParseCaseSearchedAfterCaseKw<Rcase>
+				: never
+			: PeekToken<Tokens> extends TokenKey<"(">
 			? ReadToken<Tokens> extends [infer Ri extends TokensList, TokenKey<"(">]
 				? ParseExpressionAST<Ri> extends [infer Rj extends TokensList, infer Ej]
 					? Ej extends SqlParserError<string>

@@ -173,6 +173,18 @@ type JoinedUsersInner = MergeScope<UsersScope, InnerScope>
 type WLikeNum = ParseWhereExpression<ParseSqlTokens<`inner_t.a like '1'`>, DbUsers, JoinedUsersInner>
 type _wLikeNum = Expect<Extends<Tuple2At1<WLikeNum>, SqlParserError<"LIKE left operand must be text">>>
 
+/** Searched `CASE WHEN … THEN … [ELSE …] END`. */
+type WCase = ParseWhereExpression<
+	ParseSqlTokens<`case when users.name = 'a' then true else false end`>,
+	DbUsers,
+	UsersScope
+>
+type _wCase = Expect<Extends<Tuple2At1<WCase>, null>>
+type WCaseWhenNotBool = ParseWhereExpression<ParseSqlTokens<`case when 1 then true else false end`>, DbUsers, UsersScope>
+type _wCaseWhenNotBool = Expect<Extends<Tuple2At1<WCaseWhenNotBool>, SqlParserError<"CASE WHEN must be boolean">>>
+type WCaseIncompat = ParseWhereExpression<ParseSqlTokens<`case when true then 1 else 'x' end`>, DbUsers, UsersScope>
+type _wCaseIncompat = Expect<Extends<Tuple2At1<WCaseIncompat>, SqlParserError<"Incompatible types in CASE">>>
+
 /**
  * Bare-column ambiguity is decided with a literal `Col` in `ValidateWhereColumnParts`.
  * `ParseSqlTokens` widens bare identifiers to `string`, so full-parser ambiguity is not asserted here;

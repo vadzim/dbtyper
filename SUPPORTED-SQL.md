@@ -82,6 +82,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
     - Comparisons **`=`**, **`<>`**, **`!=`**, **`<=`**, **`>=`**, **`<`**, **`>`**: operands must share the **same TS class** (e.g. both `string`, both `number`, both `boolean`); mixed classes error.
     - **`BETWEEN` *low* `AND` *high*** — subject and both bounds share the same comparison class; **`NULL`** in any position is rejected.
     - **`LIKE`** / **`ILIKE`** — left operand and pattern must be **text** (`ILIKE` is case-insensitive at the type level only as a distinct operator; no pattern semantics).
+    - Searched **`CASE WHEN` … `THEN` … [`WHEN` … `THEN` …]* [`ELSE` …] `END`** — each **`WHEN`** must be **`boolean`**; all **`THEN`** / **`ELSE`** results share the same comparison class (with **`NULL`** literals widening the result type); omitting **`ELSE`** yields **`T | null`** at the TypeScript level (no **`WHEN`**-value / simple **`CASE`** form yet).
     - Root **`WHERE`** expression must resolve to **`boolean`** (e.g. a bare column reference errors).
     - **`IS [NOT] NULL`**.
     - **`IN (` … `)`** — comma-separated **scalar values** are parsed and each must match the **left-hand operand’s comparison class** (same rules as **`=`** / **`<>`**); **`NULL`** literals in the list are rejected (`IS NULL` / `IS NOT NULL` instead).
@@ -108,7 +109,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 
 ## Typed expressions (`ParseExpressionAST` / `ResolveExpressionAST` / `EvalWhereClause`)
 
-- [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`**, **`BETWEEN`**, **`LIKE` / `ILIKE`**, **`+` / `-` / `*`**, unary **`-`**, casts). **`ResolveExpressionAST<Ast, Db, Scope, Ctx>`** checks types once **`ScopeMap`** and **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`**) are known.
+- [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`**, **`BETWEEN`**, **`LIKE` / `ILIKE`**, searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts). **`ResolveExpressionAST<Ast, Db, Scope, Ctx>`** checks types once **`ScopeMap`** and **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`**) are known.
 - **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, SqlParserError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
 
 ---

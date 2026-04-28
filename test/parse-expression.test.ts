@@ -5,6 +5,7 @@ import type { Expect, Extends, Tuple2At1, Tuple3At2 } from "./test-utils/type-te
 import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type {
 	EmptyExpressionParams,
+	ExprOk,
 	ExpressionParseContext,
 	ParseExpressionAST,
 	ResolveExpressionAST,
@@ -113,6 +114,17 @@ type UCastSql = ParseExpressionAST<ParseSqlTokens<`cast(7 as bigint)`>>
 type _uCastSql = Expect<Extends<Tuple2At1<UCastSql>, { kind: "sql_cast" }>>
 
 type _normDouble = Expect<Extends<SqlCastTypeNorm<readonly ["double", "precision"]>, "double precision">>
+
+type UCaseSearched = ParseExpressionAST<ParseSqlTokens<`case when true then 1 else 2 end`>>
+type _uCaseSearched = Expect<Extends<Tuple2At1<UCaseSearched>, { kind: "case_searched" }>>
+
+type RCaseNoElse = ResolveExpressionAST<
+	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>> extends [infer _R, infer Ast] ? Ast : never,
+	DbUsers,
+	UsersScope,
+	ExprSelectCtx
+>
+type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "number">>>
 
 describe("parse-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})

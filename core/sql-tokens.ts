@@ -273,6 +273,7 @@ const serviceWordsMap = {
 	begin: true,
 	between: true,
 	by: true,
+	case: true,
 	cast: true,
 	check: true,
 	column: true,
@@ -286,6 +287,7 @@ const serviceWordsMap = {
 	declare: true,
 	default: true,
 	delete: true,
+	else: true,
 	desc: true,
 	distinct: true,
 	drop: true,
@@ -339,6 +341,7 @@ const serviceWordsMap = {
 	set: true,
 	stored: true,
 	table: true,
+	then: true,
 	to: true,
 	true: true,
 	union: true,
@@ -348,6 +351,7 @@ const serviceWordsMap = {
 	using: true,
 	values: true,
 	virtual: true,
+	when: true,
 	where: true,
 }
 
