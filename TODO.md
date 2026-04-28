@@ -48,10 +48,10 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 ## Tests — `ApplyStatements` / skip / docs
 
-- [ ] Add **`test/apply-statements.test.ts`** (or **`parse-sql-statement`** section in an existing file): **`ApplyStatements<`create table public.t (id int); select id from t;`, EmptyDb>`** (or two **`CREATE`** steps) and **`Expect<Extends<…>>`** on the final **`Db`** shape and/or **`never`** on hard error paths.
-- [ ] Add a type test: **`ApplyParsedStatements`** when the **first** statement returns **`SqlParserError`** in the third tuple slot — assert **iteration stops** and **`[Rest, Db]`** matches the spec you want (encode in **`Expect`**).
-- [ ] Add **`ParseSqlStatement`** type tests for **`create view v as select 1;`** and **`grant select on t to u;`** (pick exact strings): assert **`Db`** unchanged and **`RestTokens`** / **`null`** result per **`ParseSkipStatement`** contract.
-- [ ] Edit **`SUPPORTED-SQL.md` § Not supported**: remove or narrow the blanket **`ALTER`** line; add an **`ALTER TABLE`** subsection mirroring **`parse-alter-table.ts`** support and no-op clauses.
+- [x] Add **`test/apply-statements.test.ts`** (or **`parse-sql-statement`** section in an existing file): **`ApplyStatements<`create table public.t (id int); select id from t;`, EmptyDb>`** (or two **`CREATE`** steps) and **`Expect<Extends<…>>`** on the final **`Db`** shape and/or **`never`** on hard error paths.
+- [x] Add a type test: **`ApplyParsedStatements`** when the **first** statement returns **`SqlParserError`** in the third tuple slot — assert **iteration stops** and **`[Rest, Db]`** matches the spec you want (encode in **`Expect`**).
+- [x] Add **`ParseSqlStatement`** type tests for **`create view v as select 1;`** and **`grant select on t to u;`** (pick exact strings): assert **`Db`** unchanged and **`RestTokens`** / **`null`** result per **`ParseSkipStatement`** contract.
+- [x] Edit **`SUPPORTED-SQL.md` § Not supported**: remove or narrow the blanket **`ALTER`** line; add an **`ALTER TABLE`** subsection mirroring **`parse-alter-table.ts`** support and no-op clauses.
 
 ## Tests — `SELECT` derived tables (edge cases)
 

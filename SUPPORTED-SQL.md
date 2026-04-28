@@ -13,12 +13,15 @@ Lexing, token types, and monad mechanics are out of scope here.
 | Prefix                        | Behavior                                                                                                     |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `CREATE` + `TABLE` / `SCHEMA` | Parsed; may **merge** into `JsqlDatabaseShape`                                                               |
+| `CREATE` + anything else      | **Skipped** to the next `;` (or end): **`ParseSkipStatement`** / `SkipBracketedUntil` (e.g. **`CREATE VIEW`**, **`CREATE INDEX`**). |
+| `ALTER` + `TABLE`             | Parsed; may **mutate** table shape (see **`ALTER TABLE`** below). **`ALTER`** without **`TABLE`** → error **`Expected TABLE after ALTER`**. |
 | `DROP` + `TABLE` / `SCHEMA`   | Parsed; may **remove** from `JsqlDatabaseShape`                                                              |
 | `DELETE`                      | Parsed; **checked** against the DB (`WHERE` is type-checked); does **not** mutate the schema object          |
 | `SELECT`                      | Parsed; projection/joins and list **`:name`** params checked; does **not** mutate the DB                     |
-| Anything else                 | **Skipped** to the next `;` (or end): bracket-aware forward scan (`SkipBracketedUntil`), no structured parse |
+| `INSERT` / `UPDATE`           | Parsed; checked; schema unchanged in this model.                                                            |
+| Anything else (e.g. `GRANT`, `TRUNCATE`) | **Skipped** to the next `;` (or end): same bracket-aware scan as **`CREATE VIEW`**, no structured parse. |
 
-Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyParsedStatements<Tokens, Db, Params>`** with **`Params`** defaulting to **`{}`**) until end or error.
+Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Params`** defaults to **`{}`** ) walks statements until end-of-input. If **`ParseSqlStatement`** returns **`SqlParserError<…>`** in the third tuple slot, the walk **stops** and returns **`[RestTokens, Db]`** without applying later statements. **`ApplyStatements<Db, Text, Params>`** folds that to the final **`Db`** (or **`never`** if the fold is ill-typed), or returns the input unchanged when **`Db`** is already **`SqlParserError<…>`**.
 
 ### Schema shape (`JsqlDatabaseShape`)
 
@@ -115,6 +118,15 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 
 ---
 
+## `ALTER TABLE`
+
+- Routed as **`ALTER` + `TABLE`** then qualified **`schema.table`** or default-schema **`table`** (same resolution rules as **`CREATE TABLE`**).
+- **Merged into `JsqlTableShape`**: **`ADD COLUMN`**, **`DROP COLUMN`**, **`RENAME COLUMN`**, **`ALTER COLUMN … TYPE`**, **`SET NOT NULL`**, **`DROP NOT NULL`** (per **`parse-alter-table.ts`**).
+- **No-op (skipped until next `,` or `;` within the alter list)**: e.g. **`SET DEFAULT`**, **`DROP DEFAULT`**, **`ADD CONSTRAINT`** … — enough token structure to reach a safe delimiter without full semantic support.
+
+---
+
 ## Not supported (skipped or absent)
 
-Statements such as **`ALTER`**, **`CREATE INDEX`**, other **`CREATE`** variants beyond **`TABLE`** / **`SCHEMA`**, **`TRUNCATE`**, **`GRANT`**, etc. are **not** parsed structurally; the stream is advanced to the next **`;`** when they appear (unless they become first-class parsers later—**then update this file**).
+- **`ALTER`** forms other than **`ALTER TABLE …`** as implemented (e.g. **`ALTER SCHEMA`**) are **not** supported beyond the **`Expected TABLE after ALTER`** path.
+- **`CREATE INDEX`**, **`TRUNCATE`**, **`GRANT`**, **`REVOKE`**, and similar are **not** parsed structurally; **`ParseSkipStatement`** advances to **`;`** (see routing table). **`CREATE VIEW`** is in the same skip bucket until a dedicated parser exists—**then update this file**.
