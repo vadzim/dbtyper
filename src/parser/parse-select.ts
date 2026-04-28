@@ -190,6 +190,7 @@ type ParseOneRawSelectItem<
 						| TokenKey<"false">
 						| TokenKey<"null">
 						| TokenKey<"-">
+						| TokenKey<"not">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params>
 					: never
 				: never

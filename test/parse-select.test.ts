@@ -202,6 +202,118 @@ type TUnqualGhostUnknown = ParseSqlStatement<
 >
 type _unqualGhostUnknown = Expect<Extends<Tuple3At2<TUnqualGhostUnknown>, SqlParserError<"Unknown column">>>
 
+/** Boolean expression in the projection (extends {@link ScalarExprAst} parse/resolve, not `ParseBooleanExpression`). */
+type TSelectBoolCmpAnd = ParseSqlStatement<
+	ParseSqlTokens<`select ((2 > 0) and (1 < 3)) as ok from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectBoolCmpAnd = Expect<
+	Extends<
+		Tuple3At2<TSelectBoolCmpAnd>,
+		{ kind: "select"; columns: { ok: boolean }; column_sql_types: { ok: "boolean" } }
+	>
+>
+
+type TSelectBoolOrAndPrec = ParseSqlStatement<
+	ParseSqlTokens<`select true or false and false as p from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectBoolOrAndPrec = Expect<
+	Extends<Tuple3At2<TSelectBoolOrAndPrec>, { kind: "select"; columns: { p: boolean }; column_sql_types: { p: "boolean" } }>
+>
+
+type TSelectNotFalse = ParseSqlStatement<
+	ParseSqlTokens<`select not false as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectNotFalse = Expect<
+	Extends<Tuple3At2<TSelectNotFalse>, { kind: "select"; columns: { x: boolean }; column_sql_types: { x: "boolean" } }>
+>
+
+type TSelectCmpAdd = ParseSqlStatement<
+	ParseSqlTokens<`select 1 + 2 > 2 as gt from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCmpAdd = Expect<
+	Extends<Tuple3At2<TSelectCmpAdd>, { kind: "select"; columns: { gt: boolean }; column_sql_types: { gt: "boolean" } }>
+>
+
+type TSelectIsNull = ParseSqlStatement<
+	ParseSqlTokens<`select (users.name is null) as n from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectIsNull = Expect<
+	Extends<Tuple3At2<TSelectIsNull>, { kind: "select"; columns: { n: boolean }; column_sql_types: { n: "boolean" } }>
+>
+
+type TSelectInList = ParseSqlStatement<
+	ParseSqlTokens<`select (users.id in (1, 2, 3)) as inside from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectInList = Expect<
+	Extends<Tuple3At2<TSelectInList>, { kind: "select"; columns: { inside: boolean }; column_sql_types: { inside: "boolean" } }>
+>
+
+type TSelectNotNumberErr = ParseSqlStatement<
+	ParseSqlTokens<`select not 1 as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectNotNumberErr = Expect<Extends<Tuple3At2<TSelectNotNumberErr>, SqlParserError<"NOT requires a boolean operand">>>
+
+type TSelectAndNonBoolErr = ParseSqlStatement<
+	ParseSqlTokens<`select (5 and true) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectAndNonBoolErr = Expect<Extends<Tuple3At2<TSelectAndNonBoolErr>, SqlParserError<"AND operands must be boolean">>>
+
+type TSelectCmpTypeErr = ParseSqlStatement<
+	ParseSqlTokens<`select (1 = true) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCmpTypeErr = Expect<Extends<Tuple3At2<TSelectCmpTypeErr>, SqlParserError<"Incompatible types in comparison">>>
+
+type TSelectCmpStrNumErr = ParseSqlStatement<
+	ParseSqlTokens<`select (1 > 'a') as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCmpStrNumErr = Expect<Extends<Tuple3At2<TSelectCmpStrNumErr>, SqlParserError<"Incompatible types in comparison">>>
+
+type TSelectEqNullErr = ParseSqlStatement<
+	ParseSqlTokens<`select (null = null) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectEqNullErr = Expect<Extends<Tuple3At2<TSelectEqNullErr>, SqlParserError<"Use IS NULL instead of = null">>>
+
+type TSelectIsBadRhsErr = ParseSqlStatement<
+	ParseSqlTokens<`select (1 is 2) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectIsBadRhsErr = Expect<Extends<Tuple3At2<TSelectIsBadRhsErr>, SqlParserError<"Expected NULL after IS">>>
+
+type TSelectInNoParenErr = ParseSqlStatement<
+	ParseSqlTokens<`select (1 in 1) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectInNoParenErr = Expect<Extends<Tuple3At2<TSelectInNoParenErr>, SqlParserError<"Expected `(` after IN">>>
+
+type TSelectOrNonBoolErr = ParseSqlStatement<
+	ParseSqlTokens<`select (true or 1) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrNonBoolErr = Expect<Extends<Tuple3At2<TSelectOrNonBoolErr>, SqlParserError<"OR operands must be boolean">>>
+
+type TSelectNullAndErr = ParseSqlStatement<
+	ParseSqlTokens<`select (true and null) as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectNullAndErr = Expect<Extends<Tuple3At2<TSelectNullAndErr>, SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">>>
+
+type TSelectNotNullErr = ParseSqlStatement<
+	ParseSqlTokens<`select not null as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectNotNullErr = Expect<Extends<Tuple3At2<TSelectNotNullErr>, SqlParserError<"NOT argument must be boolean, not NULL">>>
+
 describe("parse-select (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

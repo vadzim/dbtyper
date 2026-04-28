@@ -8,6 +8,7 @@ import type {
 	ExpressionParseContext,
 	ParseBooleanExpression,
 	ParseExpressionAST,
+	ResolveExpressionAST,
 } from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
@@ -85,6 +86,26 @@ type _exprCross = Expect<Extends<Tuple2At1<ExprCross>, { ok: true; ts: boolean }
 
 type UAdd = ParseExpressionAST<ParseSqlTokens<`1 + 2`>>
 type _uAdd = Expect<Extends<Tuple2At1<UAdd>, { kind: "add" }>>
+
+type UCmp = ParseExpressionAST<ParseSqlTokens<`2 > 0`>>
+type _uCmp = Expect<Extends<Tuple2At1<UCmp>, { kind: "cmp"; op: "gt" }>>
+
+type UAndCmp = ParseExpressionAST<ParseSqlTokens<`(2 > 0) and (1 < 3)`>>
+type _uAndCmp = Expect<Extends<Tuple2At1<UAndCmp>, { kind: "and" }>>
+
+type UOrAndPrec = ParseExpressionAST<ParseSqlTokens<`true or false and false`>>
+type _uOrAndPrec = Expect<Extends<Tuple2At1<UOrAndPrec>, { kind: "or" }>>
+
+type UIsBad = ParseExpressionAST<ParseSqlTokens<`1 is 2`>>
+type _uIsBad = Expect<Extends<Tuple2At1<UIsBad>, SqlParserError<"Expected NULL after IS">>>
+
+type RNotNum = ResolveExpressionAST<
+	ParseExpressionAST<ParseSqlTokens<`not 1`>> extends [infer _R, infer Ast] ? Ast : never,
+	DbUsers,
+	UsersScope,
+	ExprSelectCtx
+>
+type _rNotNum = Expect<Extends<RNotNum, SqlParserError<"NOT requires a boolean operand">>>
 
 describe("parse-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})

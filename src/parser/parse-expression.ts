@@ -42,7 +42,13 @@ export type ExprAtom = ExprOk<unknown, string> | ExprSqlNull
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
 export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
 
-/** Scalar expression without `Db` / `Scope` (SELECT list and tests); resolve with {@link ResolveExpressionAST}. */
+/** Comparison operator in {@link ScalarExprAst} `cmp` (resolved like PostgreSQL class rules). */
+export type ScalarCmpOp = "eq" | "ne" | "lt" | "le" | "gt" | "ge"
+
+/**
+ * Expression AST for SELECT-list parsing (arithmetic, boolean `AND`/`OR`/`NOT`, comparisons, `IS [NOT] NULL`, `IN (...)`).
+ * Resolve with {@link ResolveExpressionAST} when `FROM` scope is known.
+ */
 export type ScalarExprAst =
 	| { kind: "true" }
 	| { kind: "false" }
@@ -55,12 +61,147 @@ export type ScalarExprAst =
 	| { kind: "add"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "sub"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "mul"; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "not"; inner: ScalarExprAst }
+	| { kind: "and"; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "or"; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "cmp"; op: ScalarCmpOp; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "is_null"; expr: ScalarExprAst }
+	| { kind: "is_not_null"; expr: ScalarExprAst }
+	| { kind: "in_list"; expr: ScalarExprAst }
 
-/** Parse expression to AST to be resolved later when from scope is known */
-export type ParseExpressionAST<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenIdent<string>
-		? ParseScalarExprUntypedFromIdent<Tokens>
-		: ParseScalarExprUntypedNonIdent<Tokens>
+/** Additive / multiplicative / unary-minus / primary (no `AND`/`OR`/`NOT`/comparisons at this level). */
+type ParseAddScalarUntyped<Tokens extends TokensList> = PeekToken<Tokens> extends TokenIdent<string>
+	? ParseScalarExprUntypedFromIdent<Tokens>
+	: ParseScalarExprUntypedNonIdent<Tokens>
+
+type TokenToCmpOp<Tok> = Tok extends TokenKey<"=">
+	? "eq"
+	: Tok extends TokenKey<"<>"> | TokenKey<"!=">
+		? "ne"
+		: Tok extends TokenKey<"<">
+			? "lt"
+			: Tok extends TokenKey<"<=">
+				? "le"
+				: Tok extends TokenKey<">">
+					? "gt"
+					: Tok extends TokenKey<">=">
+						? "ge"
+						: never
+
+type ParseAfterIsUntyped<Tokens extends TokensList, L extends ScalarExprAst> =
+	PeekToken<Tokens> extends TokenKey<"not">
+		? ReadToken<Tokens> extends [infer R5 extends TokensList, TokenKey<"not">]
+			? PeekToken<R5> extends TokenKey<"null">
+				? ReadToken<R5> extends [infer R6 extends TokensList, TokenKey<"null">]
+					? [R6, { kind: "is_not_null"; expr: L }]
+					: ReadToken<R5> extends [infer R5b extends TokensList, infer _TokN]
+						? [R5b, SqlParserError<"Expected NULL after IS NOT">]
+						: never
+				: [R5, SqlParserError<"Expected NULL after IS NOT">]
+			: never
+		: PeekToken<Tokens> extends TokenKey<"null">
+			? ReadToken<Tokens> extends [infer R7 extends TokensList, TokenKey<"null">]
+				? [R7, { kind: "is_null"; expr: L }]
+				: never
+			: [Tokens, SqlParserError<"Expected NULL after IS">]
+
+type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends ScalarExprAst> =
+	PeekToken<Tokens> extends infer P
+		? IsRelOp<P> extends true
+			? ReadToken<Tokens> extends [infer R2 extends TokensList, infer OpTok]
+				? ParseAddScalarUntyped<R2> extends [infer R3 extends TokensList, infer Rhs]
+					? Rhs extends SqlParserError<string>
+						? [R3, Rhs]
+						: TokenToCmpOp<OpTok> extends infer Cop extends ScalarCmpOp
+							? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
+							: [R3, SqlParserError<"Invalid comparison operator">]
+					: never
+				: never
+			: P extends TokenKey<"is">
+				? ReadToken<Tokens> extends [infer R4 extends TokensList, TokenKey<"is">]
+					? ParseAfterIsUntyped<R4, L>
+					: never
+				: P extends TokenKey<"in">
+					? ReadToken<Tokens> extends [infer R8 extends TokensList, TokenKey<"in">]
+						? PeekToken<R8> extends TokenKey<"(">
+							? SkipBracketedUntil<SkipToken<R8>, TokenKey<")">> extends [infer R9 extends TokensList, infer Rs]
+								? Rs extends SqlParserError<string>
+									? [R9, SqlParserError<"Unbalanced parentheses IN">]
+									: [R9, { kind: "in_list"; expr: L }]
+								: never
+							: [R8, SqlParserError<"Expected `(` after IN">]
+						: never
+					: [Tokens, L]
+		: never
+
+type ParseRelScalarUntyped<Tokens extends TokensList> =
+	ParseAddScalarUntyped<Tokens> extends [infer R1 extends TokensList, infer E1]
+		? E1 extends SqlParserError<string>
+			? [R1, E1]
+			: E1 extends ScalarExprAst
+				? ParseAfterAddScalarRelIsInUntyped<R1, E1>
+				: never
+		: never
+
+type ParseNotScalarUntyped<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"not">
+		? ReadToken<Tokens> extends [infer Rn extends TokensList, TokenKey<"not">]
+			? ParseNotScalarUntyped<Rn> extends [infer Ru extends TokensList, infer U]
+				? U extends SqlParserError<string>
+					? [Ru, U]
+					: U extends ScalarExprAst
+						? [Ru, { kind: "not"; inner: U }]
+						: never
+				: never
+			: never
+		: ParseRelScalarUntyped<Tokens>
+
+type ParseAndLoopScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	PeekToken<Tokens> extends TokenKey<"and">
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"and">]
+			? ParseNotScalarUntyped<R1> extends [infer R2 extends TokensList, infer E1]
+				? E1 extends SqlParserError<string>
+					? [R2, E1]
+					: E1 extends ScalarExprAst
+						? ParseAndLoopScalarUntyped<R2, { kind: "and"; left: Acc; right: E1 }>
+						: never
+				: never
+			: never
+		: [Tokens, Acc]
+
+type ParseAndScalarUntyped<Tokens extends TokensList> =
+	ParseNotScalarUntyped<Tokens> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ScalarExprAst
+				? ParseAndLoopScalarUntyped<R0, E0>
+				: never
+		: never
+
+type ParseOrLoopScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	PeekToken<Tokens> extends TokenKey<"or">
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"or">]
+			? ParseAndScalarUntyped<R1> extends [infer R2 extends TokensList, infer E1]
+				? E1 extends SqlParserError<string>
+					? [R2, E1]
+					: E1 extends ScalarExprAst
+						? ParseOrLoopScalarUntyped<R2, { kind: "or"; left: Acc; right: E1 }>
+						: never
+				: never
+			: never
+		: [Tokens, Acc]
+
+type ParseOrScalarUntyped<Tokens extends TokensList> =
+	ParseAndScalarUntyped<Tokens> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ScalarExprAst
+				? ParseOrLoopScalarUntyped<R0, E0>
+				: never
+		: never
+
+/** Parse expression to AST to be resolved later when `FROM` scope is known (`OR` … `AND` … `NOT` … comparisons … arithmetic). */
+export type ParseExpressionAST<Tokens extends TokensList> = ParseOrScalarUntyped<Tokens>
 
 /** Resolve after `FROM` scope is known */
 export type ResolveExpressionAST<
@@ -102,7 +243,64 @@ export type ResolveExpressionAST<
 													right: infer Rs extends ScalarExprAst
 											  }
 											? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Ctx>
-											: SqlParserError<"Invalid scalar expression">
+											: Ast extends { kind: "not"; inner: infer I extends ScalarExprAst }
+												? ResolveExpressionAST<I, Db, Scope, Ctx> extends infer V
+													? MergeBoolNot<V>
+													: never
+												: Ast extends { kind: "and"; left: infer La extends ScalarExprAst; right: infer Ra extends ScalarExprAst }
+													? ResolveExpressionAST<La, Db, Scope, Ctx> extends infer Lv
+														? ResolveExpressionAST<Ra, Db, Scope, Ctx> extends infer Rv
+															? MergeBoolBinary<Lv, Rv, "AND operands must be boolean">
+															: never
+														: never
+													: Ast extends { kind: "or"; left: infer Lo extends ScalarExprAst; right: infer Ro extends ScalarExprAst }
+														? ResolveExpressionAST<Lo, Db, Scope, Ctx> extends infer Lv2
+															? ResolveExpressionAST<Ro, Db, Scope, Ctx> extends infer Rv2
+																? MergeBoolBinary<Lv2, Rv2, "OR operands must be boolean">
+																: never
+															: never
+														: Ast extends {
+																	kind: "cmp"
+																	op: infer _Op extends ScalarCmpOp
+																	left: infer Lc extends ScalarExprAst
+																	right: infer Rc extends ScalarExprAst
+															  }
+															? ResolveExpressionAST<Lc, Db, Scope, Ctx> extends infer LcV
+																? ResolveExpressionAST<Rc, Db, Scope, Ctx> extends infer RcV
+																	? LcV extends SqlParserError<string>
+																		? LcV
+																		: RcV extends SqlParserError<string>
+																			? RcV
+																			: LcV extends ExprAtom
+																				? RcV extends ExprAtom
+																					? MergeComparison<LcV, RcV>
+																					: SqlParserError<"Invalid comparison operand">
+																				: SqlParserError<"Invalid comparison operand">
+																	: never
+																: never
+															: Ast extends { kind: "is_null"; expr: infer E0 extends ScalarExprAst }
+																? ResolveExpressionAST<E0, Db, Scope, Ctx> extends infer V0
+																	? V0 extends SqlParserError<string>
+																		? V0
+																		: V0 extends ExprSqlNull
+																			? ExprOk<true, "boolean">
+																			: V0 extends ExprOk<unknown, string>
+																				? ExprOk<false, "boolean">
+																				: SqlParserError<"Invalid IS NULL operand">
+																	: never
+																: Ast extends { kind: "is_not_null"; expr: infer E1 extends ScalarExprAst }
+																	? ResolveExpressionAST<E1, Db, Scope, Ctx> extends infer V1
+																		? V1 extends SqlParserError<string>
+																			? V1
+																			: V1 extends ExprSqlNull
+																				? ExprOk<false, "boolean">
+																				: V1 extends ExprOk<unknown, string>
+																					? ExprOk<true, "boolean">
+																					: SqlParserError<"Invalid IS NOT NULL operand">
+																		: never
+																	: Ast extends { kind: "in_list"; expr: infer _E2 extends ScalarExprAst }
+																		? ExprOk<boolean, "boolean">
+																		: SqlParserError<"Invalid scalar expression">
 
 /** typed expression with `AND` / `OR` / `NOT`, comparisons, `IS NULL`, `IN`, column refs, params. */
 export type ParseBooleanExpression<
@@ -236,6 +434,34 @@ type MergeComparison<L extends ExprAtom, R extends ExprAtom> = L extends ExprSql
 					: SqlParserError<"Incompatible types in comparison">
 				: never
 			: never
+
+type MergeBoolNot<V> = V extends SqlParserError<string>
+	? V
+	: V extends ExprSqlNull
+		? SqlParserError<"NOT argument must be boolean, not NULL">
+		: V extends ExprOk<infer T, infer _S>
+			? T extends boolean
+				? ExprOk<boolean, "boolean">
+				: SqlParserError<"NOT requires a boolean operand">
+			: SqlParserError<"NOT requires a boolean operand">
+
+type MergeBoolBinary<L, R, Msg extends string> = L extends SqlParserError<string>
+	? L
+	: R extends SqlParserError<string>
+		? R
+		: L extends ExprSqlNull
+			? SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">
+			: R extends ExprSqlNull
+				? SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">
+				: L extends ExprOk<infer Tl, infer _Sl>
+					? R extends ExprOk<infer Tr, infer _Sr>
+						? Tl extends boolean
+							? Tr extends boolean
+								? ExprOk<boolean, "boolean">
+								: SqlParserError<Msg>
+							: SqlParserError<Msg>
+						: SqlParserError<Msg>
+					: SqlParserError<Msg>
 
 type TryOperandTyped<
 	Tokens extends TokensList,
