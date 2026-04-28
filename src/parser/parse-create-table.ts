@@ -157,8 +157,10 @@ type ParseCreateTableBody<
 				cols: Record<string, unknown>
 				sqls: Record<string, string>
 			}
-			? MergeTableIntoDb<Db, Schema, Table, M["cols"], M["sqls"]> extends infer NewDb extends JsqlDatabaseShape
-				? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
+			? MergeTableIntoDb<Db, Schema, Table, M["cols"], M["sqls"]> extends infer NewDb
+				? NewDb extends JsqlDatabaseShape
+					? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
+					: never
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenKey<"constraint">

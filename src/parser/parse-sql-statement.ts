@@ -27,9 +27,11 @@ export type ApplyStatements<
 > = Db extends JsqlDatabaseShape
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
 			infer _Rest extends TokensList,
-			infer NewDB extends JsqlDatabaseShape,
+			infer NewDB,
 		]
-		? NewDB
+		? NewDB extends JsqlDatabaseShape
+			? NewDB
+			: never
 		: never
 	: Db
 
@@ -42,12 +44,14 @@ export type ApplyParsedStatements<
 		? [Tokens, Db]
 		: ParseSqlStatement<Tokens, Db, Params> extends [
 					infer Rest extends TokensList,
-					infer NewDB extends JsqlDatabaseShape,
+					infer NewDB,
 					infer Result,
 			  ]
 			? Result extends SqlParserError<string>
 				? [Rest, NewDB]
-				: ApplyParsedStatements<Rest, NewDB, Params>
+				: NewDB extends JsqlDatabaseShape
+					? ApplyParsedStatements<Rest, NewDB, Params>
+					: never
 			: never
 
 export type ParseSqlStatement<

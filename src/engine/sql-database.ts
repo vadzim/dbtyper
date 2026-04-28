@@ -27,6 +27,72 @@ export type SqlDatabase<DefaultSchema extends string = "public"> = {
 	schemas: {}
 }
 
+/** Removes index-signature keys so quick info does not show `[x: string]: …` for every map. */
+type NonIndexKey<K extends PropertyKey> = string extends K
+	? never
+	: number extends K
+		? never
+		: symbol extends K
+			? never
+			: K
+
+/**
+ * Pretty-printed `JsqlDatabaseShape` for IDE hints: homomorphic mapped types keep index keys from
+ * `schemas` / `sets` / `columns`; remapping with {@link NonIndexKey} drops those keys.
+ */
+export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
+	? {
+			defaultSchema: Database["defaultSchema"]
+			schemas: Database["schemas"] extends infer Schemas
+				? {
+						[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends JsqlSchemaShape
+							? {
+									sets: Schema["sets"] extends infer Sets
+										? {
+												[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends JsqlTableShape
+													? {
+															kind: Table["kind"]
+															columns: Table["columns"] extends infer Columns
+																? {
+																		[CK in keyof Columns as NonIndexKey<CK>]: Columns[CK]
+																	}
+																: never
+															column_sql_types: "column_sql_types" extends keyof Table
+																? Table["column_sql_types"] extends infer SqlCols
+																	? SqlCols extends { [k: string]: string }
+																		? [keyof SqlCols] extends [never]
+																			? {}
+																			: {
+																					[SK in keyof SqlCols as NonIndexKey<SK>]: SqlCols[SK]
+																				}
+																		: {}
+																	: {}
+																: {}
+															column_facts: Table["column_facts"] extends infer ColumnFacts
+																? [keyof ColumnFacts] extends [never]
+																	? {}
+																	: {
+																			[FK in keyof ColumnFacts as NonIndexKey<FK>]: ColumnFacts[FK]
+																		}
+																: never
+															constraints: Table["constraints"] extends infer Constraints
+																? [keyof Constraints] extends [never]
+																	? {}
+																	: {
+																			[CKe in keyof Constraints as NonIndexKey<CKe>]: Constraints[CKe]
+																		}
+																: never
+														}
+													: never
+											}
+										: never
+								}
+							: never
+					}
+				: never
+		}
+	: Database
+
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 
 type NamedMigration<S extends string, Path extends string> = {
@@ -80,66 +146,9 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 		return result
 	}
 
-	async compile() {
+	async compile(): Promise<CompiledDataBase<FlattenedJsqlDatabase<Database>>> {
 		const migrations = await this.#getMigrations()
-
-		// This type is needed to see Database type in the IDE hint in an unwrapped form.
-		// Please never remove it, update it if needed.
-		type DatabaseFlattenedType = Database extends JsqlDatabaseShape
-			? {
-					defaultSchema: Database["defaultSchema"]
-					schemas: Database["schemas"] extends infer Schemas
-						? {
-								[K in keyof Schemas]: Schemas[K] extends infer Schema extends JsqlSchemaShape
-									? {
-											sets: Schema["sets"] extends infer Sets
-												? {
-														[K in keyof Sets]: Sets[K] extends infer Table extends
-															JsqlTableShape
-															? {
-																	kind: Table["kind"]
-																	columns: Table["columns"] extends infer Columns
-																		? {
-																				[K in keyof Columns]: Columns[K]
-																			}
-																		: never
-																	column_sql_types: "column_sql_types" extends keyof Table
-																		? Table["column_sql_types"] extends infer SqlCols
-																			? SqlCols extends { [k: string]: string }
-																				? [keyof SqlCols] extends [never]
-																					? {}
-																					: {
-																							[K in keyof SqlCols]: SqlCols[K]
-																						}
-																				: {}
-																			: {}
-																		: {}
-																	column_facts: Table["column_facts"] extends infer ColumnFacts
-																		? [keyof ColumnFacts] extends [never]
-																			? {}
-																			: {
-																					[K in keyof ColumnFacts]: ColumnFacts[K]
-																				}
-																		: never
-																	constraints: Table["constraints"] extends infer Constraints
-																		? [keyof Constraints] extends [never]
-																			? {}
-																			: {
-																					[K in keyof Constraints]: Constraints[K]
-																				}
-																		: never
-																}
-															: never
-													}
-												: never
-										}
-									: never
-							}
-						: never
-				}
-			: Database
-
-		return new CompiledDataBase<DatabaseFlattenedType>(migrations, this.#defaultSchema)
+		return new CompiledDataBase<FlattenedJsqlDatabase<Database>>(migrations, this.#defaultSchema)
 	}
 }
 
