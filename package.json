@@ -14,7 +14,7 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"monadcheck": "check-monad './core/**/*.ts' './src/**/*.ts' --monad ./core/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
-		"monadcheck-log": "mkdir -p .logs && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||await appendFile(process.argv[1],c)}\" \".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\">&2)"
+		"monadcheck-log": "mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./core ./src -mx=9; fi; exit $MC"
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.2",
