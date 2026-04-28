@@ -68,6 +68,90 @@ export type ScalarExprAst =
 	| { kind: "is_null"; expr: ScalarExprAst }
 	| { kind: "is_not_null"; expr: ScalarExprAst }
 	| { kind: "in_list"; expr: ScalarExprAst }
+	/** PostgreSQL `expr::typename` (supports multi-word types and `varchar(`…`)` modifiers). */
+	| { kind: "pg_cast"; expr: ScalarExprAst; type_parts: readonly string[] }
+	/** Standard `CAST(expr AS typename)`. */
+	| { kind: "sql_cast"; expr: ScalarExprAst; type_parts: readonly string[] }
+
+/** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
+export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
+	infer H extends string,
+	...infer T extends readonly string[],
+]
+	? T extends readonly []
+		? Lowercase<H>
+		: `${Lowercase<H>} ${SqlCastTypeNorm<T>}`
+	: string
+
+/** `AS` / `::` type list: identifiers, optional `(…)` after a name, until `)` (CAST) or non-type token (`::` chain). */
+type ParseSqlTypeName<Tokens extends TokensList, Acc extends readonly string[] = []> =
+	PeekToken<Tokens> extends TokenIdent<infer W extends string>
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenIdent<W>]
+			? PeekToken<R1> extends TokenKey<"(">
+				? SkipBracketedUntil<SkipToken<R1>, TokenKey<")">> extends [infer R2 extends TokensList, infer Rs]
+					? Rs extends SqlParserError<string>
+						? [R2, Rs]
+						: ParseSqlTypeName<R2, readonly [...Acc, W]>
+					: never
+				: PeekToken<R1> extends TokenIdent<string>
+					? ParseSqlTypeName<R1, readonly [...Acc, W]>
+					: [R1, readonly [...Acc, W]]
+			: never
+		: PeekToken<Tokens> extends TokenKey<")">
+			? Acc extends readonly []
+				? [Tokens, SqlParserError<"Expected type name">]
+				: [Tokens, Acc]
+			: Acc extends readonly []
+				? [Tokens, SqlParserError<"Expected type name">]
+				: [Tokens, Acc]
+
+type ParseCastKeywordOperand<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"cast">
+		? ReadToken<Tokens> extends [infer R0 extends TokensList, TokenKey<"cast">]
+			? PeekToken<R0> extends TokenKey<"(">
+				? ReadToken<R0> extends [infer R1 extends TokensList, TokenKey<"(">]
+					? ParseOrScalarUntyped<R1> extends [infer R2 extends TokensList, infer Inner]
+						? Inner extends SqlParserError<string>
+							? [R2, Inner]
+							: Inner extends ScalarExprAst
+								? PeekToken<R2> extends TokenKey<"as">
+									? ReadToken<R2> extends [infer R3 extends TokensList, TokenKey<"as">]
+										? ParseSqlTypeName<R3, []> extends [infer R4 extends TokensList, infer Parts]
+											? Parts extends SqlParserError<string>
+												? [R4, Parts]
+												: Parts extends readonly []
+													? [R4, SqlParserError<"Expected type name after CAST ... AS">]
+													: Parts extends readonly string[]
+														? ReadToken<R4> extends [infer R5 extends TokensList, infer TokCl]
+															? TokCl extends TokenKey<")">
+																? [R5, { kind: "sql_cast"; expr: Inner; type_parts: Parts }]
+																: [R5, SqlParserError<"Expected `)` after CAST type">]
+															: never
+														: never
+												: never
+										: never
+									: [R2, SqlParserError<"Expected AS in CAST">]
+								: never
+						: never
+					: never
+				: [R0, SqlParserError<"Expected `(` after CAST">]
+			: never
+		: never
+
+type ParsePgCastSuffixTail<Tokens extends TokensList, Acc extends ScalarExprAst> =
+	PeekToken<Tokens> extends TokenKey<"::">
+		? ReadToken<Tokens> extends [infer R0 extends TokensList, TokenKey<"::">]
+			? ParseSqlTypeName<R0, []> extends [infer R1 extends TokensList, infer Parts]
+				? Parts extends SqlParserError<string>
+					? [R1, Parts]
+					: Parts extends readonly []
+						? [R1, SqlParserError<"Expected type name after ::">]
+						: Parts extends readonly string[]
+							? ParsePgCastSuffixTail<R1, { kind: "pg_cast"; expr: Acc; type_parts: Parts }>
+							: never
+				: never
+			: never
+		: [Tokens, Acc]
 
 /** Additive / multiplicative / unary-minus / primary (no `AND`/`OR`/`NOT`/comparisons at this level). */
 type ParseAddScalarUntyped<Tokens extends TokensList> = PeekToken<Tokens> extends TokenIdent<string>
@@ -288,7 +372,7 @@ export type ResolveExpressionAST<
 																				? ExprOk<false, "boolean">
 																				: SqlParserError<"Invalid IS NULL operand">
 																	: never
-																: Ast extends { kind: "is_not_null"; expr: infer E1 extends ScalarExprAst }
+																	: Ast extends { kind: "is_not_null"; expr: infer E1 extends ScalarExprAst }
 																	? ResolveExpressionAST<E1, Db, Scope, Ctx> extends infer V1
 																		? V1 extends SqlParserError<string>
 																			? V1
@@ -298,9 +382,37 @@ export type ResolveExpressionAST<
 																					? ExprOk<true, "boolean">
 																					: SqlParserError<"Invalid IS NOT NULL operand">
 																		: never
-																	: Ast extends { kind: "in_list"; expr: infer _E2 extends ScalarExprAst }
-																		? ExprOk<boolean, "boolean">
-																		: SqlParserError<"Invalid scalar expression">
+																	: Ast extends {
+																				kind: "pg_cast"
+																				expr: infer Exc extends ScalarExprAst
+																				type_parts: infer Ptc extends readonly string[]
+																		  }
+																		? ResolveExpressionAST<Exc, Db, Scope, Ctx> extends infer Evc
+																			? Evc extends SqlParserError<string>
+																				? Evc
+																				: Evc extends ExprAtom
+																					? SqlCastTypeNorm<Ptc> extends infer Normc extends string
+																						? ResolveCastFromAtom<Evc, Normc>
+																						: SqlParserError<"Invalid cast target">
+																					: SqlParserError<"Invalid cast operand">
+																			: never
+																		: Ast extends {
+																					kind: "sql_cast"
+																					expr: infer Exs extends ScalarExprAst
+																					type_parts: infer Pts extends readonly string[]
+																			  }
+																			? ResolveExpressionAST<Exs, Db, Scope, Ctx> extends infer Evs
+																				? Evs extends SqlParserError<string>
+																					? Evs
+																					: Evs extends ExprAtom
+																						? SqlCastTypeNorm<Pts> extends infer Norms extends string
+																							? ResolveCastFromAtom<Evs, Norms>
+																							: SqlParserError<"Invalid cast target">
+																						: SqlParserError<"Invalid cast operand">
+																				: never
+																			: Ast extends { kind: "in_list"; expr: infer _E2 extends ScalarExprAst }
+																				? ExprOk<boolean, "boolean">
+																				: SqlParserError<"Invalid scalar expression">
 
 /** typed expression with `AND` / `OR` / `NOT`, comparisons, `IS NULL`, `IN`, column refs, params. */
 export type ParseBooleanExpression<
@@ -462,6 +574,37 @@ type MergeBoolBinary<L, R, Msg extends string> = L extends SqlParserError<string
 							: SqlParserError<Msg>
 						: SqlParserError<Msg>
 					: SqlParserError<Msg>
+
+/** `CAST` / `::` result typing (PostgreSQL-oriented compatibility checks). */
+type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends ExprSqlNull
+	? ExprSqlNull
+	: Ev extends ExprOk<infer Ts, infer _SFrom>
+		? N extends "text" | "varchar" | "character varying" | "char"
+			? Ts extends string | number | boolean
+				? ExprOk<string, "text">
+				: SqlParserError<"Invalid cast to text">
+			: N extends "integer" | "int" | "int4" | "smallint" | "int2"
+				? Ts extends number
+					? ExprOk<number, "integer">
+					: SqlParserError<"Invalid cast to integer">
+				: N extends "bigint" | "int8"
+					? Ts extends number
+						? ExprOk<number, "bigint">
+						: SqlParserError<"Invalid cast to bigint">
+					: N extends "boolean" | "bool"
+						? Ts extends boolean
+							? ExprOk<boolean, "boolean">
+							: SqlParserError<"Invalid cast to boolean">
+						: N extends "uuid"
+							? Ts extends string
+								? ExprOk<string, "uuid">
+								: SqlParserError<"Invalid cast to uuid">
+							: N extends "real" | "float4" | "double precision" | "float8" | "numeric" | "decimal"
+								? Ts extends number
+									? ExprOk<number, "number">
+									: SqlParserError<"Invalid cast to floating-point or numeric type">
+								: SqlParserError<"Unsupported cast target type">
+		: SqlParserError<"Invalid cast operand">
 
 type TryOperandTyped<
 	Tokens extends TokensList,
@@ -717,48 +860,62 @@ type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: 
 				? true
 				: E extends { kind: "neg"; inner: infer I extends ScalarExprAst }
 					? ScalarAstNonNumericForMulHead<I>
-					: false
+					: E extends { kind: "pg_cast"; expr: infer Ic extends ScalarExprAst; type_parts: infer Pc extends readonly string[] }
+						? SqlCastTypeNorm<Pc> extends infer Nc extends string
+							? Nc extends "text" | "varchar" | "character varying" | "char"
+								? true
+								: ScalarAstNonNumericForMulHead<Ic>
+							: ScalarAstNonNumericForMulHead<Ic>
+						: E extends { kind: "sql_cast"; expr: infer Ics extends ScalarExprAst; type_parts: infer Pcs extends readonly string[] }
+							? SqlCastTypeNorm<Pcs> extends infer Ncs extends string
+								? Ncs extends "text" | "varchar" | "character varying" | "char"
+									? true
+									: ScalarAstNonNumericForMulHead<Ics>
+								: ScalarAstNonNumericForMulHead<Ics>
+							: false
 
 type TryOperandScalarUntyped<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenKey<"(">
-		? ReadToken<Tokens> extends [infer Ri extends TokensList, TokenKey<"(">]
-			? ParseExpressionAST<Ri> extends [infer Rj extends TokensList, infer Ej]
-				? Ej extends SqlParserError<string>
-					? [Rj, Ej]
-					: ReadToken<Rj> extends [infer Rk extends TokensList, infer TokCl]
-						? TokCl extends TokenKey<")">
-							? [Rk, Ej]
-							: [Rk, SqlParserError<"Expected `)`">]
-						: never
-				: never
-			: never
-		: PeekToken<Tokens> extends TokenKey<"true">
-			? ReadToken<Tokens> extends [infer Rt extends TokensList, TokenKey<"true">]
-				? [Rt, { kind: "true" }]
-				: never
-			: PeekToken<Tokens> extends TokenKey<"false">
-				? ReadToken<Tokens> extends [infer Rf extends TokensList, TokenKey<"false">]
-					? [Rf, { kind: "false" }]
-					: never
-				: PeekToken<Tokens> extends TokenKey<"null">
-					? ReadToken<Tokens> extends [infer Rn extends TokensList, TokenKey<"null">]
-						? [Rn, { kind: "sql_null" }]
-						: never
-					: PeekToken<Tokens> extends TokenString<infer Str>
-						? ReadToken<Tokens> extends [infer Rs extends TokensList, TokenString<Str>]
-							? [Rs, { kind: "string"; value: Str }]
+	PeekToken<Tokens> extends TokenKey<"cast">
+		? ParseCastKeywordOperand<Tokens>
+		: PeekToken<Tokens> extends TokenKey<"(">
+			? ReadToken<Tokens> extends [infer Ri extends TokensList, TokenKey<"(">]
+				? ParseExpressionAST<Ri> extends [infer Rj extends TokensList, infer Ej]
+					? Ej extends SqlParserError<string>
+						? [Rj, Ej]
+						: ReadToken<Rj> extends [infer Rk extends TokensList, infer TokCl]
+							? TokCl extends TokenKey<")">
+								? [Rk, Ej]
+								: [Rk, SqlParserError<"Expected `)`">]
 							: never
-						: PeekToken<Tokens> extends TokenNumber<infer Raw>
-							? ReadToken<Tokens> extends [infer Rnum extends TokensList, TokenNumber<Raw>]
-								? [Rnum, { kind: "number"; raw: Raw }]
+					: never
+				: never
+			: PeekToken<Tokens> extends TokenKey<"true">
+				? ReadToken<Tokens> extends [infer Rt extends TokensList, TokenKey<"true">]
+					? [Rt, { kind: "true" }]
+					: never
+				: PeekToken<Tokens> extends TokenKey<"false">
+					? ReadToken<Tokens> extends [infer Rf extends TokensList, TokenKey<"false">]
+						? [Rf, { kind: "false" }]
+						: never
+					: PeekToken<Tokens> extends TokenKey<"null">
+						? ReadToken<Tokens> extends [infer Rn extends TokensList, TokenKey<"null">]
+							? [Rn, { kind: "sql_null" }]
+							: never
+						: PeekToken<Tokens> extends TokenString<infer Str>
+							? ReadToken<Tokens> extends [infer Rs extends TokensList, TokenString<Str>]
+								? [Rs, { kind: "string"; value: Str }]
 								: never
-							: PeekToken<Tokens> extends TokenParam<infer P extends string>
-								? ReadToken<Tokens> extends [infer Rp extends TokensList, unknown]
-									? [Rp, { kind: "param"; name: P }]
+							: PeekToken<Tokens> extends TokenNumber<infer Raw>
+								? ReadToken<Tokens> extends [infer Rnum extends TokensList, TokenNumber<Raw>]
+									? [Rnum, { kind: "number"; raw: Raw }]
 									: never
-								: ReadToken<Tokens> extends [infer Rbad extends TokensList, infer _TokU]
-									? [Rbad, SqlParserError<"Unexpected token">]
-									: never
+								: PeekToken<Tokens> extends TokenParam<infer P extends string>
+									? ReadToken<Tokens> extends [infer Rp extends TokensList, unknown]
+										? [Rp, { kind: "param"; name: P }]
+										: never
+									: ReadToken<Tokens> extends [infer Rbad extends TokensList, infer _TokU]
+										? [Rbad, SqlParserError<"Unexpected token">]
+										: never
 
 type ParseUnaryScalarUntyped<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"-">
@@ -771,7 +928,13 @@ type ParseUnaryScalarUntyped<Tokens extends TokensList> =
 						: never
 				: never
 			: never
-		: TryOperandScalarUntyped<Tokens>
+		: TryOperandScalarUntyped<Tokens> extends [infer Tu extends TokensList, infer Bu]
+			? Bu extends SqlParserError<string>
+				? [Tu, Bu]
+				: Bu extends ScalarExprAst
+					? ParsePgCastSuffixTail<Tu, Bu>
+					: never
+			: never
 
 type ParseMulLoopAfterFirstScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst> =
 	PeekToken<Tokens> extends TokenKey<"*">

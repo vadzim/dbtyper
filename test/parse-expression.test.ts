@@ -9,6 +9,7 @@ import type {
 	ParseBooleanExpression,
 	ParseExpressionAST,
 	ResolveExpressionAST,
+	SqlCastTypeNorm,
 } from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
@@ -106,6 +107,14 @@ type RNotNum = ResolveExpressionAST<
 	ExprSelectCtx
 >
 type _rNotNum = Expect<Extends<RNotNum, SqlParserError<"NOT requires a boolean operand">>>
+
+type UCastPg = ParseExpressionAST<ParseSqlTokens<`1::text`>>
+type _uCastPg = Expect<Extends<Tuple2At1<UCastPg>, { kind: "pg_cast" }>>
+
+type UCastSql = ParseExpressionAST<ParseSqlTokens<`cast(7 as bigint)`>>
+type _uCastSql = Expect<Extends<Tuple2At1<UCastSql>, { kind: "sql_cast" }>>
+
+type _normDouble = Expect<Extends<SqlCastTypeNorm<readonly ["double", "precision"]>, "double precision">>
 
 describe("parse-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})

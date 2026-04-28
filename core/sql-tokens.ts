@@ -272,6 +272,7 @@ const serviceWordsMap = {
 	asc: true,
 	begin: true,
 	by: true,
+	cast: true,
 	check: true,
 	column: true,
 	constraint: true,

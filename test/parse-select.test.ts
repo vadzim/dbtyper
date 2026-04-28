@@ -314,6 +314,37 @@ type TSelectNotNullErr = ParseSqlStatement<
 >
 type _selectNotNullErr = Expect<Extends<Tuple3At2<TSelectNotNullErr>, SqlParserError<"NOT argument must be boolean, not NULL">>>
 
+type TSelectPgCast = ParseSqlStatement<
+	ParseSqlTokens<`select 42::text as t, (1 + 2)::bigint as b from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectPgCast = Expect<
+	Extends<
+		Tuple3At2<TSelectPgCast>,
+		{ kind: "select"; columns: { t: string; b: number }; column_sql_types: { t: "text"; b: "bigint" } }
+	>
+>
+
+type TSelectSqlCast = ParseSqlStatement<
+	ParseSqlTokens<`select cast(true as text) as flag_txt from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectSqlCast = Expect<
+	Extends<Tuple3At2<TSelectSqlCast>, { kind: "select"; columns: { flag_txt: string }; column_sql_types: { flag_txt: "text" } }>
+>
+
+type TSelectCastIntErr = ParseSqlStatement<
+	ParseSqlTokens<`select cast('x' as integer) as bad from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCastIntErr = Expect<Extends<Tuple3At2<TSelectCastIntErr>, SqlParserError<"Invalid cast to integer">>>
+
+type TSelectPgCastBoolIntErr = ParseSqlStatement<
+	ParseSqlTokens<`select false::integer as bad from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectPgCastBoolIntErr = Expect<Extends<Tuple3At2<TSelectPgCastBoolIntErr>, SqlParserError<"Invalid cast to integer">>>
+
 describe("parse-select (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
