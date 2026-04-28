@@ -68,6 +68,29 @@ type TSelectCaseKw = ParseSqlStatement<
 >
 type _selectCaseKw = Expect<Extends<Tuple3At2<TSelectCaseKw>, { kind: "select"; columns: { x: string } }>>
 
+/** Simple `CASE expr WHEN …` (distinct from searched `CASE WHEN boolean`). */
+type TSelectCaseSimple = ParseSqlStatement<
+	ParseSqlTokens<`select case users.id when 'u' then users.name else users.name end as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCaseSimple = Expect<
+	Extends<Tuple3At2<TSelectCaseSimple>, { kind: "select"; columns: { x: string }; column_sql_types: { x: "text" } }>
+>
+type TSelectCaseSimpleWhenMismatch = ParseSqlStatement<
+	ParseSqlTokens<`select case users.id when 1 then users.name else users.name end as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCaseSimpleWhenMismatch = Expect<
+	Extends<Tuple3At2<TSelectCaseSimpleWhenMismatch>, SqlParserError<"Incompatible types in comparison">>
+>
+type TSelectCaseSimpleNoElse = ParseSqlStatement<
+	ParseSqlTokens<`select case users.id when 'u' then users.name end as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCaseSimpleNoElse = Expect<
+	Extends<Tuple3At2<TSelectCaseSimpleNoElse>, { kind: "select"; columns: { x: string | null } }>
+>
+
 /** Derived table: inner `SELECT` exposes columns under outer alias (`__subquery__` scope entry). */
 type TDerivedTable = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select users.id from users) as s;`>,

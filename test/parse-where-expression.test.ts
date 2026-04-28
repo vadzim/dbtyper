@@ -236,6 +236,29 @@ type _wCaseWhenNotBool = Expect<Extends<Tuple2At1<WCaseWhenNotBool>, SqlParserEr
 type WCaseIncompat = ParseWhereExpression<ParseSqlTokens<`case when true then 1 else 'x' end`>, DbUsers, UsersScope>
 type _wCaseIncompat = Expect<Extends<Tuple2At1<WCaseIncompat>, SqlParserError<"Incompatible types in CASE">>>
 
+/** Simple `CASE expr WHEN value …` — `WHEN` values use `=` comparison-class rules against `expr`. */
+type WCaseSimple = ParseWhereExpression<
+	ParseSqlTokens<`case users.id when 'u' then true else false end`>,
+	DbUsers,
+	UsersScope
+>
+type _wCaseSimple = Expect<Extends<Tuple2At1<WCaseSimple>, null>>
+type WCaseSimpleWhenMismatch = ParseWhereExpression<
+	ParseSqlTokens<`case users.id when 1 then true else false end`>,
+	DbUsers,
+	UsersScope
+>
+type _wCaseSimpleWhenMismatch = Expect<
+	Extends<Tuple2At1<WCaseSimpleWhenMismatch>, SqlParserError<"Incompatible types in comparison">>
+>
+/** No `ELSE`: result type is `boolean | null`, which is not a valid bare `WHERE` root. */
+type WCaseSimpleNoElse = ParseWhereExpression<
+	ParseSqlTokens<`case users.id when 'u' then true end`>,
+	DbUsers,
+	UsersScope
+>
+type _wCaseSimpleNoElse = Expect<Extends<Tuple2At1<WCaseSimpleNoElse>, SqlParserError<"Expression must be boolean">>>
+
 /** Arithmetic (`ParseAddValue` chain): both operands must be numbers; NULL rejected. */
 type WArithNumPlusString = ParseWhereExpression<ParseSqlTokens<`inner_t.a + 'x'`>, DbUsers, JoinedUsersInner>
 type _wArithNumPlusString = Expect<

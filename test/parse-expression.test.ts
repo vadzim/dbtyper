@@ -126,6 +126,9 @@ type _normDouble = Expect<Extends<SqlCastTypeNorm<readonly ["double", "precision
 type UCaseSearched = ParseExpressionAST<ParseSqlTokens<`case when true then 1 else 2 end`>>
 type _uCaseSearched = Expect<Extends<Tuple2At1<UCaseSearched>, { kind: "case_searched" }>>
 
+type UCaseSimple = ParseExpressionAST<ParseSqlTokens<`case 1 when 1 then 2 else 3 end`>>
+type _uCaseSimple = Expect<Extends<Tuple2At1<UCaseSimple>, { kind: "case_simple" }>>
+
 type RCaseNoElse = ResolveExpressionAST<
 	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>> extends [infer _R, infer Ast] ? Ast : never,
 	DbUsers,

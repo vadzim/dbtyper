@@ -17,7 +17,7 @@
 
 1. **README example vs repo layout** — The README still shows `./src/sql.ts` and `SqlCreateTable` / `SqlSchema`; the thin public barrel is `core/sql.ts` (re-exports only). Either restore a documented `ParseSqlStatement<…, Db, Params>` path in the README or add a small “current API” snippet so newcomers land on the real entry points.
 2. **`TODO.md` staleness** — Several bullets are done (typed `IN`, `CAST` / `::`, richer predicates, `SELECT WHERE`). Keep `TODO.md` as a forward backlog only, or merge into this file.
-3. **Simple `CASE expr WHEN …`** — Only searched `CASE WHEN …` is implemented.
+3. **Simple `CASE expr WHEN …`** — Implemented (discriminant vs each `WHEN` uses `=` comparison-class rules; `THEN`/`ELSE` merge like searched `CASE`).
 4. **Other keyword-led `SELECT` items** — `CASE` is wired for non-ident starts; extend the same union if more expression-leading keywords are added to the lexer.
 5. **Subqueries / CTEs / views** — **Derived tables** in **`FROM` / `JOIN`** (`(SELECT …) AS alias`) are implemented with inner scope isolated from the outer query (see `SUPPORTED-SQL.md`). Still missing: scalar / `IN` / `EXISTS` subqueries, **`WITH`**, correlation, **`CREATE VIEW`** typing.
 6. **`ALTER TABLE` / `CREATE INDEX`** — Still skipped at statement level.

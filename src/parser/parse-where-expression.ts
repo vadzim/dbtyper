@@ -23,7 +23,7 @@ export type ParseWhereExpression<
 				? R extends SqlParserError<string>
 					? [Rw, R]
 					: R extends ExprOk<infer Ts, infer _Sql>
-						? Ts extends boolean
+						? [Ts] extends [boolean]
 							? [Rw, null]
 							: [Rw, SqlParserError<"Expression must be boolean">]
 						: [Rw, SqlParserError<"Expression must be boolean">]

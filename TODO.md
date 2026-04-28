@@ -21,9 +21,9 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 ## `CASE expr WHEN`
 
-- [ ] **Extend `ParseExpressionAST` / `ParseScalarExprUntyped`** to parse **`CASE expr WHEN literal THEN … [ELSE …] END`** (distinct AST shape from searched **`CASE WHEN boolean`**).
-- [ ] **Extend `ResolveExpressionAST`** so **`CASE expr WHEN`** compares **`expr`** to each **`WHEN`** value with the same rules as **`=`** comparison-class checks; unify **`THEN`/`ELSE`** branch types like searched **`CASE`**.
-- [ ] Add **`test/parse-where-expression.test.ts`** and **`test/parse-select.test.ts`** rows covering **`CASE users.id WHEN …`** (or equivalent) for success + **`WHEN`** type mismatch + missing **`ELSE`** widening.
+- [x] **Extend `ParseExpressionAST` / `ParseScalarExprUntyped`** to parse **`CASE expr WHEN literal THEN … [ELSE …] END`** (distinct AST shape from searched **`CASE WHEN boolean`**).
+- [x] **Extend `ResolveExpressionAST`** so **`CASE expr WHEN`** compares **`expr`** to each **`WHEN`** value with the same rules as **`=`** comparison-class checks; unify **`THEN`/`ELSE`** branch types like searched **`CASE`**.
+- [x] Add **`test/parse-where-expression.test.ts`** and **`test/parse-select.test.ts`** rows covering **`CASE users.id WHEN …`** (or equivalent) for success + **`WHEN`** type mismatch + missing **`ELSE`** widening.
 
 ## Subqueries, CTEs, views
 
