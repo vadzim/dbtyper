@@ -74,9 +74,9 @@ type _w3badCol = Expect<Extends<Tuple2At1<W3badCol>, SqlParserError<"Unknown col
 type W2badAlias = ParseWhereExpression<ParseSqlTokens<`nope.id = 'u'`>, DbUsers, UsersScope>
 type _w2badAlias = Expect<Extends<Tuple2At1<W2badAlias>, SqlParserError<"Unknown qualified column">>>
 
-/** RHS subexpression: missing closing `)`. */
+/** RHS subexpression: missing closing `)` (typed value paren uses `ParseExpressionAST` inside `)`). */
 type WUnbalRhs = ParseWhereExpression<ParseSqlTokens<`users.id = ( 'u'`>, DbUsers, UsersScope>
-type _wUnbalRhs = Expect<Extends<Tuple2At1<WUnbalRhs>, SqlParserError<"Unbalanced parentheses">>>
+type _wUnbalRhs = Expect<Extends<Tuple2At1<WUnbalRhs>, SqlParserError<"Expected `)`">>>
 
 /** `IN` list: missing closing `)` (after a valid list element, expect `,` or `)`). */
 type WUnbalIn = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'u'`>, DbUsers, UsersScope>
@@ -156,6 +156,22 @@ type _wOrInParens = Expect<Extends<Tuple2At1<WOrInParens>, null>>
 
 type WNotNot = ParseWhereExpression<ParseSqlTokens<`not not users.id = 'u'`>, DbUsers, UsersScope>
 type _wNotNot = Expect<Extends<Tuple2At1<WNotNot>, null>>
+
+/** `BETWEEN`: bounds same comparison class as subject. */
+type WBetween = ParseWhereExpression<ParseSqlTokens<`users.name between 'a' and 'z'`>, DbUsers, UsersScope>
+type _wBetween = Expect<Extends<Tuple2At1<WBetween>, null>>
+type WBetweenBad = ParseWhereExpression<ParseSqlTokens<`users.name between 1 and 2`>, DbUsers, UsersScope>
+type _wBetweenBad = Expect<Extends<Tuple2At1<WBetweenBad>, SqlParserError<"Incompatible types in BETWEEN">>>
+
+/** `LIKE` / `ILIKE`: both sides text. */
+type WLike = ParseWhereExpression<ParseSqlTokens<`users.name like '%x%'`>, DbUsers, UsersScope>
+type _wLike = Expect<Extends<Tuple2At1<WLike>, null>>
+type WILike = ParseWhereExpression<ParseSqlTokens<`users.name ilike '%X%'`>, DbUsers, UsersScope>
+type _wILike = Expect<Extends<Tuple2At1<WILike>, null>>
+
+type JoinedUsersInner = MergeScope<UsersScope, InnerScope>
+type WLikeNum = ParseWhereExpression<ParseSqlTokens<`inner_t.a like '1'`>, DbUsers, JoinedUsersInner>
+type _wLikeNum = Expect<Extends<Tuple2At1<WLikeNum>, SqlParserError<"LIKE left operand must be text">>>
 
 /**
  * Bare-column ambiguity is decided with a literal `Col` in `ValidateWhereColumnParts`.

@@ -2,9 +2,10 @@ import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
 import type { SqlParserError, TokensList } from "../../core/sql-tokens.ts"
 import type {
 	EmptyExpressionParams,
-	ExpressionParamsShape,
 	ExprOk,
-	ParseBooleanExpression,
+	ExpressionParamsShape,
+	ParseExpressionAST,
+	ResolveExpressionAST,
 } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 
@@ -15,15 +16,16 @@ export type ParseWhereExpression<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseBooleanExpression<Tokens, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends [
-		infer Rw extends TokensList,
-		infer R,
-	]
-		? R extends SqlParserError<string>
-			? [Rw, R]
-			: R extends ExprOk<infer Ts, infer _Sql>
-				? Ts extends boolean
-					? [Rw, null]
-					: [Rw, SqlParserError<"WHERE clause must be boolean">]
-				: [Rw, SqlParserError<"WHERE clause must be boolean">]
+	ParseExpressionAST<Tokens> extends [infer Rw extends TokensList, infer Ast]
+		? Ast extends SqlParserError<string>
+			? [Rw, Ast]
+			: ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer R
+				? R extends SqlParserError<string>
+					? [Rw, R]
+					: R extends ExprOk<infer Ts, infer _Sql>
+						? Ts extends boolean
+							? [Rw, null]
+							: [Rw, SqlParserError<"Expression must be boolean">]
+						: [Rw, SqlParserError<"Expression must be boolean">]
+				: never
 		: never

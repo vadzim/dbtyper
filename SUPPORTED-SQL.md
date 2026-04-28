@@ -76,10 +76,12 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 ## `DELETE`
 
 - **`DELETE FROM`** then the same **table reference** and **optional alias** style as `SELECT`.
-- Optional **`WHERE`** (parsed and **type-checked**, same expression core as [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts)):
+- Optional **`WHERE`** (parsed and **type-checked** via **`ParseExpressionAST`** then **`ResolveExpressionAST`** in [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts); entry **`ParseWhereExpression`** in [`src/parser/parse-where-expression.ts`](src/parser/parse-where-expression.ts)):
     - **`NOT`**, **`AND`**, **`OR`**, parenthesized groups (inner group must already type to a boolean where required).
     - Operands: literals (`true` / `false` / **`null`** only for **`IS [NOT] NULL`** — **`= null` / `<> null` are rejected**), strings, numbers, **`:name`** parameters; qualified / unqualified column identifiers (bare name: same **unique / ambiguous / missing** rules as `SELECT` over the merged **`ScopeMap`**); parenthesized subexpressions; **`identifier(` … `)`** (balanced skip only — not a typed call).
     - Comparisons **`=`**, **`<>`**, **`!=`**, **`<=`**, **`>=`**, **`<`**, **`>`**: operands must share the **same TS class** (e.g. both `string`, both `number`, both `boolean`); mixed classes error.
+    - **`BETWEEN` *low* `AND` *high*** — subject and both bounds share the same comparison class; **`NULL`** in any position is rejected.
+    - **`LIKE`** / **`ILIKE`** — left operand and pattern must be **text** (`ILIKE` is case-insensitive at the type level only as a distinct operator; no pattern semantics).
     - Root **`WHERE`** expression must resolve to **`boolean`** (e.g. a bare column reference errors).
     - **`IS [NOT] NULL`**.
     - **`IN (` … `)`** — comma-separated **scalar values** are parsed and each must match the **left-hand operand’s comparison class** (same rules as **`=`** / **`<>`**); **`NULL`** literals in the list are rejected (`IS NULL` / `IS NOT NULL` instead).
@@ -104,11 +106,10 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 - Optional **`WHERE`** — same **`ParseWhereExpression`** rules as **`DELETE`** over a **`ScopeMap`** that includes the updated table (alias if present).
 - Success third slot: **`JsqlUpdateStatementResult`** (`kind`, `schema`, `table`, **`set_columns`**). Schema shape is unchanged.
 
-## Typed expressions (`ParseExpression` / `EvalWhereClause`)
+## Typed expressions (`ParseExpressionAST` / `ResolveExpressionAST` / `EvalWhereClause`)
 
-- Shared logic lives in [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpression`** (boolean-oriented **`AND` / `OR` / `NOT`**) with **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`** map).
-- **`EvalWhereClause`** returns **`[RestTokens, SqlParserError | null]`** for statement wiring without the monad checker treating it as a `Parse*` token consumer.
-- Incremental vs full Postgres: no **`CAST`**, arithmetic, or **`||`** yet (see plan **Phase B** in-repo if added later).
+- [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`**, **`BETWEEN`**, **`LIKE` / `ILIKE`**, **`+` / `-` / `*`**, unary **`-`**, casts). **`ResolveExpressionAST<Ast, Db, Scope, Ctx>`** checks types once **`ScopeMap`** and **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`**) are known.
+- **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, SqlParserError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
 
 ---
 
