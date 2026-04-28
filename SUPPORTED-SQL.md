@@ -69,11 +69,11 @@ Multi-statement scripts are handled by walking the token stream (e.g. `ApplyPars
 - **`DELETE FROM`** then the same **table reference** and **optional alias** style as `SELECT`.
 - Optional **`WHERE`** (parsed and checked, limited grammar):
     - **`NOT`**, **`AND`**, **`OR`**, parenthesized groups.
-    - Operands: literals (`true` / `false` / `null`), strings, numbers, parameters; qualified / unqualified column identifiers (bare name: same **unique / ambiguous / missing** rules as `SELECT` over the single `FROM` scope); parenthesized subexpressions; **`identifier(` … `)`** (balanced skip inside parens).
+    - Operands: literals (`true` / `false` / `null`), strings, numbers, parameters; qualified / unqualified column identifiers (bare name: same **unique / ambiguous / missing** rules as `SELECT` over the merged **`ScopeMap`** for the statement); parenthesized subexpressions; **`identifier(` … `)`** (balanced skip inside parens).
     - Comparison operators: **`=`**, **`<>`**, **`!=`**, **`<=`**, **`>=`**, **`<`**, **`>`**.
     - **`IS [NOT] NULL`**.
     - **`IN (` … `)`** — list region is **skipped** (not per-value typing).
-- Column references validated against `FROM` scope (and three-part names against the DB).
+- Column references validated via **`ParseWhereExpression`** in [`src/parser/parse-where-expression.ts`](src/parser/parse-where-expression.ts): **catalog** (`JsqlDatabaseShape`) plus a single **`ScopeMap`** (alias → table entry). Nested scopes are modeled by the caller building a new map (e.g. **`MergeScope<outer, inner>`**), same as widening the join scope in **`SELECT`**. Errors use the **`… in WHERE`** message suffix.
 - Ends with **`;`** or end. Success does not alter the schema shape in the current model.
 
 ---

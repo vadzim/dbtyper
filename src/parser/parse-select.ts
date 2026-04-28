@@ -10,6 +10,8 @@ import type {
 	TokenParam,
 	TokensList,
 } from "../../core/sql-tokens.ts"
+import type { MergeScope, ScopeEntry, ScopeMap, ValidateCol } from "./parser-scope.ts"
+import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 
@@ -157,17 +159,6 @@ type ParseOptionalAs<Tokens extends TokensList> =
 				: never
 		: [Tokens, undefined]
 
-type ScopeEntry = {
-	schema: string
-	table: string
-	columns: JsqlTableShape["columns"]
-	column_sql_types: Record<string, string>
-}
-
-type ScopeMap = { readonly [alias: string]: ScopeEntry }
-
-type MergeScope<A extends ScopeMap, B extends ScopeMap> = A & B
-
 type ParseFromJoinScope<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	ParseFromTableRef<Tokens, Db, Scope> extends [infer R0 extends TokensList, infer Mid, infer Third]
 		? Mid extends SqlParserError<string>
@@ -207,16 +198,6 @@ type ParseFromTableAfterLeadingIdent<
 		: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
 			? ParseAliasAfterTable<R1, Db, Db["defaultSchema"], A, Tbl, Scope>
 			: [R1, SqlParserError<"Unknown table in FROM">, never]
-
-type ResolveTableShape<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-> = Sch extends keyof Db["schemas"]
-	? Tab extends keyof Db["schemas"][Sch]["tables"]
-		? Db["schemas"][Sch]["tables"][Tab]
-		: never
-	: never
 
 type EmptySqlTypes = Record<string, string>
 
@@ -356,12 +337,6 @@ type ParseJoinEqPair<Tokens extends TokensList, Scope extends ScopeMap> =
 				: never
 			: never
 		: never
-
-type ValidateCol<Scope extends ScopeMap, Alias extends string, Col extends string> = Alias extends keyof Scope
-	? Col extends keyof Scope[Alias]["columns"]
-		? true
-		: false
-	: false
 
 type ResolveSelectList<
 	Items extends readonly RawSelectItem[],
