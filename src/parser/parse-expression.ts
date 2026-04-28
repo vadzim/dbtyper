@@ -67,7 +67,7 @@ export type ScalarExprAst =
 	| { kind: "cmp"; op: ScalarCmpOp; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "is_null"; expr: ScalarExprAst }
 	| { kind: "is_not_null"; expr: ScalarExprAst }
-	| { kind: "in_list"; expr: ScalarExprAst }
+	| { kind: "in_list"; expr: ScalarExprAst; items: readonly ScalarExprAst[] }
 	/** PostgreSQL `expr::typename` (supports multi-word types and `varchar(`…`)` modifiers). */
 	| { kind: "pg_cast"; expr: ScalarExprAst; type_parts: readonly string[] }
 	/** Standard `CAST(expr AS typename)`. */
@@ -172,6 +172,30 @@ type TokenToCmpOp<Tok> = Tok extends TokenKey<"=">
 						? "ge"
 						: never
 
+/** Comma-separated scalar expressions inside `IN (` … `)` (untyped AST for resolve). */
+type ParseInListUntypedAccum<
+	Tokens extends TokensList,
+	Acc extends readonly ScalarExprAst[],
+> = ParseOrScalarUntyped<Tokens> extends [infer R1 extends TokensList, infer E]
+	? E extends SqlParserError<string>
+		? [R1, E]
+		: E extends ScalarExprAst
+			? PeekToken<R1> extends TokenKey<")">
+				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<")">]
+					? [R2, readonly [...Acc, E]]
+					: never
+				: PeekToken<R1> extends TokenKey<",">
+					? ReadToken<R1> extends [infer R3 extends TokensList, TokenKey<",">]
+						? ParseInListUntypedAccum<R3, readonly [...Acc, E]>
+						: never
+					: [R1, SqlParserError<"Expected `,` or `)` in IN list">]
+			: never
+	: never
+
+type ParseInListUntypedTail<Tokens extends TokensList> = PeekToken<Tokens> extends TokenKey<")">
+	? [Tokens, SqlParserError<"IN list must not be empty">]
+	: ParseInListUntypedAccum<Tokens, readonly []>
+
 type ParseAfterIsUntyped<Tokens extends TokensList, L extends ScalarExprAst> =
 	PeekToken<Tokens> extends TokenKey<"not">
 		? ReadToken<Tokens> extends [infer R5 extends TokensList, TokenKey<"not">]
@@ -208,10 +232,12 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 				: P extends TokenKey<"in">
 					? ReadToken<Tokens> extends [infer R8 extends TokensList, TokenKey<"in">]
 						? PeekToken<R8> extends TokenKey<"(">
-							? SkipBracketedUntil<SkipToken<R8>, TokenKey<")">> extends [infer R9 extends TokensList, infer Rs]
-								? Rs extends SqlParserError<string>
-									? [R9, SqlParserError<"Unbalanced parentheses IN">]
-									: [R9, { kind: "in_list"; expr: L }]
+							? ParseInListUntypedTail<SkipToken<R8>> extends [infer R9 extends TokensList, infer ListRes]
+								? ListRes extends SqlParserError<string>
+									? [R9, ListRes]
+									: ListRes extends readonly ScalarExprAst[]
+										? [R9, { kind: "in_list"; expr: L; items: ListRes }]
+										: never
 								: never
 							: [R8, SqlParserError<"Expected `(` after IN">]
 						: never
@@ -410,8 +436,18 @@ export type ResolveExpressionAST<
 																							: SqlParserError<"Invalid cast target">
 																						: SqlParserError<"Invalid cast operand">
 																				: never
-																			: Ast extends { kind: "in_list"; expr: infer _E2 extends ScalarExprAst }
-																				? ExprOk<boolean, "boolean">
+																			: Ast extends {
+																					kind: "in_list"
+																					expr: infer Eln extends ScalarExprAst
+																					items: infer Ins extends readonly ScalarExprAst[]
+																			  }
+																				? ResolveExpressionAST<Eln, Db, Scope, Ctx> extends infer LvIn
+																					? LvIn extends SqlParserError<string>
+																						? LvIn
+																						: LvIn extends ExprAtom
+																							? ResolveInListItemsAgainstLeft<LvIn, Ins, Db, Scope, Ctx>
+																							: SqlParserError<"Invalid IN left operand">
+																						: never
 																				: SqlParserError<"Invalid scalar expression">
 
 /** typed expression with `AND` / `OR` / `NOT`, comparisons, `IS NULL`, `IN`, column refs, params. */
@@ -546,6 +582,43 @@ type MergeComparison<L extends ExprAtom, R extends ExprAtom> = L extends ExprSql
 					: SqlParserError<"Incompatible types in comparison">
 				: never
 			: never
+
+/** Per-element check for `expr IN (…)` (same class rules as `=`, but `NULL` list elements are rejected). */
+type ValidateInListElement<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
+	? SqlParserError<"Invalid IN left operand">
+	: R extends ExprSqlNull
+		? SqlParserError<"Incompatible types in IN list">
+		: L extends ExprOk<infer TsL, infer _Sl>
+			? R extends ExprOk<infer TsR, infer _Sr>
+				? SameComparisonClass<TsL, TsR> extends true
+					? true
+					: SqlParserError<"Incompatible types in IN list">
+				: SqlParserError<"Invalid IN list element">
+			: SqlParserError<"Invalid IN list element">
+
+type ResolveInListItemsAgainstLeft<
+	Left extends ExprAtom,
+	Items extends readonly ScalarExprAst[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> = Items extends readonly [infer H extends ScalarExprAst, ...infer Tail extends readonly ScalarExprAst[]]
+	? ResolveExpressionAST<H, Db, Scope, Ctx> extends infer Hv
+		? Hv extends SqlParserError<string>
+			? Hv
+			: Hv extends ExprAtom
+				? ValidateInListElement<Left, Hv> extends infer V
+					? V extends SqlParserError<string>
+						? V
+						: V extends true
+							? Tail extends readonly []
+								? ExprOk<boolean, "boolean">
+								: ResolveInListItemsAgainstLeft<Left, Tail, Db, Scope, Ctx>
+							: never
+					: never
+				: SqlParserError<"Invalid IN list element">
+			: never
+	: SqlParserError<"IN list must not be empty">
 
 type MergeBoolNot<V> = V extends SqlParserError<string>
 	? V
@@ -695,8 +768,46 @@ type ParseAfterOperandTyped<
 							: never
 					: never
 				: never
-			: ParseAfterOperandNoRel<Tokens, Lhs, P>
+			: ParseAfterOperandNoRel<Tokens, Lhs, P, Db, Scope, Ctx>
 		: never
+
+type ParseInListTypedAccum<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+	Left extends ExprAtom,
+> = ParseAddValue<Tokens, Db, Scope, Ctx> extends [infer R1 extends TokensList, infer Ev]
+	? Ev extends SqlParserError<string>
+		? [R1, Ev]
+		: Ev extends ExprAtom
+			? ValidateInListElement<Left, Ev> extends infer Vl
+				? Vl extends SqlParserError<string>
+					? [R1, Vl]
+					: Vl extends true
+						? PeekToken<R1> extends TokenKey<")">
+							? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<")">]
+								? [R2, ExprOk<boolean, "boolean">]
+								: never
+							: PeekToken<R1> extends TokenKey<",">
+								? ReadToken<R1> extends [infer R3 extends TokensList, TokenKey<",">]
+									? ParseInListTypedAccum<R3, Db, Scope, Ctx, Left>
+									: never
+								: [R1, SqlParserError<"Expected `,` or `)` in IN list">]
+						: never
+				: never
+			: never
+	: never
+
+type ParseInListTypedTail<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+	Left extends ExprAtom,
+> = PeekToken<Tokens> extends TokenKey<")">
+	? [Tokens, SqlParserError<"IN list must not be empty">]
+	: ParseInListTypedAccum<Tokens, Db, Scope, Ctx, Left>
 
 type ParseAfterIs<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"not">
@@ -715,7 +826,14 @@ type ParseAfterIs<Tokens extends TokensList> =
 				: never
 			: [Tokens, SqlParserError<"Expected NULL after IS">]
 
-type ParseAfterOperandNoRel<Tokens extends TokensList, Lhs extends ExprAtom, P> =
+type ParseAfterOperandNoRel<
+	Tokens extends TokensList,
+	Lhs extends ExprAtom,
+	P,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> =
 	P extends TokenKey<"is">
 		? ReadToken<Tokens> extends [infer R4 extends TokensList, TokenKey<"is">]
 			? ParseAfterIs<R4>
@@ -723,10 +841,14 @@ type ParseAfterOperandNoRel<Tokens extends TokensList, Lhs extends ExprAtom, P> 
 		: P extends TokenKey<"in">
 			? ReadToken<Tokens> extends [infer R8 extends TokensList, TokenKey<"in">]
 				? PeekToken<R8> extends TokenKey<"(">
-					? SkipBracketedUntil<SkipToken<R8>, TokenKey<")">> extends [infer R9 extends TokensList, infer Rs]
-						? Rs extends SqlParserError<string>
-							? [R9, SqlParserError<"Unbalanced parentheses IN">]
-							: [R9, ExprOk<boolean, "boolean">]
+					? ReadToken<R8> extends [infer Rlp extends TokensList, TokenKey<"(">]
+						? ParseInListTypedTail<Rlp, Db, Scope, Ctx, Lhs> extends [infer R9 extends TokensList, infer OutIn]
+							? OutIn extends SqlParserError<string>
+								? [R9, OutIn]
+								: OutIn extends ExprOk<boolean, "boolean">
+									? [R9, OutIn]
+									: never
+							: never
 						: never
 					: [R8, SqlParserError<"Expected `(` after IN">]
 				: never

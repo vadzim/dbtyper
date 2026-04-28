@@ -247,12 +247,18 @@ type _selectIsNull = Expect<
 >
 
 type TSelectInList = ParseSqlStatement<
-	ParseSqlTokens<`select (users.id in (1, 2, 3)) as inside from users;`>,
+	ParseSqlTokens<`select (users.id in ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002')) as inside from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectInList = Expect<
 	Extends<Tuple3At2<TSelectInList>, { kind: "select"; columns: { inside: boolean }; column_sql_types: { inside: "boolean" } }>
 >
+
+type TSelectInListTypeErr = ParseSqlStatement<
+	ParseSqlTokens<`select (users.id in (1, 2, 3)) as inside from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectInListTypeErr = Expect<Extends<Tuple3At2<TSelectInListTypeErr>, SqlParserError<"Incompatible types in IN list">>>
 
 type TSelectNotNumberErr = ParseSqlStatement<
 	ParseSqlTokens<`select not 1 as x from users;`>,

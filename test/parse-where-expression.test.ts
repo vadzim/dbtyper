@@ -78,9 +78,13 @@ type _w2badAlias = Expect<Extends<Tuple2At1<W2badAlias>, SqlParserError<"Unknown
 type WUnbalRhs = ParseWhereExpression<ParseSqlTokens<`users.id = ( 'u'`>, DbUsers, UsersScope>
 type _wUnbalRhs = Expect<Extends<Tuple2At1<WUnbalRhs>, SqlParserError<"Unbalanced parentheses">>>
 
-/** `IN` list: missing closing `)`. */
+/** `IN` list: missing closing `)` (after a valid list element, expect `,` or `)`). */
 type WUnbalIn = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'u'`>, DbUsers, UsersScope>
-type _wUnbalIn = Expect<Extends<Tuple2At1<WUnbalIn>, SqlParserError<"Unbalanced parentheses IN">>>
+type _wUnbalIn = Expect<Extends<Tuple2At1<WUnbalIn>, SqlParserError<"Expected `,` or `)` in IN list">>>
+
+/** Empty `IN ()` list. */
+type WInEmpty = ParseWhereExpression<ParseSqlTokens<`users.id in ()`>, DbUsers, UsersScope>
+type _wInEmpty = Expect<Extends<Tuple2At1<WInEmpty>, SqlParserError<"IN list must not be empty">>>
 
 /** `IN` without `(`. */
 type WInNoParen = ParseWhereExpression<ParseSqlTokens<`users.id in 'u'`>, DbUsers, UsersScope>
@@ -137,6 +141,10 @@ type WIsNotNull = ParseWhereExpression<ParseSqlTokens<`users.name is not null`>,
 type _wIsNotNull = Expect<Extends<Tuple2At1<WIsNotNull>, null>>
 type WInList = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'a' , 'b' )`>, DbUsers, UsersScope>
 type _wInList = Expect<Extends<Tuple2At1<WInList>, null>>
+
+/** `IN` list: each element must match the left-hand comparison class (`uuid` column vs number literals). */
+type WInListTypeErr = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'a', 1 )`>, DbUsers, UsersScope>
+type _wInListTypeErr = Expect<Extends<Tuple2At1<WInListTypeErr>, SqlParserError<"Incompatible types in IN list">>>
 type WNested = ParseWhereExpression<ParseSqlTokens<`( ( users.id = 'u' ) )`>, DbUsers, UsersScope>
 type _wNested = Expect<Extends<Tuple2At1<WNested>, null>>
 type WOrInParens = ParseWhereExpression<
