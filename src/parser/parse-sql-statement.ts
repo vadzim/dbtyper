@@ -29,13 +29,12 @@ export type ApplyStatements<
 > = Db extends JsqlDatabaseShape
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
 			infer _Rest extends TokensList,
-			infer NewDB,
+			infer NewDB extends JsqlDatabaseShape | SqlParserError<string>,
+			infer FirstErr extends SqlParserError<string> | null,
 		]
-		? NewDB extends JsqlDatabaseShape
-			? NewDB
-			: never
+		? [NewDB, FirstErr]
 		: never
-	: Db
+	: [Db, null]
 
 export type ApplyParsedStatements<
 	Tokens extends TokensList,
@@ -43,16 +42,22 @@ export type ApplyParsedStatements<
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenEot
-		? [Tokens, Db]
+		? [Tokens, Db, null]
 		: ParseSqlStatement<Tokens, Db, Params> extends [
 					infer Rest extends TokensList,
 					infer NewDB,
 					infer Result,
 			  ]
 			? Result extends SqlParserError<string>
-				? [Rest, NewDB]
+				? [Rest, NewDB, Result]
 				: NewDB extends JsqlDatabaseShape
-					? ApplyParsedStatements<Rest, NewDB, Params>
+					? ApplyParsedStatements<Rest, NewDB, Params> extends [
+							infer R2 extends TokensList,
+							infer D2,
+							infer E2,
+						]
+						? [R2, D2, E2]
+						: never
 					: never
 			: never
 

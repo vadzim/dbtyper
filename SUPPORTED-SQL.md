@@ -22,7 +22,7 @@ Lexing, token types, and monad mechanics are out of scope here.
 | `INSERT` / `UPDATE`                      | Parsed; checked; schema unchanged in this model.                                                                                            |
 | Anything else (e.g. `GRANT`, `TRUNCATE`) | **Skipped** to the next `;` (or end): same bracket-aware scan as **`CREATE VIEW`**, no structured parse.                                    |
 
-Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Params`** defaults to **`{}`** ) walks statements until end-of-input. If **`ParseSqlStatement`** returns **`SqlParserError<…>`** in the third tuple slot, the walk **stops** and returns **`[RestTokens, Db]`** without applying later statements. **`ApplyStatements<Db, Text, Params>`** folds that to the final **`Db`** (or **`never`** if the fold is ill-typed), or returns the input unchanged when **`Db`** is already **`SqlParserError<…>`**.
+Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Params`** defaults to **`{}`** ) walks statements until end-of-input. If **`ParseSqlStatement`** returns **`SqlParserError<…>`** in the third tuple slot, the walk **stops** and returns **`[RestTokens, Db, SqlParserError<…>]`** without applying later statements; on full success through end-of-input it returns **`[RestTokens, Db, null]`**. **`ApplyStatements<Db, Text, Params>`** folds that to **`[FinalDb, SqlParserError<…> | null]`** ( **`[Db, null]`** when **`Db`** is already **`SqlParserError<…>`** — no script walk). **`DBMigrations.apply`** threads only **`ApplyStatements<…>[0]`** (the DB) as the chained **`Database`** type.
 
 ### Schema shape (`JsqlDatabaseShape`)
 

@@ -17,7 +17,7 @@ create schema billing;
 create table users ( id uuid not null, name text not null );
 create table billing.subs ( id uuid not null, user_id uuid not null, plan_code text not null );
 `
->
+>[0]
 
 type TJoinDefaultAndExplicit = ParseSqlStatement<
 	ParseSqlTokens<`select users.id, billing_sub.plan_code from users join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
