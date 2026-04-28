@@ -11,7 +11,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: string; name: string }
+					columns: { id: string; name: string; amount: number }
 					column_sql_types: { id: "uuid"; name: "text" }
 				}
 			}

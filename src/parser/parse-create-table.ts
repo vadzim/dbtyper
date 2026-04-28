@@ -64,9 +64,10 @@ type ParseCreateTableQualifiedWhenNameOk<
 	IfNotExists extends boolean,
 	Sch extends string,
 	Tab extends string,
-> = HasConcreteSchemaKey<Db, Sch> extends true
-	? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
-	: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
+> =
+	HasConcreteSchemaKey<Db, Sch> extends true
+		? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
+		: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
 
 type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedTableName<Tokens, Db> extends [

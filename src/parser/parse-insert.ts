@@ -128,7 +128,11 @@ type ParseInsertAliasAfterTable<
 								table: Tab
 							},
 						]
-					: [Ra, SqlParserError<"Expected `(` (column list) after table in INSERT">, ParserRefErrorThirdSentinel]
+					: [
+							Ra,
+							SqlParserError<"Expected `(` (column list) after table in INSERT">,
+							ParserRefErrorThirdSentinel,
+						]
 				: [Ra, SqlParserError<"Expected `(` (column list) after table in INSERT">, ParserRefErrorThirdSentinel]
 			: never
 
@@ -175,29 +179,26 @@ type ParseInsertFromTableRef<
 			: [R1, SqlParserError<"Expected table name in INSERT INTO">, ParserRefErrorThirdSentinel]
 		: never
 
-type ParseInsertColumnNameList<
-	Tokens extends TokensList,
-	Tbl extends JsqlTableShape,
-	Acc extends readonly string[],
-> = PeekToken<Tokens> extends TokenKey<")">
-	? Acc extends readonly []
-		? [Tokens, SqlParserError<"INSERT column list must not be empty">]
-		: [Tokens, Acc]
-	: ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenIdent<infer Col extends string>
-			? Col extends keyof Tbl["columns"]
-				? PeekToken<R1> extends TokenKey<")">
-					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<")">]
-						? [R2, readonly [...Acc, Col]]
-						: never
-					: PeekToken<R1> extends TokenKey<",">
-						? ReadToken<R1> extends [infer R3 extends TokensList, TokenKey<",">]
-							? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
+type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlTableShape, Acc extends readonly string[]> =
+	PeekToken<Tokens> extends TokenKey<")">
+		? Acc extends readonly []
+			? [Tokens, SqlParserError<"INSERT column list must not be empty">]
+			: [Tokens, Acc]
+		: ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
+			? Tok extends TokenIdent<infer Col extends string>
+				? Col extends keyof Tbl["columns"]
+					? PeekToken<R1> extends TokenKey<")">
+						? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<")">]
+							? [R2, readonly [...Acc, Col]]
 							: never
-						: [R1, SqlParserError<"Expected `,` or `)` in INSERT column list">]
-				: [R1, SqlParserError<"Unknown column in INSERT column list">]
-			: [R1, SqlParserError<"Expected column name in INSERT column list">]
-		: never
+						: PeekToken<R1> extends TokenKey<",">
+							? ReadToken<R1> extends [infer R3 extends TokensList, TokenKey<",">]
+								? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
+								: never
+							: [R1, SqlParserError<"Expected `,` or `)` in INSERT column list">]
+					: [R1, SqlParserError<"Unknown column in INSERT column list">]
+				: [R1, SqlParserError<"Expected column name in INSERT column list">]
+			: never
 
 type ParseInsertAfterOpenParenCols<
 	Tokens extends TokensList,
@@ -207,15 +208,16 @@ type ParseInsertAfterOpenParenCols<
 	Tbl extends JsqlTableShape,
 	Sch extends string,
 	Tab extends string,
-> = ReadToken<Tokens> extends [infer R0 extends TokensList, TokenKey<"(">]
-	? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [infer R1 extends TokensList, infer ColsOrErr]
-		? ColsOrErr extends SqlParserError<string>
-			? [R1, Db, ColsOrErr]
-			: ColsOrErr extends readonly string[]
-				? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
-				: never
+> =
+	ReadToken<Tokens> extends [infer R0 extends TokensList, TokenKey<"(">]
+		? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [infer R1 extends TokensList, infer ColsOrErr]
+			? ColsOrErr extends SqlParserError<string>
+				? [R1, Db, ColsOrErr]
+				: ColsOrErr extends readonly string[]
+					? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
+					: never
+			: never
 		: never
-	: never
 
 type ParseInsertAfterColumnNames<
 	R1 extends TokensList,
@@ -226,11 +228,12 @@ type ParseInsertAfterColumnNames<
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
-> = ReadToken<R1> extends [infer Rv extends TokensList, infer TkValues]
-	? TkValues extends TokenKey<"values">
-		? ParseInsertAfterValuesKeyword<Rv, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-		: [Rv, Db, SqlParserError<"Expected VALUES after column list in INSERT">]
-	: never
+> =
+	ReadToken<R1> extends [infer Rv extends TokensList, infer TkValues]
+		? TkValues extends TokenKey<"values">
+			? ParseInsertAfterValuesKeyword<Rv, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+			: [Rv, Db, SqlParserError<"Expected VALUES after column list in INSERT">]
+		: never
 
 /** Unwrap `InsertValuesRowCellsParsedMarker` after a `VALUES` row cell pass (same rules as after `VALUES (`). */
 type ParseInsertAfterValuesCellsOutcome<
@@ -243,13 +246,14 @@ type ParseInsertAfterValuesCellsOutcome<
 	Tab extends string,
 	Cols extends readonly string[],
 	Res,
-> = Res extends SqlParserError<string>
-	? [Rf, Db2, Res]
-	: [Extract<Res, InsertValuesRowCellsParsedMarker>] extends [never]
-		? Res extends JsqlInsertStatementResult
-			? [Rf, Db2, Res]
-			: never
-		: ParseInsertAfterValuesRowClose<Rf, Db2, Scope, Params, Tbl, Sch, Tab, Cols>
+> =
+	Res extends SqlParserError<string>
+		? [Rf, Db2, Res]
+		: [Extract<Res, InsertValuesRowCellsParsedMarker>] extends [never]
+			? Res extends JsqlInsertStatementResult
+				? [Rf, Db2, Res]
+				: never
+			: ParseInsertAfterValuesRowClose<Rf, Db2, Scope, Params, Tbl, Sch, Tab, Cols>
 
 type ParseInsertAfterValuesKeyword<
 	Rv extends TokensList,
@@ -260,27 +264,28 @@ type ParseInsertAfterValuesKeyword<
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
-> = ReadToken<Rv> extends [infer Rvals extends TokensList, infer TkOpen]
-	? TkOpen extends TokenKey<"(">
-		? ParseInsertValuesCells<Rvals, Db, Scope, Params, Tbl, Sch, Tab, Cols, Cols> extends [
-				infer Rf extends TokensList,
-				infer Db2 extends JsqlDatabaseShape,
-				infer Res,
-			]
-			? ParseInsertAfterValuesCellsOutcome<Rf, Db2, Scope, Params, Tbl, Sch, Tab, Cols, Res> extends [
-					infer ROut extends TokensList,
-					infer DbOut extends JsqlDatabaseShape,
-					infer Out3,
+> =
+	ReadToken<Rv> extends [infer Rvals extends TokensList, infer TkOpen]
+		? TkOpen extends TokenKey<"(">
+			? ParseInsertValuesCells<Rvals, Db, Scope, Params, Tbl, Sch, Tab, Cols, Cols> extends [
+					infer Rf extends TokensList,
+					infer Db2 extends JsqlDatabaseShape,
+					infer Res,
 				]
-				? Out3 extends SqlParserError<string>
-					? [ROut, DbOut, Out3]
-					: Out3 extends JsqlInsertStatementResult
-						? FinishInsertSemicolon<ROut, DbOut, Out3>
-						: never
+				? ParseInsertAfterValuesCellsOutcome<Rf, Db2, Scope, Params, Tbl, Sch, Tab, Cols, Res> extends [
+						infer ROut extends TokensList,
+						infer DbOut extends JsqlDatabaseShape,
+						infer Out3,
+					]
+					? Out3 extends SqlParserError<string>
+						? [ROut, DbOut, Out3]
+						: Out3 extends JsqlInsertStatementResult
+							? FinishInsertSemicolon<ROut, DbOut, Out3>
+							: never
+					: never
 				: never
-			: never
-		: [Rvals, Db, SqlParserError<"Expected `(` after VALUES in INSERT">]
-	: never
+			: [Rvals, Db, SqlParserError<"Expected `(` after VALUES in INSERT">]
+		: never
 
 type ParseInsertValuesCells<
 	Tokens extends TokensList,
@@ -308,7 +313,16 @@ type ParseInsertValuesCells<
 								? ReadToken<R1> extends [infer R2 extends TokensList, infer TokCl]
 									? TokCl extends TokenKey<")">
 										? Cols["length"] extends ColsFull["length"]
-											? ParseInsertAfterValuesRowClose<R2, Db, Scope, Params, Tbl, Sch, Tab, ColsFull>
+											? ParseInsertAfterValuesRowClose<
+													R2,
+													Db,
+													Scope,
+													Params,
+													Tbl,
+													Sch,
+													Tab,
+													ColsFull
+												>
 											: [R2, Db, InsertValuesRowCellsParsedMarker]
 										: [R2, Db, SqlParserError<"Expected `)` after INSERT values">]
 									: never
@@ -316,7 +330,7 @@ type ParseInsertValuesCells<
 							: never
 					: never
 				: [R1, Db, SqlParserError<"Invalid value expression in INSERT">]
-			: never
+		: never
 	: never
 
 type ParseInsertValuesCommaThenRest<
@@ -329,11 +343,12 @@ type ParseInsertValuesCommaThenRest<
 	Tab extends string,
 	CR extends readonly string[],
 	ColsFull extends readonly string[],
-> = PeekToken<Tokens> extends TokenKey<",">
-	? ReadToken<Tokens> extends [infer Rc extends TokensList, TokenKey<",">]
-		? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
-		: never
-	: [Tokens, Db, SqlParserError<"Expected `,` between INSERT values">]
+> =
+	PeekToken<Tokens> extends TokenKey<",">
+		? ReadToken<Tokens> extends [infer Rc extends TokensList, TokenKey<",">]
+			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
+			: never
+		: [Tokens, Db, SqlParserError<"Expected `,` between INSERT values">]
 
 type InsertExcludedScope<
 	Sch extends string,
@@ -510,11 +525,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 			: [R5, Db, SqlParserError<"Expected SET after UPDATE in INSERT ON CONFLICT">]
 		: never
 
-type ParseInsertConflictColList<
-	Tokens extends TokensList,
-	Tbl extends JsqlTableShape,
-	Acc extends readonly string[],
-> =
+type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlTableShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
 			? [Tokens, SqlParserError<"ON CONFLICT column list must not be empty">]
@@ -544,33 +555,45 @@ type ParseInsertUpsertSetAssignments<
 	Params extends ExpressionParamsShape,
 	Tbl extends JsqlTableShape,
 	Acc extends readonly string[],
-> = ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokCol]
-	? TokCol extends TokenIdent<infer Col extends string>
-		? Col extends keyof Tbl["columns"]
-			? PeekToken<R1> extends TokenKey<"=">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"=">]
-					? ParseAddValue<R2, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends [
-							infer R3 extends TokensList,
-							infer Ev,
-						]
-						? Ev extends SqlParserError<string>
-							? [R3, Db, Ev]
-							: Ev extends ExprAtom
-								? ValidateMutationValueForColumn<Tbl, Col, Ev> extends infer V0
-									? V0 extends SqlParserError<string>
-										? [R3, Db, V0]
-										: V0 extends true
-											? PeekToken<R3> extends TokenKey<",">
-												? ReadToken<R3> extends [infer R4 extends TokensList, TokenKey<",">]
-													? ParseInsertUpsertSetAssignments<R4, Db, Scope, Params, Tbl, readonly [...Acc, Col]>
-													: never
-												: PeekToken<R3> extends TokenKey<"where"> | TokenKey<";"> | TokenEot
-													? [R3, Db, readonly [...Acc, Col]]
-													: [R3, Db, SqlParserError<"Expected `,`, WHERE, or end after ON CONFLICT SET">]
-											: never
+> =
+	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokCol]
+		? TokCol extends TokenIdent<infer Col extends string>
+			? Col extends keyof Tbl["columns"]
+				? PeekToken<R1> extends TokenKey<"=">
+					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"=">]
+						? ParseAddValue<R2, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends [
+								infer R3 extends TokensList,
+								infer Ev,
+							]
+							? Ev extends SqlParserError<string>
+								? [R3, Db, Ev]
+								: Ev extends ExprAtom
+									? ValidateMutationValueForColumn<Tbl, Col, Ev> extends infer V0
+										? V0 extends SqlParserError<string>
+											? [R3, Db, V0]
+											: V0 extends true
+												? PeekToken<R3> extends TokenKey<",">
+													? ReadToken<R3> extends [infer R4 extends TokensList, TokenKey<",">]
+														? ParseInsertUpsertSetAssignments<
+																R4,
+																Db,
+																Scope,
+																Params,
+																Tbl,
+																readonly [...Acc, Col]
+															>
+														: never
+													: PeekToken<R3> extends TokenKey<"where"> | TokenKey<";"> | TokenEot
+														? [R3, Db, readonly [...Acc, Col]]
+														: [
+																R3,
+																Db,
+																SqlParserError<"Expected `,`, WHERE, or end after ON CONFLICT SET">,
+															]
+												: never
 										: never
 									: [R3, Db, SqlParserError<"Invalid value expression in ON CONFLICT UPDATE">]
-								: never
+							: never
 						: never
 					: [R1, Db, SqlParserError<"Expected `=` after column in ON CONFLICT UPDATE">]
 				: [R1, Db, SqlParserError<"Unknown column in ON CONFLICT UPDATE">]
@@ -620,17 +643,17 @@ type ParseInsertMaybeReturning<
 				? Ret extends SqlParserError<string>
 					? [Ra, DbA, Ret]
 					: Ret extends JsqlSelectStatementResult
-						? FinishInsertSemicolon<
-								Ra,
-								DbA,
-								BuildInsertResult<Sch, Tab, Cols, UpsertCols, Ret>
-							>
+						? FinishInsertSemicolon<Ra, DbA, BuildInsertResult<Sch, Tab, Cols, UpsertCols, Ret>>
 						: never
 				: never
 			: never
 		: FinishInsertSemicolon<Tokens, Db, BuildInsertResult<Sch, Tab, Cols, UpsertCols, Returning>>
 
-type FinishInsertSemicolon<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res extends JsqlInsertStatementResult> =
+type FinishInsertSemicolon<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Res extends JsqlInsertStatementResult,
+> =
 	ReadToken<Tokens> extends [infer AfterSemi extends TokensList, infer Tok]
 		? Tok extends TokenKey<";"> | TokenEot
 			? [AfterSemi, Db, Res]

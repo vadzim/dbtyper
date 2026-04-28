@@ -63,15 +63,15 @@ export type ParseSqlStatement<
 				? ParseCreate<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"drop">
 					? ParseDrop<SkipToken<Tokens>, Db>
-						: PeekToken<Tokens> extends TokenKey<"delete">
-							? ParseDelete<SkipToken<Tokens>, Db, Params>
-							: PeekToken<Tokens> extends TokenKey<"insert">
-								? ParseInsert<SkipToken<Tokens>, Db, Params>
-								: PeekToken<Tokens> extends TokenKey<"select">
-									? ParseSelect<SkipToken<Tokens>, Db, Params>
-									: PeekToken<Tokens> extends TokenKey<"update">
-										? ParseUpdate<SkipToken<Tokens>, Db, Params>
-										: ParseSkipStatement<Tokens, Db>
+					: PeekToken<Tokens> extends TokenKey<"delete">
+						? ParseDelete<SkipToken<Tokens>, Db, Params>
+						: PeekToken<Tokens> extends TokenKey<"insert">
+							? ParseInsert<SkipToken<Tokens>, Db, Params>
+							: PeekToken<Tokens> extends TokenKey<"select">
+								? ParseSelect<SkipToken<Tokens>, Db, Params>
+								: PeekToken<Tokens> extends TokenKey<"update">
+									? ParseUpdate<SkipToken<Tokens>, Db, Params>
+									: ParseSkipStatement<Tokens, Db>
 
 type ParseCreate<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">

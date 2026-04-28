@@ -209,10 +209,7 @@ type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
 type TQualifiedWidgets = TQualifiedStillOkWhenDefaultMissing[1]["schemas"]["auth"]["sets"]["widgets"]
 type _qualWhenDefaultMissingOk = Expect<Matches<TQualifiedStillOkWhenDefaultMissing[2], null>>
 type _qualWhenDefaultMissingShape = Expect<
-	Extends<
-		TQualifiedWidgets,
-		{ kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }
-	>
+	Extends<TQualifiedWidgets, { kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
 >
 
 type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>

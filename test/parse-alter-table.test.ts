@@ -47,21 +47,13 @@ type _alterDropOk = Expect<Extends<Tuple3At2<TAlterDrop>, null>>
 type ItemsAfterDrop = TAlterDrop[1]["schemas"]["public"]["sets"]["items"]
 type _alterDropCols = Expect<Extends<ItemsAfterDrop["columns"], { id: string; title: string }>>
 
-type TAlterRename = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items rename column title to label;`>,
-	DbItems
->
+type TAlterRename = ParseSqlStatement<ParseSqlTokens<`alter table public.items rename column title to label;`>, DbItems>
 type _alterRenameOk = Expect<Extends<Tuple3At2<TAlterRename>, null>>
 type ItemsAfterRename = TAlterRename[1]["schemas"]["public"]["sets"]["items"]
 type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: string; label: string }>>
-type _alterRenameSqlTypes = Expect<
-	Extends<ItemsAfterRename["column_sql_types"], { id: "uuid"; label: "text" }>
->
+type _alterRenameSqlTypes = Expect<Extends<ItemsAfterRename["column_sql_types"], { id: "uuid"; label: "text" }>>
 
-type TAlterType = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items alter column id type bigint;`>,
-	DbItems
->
+type TAlterType = ParseSqlStatement<ParseSqlTokens<`alter table public.items alter column id type bigint;`>, DbItems>
 type _alterTypeOk = Expect<Extends<Tuple3At2<TAlterType>, null>>
 type ItemsAfterType = TAlterType[1]["schemas"]["public"]["sets"]["items"]
 type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], bigint>>
@@ -92,17 +84,11 @@ type ItemsAfterChain = TAlterConstraintNoopThenAdd[1]["schemas"]["public"]["sets
 type _alterNoopChainMeta = Expect<Extends<ItemsAfterChain["columns"], { id: string; title: string; meta: number }>>
 
 /** Unknown schema in qualified table name. */
-type TAlterBadSchema = ParseSqlStatement<
-	ParseSqlTokens<`alter table missing.items add column x int;`>,
-	DbItems
->
+type TAlterBadSchema = ParseSqlStatement<ParseSqlTokens<`alter table missing.items add column x int;`>, DbItems>
 type _alterBadSchema = Expect<Extends<Tuple3At2<TAlterBadSchema>, SqlParserError<"Unknown schema for ALTER TABLE">>>
 
 /** Unknown column in `DROP COLUMN`. */
-type TAlterDropUnknownCol = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items drop column ghost;`>,
-	DbItems
->
+type TAlterDropUnknownCol = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column ghost;`>, DbItems>
 type _alterDropUnknownCol = Expect<Extends<Tuple3At2<TAlterDropUnknownCol>, SqlParserError<"Column does not exist">>>
 
 /** Unknown old name in `RENAME COLUMN`. */
@@ -110,7 +96,9 @@ type TAlterRenameUnknownCol = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items rename column ghost to x;`>,
 	DbItems
 >
-type _alterRenameUnknownCol = Expect<Extends<Tuple3At2<TAlterRenameUnknownCol>, SqlParserError<"Column does not exist">>>
+type _alterRenameUnknownCol = Expect<
+	Extends<Tuple3At2<TAlterRenameUnknownCol>, SqlParserError<"Column does not exist">>
+>
 
 /** Unsupported action keyword after table name. */
 type TAlterUnsupported = ParseSqlStatement<ParseSqlTokens<`alter table public.items freeze;`>, DbItems>
@@ -121,7 +109,9 @@ type TAlterColBadSet = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set xyzzy;`>,
 	DbItems
 >
-type _alterColBadSet = Expect<Extends<Tuple3At2<TAlterColBadSet>, SqlParserError<"Unsupported ALTER COLUMN SET clause">>>
+type _alterColBadSet = Expect<
+	Extends<Tuple3At2<TAlterColBadSet>, SqlParserError<"Unsupported ALTER COLUMN SET clause">>
+>
 
 describe("parse-alter-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

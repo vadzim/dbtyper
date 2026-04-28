@@ -297,7 +297,11 @@ type ParseInnerDerivedBody<
 			? [AfterList, Items, ParserRefErrorThirdSentinel]
 			: Items extends readonly RawSelectItem[]
 				? SelectListStarInvalid<Items> extends true
-					? [AfterList, SqlParserError<"SELECT * must be the only projection in the list">, ParserRefErrorThirdSentinel]
+					? [
+							AfterList,
+							SqlParserError<"SELECT * must be the only projection in the list">,
+							ParserRefErrorThirdSentinel,
+						]
 					: PeekToken<AfterList> extends TokenKey<"from">
 						? SkipToken<AfterList> extends infer AfterFrom extends TokensList
 							? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [
@@ -313,7 +317,12 @@ type ParseInnerDerivedBody<
 										? [JoinScopeOnly<Tail>] extends [never]
 											? never
 											: JoinScopeOnly<Tail> extends ScopeMap
-												? ResolveSelectList<Items, Db, JoinScopeOnly<Tail>, Params> extends infer Res
+												? ResolveSelectList<
+														Items,
+														Db,
+														JoinScopeOnly<Tail>,
+														Params
+													> extends infer Res
 													? Res extends SqlParserError<infer _Msg extends string>
 														? [R, Res, ParserRefErrorThirdSentinel]
 														: Res extends JsqlSelectStatementResult
@@ -619,11 +628,7 @@ type ParamSelectOut<As, P extends string, Ts, Sql extends string> = As extends s
 	? { out: As; ts: Ts; sql: Sql }
 	: { out: P; ts: Ts; sql: Sql }
 
-type OutNameFromExprAst<
-	Ast extends ScalarExprAst,
-	As,
-	AllItems extends readonly RawSelectItem[],
-> = As extends string
+type OutNameFromExprAst<Ast extends ScalarExprAst, As, AllItems extends readonly RawSelectItem[]> = As extends string
 	? As
 	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
 		? OutNameFromParts<P, undefined>

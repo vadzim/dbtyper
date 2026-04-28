@@ -79,7 +79,12 @@ type ReplaceTableInDb<
 	}
 }
 
-type ApplyAddColumn<T extends JsqlTableShape, Col extends string, Ts, Sql extends string> = Col extends keyof T["columns"]
+type ApplyAddColumn<
+	T extends JsqlTableShape,
+	Col extends string,
+	Ts,
+	Sql extends string,
+> = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">
 	: {
 			kind: T["kind"]
@@ -111,7 +116,11 @@ type ApplyDropColumn<T extends JsqlTableShape, Col extends string> = Col extends
 		} & JsqlTableShape
 	: SqlParserError<"Column does not exist">
 
-type ApplyRenameColumn<T extends JsqlTableShape, Old extends string, New extends string> = Old extends keyof T["columns"]
+type ApplyRenameColumn<
+	T extends JsqlTableShape,
+	Old extends string,
+	New extends string,
+> = Old extends keyof T["columns"]
 	? New extends keyof T["columns"]
 		? SqlParserError<"Column already exists">
 		: {
@@ -135,20 +144,24 @@ type ApplyRenameColumn<T extends JsqlTableShape, Old extends string, New extends
 			} & JsqlTableShape
 	: SqlParserError<"Column does not exist">
 
-type ApplyAlterColumnType<T extends JsqlTableShape, Col extends string, Ts, Sql extends string> =
-	Col extends keyof T["columns"]
-		? {
-				kind: T["kind"]
-				columns: MergeRecords<T["columns"], Record<Col, Ts>>
-				column_sql_types: T["column_sql_types"] extends infer S
-					? S extends Record<string, string>
-						? MergeStringRecords<S, Record<Col, Sql>>
-						: Record<Col, Sql>
+type ApplyAlterColumnType<
+	T extends JsqlTableShape,
+	Col extends string,
+	Ts,
+	Sql extends string,
+> = Col extends keyof T["columns"]
+	? {
+			kind: T["kind"]
+			columns: MergeRecords<T["columns"], Record<Col, Ts>>
+			column_sql_types: T["column_sql_types"] extends infer S
+				? S extends Record<string, string>
+					? MergeStringRecords<S, Record<Col, Sql>>
 					: Record<Col, Sql>
-				constraints?: T["constraints"]
-				column_facts?: T["column_facts"]
-			} & JsqlTableShape
-		: SqlParserError<"Column does not exist">
+				: Record<Col, Sql>
+			constraints?: T["constraints"]
+			column_facts?: T["column_facts"]
+		} & JsqlTableShape
+	: SqlParserError<"Column does not exist">
 
 type MergeColFactPatch<
 	T extends JsqlTableShape,
@@ -171,12 +184,11 @@ type ApplyDropNotNull<T extends JsqlTableShape, Col extends string> = Col extend
 		? F extends Record<string, JsqlColumnFactsEntry>
 			? Col extends keyof F
 				? Omit<T, "column_facts"> & {
-						column_facts: MergeRecords<
-							F,
-							Record<Col, Omit<F[Col], "not_null"> & { nullable: true }>
-						>
+						column_facts: MergeRecords<F, Record<Col, Omit<F[Col], "not_null"> & { nullable: true }>>
 					} & JsqlTableShape
-				: Omit<T, "column_facts"> & { column_facts: MergeRecords<F, Record<Col, { nullable: true }>> } & JsqlTableShape
+				: Omit<T, "column_facts"> & {
+						column_facts: MergeRecords<F, Record<Col, { nullable: true }>>
+					} & JsqlTableShape
 			: Omit<T, "column_facts"> & { column_facts: Record<Col, { nullable: true }> } & JsqlTableShape
 		: Omit<T, "column_facts"> & { column_facts: Record<Col, { nullable: true }> } & JsqlTableShape
 	: SqlParserError<"Column does not exist">
@@ -288,7 +300,7 @@ type ParseAlterAddColumn<
 						: [R2, Db, SqlParserError<"Expected column name after ADD in ALTER TABLE">]
 					: never
 				: never
-			: never
+		: never
 
 type ParseAlterDropColumn<
 	Tokens extends TokensList,
@@ -554,22 +566,33 @@ type ParseAlterOneAction<
 	Db extends JsqlDatabaseShape,
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
-> =
-	Db["schemas"][Sch]["sets"] extends object
-		? Tab extends keyof Db["schemas"][Sch]["sets"]
-			? AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab> extends never
-				? [Tokens, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
-				: PeekToken<Tokens> extends TokenKey<"add">
-					? ParseAlterAddColumn<Tokens, Db, Sch, Tab, AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>>
-					: PeekToken<Tokens> extends TokenKey<"drop">
-						? ParseAlterDropColumn<Tokens, Db, Sch, Tab, AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>>
-						: PeekToken<Tokens> extends TokenKey<"rename">
-							? ParseAlterRenameColumn<Tokens, Db, Sch, Tab, AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>>
-							: PeekToken<Tokens> extends TokenKey<"alter">
-								? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab, AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>>
-								: [Tokens, Db, SqlParserError<"Unsupported ALTER TABLE action">]
-			: [Tokens, Db, SqlParserError<"Table key mismatch in ALTER TABLE">]
-		: never
+> = Db["schemas"][Sch]["sets"] extends object
+	? Tab extends keyof Db["schemas"][Sch]["sets"]
+		? AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab> extends never
+			? [Tokens, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
+			: PeekToken<Tokens> extends TokenKey<"add">
+				? ParseAlterAddColumn<Tokens, Db, Sch, Tab, AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>>
+				: PeekToken<Tokens> extends TokenKey<"drop">
+					? ParseAlterDropColumn<Tokens, Db, Sch, Tab, AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>>
+					: PeekToken<Tokens> extends TokenKey<"rename">
+						? ParseAlterRenameColumn<
+								Tokens,
+								Db,
+								Sch,
+								Tab,
+								AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>
+							>
+						: PeekToken<Tokens> extends TokenKey<"alter">
+							? ParseAlterColumnAfterAlterKw<
+									Tokens,
+									Db,
+									Sch,
+									Tab,
+									AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab>
+								>
+							: [Tokens, Db, SqlParserError<"Unsupported ALTER TABLE action">]
+		: [Tokens, Db, SqlParserError<"Table key mismatch in ALTER TABLE">]
+	: never
 
 type ParseAlterAfterQualified<
 	R extends TokensList,
@@ -577,16 +600,15 @@ type ParseAlterAfterQualified<
 	Err,
 	Sch extends string,
 	Tab extends string,
-> =
-	Err extends null
-		? Sch extends keyof Db["schemas"]
-			? HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
-				? AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab> extends never
-					? [R, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
-					: ParseAlterActions<R, Db, Sch & keyof Db["schemas"] & string, Tab & string>
-				: [R, Db, SqlParserError<"Table does not exist">]
-			: [R, Db, SqlParserError<"Unknown schema for ALTER TABLE">]
-		: [R, Db, Err extends SqlParserError<string> ? Err : SqlParserError<"Invalid ALTER TABLE name">]
+> = Err extends null
+	? Sch extends keyof Db["schemas"]
+		? HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
+			? AlterTableShapeAt<Db["schemas"][Sch]["sets"], Tab> extends never
+				? [R, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
+				: ParseAlterActions<R, Db, Sch & keyof Db["schemas"] & string, Tab & string>
+			: [R, Db, SqlParserError<"Table does not exist">]
+		: [R, Db, SqlParserError<"Unknown schema for ALTER TABLE">]
+	: [R, Db, Err extends SqlParserError<string> ? Err : SqlParserError<"Invalid ALTER TABLE name">]
 
 type ParseAlterAfterTableKeyword<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	ParseQualifiedAlterTableName<Tokens, Db> extends [

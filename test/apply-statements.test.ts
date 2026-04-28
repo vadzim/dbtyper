@@ -10,10 +10,8 @@ type DbDefaultPublic = {
 	schemas: { public: JsqlSchemaShape }
 }
 
-type ApplyCreateThenSelect = ApplyStatements<
-	DbDefaultPublic,
-	`create table t ( id int not null ); select id from t;`
->
+type ApplyCreateThenSelect = ApplyStatements<DbDefaultPublic, `create table t ( id int not null ); select id from t;`>
+
 type _applyMergedTable = Expect<
 	Extends<ApplyCreateThenSelect["schemas"]["public"]["sets"]["t"], { kind: "table"; columns: { id: number } }>
 >
@@ -25,10 +23,7 @@ type ApplyStopOnFirstError = ApplyParsedStatements<
 >
 type _applyStopDb = Expect<Matches<Tuple2At1<ApplyStopOnFirstError>, DbDefaultPublic>>
 
-type TCreateViewSkip = ParseSqlStatement<
-	ParseSqlTokens<`create view v as select 1;`>,
-	DbDefaultPublic
->
+type TCreateViewSkip = ParseSqlStatement<ParseSqlTokens<`create view v as select 1;`>, DbDefaultPublic>
 type _createViewSkipped = Expect<Extends<Tuple3At2<TCreateViewSkip>, { kind: "skipped-statement" }>>
 type _createViewDb = Expect<Matches<TCreateViewSkip[1], DbDefaultPublic>>
 

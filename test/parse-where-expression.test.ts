@@ -216,7 +216,9 @@ type WLikeNullPattern = ParseWhereExpression<ParseSqlTokens<`users.name like nul
 type _wLikeNullPattern = Expect<Extends<Tuple2At1<WLikeNullPattern>, SqlParserError<"NULL not allowed in LIKE">>>
 
 type WILikePatternNonText = ParseWhereExpression<ParseSqlTokens<`users.name ilike 1`>, DbUsers, UsersScope>
-type _wILikePatternNonText = Expect<Extends<Tuple2At1<WILikePatternNonText>, SqlParserError<"LIKE pattern must be text">>>
+type _wILikePatternNonText = Expect<
+	Extends<Tuple2At1<WILikePatternNonText>, SqlParserError<"LIKE pattern must be text">>
+>
 
 /** Searched `CASE WHEN … THEN … [ELSE …] END`. */
 type WCase = ParseWhereExpression<
@@ -225,24 +227,28 @@ type WCase = ParseWhereExpression<
 	UsersScope
 >
 type _wCase = Expect<Extends<Tuple2At1<WCase>, null>>
-type WCaseWhenNotBool = ParseWhereExpression<ParseSqlTokens<`case when 1 then true else false end`>, DbUsers, UsersScope>
+type WCaseWhenNotBool = ParseWhereExpression<
+	ParseSqlTokens<`case when 1 then true else false end`>,
+	DbUsers,
+	UsersScope
+>
 type _wCaseWhenNotBool = Expect<Extends<Tuple2At1<WCaseWhenNotBool>, SqlParserError<"CASE WHEN must be boolean">>>
 type WCaseIncompat = ParseWhereExpression<ParseSqlTokens<`case when true then 1 else 'x' end`>, DbUsers, UsersScope>
 type _wCaseIncompat = Expect<Extends<Tuple2At1<WCaseIncompat>, SqlParserError<"Incompatible types in CASE">>>
 
 /** Arithmetic (`ParseAddValue` chain): both operands must be numbers; NULL rejected. */
 type WArithNumPlusString = ParseWhereExpression<ParseSqlTokens<`inner_t.a + 'x'`>, DbUsers, JoinedUsersInner>
-type _wArithNumPlusString = Expect<Extends<Tuple2At1<WArithNumPlusString>, SqlParserError<"Incompatible types in arithmetic">>>
+type _wArithNumPlusString = Expect<
+	Extends<Tuple2At1<WArithNumPlusString>, SqlParserError<"Incompatible types in arithmetic">>
+>
 type WArithStringPlusNum = ParseWhereExpression<ParseSqlTokens<`'x' + inner_t.a`>, DbUsers, JoinedUsersInner>
-type _wArithStringPlusNum = Expect<Extends<Tuple2At1<WArithStringPlusNum>, SqlParserError<"Incompatible types in arithmetic">>>
+type _wArithStringPlusNum = Expect<
+	Extends<Tuple2At1<WArithStringPlusNum>, SqlParserError<"Incompatible types in arithmetic">>
+>
 type WArithNull = ParseWhereExpression<ParseSqlTokens<`inner_t.a + null`>, DbUsers, JoinedUsersInner>
 type _wArithNull = Expect<Extends<Tuple2At1<WArithNull>, SqlParserError<"NULL not allowed in arithmetic">>>
 
-type WCastTextToInteger = ParseWhereExpression<
-	ParseSqlTokens<`cast(users.name as integer) = 1`>,
-	DbUsers,
-	UsersScope
->
+type WCastTextToInteger = ParseWhereExpression<ParseSqlTokens<`cast(users.name as integer) = 1`>, DbUsers, UsersScope>
 type _wCastTextToInteger = Expect<Extends<Tuple2At1<WCastTextToInteger>, SqlParserError<"Invalid cast to integer">>>
 
 /**
