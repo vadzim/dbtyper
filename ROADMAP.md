@@ -1,10 +1,10 @@
-# jsql roadmap
+# typesql roadmap
 
 This document sketches where the project could go. It is aspirational and unordered unless noted; nothing here is a commitment to build.
 
 ## Vision
 
-**jsql** aims to keep SQL and TypeScript in sync at compile time: SQL literals become structured types (rows, schemas, databases) with validation errors you can treat as data, not opaque failures. Over time it could grow from a narrow `CREATE TABLE` parser into a larger “types as documentation and contracts” layer between your schema and application code.
+**typesql** aims to keep SQL and TypeScript in sync at compile time: SQL literals become structured types (rows, schemas, databases) with validation errors you can treat as data, not opaque failures. Over time it could grow from a narrow `CREATE TABLE` parser into a larger “types as documentation and contracts” layer between your schema and application code.
 
 ## Today (baseline)
 

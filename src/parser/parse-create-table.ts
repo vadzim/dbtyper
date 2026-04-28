@@ -102,7 +102,7 @@ type ParseQualifiedAfterFirstIdent<AfterFirst extends TokensList, Db extends Jsq
 			: never
 
 /** `[rest, null, schema, table]` on success; `[rest, err, never, never]` on parse failure. */
-type ParseQualifiedTableName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+export type ParseQualifiedTableName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	ReadToken<Tokens> extends [infer AfterFirst extends TokensList, infer NameTok]
 		? NameTok extends TokenIdent<infer A extends string>
 			? ParseQualifiedAfterFirstIdent<AfterFirst, Db, A>

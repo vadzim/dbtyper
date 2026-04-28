@@ -1,4 +1,4 @@
-// Public API.
+// typesql — public API.
 // Do not expose internal types here.
 // Do not import this file in internal modules or tests.
 

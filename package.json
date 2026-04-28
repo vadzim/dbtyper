@@ -1,7 +1,7 @@
 {
-	"name": "jsql",
+	"name": "typesql",
 	"version": "1.0.0",
-	"description": "",
+	"description": "Compile-time SQL parsing and schema typing for TypeScript.",
 	"license": "ISC",
 	"author": "",
 	"type": "module",

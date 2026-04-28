@@ -1,4 +1,4 @@
-# Current state vs project goal
+# Current state vs typesql goal
 
 **Goal** (from `README.md`): type-safe queries against a schema—wrong tables/columns, bad nullability, and incompatible expressions should surface as **TypeScript type errors** at compile time, not only at runtime.
 
@@ -19,7 +19,7 @@
 2. **`TODO.md` staleness** — Several bullets are done (typed `IN`, `CAST` / `::`, richer predicates, `SELECT WHERE`). Keep `TODO.md` as a forward backlog only, or merge into this file.
 3. **Simple `CASE expr WHEN …`** — Implemented (discriminant vs each `WHEN` uses `=` comparison-class rules; `THEN`/`ELSE` merge like searched `CASE`).
 4. **Other keyword-led `SELECT` items** — `CASE` is wired for non-ident starts; extend the same union if more expression-leading keywords are added to the lexer.
-5. **Subqueries / CTEs / views** — **Derived tables** in **`FROM` / `JOIN`** (`(SELECT …) AS alias`) are implemented with inner scope isolated from the outer query (see `SUPPORTED-SQL.md`). Still missing: scalar / `IN` / `EXISTS` subqueries, **`WITH`**, correlation, **`CREATE VIEW`** typing.
+5. **Subqueries / CTEs / views** — **Derived tables** in **`FROM` / `JOIN`**, scalar / **`IN (SELECT …)`** / **`EXISTS`**, leading **`WITH`** CTEs, and **`CREATE VIEW`** are covered in **`SUPPORTED-SQL.md`**. Correlation in **`SELECT`** list subqueries and **lateral** semantics remain limited; CTE cycle detection is not implemented.
 6. **`ALTER TABLE` / `CREATE INDEX`** — Still skipped at statement level.
 7. **Runtime query execution** — Explicitly out of scope per README; no change.
 

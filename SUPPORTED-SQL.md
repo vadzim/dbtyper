@@ -1,6 +1,6 @@
 # Supported SQL (parser)
 
-This document lists **SQL surface area that the type-level parser understands** today: routing, schema shape updates, and validation. **Update this file whenever you add or change parser support** for a statement or construct.
+This document lists **SQL surface area that the typesql type-level parser understands** today: routing, schema shape updates, and validation. **Update this file whenever you add or change parser support** for a statement or construct.
 
 Lexing, token types, and monad mechanics are out of scope here.
 

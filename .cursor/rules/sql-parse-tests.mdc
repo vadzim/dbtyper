@@ -1,5 +1,5 @@
 ---
-description: How to assert SqlParseMessage in jsql test files
+description: How to assert SqlParseMessage in typesql test files
 globs: "**/*.test.ts"
 ---
 

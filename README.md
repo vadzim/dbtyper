@@ -1,6 +1,8 @@
-In this project we use typescript 7.0 preview.
+# typesql
 
-This project is a typescript types which parses sql strings and returns prope types.
+In this project we use TypeScript 7.0 preview.
+
+**typesql** is a set of TypeScript types that parse SQL strings and return proper types.
 
 **Where to look next:** supported surface area is summarized in [`SUPPORTED-SQL.md`](SUPPORTED-SQL.md). A short gap analysis vs the goal lives in [`CURRENT.md`](CURRENT.md). The minimal public barrel is [`core/sql.ts`](core/sql.ts); statement-level typing is implemented under `src/parser/` (e.g. `ParseSqlStatement` in [`src/parser/parse-sql-statement.ts`](src/parser/parse-sql-statement.ts)).
 

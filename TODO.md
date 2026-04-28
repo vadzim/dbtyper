@@ -1,4 +1,4 @@
-# TODO
+# TODO (typesql)
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
