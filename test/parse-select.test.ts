@@ -60,6 +60,27 @@ type _distinct = Expect<
 	Extends<Tuple3At2<TDistinct>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
 >
 
+type TSelectWhereOk = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users where users.name = 'a';`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectWhereOk = Expect<
+	Extends<Tuple3At2<TSelectWhereOk>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+type TSelectWhereBad = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users where users.nope = 'a';`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectWhereBad = Expect<Extends<Tuple3At2<TSelectWhereBad>, SqlParserError<"Unknown qualified column">>>
+
+/** `CASE` at list start (non-ident head) is accepted like other literals. */
+type TSelectCaseKw = ParseSqlStatement<
+	ParseSqlTokens<`select case when true then users.id else users.id end as x from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectCaseKw = Expect<Extends<Tuple3At2<TSelectCaseKw>, { kind: "select"; columns: { x: string } }>>
+
 type TInnerJoin = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users inner join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
 	DbJoinDefaultAndExplicit

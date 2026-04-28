@@ -66,7 +66,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. **`ApplyPa
 - **`FROM` is required** after the select list.
 - **`FROM`**: `schema.table` or `table` (default schema); optional **table alias**.
 - **`JOIN`**: **`INNER JOIN`**, **`LEFT [OUTER] JOIN`**, **`JOIN`**. Each joined table must be followed by **`ON alias.column = alias.column`** (equality only; columns validated against join scope).
-- Optional **`WHERE`**: bracket-aware **skip** to **`;`** (not type-checked at the statement level today).
+- Optional **`WHERE`**: parsed and **type-checked** with **`ParseWhereExpression`** (same rules as **`DELETE`** / **`UPDATE`**) over the join **`ScopeMap`**; must end with **`;`** (or end).
 - **Query parameters**: every **`:name`** in the select list must appear in the optional third generic of **`ParseSqlStatement<…, Db, Params>`** (defaults to **`{}`** — then any `:name` is an error). Each binding is **`{ ts, sql }`**; if **`ts` is exactly `unknown`**, the projection errors (**no silent `unknown`**). The same **`Params`** map applies to **`INSERT`** / **`UPDATE`** value expressions and their **`WHERE`** clauses.
 - Statement ends with **`;`** or end after the parsed tail.
 - Output type: **`JsqlSelectStatementResult`** (`kind`, `columns`, `column_sql_types`). Passing DB value is unchanged.

@@ -26,6 +26,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { MergeScope, ScopeEntry, ScopeMap, ValidateCol } from "./parser-scope.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
+import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
 type TokenKeyOn = TokenKey<"on">
@@ -98,7 +99,7 @@ type ParseSelectAfterDistinct<
 													> extends infer Res
 													? Res extends SqlParserError<infer _Msg extends string>
 														? [R, Db, Res]
-														: FinishSelectStatement<R, Db, Res>
+														: FinishSelectStatement<R, Db, Res, JoinScopeOnly<Tail>, Params>
 													: never
 												: never
 										: never
@@ -108,21 +109,30 @@ type ParseSelectAfterDistinct<
 				: never
 		: never
 
-type FinishSelectStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
-	SkipOptionalWhereToSemi<Tokens> extends [infer R1 extends TokensList, null]
-		? ReadToken<R1> extends [infer R2 extends TokensList, infer Tok]
+type FinishSelectStatement<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Res,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"where">
+		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
+				? We extends SqlParserError<string>
+					? [Rw, Db, We]
+					: ReadToken<Rw> extends [infer R2 extends TokensList, infer Tok]
+						? Tok extends TokenKey<";"> | TokenEot
+							? [R2, Db, Res]
+							: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
+						: never
+				: never
+			: never
+		: ReadToken<Tokens> extends [infer R2 extends TokensList, infer Tok]
 			? Tok extends TokenKey<";"> | TokenEot
 				? [R2, Db, Res]
 				: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
 			: never
-		: never
-
-type SkipOptionalWhereToSemi<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenKey<"where">
-		? SkipBracketedUntil<SkipToken<Tokens>, TokenKey<";">> extends [infer AfterSemi extends TokensList, infer _R]
-			? [AfterSemi, null]
-			: never
-		: [Tokens, null]
 
 type ParseRawSelectList<
 	Tokens extends TokensList,
@@ -192,6 +202,7 @@ type ParseOneRawSelectItem<
 						| TokenKey<"-">
 						| TokenKey<"not">
 						| TokenKey<"cast">
+						| TokenKey<"case">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params>
 					: never
 				: never

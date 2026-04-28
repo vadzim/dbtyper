@@ -1,19 +1,17 @@
 # TODO
 
-## Static SQL typing (next)
+Forward backlog aligned with **type-safe queries against a schema** (`README.md`). See **`CURRENT.md`** for what is already done vs gaps.
 
-1. **Typed `IN (...)` lists** — Validate each list element against the left-hand expression type; today the parenthesized region is skipped and the result is treated as boolean only.
+1. **README + public API** — Document the real entry point (`ParseSqlStatement`, `JsqlDatabaseShape`, `Params`) alongside or instead of the older `SqlCreateTable` / `SqlSchema` sketch; keep `core/sql.ts` in sync with what is exported.
 
-2. **`CAST(... AS ...)` and Postgres `::`** — So expressions and projections match real migration/app SQL and you can define narrowing/widening rules.
+2. **`INSERT` / `UPDATE` completeness** — `UPSERT`, multi-row `VALUES`, `RETURNING` typing if desired.
 
-3. **`INSERT` / `UPDATE` (later `UPSERT`)** — Add statement routing in `ParseSqlStatement`; check row/column shapes against the catalog (required columns, nullability, visible FK targets).
+3. **`ALTER TABLE`** — Type-level schema patches (add/drop column, nullability, constraints).
 
-implement insert/update queries, we already have typed where. those quries should check types of what is inserted. support of parameters.
+4. **Simple `CASE expr WHEN value THEN …`** — Complement searched `CASE WHEN …`.
 
-4. **`ALTER TABLE`** — Type-level schema patches (add/drop column, types, nullability, constraints). Early on, treating `DEFAULT` and similar as no-op at the type level is fine.
+5. **Subqueries, CTEs, `CREATE VIEW`** — Likely order: scalar subqueries → `FROM` subselect → `WITH` → view row types.
 
-5. **Richer predicates and expressions** — e.g. `BETWEEN`, `LIKE` / `ILIKE`, `CASE`, and typed known builtins; reduce reliance on `identifier(`…`)` as “balanced skip only” where you want real static checks.
+6. **`CREATE INDEX` / other `CREATE` variants** — Structural parse + optional schema effects where relevant.
 
-6. **`SELECT ... WHERE`** — Align filter typing with the same boolean expression core and `ScopeMap` as `DELETE` (if anything is still missing vs `WHERE` on delete).
-
-7. **Subqueries, CTEs, `CREATE VIEW`** — High type cost; a plausible sequence is scalar subqueries → `FROM` subselect → `WITH` → view row types.
+7. **Typed function calls** — Replace or narrow `identifier(` … `)` “balanced skip only” where static arity/types are known.
