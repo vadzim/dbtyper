@@ -188,6 +188,33 @@ type _unknownQualifiedSchema = Expect<
 	Extends<TUnknownQualifiedSchema[2], SqlParserError<"Unknown schema for CREATE TABLE">>
 >
 
+/** `defaultSchema` names where to create unqualified tables; that schema must exist (it is never implied). */
+type DbDefaultPublicButOnlyAuth = {
+	defaultSchema: "public"
+	schemas: { auth: JsqlSchemaShape }
+}
+
+type TUnqualifiedRequiresDefaultSchemaRow = ParseSqlStatement<
+	ParseSqlTokens<`create table widgets ( id uuid not null );`>,
+	DbDefaultPublicButOnlyAuth
+>
+type _unqMissingDefaultSchema = Expect<
+	Extends<TUnqualifiedRequiresDefaultSchemaRow[2], SqlParserError<"Unknown schema for CREATE TABLE">>
+>
+
+type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
+	ParseSqlTokens<`create table auth.widgets ( id uuid not null );`>,
+	DbDefaultPublicButOnlyAuth
+>
+type TQualifiedWidgets = TQualifiedStillOkWhenDefaultMissing[1]["schemas"]["auth"]["sets"]["widgets"]
+type _qualWhenDefaultMissingOk = Expect<Matches<TQualifiedStillOkWhenDefaultMissing[2], null>>
+type _qualWhenDefaultMissingShape = Expect<
+	Extends<
+		TQualifiedWidgets,
+		{ kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }
+	>
+>
+
 type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>
 type _missingOpenParen = Expect<Extends<TMissingOpenParen[2], SqlParserError<"Expected `.` or `(` after table name">>>
 

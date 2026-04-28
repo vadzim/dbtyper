@@ -35,6 +35,16 @@ type HasConcreteSet<Sets extends object, Tab extends string> = string extends ke
 		? true
 		: false
 
+/**
+ * True when `Sch` is a real schema key on this DB (not satisfied only by an open `schemas` index signature).
+ * `defaultSchema` is only used to resolve unqualified table names; it must still name an existing `schemas` entry.
+ */
+type HasConcreteSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = string extends keyof Db["schemas"]
+	? false
+	: Sch extends keyof Db["schemas"]
+		? true
+		: false
+
 type ParseCreateTableQualifiedWhenSchKnown<
 	R extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -54,7 +64,7 @@ type ParseCreateTableQualifiedWhenNameOk<
 	IfNotExists extends boolean,
 	Sch extends string,
 	Tab extends string,
-> = Sch extends keyof Db["schemas"]
+> = HasConcreteSchemaKey<Db, Sch> extends true
 	? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 	: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
 
@@ -80,7 +90,7 @@ type ParseQualifiedSecondIdent<AfterDot extends TokensList, Db extends JsqlDatab
 			: [R2, SqlParserError<"Expected table name after `.` in qualified table name">, never, never]
 		: never
 
-/** After first ident `A` (unqualified or `A.`…). */
+/** After first ident `A` (unqualified or `A.`…). Unqualified names use {@link JsqlDatabaseShape["defaultSchema"]} as the schema key; it must exist under `schemas` (see {@link HasConcreteSchemaKey}). */
 type ParseQualifiedAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<"(">
 		? [AfterFirst, null, Db["defaultSchema"], A]
