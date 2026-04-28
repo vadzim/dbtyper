@@ -11,10 +11,12 @@ export type JsqlSelectStatementResult = {
 }
 
 export type JsqlSchemaShape = {
-	tables: { [K: string]: JsqlTableShape }
+	/** Named relations in the schema (base tables and views). */
+	sets: { [K: string]: JsqlTableShape }
 }
 
 export type JsqlTableShape = {
+	kind: "table" | "view"
 	columns: { [K: string]: unknown }
 	/** Original SQL type strings per column (normalized spacing, lowercased) for validation. */
 	column_sql_types?: { [K: string]: string }

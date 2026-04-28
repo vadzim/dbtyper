@@ -13,8 +13,9 @@ type DbUsers = {
 	defaultSchema: "public"
 	schemas: {
 		auth: JsqlSchemaShape & {
-			tables: {
+			sets: {
 				users: {
+					kind: "table"
 					columns: { id: string }
 					column_sql_types: { id: "uuid" }
 				}
@@ -27,10 +28,11 @@ type T1 = ParseSqlStatement<
 	ParseSqlTokens<`create table if not exists auth.items ( id uuid not null, body text null );`>,
 	DbAuth
 >
-type T1Table = T1[1]["schemas"]["auth"]["tables"]["items"]
+type T1Table = T1[1]["schemas"]["auth"]["sets"]["items"]
 type _t1null = Expect<Matches<T1[2], null>>
 type _t1shape = Expect<
 	T1Table extends {
+		kind: "table"
 		columns: { id: string; body: string }
 		column_sql_types: { id: "uuid"; body: "text" }
 	}
@@ -46,8 +48,8 @@ type DbWithDup = {
 	defaultSchema: "public"
 	schemas: {
 		auth: {
-			tables: {
-				dup: { columns: {}; column_sql_types?: {} }
+			sets: {
+				dup: { kind: "table"; columns: {}; column_sql_types?: {} }
 			}
 		}
 	}
@@ -63,10 +65,11 @@ type T4 = ParseSqlStatement<
 		schemas: { logs: JsqlSchemaShape }
 	}
 >
-type T4Table = T4[1]["schemas"]["logs"]["tables"]["events"]
+type T4Table = T4[1]["schemas"]["logs"]["sets"]["events"]
 type _t4null = Expect<Matches<T4[2], null>>
 type _t4shape = Expect<
 	T4Table extends {
+		kind: "table"
 		columns: { at: string }
 		column_sql_types: { at: "timestamp with time zone" }
 	}
@@ -87,10 +90,11 @@ type TExplicit = ParseSqlStatement<
 	ParseSqlTokens<`create table billing.invoices ( amount numeric not null, note text not null );`>,
 	DbBillingAndPublic
 >
-type TExplicitTable = TExplicit[1]["schemas"]["billing"]["tables"]["invoices"]
+type TExplicitTable = TExplicit[1]["schemas"]["billing"]["sets"]["invoices"]
 type _tExplicitNull = Expect<Matches<TExplicit[2], null>>
 type _tExplicitShape = Expect<
 	TExplicitTable extends {
+		kind: "table"
 		columns: { amount: string; note: string }
 		column_sql_types: { amount: "numeric"; note: "text" }
 	}
@@ -102,10 +106,16 @@ type TExplicitIfNot = ParseSqlStatement<
 	ParseSqlTokens<`create table if not exists billing.credits ( id int not null );`>,
 	DbBillingAndPublic
 >
-type TExplicitIfNotTable = TExplicitIfNot[1]["schemas"]["billing"]["tables"]["credits"]
+type TExplicitIfNotTable = TExplicitIfNot[1]["schemas"]["billing"]["sets"]["credits"]
 type _tExplicitIfNotNull = Expect<Matches<TExplicitIfNot[2], null>>
 type _tExplicitIfNotShape = Expect<
-	TExplicitIfNotTable extends { columns: { id: number }; column_sql_types: { id: "int" } } ? true : false
+	TExplicitIfNotTable extends {
+		kind: "table"
+		columns: { id: number }
+		column_sql_types: { id: "int" }
+	}
+		? true
+		: false
 >
 
 type TExplicitUnknownSchema = ParseSqlStatement<
@@ -124,10 +134,11 @@ type T5 = ParseSqlStatement<
 	ParseSqlTokens<`create table notifications ( id uuid not null, title text not null );`>,
 	DbDefaultPublic
 >
-type T5Table = T5[1]["schemas"]["public"]["tables"]["notifications"]
+type T5Table = T5[1]["schemas"]["public"]["sets"]["notifications"]
 type _t5null = Expect<Matches<T5[2], null>>
 type _t5shape = Expect<
 	T5Table extends {
+		kind: "table"
 		columns: { id: string; title: string }
 		column_sql_types: { id: "uuid"; title: "text" }
 	}
@@ -139,10 +150,11 @@ type T6 = ParseSqlStatement<
 	ParseSqlTokens<`create table if not exists notifications ( id uuid not null, title text not null );`>,
 	DbDefaultPublic
 >
-type T6Table = T6[1]["schemas"]["public"]["tables"]["notifications"]
+type T6Table = T6[1]["schemas"]["public"]["sets"]["notifications"]
 type _t6null = Expect<Matches<T6[2], null>>
 type _t6shape = Expect<
 	T6Table extends {
+		kind: "table"
 		columns: { id: string; title: string }
 		column_sql_types: { id: "uuid"; title: "text" }
 	}

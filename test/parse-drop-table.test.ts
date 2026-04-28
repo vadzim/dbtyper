@@ -4,23 +4,23 @@ import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
-/** Concrete `tables` keys only — `HasConcreteTable` is false when an index signature is merged in. */
+/** Concrete `sets` keys only — `HasConcreteSet` is false when an index signature is merged in. */
 type DbAuthItems = {
 	defaultSchema: "auth"
 	schemas: {
 		auth: {
-			tables: {
-				items: { columns: { id: string }; column_sql_types: { id: "uuid" } }
+			sets: {
+				items: { kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }
 			}
 		}
 	}
 }
 
-/** Matches `RemoveTableFromDb` shape: only `tables` remains on the updated schema object. */
+/** Matches `RemoveTableFromDb` shape: only `sets` remains on the updated schema object. */
 type DbAuthItemsDropped = {
 	defaultSchema: "auth"
 	schemas: {
-		auth: { tables: Omit<DbAuthItems["schemas"]["auth"]["tables"], "items"> }
+		auth: { sets: Omit<DbAuthItems["schemas"]["auth"]["sets"], "items"> }
 	}
 }
 
@@ -44,8 +44,8 @@ type DbDefaultPublicWithNotifications = {
 	defaultSchema: "public"
 	schemas: {
 		public: {
-			tables: {
-				notifications: { columns: { id: string }; column_sql_types: { id: "uuid" } }
+			sets: {
+				notifications: { kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }
 			}
 		}
 	}
@@ -55,7 +55,7 @@ type DbDefaultPublicDroppedNotifications = {
 	defaultSchema: "public"
 	schemas: {
 		public: {
-			tables: Omit<DbDefaultPublicWithNotifications["schemas"]["public"]["tables"], "notifications">
+			sets: Omit<DbDefaultPublicWithNotifications["schemas"]["public"]["sets"], "notifications">
 		}
 	}
 }
@@ -74,8 +74,8 @@ type DbBillingWithInvoices = {
 	schemas: {
 		public: JsqlSchemaShape
 		billing: {
-			tables: {
-				invoices: { columns: { amount: string }; column_sql_types: { amount: "numeric" } }
+			sets: {
+				invoices: { kind: "table"; columns: { amount: string }; column_sql_types: { amount: "numeric" } }
 			}
 		}
 	}
@@ -85,13 +85,34 @@ type DbBillingInvoicesDropped = {
 	defaultSchema: "public"
 	schemas: {
 		public: DbBillingWithInvoices["schemas"]["public"]
-		billing: { tables: Omit<DbBillingWithInvoices["schemas"]["billing"]["tables"], "invoices"> }
+		billing: { sets: Omit<DbBillingWithInvoices["schemas"]["billing"]["sets"], "invoices"> }
 	}
 }
 
 type D5 = ParseSqlStatement<ParseSqlTokens<`drop table billing.invoices;`>, DbBillingWithInvoices>
 type _d5null = Expect<Matches<D5[2], null>>
 type _d5shape = Expect<Matches<D5[1], DbBillingInvoicesDropped>>
+
+type DbWithView = {
+	defaultSchema: "public"
+	schemas: {
+		public: {
+			sets: {
+				v_reports: { kind: "view"; columns: { id: string }; column_sql_types: { id: "uuid" } }
+			}
+		}
+	}
+}
+
+type DDropViewAsTable = ParseSqlStatement<ParseSqlTokens<`drop table v_reports;`>, DbWithView>
+type _dDropViewErr = Expect<
+	DDropViewAsTable[2] extends SqlParserError<"DROP TABLE targets a view; use DROP VIEW"> ? true : false
+>
+
+type DDropViewIfExists = ParseSqlStatement<ParseSqlTokens<`drop table if exists v_reports;`>, DbWithView>
+type _dDropViewIfExistsNoop = Expect<
+	DDropViewIfExists[2] extends null ? (DDropViewIfExists[1] extends DbWithView ? true : false) : false
+>
 
 type DUnknownSchema = ParseSqlStatement<ParseSqlTokens<`drop table missing_schema.widgets;`>, DbBillingAndPublic>
 type _dUnknownSchema = Expect<DUnknownSchema[2] extends SqlParserError<string> ? true : false>

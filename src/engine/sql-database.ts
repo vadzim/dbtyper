@@ -91,11 +91,11 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 						? {
 								[K in keyof Schemas]: Schemas[K] extends infer Schema extends JsqlSchemaShape
 									? {
-											tables: Schema["tables"] extends infer Tables
+											sets: Schema["sets"] extends infer Sets
 												? {
-														[K in keyof Tables]: Tables[K] extends infer Table extends
-															JsqlTableShape
+														[K in keyof Sets]: Sets[K] extends infer Table extends JsqlTableShape
 															? {
+																	kind: Table["kind"]
 																	columns: Table["columns"] extends infer Columns
 																		? {
 																				[K in keyof Columns]: Columns[K]

@@ -20,6 +20,11 @@ Lexing, token types, and monad mechanics are out of scope here.
 
 Multi-statement scripts are handled by walking the token stream (e.g. `ApplyParsedStatements`) until end or error.
 
+### Schema shape (`JsqlDatabaseShape`)
+
+- Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
+- Every entry has **`kind`**: **`"table"`** or **`"view"`** (only **`"table"`** is produced by the current parsers).
+
 ---
 
 ## `CREATE SCHEMA`
@@ -39,6 +44,7 @@ Multi-statement scripts are handled by walking the token stream (e.g. `ApplyPars
 - Optional **`NULL`** / **`NOT NULL`** after the type.
 - **`CONSTRAINT` …** lines: enough structure to **skip** a typical `CONSTRAINT name PRIMARY KEY ( … )` (balanced parens); constraints are **not** merged into `JsqlTableShape` from this path.
 - With **`IF NOT EXISTS`** when the table **already** exists: table body is **skipped to `;`** without merging.
+- New tables are merged with **`kind: "table"`**.
 
 ---
 
@@ -46,7 +52,8 @@ Multi-statement scripts are handled by walking the token stream (e.g. `ApplyPars
 
 - Optional **`IF EXISTS`** (as implemented per statement).
 - Identifier / qualified name forms supported by the parser; **`;`** or end.
-- Removes schema or table from the in-memory shape when applicable (behavior depends on existence and `IF EXISTS`).
+- **`DROP TABLE`** removes an object from **`sets`** only when its **`kind` is `"table"`**. If the name exists as a **`view`**, the statement **errors** (or with **`IF EXISTS`**, leaves the DB unchanged — no **`DROP VIEW`** parser yet).
+- **`DROP SCHEMA`**: removes the whole schema entry when applicable (behavior depends on existence and `IF EXISTS`).
 
 ---
 

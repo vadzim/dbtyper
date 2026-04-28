@@ -3,13 +3,14 @@ import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
-/** Concrete `tables` so `keyof columns` does not widen with an index signature. */
+/** Concrete `sets` so `keyof columns` does not widen with an index signature. */
 type DbUsers = {
 	defaultSchema: "public"
 	schemas: {
 		public: {
-			tables: {
+			sets: {
 				users: {
+					kind: "table"
 					columns: { id: string; name: string }
 					column_sql_types: { id: "uuid"; name: "text" }
 				}

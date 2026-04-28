@@ -28,10 +28,10 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 
 type ColumnTriple = readonly [string, unknown, string]
 
-/** True when `Tab` is already a concrete key of `tables` (not an open-ended index signature). */
-type HasConcreteTable<Tables extends object, Tab extends string> = string extends keyof Tables
+/** True when `Tab` is already a concrete key of `sets` (not an open-ended index signature). */
+type HasConcreteSet<Sets extends object, Tab extends string> = string extends keyof Sets
 	? false
-	: Tab extends keyof Tables
+	: Tab extends keyof Sets
 		? true
 		: false
 
@@ -42,7 +42,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 > =
-	HasConcreteTable<Db["schemas"][Sch]["tables"], Tab> extends true
+	HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
 		? IfNotExists extends true
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
 			: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
@@ -108,7 +108,7 @@ type ParseCreateTableOpenParen<
 	ReadToken<Tokens> extends [infer AfterOpen extends TokensList, infer OpenTok]
 		? OpenTok extends TokenKey<"(">
 			? IfNotExists extends true
-				? HasConcreteTable<Db["schemas"][Schema & keyof Db["schemas"]]["tables"], Table> extends true
+				? HasConcreteSet<Db["schemas"][Schema & keyof Db["schemas"]]["sets"], Table> extends true
 					? ParseCreateTableBodySkipOnly<AfterOpen, Db>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 				: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
@@ -342,10 +342,11 @@ type MergeTableIntoDb<
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Schema
 					? {
-							tables: Db["schemas"][K]["tables"] &
+							sets: Db["schemas"][K]["sets"] &
 								Record<
 									Table,
 									{
+										kind: "table"
 										columns: Cols
 										column_sql_types: SqlTypes
 									}

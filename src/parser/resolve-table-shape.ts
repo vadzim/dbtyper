@@ -5,7 +5,7 @@ export type ResolveTableShape<
 	Sch extends string,
 	Tab extends string,
 > = Sch extends keyof Db["schemas"]
-	? Tab extends keyof Db["schemas"][Sch]["tables"]
-		? Db["schemas"][Sch]["tables"][Tab]
+	? Tab extends keyof Db["schemas"][Sch]["sets"]
+		? Db["schemas"][Sch]["sets"][Tab]
 		: never
 	: never

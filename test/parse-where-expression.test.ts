@@ -9,8 +9,9 @@ type DbUsers = {
 	defaultSchema: "public"
 	schemas: {
 		public: {
-			tables: {
+			sets: {
 				users: {
+					kind: "table"
 					columns: { id: string; name: string }
 					column_sql_types: { id: "uuid"; name: "text" }
 				}

@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	ReadToken,
@@ -21,12 +21,18 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
 
-/** True when `Tab` is already a concrete key of `tables` (not an open-ended index signature). */
-type HasConcreteTable<Tables extends object, Tab extends string> = string extends keyof Tables
+/** True when `Tab` is already a concrete key of `sets` (not an open-ended index signature). */
+type HasConcreteSet<Sets extends object, Tab extends string> = string extends keyof Sets
 	? false
-	: Tab extends keyof Tables
+	: Tab extends keyof Sets
 		? true
 		: false
+
+type SetEntry<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"], Tab extends string> =
+	Sch extends keyof Db["schemas"] ? (Tab extends keyof Db["schemas"][Sch]["sets"] ? Db["schemas"][Sch]["sets"][Tab] : never) : never
+
+/** `DROP TABLE` may only remove a relation whose `kind` is `"table"`. */
+type IsDroppableTableEntry<E> = E extends JsqlTableShape ? (E["kind"] extends "table" ? true : false) : false
 
 /** After `schema.` in qualified `DROP TABLE schema.table`. */
 type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
@@ -68,17 +74,21 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		? E extends null
 			? Sch extends keyof Db["schemas"]
 				? IfExists extends true
-					? HasConcreteTable<Db["schemas"][Sch]["tables"], Tab> extends true
-						? RemoveTableFromDb<Db, Sch & keyof Db["schemas"], Tab> extends infer NewDb extends
-								JsqlDatabaseShape
-							? FinishDropStatement<R, NewDb>
-							: never
+					? HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
+						? IsDroppableTableEntry<SetEntry<Db, Sch & keyof Db["schemas"], Tab>> extends true
+							? RemoveTableFromDb<Db, Sch & keyof Db["schemas"], Tab> extends infer NewDb extends
+									JsqlDatabaseShape
+								? FinishDropStatement<R, NewDb>
+								: never
+							: FinishDropStatement<R, Db>
 						: FinishDropStatement<R, Db>
-					: HasConcreteTable<Db["schemas"][Sch]["tables"], Tab> extends true
-						? RemoveTableFromDb<Db, Sch & keyof Db["schemas"], Tab> extends infer NewDb extends
-								JsqlDatabaseShape
-							? FinishDropStatement<R, NewDb>
-							: never
+					: HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
+						? IsDroppableTableEntry<SetEntry<Db, Sch & keyof Db["schemas"], Tab>> extends true
+							? RemoveTableFromDb<Db, Sch & keyof Db["schemas"], Tab> extends infer NewDb extends
+									JsqlDatabaseShape
+								? FinishDropStatement<R, NewDb>
+								: never
+							: [R, Db, SqlParserError<"DROP TABLE targets a view; use DROP VIEW">]
 						: [R, Db, SqlParserError<"Table does not exist; use IF EXISTS">]
 				: [R, Db, SqlParserError<"Unknown schema for DROP TABLE">]
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid DROP TABLE parse">]
@@ -95,12 +105,12 @@ type RemoveTableFromDb<
 	Db extends JsqlDatabaseShape,
 	Sch extends keyof Db["schemas"],
 	Tab extends string,
-> = Tab extends keyof Db["schemas"][Sch]["tables"]
+> = Tab extends keyof Db["schemas"][Sch]["sets"]
 	? {
 			defaultSchema: Db["defaultSchema"]
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Sch
-					? { tables: Omit<Db["schemas"][Sch]["tables"], Tab> } & Omit<Db["schemas"][Sch], "tables">
+					? { sets: Omit<Db["schemas"][Sch]["sets"], Tab> } & Omit<Db["schemas"][Sch], "sets">
 					: Db["schemas"][K]
 			}
 		}

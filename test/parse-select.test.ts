@@ -5,23 +5,25 @@ import type { Expect } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /**
- * `public` is default: `FROM users` resolves to `schemas.public.tables.users`.
+ * `public` is default: `FROM users` resolves to `schemas.public.sets.users`.
  * `JOIN billing.subs AS billing_sub` uses an explicit schema for the right-hand table.
  */
 type DbJoinDefaultAndExplicit = {
 	defaultSchema: "public"
 	schemas: {
 		public: JsqlSchemaShape & {
-			tables: {
+			sets: {
 				users: {
+					kind: "table"
 					columns: { id: string; name: string }
 					column_sql_types: { id: "uuid"; name: "text" }
 				}
 			}
 		}
 		billing: JsqlSchemaShape & {
-			tables: {
+			sets: {
 				subs: {
+					kind: "table"
 					columns: { id: string; user_id: string; plan_code: string }
 					column_sql_types: { id: "uuid"; user_id: "uuid"; plan_code: "text" }
 				}
