@@ -17,8 +17,8 @@ import type {
 	ExpressionParamsShape,
 	ExprOk,
 	IsUnknownOrAny,
-	ParseScalarExprUntyped,
-	ResolveScalarExprAst,
+	ParseExpressionAST,
+	ResolveExpressionAST,
 	ScalarExprAst,
 	ScalarIdentParts,
 } from "./parse-expression.ts"
@@ -154,7 +154,7 @@ type ParseOneRawSelectExprItem<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	ParseScalarExprUntyped<Tokens> extends [infer RExpr extends TokensList, infer Out]
+	ParseExpressionAST<Tokens> extends [infer RExpr extends TokensList, infer Out]
 		? Out extends SqlParserError<infer _Msg extends string>
 			? [RExpr, Out]
 			: Out extends ScalarExprAst
@@ -444,7 +444,7 @@ type ResolveSelectListExprItem<
 	Cols extends Record<string, unknown>,
 	Sqls extends Record<string, string>,
 > =
-	ResolveScalarExprAst<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer Ev
+	ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer Ev
 		? Ev extends SqlParserError<string>
 			? Ev
 			: Ev extends ExprOk<infer Ts, infer Sql extends string>

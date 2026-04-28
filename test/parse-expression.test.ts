@@ -6,8 +6,8 @@ import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParseContext,
-	ParseExpression,
-	ParseScalarExprUntyped,
+	ParseBooleanExpression,
+	ParseExpressionAST,
 } from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
@@ -62,7 +62,7 @@ type _wNonBoolRoot = Expect<Extends<Tuple2At1<WNonBoolRoot>, SqlParserError<"Exp
 
 type ExprSelectCtx = ExpressionParseContext<"three_part", EmptyExpressionParams>
 
-type SelBareCol = ParseExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope, ExprSelectCtx>
+type SelBareCol = ParseBooleanExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope, ExprSelectCtx>
 type _selBareCol = Expect<Extends<Tuple2At1<SelBareCol>, SqlParserError<"Expression must be boolean">>>
 
 type TSelectParamNoBind = ParseSqlStatement<ParseSqlTokens<`select :limit, users.id from users;`>, DbUsers>
@@ -80,10 +80,10 @@ type OuterScope = Record<
 >
 type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
 
-type ExprCross = ParseExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner, WhereCtxEmpty>
+type ExprCross = ParseBooleanExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner, WhereCtxEmpty>
 type _exprCross = Expect<Extends<Tuple2At1<ExprCross>, { ok: true; ts: boolean }>>
 
-type UAdd = ParseScalarExprUntyped<ParseSqlTokens<`1 + 2`>>
+type UAdd = ParseExpressionAST<ParseSqlTokens<`1 + 2`>>
 type _uAdd = Expect<Extends<Tuple2At1<UAdd>, { kind: "add" }>>
 
 describe("parse-expression (type tests)", () => {

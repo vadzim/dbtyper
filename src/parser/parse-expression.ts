@@ -39,10 +39,10 @@ export type ExprSqlNull = { ok: true; ts: null; sql: "null"; exprKind: "sql_null
 
 export type ExprAtom = ExprOk<unknown, string> | ExprSqlNull
 
-/** Identifier chain in a scalar expression AST (syntax only until {@link ResolveScalarExprAst}). */
+/** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
 export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
 
-/** Scalar expression without `Db` / `Scope` (SELECT list and tests); resolve with {@link ResolveScalarExprAst}. */
+/** Scalar expression without `Db` / `Scope` (SELECT list and tests); resolve with {@link ResolveExpressionAST}. */
 export type ScalarExprAst =
 	| { kind: "true" }
 	| { kind: "false" }
@@ -55,6 +55,71 @@ export type ScalarExprAst =
 	| { kind: "add"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "sub"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "mul"; left: ScalarExprAst; right: ScalarExprAst }
+
+/** Parse expression to AST to be resolved later when from scope is known */
+export type ParseExpressionAST<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenIdent<string>
+		? ParseScalarExprUntypedFromIdent<Tokens>
+		: ParseScalarExprUntypedNonIdent<Tokens>
+
+/** Resolve after `FROM` scope is known */
+export type ResolveExpressionAST<
+	Ast,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> = Ast extends { kind: "true" }
+	? ExprOk<true, "boolean">
+	: Ast extends { kind: "false" }
+		? ExprOk<false, "boolean">
+		: Ast extends { kind: "sql_null" }
+			? ExprSqlNull
+			: Ast extends { kind: "string"; value: string }
+				? ExprOk<string, "text">
+				: Ast extends { kind: "number"; raw: string }
+					? ExprOk<number, "number">
+					: Ast extends { kind: "param"; name: infer N extends string }
+						? LookupParam<Ctx["params"], N>
+						: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+							? ResolveIdentChainValue<Db, Scope, P, Ctx>
+							: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
+								? ResolveScalarExprAstNeg<I, Db, Scope, Ctx>
+								: Ast extends {
+											kind: "mul"
+											left: infer L extends ScalarExprAst
+											right: infer R extends ScalarExprAst
+									  }
+									? ResolveScalarExprAstPair<L, R, Db, Scope, Ctx>
+									: Ast extends {
+												kind: "add"
+												left: infer La extends ScalarExprAst
+												right: infer Ra extends ScalarExprAst
+										  }
+										? ResolveScalarExprAstPair<La, Ra, Db, Scope, Ctx>
+										: Ast extends {
+													kind: "sub"
+													left: infer Ls extends ScalarExprAst
+													right: infer Rs extends ScalarExprAst
+											  }
+											? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Ctx>
+											: SqlParserError<"Invalid scalar expression">
+
+/** typed expression with `AND` / `OR` / `NOT`, comparisons, `IS NULL`, `IN`, column refs, params. */
+export type ParseBooleanExpression<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Ctx extends ExpressionParseContext,
+> =
+	ParseAndTyped<Tokens, Db, Scope, Ctx> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ExprOk<infer T0, infer _S0>
+				? T0 extends boolean
+					? ParseOrLoopAfterFirst<R0, Db, Scope, Ctx>
+					: [R0, SqlParserError<"Expression must be boolean">]
+				: never
+		: never
 
 /** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path). */
 type MaximalIdentChain<Tokens extends TokensList> =
@@ -306,7 +371,7 @@ type ParsePrimaryTyped<
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
 		? ReadToken<Tokens> extends [infer Ri extends TokensList, TokenKey<"(">]
-			? ParseOrEntry<Ri, Db, Scope, Ctx> extends [infer Rj extends TokensList, infer Ej]
+			? ParseBooleanExpression<Ri, Db, Scope, Ctx> extends [infer Rj extends TokensList, infer Ej]
 				? Ej extends SqlParserError<string>
 					? [Rj, Ej]
 					: ReadToken<Rj> extends [infer Rk extends TokensList, infer TokCl]
@@ -431,7 +496,7 @@ type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: 
 type TryOperandScalarUntyped<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"(">
 		? ReadToken<Tokens> extends [infer Ri extends TokensList, TokenKey<"(">]
-			? ParseScalarExprUntyped<Ri> extends [infer Rj extends TokensList, infer Ej]
+			? ParseExpressionAST<Ri> extends [infer Rj extends TokensList, infer Ej]
 				? Ej extends SqlParserError<string>
 					? [Rj, Ej]
 					: ReadToken<Rj> extends [infer Rk extends TokensList, infer TokCl]
@@ -575,12 +640,6 @@ type ParseScalarExprUntypedNonIdent<Tokens extends TokensList> =
 				: never
 		: never
 
-/** Token-only scalar expression (`+` `-` `*` unary `-`, literals, `:param`, `a.b.c`); no column typing. */
-export type ParseScalarExprUntyped<Tokens extends TokensList> =
-	PeekToken<Tokens> extends TokenIdent<string>
-		? ParseScalarExprUntypedFromIdent<Tokens>
-		: ParseScalarExprUntypedNonIdent<Tokens>
-
 type ResolveScalarExprAstPair<
 	L extends ScalarExprAst,
 	R extends ScalarExprAst,
@@ -588,10 +647,10 @@ type ResolveScalarExprAstPair<
 	Scope extends ScopeMap,
 	Ctx extends ExpressionParseContext,
 > =
-	ResolveScalarExprAst<L, Db, Scope, Ctx> extends infer Lv
+	ResolveExpressionAST<L, Db, Scope, Ctx> extends infer Lv
 		? Lv extends SqlParserError<string>
 			? Lv
-			: ResolveScalarExprAst<R, Db, Scope, Ctx> extends infer Rv
+			: ResolveExpressionAST<R, Db, Scope, Ctx> extends infer Rv
 				? Rv extends SqlParserError<string>
 					? Rv
 					: Lv extends ExprAtom
@@ -608,55 +667,13 @@ type ResolveScalarExprAstNeg<
 	Scope extends ScopeMap,
 	Ctx extends ExpressionParseContext,
 > =
-	ResolveScalarExprAst<I, Db, Scope, Ctx> extends infer U
+	ResolveExpressionAST<I, Db, Scope, Ctx> extends infer U
 		? U extends SqlParserError<string>
 			? U
 			: U extends ExprOk<number, infer _Sn>
 				? ExprOk<number, "number">
 				: SqlParserError<"Unary minus requires a number">
 		: never
-
-/** Resolve {@link ScalarExprAst} after `FROM` scope is known; same rules as {@link ParseAddValue}. */
-export type ResolveScalarExprAst<
-	Ast,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Ctx extends ExpressionParseContext,
-> = Ast extends { kind: "true" }
-	? ExprOk<true, "boolean">
-	: Ast extends { kind: "false" }
-		? ExprOk<false, "boolean">
-		: Ast extends { kind: "sql_null" }
-			? ExprSqlNull
-			: Ast extends { kind: "string"; value: string }
-				? ExprOk<string, "text">
-				: Ast extends { kind: "number"; raw: string }
-					? ExprOk<number, "number">
-					: Ast extends { kind: "param"; name: infer N extends string }
-						? LookupParam<Ctx["params"], N>
-						: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
-							? ResolveIdentChainValue<Db, Scope, P, Ctx>
-							: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
-								? ResolveScalarExprAstNeg<I, Db, Scope, Ctx>
-								: Ast extends {
-											kind: "mul"
-											left: infer L extends ScalarExprAst
-											right: infer R extends ScalarExprAst
-									  }
-									? ResolveScalarExprAstPair<L, R, Db, Scope, Ctx>
-									: Ast extends {
-												kind: "add"
-												left: infer La extends ScalarExprAst
-												right: infer Ra extends ScalarExprAst
-										  }
-										? ResolveScalarExprAstPair<La, Ra, Db, Scope, Ctx>
-										: Ast extends {
-													kind: "sub"
-													left: infer Ls extends ScalarExprAst
-													right: infer Rs extends ScalarExprAst
-											  }
-											? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Ctx>
-											: SqlParserError<"Invalid scalar expression">
 
 /** Operand for scalar `+` / `-` / `*` (parenthesized subexpression is a value, not a boolean `OR` chain). */
 type TryValueOperand<
@@ -830,7 +847,7 @@ type ParseAddLoopAfterFirst<
 				: never
 			: [Tokens, Acc]
 
-export type ParseAddValue<
+type ParseAddValue<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -851,35 +868,3 @@ export type ParseAddValue<
 						: never
 				: never
 		: never
-
-/** Shared entry: typed expression with `AND` / `OR` / `NOT`, comparisons, `IS NULL`, `IN`, column refs, params. */
-export type ParseExpression<
-	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Ctx extends ExpressionParseContext,
-> = ParseOrEntry<Tokens, Db, Scope, Ctx>
-
-export type ParseOrEntry<
-	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Ctx extends ExpressionParseContext,
-> =
-	ParseAndTyped<Tokens, Db, Scope, Ctx> extends [infer R0 extends TokensList, infer E0]
-		? E0 extends SqlParserError<string>
-			? [R0, E0]
-			: E0 extends ExprOk<infer T0, infer _S0>
-				? T0 extends boolean
-					? ParseOrLoopAfterFirst<R0, Db, Scope, Ctx>
-					: [R0, SqlParserError<"Expression must be boolean">]
-				: never
-		: never
-
-/** Typed boolean expression (WHERE / future HAVING). */
-export type ParseBooleanExpression<
-	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Ctx extends ExpressionParseContext,
-> = ParseOrEntry<Tokens, Db, Scope, Ctx>
