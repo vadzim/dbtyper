@@ -91,6 +91,44 @@ type InsQualifiedTableAlias = ParseSqlStatement<
 >
 type _insQualifiedTableAlias = Expect<Extends<Tuple3At2<InsQualifiedTableAlias>, JsqlInsertStatementResult>>
 
+/** Multi-row `VALUES` — each row checked against the column list. */
+type InsMultiRow = ParseSqlStatement<
+	ParseSqlTokens<`insert into users (id, name) values ('u1','n1'), ('u2','n2');`>,
+	DbUsers
+>
+type _insMultiRow = Expect<Extends<Tuple3At2<InsMultiRow>, JsqlInsertStatementResult>>
+
+/** Second row missing a value → arity / comma error. */
+type InsMultiRowArity = ParseSqlStatement<
+	ParseSqlTokens<`insert into users (id, name) values ('u1','n1'), ('u2');`>,
+	DbUsers
+>
+type _insMultiRowArity = Expect<Extends<Tuple3At2<InsMultiRowArity>, SqlParserError<"Expected `,` between INSERT values">>>
+
+type InsReturning = ParseSqlStatement<
+	ParseSqlTokens<`insert into users (id, name) values ('u1','n1') returning id, name;`>,
+	DbUsers
+>
+type InsReturningRes = Tuple3At2<InsReturning>
+type _insReturning = Expect<Extends<InsReturningRes, JsqlInsertStatementResult>>
+type _insReturningProj = Expect<Extends<InsReturningRes["returning"]["columns"], { id: string; name: string }>>
+
+type InsUpsert = ParseSqlStatement<
+	ParseSqlTokens<`insert into users (id, name) values ('u1','n1') on conflict (id) do update set name = excluded.name;`>,
+	DbUsers
+>
+type InsUpsertRes = Tuple3At2<InsUpsert>
+type _insUpsert = Expect<Extends<InsUpsertRes, JsqlInsertStatementResult>>
+type _insUpsertSetCols = Expect<Extends<InsUpsertRes["on_conflict_update_set_columns"], readonly string[]>>
+
+type InsUpsertWhereReturning = ParseSqlStatement<
+	ParseSqlTokens<`insert into users (id, name) values ('u1','n1') on conflict (id) do update set name = excluded.name where excluded.id = users.id returning users.id;`>,
+	DbUsers
+>
+type InsUpsertWhereReturningRes = Tuple3At2<InsUpsertWhereReturning>
+type _insUpsertWhereReturning = Expect<Extends<InsUpsertWhereReturningRes, JsqlInsertStatementResult>>
+type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["returning"]["columns"], { id: string }>>
+
 describe("parse-insert (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

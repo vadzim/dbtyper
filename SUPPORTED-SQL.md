@@ -97,10 +97,12 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 ## `INSERT`
 
-- **`INSERT INTO`** qualified or default-schema **table name**, optional **table alias** before the column list, then **`(`** **column names** **`)`** **`VALUES (`** … **`)`** (one row only; multiple **`VALUES`** tuples are rejected).
+- **`INSERT INTO`** qualified or default-schema **table name**, optional **table alias** before the column list, then **`(`** **column names** **`)`** **`VALUES (`** … **`)`**. Multiple rows are supported as **`VALUES (row1…), (row2…), …`** (comma between closing **`)`** and opening **`(`** of the next row). Each row is type-checked against the same column list; too few or too many cell expressions surface as parse errors (for example **`Expected `,` between INSERT values`** or **`Expected `)` after INSERT values`** when the tuple does not match the column arity).
 - Each **`VALUES`** expression is parsed with **`ParseAddValue`** (same typed scalar subset as **`WHERE`** operands: literals, **`:param`**, unqualified / qualified column refs via **`ScopeMap`** for the target table).
 - Each value is checked against the corresponding column’s **TypeScript type** in **`columns`** using the same **comparison-class** rules as **`=`**; **`NULL`** is rejected when **`column_facts`** marks the column **`not_null: true`**.
-- Success third slot: **`JsqlInsertStatementResult`** (`kind`, `schema`, `table`, **`columns`** as the declared name list). Schema shape is unchanged.
+- Optional **`ON CONFLICT (`** column names **`) DO UPDATE SET`** … — same **`SET`** assignment style as **`UPDATE`** (typed **`ParseAddValue`** RHS). The scope adds **`excluded`** (mirror of the target table) so **`excluded.column_name`** is valid. Optional **`WHERE`** after **`SET`** uses **`ParseWhereExpression`** on that merged scope. Parsed **`SET`** column names are recorded on the result as **`on_conflict_update_set_columns`**.
+- Optional **`RETURNING`** … — same projection rules as a **`SELECT`** list (including **`*`** where implemented); resolved against the insert/upsert row scope. When present, **`JsqlInsertStatementResult.returning`** is a **`JsqlSelectStatementResult`** (`columns`, **`column_sql_types`**).
+- Success third slot: **`JsqlInsertStatementResult`** (`kind`, `schema`, `table`, **`columns`**, optional **`on_conflict_update_set_columns`**, optional **`returning`**). Schema shape is unchanged.
 
 ---
 

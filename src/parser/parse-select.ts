@@ -759,3 +759,26 @@ type OutNameFromParts<
 			: P extends readonly [infer C0 extends string]
 				? C0
 				: "__bad_out_name_parts__"
+
+/** Parse and resolve a `RETURNING` projection list against a caller-supplied `ScopeMap` (e.g. `INSERT` row). */
+export type ParseAndResolveReturningClause<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseRawSelectList<Tokens, Db, Params> extends [infer After extends TokensList, infer Items]
+		? Items extends SqlParserError<string>
+			? [After, Db, Items]
+			: Items extends readonly RawSelectItem[]
+				? SelectListStarInvalid<Items> extends true
+					? [After, Db, SqlParserError<"SELECT * must be the only projection in the list">]
+					: ResolveSelectList<Items, Db, Scope, Params> extends infer Res
+						? Res extends SqlParserError<string>
+							? [After, Db, Res]
+							: Res extends JsqlSelectStatementResult
+								? [After, Db, Res]
+								: never
+						: never
+				: never
+		: never

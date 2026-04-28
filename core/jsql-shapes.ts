@@ -16,6 +16,10 @@ export type JsqlInsertStatementResult = {
 	table: string
 	schema: string
 	columns: readonly string[]
+	/** Set when `RETURNING …` is parsed (same shape as a `SELECT` projection). */
+	returning?: JsqlSelectStatementResult
+	/** Set when `ON CONFLICT … DO UPDATE SET …` is parsed (assigned column names only). */
+	on_conflict_update_set_columns?: readonly string[]
 }
 
 /** Type-level result of a parsed `UPDATE` (DB state unchanged in this model). */
