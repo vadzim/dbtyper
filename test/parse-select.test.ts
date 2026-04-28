@@ -112,10 +112,22 @@ type DbJoinWithRowCount = {
 type TColPlusOne = ParseSqlStatement<ParseSqlTokens<`select users.row_count + 1 as x from users;`>, DbJoinWithRowCount>
 type _colPlusOne = Expect<Extends<Tuple3At2<TColPlusOne>, { kind: "select"; columns: { x: number } }>>
 
+/** Sole projection without `AS` uses PostgreSQL-style `?column?` (not bare `col` AST). */
 type TColPlusOneNoAs = ParseSqlStatement<ParseSqlTokens<`select users.row_count + 1 from users;`>, DbJoinWithRowCount>
 type _colPlusOneNoAs = Expect<
-	Extends<Tuple3At2<TColPlusOneNoAs>, SqlParserError<"Scalar expression in SELECT requires AS alias">>
+	Extends<
+		Tuple3At2<TColPlusOneNoAs>,
+		{ kind: "select"; columns: { "?column?": number }; column_sql_types: { "?column?": "number" } }
+	>
 >
+
+type TSelectLiteralOne = ParseSqlStatement<ParseSqlTokens<`select 1 from users;`>, DbJoinWithRowCount>
+type _selectLiteralOne = Expect<
+	Extends<Tuple3At2<TSelectLiteralOne>, { kind: "select"; columns: { "?column?": number }; column_sql_types: { "?column?": "number" } }>
+>
+
+type TSelectTwoUnnamed = ParseSqlStatement<ParseSqlTokens<`select 1, 2 from users;`>, DbJoinWithRowCount>
+type _selectTwoUnnamed = Expect<Extends<Tuple3At2<TSelectTwoUnnamed>, SqlParserError<"Scalar expression in SELECT requires AS alias">>>
 
 type TBadColInExpr = ParseSqlStatement<ParseSqlTokens<`select users.nope + 1 as x from users;`>, DbJoinWithRowCount>
 type _badColInExpr = Expect<Extends<Tuple3At2<TBadColInExpr>, SqlParserError<string>>>

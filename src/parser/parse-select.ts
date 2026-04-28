@@ -163,7 +163,7 @@ type ParseOneRawSelectExprItem<
 						? [M2, { kind: "expr"; ast: Out; as: As }]
 						: Out extends { kind: "col"; parts: ScalarIdentParts }
 							? [M2, { kind: "expr"; ast: Out }]
-							: [M2, SqlParserError<"Scalar expression in SELECT requires AS alias">]
+							: [M2, { kind: "expr"; ast: Out }]
 					: never
 				: never
 		: never
@@ -417,7 +417,7 @@ type ResolveSelectList<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-> = ResolveSelectListAcc<Items, Db, Scope, Params, {}, {}>
+> = ResolveSelectListAcc<Items, Db, Scope, Params, {}, {}, Items>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? IsUnknownOrAny<Params[Name]["ts"]> extends true
@@ -430,11 +430,17 @@ type ParamSelectOut<As, P extends string, Ts, Sql extends string> = As extends s
 	? { out: As; ts: Ts; sql: Sql }
 	: { out: P; ts: Ts; sql: Sql }
 
-type OutNameFromExprAst<Ast extends ScalarExprAst, As> = As extends string
+type OutNameFromExprAst<
+	Ast extends ScalarExprAst,
+	As,
+	AllItems extends readonly RawSelectItem[],
+> = As extends string
 	? As
 	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
 		? OutNameFromParts<P, undefined>
-		: "__invalid_select_expr_alias__"
+		: AllItems extends readonly [RawSelectItem]
+			? "?column?"
+			: "__invalid_select_expr_alias__"
 
 type ResolveSelectListExprItem<
 	Ast extends ScalarExprAst,
@@ -445,20 +451,24 @@ type ResolveSelectListExprItem<
 	Params extends ExpressionParamsShape,
 	Cols extends Record<string, unknown>,
 	Sqls extends Record<string, string>,
+	AllItems extends readonly RawSelectItem[],
 > =
 	ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer Ev
 		? Ev extends SqlParserError<string>
 			? Ev
 			: Ev extends ExprOk<infer Ts, infer Sql extends string>
-				? OutNameFromExprAst<Ast, As> extends infer O extends string
-					? ResolveSelectListAcc<
-							R,
-							Db,
-							Scope,
-							Params,
-							MergeRecords<Cols, Record<O, Ts>>,
-							MergeStringRecords<Sqls, Record<O, Sql>>
-						>
+				? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
+					? O extends "__invalid_select_expr_alias__"
+						? SqlParserError<"Scalar expression in SELECT requires AS alias">
+						: ResolveSelectListAcc<
+								R,
+								Db,
+								Scope,
+								Params,
+								MergeRecords<Cols, Record<O, Ts>>,
+								MergeStringRecords<Sqls, Record<O, Sql>>,
+								AllItems
+							>
 					: never
 				: never
 		: never
@@ -472,6 +482,7 @@ type ResolveSelectListParamItem<
 	Params extends ExpressionParamsShape,
 	Cols extends Record<string, unknown>,
 	Sqls extends Record<string, string>,
+	AllItems extends readonly RawSelectItem[],
 > =
 	LookupSelectParam<Params, P> extends infer PV
 		? PV extends SqlParserError<string>
@@ -488,7 +499,8 @@ type ResolveSelectListParamItem<
 							Scope,
 							Params,
 							MergeRecords<Cols, Record<O, Ts>>,
-							MergeStringRecords<Sqls, Record<O, Sql>>
+							MergeStringRecords<Sqls, Record<O, Sql>>,
+							AllItems
 						>
 					: never
 				: never
@@ -501,6 +513,7 @@ type ResolveSelectListAcc<
 	Params extends ExpressionParamsShape,
 	Cols extends Record<string, unknown>,
 	Sqls extends Record<string, string>,
+	AllItems extends readonly RawSelectItem[] = Items,
 > = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
 	? H extends { kind: "star" }
 		? SingleAliasScope<Scope> extends true
@@ -511,14 +524,15 @@ type ResolveSelectListAcc<
 						Scope,
 						Params,
 						MergeRecords<Cols, E["columns"]>,
-						MergeStringRecords<Sqls, E["column_sql_types"]>
+						MergeStringRecords<Sqls, E["column_sql_types"]>,
+						AllItems
 					>
 				: SqlParserError<"SELECT * requires a single FROM table">
 			: SqlParserError<"SELECT * requires a single FROM table">
 		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }
-			? ResolveSelectListExprItem<Ast, As, R, Db, Scope, Params, Cols, Sqls>
+			? ResolveSelectListExprItem<Ast, As, R, Db, Scope, Params, Cols, Sqls, AllItems>
 			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
-				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Cols, Sqls>
+				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Cols, Sqls, AllItems>
 				: never
 	: { kind: "select"; columns: Cols; column_sql_types: Sqls }
 
