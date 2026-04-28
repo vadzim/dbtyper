@@ -1,6 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
+import type { SqlSelectRow } from "./sql-query.ts"
 
 export type SqlDriver = {
 	query(sql: string): Promise<Array<unknown>>
@@ -45,11 +46,13 @@ export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
 			defaultSchema: Database["defaultSchema"]
 			schemas: Database["schemas"] extends infer Schemas
 				? {
-						[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends JsqlSchemaShape
+						[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends
+							JsqlSchemaShape
 							? {
 									sets: Schema["sets"] extends infer Sets
 										? {
-												[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends JsqlTableShape
+												[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends
+													JsqlTableShape
 													? {
 															kind: Table["kind"]
 															columns: Table["columns"] extends infer Columns
@@ -170,6 +173,13 @@ export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserErro
 	defaultSchema: string
 }
 
+type SqlSelectRowObject<Db extends JsqlDatabaseShape | SqlParserError<string>, Stmt extends string> =
+	SqlSelectRow<Db, Stmt> extends infer R
+		? R extends SqlParserError<string>
+			? never
+			: { [K in keyof R]: R[K] }
+		: never
+
 export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserError<string>> {
 	get $db(): Database {
 		return null as unknown as Database
@@ -185,19 +195,28 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		this.dbInterface = dbInterface
 	}
 
-	// query<Stmt extends string>(statement: Stmt) {
-	// 	return this.dbInterface.query(statement) as Promise<
-	// 		Array<SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never>
-	// 	>
-	// }
+	/** All rows at once. `Stmt` must be a `SELECT` / `WITH … SELECT` that type-checks against {@link Database}. */
+	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Database, Stmt>>> {
+		return this.dbInterface.query(statement) as Promise<Array<SqlSelectRowObject<Database, Stmt>>>
+	}
 
-	// stream<Stmt extends string>(statement: Stmt) {
-	// 	return this.dbInterface.stream
-	// 		? (this.dbInterface.stream(statement) as AsyncIterable<
-	// 				SqlApplyQueryText<Database, Stmt> extends infer R ? { [K in keyof R]: R[K] } : never
-	// 			>)
-	// 		: async(this.query(statement))
-	// }
+	/**
+	 * Row-by-row iteration when the driver exposes {@link SqlDriver.stream}; otherwise buffers
+	 * {@link query} and yields each row.
+	 */
+	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Database, Stmt>> {
+		const streamFn = this.dbInterface.stream
+		if (streamFn !== undefined) {
+			return streamFn(statement) as AsyncIterable<SqlSelectRowObject<Database, Stmt>>
+		}
+		const self = this
+		return (async function* () {
+			const rows = await self.query(statement)
+			for (const row of rows) {
+				yield row
+			}
+		})()
+	}
 
 	migrations: readonly { source: string; path: string }[]
 	defaultSchema: string

@@ -1,6 +1,6 @@
 {
 	// Visit https://aka.ms/tsconfig to read more about this file
-	"exclude": ["test/fail-to-compile.ts"],
+	"exclude": ["test/fail-to-compile.ts", "examples"],
 	"compilerOptions": {
 		// File Layout
 		// "rootDir": "./src",

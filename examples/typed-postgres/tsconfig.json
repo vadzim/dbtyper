@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"typesql": ["../../src/index.ts"]
+		},
+		"ignoreDeprecations": "6.0"
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["../../test/fail-to-compile.ts"]
+}

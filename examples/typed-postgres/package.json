@@ -1,0 +1,16 @@
+{
+	"name": "@typesql/example-postgres",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"postgres": "^3.4.5",
+		"typesql": "file:../.."
+	},
+	"devDependencies": {
+		"tsx": "^4.19.4"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"demo": "tsx src/demo.ts"
+	}
+}

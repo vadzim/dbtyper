@@ -18,6 +18,8 @@ import { sqlDatabase, migration } from "typesql"
 import type { ApplyStatements, ParseSqlTokens, JsqlDatabaseShape } from "typesql"
 ```
 
+For **PostgreSQL** at runtime (typed `query` / `stream` with the [postgres](https://github.com/porsager/postgres) client), see [`articles/TYPED_POSTGRES_AND_TYPESQL.md`](articles/TYPED_POSTGRES_AND_TYPESQL.md) and the workspace under [`examples/typed-postgres/`](examples/typed-postgres/).
+
 ## Goal
 
 The goal is **not** to implement a database with row values or query results living in the type system.
