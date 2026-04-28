@@ -12,11 +12,12 @@ Lexing, token types, and monad mechanics are out of scope here.
 
 | Prefix                                   | Behavior                                                                                                                                    |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CREATE` + `TABLE` / `SCHEMA`            | Parsed; may **merge** into `JsqlDatabaseShape`                                                                                              |
-| `CREATE` + anything else                 | **Skipped** to the next `;` (or end): **`ParseSkipStatement`** / `SkipBracketedUntil` (e.g. **`CREATE VIEW`**, **`CREATE INDEX`**).         |
+| `CREATE` + `TABLE` / `SCHEMA` / `VIEW`   | Parsed; may **merge** into `JsqlDatabaseShape` (**`VIEW`** stores **`kind: "view"`** from the inner **`SELECT`**).                            |
+| `CREATE` + anything else                 | **Skipped** to the next `;` (or end): **`ParseSkipStatement`** / `SkipBracketedUntil` (e.g. **`CREATE INDEX`**).                              |
 | `ALTER` + `TABLE`                        | Parsed; may **mutate** table shape (see **`ALTER TABLE`** below). **`ALTER`** without **`TABLE`** → error **`Expected TABLE after ALTER`**. |
 | `DROP` + `TABLE` / `SCHEMA`              | Parsed; may **remove** from `JsqlDatabaseShape`                                                                                             |
 | `DELETE`                                 | Parsed; **checked** against the DB (`WHERE` is type-checked); does **not** mutate the schema object                                         |
+| `WITH` … (CTE) + `SELECT`                | Parsed as one statement: CTEs bind in **`ScopeMap`** for the following **`SELECT`**; duplicate CTE name → **`SqlParserError`**.             |
 | `SELECT`                                 | Parsed; projection/joins and list **`:name`** params checked; does **not** mutate the DB                                                    |
 | `INSERT` / `UPDATE`                      | Parsed; checked; schema unchanged in this model.                                                                                            |
 | Anything else (e.g. `GRANT`, `TRUNCATE`) | **Skipped** to the next `;` (or end): same bracket-aware scan as **`CREATE VIEW`**, no structured parse.                                    |
@@ -26,7 +27,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 ### Schema shape (`JsqlDatabaseShape`)
 
 - Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
-- Every entry has **`kind`**: **`"table"`** or **`"view"`** (only **`"table"`** is produced by the current parsers).
+- Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
 
 ---
 
@@ -51,6 +52,15 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 ---
 
+## `CREATE VIEW`
+
+- **`CREATE VIEW`** then **`view_name`** or **`schema.view_name`**, then **`AS`**, then **`SELECT`** or **`WITH`** … **`SELECT`** (same **`ParseSelect`** rules and **`Params`** as a top-level query).
+- The inner query must type-check; result columns and **`column_sql_types`** are copied onto **`sets[name]`** with **`kind: "view"`**.
+- **`;`** or end after the inner statement tail (same semicolon discipline as **`SELECT`**).
+- Errors include unknown schema, missing **`AS`**, name already in **`sets`**, and malformed inner **`SELECT`**.
+
+---
+
 ## `DROP SCHEMA` / `DROP TABLE`
 
 - Optional **`IF EXISTS`** (as implemented per statement).
@@ -68,7 +78,9 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - **`*` must be the only** projection in the list.
 - **`FROM` is required** after the select list.
 - **`FROM`**: `schema.table` or `table` (default schema); optional **table alias**.
-- **Derived tables (subqueries in `FROM` / `JOIN`)**: **`(` `SELECT` … `)`** then **`AS alias`** or **`alias`** (alias is required; otherwise **`SqlParserError<"Expected AS or alias after derived table">`**). The inner `SELECT` uses the same rules as a top-level `SELECT` (list, required inner `FROM`, joins, optional typed `WHERE`, same **`Params`**). Inner `FROM` starts with an **empty** `ScopeMap` (no correlation with outer tables). The outer query only sees the subquery under its alias; column names and **`column_sql_types`** come from the inner projection’s **`JsqlSelectStatementResult`**. **Not in this slice**: scalar **`(SELECT …)`** in expressions, **`IN (SELECT …)`**, **`EXISTS (…)`**, **`WITH` / CTEs**, correlated subqueries.
+- **`WITH` / CTEs** (leading **`WITH`** on the statement): comma-separated **`name AS (` `SELECT` … `)`** list, then the main **`SELECT`**. Each CTE row shape is merged into the outer **`ScopeMap`** before **`FROM`** so the main query can reference **`cte_name.column`**. Duplicate CTE names error. **`ParseParenEnclosedSelect`** already ends past the CTE subquery’s **`)`**; the parser does **not** read a second **`)`** after it. CTE **cycle** detection is not implemented.
+- **Derived tables (subqueries in `FROM` / `JOIN`)**: **`(` `SELECT` … `)`** then **`AS alias`** or **`alias`** (alias is required; otherwise **`SqlParserError<"Expected AS or alias after derived table">`**). The inner `SELECT` uses the same rules as a top-level `SELECT` (list, required inner `FROM`, joins, optional typed `WHERE`, same **`Params`**). Inner `FROM` starts with an **empty** `ScopeMap` (no correlation with outer tables). The outer query only sees the subquery under its alias; column names and **`column_sql_types`** come from the inner projection’s **`JsqlSelectStatementResult`**.
+- **Scalar subqueries in expressions**: **`(` `SELECT` … one non-`*` column … `FROM` … `)`** as a scalar operand (resolved after scope is known). **`IN (SELECT` … `)`** requires a **single-column** inner projection; **`EXISTS (` `SELECT` … `)`** is **`boolean`**. Outer **`FROM`** aliases are available in **`WHERE`** (and other sites that pass the join **`ScopeMap`** into **`ParseExpressionAST`**); inner subquery **`FROM`** still starts from an empty scope unless extended for correlation elsewhere.
 - **`JOIN`**: **`INNER JOIN`**, **`LEFT [OUTER] JOIN`**, **`JOIN`**. Each joined table must be followed by **`ON alias.column = alias.column`** (equality only; columns validated against join scope). The RHS may be a **derived table** as above, then **`ON`** as usual.
 - Optional **`WHERE`**: parsed and **type-checked** with **`ParseWhereExpression`** (same rules as **`DELETE`** / **`UPDATE`**) over the join **`ScopeMap`**; must end with **`;`** (or end).
 - **Query parameters**: every **`:name`** in the select list must appear in the optional third generic of **`ParseSqlStatement<…, Db, Params>`** (defaults to **`{}`** — then any `:name` is an error). Each binding is **`{ ts, sql }`**; if **`ts` is exactly `unknown`**, the projection errors (**no silent `unknown`**). The same **`Params`** map applies to **`INSERT`** / **`UPDATE`** value expressions and their **`WHERE`** clauses.
@@ -90,7 +102,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
     - Simple **`CASE`** _expr_ **`WHEN`** _value_ **`THEN`** … — each **`WHEN`** value is checked against _expr_ with the **same rules as `=`** (comparison class; **`NULL`** rejected like **`= null`**); **`THEN` / `ELSE`** merge like searched **`CASE`**; omitting **`ELSE`** also yields **`T | null`**.
     - Root **`WHERE`** expression must resolve to **`boolean`** (e.g. a bare column reference errors).
     - **`IS [NOT] NULL`**.
-    - **`IN (` … `)`** — comma-separated **scalar values** are parsed and each must match the **left-hand operand’s comparison class** (same rules as **`=`** / **`<>`**); **`NULL`** literals in the list are rejected (`IS NULL` / `IS NOT NULL` instead).
+    - **`IN (` … `)`** — comma-separated **scalar values** are parsed and each must match the **left-hand operand’s comparison class** (same rules as **`=`** / **`<>`**); **`NULL`** literals in the list are rejected (`IS NULL` / `IS NOT NULL` instead). **`IN (SELECT` … `)`** requires a **single-column** inner **`SELECT`** and applies the same class rules to that column.
 - Column references use **`ResolveColumnRefValue`** (re-exported through **`EvalWhereClause`** / **`ParseWhereExpression`**; public entry in [`src/parser/parse-where-expression.ts`](src/parser/parse-where-expression.ts)). **Catalog** (`JsqlDatabaseShape`) plus **`ScopeMap`**. **`ParseSqlStatement<…, Db, Params>`** third generic supplies **`:name`** bindings for `WHERE` (default **`{}`** rejects any parameter).
 - Ends with **`;`** or end. Success does not alter the schema shape in the current model.
 
@@ -116,7 +128,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 ## Typed expressions (`ParseExpressionAST` / `ResolveExpressionAST` / `EvalWhereClause`)
 
-- [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`**, **`BETWEEN`**, **`LIKE` / `ILIKE`**, simple and searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts). **`ResolveExpressionAST<Ast, Db, Scope, Ctx>`** checks types once **`ScopeMap`** and **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`**) are known.
+- [`src/parser/parse-expression.ts`](src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`** (value lists and **`IN (SELECT …)`**), **`BETWEEN`**, **`LIKE` / `ILIKE`**, simple and searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts, **`EXISTS (SELECT …)`**, parenthesized scalar **`(SELECT …)`**). **`ResolveExpressionAST<Ast, Db, Scope, Ctx>`** checks types once **`ScopeMap`** and **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`**) are known.
 - **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, SqlParserError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
 
 ---
@@ -132,4 +144,4 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 ## Not supported (skipped or absent)
 
 - **`ALTER`** forms other than **`ALTER TABLE …`** as implemented (e.g. **`ALTER SCHEMA`**) are **not** supported beyond the **`Expected TABLE after ALTER`** path.
-- **`CREATE INDEX`**, **`TRUNCATE`**, **`GRANT`**, **`REVOKE`**, and similar are **not** parsed structurally; **`ParseSkipStatement`** advances to **`;`** (see routing table). **`CREATE VIEW`** is in the same skip bucket until a dedicated parser exists—**then update this file**.
+- **`CREATE INDEX`**, **`TRUNCATE`**, **`GRANT`**, **`REVOKE`**, and similar are **not** parsed structurally; **`ParseSkipStatement`** advances to **`;`** (see routing table).

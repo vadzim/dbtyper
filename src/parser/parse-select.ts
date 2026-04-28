@@ -37,7 +37,7 @@ type TokenKeyOn = TokenKey<"on">
  */
 type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | SqlParserError<string>>
 
-type RawSelectItem =
+export type RawSelectItem =
 	| { kind: "star" }
 	| { kind: "param"; param: string; as?: string }
 	| { kind: "expr"; ast: ScalarExprAst; as?: string }
@@ -52,9 +52,11 @@ export type ParseSelect<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	PeekToken<Tokens> extends TokenKey<"distinct">
-		? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params>
-		: ParseSelectAfterDistinct<Tokens, Db, Params>
+	PeekToken<Tokens> extends TokenIdent<"with">
+		? ParseSelectWithCtes<SkipToken<Tokens>, Db, Params, {}>
+		: PeekToken<Tokens> extends TokenKey<"distinct">
+			? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, {}>
+			: ParseSelectAfterDistinct<Tokens, Db, Params, {}>
 
 type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
 	{ kind: "star" },
@@ -65,10 +67,59 @@ type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items exten
 		: true
 	: false
 
+type ParseSelectWithCtesAfterSubquery<
+	R4 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Acc extends ScopeMap,
+	CteName extends string,
+	SubOut extends JsqlSelectStatementResult,
+> =
+	SelectResultToDerivedScopeEntry<SubOut> extends infer Entry extends ScopeEntry
+		? MergeScope<Acc, Record<CteName, Entry>> extends infer NextAcc
+			? NextAcc extends ScopeMap
+				? PeekToken<R4> extends TokenKey<",">
+					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc>
+					: PeekToken<R4> extends TokenKey<"select">
+						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc>
+						: [R4, Db, SqlParserError<"Expected SELECT after WITH clause">]
+				: never
+			: never
+		: never
+
+type ParseSelectWithCtes<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Acc extends ScopeMap,
+> =
+	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokCteName]
+		? TokCteName extends TokenIdent<infer CteName extends string>
+			? CteName extends keyof Acc
+				? [R1, Db, SqlParserError<"Duplicate WITH clause name">]
+				: PeekToken<R1> extends TokenKey<"as">
+					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"as">]
+						? PeekToken<R2> extends TokenKey<"(">
+							? ReadToken<R2> extends [infer R3 extends TokensList, TokenKey<"(">]
+								? ParseParenEnclosedSelect<R3, Db, Params> extends [infer R4 extends TokensList, infer SubOut]
+									? SubOut extends SqlParserError<string>
+										? [R4, Db, SubOut]
+										: SubOut extends JsqlSelectStatementResult
+											? ParseSelectWithCtesAfterSubquery<R4, Db, Params, Acc, CteName, SubOut>
+											: never
+								: never
+							: never
+						: [R2, Db, SqlParserError<"Expected open paren after AS in WITH">]
+					: never
+				: never
+		: [R1, Db, SqlParserError<"Expected CTE name in WITH">]
+	: never
+
 type ParseSelectAfterDistinct<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	CteBase extends ScopeMap = {},
 > =
 	ParseRawSelectList<Tokens, Db, Params> extends [infer AfterList extends TokensList, infer Items]
 		? Items extends SqlParserError<string>
@@ -78,7 +129,7 @@ type ParseSelectAfterDistinct<
 					? [AfterList, Db, SqlParserError<"SELECT * must be the only projection in the list">]
 					: PeekToken<AfterList> extends TokenKey<"from">
 						? SkipToken<AfterList> extends infer AfterFrom extends TokensList
-							? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [
+							? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
 									infer R extends TokensList,
 									infer Mid,
 									infer Tail,
@@ -164,7 +215,10 @@ type ParseOneRawSelectExprItem<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	ParseExpressionAST<Tokens> extends [infer RExpr extends TokensList, infer Out]
+	ParseExpressionAST<
+		Tokens,
+		{ db: Db; params: Params; outerScope: {} }
+	> extends [infer RExpr extends TokensList, infer Out]
 		? Out extends SqlParserError<infer _Msg extends string>
 			? [RExpr, Out]
 			: Out extends ScalarExprAst
@@ -267,6 +321,140 @@ type ReadClosingParenAndAliasDerived<
 			? ParseAliasAfterDerivedTable<R2, Db, OuterScope, Res>
 			: [R2, SqlParserError<"Expected `)` after derived table">, ParserRefErrorThirdSentinel]
 		: never
+
+type ReadClosingParenScalarSubqueryOnly<
+	Tokens extends TokensList,
+	Res extends JsqlSelectStatementResult,
+> =
+	ReadToken<Tokens> extends [infer R2 extends TokensList, infer TokCl]
+		? TokCl extends TokenKey<")">
+			? [R2, Res]
+			: [R2, SqlParserError<"Expected `)` after subquery">]
+		: never
+
+type ParseInnerParenSelectWhereClose<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	InnerScope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Res extends JsqlSelectStatementResult,
+> =
+	PeekToken<Tokens> extends TokenKey<"where">
+		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
+				? We extends SqlParserError<string>
+					? [Rw, We]
+					: ReadClosingParenScalarSubqueryOnly<Rw, Res>
+				: never
+			: never
+		: ReadClosingParenScalarSubqueryOnly<Tokens, Res>
+
+type ScalarSubqueryProjectionOk<Items extends readonly RawSelectItem[]> = Items extends readonly [
+	infer Only extends RawSelectItem,
+]
+	? Only extends { kind: "star" }
+		? SqlParserError<"Scalar subquery must not use *">
+		: true
+	: SqlParserError<"Scalar subquery must project exactly one column">
+
+type ParseInnerParenSelectBody<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Proj extends "any" | "scalar",
+	OuterScope extends ScopeMap,
+> =
+	ParseRawSelectList<Tokens, Db, Params> extends [infer AfterList extends TokensList, infer Items]
+		? Items extends SqlParserError<string>
+			? [AfterList, Items]
+			: Items extends readonly RawSelectItem[]
+				? SelectListStarInvalid<Items> extends true
+					? [AfterList, SqlParserError<"SELECT * must be the only projection in the list">]
+					: Proj extends "scalar"
+						? ScalarSubqueryProjectionOk<Items> extends infer SOk
+							? SOk extends SqlParserError<string>
+								? [AfterList, SOk]
+								: SOk extends true
+									? ParseInnerParenSelectFromAndResolve<AfterList, Items, Db, Params, OuterScope>
+									: never
+							: never
+						: ParseInnerParenSelectFromAndResolve<AfterList, Items, Db, Params, OuterScope>
+				: never
+		: never
+
+/** Shared `FROM` … resolve … optional `WHERE` … `)` tail for parenthesized sub-`SELECT` (no trailing alias). */
+type ParseInnerParenSelectFromAndResolve<
+	AfterList extends TokensList,
+	Items extends readonly RawSelectItem[],
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<AfterList> extends TokenKey<"from">
+		? SkipToken<AfterList> extends infer AfterFrom extends TokensList
+			? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [
+					infer R extends TokensList,
+					infer Mid,
+					infer Tail,
+				]
+				? Mid extends SqlParserError<string>
+					? [R, Mid]
+					: Mid extends null
+						? [JoinScopeOnly<Tail>] extends [never]
+							? never
+							: JoinScopeOnly<Tail> extends ScopeMap
+								? MergeScope<OuterScope, JoinScopeOnly<Tail>> extends infer Merged extends ScopeMap
+									? ResolveSelectList<
+											Items,
+											Db,
+											Merged,
+											Params
+										> extends infer Res
+										? Res extends SqlParserError<infer _Msg extends string>
+											? [R, Res]
+											: Res extends JsqlSelectStatementResult
+												? ParseInnerParenSelectWhereClose<R, Db, Merged, Params, Res>
+												: never
+										: never
+									: never
+								: never
+						: never
+					: never
+				: never
+		: [AfterList, SqlParserError<"Expected FROM in subquery">]
+
+type ParseInnerParenSelectAfterSelectKw<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Proj extends "any" | "scalar",
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"distinct">
+		? ParseInnerParenSelectBody<SkipToken<Tokens>, Db, Params, Proj, OuterScope>
+		: ParseInnerParenSelectBody<Tokens, Db, Params, Proj, OuterScope>
+
+/** Inner `( SELECT … FROM … [WHERE …] )` ending with `)`; multi-column allowed (`EXISTS`, CTE, `IN (SELECT …)`). */
+export type ParseParenEnclosedSelect<
+	R1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap = {},
+> =
+	PeekToken<R1> extends TokenKey<"select">
+		? ParseInnerParenSelectAfterSelectKw<SkipToken<R1>, Db, Params, "any", OuterScope>
+		: [R1, SqlParserError<"Expected SELECT in subquery">]
+
+/** Scalar subquery: exactly one non-`*` projection. */
+export type ParseParenScalarSelect<
+	R1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap = {},
+> =
+	PeekToken<R1> extends TokenKey<"select">
+		? ParseInnerParenSelectAfterSelectKw<SkipToken<R1>, Db, Params, "scalar", OuterScope>
+		: [R1, SqlParserError<"Expected SELECT in subquery">]
 
 type ParseInnerDerivedWhereCloseAndAlias<
 	Tokens extends TokensList,

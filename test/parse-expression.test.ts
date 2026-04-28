@@ -137,6 +137,16 @@ type RCaseNoElse = ResolveExpressionAST<
 >
 type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "number">>>
 
+type WExistsOk = ParseWhereExpression<ParseSqlTokens<`exists (select users.id from users)`>, DbUsers, UsersScope>
+type _wExistsOk = Expect<Extends<Tuple2At1<WExistsOk>, null>>
+
+type WInSubqueryOk = ParseWhereExpression<
+	ParseSqlTokens<`users.id in (select users.id from users)`>,
+	DbUsers,
+	UsersScope
+>
+type _wInSubqueryOk = Expect<Extends<Tuple2At1<WInSubqueryOk>, null>>
+
 describe("parse-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

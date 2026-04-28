@@ -27,12 +27,12 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 ## Subqueries, CTEs, views
 
-- [ ] **Implement scalar subquery** **`( SELECT expr )`** inside **`ParseScalarExprUntyped`** / **`ResolveExpressionAST`**: single column, zero or one row semantics at type level only as documented, **`Params`** threading, tests in **`parse-expression.test.ts`** and **`parse-select.test.ts`**.
-- [ ] **Implement `IN ( SELECT … )`**: require single-column inner **`SELECT`**, match **`IN`** comparison-class rules, add **`parse-where-expression.test.ts`** + **`parse-select.test.ts`** cases.
-- [ ] **Implement `EXISTS ( SELECT … )`**: boolean result, inner scope rules (correlation flag later), tests.
-- [ ] **Implement `WITH cte AS ( SELECT … ) , …`**: parse CTE list, bind names for forward **`SELECT`**, merge **`ScopeMap`** / typing rules, add **`parse-select.test.ts`** and failure cases (cycle, duplicate CTE name).
-- [ ] **Implement correlated subqueries**: extend inner **`ScopeMap`** with outer aliases per SQL rules where you choose to support them; add tests that distinguish **lateral** vs non-lateral if you only implement a subset.
-- [ ] **Implement `CREATE VIEW`**: statement routing (not only skip), store **`kind: "view"`** + column **`columns` / `column_sql_types`** from inner **`SELECT`** typing, add **`test/parse-create-view.test.ts`** (or name aligned with repo).
+- [x] **Implement scalar subquery** **`( SELECT expr )`** inside **`ParseScalarExprUntyped`** / **`ResolveExpressionAST`**: single column, **`Params`** / **`ExprParseEnv`** threading; add **`parse-select.test.ts`** / **`parse-expression.test.ts`** cases where gaps remain.
+- [x] **Implement `IN ( SELECT … )`**: single-column inner **`SELECT`**, **`IN`** comparison-class rules; **`parse-expression.test.ts`** (`WHERE`) + **`parse-select.test.ts`** as needed.
+- [x] **Implement `EXISTS ( SELECT … )`**: boolean result; inner **`SELECT`** uses empty inner **`FROM`** scope (no outer correlation in **`EXISTS`** body); tests in **`parse-expression.test.ts`**.
+- [x] **Implement `WITH cte AS ( SELECT … ) , …`**: CTE list, forward names for main **`SELECT`**, **`ScopeMap`** merge; **`parse-select.test.ts`** success + duplicate CTE name error. **Not implemented**: CTE cycle detection as a dedicated error.
+- [ ] **Implement correlated subqueries** beyond current wiring: outer **`FROM`** is visible in **`WHERE`** / some expression sites; **`SELECT`** list inner subqueries still use an empty outer scope unless extended; no **lateral** / **`SELECT`**-list correlation tests yet.
+- [x] **`CREATE VIEW`**: routed in **`ParseSqlStatement`**; **`kind: "view"`** + **`columns` / `column_sql_types`** from inner **`SELECT`**; type test in **`test/apply-statements.test.ts`** (qualified view name + **`ParseQualifiedViewName`**).
 
 ## `CREATE INDEX` / other `CREATE`
 
@@ -50,7 +50,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 - [x] Add **`test/apply-statements.test.ts`** (or **`parse-sql-statement`** section in an existing file): **`ApplyStatements<`create table public.t (id int); select id from t;`, EmptyDb>`** (or two **`CREATE`** steps) and **`Expect<Extends<…>>`** on the final **`Db`** shape and/or **`never`** on hard error paths.
 - [x] Add a type test: **`ApplyParsedStatements`** when the **first** statement returns **`SqlParserError`** in the third tuple slot — assert **iteration stops** and **`[Rest, Db]`** matches the spec you want (encode in **`Expect`**).
-- [x] Add **`ParseSqlStatement`** type tests for **`create view v as select 1;`** and **`grant select on t to u;`** (pick exact strings): assert **`Db`** unchanged and **`RestTokens`** / **`null`** result per **`ParseSkipStatement`** contract.
+- [x] **`ParseSqlStatement`**: **`grant select …`** still **skip**; **`create view … as select … from …`** merges a **`view`** (see **`apply-statements.test.ts`**).
 - [x] Edit **`SUPPORTED-SQL.md` § Not supported**: remove or narrow the blanket **`ALTER`** line; add an **`ALTER TABLE`** subsection mirroring **`parse-alter-table.ts`** support and no-op clauses.
 
 ## Tests — `SELECT` derived tables (edge cases)

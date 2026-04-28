@@ -16,7 +16,10 @@ export type ParseWhereExpression<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseExpressionAST<Tokens> extends [infer Rw extends TokensList, infer Ast]
+	ParseExpressionAST<
+		Tokens,
+		{ db: Db; params: Params; outerScope: Scope }
+	> extends [infer Rw extends TokensList, infer Ast]
 		? Ast extends SqlParserError<string>
 			? [Rw, Ast]
 			: ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer R

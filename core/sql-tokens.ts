@@ -353,6 +353,7 @@ const serviceWordsMap = {
 	using: true,
 	values: true,
 	virtual: true,
+	view: true,
 	when: true,
 	where: true,
 }

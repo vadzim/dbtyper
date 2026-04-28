@@ -4,16 +4,26 @@ import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Extends, Matches, Tuple2At1, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
-/** Same shape as **`test/parse-create-table.test.ts`** — `public` exists for `CREATE TABLE`. */
+/** `public` with one table so **`CREATE VIEW … AS SELECT`** can resolve `FROM`. */
 type DbDefaultPublic = {
 	defaultSchema: "public"
-	schemas: { public: JsqlSchemaShape }
+	schemas: {
+		public: JsqlSchemaShape & {
+			sets: {
+				t: {
+					kind: "table"
+					columns: { id: number }
+					column_sql_types: { id: "integer" }
+				}
+			}
+		}
+	}
 }
 
-type ApplyCreateThenSelect = ApplyStatements<DbDefaultPublic, `create table t ( id int not null ); select id from t;`>
+type ApplyCreateThenSelect = ApplyStatements<DbDefaultPublic, `create table s ( id int not null ); select id from s;`>
 
 type _applyMergedTable = Expect<
-	Extends<ApplyCreateThenSelect["schemas"]["public"]["sets"]["t"], { kind: "table"; columns: { id: number } }>
+	Extends<ApplyCreateThenSelect["schemas"]["public"]["sets"]["s"], { kind: "table"; columns: { id: number } }>
 >
 
 /** First statement errors → **`ApplyParsedStatements`** returns **`[Rest, Db]`** and does not apply the second `CREATE`. */
@@ -23,9 +33,9 @@ type ApplyStopOnFirstError = ApplyParsedStatements<
 >
 type _applyStopDb = Expect<Matches<Tuple2At1<ApplyStopOnFirstError>, DbDefaultPublic>>
 
-type TCreateViewSkip = ParseSqlStatement<ParseSqlTokens<`create view v as select 1;`>, DbDefaultPublic>
-type _createViewSkipped = Expect<Extends<Tuple3At2<TCreateViewSkip>, { kind: "skipped-statement" }>>
-type _createViewDb = Expect<Matches<TCreateViewSkip[1], DbDefaultPublic>>
+type TCreateView = ParseSqlStatement<ParseSqlTokens<`create view v as select t.id from t;`>, DbDefaultPublic>
+type _createViewMerged = Expect<Extends<Tuple3At2<TCreateView>, null>>
+type _createViewDb = Expect<Extends<TCreateView[1]["schemas"]["public"]["sets"]["v"], { kind: "view" }>>
 
 type TGrantSkip = ParseSqlStatement<ParseSqlTokens<`grant select on public.t to anon;`>, DbDefaultPublic>
 type _grantSkipped = Expect<Extends<Tuple3At2<TGrantSkip>, { kind: "skipped-statement" }>>

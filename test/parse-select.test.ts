@@ -91,6 +91,22 @@ type _selectCaseSimpleNoElse = Expect<
 	Extends<Tuple3At2<TSelectCaseSimpleNoElse>, { kind: "select"; columns: { x: string | null } }>
 >
 
+/** `WITH` CTE: inner `SELECT` merged into outer scope with base `FROM` tables. */
+type TWithCte = ParseSqlStatement<
+	ParseSqlTokens<`with c as (select users.id as uid from users) select c.uid from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _withCte = Expect<
+	Extends<Tuple3At2<TWithCte>, { kind: "select"; columns: { uid: string }; column_sql_types: { uid: "uuid" } }>
+>
+type TWithDup = ParseSqlStatement<
+	ParseSqlTokens<
+		`with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;`
+	>,
+	DbJoinDefaultAndExplicit
+>
+type _withDup = Expect<Extends<Tuple3At2<TWithDup>, SqlParserError<"Duplicate WITH clause name">>>
+
 /** Derived table: inner `SELECT` exposes columns under outer alias (`__subquery__` scope entry). */
 type TDerivedTable = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select users.id from users) as s;`>,
