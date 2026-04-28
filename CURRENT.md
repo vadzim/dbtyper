@@ -19,7 +19,7 @@
 2. **`TODO.md` staleness** — Several bullets are done (typed `IN`, `CAST` / `::`, richer predicates, `SELECT WHERE`). Keep `TODO.md` as a forward backlog only, or merge into this file.
 3. **Simple `CASE expr WHEN …`** — Only searched `CASE WHEN …` is implemented.
 4. **Other keyword-led `SELECT` items** — `CASE` is wired for non-ident starts; extend the same union if more expression-leading keywords are added to the lexer.
-5. **Subqueries / CTEs / views** — High cost; not started.
+5. **Subqueries / CTEs / views** — **Derived tables** in **`FROM` / `JOIN`** (`(SELECT …) AS alias`) are implemented with inner scope isolated from the outer query (see `SUPPORTED-SQL.md`). Still missing: scalar / `IN` / `EXISTS` subqueries, **`WITH`**, correlation, **`CREATE VIEW`** typing.
 6. **`ALTER TABLE` / `CREATE INDEX`** — Still skipped at statement level.
 7. **Runtime query execution** — Explicitly out of scope per README; no change.
 

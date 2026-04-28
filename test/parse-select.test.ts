@@ -81,6 +81,35 @@ type TSelectCaseKw = ParseSqlStatement<
 >
 type _selectCaseKw = Expect<Extends<Tuple3At2<TSelectCaseKw>, { kind: "select"; columns: { x: string } }>>
 
+/** Derived table: inner `SELECT` exposes columns under outer alias (`__subquery__` scope entry). */
+type TDerivedTable = ParseSqlStatement<
+	ParseSqlTokens<`select s.id from (select users.id from users) as s;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedTable = Expect<
+	Extends<Tuple3At2<TDerivedTable>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+type TDerivedJoin = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users join (select users.id as uid from users) t on users.id = t.uid;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedJoin = Expect<
+	Extends<Tuple3At2<TDerivedJoin>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+type TDerivedBadCol = ParseSqlStatement<
+	ParseSqlTokens<`select s.nope from (select users.id from users) as s;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedBadCol = Expect<Extends<Tuple3At2<TDerivedBadCol>, SqlParserError<string>>>
+
+type TDerivedNoAlias = ParseSqlStatement<
+	ParseSqlTokens<`select 1 from (select users.id as x from users);`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedNoAlias = Expect<Extends<Tuple3At2<TDerivedNoAlias>, SqlParserError<string>>>
+
 type TInnerJoin = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users inner join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
 	DbJoinDefaultAndExplicit

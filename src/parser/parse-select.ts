@@ -78,7 +78,7 @@ type ParseSelectAfterDistinct<
 					? [AfterList, Db, SqlParserError<"SELECT * must be the only projection in the list">]
 					: PeekToken<AfterList> extends TokenKey<"from">
 						? SkipToken<AfterList> extends infer AfterFrom extends TokensList
-							? ParseFromJoinScope<AfterFrom, Db, {}> extends [
+							? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [
 									infer R extends TokensList,
 									infer Mid,
 									infer Tail,
@@ -220,15 +220,162 @@ type ParseOptionalAs<Tokens extends TokensList> =
 				: never
 		: [Tokens, undefined]
 
-type ParseFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenIdent<infer A extends string>
-			? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
-			: [R1, SqlParserError<"Expected table name in FROM">, ParserRefErrorThirdSentinel]
+/** Row shape of a parsed inner `SELECT` used as a derived table in `FROM` / `JOIN`. */
+type SelectResultToDerivedScopeEntry<Res extends JsqlSelectStatementResult> = {
+	schema: "__subquery__"
+	table: "__subquery__"
+	columns: Res["columns"]
+	column_sql_types: Res["column_sql_types"]
+}
+
+type ParseAliasAfterDerivedTable<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	OuterScope extends ScopeMap,
+	Res extends JsqlSelectStatementResult,
+> =
+	SelectResultToDerivedScopeEntry<Res> extends infer Entry extends ScopeEntry
+		? PeekToken<Tokens> extends
+				| TokenKey<"inner">
+				| TokenKey<"left">
+				| TokenKey<"join">
+				| TokenKey<"where">
+				| TokenKey<";">
+				| TokenEot
+			? [Tokens, SqlParserError<"Expected AS or alias after derived table">, ParserRefErrorThirdSentinel]
+			: PeekToken<Tokens> extends TokenKey<"as">
+				? ReadToken<SkipToken<Tokens>> extends [infer Ra extends TokensList, infer TokName]
+					? TokName extends TokenIdent<infer Alias extends string>
+						? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
+						: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+					: never
+				: ReadToken<Tokens> extends [infer Ra extends TokensList, infer TokAlias]
+					? TokAlias extends TokenIdent<infer Alias extends string>
+						? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
+						: [Ra, SqlParserError<"Expected alias after derived table">, ParserRefErrorThirdSentinel]
+					: never
 		: never
 
-type ParseFromJoinScope<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
-	ParseFromTableRef<Tokens, Db, Scope> extends [infer R0 extends TokensList, infer Mid, infer Third]
+type ReadClosingParenAndAliasDerived<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	OuterScope extends ScopeMap,
+	Res extends JsqlSelectStatementResult,
+> =
+	ReadToken<Tokens> extends [infer R2 extends TokensList, infer TokCl]
+		? TokCl extends TokenKey<")">
+			? ParseAliasAfterDerivedTable<R2, Db, OuterScope, Res>
+			: [R2, SqlParserError<"Expected `)` after derived table">, ParserRefErrorThirdSentinel]
+		: never
+
+type ParseInnerDerivedWhereCloseAndAlias<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	InnerScope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Res extends JsqlSelectStatementResult,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"where">
+		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
+				? We extends SqlParserError<string>
+					? [Rw, We, ParserRefErrorThirdSentinel]
+					: ReadClosingParenAndAliasDerived<Rw, Db, OuterScope, Res>
+				: never
+			: never
+		: ReadClosingParenAndAliasDerived<Tokens, Db, OuterScope, Res>
+
+type ParseInnerDerivedBody<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
+> =
+	ParseRawSelectList<Tokens, Db, Params> extends [infer AfterList extends TokensList, infer Items]
+		? Items extends SqlParserError<string>
+			? [AfterList, Items, ParserRefErrorThirdSentinel]
+			: Items extends readonly RawSelectItem[]
+				? SelectListStarInvalid<Items> extends true
+					? [AfterList, SqlParserError<"SELECT * must be the only projection in the list">, ParserRefErrorThirdSentinel]
+					: PeekToken<AfterList> extends TokenKey<"from">
+						? SkipToken<AfterList> extends infer AfterFrom extends TokensList
+							? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [
+									infer R extends TokensList,
+									infer Mid,
+									infer Tail,
+								]
+								? Mid extends SqlParserError<string>
+									? Tail extends ParserRefErrorThirdSentinel
+										? [R, Mid, ParserRefErrorThirdSentinel]
+										: never
+									: Mid extends null
+										? [JoinScopeOnly<Tail>] extends [never]
+											? never
+											: JoinScopeOnly<Tail> extends ScopeMap
+												? ResolveSelectList<Items, Db, JoinScopeOnly<Tail>, Params> extends infer Res
+													? Res extends SqlParserError<infer _Msg extends string>
+														? [R, Res, ParserRefErrorThirdSentinel]
+														: Res extends JsqlSelectStatementResult
+															? ParseInnerDerivedWhereCloseAndAlias<
+																	R,
+																	Db,
+																	JoinScopeOnly<Tail>,
+																	Params,
+																	Res,
+																	OuterScope
+																>
+															: never
+													: never
+												: never
+										: never
+								: never
+							: never
+						: [AfterList, SqlParserError<"Expected FROM in derived table">, ParserRefErrorThirdSentinel]
+				: never
+		: never
+
+type ParseInnerDerivedAfterSelectKw<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"distinct">
+		? ParseInnerDerivedBody<SkipToken<Tokens>, Db, Params, OuterScope>
+		: ParseInnerDerivedBody<Tokens, Db, Params, OuterScope>
+
+type ParseParenDerivedSelect<
+	R1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	OuterScope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<R1> extends TokenKey<"select">
+		? ParseInnerDerivedAfterSelectKw<SkipToken<R1>, Db, Params, OuterScope>
+		: [R1, SqlParserError<"Expected SELECT in derived table">, ParserRefErrorThirdSentinel]
+
+type ParseFromTableRef<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
+		? Tok extends TokenKey<"(">
+			? ParseParenDerivedSelect<R1, Db, Scope, Params>
+			: Tok extends TokenIdent<infer A extends string>
+				? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
+				: [R1, SqlParserError<"Expected table name or `(` in FROM">, ParserRefErrorThirdSentinel]
+		: never
+
+type ParseFromJoinScope<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	ParseFromTableRef<Tokens, Db, Scope, Params> extends [infer R0 extends TokensList, infer Mid, infer Third]
 		? Mid extends SqlParserError<string>
 			? Third extends ParserRefErrorThirdSentinel
 				? [R0, Mid, ParserRefErrorThirdSentinel]
@@ -237,7 +384,7 @@ type ParseFromJoinScope<Tokens extends TokensList, Db extends JsqlDatabaseShape,
 				? [JoinScopeOnly<Third>] extends [never]
 					? never
 					: JoinScopeOnly<Third> extends ScopeMap
-						? ParseJoinChain<R0, Db, JoinScopeOnly<Third>>
+						? ParseJoinChain<R0, Db, JoinScopeOnly<Third>, Params>
 						: never
 				: never
 		: never
@@ -282,6 +429,7 @@ type ParseAliasAfterTable<
 		| TokenKey<"left">
 		| TokenKey<"join">
 		| TokenKey<"where">
+		| TokenKey<")">
 		| TokenKey<";">
 		| TokenEot
 		? [
@@ -342,36 +490,61 @@ type ParseAliasAfterTable<
 					: [Ra, SqlParserError<"Expected alias or join clause after table">, ParserRefErrorThirdSentinel]
 				: never
 
-type ParseJoinChain<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinChain<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
 	PeekToken<Tokens> extends TokenKey<"inner">
-		? ParseJoinAfterOptionalInner<SkipToken<Tokens>, Db, Scope>
+		? ParseJoinAfterOptionalInner<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"left">
-			? ParseJoinAfterLeft<SkipToken<Tokens>, Db, Scope>
+			? ParseJoinAfterLeft<SkipToken<Tokens>, Db, Scope, Params>
 			: PeekToken<Tokens> extends TokenKey<"join">
-				? ParseJoinAfterJoinKw<Tokens, Db, Scope>
+				? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
 				: [Tokens, null, Scope]
 
-type ParseJoinAfterOptionalInner<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinAfterOptionalInner<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? ParseJoinAfterJoinKw<Tokens, Db, Scope>
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
 		: [Tokens, SqlParserError<"Expected JOIN after INNER">, ParserRefErrorThirdSentinel]
 
-type ParseJoinAfterLeft<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinAfterLeft<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
 	PeekToken<Tokens> extends TokenKey<"outer">
-		? ParseJoinAfterOptionalOuter<SkipToken<Tokens>, Db, Scope>
+		? ParseJoinAfterOptionalOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
-			? ParseJoinAfterJoinKw<Tokens, Db, Scope>
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
 			: [Tokens, SqlParserError<"Expected OUTER or JOIN after LEFT">, ParserRefErrorThirdSentinel]
 
-type ParseJoinAfterOptionalOuter<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinAfterOptionalOuter<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? ParseJoinAfterJoinKw<Tokens, Db, Scope>
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
 		: [Tokens, SqlParserError<"Expected JOIN after LEFT OUTER">, ParserRefErrorThirdSentinel]
 
-type ParseJoinAfterJoinKw<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinAfterJoinKw<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? SkipToken<Tokens> extends infer AfterJ extends TokensList
-			? ParseFromTableRef<AfterJ, Db, Scope> extends [infer R0 extends TokensList, infer Mid, infer Third]
+			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [infer R0 extends TokensList, infer Mid, infer Third]
 				? Mid extends SqlParserError<string>
 					? Third extends ParserRefErrorThirdSentinel
 						? [R0, Mid, ParserRefErrorThirdSentinel]
@@ -381,7 +554,7 @@ type ParseJoinAfterJoinKw<Tokens extends TokensList, Db extends JsqlDatabaseShap
 							? never
 							: JoinScopeOnly<Third> extends ScopeMap
 								? PeekToken<R0> extends TokenKeyOn
-									? ParseJoinOn<R0, Db, JoinScopeOnly<Third>>
+									? ParseJoinOn<R0, Db, JoinScopeOnly<Third>, Params>
 									: [R0, SqlParserError<"Expected ON after JOIN table">, ParserRefErrorThirdSentinel]
 								: [R0, SqlParserError<"Expected ON after JOIN table">, ParserRefErrorThirdSentinel]
 						: never
@@ -389,14 +562,19 @@ type ParseJoinAfterJoinKw<Tokens extends TokensList, Db extends JsqlDatabaseShap
 			: never
 		: [Tokens, SqlParserError<"Expected JOIN keyword">, ParserRefErrorThirdSentinel]
 
-type ParseJoinOn<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinOn<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokOn]
 		? TokOn extends TokenKeyOn
 			? ParseJoinEqPair<R1, Scope> extends [infer R2 extends TokensList, infer Tag]
 				? Tag extends SqlParserError<string>
 					? [R2, Tag, ParserRefErrorThirdSentinel]
 					: Tag extends true
-						? ParseJoinChain<R2, Db, Scope>
+						? ParseJoinChain<R2, Db, Scope, Params>
 						: never
 				: never
 			: [R1, SqlParserError<"Expected ON keyword">, ParserRefErrorThirdSentinel]
