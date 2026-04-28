@@ -88,13 +88,23 @@ type _threePart = Expect<TThreePartCol[2] extends { kind: "select"; columns: { i
 type TAsAlias = ParseSqlStatement<ParseSqlTokens<`select users.id as uid from users;`>, DbJoinDefaultAndExplicit>
 type _asAlias = Expect<TAsAlias[2] extends { kind: "select"; columns: { uid: string } } ? true : false>
 
-/** `:name` host parameters in the projection list (`TokenParam` from the lexer). */
-type TSelectParam = ParseSqlStatement<ParseSqlTokens<`select :limit, users.id from users;`>, DbJoinDefaultAndExplicit>
+type TScalarAdd = ParseSqlStatement<ParseSqlTokens<`select 1 + 1 as a from users;`>, DbJoinDefaultAndExplicit>
+type _scalarAdd = Expect<
+	TScalarAdd[2] extends { kind: "select"; columns: { a: number }; column_sql_types: { a: "number" } } ? true : false
+>
+
+/** `:name` in the projection list must appear in the statement `Params` map (default `{}` errors). */
+type SelectParamsLimit = { limit: { ts: number; sql: "integer" } }
+type TSelectParam = ParseSqlStatement<
+	ParseSqlTokens<`select :limit, users.id from users;`>,
+	DbJoinDefaultAndExplicit,
+	SelectParamsLimit
+>
 type _selectParam = Expect<
 	TSelectParam[2] extends {
 		kind: "select"
-		columns: { limit: unknown; id: string }
-		column_sql_types: { limit: "unknown"; id: "uuid" }
+		columns: { limit: number; id: string }
+		column_sql_types: { limit: "integer"; id: "uuid" }
 	}
 		? true
 		: false
@@ -102,13 +112,14 @@ type _selectParam = Expect<
 
 type TSelectParamAs = ParseSqlStatement<
 	ParseSqlTokens<`select :pagesize as page_size, users.name from users;`>,
-	DbJoinDefaultAndExplicit
+	DbJoinDefaultAndExplicit,
+	{ pagesize: { ts: number; sql: "integer" } }
 >
 type _selectParamAs = Expect<
 	TSelectParamAs[2] extends {
 		kind: "select"
-		columns: { page_size: unknown; name: string }
-		column_sql_types: { page_size: "unknown"; name: "text" }
+		columns: { page_size: number; name: string }
+		column_sql_types: { page_size: "integer"; name: "text" }
 	}
 		? true
 		: false

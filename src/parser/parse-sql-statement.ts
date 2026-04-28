@@ -15,12 +15,14 @@ import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop-table.ts"
 import type { ParseSelect } from "./parse-select.ts"
 import type { ParseSkipStatement } from "./skip-statement.ts"
+import type { ExpressionParamsShape } from "./parse-expression.ts"
 
 export type ApplyStatements<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Text extends string,
+	Params extends ExpressionParamsShape = {},
 > = Db extends JsqlDatabaseShape
-	? ApplyParsedStatements<ParseSqlTokens<Text>, Db> extends [
+	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
 		]
@@ -28,20 +30,28 @@ export type ApplyStatements<
 		: never
 	: Db
 
-export type ApplyParsedStatements<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+export type ApplyParsedStatements<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape = {},
+> =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db]
-		: ParseSqlStatement<Tokens, Db> extends [
+		: ParseSqlStatement<Tokens, Db, Params> extends [
 					infer Rest extends TokensList,
 					infer NewDB extends JsqlDatabaseShape,
 					infer Result,
 			  ]
 			? Result extends SqlParserError<string>
 				? [Rest, NewDB]
-				: ApplyParsedStatements<Rest, NewDB>
+				: ApplyParsedStatements<Rest, NewDB, Params>
 			: never
 
-export type ParseSqlStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+export type ParseSqlStatement<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape = {},
+> =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, null]
 		: PeekToken<Tokens> extends TokenKey<"create">
@@ -49,9 +59,9 @@ export type ParseSqlStatement<Tokens extends TokensList, Db extends JsqlDatabase
 			: PeekToken<Tokens> extends TokenKey<"drop">
 				? ParseDrop<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"delete">
-					? ParseDelete<SkipToken<Tokens>, Db>
+					? ParseDelete<SkipToken<Tokens>, Db, Params>
 					: PeekToken<Tokens> extends TokenKey<"select">
-						? ParseSelect<SkipToken<Tokens>, Db>
+						? ParseSelect<SkipToken<Tokens>, Db, Params>
 						: ParseSkipStatement<Tokens, Db>
 
 type ParseCreate<Tokens extends TokensList, Db extends JsqlDatabaseShape> =

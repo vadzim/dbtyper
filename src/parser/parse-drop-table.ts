@@ -28,8 +28,15 @@ type HasConcreteSet<Sets extends object, Tab extends string> = string extends ke
 		? true
 		: false
 
-type SetEntry<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"], Tab extends string> =
-	Sch extends keyof Db["schemas"] ? (Tab extends keyof Db["schemas"][Sch]["sets"] ? Db["schemas"][Sch]["sets"][Tab] : never) : never
+type SetEntry<
+	Db extends JsqlDatabaseShape,
+	Sch extends keyof Db["schemas"],
+	Tab extends string,
+> = Sch extends keyof Db["schemas"]
+	? Tab extends keyof Db["schemas"][Sch]["sets"]
+		? Db["schemas"][Sch]["sets"][Tab]
+		: never
+	: never
 
 /** `DROP TABLE` may only remove a relation whose `kind` is `"table"`. */
 type IsDroppableTableEntry<E> = E extends JsqlTableShape ? (E["kind"] extends "table" ? true : false) : false

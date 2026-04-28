@@ -20,32 +20,32 @@ type DbUsers = {
 }
 
 /** Tokens after `delete` (i.e. start with `from`). */
-type T1 = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 1;`>, DbUsers>
+type T1 = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u';`>, DbUsers>
 type _t1null = Expect<Matches<T1[2], null>>
 
-type T2 = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 1;`>, DbUsers>
+type T2 = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u';`>, DbUsers>
 type _t2null = Expect<Matches<T2[2], null>>
 
-type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where public.users.id = 1;`>, DbUsers>
+type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where public.users.id = 'u';`>, DbUsers>
 type _t3null = Expect<Matches<T3[2], null>>
 
-type TBad = ParseSqlStatement<ParseSqlTokens<`delete from users where users.nope = 1;`>, DbUsers>
+type TBad = ParseSqlStatement<ParseSqlTokens<`delete from users where users.nope = 'u';`>, DbUsers>
 type _tBad = Expect<TBad[2] extends SqlParserError<string> ? true : false>
 
-type TBadUnq = ParseSqlStatement<ParseSqlTokens<`delete from users where ghost = 1;`>, DbUsers>
+type TBadUnq = ParseSqlStatement<ParseSqlTokens<`delete from users where ghost = 'u';`>, DbUsers>
 type _tBadUnq = Expect<TBadUnq[2] extends SqlParserError<string> ? true : false>
 
-type TNoFrom = ParseSqlStatement<ParseSqlTokens<`delete users where id = 1;`>, DbUsers>
+type TNoFrom = ParseSqlStatement<ParseSqlTokens<`delete users where id = 'u';`>, DbUsers>
 type _tNoFrom = Expect<TNoFrom[2] extends SqlParserError<string> ? true : false>
 
 /** End-of-input without `;` is accepted (same as `TokenEot` terminator elsewhere). */
-type TNoSemi = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 1`>, DbUsers>
+type TNoSemi = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u'`>, DbUsers>
 type _tNoSemi = Expect<Matches<TNoSemi[2], null>>
 
-type TUnknownTable = ParseSqlStatement<ParseSqlTokens<`delete from ghosts where id = 1;`>, DbUsers>
+type TUnknownTable = ParseSqlStatement<ParseSqlTokens<`delete from ghosts where id = 'u';`>, DbUsers>
 type _tUnknownTable = Expect<TUnknownTable[2] extends SqlParserError<string> ? true : false>
 
-type TAnd = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 1 and users.name = 'a';`>, DbUsers>
+type TAnd = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u' and users.name = 'a';`>, DbUsers>
 type _tAnd = Expect<Matches<TAnd[2], null>>
 
 type TIsNull = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name is null;`>, DbUsers>
