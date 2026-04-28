@@ -1,25 +1,19 @@
 # TODO
 
-## Ideas / next features
+## Static SQL typing (next)
 
-nvidia/nemotron-3-super-120b-a12b:free
+1. **Typed `IN (...)` lists** — Validate each list element against the left-hand expression type; today the parenthesized region is skipped and the result is treated as boolean only.
 
-- use that expression parser
-  -- where clause should check the correctness of returned type of expression
-  -- select should use that info to return types of columns
+2. **`CAST(... AS ...)` and Postgres `::`** — So expressions and projections match real migration/app SQL and you can define narrowing/widening rules.
 
-1. support `ALTER TABLE`
-    - Add `ADD/DROP CONSTRAINT`, `SET/DROP NOT NULL`, and FK/UNIQUE edits.
-    - Effort: Medium–High, Impact: High.
+3. **`INSERT` / `UPDATE` (later `UPSERT`)** — Add statement routing in `ParseSqlStatement`; check row/column shapes against the catalog (required columns, nullability, visible FK targets).
 
-2. Add `DEFAULT`, `CHECK`, and generated column support
-    - Track these schema facts for stronger typing/validation.
-    - Effort: Medium–High, Impact: High.
+implement insert/update queries, we already have typed where. those quries should check types of what is inserted. support of parameters.
 
-3. Make unique keys / primary keys first-class metadata
-    - Expose PK/unique facts directly to enable better helper types and guarantees.
-    - Effort: Medium, Impact: Medium–High.
+4. **`ALTER TABLE`** — Type-level schema patches (add/drop column, types, nullability, constraints). Early on, treating `DEFAULT` and similar as no-op at the type level is fine.
 
-4. Clean up public API/docs + performance guardrails
-    - Reduce drift; protect type-level perf budget.
-    - Effort: Low, Impact: Medium.
+5. **Richer predicates and expressions** — e.g. `BETWEEN`, `LIKE` / `ILIKE`, `CASE`, and typed known builtins; reduce reliance on `identifier(`…`)` as “balanced skip only” where you want real static checks.
+
+6. **`SELECT ... WHERE`** — Align filter typing with the same boolean expression core and `ScopeMap` as `DELETE` (if anything is still missing vs `WHERE` on delete).
+
+7. **Subqueries, CTEs, `CREATE VIEW`** — High type cost; a plausible sequence is scalar subqueries → `FROM` subselect → `WITH` → view row types.

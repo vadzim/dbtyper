@@ -282,12 +282,12 @@ type ColumnsFromStack<S extends readonly ColumnTriple[]> = S extends readonly []
 							>
 					: { cols: {}; sqls: {} }
 
-type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
+export type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
 		? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W]>
 		: [Tokens, Acc]
 
-type TypeWordsToString<A extends readonly string[]> = A extends readonly [
+export type TypeWordsToString<A extends readonly string[]> = A extends readonly [
 	infer H extends string,
 	...infer T extends readonly string[],
 ]
@@ -296,7 +296,7 @@ type TypeWordsToString<A extends readonly string[]> = A extends readonly [
 		: `${H} ${TypeWordsToString<T>}`
 	: ""
 
-type SqlJoinedToTs<Joined extends string> =
+export type SqlJoinedToTs<Joined extends string> =
 	Lowercase<Joined> extends infer K extends string
 		? K extends keyof SqlScalarTypeMap
 			? SqlScalarTypeMap[K]

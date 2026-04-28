@@ -2,6 +2,12 @@ In this project we use typescript 7.0 preview.
 
 This project is a typescript types which parses sql strings and returns prope types.
 
+## Goal
+
+The goal is **not** to implement a database with row values or query results living in the type system.
+
+The goal is **type-safe queries against a schema**: when you add or change a migration, any query that no longer matches the catalog (wrong tables or columns, bad nullability, incompatible expressions, and similar) should become a **TypeScript type error**, so incompatibilities surface at compile time—not only when you run the app.
+
 You can build a schema from multiple `SqlCreateTable` types, then build a database from schemas:
 
 ```ts
@@ -45,8 +51,6 @@ Checks:
 Type-level utilities in this project are helpers and must never become the bottleneck.
 
 - Prefer the cheapest type-level operations that still give useful inference.
-- Keep `SqlCreateTable["source"]` as the original input literal by default.
-- Avoid expensive template-literal reconstruction or formatting work unless it is required.
 - Put heavy or diagnostic-only type features behind explicit opt-in helper types.
 
 ## Parser Rule

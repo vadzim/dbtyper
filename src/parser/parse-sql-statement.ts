@@ -8,6 +8,7 @@ import type {
 	SqlParserError,
 } from "../../core/sql-tokens.ts"
 import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
+import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseCreateSchema } from "./parse-create-schema.ts"
 import type { ParseCreateTable } from "./parse-create-table.ts"
 import type { ParseDelete } from "./parse-delete.ts"
@@ -54,15 +55,17 @@ export type ParseSqlStatement<
 > =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, null]
-		: PeekToken<Tokens> extends TokenKey<"create">
-			? ParseCreate<SkipToken<Tokens>, Db>
-			: PeekToken<Tokens> extends TokenKey<"drop">
-				? ParseDrop<SkipToken<Tokens>, Db>
-				: PeekToken<Tokens> extends TokenKey<"delete">
-					? ParseDelete<SkipToken<Tokens>, Db, Params>
-					: PeekToken<Tokens> extends TokenKey<"select">
-						? ParseSelect<SkipToken<Tokens>, Db, Params>
-						: ParseSkipStatement<Tokens, Db>
+		: PeekToken<Tokens> extends TokenKey<"alter">
+			? ParseAlterTable<SkipToken<Tokens>, Db>
+			: PeekToken<Tokens> extends TokenKey<"create">
+				? ParseCreate<SkipToken<Tokens>, Db>
+				: PeekToken<Tokens> extends TokenKey<"drop">
+					? ParseDrop<SkipToken<Tokens>, Db>
+						: PeekToken<Tokens> extends TokenKey<"delete">
+							? ParseDelete<SkipToken<Tokens>, Db, Params>
+							: PeekToken<Tokens> extends TokenKey<"select">
+								? ParseSelect<SkipToken<Tokens>, Db, Params>
+								: ParseSkipStatement<Tokens, Db>
 
 type ParseCreate<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">

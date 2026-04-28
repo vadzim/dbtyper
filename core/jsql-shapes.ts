@@ -35,6 +35,10 @@ export type JsqlColumnFactsEntry = {
 	default?: true
 	check?: true
 	generated?: true | { mode: "stored" | "virtual" }
+	/** Set by `ALTER COLUMN … SET NOT NULL` (type-level migration tracking). */
+	not_null?: true
+	/** Set by `ALTER COLUMN … DROP NOT NULL`. */
+	nullable?: true
 }
 
 export type JsqlColumnFactsMap = { [K: string]: JsqlColumnFactsEntry }
