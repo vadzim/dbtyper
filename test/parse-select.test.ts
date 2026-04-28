@@ -110,6 +110,90 @@ type TDerivedNoAlias = ParseSqlStatement<
 >
 type _derivedNoAlias = Expect<Extends<Tuple3At2<TDerivedNoAlias>, SqlParserError<string>>>
 
+/** Inner `WHERE` uses only inner `FROM` scope. */
+type TDerivedInnerWhere = ParseSqlStatement<
+	ParseSqlTokens<`select s.id from (select users.id from users where users.name = 'a') as s;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedInnerWhere = Expect<
+	Extends<Tuple3At2<TDerivedInnerWhere>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+type TDerivedInnerDistinct = ParseSqlStatement<
+	ParseSqlTokens<`select s.id from (select distinct users.id from users) as s;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedInnerDistinct = Expect<
+	Extends<Tuple3At2<TDerivedInnerDistinct>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+/** Inner `JOIN` uses empty outer scope; only inner aliases/tables exist. */
+type TDerivedInnerJoin = ParseSqlStatement<
+	ParseSqlTokens<`select s.id from (select users.id from users join billing.subs as bs on users.id = bs.user_id) as s;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedInnerJoin = Expect<
+	Extends<Tuple3At2<TDerivedInnerJoin>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+/** Sole derived `FROM` item with bare table alias (no `AS`). */
+type TDerivedBareAs = ParseSqlStatement<
+	ParseSqlTokens<`select u.id from (select users.id from users) u;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedBareAs = Expect<Extends<Tuple3At2<TDerivedBareAs>, JsqlSelectStatementResult>>
+
+type TDerivedLeftOuterJoinRhs = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users left outer join (select users.id as uid from users) q on users.id = q.uid;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedLeftOuterJoinRhs = Expect<
+	Extends<Tuple3At2<TDerivedLeftOuterJoinRhs>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+type TDerivedBadOpen = ParseSqlStatement<
+	ParseSqlTokens<`select 1 from ( from users ) as x;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedBadOpen = Expect<Extends<Tuple3At2<TDerivedBadOpen>, SqlParserError<"Expected SELECT in derived table">>>
+
+/** Inner closes with `;` before `)` → `ReadClosingParenAndAliasDerived` sees `;`. */
+type TDerivedUnclosedParen = ParseSqlStatement<
+	ParseSqlTokens<`select 1 from (select users.id from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedUnclosedParen = Expect<Extends<Tuple3At2<TDerivedUnclosedParen>, SqlParserError<"Expected `)` after derived table">>>
+
+type TDerivedNoInnerFrom = ParseSqlStatement<
+	ParseSqlTokens<`select 1 from (select users.id) as x;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedNoInnerFrom = Expect<Extends<Tuple3At2<TDerivedNoInnerFrom>, SqlParserError<"Expected FROM in derived table">>>
+
+type DerivedParamsRid = { rid: { ts: string; sql: "uuid" } }
+type TDerivedInnerParam = ParseSqlStatement<
+	ParseSqlTokens<`select s.id from (select :rid as id from users) as s;`>,
+	DbJoinDefaultAndExplicit,
+	DerivedParamsRid
+>
+type _derivedInnerParam = Expect<
+	Extends<Tuple3At2<TDerivedInnerParam>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+>
+
+/** Outer `FROM` alias must not leak into inner `SELECT` list scope. */
+type TDerivedCorrInnerList = ParseSqlStatement<
+	ParseSqlTokens<`select u.id from users as u join (select u.id from users) t on u.id = t.id;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedCorrInnerList = Expect<Extends<Tuple3At2<TDerivedCorrInnerList>, SqlParserError<"Unknown qualified column">>>
+
+/** Outer `FROM` alias must not appear in inner `WHERE` scope. */
+type TDerivedCorrInnerWhere = ParseSqlStatement<
+	ParseSqlTokens<`select u.id from users as u join (select users.id from users where users.id = u.id) t on u.id = t.id;`>,
+	DbJoinDefaultAndExplicit
+>
+type _derivedCorrInnerWhere = Expect<Extends<Tuple3At2<TDerivedCorrInnerWhere>, SqlParserError<"Unknown qualified column">>>
+
 type TInnerJoin = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users inner join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
 	DbJoinDefaultAndExplicit

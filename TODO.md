@@ -55,16 +55,16 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 ## Tests — `SELECT` derived tables (edge cases)
 
-- [ ] **`test/parse-select.test.ts`**: inner derived **`WHERE`** filters inner columns only; assert success projection types.
-- [ ] Same file: inner **`SELECT DISTINCT`** + **`FROM`** + alias; assert **`column_sql_types`**.
-- [ ] Same file: inner **`FROM a JOIN b ON a.id = b.id`** inside parentheses; outer references only inner alias.
-- [ ] Same file: sole **`FROM`** item **`(select users.id from users) u`** without **`AS`** keyword; assert **`JsqlSelectStatementResult`**.
-- [ ] Same file: **`left outer join (select …) q on …`** (full **`OUTER`** keyword sequence).
-- [ ] Same file: **`( from users ) as x`** → **`SqlParserError`** message **`Expected SELECT in derived table`** (or actual message).
-- [ ] Same file: **`(select users.id from users`** without closing **`)`** → expect parser error on **`)`**.
-- [ ] Same file: **`(select users.id) as x`** (no inner **`FROM`**) → **`Expected FROM in derived table`** (or actual).
-- [ ] Same file: inner list uses **`:rid`** with **`Params`** **`{ rid: { ts: string; sql: "uuid" } }`**; outer list trivial; assert success.
-- [ ] Same file: **`(select users.id from users) s`** where inner tries **`select outer_alias.id from users`** or **`select users.id from users where users.id = outer_alias.id`** — assert **`SqlParserError`** (**unknown** / **invalid** qualified column) proving **no outer correlation**.
+- [x] **`test/parse-select.test.ts`**: inner derived **`WHERE`** filters inner columns only; assert success projection types.
+- [x] Same file: inner **`SELECT DISTINCT`** + **`FROM`** + alias; assert **`column_sql_types`**.
+- [x] Same file: inner **`FROM a JOIN b ON a.id = b.id`** inside parentheses; outer references only inner alias.
+- [x] Same file: sole **`FROM`** item **`(select users.id from users) u`** without **`AS`** keyword; assert **`JsqlSelectStatementResult`**.
+- [x] Same file: **`left outer join (select …) q on …`** (full **`OUTER`** keyword sequence).
+- [x] Same file: **`( from users ) as x`** → **`SqlParserError`** message **`Expected SELECT in derived table`** (or actual message).
+- [x] Same file: **`(select users.id from users`** without closing **`)`** → expect parser error on **`)`**.
+- [x] Same file: **`(select users.id) as x`** (no inner **`FROM`**) → **`Expected FROM in derived table`** (or actual).
+- [x] Same file: inner list uses **`:rid`** with **`Params`** **`{ rid: { ts: string; sql: "uuid" } }`**; outer list trivial; assert success.
+- [x] Same file: **`(select users.id from users) s`** where inner tries **`select outer_alias.id from users`** or **`select users.id from users where users.id = outer_alias.id`** — assert **`SqlParserError`** (**unknown** / **invalid** qualified column) proving **no outer correlation**.
 
 ## Tests — `INSERT` / `UPDATE` / `DELETE` wiring
 
