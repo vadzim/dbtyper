@@ -29,13 +29,6 @@ export type ExpressionParseContext<
 	params: Params
 }
 
-type SqlUnbalancedParens = SqlParserError<"Unbalanced parentheses">
-
-type SqlUnsupportedParenExpr = SqlParserError<"Unsupported parenthesized expression">
-
-/** Operand parsed to a value that is not a boolean (e.g. bare column, numeric comparison used as AND input). */
-type SqlExprMustBeBoolean = SqlParserError<"Expression must be boolean">
-
 /** True when `T` is `unknown` or `any` (not other types). */
 export type IsUnknownOrAny<T> = 0 extends 1 & T ? true : unknown extends T ? (T extends unknown ? true : false) : false
 
@@ -64,7 +57,7 @@ export type ScalarExprAst =
 	| { kind: "mul"; left: ScalarExprAst; right: ScalarExprAst }
 
 /** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path). */
-export type MaximalIdentChain<Tokens extends TokensList> =
+type MaximalIdentChain<Tokens extends TokensList> =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenIdent<infer A extends string>]
 		? PeekToken<R1> extends TokenKey<".">
 			? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
@@ -143,8 +136,8 @@ type TryOperandIdentOrCall<
 		? PeekToken<Rm> extends TokenKey<"(">
 			? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends TokensList, infer Rs]
 				? Rs extends SqlParserError<string>
-					? [After, SqlUnbalancedParens]
-					: [After, SqlUnsupportedParenExpr]
+					? [After, SqlParserError<"Unbalanced parentheses">]
+					: [After, SqlParserError<"Unsupported parenthesized expression">]
 				: never
 			: TryOperandIdentColumnRefBody<Rm, Parts, Db, Scope, Ctx>
 		: never
@@ -188,8 +181,8 @@ type TryOperandTyped<
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipBracketedUntil<SkipToken<Tokens>, TokenKey<")">> extends [infer AfterSp extends TokensList, infer Rs]
 			? Rs extends SqlParserError<string>
-				? [AfterSp, SqlUnbalancedParens]
-				: [AfterSp, SqlUnsupportedParenExpr]
+				? [AfterSp, SqlParserError<"Unbalanced parentheses">]
+				: [AfterSp, SqlParserError<"Unsupported parenthesized expression">]
 			: never
 		: PeekToken<Tokens> extends TokenKey<"true">
 			? ReadToken<Tokens> extends [infer R extends TokensList, TokenKey<"true">]
@@ -347,7 +340,7 @@ type ParseUnaryTyped<
 					: U extends ExprOk<infer Tu, infer Su>
 						? Tu extends boolean
 							? [Ru, ExprOk<boolean, "boolean">]
-							: [Ru, SqlExprMustBeBoolean]
+							: [Ru, SqlParserError<"Expression must be boolean">]
 						: never
 				: never
 			: never
@@ -367,7 +360,7 @@ type ParseAndLoopAfterFirst<
 					: E1 extends ExprOk<infer T1, infer _S1>
 						? T1 extends boolean
 							? ParseAndLoopAfterFirst<R2, Db, Scope, Ctx>
-							: [R2, SqlExprMustBeBoolean]
+							: [R2, SqlParserError<"Expression must be boolean">]
 						: never
 				: never
 			: never
@@ -385,7 +378,7 @@ type ParseAndTyped<
 			: E0 extends ExprOk<infer T0, infer _S0>
 				? T0 extends boolean
 					? ParseAndLoopAfterFirst<R0, Db, Scope, Ctx>
-					: [R0, SqlExprMustBeBoolean]
+					: [R0, SqlParserError<"Expression must be boolean">]
 				: never
 		: never
 
@@ -403,29 +396,23 @@ type ParseOrLoopAfterFirst<
 					: E1 extends ExprOk<infer T1, infer _S1>
 						? T1 extends boolean
 							? ParseOrLoopAfterFirst<R2, Db, Scope, Ctx>
-							: [R2, SqlExprMustBeBoolean]
+							: [R2, SqlParserError<"Expression must be boolean">]
 						: never
 				: never
 			: never
 		: [Tokens, ExprOk<boolean, "boolean">]
 
-type SqlIncompatibleArithmetic = SqlParserError<"Incompatible types in arithmetic">
-
-type SqlNullInArithmetic = SqlParserError<"NULL not allowed in arithmetic">
-
-type SqlUnaryMinusNonNumber = SqlParserError<"Unary minus requires a number">
-
 type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
-	? SqlNullInArithmetic
+	? SqlParserError<"NULL not allowed in arithmetic">
 	: R extends ExprSqlNull
-		? SqlNullInArithmetic
+		? SqlParserError<"NULL not allowed in arithmetic">
 		: L extends ExprOk<infer TsL, infer _Sl>
 			? R extends ExprOk<infer TsR, infer _Sr>
 				? TsL extends number
 					? TsR extends number
 						? ExprOk<number, "number">
-						: SqlIncompatibleArithmetic
-					: SqlIncompatibleArithmetic
+						: SqlParserError<"Incompatible types in arithmetic">
+					: SqlParserError<"Incompatible types in arithmetic">
 				: never
 			: never
 
@@ -516,7 +503,7 @@ type ParseMulScalarUntypedEntry<Tokens extends TokensList> =
 				? ScalarAstNonNumericForMulHead<E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-							? [R0, SqlIncompatibleArithmetic]
+							? [R0, SqlParserError<"Incompatible types in arithmetic">]
 							: [R0, E0]
 						: never
 					: ParseMulLoopAfterFirstScalarUntyped<R0, E0>
@@ -561,8 +548,8 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList> =
 		? PeekToken<Rm> extends TokenKey<"(">
 			? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends TokensList, infer Rs]
 				? Rs extends SqlParserError<string>
-					? [After, SqlUnbalancedParens]
-					: [After, SqlUnsupportedParenExpr]
+					? [After, SqlParserError<"Unbalanced parentheses">]
+					: [After, SqlParserError<"Unsupported parenthesized expression">]
 				: never
 			: Parts extends ScalarIdentParts
 				? PeekToken<Rm> extends infer Pa
@@ -581,7 +568,7 @@ type ParseScalarExprUntypedNonIdent<Tokens extends TokensList> =
 				? ScalarAstNonNumericForMulHead<E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-							? [R0, SqlIncompatibleArithmetic]
+							? [R0, SqlParserError<"Incompatible types in arithmetic">]
 							: [R0, E0]
 						: never
 					: ParseAddLoopAfterFirstScalarUntyped<R0, E0>
@@ -626,7 +613,7 @@ type ResolveScalarExprAstNeg<
 			? U
 			: U extends ExprOk<number, infer _Sn>
 				? ExprOk<number, "number">
-				: SqlUnaryMinusNonNumber
+				: SqlParserError<"Unary minus requires a number">
 		: never
 
 /** Resolve {@link ScalarExprAst} after `FROM` scope is known; same rules as {@link ParseAddValue}. */
@@ -749,7 +736,7 @@ type ParseUnaryValue<
 					: U extends ExprOk<infer Tu, infer Su>
 						? Tu extends number
 							? [Ru, ExprOk<number, "number">]
-							: [Ru, SqlUnaryMinusNonNumber]
+							: [Ru, SqlParserError<"Unary minus requires a number">]
 						: never
 				: never
 			: never
@@ -796,7 +783,7 @@ type ParseMulValue<
 						: never
 					: PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-							? [R0, SqlIncompatibleArithmetic]
+							? [R0, SqlParserError<"Incompatible types in arithmetic">]
 							: [R0, E0]
 						: never
 				: never
@@ -859,7 +846,7 @@ export type ParseAddValue<
 						: never
 					: PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-							? [R0, SqlIncompatibleArithmetic]
+							? [R0, SqlParserError<"Incompatible types in arithmetic">]
 							: [R0, E0]
 						: never
 				: never
@@ -885,7 +872,7 @@ export type ParseOrEntry<
 			: E0 extends ExprOk<infer T0, infer _S0>
 				? T0 extends boolean
 					? ParseOrLoopAfterFirst<R0, Db, Scope, Ctx>
-					: [R0, SqlExprMustBeBoolean]
+					: [R0, SqlParserError<"Expression must be boolean">]
 				: never
 		: never
 
