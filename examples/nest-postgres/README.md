@@ -3,8 +3,8 @@
 Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: **`TypesqlModule`** wires `compileExampleDb().connect(postgresSqlDriver(sql))`, and **`UsersService`** injects the typed `ConnectedDataBase` via **`@Inject(TYPESQL_CONNECTED)`**.
 
 - **Port `54334`** and DB **`typesql_nest_example`** (so it can run beside the plain example on `54333`).
-- **`GET /users`** returns JSON rows from `select email, display_name from auth.users order by email`.
-- **`npm run app:cli`** runs **`src/app-cli.ts`**, the same style of typed CLI print as plain **`npm run app`** (shared **`sample-app`** wiring); integration tests mirror [typed-postgres](../typed-postgres/README.md) (CLI stdout → `createExampleApp` query → Nest HTTP).
+- **`GET /users`** returns JSON rows from **`UsersService.listUsers()`**, which uses typed SQL including **`public.agenda.*`** (qualified table star) on a **`LEFT JOIN`** with **`auth.users`**.
+- **`npm run app:cli`** runs **`src/app-cli.ts`**: same **`sample-app`** wiring as plain **`npm run app`**, with a **`JOIN`** query that selects **`public.agenda.*`**, **`email`**, **`display_name`**, a PostgreSQL regex **`WHERE email ~ …`**, and **`ORDER BY`**. Integration tests mirror [typed-postgres](../typed-postgres/README.md) (CLI stdout → `createExampleApp` query → Nest HTTP).
 
 ## Prerequisites
 

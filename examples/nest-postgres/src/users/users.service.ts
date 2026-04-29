@@ -14,7 +14,7 @@ export class UsersService {
 				email,
 				display_name,
 				auth.users.created_at,
-				public.agenda.id as agenda_id
+				public.agenda.*
 			from auth.users
 			left join public.agenda
 			on auth.users.id = public.agenda.user_id
