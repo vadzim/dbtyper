@@ -55,11 +55,13 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape | SqlParserError<str
 
 export function sqlMigrations<const DS extends string | undefined, D extends SqlDriver<Record<string, unknown>>>(
 	config: SqlDatabaseConfig<D>,
-): SqlMigrations<SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>> {
+) {
 	const defaultSchema = config.defaultSchema ?? "public"
-	return new DBMigrations(defaultSchema, null, config.driver) as unknown as SqlMigrations<
+	const migrations = new DBMigrations(defaultSchema, null, config.driver)
+	const result = migrations as unknown as SqlMigrations<
 		SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>
 	>
+	return result
 }
 
 export type MigrationExport = {
@@ -146,7 +148,7 @@ type Migrations = {
 	prev: Migrations | null
 }
 
-export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> implements SqlMigrations<Db> {
+export class DBMigrations {
 	constructor(
 		defaultSchema: string,
 		migrations: Migrations | null = null,
@@ -161,15 +163,12 @@ export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>>
 	#defaultSchema: string
 	#driver: SqlDriver<Record<string, unknown>>
 
-	apply<Source extends string>(statement: Source, name: string = ""): SqlMigrations<ApplyStatements<Db, Source>[0]> {
-		return new DBMigrations<Db>(
+	apply(statement: string, name: string = ""): DBMigrations {
+		return new DBMigrations(
 			this.#defaultSchema,
-			{
-				last: { source: statement, path: name },
-				prev: this.#migrations,
-			},
+			{ last: { source: statement, path: name }, prev: this.#migrations },
 			this.#driver,
-		) as unknown as SqlMigrations<ApplyStatements<Db, Source>[0]>
+		)
 	}
 
 	getDefaultSchema(): string {
@@ -187,9 +186,9 @@ export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>>
 		return result
 	}
 
-	database(): DataBase<FlattenedJsqlDatabase<Db>> {
+	database() {
 		const migrations = this.#getMigrations()
-		return new DataBaseImpl<FlattenedJsqlDatabase<Db>>(migrations, this.#defaultSchema, this.#driver)
+		return new DataBaseImpl(migrations, this.#defaultSchema, this.#driver)
 	}
 }
 
@@ -206,9 +205,7 @@ type SqlSelectRowObject<
 
 export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 	/**
-	 * All rows at once. `Stmt` must be a `SELECT` / `WITH … SELECT` that type-checks against
-	 * {@link Db}. With `:name` parameters, pass {@link ParamRuntimeValues} as the second
-	 * argument (drivers such as `postgresSqlDriver` bind them to PostgreSQL `$n` placeholders).
+	 * All rows at once.
 	 */
 	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
 	query<Stmt extends string, Params extends ExpressionParamsShape>(
@@ -217,8 +214,7 @@ export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
 
 	/**
-	 * Row-by-row iteration when the driver exposes {@link SqlDriver.stream}; otherwise buffers
-	 * {@link query} and yields each row.
+	 * Row-by-row iteration
 	 */
 	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
 	stream<Stmt extends string, Params extends ExpressionParamsShape>(
@@ -230,7 +226,7 @@ export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 	defaultSchema: string
 }
 
-export class DataBaseImpl<Db extends JsqlDatabaseShape | SqlParserError<string>> implements DataBase<Db> {
+export class DataBaseImpl {
 	constructor(
 		migrations: readonly MigrationExport[],
 		defaultSchema: string,
@@ -241,24 +237,14 @@ export class DataBaseImpl<Db extends JsqlDatabaseShape | SqlParserError<string>>
 		this.dbInterface = dbInterface
 	}
 
-	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
-	query<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt,
-		params: ParamRuntimeValues<Params>,
-	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
 	query(statement: string, params?: Record<string, unknown>): Promise<Array<unknown>> {
-		return this.dbInterface.query(statement, params) as Promise<Array<unknown>>
+		return this.dbInterface.query(statement, params)
 	}
 
-	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
-	stream<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt,
-		params: ParamRuntimeValues<Params>,
-	): AsyncIterable<SqlSelectRowObject<Db, Stmt, Params>>
 	stream(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
 		const streamFn = this.dbInterface.stream
 		if (streamFn !== undefined) {
-			return streamFn(statement, params) as AsyncIterable<unknown>
+			return streamFn(statement, params)
 		}
 		const db = this.dbInterface
 		return (async function* () {

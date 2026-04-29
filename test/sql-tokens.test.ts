@@ -1,10 +1,4 @@
-import type {
-	ParseSqlTokens,
-	PeekToken,
-	TokenKey,
-	TokenNumber,
-	TokenString,
-} from "../src/lexer/sql-tokens.ts"
+import type { ParseSqlTokens, PeekToken, TokenKey, TokenNumber, TokenString } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 

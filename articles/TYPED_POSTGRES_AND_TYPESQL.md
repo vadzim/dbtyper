@@ -1,108 +1,183 @@
-# Typed PostgreSQL queries with typesql (no ORM)
+# Typed PostgreSQL with typesql and postgres.js
 
-This article shows how to combine **typesql** (compile-time SQL checking against a schema type) with a small, modern PostgreSQL client—[**postgres**](https://github.com/porsager/postgres) (postgres.js)—so that **plain SQL** strings used at runtime still get **typed rows**: either `Promise<Row[]>` from `query`, or an **async iterator** of rows from `stream`.
+This post shows a small but practical pattern: use **postgres.js** for runtime access, and use **typesql** to make plain SQL queries type-check against your schema at compile time.
 
-A runnable sketch lives under [`examples/typed-postgres/`](../examples/typed-postgres/).
+The goal is simple:
 
----
+- keep writing SQL
+- keep using a real PostgreSQL client
+- get typed rows back from `query()` and `stream()`
+- avoid adding an ORM layer between your code and the database
 
-## What typesql is solving here
+A runnable version of the setup lives in the `examples/typed-postgres` directory in this repository.
 
-1. **Plain SQL, checked at compile time**  
-   You write normal `SELECT` / `WITH … SELECT` text. typesql parses it **in the type system** against your **logical database shape** (usually built from the same migration SQL you already maintain). Wrong tables, columns, joins, or many expression mistakes become **TypeScript errors**, not only runtime failures.
+## The problem
 
-2. **No abstract ORM layer**  
-   Frameworks like TypeORM add another language on top of SQL, lag behind PostgreSQL features, and rarely model the full surface you need. **LLMs and humans already know SQL well.** typesql stays close to the SQL you actually run.
+SQL is expressive, fast, and usually the best language for data access. The problem is not SQL itself. The problem is the gap between:
 
-3. **Faster feedback for agents (and people)**  
-   Just as TypeScript shortens the JavaScript feedback loop, **typesql shortens the SQL feedback loop**: invalid queries surface in the editor and in `tsc`, so **LLM-assisted edits** can be corrected immediately instead of after a round-trip to the database.
+- the schema you think you have
+- the schema that actually exists
+- the query string you typed three files away from both
 
-typesql does **not** execute SQL in types; it keeps a **type-level** model of the catalog and checks query text against it. You still use a normal driver against a real server.
+That gap is where runtime bugs hide:
 
----
+- wrong table names
+- stale column names
+- broken joins
+- parameter mistakes
+- queries that only fail after you deploy
 
-## Pieces
+The usual answer is an ORM. That can help in some systems, but it also adds another abstraction layer on top of the database. In practice, that layer often becomes an abstraction tax:
 
-| Piece                         | Role                                                                                                                                                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **typesql**                   | `sqlDatabase({ driver })` → `apply(migrationSql)` → `database()` gives a typed logical DB; `database()` exposes `query` / `stream` whose row types come from `SqlSelectRow<…>` (same `driver` as in `sqlDatabase`). |
-| **postgres** (npm `postgres`) | Modern client: primary API is the `sql` template tag; here we use `sql.unsafe(string)` only for strings **already** vetted by typesql at compile time (or fixed literals).                                          |
-| **Bridge**                    | `postgresSqlDriver` from **`typesql/postgres`** implements `SqlDriver` for [postgres](https://github.com/porsager/postgres) (`query` + `stream` via server-side cursor batches).                                    |
+- you stop seeing the SQL that actually runs
+- performance becomes harder to reason about
+- set-based operations get pulled into object-graph thinking
+- the classic N+1 problem comes back through relationship loading and per-row fetches
 
----
+That last point is the key one. TypeORM and similar ORMs do not invent N+1, but they make it easy to create. You ask for a graph of objects, and the framework may quietly turn that into many small queries. The code looks convenient while the database does more work than you expected.
 
-## Flow
+typesql takes a different path: keep SQL as SQL, and move the correctness check to compile time.
 
-1. **Build the logical schema and wire the driver** — open a **`postgres()`** client, pass **`postgresSqlDriver({ sql })`** as **`sqlDatabase({ driver })`**, then **`apply`** migration SQL and **`database()`** (see [`examples/typed-postgres/`](../examples/typed-postgres/)):
+## What typesql does
 
-    ```ts
-    import postgres from "postgres"
-    import { postgresSqlDriver } from "typesql/postgres"
-    import { sqlDatabase } from "typesql"
+typesql parses your SQL in the TypeScript type system and checks it against a logical database shape.
 
-    const sql = postgres(process.env.DATABASE_URL!)
-    const logicalDb = await sqlDatabase({ driver: postgresSqlDriver({ sql }) })
-    	.apply(/* migrations */)
-    	.database()
-    const app = logicalDb
-    ```
+That gives you:
 
-2. **Query with typed rows**:
+- typed query results
+- compile-time feedback for invalid SQL
+- no query builder syntax to learn
+- no ORM model layer to maintain
 
-    ```ts
-    const rows = await app.query("select id, name from users;")
-    // rows: Array<{ id: …; name: … }> — inferred from the logical schema + this SELECT
-    ```
+It does **not** execute SQL inside types. At runtime, you still use a normal PostgreSQL client.
 
-3. **Stream rows** (when `stream` is implemented on the driver, postgres.js uses a server-side cursor):
+The stack in this post is:
 
-    ```ts
-    for await (const row of app.stream("select id from users;")) {
-    	// row is the same object shape as one element of `query`
-    }
-    ```
+- `postgres` for the runtime client
+- `typesql/postgres` as the adapter
+- `typesql` for the compile-time database model and typed query surface
 
-If `SqlDriver.stream` is omitted, typesql’s `stream` falls back to `query` and yields each row—typed the same way, but without incremental I/O.
+## The core pattern
 
----
+The code below is the heart of the setup.
 
-## Keeping the database and types in sync
+First, define the logical database once from your migrations:
 
-The **logical** schema in TypeScript and the **physical** schema in PostgreSQL must match, or types will lie at runtime.
+```ts
+import { sqlMigrations } from "typesql"
+import type { PostgresDriver } from "typesql/postgres"
 
-- Apply the **same** migration SQL to the server (your existing migrator, `psql`, etc.), or
-- Generate migrations from the same source of truth you feed to `apply`.
-
-typesql checks **queries** against the type-level catalog; it does not replace migration tooling.
-
----
-
-## Safety note on `unsafe`
-
-The postgres.js `unsafe()` helper is intended for **trusted** dynamic SQL. Here, the “dynamic” string is often a **template literal type** you already proved against the schema via `query` / `stream`. Do not pipe arbitrary user input into `unsafe()` without a separate, runtime query plan.
-
----
-
-## Try the example
-
-From the repository root (with npm workspaces):
-
-```bash
-npm install
-npm run typecheck --workspace @typesql/example-postgres
+export async function exampleDb(driver: PostgresDriver) {
+	return sqlMigrations({ driver })
+		.apply((await import("../migrations/001.do.schemas.js")).generateSql())
+		.apply((await import("../migrations/002.do.users.js")).generateSql())
+		.apply((await import("../migrations/003.do.agenda.js")).generateSql())
+		.apply((await import("../migrations/004.do.seed_users.js")).generateSql())
+		.database()
+}
 ```
 
-Optional runtime demo (requires a real DB and matching `users` table, or adjust the SQL to match your DB):
+Then create the real client and wrap it with the adapter:
 
-```bash
-export DATABASE_URL='postgresql://…'
-npm run demo --workspace @typesql/example-postgres
+```ts
+import postgres from "postgres"
+import { postgresSqlDriver } from "typesql/postgres"
+import { exampleDb } from "./example-schema"
+
+const sql = postgres(process.env.DATABASE_URL!)
+const db = await exampleDb(postgresSqlDriver({ sql }))
 ```
 
----
+Now `db.query(...)` and `db.stream(...)` are typed against the logical schema.
+
+## Typed queries
+
+With the typed database in hand, queries stay plain SQL:
+
+```ts
+const rows = await db.query(`
+	select
+		u.id,
+		u.email,
+		a.display_name
+	from public.users u
+	join public.agenda a on a.user_id = u.id
+	order by u.id
+`)
+```
+
+The result type is inferred from the query and the schema. If you rename a column or break a join, TypeScript catches it before runtime.
+
+That matters most when a query gets copied between files, or when you are editing quickly and want the editor to tell you immediately that you drifted from the schema.
+
+## Streaming rows
+
+The same typed database also supports streaming:
+
+```ts
+for await (const row of db.stream("select id, email from public.users order by id")) {
+	console.log(row)
+}
+```
+
+If the driver implements `stream`, rows are fetched incrementally. If it does not, typesql falls back to `query()` and yields the rows one by one.
+
+## Why this is better than an ORM for this use case
+
+I am not saying ORMs are useless. They are fine when you want a high-level object model and the tradeoffs are acceptable.
+
+I am saying they are often the wrong tool for data-heavy PostgreSQL code.
+
+The main issue is the abstraction boundary. With an ORM, you often think in objects first and SQL second. That sounds friendly, but it comes with a cost:
+
+- the database shape becomes indirect
+- performance surprises move later in the feedback loop
+- N+1 is easier to introduce because the framework can fetch relations lazily or per entity
+- advanced SQL features tend to be awkward or under-modeled
+
+For application code that already knows the schema and wants to use PostgreSQL well, plain SQL plus compile-time checking is usually a cleaner fit.
+
+typesql keeps the database visible. That makes the query itself the unit of correctness, which is where it should be.
+
+## Keep schema and types in sync
+
+typesql checks queries against a logical schema. That schema must match the physical database.
+
+So you still need migrations.
+
+The right mental model is:
+
+- migrations own schema changes
+- typesql checks queries against the schema produced by those migrations
+- PostgreSQL remains the source of truth at runtime
+
+If the schema changes, update the migrations first and then let typesql tell you which queries need to move with it.
+
+## A note on `unsafe`
+
+`postgres.js` exposes `sql.unsafe(...)`. In this setup, that should be used only for trusted strings, or for strings that have already been validated by typesql.
+
+Do not treat `unsafe` as a shortcut for arbitrary user input.
+
+If a query is built from user input, it still needs normal runtime validation and parameterization discipline.
+
+## When this fits well
+
+This pattern works best when:
+
+- you already speak SQL comfortably
+- you want to keep using PostgreSQL features directly
+- you want typed results without introducing ORM behavior
+- you prefer compile-time feedback over runtime surprises
+
+It is especially useful in codebases where database access is a first-class part of the application and where query shape matters.
 
 ## Summary
 
-- **typesql** = compile-time SQL ↔ schema alignment for **plain SQL**.
-- **postgres** = small, capable runtime client with cursors for streaming.
-- Together they give **typed `Promise<rows>` and typed async iteration** without giving up full SQL or adding an ORM indirection layer.
+The combination is straightforward:
+
+- **postgres.js** runs the queries
+- **typesql** checks the SQL against the schema at compile time
+- your code keeps the benefits of raw SQL without giving up type safety
+
+If your current ORM feels like it is turning simple data access into a higher-level object problem, this is a smaller and more explicit alternative.

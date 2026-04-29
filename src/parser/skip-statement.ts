@@ -1,12 +1,4 @@
-import type {
-	PeekToken,
-	SkipToken,
-	TokensList,
-	TokenEot,
-	TokenKey,
-	TokenKind,
-	TokenType,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokensList, TokenEot, TokenKey, TokenKind, TokenType } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 
