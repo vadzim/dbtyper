@@ -1,12 +1,11 @@
 import { Injectable } from "@nestjs/common"
-import type { DataBase } from "typesql"
 import { InjectTypesql } from "@typesql/nest"
-
-import type { ExampleDbShape } from "../example-schema.ts"
+import type { ExampleDb } from "../example-schema.ts"
+import { TYPESQL_ID } from "../typesql-connection.ts"
 
 @Injectable()
 export class UsersService {
-	constructor(@InjectTypesql() readonly db: DataBase<ExampleDbShape>) {}
+	constructor(@InjectTypesql(TYPESQL_ID) readonly db: ExampleDb) {}
 
 	async listUsers() {
 		return this.db.query(`

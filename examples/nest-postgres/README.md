@@ -1,6 +1,6 @@
 # nest-postgres example
 
-Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: **`TypesqlModule`** wires `exampleDb(postgresSqlDriver({ sql }))` and **`UsersService`** injects the typed `DataBase` via **`@InjectTypesql()`**.
+Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: `PostgresModule` owns the `postgres` client, `TypesqlModule` binds `exampleDb(postgresSqlDriver({ sql }))` under `TYPESQL_ID`, and `UsersService` injects the typed `DataBase` via `@InjectTypesql(TYPESQL_ID)`.
 
 - **Port `54334`** and DB **`typesql_nest_example`** (so it can run beside the plain example on `54333`).
 - **`GET /users`** returns JSON rows from **`UsersService.listUsers()`**, which uses typed SQL including **`public.agenda.*`** (qualified table star) on a **`LEFT JOIN`** with **`auth.users`**.
@@ -45,11 +45,12 @@ npm run example:nest:docker:down
 ## Notes
 
 - **`UsersController`** uses `@Inject(UsersService)` so DI works under **`tsx`** (esbuild does not emit full `design:paramtypes` metadata for constructor injection by type alone).
-- **`TypesqlLifecycle`** in `@typesql/nest` resolves shutdown via **`ModuleRef`** for the same reason (see `packages/typesql-nest/DESIGN.md`).
+- `AppModule` owns the `postgres` client and closes it on module destroy.
 
 ## Layout
 
 - `src/sample-app.ts` / `src/app-cli.ts` — same typed CLI path as plain **`typed-postgres`** (`createExampleApp`, printed rows)
-- `src/app.module.ts` — `TypesqlModule.forRootAsync` + `ConfigModule`
-- `src/users/` — `UsersService` with **`@InjectTypesql()`**, **`UsersController`** with **`@Inject(UsersService)`**
+- `src/app.module.ts` — `ConfigModule`, `PostgresModule`, and `TypesqlModule.forRootAsync({ id: TYPESQL_ID })`
+- `src/postgres.module.ts` — owns the `postgres` client and closes it on module destroy
+- `src/users/` — `UsersService` with **`@InjectTypesql(TYPESQL_ID)`**, **`UsersController`** with **`@Inject(UsersService)`**
 - `migrations/*.js` — same shape as the plain Postgres example (`migration()` for exported migrations — see **[`docs/MIGRATIONS.md`](../../docs/MIGRATIONS.md)**)

@@ -1,6 +1,6 @@
 # @typesql/nest
 
-NestJS integration for [typesql](../../README.md): registers a compiled logical database, exposes a typed injection decorator, and tears down the DB client on application shutdown.
+NestJS integration for [typesql](../../README.md): registers a compiled logical database by id and exposes a matching injection decorator.
 
 See [DESIGN.md](./DESIGN.md) for boundaries and lifecycle.
 
@@ -16,32 +16,26 @@ npm install @typesql/nest @nestjs/common typesql postgres
 
 ```typescript
 import { Module } from "@nestjs/common"
-import { ConfigModule, ConfigService } from "@nestjs/config"
-import postgres from "postgres"
 
 import { TypesqlModule } from "@typesql/nest"
-import { exampleDb } from "./example-schema.js"
 import { postgresSqlDriver } from "typesql/postgres"
+import { exampleDb } from "./example-schema.js"
 
 @Module({
 	imports: [
-		ConfigModule.forRoot({ isGlobal: true }),
 		TypesqlModule.forRootAsync({
-			imports: [ConfigModule],
-			inject: [ConfigService],
-			useFactory: async (config: ConfigService) => {
-				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const database = await exampleDb(postgresSqlDriver({ sql }))
-				return {
-					database,
-					onShutdown: sql,
-				}
-			},
+			id: "EXAMPLE_DB_ID",
+			imports: [PostgresModule], // some module providing postgres client
+			inject: [POSTGRES], // some id with provided postgres client
+			useFactory: (sql: PostgresClient) => exampleDb(postgresSqlDriver({ sql })),
 		}),
 	],
 })
 export class AppModule {}
 ```
+
+Create and close the `postgres` client in your app module or a dedicated provider; `@typesql/nest` only consumes the connected instance to build the typed database.
+If you omit `id`, the module and decorator use the built-in default id internally.
 
 Inject the database:
 
@@ -51,7 +45,7 @@ import type { DataBase } from "typesql"
 
 @Injectable()
 export class UsersService {
-	constructor(@InjectTypesql() private readonly db: DataBase<MyDbShape>) {}
+	constructor(@InjectTypesql(TYPESQL_ID) private readonly db: DataBase<MyDbShape>) {}
 
 	async listEmails() {
 		return this.db.query("select email from auth.users;")

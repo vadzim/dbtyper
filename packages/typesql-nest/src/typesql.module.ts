@@ -1,56 +1,58 @@
 import type { DynamicModule, ModuleMetadata, Provider } from "@nestjs/common"
-import { Module } from "@nestjs/common"
-import type { JsqlDatabaseShape } from "typesql"
+import { Inject, Module } from "@nestjs/common"
 
-import { TYPESQL_DATABASE, TYPESQL_ROOT_OPTIONS } from "./typesql.constants.ts"
-import type { TypesqlRootConfig } from "./typesql-root.config.ts"
-import { TypesqlLifecycle } from "./typesql-lifecycle.service.ts"
+const DEFAULT_TYPESQL_ID = Symbol()
 
-type TypesqlModuleAsyncOptions<Db extends JsqlDatabaseShape = JsqlDatabaseShape> = {
+export function InjectTypesql(id: string | symbol = DEFAULT_TYPESQL_ID): ParameterDecorator {
+	return Inject(id)
+}
+
+type TypesqlDatabase = {
+	query: (...args: any[]) => Promise<Array<unknown>>
+	stream: (...args: any[]) => AsyncIterable<unknown>
+}
+
+type TypesqlModuleAsyncOptions = {
+	id?: string | symbol
 	imports?: ModuleMetadata["imports"]
 	inject?: any[]
-	useFactory: (...args: any[]) => TypesqlRootConfig<Db> | Promise<TypesqlRootConfig<Db>>
+	useFactory: (...args: any[]) => TypesqlDatabase | Promise<TypesqlDatabase>
 }
 
 @Module({})
 export class TypesqlModule {
-	static forRoot<Db extends JsqlDatabaseShape>(
-		config: TypesqlRootConfig<Db> | Promise<TypesqlRootConfig<Db>>,
+	static forRoot(
+		config: TypesqlDatabase | Promise<TypesqlDatabase>,
+		id: string | symbol = DEFAULT_TYPESQL_ID,
 	): DynamicModule {
-		const optionsProvider: Provider = {
-			provide: TYPESQL_ROOT_OPTIONS,
+		const databaseProvider: Provider = {
+			provide: id,
 			useFactory: async () => await Promise.resolve(config),
 		}
-		return TypesqlModule.withProviders(optionsProvider, undefined)
+		return TypesqlModule.withProviders(id, databaseProvider, undefined)
 	}
 
-	static forRootAsync<Db extends JsqlDatabaseShape>(options: TypesqlModuleAsyncOptions<Db>): DynamicModule {
-		const optionsProvider: Provider = {
-			provide: TYPESQL_ROOT_OPTIONS,
+	static forRootAsync(options: TypesqlModuleAsyncOptions): DynamicModule {
+		const id = options.id ?? DEFAULT_TYPESQL_ID
+		const databaseProvider: Provider = {
+			provide: id,
 			useFactory: options.useFactory,
 			inject: options.inject ?? [],
 		}
-		return TypesqlModule.withProviders(optionsProvider, options.imports)
+		return TypesqlModule.withProviders(id, databaseProvider, options.imports)
 	}
 
 	private static withProviders(
-		optionsProvider: Provider,
+		token: string | symbol,
+		databaseProvider: Provider,
 		imports: ModuleMetadata["imports"] | undefined,
 	): DynamicModule {
 		return {
 			module: TypesqlModule,
 			global: true,
 			imports: imports ?? [],
-			providers: [
-				optionsProvider,
-				{
-					provide: TYPESQL_DATABASE,
-					useFactory: (root: TypesqlRootConfig) => root.database,
-					inject: [TYPESQL_ROOT_OPTIONS],
-				},
-				TypesqlLifecycle,
-			],
-			exports: [TYPESQL_DATABASE],
+			providers: [databaseProvider],
+			exports: [token],
 		}
 	}
 }

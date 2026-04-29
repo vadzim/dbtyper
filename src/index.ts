@@ -1,11 +1,11 @@
 // typesql — package entry (published build). Internal modules import each other, not this file.
 
 export type { SqlDatabaseConfig } from "./engine/sql-database.ts"
-export type * from "../core/sql.ts"
+export type { SqlParserError } from "../core/sql-tokens.ts"
 export {
 	sqlMigrations,
 	migration,
-	DataBase,
+	type DataBase,
 	type MigrationExport,
 	type ParamRuntimeValues,
 	type SqlDatabase,

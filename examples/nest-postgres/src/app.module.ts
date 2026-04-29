@@ -1,29 +1,27 @@
 import "reflect-metadata"
 
 import { Module } from "@nestjs/common"
-import { ConfigModule, ConfigService } from "@nestjs/config"
+import { ConfigModule } from "@nestjs/config"
 import { TypesqlModule } from "@typesql/nest"
-import postgres from "postgres"
 import { postgresSqlDriver } from "typesql/postgres"
 
 import { exampleDb } from "./example-schema.ts"
+import { POSTGRES, PostgresModule, type PostgresClient } from "./postgres.module.ts"
 import { UsersModule } from "./users/users.module.ts"
+import { TYPESQL_ID } from "./typesql-connection.ts"
 
 @Module({
 	imports: [
 		ConfigModule.forRoot({ isGlobal: true }),
+		PostgresModule,
+
 		TypesqlModule.forRootAsync({
-			imports: [ConfigModule],
-			inject: [ConfigService],
-			useFactory: async (config: ConfigService) => {
-				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const database = await exampleDb(postgresSqlDriver({ sql }))
-				return {
-					database,
-					onShutdown: sql,
-				}
-			},
+			id: TYPESQL_ID,
+			imports: [PostgresModule],
+			inject: [POSTGRES],
+			useFactory: (sql: PostgresClient) => exampleDb(postgresSqlDriver({ sql })),
 		}),
+
 		UsersModule,
 	],
 })
