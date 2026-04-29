@@ -1,4 +1,4 @@
-import type { JsqlTableShape } from "../../core/jsql-shapes.ts"
+import type { JsqlTableShape } from "../core/jsql-shapes.ts"
 
 /** One FROM/JOIN alias bound to a concrete table shape (columns + SQL types). */
 export type ScopeEntry = {

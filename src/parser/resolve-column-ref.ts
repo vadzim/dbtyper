@@ -1,5 +1,5 @@
-import type { JsqlDatabaseShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
-import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap, ValidateCol } from "./parser-scope.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"

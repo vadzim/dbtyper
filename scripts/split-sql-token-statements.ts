@@ -4,7 +4,7 @@
  * `SkipMultiComment`) and the `;` / paren / bracket policy of `SkipStatement` in
  * `src/parser/skip-statement.ts` (end at `;` when the bracket stack is empty).
  */
-import { serviceWords, type TokenKind } from "../core/sql-tokens.ts"
+import { serviceWords, type TokenKind } from "../src/lexer/sql-tokens.ts"
 
 /** Lex, then group into an array of token-arrays, one per top-level `;` segment. */
 export function splitSqlsIntoTokens(source: string): SqlRuntimeToken[][] {

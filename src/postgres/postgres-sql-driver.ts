@@ -1,6 +1,6 @@
 import postgres from "postgres"
 
-import type { SqlDriver, SqlDriverParams } from "../engine/sql-database.ts"
+import type { SqlDriver, SqlDriverParams } from "../core/sql-database.ts"
 import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
 import type { PostgresTypeMap } from "./postgres-type-map.ts"
 

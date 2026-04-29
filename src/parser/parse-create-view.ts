@@ -1,15 +1,15 @@
-import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
+import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type {
 	PeekToken,
 	ReadToken,
 	SkipToken,
-	SqlParserError,
 	TokenEot,
 	TokenIdent,
 	TokenKey,
 	TokensList,
-} from "../../core/sql-tokens.ts"
+} from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelect } from "./parse-select.ts"
 

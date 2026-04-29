@@ -1,14 +1,14 @@
 import type {
 	PeekToken,
 	SkipToken,
-	SqlParserError,
 	TokensList,
 	TokenEot,
 	TokenKey,
 	TokenKind,
 	TokenType,
-} from "../../core/sql-tokens.ts"
-import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
+} from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
+import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 
 export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenType<TokenKind, string>> = {
 	kind: "skipped-statement"

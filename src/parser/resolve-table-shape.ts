@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
 
 export type ResolveTableShape<
 	Db extends JsqlDatabaseShape,

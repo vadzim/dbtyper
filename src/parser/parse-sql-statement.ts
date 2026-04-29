@@ -6,9 +6,9 @@ import type {
 	TokenIdent,
 	TokenKey,
 	ParseSqlTokens,
-	SqlParserError,
-} from "../../core/sql-tokens.ts"
-import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
+} from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
+import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseCreateSchema } from "./parse-create-schema.ts"
 import type { ParseCreateTable } from "./parse-create-table.ts"

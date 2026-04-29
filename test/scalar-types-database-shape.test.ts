@@ -1,7 +1,8 @@
 import { describe, it } from "node:test"
-import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
-import type { ParseSqlTokens } from "../core/sql-tokens.ts"
+import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
+import type { MergeDbPreserveScalars } from "../src/core/sql-scalar-types.ts"
+import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 

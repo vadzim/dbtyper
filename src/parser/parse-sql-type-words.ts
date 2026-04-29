@@ -1,4 +1,5 @@
-import type { PeekToken, SkipToken, TokenIdent, TokensList } from "../../core/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenIdent, TokensList } from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 
 export type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>

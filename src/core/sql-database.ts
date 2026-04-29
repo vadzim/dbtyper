@@ -1,6 +1,6 @@
-import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
-import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { MergeDbPreserveScalars } from "./sql-scalar-types.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "./jsql-shapes.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
@@ -47,12 +47,17 @@ export type SqlDatabase<
 	scalarTypes: ScalarTypes
 }
 
+export interface SqlMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
+	apply<Source extends string>(statement: Source, name?: string): SqlMigrations<ApplyStatements<Db, Source>[0]>
+	database(): DataBase<FlattenedJsqlDatabase<Db>>
+	getDefaultSchema(): string
+}
+
 export function sqlMigrations<const DS extends string | undefined, D extends SqlDriver<Record<string, unknown>>>(
 	config: SqlDatabaseConfig<D>,
-): DBMigrations<SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>> {
+): SqlMigrations<SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>> {
 	const defaultSchema = config.defaultSchema ?? "public"
-	// @ts-expect-error TS2589 — `SqlDatabase` + `InferScalarTypesFromDriver` instantiation depth; asserted shape matches.
-	return new DBMigrations(defaultSchema, null, config.driver) as DBMigrations<
+	return new DBMigrations(defaultSchema, null, config.driver) as unknown as SqlMigrations<
 		SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>
 	>
 }
@@ -141,7 +146,7 @@ type Migrations = {
 	prev: Migrations | null
 }
 
-export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
+export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> implements SqlMigrations<Db> {
 	constructor(
 		defaultSchema: string,
 		migrations: Migrations | null = null,
@@ -156,7 +161,7 @@ export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>>
 	#defaultSchema: string
 	#driver: SqlDriver<Record<string, unknown>>
 
-	apply<Source extends string>(statement: Source, name: string = ""): DBMigrations<ApplyStatements<Db, Source>[0]> {
+	apply<Source extends string>(statement: Source, name: string = ""): SqlMigrations<ApplyStatements<Db, Source>[0]> {
 		return new DBMigrations<Db>(
 			this.#defaultSchema,
 			{
@@ -164,7 +169,7 @@ export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>>
 				prev: this.#migrations,
 			},
 			this.#driver,
-		) as DBMigrations<ApplyStatements<Db, string>[0]>
+		) as unknown as SqlMigrations<ApplyStatements<Db, Source>[0]>
 	}
 
 	getDefaultSchema(): string {

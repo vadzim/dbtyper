@@ -1,7 +1,6 @@
 // typesql — package entry (published build). Internal modules import each other, not this file.
 
-export type { SqlDatabaseConfig } from "./engine/sql-database.ts"
-export type { SqlParserError } from "../core/sql-tokens.ts"
+export type { SqlDatabaseConfig } from "./core/sql-database.ts"
 export {
 	sqlMigrations,
 	migration,
@@ -11,7 +10,8 @@ export {
 	type SqlDatabase,
 	type SqlDriver,
 	type SqlDriverParams,
-} from "./engine/sql-database.ts"
-export type { SqlSelectRow } from "./engine/sql-query.ts"
+} from "./core/sql-database.ts"
+export type { SqlSelectRow } from "./core/sql-query.ts"
 export type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "./parser/parse-sql-statement.ts"
 export type { EmptyExpressionParams, ExpressionParamsShape } from "./parser/parse-expression.ts"
+export type { SqlParserError } from "./sql-parser-error.ts"

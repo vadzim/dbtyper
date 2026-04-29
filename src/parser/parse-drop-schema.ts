@@ -1,15 +1,15 @@
-import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
+import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type {
 	PeekToken,
 	ReadToken,
 	SkipToken,
-	SqlParserError,
 	TokenEot,
 	TokenIdent,
 	TokenKey,
 	TokensList,
-} from "../../core/sql-tokens.ts"
+} from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 
 export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">

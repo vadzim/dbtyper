@@ -3,17 +3,17 @@ import type {
 	JsqlInsertStatementResult,
 	JsqlSelectStatementResult,
 	JsqlTableShape,
-} from "../../core/jsql-shapes.ts"
+} from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	ReadToken,
 	SkipToken,
-	SqlParserError,
 	TokenEot,
 	TokenIdent,
 	TokenKey,
 	TokensList,
-} from "../../core/sql-tokens.ts"
+} from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"

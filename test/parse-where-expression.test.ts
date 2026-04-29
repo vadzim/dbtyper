@@ -1,5 +1,6 @@
 import { describe, it } from "node:test"
-import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
+import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type { Expect, Extends, Tuple2At1 } from "./test-utils/type-test-utils.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"

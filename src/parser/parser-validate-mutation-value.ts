@@ -1,5 +1,5 @@
-import type { JsqlColumnFactsMap, JsqlTableShape } from "../../core/jsql-shapes.ts"
-import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { JsqlColumnFactsMap, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ExprAtom, ExprOk, ExprSqlNull, SameComparisonClass } from "./parse-expression.ts"
 
 type InsertColNotNull<Tbl extends JsqlTableShape, Col extends string> = Tbl extends {

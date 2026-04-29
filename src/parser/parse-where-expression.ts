@@ -1,5 +1,6 @@
-import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
-import type { SqlParserError, TokensList } from "../../core/sql-tokens.ts"
+import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { TokensList } from "../lexer/sql-tokens.ts"
+import type { SqlParserError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExprOk,
