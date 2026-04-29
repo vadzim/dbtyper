@@ -1,6 +1,6 @@
 {
 	"name": "typesql",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"description": "Compile-time SQL parsing and schema typing for TypeScript.",
 	"keywords": [
 		"sql",
