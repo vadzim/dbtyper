@@ -1,13 +1,15 @@
 /**
  * Exports TypeScript migrations to a temporary directory as `.sql` files, then applies them in order
  * using the `postgres` driver (simple migration runner — no extra CLI dependency).
+ * Normal migrations first, then optional **patches** (`patch()` — see `docs/MIGRATIONS.md`).
  */
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import postgres from "postgres"
+import type { MigrationExport } from "typesql"
 
-import { allMigrationFilenames } from "../src/example-schema.ts"
+import { allMigrationFilenames, allPatchFilenames } from "../src/example-schema.ts"
 
 async function exportSqlFiles(outDir: string) {
 	await mkdir(outDir, { recursive: true })
@@ -16,11 +18,30 @@ async function exportSqlFiles(outDir: string) {
 	for (const name of allMigrationFilenames) {
 		index += 1
 		const mod = await import(new URL(name, migrationsDir).href)
-		const row = mod.default as { source: string; path: string }
+		const row = mod.default as MigrationExport
+		if (row.patch === true) {
+			throw new Error(
+				`${name}: listed in allMigrationFilenames but exports patch: true — use migration(), not patch(), or move it to allPatchFilenames (see docs/MIGRATIONS.md).`,
+			)
+		}
 		const base = name.replace(/\.ts$/i, "")
 		const target = join(outDir, `${String(index).padStart(3, "0")}_${base}.sql`)
 		await writeFile(target, `${row.source.trim()}\n`, "utf8")
 		console.error(`wrote ${target}`)
+	}
+	for (const name of allPatchFilenames) {
+		index += 1
+		const mod = await import(new URL(name, migrationsDir).href)
+		const row = mod.default as MigrationExport
+		if (row.patch !== true) {
+			throw new Error(
+				`${name}: listed in allPatchFilenames but does not use patch(import.meta.url).add(...) — fix or remove from allPatchFilenames.`,
+			)
+		}
+		const base = name.replace(/\.ts$/i, "")
+		const target = join(outDir, `${String(index).padStart(3, "0")}_patch_${base}.sql`)
+		await writeFile(target, `${row.source.trim()}\n`, "utf8")
+		console.error(`wrote patch ${target}`)
 	}
 }
 

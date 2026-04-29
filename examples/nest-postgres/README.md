@@ -52,4 +52,4 @@ npm run example:nest:docker:down
 - `src/sample-app.ts` / `src/app-cli.ts` — same typed CLI path as plain **`typed-postgres`** (`createExampleApp`, printed rows)
 - `src/app.module.ts` — `TypesqlModule.forRootAsync` + `ConfigModule`
 - `src/users/` — `UsersService` with **`@Inject(TYPESQL_CONNECTED)`**, **`UsersController`** with **`@Inject(UsersService)`**
-- `migrations/*.ts` — same shape as the plain Postgres example
+- `migrations/*.ts` — same shape as the plain Postgres example (`migration()` for exported migrations; optionally **`patch()`** — see **[`docs/MIGRATIONS.md`](../../docs/MIGRATIONS.md)**)

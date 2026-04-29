@@ -6,8 +6,10 @@ export { bindColonNamedParamsForPg } from "./postgres/bind-colon-named-params-fo
 export {
 	sqlDatabase,
 	migration,
+	patch,
 	CompiledDataBase,
 	ConnectedDataBase,
+	type MigrationExport,
 	type ParamRuntimeValues,
 	type SqlDatabase,
 	type SqlDriver,

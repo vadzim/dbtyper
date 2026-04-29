@@ -1,6 +1,6 @@
 # typed-postgres example
 
-End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export) → **postgres.js** runner → **typed queries** via `sqlDatabase(…).compile().connect()`.
+End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export; optional **`patch()`**) → **`postgres.js`** runner → **typed queries** via `sqlDatabase(…).compile().connect()`.
 
 ## Prerequisites
 
@@ -47,7 +47,11 @@ npm run example:docker:down
 - `docker-compose.yml` — Postgres 16, DB `typesql_example`, port **54333**
 - `migrations/*.ts` — SQL strings via `migration(import.meta.url).add(\`...\`)`
 - `scripts/migrate.ts` — writes ordered `.sql` files with `postgres`, then runs them (no separate Flyway/Sqitch dependency)
-- `src/example-schema.ts` — `compileExampleDb()` chains DDL + seed migrations for **types**; `allMigrationFilenames` lists **runtime** migrations (same order as `.apply()`)
+- `src/example-schema.ts` — `compileExampleDb()` chains DDL + seed migrations for **types**; **`allMigrationFilenames`** lists **runtime migrations** only (`migration()`); **`allPatchFilenames`** lists optional **`patch()`** modules (compile-time / parity SQL — see **[`docs/MIGRATIONS.md`](../../docs/MIGRATIONS.md)**)
+
+### Patches vs migrations (exception)
+
+Some SQL should update the typesql catalog (`apply` → `compile`) but **not** be treated as a normal exported migration (e.g. syncing internal types with an external DB). Use **`patch(import.meta.url).add(\`…\`)`** for those modules, chain them with `.apply(import(...))`, list them only in **`allPatchFilenames`**, and keep **`migration()`** files only in **`allMigrationFilenames`**. The **`db:migrate`** script exports and runs patches **after** migrations when `allPatchFilenames` is non-empty.
 
 ## typesql limitations touched here
 

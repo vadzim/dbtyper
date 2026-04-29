@@ -68,12 +68,40 @@ export function sqlDatabase<
 	return new DBMigrations<SqlDatabase<DefaultSchema, ScalarTypes>>(defaultSchema)
 }
 
+/**
+ * Default export shape for {@link migration} / {@link patch} modules (`export default migration(…).add(\`…\`)`).
+ * {@link MigrationExport.patch} marks compile-time-only **patches** — not versioned migrations (see `docs/MIGRATIONS.md`).
+ */
+export type MigrationExport = {
+	readonly path: string
+	readonly source: string
+	readonly patch?: boolean
+}
+
 export function migration<Path extends string>(path: Path) {
 	return {
-		add<const S extends string>(source: S): NamedMigration<S, Path> {
+		add<const S extends string>(source: S): MigrationExport & { path: Path; source: S } {
 			return {
 				path,
 				source,
+			}
+		},
+	}
+}
+
+/**
+ * Same as {@link migration}, but marks SQL as a **patch** (internal parity / workaround): participates in
+ * `sqlDatabase().apply(…).compile()` types, but must **not** be listed next to real migrations for export
+ * (e.g. `allMigrationFilenames`). Use when aligning the typesql catalog with an external DB without publishing
+ * extra migration steps.
+ */
+export function patch<Path extends string>(path: Path) {
+	return {
+		add<const S extends string>(source: S): MigrationExport & { path: Path; source: S; patch: true } {
+			return {
+				path,
+				source,
+				patch: true,
 			}
 		},
 	}
@@ -149,13 +177,8 @@ export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 
-type NamedMigration<S extends string, Path extends string> = {
-	source: S
-	path: Path
-}
-
 type Migrations = {
-	last: Promise<{ source: string; path: string }>
+	last: Promise<MigrationExport>
 	prev: Migrations | null
 }
 
@@ -171,10 +194,10 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 	// @ts-expect-error TS2589 — `ApplyStatements` depth can exceed the checker limit on large sources; overload is still correct.
 	apply<Source extends string>(statement: Source): DBMigrations<ApplyStatements<Database, Source>[0]>
 	apply<Path extends string, Source extends string>(
-		statement: Promise<{ default: { path: Path; source: Source } }>,
+		statement: Promise<{ default: MigrationExport & { path: Path; source: Source } }>,
 	): DBMigrations<ApplyStatements<Database, Source>[0]>
 	apply(
-		statement: string | Promise<{ default: { source: string; path: string } }>,
+		statement: string | Promise<{ default: MigrationExport }>,
 	): DBMigrations<ApplyStatements<Database, string>[0]> {
 		return new DBMigrations<Database>(this.#defaultSchema, {
 			last:
@@ -190,7 +213,7 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 	}
 
 	async #getMigrations() {
-		const result: { source: string; path: string }[] = []
+		const result: MigrationExport[] = []
 		let current = this.#migrations
 		while (current) {
 			result.push(await current.last)
@@ -211,7 +234,7 @@ export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserErro
 		return null as unknown as Database
 	}
 
-	constructor(migrations: readonly { source: string; path: string }[], defaultSchema: string) {
+	constructor(migrations: readonly MigrationExport[], defaultSchema: string) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema
 	}
@@ -220,7 +243,7 @@ export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserErro
 		return new ConnectedDataBase<Database>(this.migrations, this.defaultSchema, dbInterface)
 	}
 
-	migrations: readonly { source: string; path: string }[]
+	migrations: readonly MigrationExport[]
 	defaultSchema: string
 }
 
@@ -240,11 +263,7 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		return null as unknown as Database
 	}
 
-	constructor(
-		migrations: readonly { source: string; path: string }[],
-		defaultSchema: string,
-		dbInterface: SqlDriver,
-	) {
+	constructor(migrations: readonly MigrationExport[], defaultSchema: string, dbInterface: SqlDriver) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema
 		this.dbInterface = dbInterface
@@ -298,7 +317,7 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		})()
 	}
 
-	migrations: readonly { source: string; path: string }[]
+	migrations: readonly MigrationExport[]
 	defaultSchema: string
 	dbInterface: SqlDriver
 }
