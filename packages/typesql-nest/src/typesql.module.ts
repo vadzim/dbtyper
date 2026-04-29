@@ -1,19 +1,22 @@
 import type { DynamicModule, ModuleMetadata, Provider } from "@nestjs/common"
 import { Module } from "@nestjs/common"
+import type { JsqlDatabaseShape } from "typesql"
 
 import { TYPESQL_DATABASE, TYPESQL_ROOT_OPTIONS } from "./typesql.constants.ts"
 import type { TypesqlRootConfig } from "./typesql-root.config.ts"
 import { TypesqlLifecycle } from "./typesql-lifecycle.service.ts"
 
-export type TypesqlModuleAsyncOptions = {
+export type TypesqlModuleAsyncOptions<Db extends JsqlDatabaseShape = JsqlDatabaseShape> = {
 	imports?: ModuleMetadata["imports"]
 	inject?: any[]
-	useFactory: (...args: any[]) => TypesqlRootConfig | Promise<TypesqlRootConfig>
+	useFactory: (...args: any[]) => TypesqlRootConfig<Db> | Promise<TypesqlRootConfig<Db>>
 }
 
 @Module({})
 export class TypesqlModule {
-	static forRoot(config: TypesqlRootConfig | Promise<TypesqlRootConfig>): DynamicModule {
+	static forRoot<Db extends JsqlDatabaseShape>(
+		config: TypesqlRootConfig<Db> | Promise<TypesqlRootConfig<Db>>,
+	): DynamicModule {
 		const optionsProvider: Provider = {
 			provide: TYPESQL_ROOT_OPTIONS,
 			useFactory: async () => await Promise.resolve(config),
@@ -21,7 +24,7 @@ export class TypesqlModule {
 		return TypesqlModule.withProviders(optionsProvider, undefined)
 	}
 
-	static forRootAsync(options: TypesqlModuleAsyncOptions): DynamicModule {
+	static forRootAsync<Db extends JsqlDatabaseShape>(options: TypesqlModuleAsyncOptions<Db>): DynamicModule {
 		const optionsProvider: Provider = {
 			provide: TYPESQL_ROOT_OPTIONS,
 			useFactory: options.useFactory,
