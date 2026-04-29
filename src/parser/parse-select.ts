@@ -102,19 +102,22 @@ type ParseSelectWithCtes<
 					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"as">]
 						? PeekToken<R2> extends TokenKey<"(">
 							? ReadToken<R2> extends [infer R3 extends TokensList, TokenKey<"(">]
-								? ParseParenEnclosedSelect<R3, Db, Params> extends [infer R4 extends TokensList, infer SubOut]
+								? ParseParenEnclosedSelect<R3, Db, Params> extends [
+										infer R4 extends TokensList,
+										infer SubOut,
+									]
 									? SubOut extends SqlParserError<string>
 										? [R4, Db, SubOut]
 										: SubOut extends JsqlSelectStatementResult
 											? ParseSelectWithCtesAfterSubquery<R4, Db, Params, Acc, CteName, SubOut>
 											: never
+									: never
 								: never
-							: never
-						: [R2, Db, SqlParserError<"Expected open paren after AS in WITH">]
+							: [R2, Db, SqlParserError<"Expected open paren after AS in WITH">]
+						: never
 					: never
-				: never
-		: [R1, Db, SqlParserError<"Expected CTE name in WITH">]
-	: never
+			: [R1, Db, SqlParserError<"Expected CTE name in WITH">]
+		: never
 
 type ParseSelectAfterDistinct<
 	Tokens extends TokensList,
@@ -216,10 +219,10 @@ type ParseOneRawSelectExprItem<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	ParseExpressionAST<
-		Tokens,
-		{ db: Db; params: Params; outerScope: {} }
-	> extends [infer RExpr extends TokensList, infer Out]
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: {} }> extends [
+		infer RExpr extends TokensList,
+		infer Out,
+	]
 		? Out extends SqlParserError<infer _Msg extends string>
 			? [RExpr, Out]
 			: Out extends ScalarExprAst
@@ -323,10 +326,7 @@ type ReadClosingParenAndAliasDerived<
 			: [R2, SqlParserError<"Expected `)` after derived table">, ParserRefErrorThirdSentinel]
 		: never
 
-type ReadClosingParenScalarSubqueryOnly<
-	Tokens extends TokensList,
-	Res extends JsqlSelectStatementResult,
-> =
+type ReadClosingParenScalarSubqueryOnly<Tokens extends TokensList, Res extends JsqlSelectStatementResult> =
 	ReadToken<Tokens> extends [infer R2 extends TokensList, infer TokCl]
 		? TokCl extends TokenKey<")">
 			? [R2, Res]
@@ -393,11 +393,7 @@ type ParseInnerParenSelectFromAndResolve<
 > =
 	PeekToken<AfterList> extends TokenKey<"from">
 		? SkipToken<AfterList> extends infer AfterFrom extends TokensList
-			? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [
-					infer R extends TokensList,
-					infer Mid,
-					infer Tail,
-				]
+			? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [infer R extends TokensList, infer Mid, infer Tail]
 				? Mid extends SqlParserError<string>
 					? [R, Mid]
 					: Mid extends null
@@ -405,12 +401,7 @@ type ParseInnerParenSelectFromAndResolve<
 							? never
 							: JoinScopeOnly<Tail> extends ScopeMap
 								? MergeScope<OuterScope, JoinScopeOnly<Tail>> extends infer Merged extends ScopeMap
-									? ResolveSelectList<
-											Items,
-											Db,
-											Merged,
-											Params
-										> extends infer Res
+									? ResolveSelectList<Items, Db, Merged, Params> extends infer Res
 										? Res extends SqlParserError<infer _Msg extends string>
 											? [R, Res]
 											: Res extends JsqlSelectStatementResult
@@ -420,8 +411,8 @@ type ParseInnerParenSelectFromAndResolve<
 									: never
 								: never
 						: never
-					: never
 				: never
+			: never
 		: [AfterList, SqlParserError<"Expected FROM in subquery">]
 
 type ParseInnerParenSelectAfterSelectKw<

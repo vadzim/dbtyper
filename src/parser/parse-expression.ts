@@ -232,7 +232,11 @@ type TokenToCmpOp<Tok> =
 							: never
 
 /** Comma-separated scalar expressions inside `IN (` … `)` (untyped AST for resolve). */
-type ParseInListUntypedAccum<Tokens extends TokensList, Acc extends readonly ScalarExprAst[], Env extends ExprParseEnv> =
+type ParseInListUntypedAccum<
+	Tokens extends TokensList,
+	Acc extends readonly ScalarExprAst[],
+	Env extends ExprParseEnv,
+> =
 	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E]
 		? E extends SqlParserError<string>
 			? [R1, E]
@@ -844,20 +848,33 @@ export type ResolveExpressionAST<
 																								>
 																							: Ast extends {
 																										kind: "exists_subquery"
-																										sub: infer _Ex extends JsqlSelectStatementResult
+																										sub: infer _Ex extends
+																											JsqlSelectStatementResult
 																								  }
-																								? ExprOk<boolean, "boolean">
+																								? ExprOk<
+																										boolean,
+																										"boolean"
+																									>
 																								: Ast extends {
 																											kind: "scalar_subquery"
-																											sel: infer Sel extends JsqlSelectStatementResult
+																											sel: infer Sel extends
+																												JsqlSelectStatementResult
 																									  }
 																									? ResolveScalarSubquerySel<Sel>
 																									: Ast extends {
 																												kind: "in_subquery"
-																												expr: infer Ie extends ScalarExprAst
-																												sub: infer Isub extends JsqlSelectStatementResult
+																												expr: infer Ie extends
+																													ScalarExprAst
+																												sub: infer Isub extends
+																													JsqlSelectStatementResult
 																										  }
-																										? ResolveInSubqueryAst<Ie, Isub, Db, Scope, Ctx>
+																										? ResolveInSubqueryAst<
+																												Ie,
+																												Isub,
+																												Db,
+																												Scope,
+																												Ctx
+																											>
 																										: Ast extends {
 																													kind: "in_list"
 																													expr: infer Eln extends
@@ -865,25 +882,25 @@ export type ResolveExpressionAST<
 																													items: infer Ins extends
 																														readonly ScalarExprAst[]
 																											  }
-																							? ResolveExpressionAST<
-																									Eln,
-																									Db,
-																									Scope,
-																									Ctx
-																								> extends infer LvIn
-																								? LvIn extends SqlParserError<string>
-																									? LvIn
-																									: LvIn extends ExprAtom
-																										? ResolveInListItemsAgainstLeft<
-																												LvIn,
-																												Ins,
-																												Db,
-																												Scope,
-																												Ctx
-																											>
-																										: SqlParserError<"Invalid IN left operand">
-																								: never
-																							: SqlParserError<"Invalid scalar expression">
+																											? ResolveExpressionAST<
+																													Eln,
+																													Db,
+																													Scope,
+																													Ctx
+																												> extends infer LvIn
+																												? LvIn extends SqlParserError<string>
+																													? LvIn
+																													: LvIn extends ExprAtom
+																														? ResolveInListItemsAgainstLeft<
+																																LvIn,
+																																Ins,
+																																Db,
+																																Scope,
+																																Ctx
+																															>
+																														: SqlParserError<"Invalid IN left operand">
+																												: never
+																											: SqlParserError<"Invalid scalar expression">
 
 /** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path). */
 type MaximalIdentChain<Tokens extends TokensList> =
@@ -1002,12 +1019,8 @@ type MergeComparison<L extends ExprAtom, R extends ExprAtom> = L extends ExprSql
 			: never
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
-type ValidateCaseSimpleWhenMatch<Disc extends ExprAtom, WhenV extends ExprAtom> = MergeComparison<
-	Disc,
-	WhenV
-> extends SqlParserError<infer M>
-	? SqlParserError<M>
-	: true
+type ValidateCaseSimpleWhenMatch<Disc extends ExprAtom, WhenV extends ExprAtom> =
+	MergeComparison<Disc, WhenV> extends SqlParserError<infer M> ? SqlParserError<M> : true
 
 type MergeBetweenBounds<E extends ExprAtom, Lm extends ExprAtom, H extends ExprAtom> = E extends ExprSqlNull
 	? SqlParserError<"NULL not allowed in BETWEEN">
@@ -1187,13 +1200,14 @@ type ResolveCaseSimple<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Ctx extends ExpressionParseContext,
-> = ResolveExpressionAST<DiscAst, Db, Scope, Ctx> extends infer Dv
-	? Dv extends SqlParserError<string>
-		? Dv
-		: Dv extends ExprAtom
-			? ResolveCaseSimpleArms<Arms, ElseB, Db, Scope, Ctx, Dv, null>
-			: SqlParserError<"Invalid CASE discriminant">
-	: never
+> =
+	ResolveExpressionAST<DiscAst, Db, Scope, Ctx> extends infer Dv
+		? Dv extends SqlParserError<string>
+			? Dv
+			: Dv extends ExprAtom
+				? ResolveCaseSimpleArms<Arms, ElseB, Db, Scope, Ctx, Dv, null>
+				: SqlParserError<"Invalid CASE discriminant">
+		: never
 
 /** Per-element check for `expr IN (…)` (same class rules as `=`, but `NULL` list elements are rejected). */
 type ValidateInListElement<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
@@ -1245,10 +1259,7 @@ type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
 type SubSelectColumnAtom<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? ExprOk<
-					S["columns"][K],
-					K extends keyof S["column_sql_types"] ? S["column_sql_types"][K] : "unknown"
-				>
+			? ExprOk<S["columns"][K], K extends keyof S["column_sql_types"] ? S["column_sql_types"][K] : "unknown">
 			: SqlParserError<"IN subquery column inference failed">
 		: SqlParserError<"IN subquery must project exactly one column">
 
@@ -1411,7 +1422,7 @@ type TryParenOperandScalarUntyped<Tokens extends TokensList, Env extends ExprPar
 							? [Rk2, Ej]
 							: [Rk2, SqlParserError<"Expected `)`">]
 						: never
-					: never
+				: never
 		: never
 
 type TryOperandScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
@@ -1470,7 +1481,11 @@ type ParseUnaryScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv
 					: never
 			: never
 
-type ParseMulLoopAfterFirstScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+type ParseMulLoopAfterFirstScalarUntyped<
+	Tokens extends TokensList,
+	Acc extends ScalarExprAst,
+	Env extends ExprParseEnv,
+> =
 	PeekToken<Tokens> extends TokenKey<"*">
 		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"*">]
 			? ParseUnaryScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1]
@@ -1498,7 +1513,11 @@ type ParseMulScalarUntypedEntry<Tokens extends TokensList, Env extends ExprParse
 				: never
 		: never
 
-type ParseAddLoopAfterPlusScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+type ParseAddLoopAfterPlusScalarUntyped<
+	Tokens extends TokensList,
+	Acc extends ScalarExprAst,
+	Env extends ExprParseEnv,
+> =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"+">]
 		? ParseMulScalarUntypedEntry<R1, Env> extends [infer R2 extends TokensList, infer E1]
 			? E1 extends SqlParserError<string>
@@ -1509,7 +1528,11 @@ type ParseAddLoopAfterPlusScalarUntyped<Tokens extends TokensList, Acc extends S
 			: never
 		: never
 
-type ParseAddLoopAfterMinusScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+type ParseAddLoopAfterMinusScalarUntyped<
+	Tokens extends TokensList,
+	Acc extends ScalarExprAst,
+	Env extends ExprParseEnv,
+> =
 	ReadToken<Tokens> extends [infer R3 extends TokensList, TokenKey<"-">]
 		? ParseMulScalarUntypedEntry<R3, Env> extends [infer R4 extends TokensList, infer E2]
 			? E2 extends SqlParserError<string>
@@ -1524,7 +1547,11 @@ type MergeScalarAstAddSub<Op extends "add" | "sub", L extends ScalarExprAst, R e
 	? { kind: "add"; left: L; right: R }
 	: { kind: "sub"; left: L; right: R }
 
-type ParseAddLoopAfterFirstScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+type ParseAddLoopAfterFirstScalarUntyped<
+	Tokens extends TokensList,
+	Acc extends ScalarExprAst,
+	Env extends ExprParseEnv,
+> =
 	PeekToken<Tokens> extends TokenKey<"+">
 		? ParseAddLoopAfterPlusScalarUntyped<Tokens, Acc, Env>
 		: PeekToken<Tokens> extends TokenKey<"-">

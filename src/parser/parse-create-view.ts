@@ -33,11 +33,7 @@ type ParseQualifiedViewNameUnqualified<AfterFirst extends TokensList, Db extends
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: [AfterFirst, SqlParserError<"Expected AS or `.` before view name">, never, never]
 
-type ParseQualifiedViewNameQualified<
-	Rdot extends TokensList,
-	Db extends JsqlDatabaseShape,
-	A extends string,
-> =
+type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	ReadToken<Rdot> extends [infer AfterB extends TokensList, infer TokB]
 		? TokB extends TokenIdent<infer B extends string>
 			? HasConcreteSchemaKey<Db, A> extends true

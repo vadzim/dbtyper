@@ -12,8 +12,8 @@ Lexing, token types, and monad mechanics are out of scope here.
 
 | Prefix                                   | Behavior                                                                                                                                    |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CREATE` + `TABLE` / `SCHEMA` / `VIEW`   | Parsed; may **merge** into `JsqlDatabaseShape` (**`VIEW`** stores **`kind: "view"`** from the inner **`SELECT`**).                            |
-| `CREATE` + anything else                 | **Skipped** to the next `;` (or end): **`ParseSkipStatement`** / `SkipBracketedUntil` (e.g. **`CREATE INDEX`**).                              |
+| `CREATE` + `TABLE` / `SCHEMA` / `VIEW`   | Parsed; may **merge** into `JsqlDatabaseShape` (**`VIEW`** stores **`kind: "view"`** from the inner **`SELECT`**).                          |
+| `CREATE` + anything else                 | **Skipped** to the next `;` (or end): **`ParseSkipStatement`** / `SkipBracketedUntil` (e.g. **`CREATE INDEX`**).                            |
 | `ALTER` + `TABLE`                        | Parsed; may **mutate** table shape (see **`ALTER TABLE`** below). **`ALTER`** without **`TABLE`** → error **`Expected TABLE after ALTER`**. |
 | `DROP` + `TABLE` / `SCHEMA`              | Parsed; may **remove** from `JsqlDatabaseShape`                                                                                             |
 | `DELETE`                                 | Parsed; **checked** against the DB (`WHERE` is type-checked); does **not** mutate the schema object                                         |

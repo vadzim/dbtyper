@@ -43,11 +43,7 @@ export type ApplyParsedStatements<
 > =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, null]
-		: ParseSqlStatement<Tokens, Db, Params> extends [
-					infer Rest extends TokensList,
-					infer NewDB,
-					infer Result,
-			  ]
+		: ParseSqlStatement<Tokens, Db, Params> extends [infer Rest extends TokensList, infer NewDB, infer Result]
 			? Result extends SqlParserError<string>
 				? [Rest, NewDB, Result]
 				: NewDB extends JsqlDatabaseShape

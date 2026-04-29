@@ -2,11 +2,19 @@
 	"name": "typesql",
 	"version": "1.0.0",
 	"description": "Compile-time SQL parsing and schema typing for TypeScript.",
-	"keywords": ["sql", "typescript", "types", "schema", "migrations"],
+	"keywords": [
+		"sql",
+		"typescript",
+		"types",
+		"schema",
+		"migrations"
+	],
 	"license": "ISC",
 	"author": "",
 	"type": "module",
-	"workspaces": ["examples/*"],
+	"workspaces": [
+		"examples/*"
+	],
 	"main": "./dist/src/index.js",
 	"types": "./dist/src/index.d.ts",
 	"exports": {
@@ -15,7 +23,11 @@
 			"import": "./dist/src/index.js"
 		}
 	},
-	"files": ["dist", "README.md", "docs"],
+	"files": [
+		"dist",
+		"README.md",
+		"docs"
+	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",

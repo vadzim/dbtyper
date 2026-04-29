@@ -100,9 +100,7 @@ type _withCte = Expect<
 	Extends<Tuple3At2<TWithCte>, { kind: "select"; columns: { uid: string }; column_sql_types: { uid: "uuid" } }>
 >
 type TWithDup = ParseSqlStatement<
-	ParseSqlTokens<
-		`with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;`
-	>,
+	ParseSqlTokens<`with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _withDup = Expect<Extends<Tuple3At2<TWithDup>, SqlParserError<"Duplicate WITH clause name">>>

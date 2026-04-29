@@ -1,12 +1,5 @@
 import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SqlParserError,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../../core/sql-tokens.ts"
+import type { PeekToken, ReadToken, SqlParserError, TokenIdent, TokenKey, TokensList } from "../../core/sql-tokens.ts"
 
 /** After `schema.` — one `ReadToken` for the table name, then peek `(`. */
 type ParseQualifiedSecondIdent<AfterDot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
