@@ -26,6 +26,7 @@ export type EmptyExpressionParams = Record<never, never>
 type DefaultExprParseDb = {
 	defaultSchema: "public"
 	schemas: { public: { sets: {} } }
+	scalarTypes: Record<string, unknown>
 }
 
 /** Threaded through scalar parse for subqueries: catalog, `:param` bindings, outer aliases visible inside `(SELECT …)`. */

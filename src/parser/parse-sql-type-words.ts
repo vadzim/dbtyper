@@ -14,36 +14,5 @@ export type TypeWordsToString<A extends readonly string[]> = A extends readonly 
 		: `${H} ${TypeWordsToString<T>}`
 	: ""
 
-type SqlScalarTypeMap = {
-	uuid: string
-	text: string
-	integer: number
-	int: number
-	bigint: bigint
-	smallint: number
-	boolean: boolean
-	bool: boolean
-	numeric: string
-	decimal: string
-	real: number
-	float: number
-	"double precision": number
-	json: unknown
-	jsonb: unknown
-	date: string
-	timestamp: string
-	"timestamp with time zone": string
-	"timestamp without time zone": string
-	"time with time zone": string
-	"time without time zone": string
-	"character varying": string
-	varchar: string
-	char: string
-}
-
-export type SqlJoinedToTs<Joined extends string> =
-	Lowercase<Joined> extends infer K extends string
-		? K extends keyof SqlScalarTypeMap
-			? SqlScalarTypeMap[K]
-			: unknown
-		: unknown
+export type SqlJoinedToTs<Joined extends string, ScalarMap extends Record<string, unknown>> =
+	Lowercase<Joined> extends infer K extends string ? (K extends keyof ScalarMap ? ScalarMap[K] : unknown) : unknown

@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape, JsqlTableShape, JsqlColumnFactsEntry } from "../../core/jsql-shapes.ts"
+import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
 import type {
 	PeekToken,
 	ReadToken,
@@ -70,14 +71,17 @@ type ReplaceTableInDb<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 	NewShape extends JsqlTableShape,
-> = {
-	defaultSchema: Db["defaultSchema"]
-	schemas: {
-		[K in keyof Db["schemas"]]: K extends Sch
-			? { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> } & Omit<Db["schemas"][K], "sets">
-			: Db["schemas"][K]
+> = MergeDbPreserveScalars<
+	Db,
+	{
+		defaultSchema: Db["defaultSchema"]
+		schemas: {
+			[K in keyof Db["schemas"]]: K extends Sch
+				? { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> } & Omit<Db["schemas"][K], "sets">
+				: Db["schemas"][K]
+		}
 	}
-}
+>
 
 type ApplyAddColumn<
 	T extends JsqlTableShape,
@@ -208,23 +212,6 @@ type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Ts, Joined extends 
 				: never
 			: [Tokens, Ts, Joined]
 
-type ParseAlterTypeWordsAndNull<Tokens extends TokensList> =
-	CollectSqlTypeWords<Tokens> extends [infer AfterType extends TokensList, infer Words extends readonly string[]]
-		? TypeWordsToString<Words> extends infer Joined extends string
-			? Joined extends ""
-				? [AfterType, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: SqlJoinedToTs<Joined> extends infer Ts
-					? ParseAlterOptionalNullSuffix<AfterType, Ts, Joined> extends [
-							infer R3 extends TokensList,
-							infer Ts2,
-							infer J2 extends string,
-						]
-						? [R3, Ts2, J2]
-						: never
-					: never
-			: [AfterType, SqlParserError<"Invalid column type in ALTER TABLE">]
-		: never
-
 type ParseAlterAddColumnAfterColName<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -237,7 +224,7 @@ type ParseAlterAddColumnAfterColName<
 		? TypeWordsToString<Words> extends infer Joined extends string
 			? Joined extends ""
 				? [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: SqlJoinedToTs<Joined> extends infer Ts
+				: SqlJoinedToTs<Joined, Db["scalarTypes"]> extends infer Ts
 					? ParseAlterOptionalNullSuffix<AfterType, Ts, Joined> extends [
 							infer R3 extends TokensList,
 							infer Ts2,
@@ -400,7 +387,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 		? TypeWordsToString<Words> extends infer Joined extends string
 			? Joined extends ""
 				? [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: SqlJoinedToTs<Joined> extends infer Ts
+				: SqlJoinedToTs<Joined, Db["scalarTypes"]> extends infer Ts
 					? ParseAlterOptionalNullSuffix<AfterType, Ts, Joined> extends [
 							infer R4 extends TokensList,
 							infer Ts2,

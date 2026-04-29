@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../../core/jsql-shapes.ts"
+import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
 import type {
 	PeekToken,
 	ReadToken,
@@ -160,7 +161,7 @@ type ParseOneColumnAfterColName<
 		infer Words extends readonly string[],
 	]
 		? TypeWordsToString<Words> extends infer Joined extends string
-			? SqlJoinedToTs<Joined> extends infer Ts
+			? SqlJoinedToTs<Joined, Db["scalarTypes"]> extends infer Ts
 				? ResolveAfterNullability<AfterType, Db, Schema, Table, Stack, ColName, Ts, Joined>
 				: [AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">]
 			: [AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">]
@@ -276,24 +277,27 @@ type MergeTableIntoDb<
 	Cols extends Record<string, unknown>,
 	SqlTypes extends Record<string, string>,
 > = Schema extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Schema
-					? {
-							sets: Db["schemas"][K]["sets"] &
-								Record<
-									Table,
-									{
-										kind: "table"
-										columns: Cols
-										column_sql_types: SqlTypes
-									}
-								>
-						}
-					: Db["schemas"][K]
+	? MergeDbPreserveScalars<
+			Db,
+			{
+				defaultSchema: Db["defaultSchema"]
+				schemas: {
+					[K in keyof Db["schemas"]]: K extends Schema
+						? {
+								sets: Db["schemas"][K]["sets"] &
+									Record<
+										Table,
+										{
+											kind: "table"
+											columns: Cols
+											column_sql_types: SqlTypes
+										}
+									>
+							}
+						: Db["schemas"][K]
+				}
 			}
-		}
+		>
 	: never
 
 type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =

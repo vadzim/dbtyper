@@ -1,6 +1,8 @@
 export type JsqlDatabaseShape = {
 	defaultSchema: string
 	schemas: { [K: string]: JsqlSchemaShape }
+	/** SQL scalar type words → TS types for CREATE/ALTER column typing (see {@link SqlDatabase}). */
+	scalarTypes: Record<string, unknown>
 }
 
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */

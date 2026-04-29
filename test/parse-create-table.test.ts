@@ -3,10 +3,12 @@ import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 
 type DbAuth = {
 	defaultSchema: "public"
 	schemas: { auth: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type DbUsers = {
@@ -22,6 +24,7 @@ type DbUsers = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type T1 = ParseSqlStatement<
@@ -54,6 +57,7 @@ type DbWithDup = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type T3 = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( n int not null );`>, DbWithDup>
@@ -64,6 +68,7 @@ type T4 = ParseSqlStatement<
 	{
 		defaultSchema: "public"
 		schemas: { logs: JsqlSchemaShape }
+		scalarTypes: PackageScalarTypes
 	}
 >
 type T4Table = T4[1]["schemas"]["logs"]["sets"]["events"]
@@ -73,7 +78,7 @@ type _t4shape = Expect<
 		T4Table,
 		{
 			kind: "table"
-			columns: { at: string }
+			columns: { at: Date }
 			column_sql_types: { at: "timestamp with time zone" }
 		}
 	>
@@ -86,6 +91,7 @@ type _t4shape = Expect<
 type DbBillingAndPublic = {
 	defaultSchema: "public"
 	schemas: { public: JsqlSchemaShape; billing: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type TExplicit = ParseSqlStatement<
@@ -132,6 +138,7 @@ type _tExplicitUnknownSchema = Expect<Extends<TExplicitUnknownSchema[2], SqlPars
 type DbDefaultPublic = {
 	defaultSchema: "public"
 	schemas: { public: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type T5 = ParseSqlStatement<
@@ -192,6 +199,7 @@ type _unknownQualifiedSchema = Expect<
 type DbDefaultPublicButOnlyAuth = {
 	defaultSchema: "public"
 	schemas: { auth: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type TUnqualifiedRequiresDefaultSchemaRow = ParseSqlStatement<

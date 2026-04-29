@@ -3,15 +3,18 @@ import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 
 type EmptyDb = {
 	defaultSchema: "public"
 	schemas: {}
+	scalarTypes: PackageScalarTypes
 }
 
 type DbWithAuth = {
 	defaultSchema: "public"
 	schemas: { auth: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type NewSchema = ParseSqlStatement<ParseSqlTokens<"create schema bar;">, EmptyDb>

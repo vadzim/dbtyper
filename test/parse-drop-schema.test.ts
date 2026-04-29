@@ -2,16 +2,31 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbWithAuth = {
 	defaultSchema: "public"
 	schemas: { auth: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type DbAuthDropped = {
 	defaultSchema: "public"
 	schemas: Omit<DbWithAuth["schemas"], "auth">
+	scalarTypes: PackageScalarTypes
+}
+
+type DbMulti = {
+	defaultSchema: "public"
+	schemas: { auth: JsqlSchemaShape; logs: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
+}
+
+type DbMultiDroppedAuth = {
+	defaultSchema: "public"
+	schemas: Omit<DbMulti["schemas"], "auth">
+	scalarTypes: PackageScalarTypes
 }
 
 type D1 = ParseSqlStatement<ParseSqlTokens<`drop schema auth;`>, DbWithAuth>
@@ -28,16 +43,6 @@ type _d2db = Expect<Matches<D2[1], DbWithAuth>>
 
 type D3 = ParseSqlStatement<ParseSqlTokens<`drop schema ghost;`>, DbWithAuth>
 type _d3err = Expect<Matches<D3[2], SqlParserError<"Schema does not exist; use IF EXISTS">>>
-
-type DbMulti = {
-	defaultSchema: "public"
-	schemas: { auth: JsqlSchemaShape; logs: JsqlSchemaShape }
-}
-
-type DbMultiDroppedAuth = {
-	defaultSchema: "public"
-	schemas: Omit<DbMulti["schemas"], "auth">
-}
 
 type D4 = ParseSqlStatement<ParseSqlTokens<`drop schema auth;`>, DbMulti>
 type _d4shape = Expect<Matches<D4[1], DbMultiDroppedAuth>>

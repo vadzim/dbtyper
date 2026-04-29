@@ -9,17 +9,21 @@ if (url === undefined || url === "") {
 const { app, sql } = await createExampleApp(url)
 
 try {
-	const rows = await app.query(`
-select
-	public.agenda.*,
-	email,
-	display_name
-from public.agenda
-inner join auth.users
-on auth.users.id = public.agenda.user_id
-where email ~ '@example\\.com$'
-order by display_name asc
-`)
+	const stmt = `
+		select
+			public.agenda.*,
+			email,
+			display_name
+		from public.agenda
+		inner join auth.users
+		on auth.users.id = public.agenda.user_id
+		where email ~ :email_domain
+		order by display_name asc
+	` as const
+
+	const rows = await app.query<typeof stmt, { email_domain: { ts: string; sql: "text" } }>(stmt, {
+		email_domain: "@example\\.com$",
+	})
 	console.log("users (typed rows from typesql + postgres):")
 	for (const row of rows) {
 		console.log(`  ${row.email}\t${row.display_name ?? ""}`)

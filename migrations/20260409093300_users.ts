@@ -5,6 +5,7 @@ export default migration(import.meta.url).add(`
     id uuid not null,
     email text not null,
     display_name text,
+    login_count integer not null,
     created_at timestamp with time zone null,
     updated_at timestamp with time zone null,
     deleted_at timestamp with time zone null,

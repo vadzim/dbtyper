@@ -1,15 +1,71 @@
+import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
+import { bindColonNamedParamsForPg } from "../postgres/bind-colon-named-params-for-pg.ts"
 import type { SqlSelectRow } from "./sql-query.ts"
 
-export type SqlDriver = {
-	query(sql: string): Promise<Array<unknown>>
-	stream?(sql: string): AsyncIterable<unknown>
+/**
+ * Default SQL scalar identifier spellings (lowercased join of type words) → TypeScript types.
+ * Used only as the default second type argument of {@link SqlDatabase} / {@link sqlDatabase}.
+ */
+export type SqlScalarTypeMap = {
+	uuid: string
+	text: string
+	integer: number
+	int: number
+	bigint: bigint
+	smallint: number
+	boolean: boolean
+	bool: boolean
+	numeric: string
+	decimal: string
+	real: number
+	float: number
+	"double precision": number
+	json: unknown
+	jsonb: unknown
+	date: string
+	timestamp: Date
+	"timestamp with time zone": Date
+	"timestamp without time zone": Date
+	"time with time zone": string
+	"time without time zone": string
+	"character varying": string
+	varchar: string
+	char: string
 }
 
-export function sqlDatabase<DefaultSchema extends string>(defaultSchema: DefaultSchema) {
-	return new DBMigrations<SqlDatabase<DefaultSchema>>(defaultSchema)
+/** Scalar map carried on every {@link JsqlDatabaseShape} (`Db["scalarTypes"]`). */
+export type ScalarTypesOf<D extends JsqlDatabaseShape> = D["scalarTypes"]
+
+export type { MergeDbPreserveScalars }
+
+export type SqlDriver = {
+	query(sql: string, params?: readonly unknown[]): Promise<Array<unknown>>
+	stream?(sql: string, params?: readonly unknown[]): AsyncIterable<unknown>
+}
+
+/** Values object matching `:name` slots implied by {@link ExpressionParamsShape}. */
+export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
+	[K in keyof Params]: Params[K] extends { ts: infer T } ? T : never
+}
+
+export type SqlDatabase<
+	DefaultSchema extends string = "public",
+	ScalarTypes extends Record<string, unknown> = SqlScalarTypeMap,
+> = {
+	defaultSchema: DefaultSchema
+	schemas: {}
+	scalarTypes: ScalarTypes
+}
+
+export function sqlDatabase<
+	DefaultSchema extends string,
+	ScalarTypes extends Record<string, unknown> = SqlScalarTypeMap,
+>(defaultSchema: DefaultSchema) {
+	return new DBMigrations<SqlDatabase<DefaultSchema, ScalarTypes>>(defaultSchema)
 }
 
 export function migration<Path extends string>(path: Path) {
@@ -21,11 +77,6 @@ export function migration<Path extends string>(path: Path) {
 			}
 		},
 	}
-}
-
-export type SqlDatabase<DefaultSchema extends string = "public"> = {
-	defaultSchema: DefaultSchema
-	schemas: {}
 }
 
 /** Removes index-signature keys so quick info does not show `[x: string]: …` for every map. */
@@ -93,7 +144,7 @@ export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
 							: never
 					}
 				: never
-		}
+		} & { scalarTypes: Database["scalarTypes"] }
 	: Database
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
@@ -173,8 +224,12 @@ export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserErro
 	defaultSchema: string
 }
 
-type SqlSelectRowObject<Db extends JsqlDatabaseShape | SqlParserError<string>, Stmt extends string> =
-	SqlSelectRow<Db, Stmt> extends infer R
+type SqlSelectRowObject<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Stmt extends string,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	SqlSelectRow<Db, Stmt, Params> extends infer R
 		? R extends SqlParserError<string>
 			? never
 			: { [K in keyof R]: R[K] }
@@ -195,23 +250,48 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		this.dbInterface = dbInterface
 	}
 
-	/** All rows at once. `Stmt` must be a `SELECT` / `WITH … SELECT` that type-checks against {@link Database}. */
-	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Database, Stmt>>> {
-		return this.dbInterface.query(statement) as Promise<Array<SqlSelectRowObject<Database, Stmt>>>
+	/**
+	 * All rows at once. `Stmt` must be a `SELECT` / `WITH … SELECT` that type-checks against
+	 * {@link Database}. With `:name` parameters, pass {@link ParamRuntimeValues} as the second
+	 * argument (bound at runtime as PostgreSQL `$n` placeholders).
+	 */
+	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Database, Stmt>>>
+	query<Stmt extends string, Params extends ExpressionParamsShape>(
+		statement: Stmt,
+		params: ParamRuntimeValues<Params>,
+	): Promise<Array<SqlSelectRowObject<Database, Stmt, Params>>>
+	query(statement: string, params?: Record<string, unknown>): Promise<Array<unknown>> {
+		const bound =
+			params === undefined
+				? { text: statement, values: [] as unknown[] }
+				: bindColonNamedParamsForPg(statement, params)
+		const values = bound.values
+		return this.dbInterface.query(bound.text, values.length > 0 ? values : undefined) as Promise<Array<unknown>>
 	}
 
 	/**
 	 * Row-by-row iteration when the driver exposes {@link SqlDriver.stream}; otherwise buffers
 	 * {@link query} and yields each row.
 	 */
-	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Database, Stmt>> {
+	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Database, Stmt>>
+	stream<Stmt extends string, Params extends ExpressionParamsShape>(
+		statement: Stmt,
+		params: ParamRuntimeValues<Params>,
+	): AsyncIterable<SqlSelectRowObject<Database, Stmt, Params>>
+	stream(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
+		const bound =
+			params === undefined
+				? { text: statement, values: [] as unknown[] }
+				: bindColonNamedParamsForPg(statement, params)
+		const values = bound.values
+		const args = values.length > 0 ? values : undefined
 		const streamFn = this.dbInterface.stream
 		if (streamFn !== undefined) {
-			return streamFn(statement) as AsyncIterable<SqlSelectRowObject<Database, Stmt>>
+			return streamFn(bound.text, args) as AsyncIterable<unknown>
 		}
-		const self = this
+		const db = this.dbInterface
 		return (async function* () {
-			const rows = await self.query(statement)
+			const rows = await db.query(bound.text, args)
 			for (const row of rows) {
 				yield row
 			}
@@ -221,8 +301,4 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 	migrations: readonly { source: string; path: string }[]
 	defaultSchema: string
 	dbInterface: SqlDriver
-}
-
-async function* async<T>(items: Promise<Iterable<T>>) {
-	yield* await items
 }

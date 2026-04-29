@@ -11,10 +11,11 @@ export class UsersService {
 	async listUsers() {
 		return this.db.query(`
 			select
+				public.agenda.*,
 				email,
 				display_name,
 				auth.users.created_at,
-				public.agenda.*
+				auth.users.login_count
 			from auth.users
 			left join public.agenda
 			on auth.users.id = public.agenda.user_id

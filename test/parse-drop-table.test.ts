@@ -3,6 +3,7 @@ import type { JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 
 /** Concrete `sets` keys only — `HasConcreteSet` is false when an index signature is merged in. */
 type DbAuthItems = {
@@ -14,6 +15,7 @@ type DbAuthItems = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 /** Matches `RemoveTableFromDb` shape: only `sets` remains on the updated schema object. */
@@ -22,6 +24,7 @@ type DbAuthItemsDropped = {
 	schemas: {
 		auth: { sets: Omit<DbAuthItems["schemas"]["auth"]["sets"], "items"> }
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type D1 = ParseSqlStatement<ParseSqlTokens<`drop table auth.items;`>, DbAuthItems>
@@ -49,6 +52,7 @@ type DbDefaultPublicWithNotifications = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type DbDefaultPublicDroppedNotifications = {
@@ -58,6 +62,7 @@ type DbDefaultPublicDroppedNotifications = {
 			sets: Omit<DbDefaultPublicWithNotifications["schemas"]["public"]["sets"], "notifications">
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type D4 = ParseSqlStatement<ParseSqlTokens<`drop table notifications;`>, DbDefaultPublicWithNotifications>
@@ -67,6 +72,7 @@ type _d4shape = Expect<Matches<D4[1], DbDefaultPublicDroppedNotifications>>
 type DbBillingAndPublic = {
 	defaultSchema: "public"
 	schemas: { public: JsqlSchemaShape; billing: JsqlSchemaShape }
+	scalarTypes: PackageScalarTypes
 }
 
 type DbBillingWithInvoices = {
@@ -79,6 +85,7 @@ type DbBillingWithInvoices = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type DbBillingInvoicesDropped = {
@@ -87,6 +94,7 @@ type DbBillingInvoicesDropped = {
 		public: DbBillingWithInvoices["schemas"]["public"]
 		billing: { sets: Omit<DbBillingWithInvoices["schemas"]["billing"]["sets"], "invoices"> }
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type D5 = ParseSqlStatement<ParseSqlTokens<`drop table billing.invoices;`>, DbBillingWithInvoices>
@@ -102,6 +110,7 @@ type DbWithView = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type DDropViewAsTable = ParseSqlStatement<ParseSqlTokens<`drop table v_reports;`>, DbWithView>

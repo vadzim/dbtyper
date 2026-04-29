@@ -12,6 +12,7 @@ export class UsersController {
 			email: user.email,
 			display_name: user.display_name,
 			created_at: user.created_at,
+			login_count: user.login_count,
 		}))
 	}
 }

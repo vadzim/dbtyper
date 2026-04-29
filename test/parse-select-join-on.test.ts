@@ -22,6 +22,7 @@ create table auth.users (
 	id uuid not null,
 	email text not null,
 	display_name text null,
+	login_count integer not null,
 	created_at timestamp with time zone null
 );
 create table public.agenda ( id uuid not null, user_id uuid not null );
@@ -65,7 +66,7 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 			columns: {
 				email: string
 				display_name: string | null
-				created_at: string | null
+				created_at: Date | null
 				agenda_id: string
 			}
 			column_sql_types: {
@@ -78,7 +79,7 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 	>
 >
 
-/** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE`, `ORDER BY`. */
+/** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE` via `:emailPat`, `ORDER BY`. */
 type TNestPostgresAppCliSelect = ParseSqlStatement<
 	ParseSqlTokens<`
 select
@@ -88,11 +89,12 @@ select
 from public.agenda
 inner join auth.users
 on auth.users.id = public.agenda.user_id
-where email ~ '@example\\.com$'
+where email ~ :emailPat
 order by display_name asc
 ;
 `>,
-	DbJoinAuthAgenda
+	DbJoinAuthAgenda,
+	{ emailPat: { ts: string; sql: "text" } }
 >
 type _nestPostgresAppCliSelectOk = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>, JsqlSelectStatementResult>>
 type _nestPostgresAppCliSelectColumns = Expect<

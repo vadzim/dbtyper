@@ -3,6 +3,7 @@ import type { JsqlInsertStatementResult } from "../core/jsql-shapes.ts"
 import type { ParseSqlTokens, SqlParserError } from "../core/sql-tokens.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 
 type DbUsers = {
 	defaultSchema: "public"
@@ -18,6 +19,7 @@ type DbUsers = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type InsOk = ParseSqlStatement<ParseSqlTokens<`insert into users (id, name) values ('u1', 'n1');`>, DbUsers>
@@ -60,6 +62,7 @@ type DbAppDefaultPublicUsers = {
 			}
 		}
 	}
+	scalarTypes: PackageScalarTypes
 }
 
 type InsQualified = ParseSqlStatement<

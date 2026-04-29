@@ -28,6 +28,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 - Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
 - Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
+- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`SqlDatabase`** supplies the default map).
 
 ---
 
@@ -44,7 +45,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - Optional **`IF NOT EXISTS`**.
 - **Qualified** `schema.table` or **unqualified** `table` (uses `defaultSchema`); schema must exist in the shape.
 - **`(` … `)`** column list, then **`;`** or end.
-- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via `SqlScalarTypeMap` (uuid, text, integer/int, bigint, smallint, boolean/bool, numeric/decimal, real/float, double precision, json/jsonb, date, timestamp variants, time variants, varchar/character varying, char, etc.). Unlisted spellings map to **`unknown`** at the TS level.
+- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`SqlDatabase`** / **`SqlScalarTypeMap`** for the package default map used by **`sqlDatabase()`**). Unlisted spellings map to **`unknown`** at the TS level.
 - Optional **`NULL`** / **`NOT NULL`** after the type.
 - **`CONSTRAINT` …** lines: enough structure to **skip** a typical `CONSTRAINT name PRIMARY KEY ( … )` (balanced parens); constraints are **not** merged into `JsqlTableShape` from this path.
 - With **`IF NOT EXISTS`** when the table **already** exists: table body is **skipped to `;`** without merging.
