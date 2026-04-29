@@ -6,7 +6,7 @@ import type { JsqlDatabaseShape } from "typesql"
  * Keep this intentionally light so `forRootAsync` factories do not need to
  * expand the full `DataBase` generic graph at the return site.
  */
-export type TypesqlDatabase<Db extends JsqlDatabaseShape = JsqlDatabaseShape> = {
+type TypesqlDatabase<Db extends JsqlDatabaseShape = JsqlDatabaseShape> = {
 	$db: Db
 	query: (...args: any[]) => Promise<Array<unknown>>
 	stream: (...args: any[]) => AsyncIterable<unknown>

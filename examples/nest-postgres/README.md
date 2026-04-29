@@ -1,6 +1,6 @@
 # nest-postgres example
 
-Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: **`TypesqlModule`** wires `exampleDb(postgresSqlDriver({ sql }))` then **`database`** with **`postgresSqlDriver`** from **`typesql/postgres`**, and **`UsersService`** injects the typed `DataBase` via **`@Inject(TYPESQL_DATABASE)`**.
+Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: **`TypesqlModule`** wires `exampleDb(postgresSqlDriver({ sql }))` and **`UsersService`** injects the typed `DataBase` via **`@InjectTypesql()`**.
 
 - **Port `54334`** and DB **`typesql_nest_example`** (so it can run beside the plain example on `54333`).
 - **`GET /users`** returns JSON rows from **`UsersService.listUsers()`**, which uses typed SQL including **`public.agenda.*`** (qualified table star) on a **`LEFT JOIN`** with **`auth.users`**.
@@ -51,5 +51,5 @@ npm run example:nest:docker:down
 
 - `src/sample-app.ts` / `src/app-cli.ts` — same typed CLI path as plain **`typed-postgres`** (`createExampleApp`, printed rows)
 - `src/app.module.ts` — `TypesqlModule.forRootAsync` + `ConfigModule`
-- `src/users/` — `UsersService` with **`@Inject(TYPESQL_DATABASE)`**, **`UsersController`** with **`@Inject(UsersService)`**
+- `src/users/` — `UsersService` with **`@InjectTypesql()`**, **`UsersController`** with **`@Inject(UsersService)`**
 - `migrations/*.js` — same shape as the plain Postgres example (`migration()` for exported migrations — see **[`docs/MIGRATIONS.md`](../../docs/MIGRATIONS.md)**)

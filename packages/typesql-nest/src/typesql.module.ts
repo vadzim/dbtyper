@@ -6,7 +6,7 @@ import { TYPESQL_DATABASE, TYPESQL_ROOT_OPTIONS } from "./typesql.constants.ts"
 import type { TypesqlRootConfig } from "./typesql-root.config.ts"
 import { TypesqlLifecycle } from "./typesql-lifecycle.service.ts"
 
-export type TypesqlModuleAsyncOptions<Db extends JsqlDatabaseShape = JsqlDatabaseShape> = {
+type TypesqlModuleAsyncOptions<Db extends JsqlDatabaseShape = JsqlDatabaseShape> = {
 	imports?: ModuleMetadata["imports"]
 	inject?: any[]
 	useFactory: (...args: any[]) => TypesqlRootConfig<Db> | Promise<TypesqlRootConfig<Db>>

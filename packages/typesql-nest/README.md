@@ -1,6 +1,6 @@
 # @typesql/nest
 
-NestJS integration for [typesql](../../README.md): registers a compiled logical database (including the `SqlDriver` supplied to `sqlDatabase`), exposes `DataBase` injection token, and tears down the DB client on application shutdown.
+NestJS integration for [typesql](../../README.md): registers a compiled logical database, exposes a typed injection decorator, and tears down the DB client on application shutdown.
 
 See [DESIGN.md](./DESIGN.md) for boundaries and lifecycle.
 
@@ -19,7 +19,7 @@ import { Module } from "@nestjs/common"
 import { ConfigModule, ConfigService } from "@nestjs/config"
 import postgres from "postgres"
 
-import { TypesqlModule, type TypesqlRootConfig } from "@typesql/nest"
+import { TypesqlModule } from "@typesql/nest"
 import { exampleDb } from "./example-schema.js"
 import { postgresSqlDriver } from "typesql/postgres"
 
@@ -29,7 +29,7 @@ import { postgresSqlDriver } from "typesql/postgres"
 		TypesqlModule.forRootAsync({
 			imports: [ConfigModule],
 			inject: [ConfigService],
-			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
+			useFactory: async (config: ConfigService) => {
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
 				const database = await exampleDb(postgresSqlDriver({ sql }))
 				return {
@@ -58,5 +58,3 @@ export class UsersService {
 	}
 }
 ```
-
-Use `TYPESQL_DATABASE` if you prefer `@Inject(Symbol)` over `@InjectTypesql()`.
