@@ -9,10 +9,21 @@ if (url === undefined || url === "") {
 const { app, sql } = await createExampleApp(url)
 
 try {
-	const rows = await app.query("select email, display_name from auth.users;")
+	const rows = await app.query(`
+		select
+			public.agenda.*,
+			email,
+			display_name,
+			auth.users.created_at,
+			auth.users.login_count
+		from auth.users
+		left join public.agenda
+		on auth.users.id = public.agenda.user_id
+		order by email;
+	`)
 	console.log("users (typed rows from typesql + postgres):")
 	for (const row of rows) {
-		console.log(`  ${row.email}\t${row.display_name ?? ""}`)
+		console.log(`  ${row.email}\t${row.display_name ?? ""}\t${row.title}`, row)
 	}
 } finally {
 	await sql.end({ timeout: 5 })
