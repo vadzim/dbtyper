@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"noEmit": true,
 		"paths": {
-			"typesql": ["../../src/index.ts"]
+			"typesql": ["../../src/index.ts"],
+			"typesql/postgres": ["../../src/postgres/index.ts"]
 		},
 		"ignoreDeprecations": "6.0"
 	},

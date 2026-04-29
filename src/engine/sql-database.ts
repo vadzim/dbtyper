@@ -2,50 +2,46 @@ import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
+import type { PostgresTypeMap } from "../parser/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import { bindColonNamedParamsForPg } from "../postgres/bind-colon-named-params-for-pg.ts"
 import type { SqlSelectRow } from "./sql-query.ts"
 
+/** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlDatabase}; same keys as {@link PostgresTypeMap}. */
+type DefaultSqlScalarTypeMap = PostgresTypeMap
+
+export type { MergeDbPreserveScalars }
+
 /**
- * Default SQL scalar identifier spellings (lowercased join of type words) → TypeScript types.
- * Used only as the default second type argument of {@link SqlDatabase} / {@link sqlDatabase}.
+ * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
+ * `postgresSqlDriver`.
  */
-export type SqlScalarTypeMap = {
-	uuid: string
-	text: string
-	integer: number
-	int: number
-	bigint: bigint
-	smallint: number
-	boolean: boolean
-	bool: boolean
-	numeric: string
-	decimal: string
-	real: number
-	float: number
-	"double precision": number
-	json: unknown
-	jsonb: unknown
-	date: string
-	timestamp: Date
-	"timestamp with time zone": Date
-	"timestamp without time zone": Date
-	"time with time zone": string
-	"time without time zone": string
-	"character varying": string
-	varchar: string
-	char: string
+export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
+
+export type SqlDriver = {
+	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
+	stream?(sql: string, params?: SqlDriverParams): AsyncIterable<unknown>
+}
+
+/** Driver augmented with a phantom `typesqlScalarTypes` map so {@link sqlDatabase} can infer {@link SqlDatabase}. */
+export type SqlDriverWithScalarTypes<S extends Record<string, unknown>> = SqlDriver & {
+	readonly typesqlScalarTypes: S
+}
+
+/** Scalar map implied by `driver.typesqlScalarTypes`, or {@link DefaultSqlScalarTypeMap} when absent. */
+export type InferScalarTypesFromDriver<D extends SqlDriver> = D extends {
+	typesqlScalarTypes: infer S extends Record<string, unknown>
+}
+	? S
+	: DefaultSqlScalarTypeMap
+
+/** Configuration for {@link sqlDatabase}: logical schema name (default `public`) plus the runtime {@link SqlDriver} used at {@link CompiledDataBase.connect}. */
+export type SqlDatabaseConfig<D extends SqlDriver = SqlDriver> = {
+	defaultSchema?: string
+	driver: D
 }
 
 /** Scalar map carried on every {@link JsqlDatabaseShape} (`Db["scalarTypes"]`). */
 export type ScalarTypesOf<D extends JsqlDatabaseShape> = D["scalarTypes"]
-
-export type { MergeDbPreserveScalars }
-
-export type SqlDriver = {
-	query(sql: string, params?: readonly unknown[]): Promise<Array<unknown>>
-	stream?(sql: string, params?: readonly unknown[]): AsyncIterable<unknown>
-}
 
 /** Values object matching `:name` slots implied by {@link ExpressionParamsShape}. */
 export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
@@ -54,18 +50,21 @@ export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
 
 export type SqlDatabase<
 	DefaultSchema extends string = "public",
-	ScalarTypes extends Record<string, unknown> = SqlScalarTypeMap,
+	ScalarTypes extends Record<string, unknown> = DefaultSqlScalarTypeMap,
 > = {
 	defaultSchema: DefaultSchema
 	schemas: {}
 	scalarTypes: ScalarTypes
 }
 
-export function sqlDatabase<
-	DefaultSchema extends string,
-	ScalarTypes extends Record<string, unknown> = SqlScalarTypeMap,
->(defaultSchema: DefaultSchema) {
-	return new DBMigrations<SqlDatabase<DefaultSchema, ScalarTypes>>(defaultSchema)
+export function sqlDatabase<const DS extends string | undefined, D extends SqlDriver>(
+	config: SqlDatabaseConfig<D>,
+): DBMigrations<SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>> {
+	const defaultSchema = config.defaultSchema ?? "public"
+	// @ts-expect-error TS2589 — `SqlDatabase` + `InferScalarTypesFromDriver` instantiation depth; asserted shape matches.
+	return new DBMigrations(defaultSchema, null, config.driver) as DBMigrations<
+		SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>
+	>
 }
 
 /**
@@ -91,7 +90,7 @@ export function migration<Path extends string>(path: Path) {
 
 /**
  * Same as {@link migration}, but marks SQL as a **patch** (internal parity / workaround): participates in
- * `sqlDatabase().apply(…).compile()` types, but must **not** be listed next to real migrations for export
+ * `sqlDatabase({ driver }).apply(…).compile()` types, but must **not** be listed next to real migrations for export
  * (e.g. `allMigrationFilenames`). Use when aligning the typesql catalog with an external DB without publishing
  * extra migration steps.
  */
@@ -183,15 +182,16 @@ type Migrations = {
 }
 
 export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<string>> {
-	constructor(defaultSchema: string, migrations: Migrations | null = null) {
+	constructor(defaultSchema: string, migrations: Migrations | null = null, driver: SqlDriver) {
 		this.#migrations = migrations
 		this.#defaultSchema = defaultSchema
+		this.#driver = driver
 	}
 
 	#migrations: Migrations | null
 	#defaultSchema: string
+	#driver: SqlDriver
 
-	// @ts-expect-error TS2589 — `ApplyStatements` depth can exceed the checker limit on large sources; overload is still correct.
 	apply<Source extends string>(statement: Source): DBMigrations<ApplyStatements<Database, Source>[0]>
 	apply<Path extends string, Source extends string>(
 		statement: Promise<{ default: MigrationExport & { path: Path; source: Source } }>,
@@ -199,13 +199,17 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 	apply(
 		statement: string | Promise<{ default: MigrationExport }>,
 	): DBMigrations<ApplyStatements<Database, string>[0]> {
-		return new DBMigrations<Database>(this.#defaultSchema, {
-			last:
-				typeof statement === "string"
-					? Promise.resolve({ source: statement, path: "" })
-					: statement.then(d => d.default),
-			prev: this.#migrations,
-		}) as DBMigrations<ApplyStatements<Database, string>[0]>
+		return new DBMigrations<Database>(
+			this.#defaultSchema,
+			{
+				last:
+					typeof statement === "string"
+						? Promise.resolve({ source: statement, path: "" })
+						: statement.then(d => d.default),
+				prev: this.#migrations,
+			},
+			this.#driver,
+		) as DBMigrations<ApplyStatements<Database, string>[0]>
 	}
 
 	getDefaultSchema(): string {
@@ -225,7 +229,7 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 
 	async compile(): Promise<CompiledDataBase<FlattenedJsqlDatabase<Database>>> {
 		const migrations = await this.#getMigrations()
-		return new CompiledDataBase<FlattenedJsqlDatabase<Database>>(migrations, this.#defaultSchema)
+		return new CompiledDataBase<FlattenedJsqlDatabase<Database>>(migrations, this.#defaultSchema, this.#driver)
 	}
 }
 
@@ -234,13 +238,18 @@ export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserErro
 		return null as unknown as Database
 	}
 
-	constructor(migrations: readonly MigrationExport[], defaultSchema: string) {
+	constructor(
+		migrations: readonly MigrationExport[],
+		defaultSchema: string,
+		readonly driver: SqlDriver,
+	) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema
 	}
 
-	connect(dbInterface: SqlDriver) {
-		return new ConnectedDataBase<Database>(this.migrations, this.defaultSchema, dbInterface)
+	/** Uses the {@link SqlDatabaseConfig.driver} passed to {@link sqlDatabase}. */
+	connect(): ConnectedDataBase<Database> {
+		return new ConnectedDataBase<Database>(this.migrations, this.defaultSchema, this.driver)
 	}
 
 	migrations: readonly MigrationExport[]
@@ -272,7 +281,7 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 	/**
 	 * All rows at once. `Stmt` must be a `SELECT` / `WITH … SELECT` that type-checks against
 	 * {@link Database}. With `:name` parameters, pass {@link ParamRuntimeValues} as the second
-	 * argument (bound at runtime as PostgreSQL `$n` placeholders).
+	 * argument (drivers such as `postgresSqlDriver` bind them to PostgreSQL `$n` placeholders).
 	 */
 	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Database, Stmt>>>
 	query<Stmt extends string, Params extends ExpressionParamsShape>(
@@ -280,12 +289,7 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		params: ParamRuntimeValues<Params>,
 	): Promise<Array<SqlSelectRowObject<Database, Stmt, Params>>>
 	query(statement: string, params?: Record<string, unknown>): Promise<Array<unknown>> {
-		const bound =
-			params === undefined
-				? { text: statement, values: [] as unknown[] }
-				: bindColonNamedParamsForPg(statement, params)
-		const values = bound.values
-		return this.dbInterface.query(bound.text, values.length > 0 ? values : undefined) as Promise<Array<unknown>>
+		return this.dbInterface.query(statement, params) as Promise<Array<unknown>>
 	}
 
 	/**
@@ -298,19 +302,13 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		params: ParamRuntimeValues<Params>,
 	): AsyncIterable<SqlSelectRowObject<Database, Stmt, Params>>
 	stream(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
-		const bound =
-			params === undefined
-				? { text: statement, values: [] as unknown[] }
-				: bindColonNamedParamsForPg(statement, params)
-		const values = bound.values
-		const args = values.length > 0 ? values : undefined
 		const streamFn = this.dbInterface.stream
 		if (streamFn !== undefined) {
-			return streamFn(bound.text, args) as AsyncIterable<unknown>
+			return streamFn(statement, params) as AsyncIterable<unknown>
 		}
 		const db = this.dbInterface
 		return (async function* () {
-			const rows = await db.query(bound.text, args)
+			const rows = await db.query(statement, params)
 			for (const row of rows) {
 				yield row
 			}

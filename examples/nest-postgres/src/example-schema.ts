@@ -1,10 +1,14 @@
 import { sqlDatabase } from "typesql"
+import { postgresSqlDriver, type PostgresDriver } from "typesql/postgres"
 
 /**
  * All migrations (DDL + seed) participate in compile-time checking; runtime migrate applies the same files.
+ *
+ * @param driver Same Postgres driver instance as runtime queries (`postgresSqlDriver(sql)`), or omit /
+ *   pass {@link postgresSqlDriver()} for compile-only / tests (noop implementation).
  */
-export async function compileExampleDb() {
-	return await sqlDatabase("public")
+export async function compileExampleDb(driver: PostgresDriver = postgresSqlDriver()) {
+	return await sqlDatabase({ driver })
 		.apply(import("../migrations/001_schemas.ts"))
 		.apply(import("../migrations/002_users.ts"))
 		.apply(import("../migrations/003_agenda.ts"))

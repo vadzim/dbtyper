@@ -47,7 +47,7 @@ export class TypesqlModule {
 				},
 				{
 					provide: TYPESQL_CONNECTED,
-					useFactory: (root: TypesqlRootConfig) => root.compiled.connect(root.driver),
+					useFactory: (root: TypesqlRootConfig) => root.compiled.connect(),
 					inject: [TYPESQL_ROOT_OPTIONS],
 				},
 				TypesqlLifecycle,

@@ -4,7 +4,7 @@
 
 Use **`migration(import.meta.url).add(\`…\`)`** for SQL that is a **real migration**: versioned DDL/DML you expect every environment to run in order (including production), and that you typically **export** as `.sql` for your migration runner.
 
-- Chain those modules with **`sqlDatabase(…).apply(import("./….ts"))`** so the type-level catalog matches the database.
+- Chain those modules with **`sqlDatabase({ driver }).apply(import("./….ts"))`** so the type-level catalog matches the database.
 - List the same filenames in your **runtime export list** (e.g. `allMigrationFilenames` in the typed Postgres examples) so `db:migrate` writes and applies them.
 
 ## Exception: `patch()` — internal parity / workaround SQL

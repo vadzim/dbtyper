@@ -1,15 +1,15 @@
 # @typesql/nest
 
-NestJS integration for [typesql](../../README.md): registers a compiled logical database and its `SqlDriver`, exposes `CompiledDataBase` / `ConnectedDataBase` injection tokens, and tears down the DB client on application shutdown.
+NestJS integration for [typesql](../../README.md): registers a compiled logical database (including the `SqlDriver` supplied to `sqlDatabase`), exposes `CompiledDataBase` / `ConnectedDataBase` injection tokens, and tears down the DB client on application shutdown.
 
 See [DESIGN.md](./DESIGN.md) for boundaries and lifecycle.
 
 ## Install
 
-Peer dependencies: `@nestjs/common` and `@nestjs/core` ^10 or ^11, and `typesql`.
+Peer dependencies: `@nestjs/common` and `@nestjs/core` ^10 or ^11, `typesql`, and **`postgres`** when using **`postgresSqlDriver`** from **`typesql/postgres`**.
 
 ```bash
-npm install @typesql/nest @nestjs/common typesql
+npm install @typesql/nest @nestjs/common typesql postgres
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ import postgres from "postgres"
 
 import { TypesqlModule, type TypesqlRootConfig } from "@typesql/nest"
 import { compileExampleDb } from "./example-schema.js"
-import { postgresSqlDriver } from "./postgres-driver.js"
+import { postgresSqlDriver } from "typesql/postgres"
 
 @Module({
 	imports: [
@@ -30,11 +30,10 @@ import { postgresSqlDriver } from "./postgres-driver.js"
 			imports: [ConfigModule],
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
-				const compiled = await compileExampleDb()
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
+				const compiled = await compileExampleDb(postgresSqlDriver(sql))
 				return {
 					compiled,
-					driver: postgresSqlDriver(sql),
 					onShutdown: sql,
 				}
 			},

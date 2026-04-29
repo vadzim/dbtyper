@@ -24,9 +24,12 @@
 	"devDependencies": {
 		"@nestjs/common": "^11.0.0",
 		"@nestjs/core": "^11.0.0",
+		"prettier": "^3.8.1",
 		"typesql": "file:../.."
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit -p tsconfig.json"
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"format:check": "prettier --check .",
+		"test": "npm run typecheck && npm run format:check"
 	}
 }

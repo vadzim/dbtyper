@@ -1,6 +1,6 @@
 # typed-postgres example
 
-End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export; optional **`patch()`**) → **`postgres.js`** runner → **typed queries** via `sqlDatabase(…).compile().connect()`.
+End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export; optional **`patch()`**) → **`postgres.js`** runner → **typed queries** via `sqlDatabase({ driver: postgresSqlDriver(…) }).compile().connect()` with **`postgresSqlDriver`** from **`typesql/postgres`**.
 
 ## Prerequisites
 

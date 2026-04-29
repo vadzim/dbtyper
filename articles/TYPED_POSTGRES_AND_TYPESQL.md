@@ -23,11 +23,11 @@ typesql does **not** execute SQL in types; it keeps a **type-level** model of th
 
 ## Pieces
 
-| Piece                         | Role                                                                                                                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **typesql**                   | `sqlDatabase` → `apply(migrationSql)` → `compile()` gives a typed logical DB; `connect(driver)` exposes `query` / `stream` whose row types come from `SqlSelectRow<…>`.                    |
-| **postgres** (npm `postgres`) | Modern client: primary API is the `sql` template tag; here we use `sql.unsafe(string)` only for strings **already** vetted by typesql at compile time (or fixed literals).                 |
-| **Bridge**                    | Implement `SqlDriver`: `query(sql)` → `Promise<unknown[]>`; optional `stream(sql)` → `AsyncIterable<unknown>`. The example flattens postgres.js **cursor batches** into one row per yield. |
+| Piece                         | Role                                                                                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **typesql**                   | `sqlDatabase({ driver })` → `apply(migrationSql)` → `compile()` gives a typed logical DB; `connect()` exposes `query` / `stream` whose row types come from `SqlSelectRow<…>` (same `driver` as in `sqlDatabase`). |
+| **postgres** (npm `postgres`) | Modern client: primary API is the `sql` template tag; here we use `sql.unsafe(string)` only for strings **already** vetted by typesql at compile time (or fixed literals).                                        |
+| **Bridge**                    | `postgresSqlDriver` from **`typesql/postgres`** implements `SqlDriver` for [postgres](https://github.com/porsager/postgres) (`query` + `stream` via server-side cursor batches).                                  |
 
 ---
 
@@ -36,18 +36,25 @@ typesql does **not** execute SQL in types; it keeps a **type-level** model of th
 1. **Build the logical schema** with the same (or equivalent) SQL as your real migrations:
 
     ```ts
-    const logicalDb = await sqlDatabase("public")
+    const logicalDb = await sqlDatabase({ driver: postgresSqlDriver() })
     	.apply(`create table users ( id uuid not null, name text not null );`)
     	.compile()
     ```
 
-2. **Open a real connection** (e.g. `DATABASE_URL`) and wrap it as `SqlDriver` (see `examples/typed-postgres/src/postgres-driver.ts`).
+2. **Open a real connection** (e.g. `DATABASE_URL`) and pass **`postgresSqlDriver(sql)`** as the same `driver` when building migrations / compile (see [`examples/typed-postgres/`](../examples/typed-postgres/)).
 
-3. **Connect**:
+3. **Connect** (driver was already supplied to `sqlDatabase`):
 
     ```ts
+    import postgres from "postgres"
+    import { postgresSqlDriver } from "typesql/postgres"
+    import { sqlDatabase } from "typesql"
+
     const sql = postgres(process.env.DATABASE_URL!)
-    const app = logicalDb.connect(postgresSqlDriver(sql))
+    const logicalDb = await sqlDatabase({ driver: postgresSqlDriver(sql) })
+    	.apply(/* migrations */)
+    	.compile()
+    const app = logicalDb.connect()
     ```
 
 4. **Query with typed rows**:

@@ -7,11 +7,13 @@
 		"typesql": "file:../.."
 	},
 	"devDependencies": {
+		"prettier": "^3.8.1",
 		"tsx": "^4.19.4"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json",
-		"test": "npm run typecheck && node --test \"test/**/*.test.ts\"",
+		"format:check": "prettier --check .",
+		"test": "npm run typecheck && node --test \"test/**/*.test.ts\" && npm run format:check",
 		"test:integration": "RUN_TYPED_PG_INTEGRATION=1 node --test test/integration.test.ts",
 		"docker:up": "docker compose up -d",
 		"docker:down": "docker compose down -v --remove-orphans",

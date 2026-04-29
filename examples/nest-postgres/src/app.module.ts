@@ -2,11 +2,11 @@ import "reflect-metadata"
 
 import { Module } from "@nestjs/common"
 import { ConfigModule, ConfigService } from "@nestjs/config"
-import postgres from "postgres"
 import { TypesqlModule, type TypesqlRootConfig } from "@typesql/nest"
+import postgres from "postgres"
+import { postgresSqlDriver } from "typesql/postgres"
 
 import { compileExampleDb } from "./example-schema.ts"
-import { postgresSqlDriver } from "./postgres-driver.ts"
 import { UsersModule } from "./users/users.module.ts"
 
 @Module({
@@ -16,11 +16,10 @@ import { UsersModule } from "./users/users.module.ts"
 			imports: [ConfigModule],
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
-				const compiled = await compileExampleDb()
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
+				const compiled = await compileExampleDb(postgresSqlDriver(sql))
 				return {
 					compiled,
-					driver: postgresSqlDriver(sql),
 					onShutdown: sql,
 				}
 			},

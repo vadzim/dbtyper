@@ -22,6 +22,10 @@
 		".": {
 			"types": "./dist/src/index.d.ts",
 			"import": "./dist/src/index.js"
+		},
+		"./postgres": {
+			"types": "./dist/src/postgres/index.d.ts",
+			"import": "./dist/src/postgres/index.js"
 		}
 	},
 	"files": [
@@ -49,17 +53,26 @@
 		"example:nest:test:integration": "npm run test:integration -w @typesql/example-nest-postgres",
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
-		"test": "npm run --silent typecheck && npm run --silent typecheck -w @typesql/example-postgres && npm run --silent typecheck -w @typesql/example-nest-postgres && npm run --silent typecheck -w @typesql/nest && node --test \"test/**/*.test.ts\" && npm run --silent test -w @typesql/example-postgres && npm run --silent test -w @typesql/example-nest-postgres && npm run --silent format:check",
+		"test": "npm run --silent typecheck && npm run --silent typecheck -w @typesql/example-postgres && npm run --silent typecheck -w @typesql/example-nest-postgres && npm run --silent test -w @typesql/nest && node --test \"test/**/*.test.ts\" && npm run --silent test -w @typesql/example-postgres && npm run --silent test -w @typesql/example-nest-postgres && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"monadcheck": "check-monad './core/**/*.ts' './src/**/*.ts' --monad ./core/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
 		"monadcheck-log": "mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./core ./src -mx=9; fi; exit $MC"
+	},
+	"peerDependencies": {
+		"postgres": "^3.4.0"
+	},
+	"peerDependenciesMeta": {
+		"postgres": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
 		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#4df9246cd31d6a7509e33a15cfe650a88f81d0fe",
 		"nodemon": "^3.1.14",
+		"postgres": "^3.4.5",
 		"prettier": "^3.8.1",
 		"typescript": "^6.0.2"
 	}
