@@ -1,0 +1,13 @@
+---
+description: Prefer Matches/Extends type assertions in test files
+globs: test/**/*.ts
+alwaysApply: false
+---
+
+# Type tests: `Matches` and `Extends`
+
+- **Strict equality (two-way):** use `Expect<Matches<Actual, Expected>>` when both sides should be identical types.
+- **Assignability (one-way):** use `Expect<Extends<Actual, Expected>>` when checking that a type is assignable to a wider type (e.g. a specific `SqlParserError<\`…\`>`extends`SqlParserError<string>`, or an error slot is some `SqlParserError<…>`).
+- Prefer **`Matches`** when you can spell the full expected type; use **`Extends`** when the compiler’s actual type is intentionally narrower or you only care about a bound.
+- Avoid ad-hoc conditional boolean assertions (`T extends U ? true : false`) unless there is no helper equivalent.
+- In **`Matches<Actual, Expected>`**, keep **`Expected`** explicit and inlined in the test file when practical (avoid indirection that hides the asserted shape).

@@ -15,7 +15,7 @@
 			"import": "./dist/src/index.js"
 		}
 	},
-	"files": ["dist", "README.md"],
+	"files": ["dist", "README.md", "docs"],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",
