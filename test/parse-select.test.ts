@@ -61,6 +61,93 @@ type TSelectWhereBad = ParseSqlStatement<
 >
 type _selectWhereBad = Expect<Extends<Tuple3At2<TSelectWhereBad>, SqlParserError<"Unknown qualified column">>>
 
+type TSelectOrderByOk = ParseSqlStatement<
+	ParseSqlTokens<`select users.name from users order by users.name;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrderByOk = Expect<Extends<Tuple3At2<TSelectOrderByOk>, JsqlSelectStatementResult>>
+
+type TSelectOrderByBad = ParseSqlStatement<
+	ParseSqlTokens<`select users.name from users order by users.nope;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrderByBad = Expect<Extends<Tuple3At2<TSelectOrderByBad>, SqlParserError<string>>>
+
+type TSelectLimitOk = ParseSqlStatement<ParseSqlTokens<`select users.id from users limit 5;`>, DbJoinDefaultAndExplicit>
+type _selectLimitOk = Expect<Extends<Tuple3At2<TSelectLimitOk>, JsqlSelectStatementResult>>
+
+/** `ORDER BY … DESC` / multi-column / comma ordering. */
+type TSelectOrderByDesc = ParseSqlStatement<
+	ParseSqlTokens<`select users.name from users order by users.name desc;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrderByDesc = Expect<Extends<Tuple3At2<TSelectOrderByDesc>, JsqlSelectStatementResult>>
+
+type TSelectOrderByTwoCols = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users order by users.name asc, users.id desc;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrderByTwoCols = Expect<Extends<Tuple3At2<TSelectOrderByTwoCols>, JsqlSelectStatementResult>>
+
+type TSelectOrderMissingBy = ParseSqlStatement<
+	ParseSqlTokens<`select users.name from users order users.name;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrderMissingBy = Expect<
+	Extends<Tuple3At2<TSelectOrderMissingBy>, SqlParserError<"Expected BY after ORDER">>
+>
+
+/** `OFFSET` without `LIMIT` (PostgreSQL); `OFFSET … LIMIT …`; `FETCH FIRST|NEXT … ROW(S) ONLY`. */
+type TSelectOffsetOnly = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users offset 10;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOffsetOnly = Expect<Extends<Tuple3At2<TSelectOffsetOnly>, JsqlSelectStatementResult>>
+
+type TSelectOffsetThenLimit = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users offset 5 limit 10;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOffsetThenLimit = Expect<Extends<Tuple3At2<TSelectOffsetThenLimit>, JsqlSelectStatementResult>>
+
+type TSelectFetchFirstRowsOnly = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users fetch first 5 rows only;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectFetchFirstRowsOnly = Expect<Extends<Tuple3At2<TSelectFetchFirstRowsOnly>, JsqlSelectStatementResult>>
+
+type TSelectFetchNextRowOnly = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users fetch next 1 row only;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectFetchNextRowOnly = Expect<Extends<Tuple3At2<TSelectFetchNextRowOnly>, JsqlSelectStatementResult>>
+
+type TSelectOrderByFetchFirst = ParseSqlStatement<
+	ParseSqlTokens<`select users.name from users order by users.name fetch first 3 rows only;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOrderByFetchFirst = Expect<Extends<Tuple3At2<TSelectOrderByFetchFirst>, JsqlSelectStatementResult>>
+
+type TSelectOffsetBadCol = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users offset users.nope;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectOffsetBadCol = Expect<Extends<Tuple3At2<TSelectOffsetBadCol>, SqlParserError<"Unknown qualified column">>>
+
+type TSelectFetchBadCol = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users fetch first users.nope rows only;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectFetchBadCol = Expect<Extends<Tuple3At2<TSelectFetchBadCol>, SqlParserError<"Unknown qualified column">>>
+
+type TSelectFetchMissingRowsKw = ParseSqlStatement<
+	ParseSqlTokens<`select users.id from users fetch first 5 only;`>,
+	DbJoinDefaultAndExplicit
+>
+type _selectFetchMissingRowsKw = Expect<
+	Extends<Tuple3At2<TSelectFetchMissingRowsKw>, SqlParserError<"Expected ROW or ROWS in FETCH">>
+>
+
 /** `CASE` at list start (non-ident head) is accepted like other literals. */
 type TSelectCaseKw = ParseSqlStatement<
 	ParseSqlTokens<`select case when true then users.id else users.id end as x from users;`>,

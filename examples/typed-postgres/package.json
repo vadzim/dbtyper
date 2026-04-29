@@ -11,6 +11,12 @@
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"test": "npm run typecheck && node --test \"test/**/*.test.ts\"",
+		"test:integration": "RUN_TYPED_PG_INTEGRATION=1 node --test test/integration.test.ts",
+		"docker:up": "docker compose up -d",
+		"docker:down": "docker compose down -v --remove-orphans",
+		"db:migrate": "tsx scripts/migrate.ts",
+		"app": "tsx src/app.ts",
 		"demo": "tsx src/demo.ts"
 	}
 }

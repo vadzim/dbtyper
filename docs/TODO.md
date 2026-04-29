@@ -72,3 +72,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [x] Same file: **`insert into users u (id, name) values ('a','b');`** if **`ParseInsert`** allows table alias — assert **`JsqlInsertStatementResult`** or document rejection with an error test.
 - [x] **`test/parse-update.test.ts`**: **`update public.users set name = 'x', id = 'y' where …`** (two **`SET`** columns) success + one wrong-type **`SET`** error.
 - [x] **`test/parse-delete.test.ts`** or **`parse-select.test.ts`**: **`delete from users where users.name between 'a' and 'z';`** and **`… where users.name like 'x%';`** — end-to-end **`ParseSqlStatement`**, not only **`ParseWhereExpression`**.
+
+## Example
+
+make example much closer to the real world. add a docker there, create several migrations as ts files, add one package script that export migrations from ts to some temporary folder and runs some migration tool you pick to run migrations; also let migrations to put some test data to the db; make another package script that run app which prints some data from the db from docker. and a package script which starts env like docker. i mean run those scripts to ensure all is ok. add a script which stops and removes docker with db. if you find some missing features in the typesql - implement them if they are not big, otherwise prepare a doc and ask me

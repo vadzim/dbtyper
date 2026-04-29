@@ -1,17 +1,17 @@
-import { createSampleApp } from "./sample-app.ts"
+import { createExampleApp } from "./sample-app.ts"
 
 const url = process.env.DATABASE_URL
 if (url === undefined || url === "") {
-	console.error("Set DATABASE_URL to run the demo (e.g. postgresql://user:pass@localhost:5432/dbname).")
+	console.error("Set DATABASE_URL to run the demo (see .env.example).")
 	process.exit(1)
 }
 
-const { app, sql } = await createSampleApp(url)
+const { app, sql } = await createExampleApp(url)
 
 try {
-	const rows = await app.query("select id, name from users limit 5;")
+	const rows = await app.query("select email, display_name from auth.users order by email asc;")
 	console.log("typed rows:", rows)
-	for await (const row of app.stream("select id from users limit 5;")) {
+	for await (const row of app.stream("select email from auth.users limit 5;")) {
 		console.log("stream row:", row)
 	}
 } finally {

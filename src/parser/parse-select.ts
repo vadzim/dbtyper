@@ -14,8 +14,9 @@ import type {
 } from "../../core/sql-tokens.ts"
 import type {
 	EmptyExpressionParams,
-	ExpressionParamsShape,
+	ExprAtom,
 	ExprOk,
+	ExpressionParamsShape,
 	IsUnknownOrAny,
 	ParseExpressionAST,
 	ResolveExpressionAST,
@@ -164,6 +165,217 @@ type ParseSelectAfterDistinct<
 				: never
 		: never
 
+/** Scalar `ORDER BY` / `LIMIT` / `OFFSET` value: any resolved expression (unlike `WHERE`, not restricted to `boolean`). */
+type ParseOrderByScalarExpr<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+		infer Rw extends TokensList,
+		infer Ast,
+	]
+		? Ast extends SqlParserError<string>
+			? [Rw, Ast]
+			: ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer R
+				? R extends SqlParserError<string>
+					? [Rw, R]
+					: R extends ExprAtom
+						? [Rw, null]
+						: [Rw, SqlParserError<"Invalid ORDER BY expression">]
+				: never
+		: never
+
+type ParseOrderByOneTerm<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseOrderByScalarExpr<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
+		? E1 extends SqlParserError<string>
+			? [R1, E1]
+			: PeekToken<R1> extends TokenKey<"asc">
+				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"asc">]
+					? [R2, null]
+					: never
+				: PeekToken<R1> extends TokenKey<"desc">
+					? ReadToken<R1> extends [infer Rd extends TokensList, TokenKey<"desc">]
+						? [Rd, null]
+						: never
+					: [R1, null]
+		: never
+
+type ParseOrderByTerms<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseOrderByOneTerm<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
+		? E1 extends SqlParserError<string>
+			? [R1, E1]
+			: PeekToken<R1> extends TokenKey<",">
+				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<",">]
+					? ParseOrderByTerms<R2, Db, Scope, Params>
+					: never
+				: [R1, null]
+		: never
+
+type ParseOrderByAfterOrderKw<
+	R1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ReadToken<R1> extends [infer R2 extends TokensList, infer TBy]
+		? TBy extends TokenKey<"by">
+			? ParseOrderByTerms<R2, Db, Scope, Params>
+			: [R2, SqlParserError<"Expected BY after ORDER">]
+		: never
+
+type ParseOptionalOrderByTokens<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"order">
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"order">]
+			? ParseOrderByAfterOrderKw<R1, Db, Scope, Params>
+			: never
+		: [Tokens, null]
+
+type LimitExprThenOptionalOffset<
+	Rl1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Rl1> extends TokenKey<"offset">
+		? ReadToken<Rl1> extends [infer Ro0 extends TokensList, TokenKey<"offset">]
+			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
+				? Oe extends SqlParserError<string>
+					? [Ro1, Oe]
+					: [Ro1, null]
+				: never
+			: never
+		: [Rl1, null]
+
+/** After `OFFSET` expr: optional `LIMIT` expr (PostgreSQL allows `OFFSET … LIMIT …`). */
+type OffsetExprThenOptionalLimit<
+	Ro1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Ro1> extends TokenKey<"limit">
+		? ReadToken<Ro1> extends [infer Rl0 extends TokensList, TokenKey<"limit">]
+			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
+				? Le extends SqlParserError<string>
+					? [Rl1, Le]
+					: [Rl1, null]
+				: never
+			: never
+		: [Ro1, null]
+
+type ExpectRowOrRowsThenOnly<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"rows">
+		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"rows">]
+			? PeekToken<R1> extends TokenKey<"only">
+				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"only">]
+					? [R2, null]
+					: never
+				: [R1, SqlParserError<"Expected ONLY after FETCH … ROWS">]
+			: never
+		: PeekToken<Tokens> extends TokenKey<"row">
+			? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"row">]
+				? PeekToken<R1> extends TokenKey<"only">
+					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"only">]
+						? [R2, null]
+						: never
+					: [R1, SqlParserError<"Expected ONLY after FETCH … ROW">]
+				: never
+			: [Tokens, SqlParserError<"Expected ROW or ROWS in FETCH">]
+
+type ParseFetchFirstAfterFetchKw<
+	R1 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<R1> extends TokenKey<"first">
+		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"first">]
+			? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
+				? E extends SqlParserError<string>
+					? [R3, E]
+					: ExpectRowOrRowsThenOnly<R3>
+				: never
+			: never
+		: PeekToken<R1> extends TokenKey<"next">
+			? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"next">]
+				? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
+					? E extends SqlParserError<string>
+						? [R3, E]
+						: ExpectRowOrRowsThenOnly<R3>
+					: never
+				: never
+			: [R1, SqlParserError<"Expected FIRST or NEXT after FETCH">]
+
+/** Optional `LIMIT …` / `OFFSET …` / `FETCH FIRST|NEXT … ROW(S) ONLY` (single paging block). */
+type ParseOptionalPagingTokens<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"limit">
+		? ReadToken<Tokens> extends [infer Rl0 extends TokensList, TokenKey<"limit">]
+			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
+				? Le extends SqlParserError<string>
+					? [Rl1, Le]
+					: LimitExprThenOptionalOffset<Rl1, Db, Scope, Params>
+				: never
+			: never
+		: PeekToken<Tokens> extends TokenKey<"offset">
+			? ReadToken<Tokens> extends [infer Ro0 extends TokensList, TokenKey<"offset">]
+				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
+					? Oe extends SqlParserError<string>
+						? [Ro1, Oe]
+						: OffsetExprThenOptionalLimit<Ro1, Db, Scope, Params>
+					: never
+				: never
+			: PeekToken<Tokens> extends TokenKey<"fetch">
+				? ReadToken<Tokens> extends [infer Rf extends TokensList, TokenKey<"fetch">]
+					? ParseFetchFirstAfterFetchKw<Rf, Db, Scope, Params>
+					: never
+				: [Tokens, null]
+
+/** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
+type ParseSelectTrailingClauses<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseOptionalOrderByTokens<Tokens, Db, Scope, Params> extends [infer T1 extends TokensList, infer E1]
+		? E1 extends SqlParserError<string>
+			? [T1, E1]
+			: ParseOptionalPagingTokens<T1, Db, Scope, Params> extends [infer T2 extends TokensList, infer E2]
+				? E2 extends SqlParserError<string>
+					? [T2, E2]
+					: [T2, null]
+				: never
+		: never
+
+type FinishSelectTerminator<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
+	ReadToken<Tokens> extends [infer R2 extends TokensList, infer Tok]
+		? Tok extends TokenKey<";"> | TokenEot
+			? [R2, Db, Res]
+			: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
+		: never
+
 type FinishSelectStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -176,17 +388,17 @@ type FinishSelectStatement<
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, Db, We]
-					: ReadToken<Rw> extends [infer R2 extends TokensList, infer Tok]
-						? Tok extends TokenKey<";"> | TokenEot
-							? [R2, Db, Res]
-							: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
+					: ParseSelectTrailingClauses<Rw, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
+						? Te extends SqlParserError<string>
+							? [Rt, Db, Te]
+							: FinishSelectTerminator<Rt, Db, Res>
 						: never
 				: never
 			: never
-		: ReadToken<Tokens> extends [infer R2 extends TokensList, infer Tok]
-			? Tok extends TokenKey<";"> | TokenEot
-				? [R2, Db, Res]
-				: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
+		: ParseSelectTrailingClauses<Tokens, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
+			? Te extends SqlParserError<string>
+				? [Rt, Db, Te]
+				: FinishSelectTerminator<Rt, Db, Res>
 			: never
 
 type ParseRawSelectList<
@@ -345,10 +557,21 @@ type ParseInnerParenSelectWhereClose<
 			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, We]
-					: ReadClosingParenScalarSubqueryOnly<Rw, Res>
+					: ParseSelectTrailingClauses<Rw, Db, InnerScope, Params> extends [
+								infer Rt extends TokensList,
+								infer Te,
+						  ]
+						? Te extends SqlParserError<string>
+							? [Rt, Te]
+							: ReadClosingParenScalarSubqueryOnly<Rt, Res>
+						: never
 				: never
 			: never
-		: ReadClosingParenScalarSubqueryOnly<Tokens, Res>
+		: ParseSelectTrailingClauses<Tokens, Db, InnerScope, Params> extends [infer Rt extends TokensList, infer Te]
+			? Te extends SqlParserError<string>
+				? [Rt, Te]
+				: ReadClosingParenScalarSubqueryOnly<Rt, Res>
+			: never
 
 type ScalarSubqueryProjectionOk<Items extends readonly RawSelectItem[]> = Items extends readonly [
 	infer Only extends RawSelectItem,
@@ -461,10 +684,21 @@ type ParseInnerDerivedWhereCloseAndAlias<
 			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, We, ParserRefErrorThirdSentinel]
-					: ReadClosingParenAndAliasDerived<Rw, Db, OuterScope, Res>
+					: ParseSelectTrailingClauses<Rw, Db, InnerScope, Params> extends [
+								infer Rt extends TokensList,
+								infer Te,
+						  ]
+						? Te extends SqlParserError<string>
+							? [Rt, Te, ParserRefErrorThirdSentinel]
+							: ReadClosingParenAndAliasDerived<Rt, Db, OuterScope, Res>
+						: never
 				: never
 			: never
-		: ReadClosingParenAndAliasDerived<Tokens, Db, OuterScope, Res>
+		: ParseSelectTrailingClauses<Tokens, Db, InnerScope, Params> extends [infer Rt extends TokensList, infer Te]
+			? Te extends SqlParserError<string>
+				? [Rt, Te, ParserRefErrorThirdSentinel]
+				: ReadClosingParenAndAliasDerived<Rt, Db, OuterScope, Res>
+			: never
 
 type ParseInnerDerivedBody<
 	Tokens extends TokensList,
@@ -610,6 +844,10 @@ type ParseAliasAfterTable<
 		| TokenKey<"left">
 		| TokenKey<"join">
 		| TokenKey<"where">
+		| TokenKey<"order">
+		| TokenKey<"limit">
+		| TokenKey<"offset">
+		| TokenKey<"fetch">
 		| TokenKey<")">
 		| TokenKey<";">
 		| TokenEot

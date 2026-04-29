@@ -20,7 +20,8 @@ Thumbs.db
 !.env.example
 
 *.tsbuildinfo
-.local
 
 *.tgz
-debug
+
+debug/
+.local/

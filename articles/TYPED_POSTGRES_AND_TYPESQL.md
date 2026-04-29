@@ -92,7 +92,7 @@ From the repository root (with npm workspaces):
 
 ```bash
 npm install
-npm run typecheck:example-postgres
+npm run typecheck --workspace @typesql/example-postgres
 ```
 
 Optional runtime demo (requires a real DB and matching `users` table, or adjust the SQL to match your DB):
