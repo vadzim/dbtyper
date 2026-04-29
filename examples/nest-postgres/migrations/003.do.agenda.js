@@ -1,6 +1,7 @@
-import { migration } from "../src/engine/sql-database.ts"
+import { migration } from "typesql"
 
-export default migration(import.meta.url).add(`
+export const generateSql = () =>
+	migration(`
   create table if not exists public.agenda (
     id uuid not null,
     created_at timestamp with time zone not null,

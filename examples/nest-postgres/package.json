@@ -9,6 +9,7 @@
 		"@nestjs/platform-express": "^11.0.0",
 		"@typesql/nest": "file:../../packages/typesql-nest",
 		"express": "^5.0.0",
+		"postgrator": "^8.0.0",
 		"postgres": "^3.4.5",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.1",

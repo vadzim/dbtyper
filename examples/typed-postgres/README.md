@@ -45,7 +45,7 @@ npm run example:docker:down
 ## Layout
 
 - `docker-compose.yml` — Postgres 16, DB `typesql_example`, port **54333**
-- `migrations/*.ts` — SQL strings via `migration(import.meta.url).add(\`...\`)`
+- `migrations/*.js` — SQL strings via `migration(import.meta.url).add(\`...\`)`
 - `scripts/migrate.ts` — writes ordered `.sql` files with `postgres`, then runs them (no separate Flyway/Sqitch dependency)
 - `src/example-schema.ts` — `compileExampleDb()` chains DDL + seed migrations for **types**
 - `scripts/migrate.ts` — consumes `compileExampleDb(...).migrations` directly (same ordering as `.apply(...)`; `apply(..., { hidden: true })` entries are skipped)

@@ -1,6 +1,7 @@
-import { migration } from "typesql"
+import { migration } from "../src/engine/sql-database.ts"
 
-export default migration(import.meta.url).add(`
+export const generateSql = () =>
+	migration(`
   create table if not exists auth.users (
     id uuid not null,
     email text not null,

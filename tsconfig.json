@@ -23,6 +23,8 @@
 		"declaration": true,
 		"declarationMap": true,
 
+		"allowJs": true,
+
 		// Stricter Typechecking Options
 		"noUncheckedIndexedAccess": true,
 		"exactOptionalPropertyTypes": true,

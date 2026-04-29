@@ -12,7 +12,6 @@ export {
 	migration,
 	CompiledDataBase,
 	ConnectedDataBase,
-	type ApplyMigrationOptions,
 	type MigrationExport,
 	type ParamRuntimeValues,
 	type SqlDatabase,

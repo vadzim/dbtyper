@@ -61,19 +61,12 @@ export function sqlDatabase<const DS extends string | undefined, D extends SqlDr
 }
 
 export type MigrationExport = {
-	readonly path: string
-	readonly source: string
+	source: string
+	path: string
 }
 
-export function migration<Path extends string>(path: Path) {
-	return {
-		add<const S extends string>(source: S): MigrationExport & { path: Path; source: S } {
-			return {
-				path,
-				source,
-			}
-		},
-	}
+export function migration<S extends string>(source: S): S {
+	return source
 }
 
 /** Removes index-signature keys so quick info does not show `[x: string]: …` for every map. */
@@ -147,14 +140,8 @@ export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 
 type Migrations = {
-	last: Promise<MigrationExport>
-	hidden: boolean
+	last: MigrationExport
 	prev: Migrations | null
-}
-
-export type ApplyMigrationOptions = {
-	/** Exclude from the migration list; use as a last resort for workarounds. */
-	hidden?: true
 }
 
 export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<string>> {
@@ -174,24 +161,12 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 
 	apply<Source extends string>(
 		statement: Source,
-		options?: ApplyMigrationOptions,
-	): DBMigrations<ApplyStatements<Database, Source>[0]>
-	apply<Path extends string, Source extends string>(
-		statement: Promise<{ default: MigrationExport & { path: Path; source: Source } }>,
-		options?: ApplyMigrationOptions,
-	): DBMigrations<ApplyStatements<Database, Source>[0]>
-	apply(
-		statement: string | Promise<{ default: MigrationExport }>,
-		options?: ApplyMigrationOptions,
-	): DBMigrations<ApplyStatements<Database, string>[0]> {
+		name: string = "",
+	): DBMigrations<ApplyStatements<Database, Source>[0]> {
 		return new DBMigrations<Database>(
 			this.#defaultSchema,
 			{
-				last:
-					typeof statement === "string"
-						? Promise.resolve({ source: statement, path: "" })
-						: statement.then(d => d.default),
-				hidden: options?.hidden === true,
+				last: { source: statement, path: name },
 				prev: this.#migrations,
 			},
 			this.#driver,
@@ -202,21 +177,19 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 		return this.#defaultSchema
 	}
 
-	async #getMigrations() {
+	#getMigrations() {
 		const result: MigrationExport[] = []
 		let current = this.#migrations
 		while (current) {
-			if (!current.hidden) {
-				result.push(await current.last)
-			}
+			result.push(current.last)
 			current = current.prev
 		}
 		result.reverse()
 		return result
 	}
 
-	async compile(): Promise<CompiledDataBase<FlattenedJsqlDatabase<Database>>> {
-		const migrations = await this.#getMigrations()
+	compile(): CompiledDataBase<FlattenedJsqlDatabase<Database>> {
+		const migrations = this.#getMigrations()
 		return new CompiledDataBase<FlattenedJsqlDatabase<Database>>(migrations, this.#defaultSchema, this.#driver)
 	}
 }
