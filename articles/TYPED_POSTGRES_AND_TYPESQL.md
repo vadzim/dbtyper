@@ -33,17 +33,7 @@ typesql does **not** execute SQL in types; it keeps a **type-level** model of th
 
 ## Flow
 
-1. **Build the logical schema** with the same (or equivalent) SQL as your real migrations:
-
-    ```ts
-    const logicalDb = await sqlDatabase({ driver: postgresSqlDriver() })
-    	.apply(`create table users ( id uuid not null, name text not null );`)
-    	.compile()
-    ```
-
-2. **Open a real connection** (e.g. `DATABASE_URL`) and pass **`postgresSqlDriver(sql)`** as the same `driver` when building migrations / compile (see [`examples/typed-postgres/`](../examples/typed-postgres/)).
-
-3. **Connect** (driver was already supplied to `sqlDatabase`):
+1. **Build the logical schema and wire the driver** — open a **`postgres()`** client, pass **`postgresSqlDriver({ sql })`** as **`sqlDatabase({ driver })`**, then **`apply`** migration SQL and **`compile()`** (see [`examples/typed-postgres/`](../examples/typed-postgres/)):
 
     ```ts
     import postgres from "postgres"
@@ -51,20 +41,20 @@ typesql does **not** execute SQL in types; it keeps a **type-level** model of th
     import { sqlDatabase } from "typesql"
 
     const sql = postgres(process.env.DATABASE_URL!)
-    const logicalDb = await sqlDatabase({ driver: postgresSqlDriver(sql) })
+    const logicalDb = await sqlDatabase({ driver: postgresSqlDriver({ sql }) })
     	.apply(/* migrations */)
     	.compile()
     const app = logicalDb.connect()
     ```
 
-4. **Query with typed rows**:
+2. **Query with typed rows**:
 
     ```ts
     const rows = await app.query("select id, name from users;")
     // rows: Array<{ id: …; name: … }> — inferred from the logical schema + this SELECT
     ```
 
-5. **Stream rows** (when `stream` is implemented on the driver, postgres.js uses a server-side cursor):
+3. **Stream rows** (when `stream` is implemented on the driver, postgres.js uses a server-side cursor):
 
     ```ts
     for await (const row of app.stream("select id from users;")) {

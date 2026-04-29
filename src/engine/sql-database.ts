@@ -2,7 +2,7 @@ import type { MergeDbPreserveScalars } from "../../core/sql-scalar-types.ts"
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../../core/jsql-shapes.ts"
 import type { SqlParserError } from "../../core/sql-tokens.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
-import type { PostgresTypeMap } from "../parser/postgres-type-map.ts"
+import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectRow } from "./sql-query.ts"
 
@@ -17,25 +17,18 @@ export type { MergeDbPreserveScalars }
  */
 export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
 
-export type SqlDriver = {
+export type SqlDriver<S extends Record<string, unknown>> = {
 	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
 	stream?(sql: string, params?: SqlDriverParams): AsyncIterable<unknown>
+	readonly scalarTypes: S
 }
 
-/** Driver augmented with a phantom `typesqlScalarTypes` map so {@link sqlDatabase} can infer {@link SqlDatabase}. */
-export type SqlDriverWithScalarTypes<S extends Record<string, unknown>> = SqlDriver & {
-	readonly typesqlScalarTypes: S
-}
-
-/** Scalar map implied by `driver.typesqlScalarTypes`, or {@link DefaultSqlScalarTypeMap} when absent. */
-export type InferScalarTypesFromDriver<D extends SqlDriver> = D extends {
-	typesqlScalarTypes: infer S extends Record<string, unknown>
-}
-	? S
-	: DefaultSqlScalarTypeMap
+/** Scalar map inferred from {@link SqlDriver}'s type parameter; used by {@link sqlDatabase}. */
+export type InferScalarTypesFromDriver<D extends SqlDriver<Record<string, unknown>>> =
+	D extends SqlDriver<infer S> ? S : DefaultSqlScalarTypeMap
 
 /** Configuration for {@link sqlDatabase}: logical schema name (default `public`) plus the runtime {@link SqlDriver} used at {@link CompiledDataBase.connect}. */
-export type SqlDatabaseConfig<D extends SqlDriver = SqlDriver> = {
+export type SqlDatabaseConfig<D extends SqlDriver<Record<string, unknown>> = SqlDriver<Record<string, unknown>>> = {
 	defaultSchema?: string
 	driver: D
 }
@@ -57,7 +50,7 @@ export type SqlDatabase<
 	scalarTypes: ScalarTypes
 }
 
-export function sqlDatabase<const DS extends string | undefined, D extends SqlDriver>(
+export function sqlDatabase<const DS extends string | undefined, D extends SqlDriver<Record<string, unknown>>>(
 	config: SqlDatabaseConfig<D>,
 ): DBMigrations<SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>> {
 	const defaultSchema = config.defaultSchema ?? "public"
@@ -67,14 +60,9 @@ export function sqlDatabase<const DS extends string | undefined, D extends SqlDr
 	>
 }
 
-/**
- * Default export shape for {@link migration} / {@link patch} modules (`export default migration(…).add(\`…\`)`).
- * {@link MigrationExport.patch} marks compile-time-only **patches** — not versioned migrations (see `docs/MIGRATIONS.md`).
- */
 export type MigrationExport = {
 	readonly path: string
 	readonly source: string
-	readonly patch?: boolean
 }
 
 export function migration<Path extends string>(path: Path) {
@@ -83,24 +71,6 @@ export function migration<Path extends string>(path: Path) {
 			return {
 				path,
 				source,
-			}
-		},
-	}
-}
-
-/**
- * Same as {@link migration}, but marks SQL as a **patch** (internal parity / workaround): participates in
- * `sqlDatabase({ driver }).apply(…).compile()` types, but must **not** be listed next to real migrations for export
- * (e.g. `allMigrationFilenames`). Use when aligning the typesql catalog with an external DB without publishing
- * extra migration steps.
- */
-export function patch<Path extends string>(path: Path) {
-	return {
-		add<const S extends string>(source: S): MigrationExport & { path: Path; source: S; patch: true } {
-			return {
-				path,
-				source,
-				patch: true,
 			}
 		},
 	}
@@ -178,11 +148,21 @@ export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
 
 type Migrations = {
 	last: Promise<MigrationExport>
+	hidden: boolean
 	prev: Migrations | null
 }
 
+export type ApplyMigrationOptions = {
+	/** Exclude from the migration list; use as a last resort for workarounds. */
+	hidden?: true
+}
+
 export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<string>> {
-	constructor(defaultSchema: string, migrations: Migrations | null = null, driver: SqlDriver) {
+	constructor(
+		defaultSchema: string,
+		migrations: Migrations | null = null,
+		driver: SqlDriver<Record<string, unknown>>,
+	) {
 		this.#migrations = migrations
 		this.#defaultSchema = defaultSchema
 		this.#driver = driver
@@ -190,14 +170,19 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 
 	#migrations: Migrations | null
 	#defaultSchema: string
-	#driver: SqlDriver
+	#driver: SqlDriver<Record<string, unknown>>
 
-	apply<Source extends string>(statement: Source): DBMigrations<ApplyStatements<Database, Source>[0]>
+	apply<Source extends string>(
+		statement: Source,
+		options?: ApplyMigrationOptions,
+	): DBMigrations<ApplyStatements<Database, Source>[0]>
 	apply<Path extends string, Source extends string>(
 		statement: Promise<{ default: MigrationExport & { path: Path; source: Source } }>,
+		options?: ApplyMigrationOptions,
 	): DBMigrations<ApplyStatements<Database, Source>[0]>
 	apply(
 		statement: string | Promise<{ default: MigrationExport }>,
+		options?: ApplyMigrationOptions,
 	): DBMigrations<ApplyStatements<Database, string>[0]> {
 		return new DBMigrations<Database>(
 			this.#defaultSchema,
@@ -206,6 +191,7 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 					typeof statement === "string"
 						? Promise.resolve({ source: statement, path: "" })
 						: statement.then(d => d.default),
+				hidden: options?.hidden === true,
 				prev: this.#migrations,
 			},
 			this.#driver,
@@ -220,7 +206,9 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 		const result: MigrationExport[] = []
 		let current = this.#migrations
 		while (current) {
-			result.push(await current.last)
+			if (!current.hidden) {
+				result.push(await current.last)
+			}
 			current = current.prev
 		}
 		result.reverse()
@@ -241,7 +229,7 @@ export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserErro
 	constructor(
 		migrations: readonly MigrationExport[],
 		defaultSchema: string,
-		readonly driver: SqlDriver,
+		readonly driver: SqlDriver<Record<string, unknown>>,
 	) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema
@@ -272,7 +260,11 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 		return null as unknown as Database
 	}
 
-	constructor(migrations: readonly MigrationExport[], defaultSchema: string, dbInterface: SqlDriver) {
+	constructor(
+		migrations: readonly MigrationExport[],
+		defaultSchema: string,
+		dbInterface: SqlDriver<Record<string, unknown>>,
+	) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema
 		this.dbInterface = dbInterface
@@ -317,5 +309,5 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 
 	migrations: readonly MigrationExport[]
 	defaultSchema: string
-	dbInterface: SqlDriver
+	dbInterface: SqlDriver<Record<string, unknown>>
 }

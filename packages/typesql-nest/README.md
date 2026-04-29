@@ -31,7 +31,7 @@ import { postgresSqlDriver } from "typesql/postgres"
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const compiled = await compileExampleDb(postgresSqlDriver(sql))
+				const compiled = await compileExampleDb(postgresSqlDriver({ sql }))
 				return {
 					compiled,
 					onShutdown: sql,

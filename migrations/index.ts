@@ -1,7 +1,13 @@
 import { sqlDatabase } from "../src/engine/sql-database.ts"
-import { postgresSqlDriver } from "../src/postgres/postgres-sql-driver.ts"
+import type { PostgresTypeMap } from "../src/postgres/postgres-type-map.ts"
 
-export const appDB = await sqlDatabase({ driver: postgresSqlDriver() })
+export const appDB = await sqlDatabase({
+	driver: {
+		query: async () => [],
+		async *stream() {},
+		scalarTypes: {} as PostgresTypeMap,
+	},
+})
 	.apply(import("./20260409093100_auth_schema.ts"))
 	.apply(import("./20260409093200_public_schema.ts"))
 	.apply(import("./20260409093300_users.ts"))

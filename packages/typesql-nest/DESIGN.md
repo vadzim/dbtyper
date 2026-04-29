@@ -10,7 +10,7 @@ The connector does not parse SQL or own migrations; applications keep `sqlDataba
 
 ## Flow
 
-1. Application factory resolves **`TypesqlRootConfig`**: **`compiled`** from `compile()` (after **`sqlDatabase({ driver: postgresSqlDriver(sql) })`** or equivalent), optional **`onShutdown`** handle with `end()`.
+1. Application factory resolves **`TypesqlRootConfig`**: **`compiled`** from `compile()` (after **`sqlDatabase({ driver: postgresSqlDriver({ sql }) })`** or equivalent), optional **`onShutdown`** handle with `end()`.
 2. The module registers **one** shared options provider (single factory invocation).
 3. Derived providers expose **`TYPESQL_COMPILED`** and **`TYPESQL_CONNECTED`** (`compiled.connect()`).
 4. **`TypesqlLifecycle`** runs **`onShutdown`** when the Nest application closes.

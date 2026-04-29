@@ -5,16 +5,14 @@ export type {
 	MergeDbPreserveScalars,
 	ScalarTypesOf,
 	SqlDatabaseConfig,
-	SqlDriverWithScalarTypes,
 } from "./engine/sql-database.ts"
-export type { PostgresTypeMap } from "./parser/postgres-type-map.ts"
 export type * from "../core/sql.ts"
 export {
 	sqlDatabase,
 	migration,
-	patch,
 	CompiledDataBase,
 	ConnectedDataBase,
+	type ApplyMigrationOptions,
 	type MigrationExport,
 	type ParamRuntimeValues,
 	type SqlDatabase,

@@ -1,27 +1,19 @@
 import { sqlDatabase } from "typesql"
-import { postgresSqlDriver, type PostgresDriver } from "typesql/postgres"
+import type { PostgresDriver } from "typesql/postgres"
 
 /**
  * All migrations (DDL + seed) participate in compile-time checking; runtime migrate applies the same files.
  *
- * @param driver Same Postgres driver instance as runtime queries (`postgresSqlDriver(sql)`), or omit /
- *   pass {@link postgresSqlDriver()} for compile-only / tests (noop implementation).
+ * @param driver `PostgresDriver` from `postgresSqlDriver({ sql })` (`typesql/postgres`) — use the same client for `compile()` and runtime `connect()`.
  */
-export async function compileExampleDb(driver: PostgresDriver = postgresSqlDriver()) {
+export async function compileExampleDb(driver: PostgresDriver) {
 	return await sqlDatabase({ driver })
 		.apply(import("../migrations/001_schemas.ts"))
 		.apply(import("../migrations/002_users.ts"))
 		.apply(import("../migrations/003_agenda.ts"))
 		.apply(import("../migrations/004_seed_users.ts"))
-		// Optional: .apply(import("../migrations/020_catalog_patch.ts")) — must use patch(), see docs/MIGRATIONS.md
 		.compile()
 }
-
-/** Migrations applied to Postgres (DDL + seed). Keep order stable; list only `migration()` modules. */
-export const allMigrationFilenames = ["001_schemas.ts", "002_users.ts", "003_agenda.ts", "004_seed_users.ts"] as const
-
-/** Optional patch modules (`patch()`). Same folder as migrations; keep disjoint from {@link allMigrationFilenames}. */
-export const allPatchFilenames: readonly string[] = []
 
 /** Logical schema shape after `compile()` (for `ConnectedDataBase<…>` in services). */
 export type ExampleDbShape = Awaited<ReturnType<typeof compileExampleDb>>["$db"]
