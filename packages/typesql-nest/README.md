@@ -1,6 +1,6 @@
 # @typesql/nest
 
-NestJS integration for [typesql](../../README.md): registers a compiled logical database (including the `SqlDriver` supplied to `sqlDatabase`), exposes `CompiledDataBase` / `ConnectedDataBase` injection tokens, and tears down the DB client on application shutdown.
+NestJS integration for [typesql](../../README.md): registers a compiled logical database (including the `SqlDriver` supplied to `sqlDatabase`), exposes `DataBase` injection token, and tears down the DB client on application shutdown.
 
 See [DESIGN.md](./DESIGN.md) for boundaries and lifecycle.
 
@@ -31,9 +31,9 @@ import { postgresSqlDriver } from "typesql/postgres"
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const compiled = await compileExampleDb(postgresSqlDriver({ sql }))
+				const database = await compileExampleDb(postgresSqlDriver({ sql }))
 				return {
-					compiled,
+					database,
 					onShutdown: sql,
 				}
 			},
@@ -43,15 +43,15 @@ import { postgresSqlDriver } from "typesql/postgres"
 export class AppModule {}
 ```
 
-Inject the connected DB:
+Inject the database:
 
 ```typescript
 import { InjectTypesql } from "@typesql/nest"
-import type { ConnectedDataBase } from "typesql"
+import type { DataBase } from "typesql"
 
 @Injectable()
 export class UsersService {
-	constructor(@InjectTypesql() private readonly db: ConnectedDataBase<MyDbShape>) {}
+	constructor(@InjectTypesql() private readonly db: DataBase<MyDbShape>) {}
 
 	async listEmails() {
 		return this.db.query("select email from auth.users;")
@@ -59,4 +59,4 @@ export class UsersService {
 }
 ```
 
-Use `TYPESQL_COMPILED` / `TYPESQL_CONNECTED` if you prefer `@Inject(Symbol)` over `@InjectTypesql()`.
+Use `TYPESQL_DATABASE` if you prefer `@Inject(Symbol)` over `@InjectTypesql()`.

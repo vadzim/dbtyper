@@ -1,17 +1,11 @@
 // typesql — package entry (published build). Internal modules import each other, not this file.
 
-export type {
-	InferScalarTypesFromDriver,
-	MergeDbPreserveScalars,
-	ScalarTypesOf,
-	SqlDatabaseConfig,
-} from "./engine/sql-database.ts"
+export type { SqlDatabaseConfig } from "./engine/sql-database.ts"
 export type * from "../core/sql.ts"
 export {
-	sqlDatabase,
+	sqlMigrations as sqlDatabase,
 	migration,
-	CompiledDataBase,
-	ConnectedDataBase,
+	DataBase,
 	type MigrationExport,
 	type ParamRuntimeValues,
 	type SqlDatabase,

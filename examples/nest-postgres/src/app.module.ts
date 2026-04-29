@@ -17,9 +17,9 @@ import { UsersModule } from "./users/users.module.ts"
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const compiled = await compileExampleDb(postgresSqlDriver({ sql }))
+				const database = await compileExampleDb(postgresSqlDriver({ sql }))
 				return {
-					compiled,
+					database,
 					onShutdown: sql,
 				}
 			},

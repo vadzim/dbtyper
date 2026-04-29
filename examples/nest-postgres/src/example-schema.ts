@@ -7,8 +7,8 @@ export async function compileExampleDb(driver: PostgresDriver) {
 		.apply((await import("../migrations/002.do.users.js")).generateSql())
 		.apply((await import("../migrations/003.do.agenda.js")).generateSql())
 		.apply((await import("../migrations/004.do.seed_users.js")).generateSql())
-		.compile()
+		.database()
 }
 
-/** Logical schema shape after `compile()` (for `ConnectedDataBase<…>` in services). */
+/** Logical schema shape after `database()` (for `DataBase<…>` in services). */
 export type ExampleDbShape = Awaited<ReturnType<typeof compileExampleDb>>["$db"]

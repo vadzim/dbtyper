@@ -7,5 +7,5 @@ export async function compileExampleDb(driver: PostgresDriver) {
 		.apply((await import("../migrations/002.do.users.js")).generateSql())
 		.apply((await import("../migrations/003.do.agenda.js")).generateSql())
 		.apply((await import("../migrations/004.do.seed_users.js")).generateSql())
-		.compile()
+		.database()
 }

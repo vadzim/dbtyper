@@ -1,8 +1,8 @@
 import { Inject } from "@nestjs/common"
 
-import { TYPESQL_CONNECTED } from "./typesql.constants.ts"
+import { TYPESQL_DATABASE } from "./typesql.constants.ts"
 
-/** Parameter decorator: inject the connected typesql database ({@link TYPESQL_CONNECTED}). */
+/** Parameter decorator: inject the connected typesql database ({@link TYPESQL_DATABASE}). */
 export function InjectTypesql(): ParameterDecorator {
-	return Inject(TYPESQL_CONNECTED)
+	return Inject(TYPESQL_DATABASE)
 }

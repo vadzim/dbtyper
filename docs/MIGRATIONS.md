@@ -6,8 +6,8 @@ Use **`migration(import.meta.url).add(\`…\`)`** for SQL that is a **real migra
 
 - Runtime migration runners can read `compileExampleDb(...).migrations` directly (no filename list required).
 
-- **Hidden call-site flag:** Use `.apply(import("./parity_fix.ts"), { hidden: true })` when SQL must influence compile-time types but should not be exported/applied at runtime. Hidden entries are omitted from `compile().migrations`.
+- **Runtime selection:** Export/apply is driven by the migration modules you include in your migration runner (for examples: all `*.do.*.js` files in the migrations folder).
 
 ### Shape
 
-Both helpers produce a **`MigrationExport`** default export. Consumers can use this for reporting/labeling, but export inclusion is controlled by the `.apply(..., { hidden: true })` call-site option.
+Both helpers produce migration SQL via `migration(...)`; consumers (like migration runners) select and execute the `*.do.*` modules in order.

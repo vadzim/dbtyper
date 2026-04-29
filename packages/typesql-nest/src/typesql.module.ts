@@ -1,7 +1,7 @@
 import type { DynamicModule, ModuleMetadata, Provider } from "@nestjs/common"
 import { Module } from "@nestjs/common"
 
-import { TYPESQL_COMPILED, TYPESQL_CONNECTED, TYPESQL_ROOT_OPTIONS } from "./typesql.constants.ts"
+import { TYPESQL_DATABASE, TYPESQL_ROOT_OPTIONS } from "./typesql.constants.ts"
 import type { TypesqlRootConfig } from "./typesql-root.config.ts"
 import { TypesqlLifecycle } from "./typesql-lifecycle.service.ts"
 
@@ -41,18 +41,13 @@ export class TypesqlModule {
 			providers: [
 				optionsProvider,
 				{
-					provide: TYPESQL_COMPILED,
-					useFactory: (root: TypesqlRootConfig) => root.compiled,
-					inject: [TYPESQL_ROOT_OPTIONS],
-				},
-				{
-					provide: TYPESQL_CONNECTED,
-					useFactory: (root: TypesqlRootConfig) => root.compiled.connect(),
+					provide: TYPESQL_DATABASE,
+					useFactory: (root: TypesqlRootConfig) => root.database,
 					inject: [TYPESQL_ROOT_OPTIONS],
 				},
 				TypesqlLifecycle,
 			],
-			exports: [TYPESQL_COMPILED, TYPESQL_CONNECTED],
+			exports: [TYPESQL_DATABASE],
 		}
 	}
 }

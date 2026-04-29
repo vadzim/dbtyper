@@ -7,6 +7,6 @@ import { compileExampleDb } from "./example-schema.ts"
 export async function createExampleApp(connectionString: string) {
 	const sql = postgres(connectionString, { max: 10 })
 	const logicalDb = await compileExampleDb(postgresSqlDriver({ sql }))
-	const app = logicalDb.connect()
+	const app = logicalDb
 	return { app, sql }
 }

@@ -6,7 +6,7 @@ import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectRow } from "./sql-query.ts"
 
-/** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlDatabase}; same keys as {@link PostgresTypeMap}. */
+/** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlMigrations}; same keys as {@link PostgresTypeMap}. */
 type DefaultSqlScalarTypeMap = PostgresTypeMap
 
 export type { MergeDbPreserveScalars }
@@ -23,18 +23,15 @@ export type SqlDriver<S extends Record<string, unknown>> = {
 	readonly scalarTypes: S
 }
 
-/** Scalar map inferred from {@link SqlDriver}'s type parameter; used by {@link sqlDatabase}. */
-export type InferScalarTypesFromDriver<D extends SqlDriver<Record<string, unknown>>> =
+/** Scalar map inferred from {@link SqlDriver}'s type parameter; used by {@link sqlMigrations}. */
+type InferScalarTypesFromDriver<D extends SqlDriver<Record<string, unknown>>> =
 	D extends SqlDriver<infer S> ? S : DefaultSqlScalarTypeMap
 
-/** Configuration for {@link sqlDatabase}: logical schema name (default `public`) plus the runtime {@link SqlDriver} used at {@link CompiledDataBase.connect}. */
+/** Configuration for {@link sqlMigrations}: logical schema name (default `public`) plus the runtime {@link SqlDriver} used at {@link DataBase.connect}. */
 export type SqlDatabaseConfig<D extends SqlDriver<Record<string, unknown>> = SqlDriver<Record<string, unknown>>> = {
 	defaultSchema?: string
 	driver: D
 }
-
-/** Scalar map carried on every {@link JsqlDatabaseShape} (`Db["scalarTypes"]`). */
-export type ScalarTypesOf<D extends JsqlDatabaseShape> = D["scalarTypes"]
 
 /** Values object matching `:name` slots implied by {@link ExpressionParamsShape}. */
 export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
@@ -50,7 +47,7 @@ export type SqlDatabase<
 	scalarTypes: ScalarTypes
 }
 
-export function sqlDatabase<const DS extends string | undefined, D extends SqlDriver<Record<string, unknown>>>(
+export function sqlMigrations<const DS extends string | undefined, D extends SqlDriver<Record<string, unknown>>>(
 	config: SqlDatabaseConfig<D>,
 ): DBMigrations<SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>> {
 	const defaultSchema = config.defaultSchema ?? "public"
@@ -82,10 +79,10 @@ type NonIndexKey<K extends PropertyKey> = string extends K
  * Pretty-printed `JsqlDatabaseShape` for IDE hints: homomorphic mapped types keep index keys from
  * `schemas` / `sets` / `columns`; remapping with {@link NonIndexKey} drops those keys.
  */
-export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
+export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 	? {
-			defaultSchema: Database["defaultSchema"]
-			schemas: Database["schemas"] extends infer Schemas
+			defaultSchema: Db["defaultSchema"]
+			schemas: Db["schemas"] extends infer Schemas
 				? {
 						[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends
 							JsqlSchemaShape
@@ -134,8 +131,8 @@ export type FlattenedJsqlDatabase<Database> = Database extends JsqlDatabaseShape
 							: never
 					}
 				: never
-		} & { scalarTypes: Database["scalarTypes"] }
-	: Database
+		} & { scalarTypes: Db["scalarTypes"] }
+	: Db
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 
@@ -144,7 +141,7 @@ type Migrations = {
 	prev: Migrations | null
 }
 
-export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<string>> {
+export class DBMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
 	constructor(
 		defaultSchema: string,
 		migrations: Migrations | null = null,
@@ -159,18 +156,15 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 	#defaultSchema: string
 	#driver: SqlDriver<Record<string, unknown>>
 
-	apply<Source extends string>(
-		statement: Source,
-		name: string = "",
-	): DBMigrations<ApplyStatements<Database, Source>[0]> {
-		return new DBMigrations<Database>(
+	apply<Source extends string>(statement: Source, name: string = ""): DBMigrations<ApplyStatements<Db, Source>[0]> {
+		return new DBMigrations<Db>(
 			this.#defaultSchema,
 			{
 				last: { source: statement, path: name },
 				prev: this.#migrations,
 			},
 			this.#driver,
-		) as DBMigrations<ApplyStatements<Database, string>[0]>
+		) as DBMigrations<ApplyStatements<Db, string>[0]>
 	}
 
 	getDefaultSchema(): string {
@@ -188,33 +182,10 @@ export class DBMigrations<Database extends JsqlDatabaseShape | SqlParserError<st
 		return result
 	}
 
-	compile(): CompiledDataBase<FlattenedJsqlDatabase<Database>> {
+	database(): DataBase<FlattenedJsqlDatabase<Db>> {
 		const migrations = this.#getMigrations()
-		return new CompiledDataBase<FlattenedJsqlDatabase<Database>>(migrations, this.#defaultSchema, this.#driver)
+		return new DataBase<FlattenedJsqlDatabase<Db>>(migrations, this.#defaultSchema, this.#driver)
 	}
-}
-
-export class CompiledDataBase<Database extends JsqlDatabaseShape | SqlParserError<string>> {
-	get $db(): Database {
-		return null as unknown as Database
-	}
-
-	constructor(
-		migrations: readonly MigrationExport[],
-		defaultSchema: string,
-		readonly driver: SqlDriver<Record<string, unknown>>,
-	) {
-		this.migrations = migrations
-		this.defaultSchema = defaultSchema
-	}
-
-	/** Uses the {@link SqlDatabaseConfig.driver} passed to {@link sqlDatabase}. */
-	connect(): ConnectedDataBase<Database> {
-		return new ConnectedDataBase<Database>(this.migrations, this.defaultSchema, this.driver)
-	}
-
-	migrations: readonly MigrationExport[]
-	defaultSchema: string
 }
 
 type SqlSelectRowObject<
@@ -228,9 +199,9 @@ type SqlSelectRowObject<
 			: { [K in keyof R]: R[K] }
 		: never
 
-export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserError<string>> {
-	get $db(): Database {
-		return null as unknown as Database
+export class DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> {
+	get $db(): Db {
+		return null as unknown as Db
 	}
 
 	constructor(
@@ -245,14 +216,14 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 
 	/**
 	 * All rows at once. `Stmt` must be a `SELECT` / `WITH … SELECT` that type-checks against
-	 * {@link Database}. With `:name` parameters, pass {@link ParamRuntimeValues} as the second
+	 * {@link Db}. With `:name` parameters, pass {@link ParamRuntimeValues} as the second
 	 * argument (drivers such as `postgresSqlDriver` bind them to PostgreSQL `$n` placeholders).
 	 */
-	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Database, Stmt>>>
+	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
 	query<Stmt extends string, Params extends ExpressionParamsShape>(
 		statement: Stmt,
 		params: ParamRuntimeValues<Params>,
-	): Promise<Array<SqlSelectRowObject<Database, Stmt, Params>>>
+	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
 	query(statement: string, params?: Record<string, unknown>): Promise<Array<unknown>> {
 		return this.dbInterface.query(statement, params) as Promise<Array<unknown>>
 	}
@@ -261,11 +232,11 @@ export class ConnectedDataBase<Database extends JsqlDatabaseShape | SqlParserErr
 	 * Row-by-row iteration when the driver exposes {@link SqlDriver.stream}; otherwise buffers
 	 * {@link query} and yields each row.
 	 */
-	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Database, Stmt>>
+	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
 	stream<Stmt extends string, Params extends ExpressionParamsShape>(
 		statement: Stmt,
 		params: ParamRuntimeValues<Params>,
-	): AsyncIterable<SqlSelectRowObject<Database, Stmt, Params>>
+	): AsyncIterable<SqlSelectRowObject<Db, Stmt, Params>>
 	stream(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
 		const streamFn = this.dbInterface.stream
 		if (streamFn !== undefined) {

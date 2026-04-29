@@ -1,6 +1,6 @@
 # typed-postgres example
 
-End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export) → **`postgres.js`** runner → **typed queries** via `sqlDatabase({ driver: postgresSqlDriver(…) }).compile().connect()` with **`postgresSqlDriver`** from **`typesql/postgres`**.
+End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export) → **`postgres.js`** runner → **typed queries** via `sqlDatabase({ driver: postgresSqlDriver(…) }).database()` with **`postgresSqlDriver`** from **`typesql/postgres`**.
 
 ## Prerequisites
 
@@ -48,11 +48,11 @@ npm run example:docker:down
 - `migrations/*.js` — SQL strings via `migration(import.meta.url).add(\`...\`)`
 - `scripts/migrate.ts` — writes ordered `.sql` files with `postgres`, then runs them (no separate Flyway/Sqitch dependency)
 - `src/example-schema.ts` — `compileExampleDb()` chains DDL + seed migrations for **types**
-- `scripts/migrate.ts` — consumes `compileExampleDb(...).migrations` directly (same ordering as `.apply(...)`; `apply(..., { hidden: true })` entries are skipped)
+- `scripts/migrate.ts` — uses `postgrator` directly over `migrations/*.do.*.js`
 
 ### Patches vs migrations (exception)
 
-Some SQL should update the typesql catalog (`apply` → `compile`) but **not** be exported/applied at runtime (e.g. internal parity or temporary adjustments). Mark those call-sites as hidden: `.apply(import("./parity_fix.ts"), { hidden: true })`. Hidden entries still affect types, but are omitted from `compile().migrations` and therefore from `db:migrate`.
+Some SQL should update the typesql catalog (`apply` → `database`) and runtime migrations together by keeping the same `migrations/*.do.*.js` modules in the chain and in postgrator.
 
 ## typesql limitations touched here
 
