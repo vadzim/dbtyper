@@ -128,7 +128,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 ## Typed expressions (`ParseExpressionAST` / `ResolveExpressionAST` / `EvalWhereClause`)
 
-- [`src/parser/parse-expression.ts`](../src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`** (value lists and **`IN (SELECT …)`**), **`BETWEEN`**, **`LIKE` / `ILIKE`**, simple and searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts, **`EXISTS (SELECT …)`**, parenthesized scalar **`(SELECT …)`**). **`ResolveExpressionAST<Ast, Db, Scope, Ctx>`** checks types once **`ScopeMap`** and **`ExpressionParseContext`** (**`catalogAccess`**: **`three_part`** | **`scope_only`**, **`params`**) are known.
+- [`src/parser/parse-expression.ts`](../src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`** (value lists and **`IN (SELECT …)`**), **`BETWEEN`**, **`LIKE` / `ILIKE`**, simple and searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts, **`EXISTS (SELECT …)`**, parenthesized scalar **`(SELECT …)`**). **`ResolveExpressionAST<Ast, Db, Scope, Params>`** checks types once **`ScopeMap`** and **`:name`** bindings (**`Params`**, default **`{}`**) are known; column references use **`ResolveColumnRefValue`** (unqualified / **`alias.col`** / **`schema.table.column`** against **`JsqlDatabaseShape`**).
 - **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, SqlParserError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
 
 ---

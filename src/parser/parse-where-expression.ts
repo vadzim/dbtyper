@@ -22,7 +22,7 @@ export type ParseWhereExpression<
 	]
 		? Ast extends SqlParserError<string>
 			? [Rw, Ast]
-			: ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer R
+			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
 					? [Rw, R]
 					: R extends ExprOk<infer Ts, infer _Sql>

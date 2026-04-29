@@ -264,10 +264,7 @@ type ParseInsertValuesCells<
 	Cols extends readonly string[],
 	ColsFull extends readonly string[] = Cols,
 > = Cols extends readonly [infer C0 extends string, ...infer CR extends readonly string[]]
-	? ParseAddValue<Tokens, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends [
-			infer R1 extends TokensList,
-			infer Ev,
-		]
+	? ParseAddValue<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer Ev]
 		? Ev extends SqlParserError<string>
 			? [R1, Db, Ev]
 			: Ev extends ExprAtom
@@ -527,10 +524,7 @@ type ParseInsertUpsertSetAssignments<
 			? Col extends keyof Tbl["columns"]
 				? PeekToken<R1> extends TokenKey<"=">
 					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"=">]
-						? ParseAddValue<R2, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends [
-								infer R3 extends TokensList,
-								infer Ev,
-							]
+						? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
 							? Ev extends SqlParserError<string>
 								? [R3, Db, Ev]
 								: Ev extends ExprAtom

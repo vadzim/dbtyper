@@ -8,6 +8,10 @@ export class UsersController {
 
 	@Get()
 	async list() {
-		return this.users.listUsers()
+		return (await this.users.listUsers()).map(user => ({
+			email: user.email,
+			display_name: user.display_name,
+			created_at: user.created_at,
+		}))
 	}
 }

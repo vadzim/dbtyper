@@ -26,6 +26,7 @@ import type {
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, ValidateCol } from "./parser-scope.ts"
+import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -178,7 +179,7 @@ type ParseOrderByScalarExpr<
 	]
 		? Ast extends SqlParserError<string>
 			? [Rw, Ast]
-			: ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer R
+			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
 					? [Rw, R]
 					: R extends ExprAtom
@@ -576,9 +577,15 @@ type ParseInnerParenSelectWhereClose<
 type ScalarSubqueryProjectionOk<Items extends readonly RawSelectItem[]> = Items extends readonly [
 	infer Only extends RawSelectItem,
 ]
-	? Only extends { kind: "star" }
-		? SqlParserError<"Scalar subquery must not use *">
-		: true
+	? Only extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+		? Ast extends { kind: "qualified_table_star" } | { kind: "alias_table_star" }
+			? SqlParserError<"Scalar subquery must not use TABLE.*">
+			: Only extends { kind: "star" }
+				? SqlParserError<"Scalar subquery must not use *">
+				: true
+		: Only extends { kind: "star" }
+			? SqlParserError<"Scalar subquery must not use *">
+			: true
 	: SqlParserError<"Scalar subquery must project exactly one column">
 
 type ParseInnerParenSelectBody<
@@ -843,6 +850,7 @@ type ParseAliasAfterTable<
 		| TokenKey<"inner">
 		| TokenKey<"left">
 		| TokenKey<"join">
+		| TokenKey<"on">
 		| TokenKey<"where">
 		| TokenKey<"order">
 		| TokenKey<"limit">
@@ -989,7 +997,7 @@ type ParseJoinOn<
 > =
 	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokOn]
 		? TokOn extends TokenKeyOn
-			? ParseJoinEqPair<R1, Scope> extends [infer R2 extends TokensList, infer Tag]
+			? ParseJoinEqPair<R1, Db, Scope> extends [infer R2 extends TokensList, infer Tag]
 				? Tag extends SqlParserError<string>
 					? [R2, Tag, ParserRefErrorThirdSentinel]
 					: Tag extends true
@@ -999,22 +1007,89 @@ type ParseJoinOn<
 			: [R1, SqlParserError<"Expected ON keyword">, ParserRefErrorThirdSentinel]
 		: never
 
-type ParseJoinEqPair<Tokens extends TokensList, Scope extends ScopeMap> =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenIdent<infer A1 extends string>]
-		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
-			? ReadToken<R2> extends [infer R3 extends TokensList, TokenIdent<infer C1 extends string>]
-				? ReadToken<R3> extends [infer R4 extends TokensList, TokenKey<"=">]
-					? ReadToken<R4> extends [infer R5 extends TokensList, TokenIdent<infer A2 extends string>]
-						? ReadToken<R5> extends [infer R6 extends TokensList, TokenKey<".">]
-							? ReadToken<R6> extends [infer R7 extends TokensList, TokenIdent<infer C2 extends string>]
-								? ValidateCol<Scope, A1, C1> extends true
-									? ValidateCol<Scope, A2, C2> extends true
-										? [R7, true]
-										: [R7, SqlParserError<"Unknown column in JOIN (right side)">]
-									: [R7, SqlParserError<"Unknown column in JOIN (left side)">]
-								: never
+/** Both sides of `ON` are `schema.table.column`; validate against catalog. */
+type JoinOnQualifiedEqOk<
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	L extends readonly [string, string, string],
+	R extends readonly [string, string, string],
+> =
+	ResolveColumnRefValue<Db, Scope, L> extends SqlParserError<string>
+		? SqlParserError<"Unknown column in JOIN ON (left)">
+		: ResolveColumnRefValue<Db, Scope, R> extends SqlParserError<string>
+			? SqlParserError<"Unknown column in JOIN ON (right)">
+			: true
+
+/** After `=` when the join predicate uses `alias.col = alias.col`. */
+type ParseJoinEqPairAliasRightTail<
+	R4 extends TokensList,
+	Scope extends ScopeMap,
+	LeftAlias extends string,
+	LeftCol extends string,
+> =
+	ReadToken<R4> extends [infer R5 extends TokensList, TokenIdent<infer RightAlias extends string>]
+		? ReadToken<R5> extends [infer R6 extends TokensList, TokenKey<".">]
+			? ReadToken<R6> extends [infer R7 extends TokensList, TokenIdent<infer RightCol extends string>]
+				? ValidateCol<Scope, LeftAlias, LeftCol> extends true
+					? ValidateCol<Scope, RightAlias, RightCol> extends true
+						? [R7, true]
+						: [R7, SqlParserError<"Unknown column in JOIN (right side)">]
+					: [R7, SqlParserError<"Unknown column in JOIN (left side)">]
+				: never
+			: never
+		: never
+
+/** After `=` when the join predicate uses `schema.table.column = schema.table.column`. */
+type ParseJoinEqPairQualifiedRightTail<
+	R6 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	LeftParts extends readonly [string, string, string],
+> =
+	ReadToken<R6> extends [infer R7 extends TokensList, TokenIdent<infer S2 extends string>]
+		? ReadToken<R7> extends [infer R8 extends TokensList, TokenKey<".">]
+			? ReadToken<R8> extends [infer R9 extends TokensList, TokenIdent<infer T2 extends string>]
+				? ReadToken<R9> extends [infer R10 extends TokensList, TokenKey<".">]
+					? ReadToken<R10> extends [infer R11 extends TokensList, TokenIdent<infer C2 extends string>]
+						? JoinOnQualifiedEqOk<Db, Scope, LeftParts, readonly [S2, T2, C2]> extends infer Ok
+							? Ok extends true
+								? [R11, true]
+								: Ok extends SqlParserError<string>
+									? [R11, Ok]
+									: never
 							: never
 						: never
+					: never
+				: never
+			: never
+		: never
+
+/** After the second identifier in the left column ref: qualified `… . … . …` vs `alias.col`. */
+type ParseJoinEqPairAfterSecondIdent<
+	R4 extends TokensList,
+	TokAfterP2,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	P1 extends string,
+	P2 extends string,
+> =
+	TokAfterP2 extends TokenKey<".">
+		? ReadToken<R4> extends [infer R5 extends TokensList, TokenIdent<infer P3 extends string>]
+			? ReadToken<R5> extends [infer R6 extends TokensList, TokenKey<"=">]
+				? ParseJoinEqPairQualifiedRightTail<R6, Db, Scope, readonly [P1, P2, P3]>
+				: never
+			: never
+		: TokAfterP2 extends TokenKey<"=">
+			? ParseJoinEqPairAliasRightTail<R4, Scope, P1, P2>
+			: never
+
+/** `ON` equality: `alias.col = alias.col` or `schema.table.column = schema.table.column`. */
+type ParseJoinEqPair<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenIdent<infer P1 extends string>]
+		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
+			? ReadToken<R2> extends [infer R3 extends TokensList, TokenIdent<infer P2 extends string>]
+				? ReadToken<R3> extends [infer R4 extends TokensList, infer TokAfterP2]
+					? ParseJoinEqPairAfterSecondIdent<R4, TokAfterP2, Db, Scope, P1, P2>
 					: never
 				: never
 			: never
@@ -1046,6 +1121,11 @@ type OutNameFromExprAst<Ast extends ScalarExprAst, As, AllItems extends readonly
 			? "?column?"
 			: "__invalid_select_expr_alias__"
 
+/** First scope entry whose bound table matches `schema.table`. */
+type ScopeEntryForQualifiedName<Scope extends ScopeMap, Sch extends string, Tab extends string> = {
+	[K in keyof Scope]: Scope[K]["schema"] extends Sch ? (Scope[K]["table"] extends Tab ? Scope[K] : never) : never
+}[keyof Scope]
+
 type ResolveSelectListExprItem<
 	Ast extends ScalarExprAst,
 	As,
@@ -1056,26 +1136,53 @@ type ResolveSelectListExprItem<
 	Cols extends Record<string, unknown>,
 	Sqls extends Record<string, string>,
 	AllItems extends readonly RawSelectItem[],
-> =
-	ResolveExpressionAST<Ast, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends infer Ev
-		? Ev extends SqlParserError<string>
-			? Ev
-			: Ev extends ExprOk<infer Ts, infer Sql extends string>
-				? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
-					? O extends "__invalid_select_expr_alias__"
-						? SqlParserError<"Scalar expression in SELECT requires AS alias">
-						: ResolveSelectListAcc<
-								R,
-								Db,
-								Scope,
-								Params,
-								MergeRecords<Cols, Record<O, Ts>>,
-								MergeStringRecords<Sqls, Record<O, Sql>>,
-								AllItems
-							>
+> = Ast extends { kind: "qualified_table_star"; schema: infer Sch extends string; table: infer Tab extends string }
+	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
+		? E extends ScopeEntry
+			? ResolveSelectListAcc<
+					R,
+					Db,
+					Scope,
+					Params,
+					MergeRecords<Cols, E["columns"]>,
+					MergeStringRecords<Sqls, E["column_sql_types"]>,
+					AllItems
+				>
+			: SqlParserError<"Unknown table in SELECT ... *">
+		: SqlParserError<"Unknown table in SELECT ... *">
+	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
+		? Al extends keyof Scope
+			? Scope[Al] extends infer E extends ScopeEntry
+				? ResolveSelectListAcc<
+						R,
+						Db,
+						Scope,
+						Params,
+						MergeRecords<Cols, E["columns"]>,
+						MergeStringRecords<Sqls, E["column_sql_types"]>,
+						AllItems
+					>
+				: SqlParserError<"Unknown alias in SELECT ... *">
+			: SqlParserError<"Unknown alias in SELECT ... *">
+		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
+			? Ev extends SqlParserError<string>
+				? Ev
+				: Ev extends ExprOk<infer Ts, infer Sql extends string>
+					? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
+						? O extends "__invalid_select_expr_alias__"
+							? SqlParserError<"Scalar expression in SELECT requires AS alias">
+							: ResolveSelectListAcc<
+									R,
+									Db,
+									Scope,
+									Params,
+									MergeRecords<Cols, Record<O, Ts>>,
+									MergeStringRecords<Sqls, Record<O, Sql>>,
+									AllItems
+								>
+						: never
 					: never
-				: never
-		: never
+			: never
 
 type ResolveSelectListParamItem<
 	P extends string,

@@ -135,10 +135,7 @@ type ParseUpdateSetAssignments<
 			? Col extends keyof Tbl["columns"]
 				? PeekToken<R1> extends TokenKey<"=">
 					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"=">]
-						? ParseAddValue<R2, Db, Scope, { catalogAccess: "three_part"; params: Params }> extends [
-								infer R3 extends TokensList,
-								infer Ev,
-							]
+						? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
 							? Ev extends SqlParserError<string>
 								? [R3, Db, Ev]
 								: Ev extends ExprAtom

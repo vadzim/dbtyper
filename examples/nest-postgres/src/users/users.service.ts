@@ -9,6 +9,16 @@ export class UsersService {
 	constructor(@Inject(TYPESQL_CONNECTED) readonly db: ConnectedDataBase<ExampleDbShape>) {}
 
 	async listUsers() {
-		return this.db.query("select email, display_name from auth.users order by email;")
+		return this.db.query(`
+			select
+				email,
+				display_name,
+				auth.users.created_at,
+				public.agenda.id as agenda_id
+			from auth.users
+			left join public.agenda
+			on auth.users.id = public.agenda.user_id
+			order by email;
+		`)
 	}
 }

@@ -343,8 +343,13 @@ type _chainedJoin = Expect<Extends<Tuple3At2<TChainedJoin>, JsqlSelectStatementR
 type TSelectStar = ParseSqlStatement<ParseSqlTokens<`select * from users;`>, DbJoinDefaultAndExplicit>
 type _selectStar = Expect<Extends<Tuple3At2<TSelectStar>, { kind: "select"; columns: { id: string; name: string } }>>
 
-type TThreePartCol = ParseSqlStatement<ParseSqlTokens<`select public.users.id from users;`>, DbJoinDefaultAndExplicit>
-type _threePart = Expect<Extends<Tuple3At2<TThreePartCol>, { kind: "select"; columns: { id: string } }>>
+type TCatalogQualColumnSelect = ParseSqlStatement<
+	ParseSqlTokens<`select public.users.id from users;`>,
+	DbJoinDefaultAndExplicit
+>
+type _catalogQualColumnSelect = Expect<
+	Extends<Tuple3At2<TCatalogQualColumnSelect>, { kind: "select"; columns: { id: string } }>
+>
 
 type TAsAlias = ParseSqlStatement<ParseSqlTokens<`select users.id as uid from users;`>, DbJoinDefaultAndExplicit>
 type _asAlias = Expect<Extends<Tuple3At2<TAsAlias>, { kind: "select"; columns: { uid: string } }>>

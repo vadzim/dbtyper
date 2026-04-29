@@ -6,7 +6,6 @@ import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type {
 	EmptyExpressionParams,
 	ExprOk,
-	ExpressionParseContext,
 	ParseExpressionAST,
 	ResolveExpressionAST,
 	SqlCastTypeNorm,
@@ -60,8 +59,6 @@ type _wParamBoolOk = Expect<Extends<Tuple2At1<WParamBoolOk>, null>>
 type WNonBoolRoot = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
 type _wNonBoolRoot = Expect<Extends<Tuple2At1<WNonBoolRoot>, SqlParserError<"Expression must be boolean">>>
 
-type ExprSelectCtx = ExpressionParseContext<"three_part", EmptyExpressionParams>
-
 /** Non-boolean root: same rule as `WHERE` (untyped parse + resolve). */
 type SelBareCol = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
 type _selBareCol = Expect<Extends<Tuple2At1<SelBareCol>, SqlParserError<"Expression must be boolean">>>
@@ -103,7 +100,7 @@ type RNotNum = ResolveExpressionAST<
 	ParseExpressionAST<ParseSqlTokens<`not 1`>> extends [infer _R, infer Ast] ? Ast : never,
 	DbUsers,
 	UsersScope,
-	ExprSelectCtx
+	EmptyExpressionParams
 >
 type _rNotNum = Expect<Extends<RNotNum, SqlParserError<"NOT requires a boolean operand">>>
 
@@ -111,7 +108,7 @@ type RUnaryMinusText = ResolveExpressionAST<
 	ParseExpressionAST<ParseSqlTokens<`-(users.name)`>> extends [infer _R, infer Ast] ? Ast : never,
 	DbUsers,
 	UsersScope,
-	ExprSelectCtx
+	EmptyExpressionParams
 >
 type _rUnaryMinusText = Expect<Extends<RUnaryMinusText, SqlParserError<"Unary minus requires a number">>>
 
@@ -133,7 +130,7 @@ type RCaseNoElse = ResolveExpressionAST<
 	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>> extends [infer _R, infer Ast] ? Ast : never,
 	DbUsers,
 	UsersScope,
-	ExprSelectCtx
+	EmptyExpressionParams
 >
 type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "number">>>
 

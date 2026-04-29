@@ -4,8 +4,6 @@ import type { ScopeMap, ValidateCol } from "./parser-scope.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
 
-export type CatalogAccessMode = "three_part" | "scope_only"
-
 type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, Col extends string> = [
 	ResolveTableShape<Db, Sch, Tab>,
 ] extends [never]
@@ -25,11 +23,8 @@ type ValidateColumnPartsShared<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Parts extends readonly [string] | readonly [string, string] | readonly [string, string, string],
-	Cat extends CatalogAccessMode,
 > = Parts extends readonly [infer S extends string, infer T extends string, infer C extends string]
-	? Cat extends "scope_only"
-		? SqlParserError<"Three-part name not allowed">
-		: GetColMeta3Shared<Db, S, T, C>
+	? GetColMeta3Shared<Db, S, T, C>
 	: Parts extends readonly [infer A extends string, infer C extends string]
 		? ValidateCol<Scope, A, C> extends true
 			? A extends keyof Scope
@@ -70,5 +65,4 @@ export type ResolveColumnRefValue<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Parts extends readonly [string] | readonly [string, string] | readonly [string, string, string],
-	Cat extends CatalogAccessMode,
-> = ValidateColumnPartsShared<Db, Scope, Parts, Cat>
+> = ValidateColumnPartsShared<Db, Scope, Parts>

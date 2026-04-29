@@ -58,15 +58,19 @@ type _wTwoLayer = Expect<Extends<Tuple2At1<WTwoLayer>, null>>
 type WAnd = ParseWhereExpression<ParseSqlTokens<`users.id = 'u' and users.name is null`>, DbUsers, UsersScope>
 type _wAnd = Expect<Extends<Tuple2At1<WAnd>, null>>
 
-/** Catalog three-part: missing table. */
+/** PostgreSQL `~`: regex match on text columns. */
+type WRegex = ParseWhereExpression<ParseSqlTokens<`users.name ~ 'a'`>, DbUsers, UsersScope>
+type _wRegex = Expect<Extends<Tuple2At1<WRegex>, null>>
+
+/** Catalog-qualified `schema.table.column`: missing table. */
 type W3badTab = ParseWhereExpression<ParseSqlTokens<`public.nope.id = 'u'`>, DbUsers, UsersScope>
 type _w3badTab = Expect<Extends<Tuple2At1<W3badTab>, SqlParserError<"Unknown schema or table">>>
 
-/** Catalog three-part: unknown schema. */
+/** Catalog-qualified column: unknown schema. */
 type W3badSch = ParseWhereExpression<ParseSqlTokens<`missing.users.id = 'u'`>, DbUsers, UsersScope>
 type _w3badSch = Expect<Extends<Tuple2At1<W3badSch>, SqlParserError<"Unknown schema or table">>>
 
-/** Catalog three-part: known table, unknown column. */
+/** Catalog-qualified column: known table, unknown column. */
 type W3badCol = ParseWhereExpression<ParseSqlTokens<`public.users.nope = 'u'`>, DbUsers, UsersScope>
 type _w3badCol = Expect<Extends<Tuple2At1<W3badCol>, SqlParserError<"Unknown column (schema.table.column)">>>
 
