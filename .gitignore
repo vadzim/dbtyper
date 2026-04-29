@@ -2,3 +2,5 @@ node_modules
 .logs
 dist
 *.tgz
+debug
+.local
