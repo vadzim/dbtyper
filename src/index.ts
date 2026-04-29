@@ -3,7 +3,7 @@
 export type { SqlDatabaseConfig } from "./engine/sql-database.ts"
 export type * from "../core/sql.ts"
 export {
-	sqlMigrations as sqlDatabase,
+	sqlMigrations,
 	migration,
 	DataBase,
 	type MigrationExport,

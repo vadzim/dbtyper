@@ -34,6 +34,7 @@
 		"docs"
 	],
 	"scripts": {
+		"deps:install:all": "npm install --workspaces --include-workspace-root",
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",
 		"prepack": "npm run build",

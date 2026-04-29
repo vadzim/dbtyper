@@ -6,7 +6,7 @@ import { TypesqlModule, type TypesqlRootConfig } from "@typesql/nest"
 import postgres from "postgres"
 import { postgresSqlDriver } from "typesql/postgres"
 
-import { compileExampleDb } from "./example-schema.ts"
+import { exampleDb } from "./example-schema.ts"
 import { UsersModule } from "./users/users.module.ts"
 
 @Module({
@@ -17,7 +17,7 @@ import { UsersModule } from "./users/users.module.ts"
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const database = await compileExampleDb(postgresSqlDriver({ sql }))
+				const database = await exampleDb(postgresSqlDriver({ sql }))
 				return {
 					database,
 					onShutdown: sql,

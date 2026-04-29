@@ -47,7 +47,7 @@ npm run example:docker:down
 - `docker-compose.yml` — Postgres 16, DB `typesql_example`, port **54333**
 - `migrations/*.js` — SQL strings via `migration(import.meta.url).add(\`...\`)`
 - `scripts/migrate.ts` — writes ordered `.sql` files with `postgres`, then runs them (no separate Flyway/Sqitch dependency)
-- `src/example-schema.ts` — `compileExampleDb()` chains DDL + seed migrations for **types**
+- `src/example-schema.ts` — `exampleDb()` chains DDL + seed migrations for **types**
 - `scripts/migrate.ts` — uses `postgrator` directly over `migrations/*.do.*.js`
 
 ### Patches vs migrations (exception)
@@ -57,4 +57,4 @@ Some SQL should update the typesql catalog (`apply` → `database`) and runtime 
 ## typesql limitations touched here
 
 - Earlier caveats around **`ORDER BY`** typing are largely addressed in the library; this example uses `ORDER BY` in integration tests.
-- **Seed `INSERT`** migrations are included in `compileExampleDb()` so compile-time checks align with what `db:migrate` applies.
+- **Seed `INSERT`** migrations are included in `exampleDb()` so compile-time checks align with what `db:migrate` applies.

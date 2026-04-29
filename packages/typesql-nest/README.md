@@ -20,7 +20,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config"
 import postgres from "postgres"
 
 import { TypesqlModule, type TypesqlRootConfig } from "@typesql/nest"
-import { compileExampleDb } from "./example-schema.js"
+import { exampleDb } from "./example-schema.js"
 import { postgresSqlDriver } from "typesql/postgres"
 
 @Module({
@@ -31,7 +31,7 @@ import { postgresSqlDriver } from "typesql/postgres"
 			inject: [ConfigService],
 			useFactory: async (config: ConfigService): Promise<TypesqlRootConfig> => {
 				const sql = postgres(config.getOrThrow<string>("DATABASE_URL"), { max: 10 })
-				const database = await compileExampleDb(postgresSqlDriver({ sql }))
+				const database = await exampleDb(postgresSqlDriver({ sql }))
 				return {
 					database,
 					onShutdown: sql,

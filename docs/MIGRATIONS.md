@@ -4,7 +4,7 @@ Use **`migration(import.meta.url).add(\`…\`)`** for SQL that is a **real migra
 
 - Chain those modules with **`sqlDatabase({ driver }).apply(import("./….ts"))`** so the type-level catalog matches the database.
 
-- Runtime migration runners can read `compileExampleDb(...).migrations` directly (no filename list required).
+- Runtime migration runners can read `exampleDb(...).migrations` directly (no filename list required).
 
 - **Runtime selection:** Export/apply is driven by the migration modules you include in your migration runner (for examples: all `*.do.*.js` files in the migrations folder).
 

@@ -1,8 +1,10 @@
 import postgres from "postgres"
 
-import type { SqlDriverParams } from "../engine/sql-database.ts"
-import { postgresDriverScalarTypesBrand, type PostgresDriver } from "./postgres-driver.ts"
+import type { SqlDriver, SqlDriverParams } from "../engine/sql-database.ts"
 import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
+import type { PostgresTypeMap } from "./postgres-type-map.ts"
+
+export type PostgresDriver = SqlDriver<PostgresTypeMap>
 
 export type PostgresSqlDriverConfig = {
 	/** Connected **`postgres()`** client from the **`postgres`** package. */
@@ -38,7 +40,7 @@ function createConnectedPostgresDriver(sql: ReturnType<typeof postgres>, pageSiz
 				yield* batch
 			}
 		},
-		scalarTypes: postgresDriverScalarTypesBrand,
+		scalarTypes: {} as PostgresTypeMap,
 	}
 }
 
