@@ -1,0 +1,14 @@
+services:
+    db:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: typesql_nest_example
+        ports:
+            - "54334:5432"
+        volumes:
+            - typesql_nest_example_pgdata:/var/lib/postgresql/data
+
+volumes:
+    typesql_nest_example_pgdata:

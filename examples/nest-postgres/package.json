@@ -1,0 +1,32 @@
+{
+	"name": "@typesql/example-nest-postgres",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@nestjs/common": "^11.0.0",
+		"@nestjs/config": "^4.0.0",
+		"@nestjs/core": "^11.0.0",
+		"@nestjs/platform-express": "^11.0.0",
+		"@typesql/nest": "file:../../packages/typesql-nest",
+		"express": "^5.0.0",
+		"postgres": "^3.4.5",
+		"reflect-metadata": "^0.2.2",
+		"rxjs": "^7.8.1",
+		"typesql": "file:../.."
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.0",
+		"tsx": "^4.19.4"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"test": "npm run typecheck && node --test \"test/**/*.test.ts\"",
+		"test:integration": "RUN_TYPED_PG_INTEGRATION=1 node --test test/integration.test.ts",
+		"docker:up": "docker compose up -d",
+		"docker:down": "docker compose down -v --remove-orphans",
+		"db:migrate": "tsx scripts/migrate.ts",
+		"app:cli": "tsx src/app-cli.ts",
+		"start": "tsx src/main.ts",
+		"start:dev": "tsx watch src/main.ts"
+	}
+}

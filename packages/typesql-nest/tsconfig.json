@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.json",
+	"exclude": [],
+	"compilerOptions": {
+		"noEmit": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"paths": {
+			"typesql": ["../../src/index.ts"]
+		},
+		"ignoreDeprecations": "6.0"
+	},
+	"include": ["src/**/*.ts"]
+}
