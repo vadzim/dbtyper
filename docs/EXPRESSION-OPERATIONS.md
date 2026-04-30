@@ -1,6 +1,6 @@
 # Scalar / `WHERE` expression operations (type-level)
 
-This **typesql** document lists what **`ParseExpressionAST`** / **`ResolveExpressionAST`** (and thus **`ParseWhereExpression`**, typed **`SELECT`** list items, etc.) support, and where we assert **wrong operand types** in tests.
+This **dbtyper** document lists what **`ParseExpressionAST`** / **`ResolveExpressionAST`** (and thus **`ParseWhereExpression`**, typed **`SELECT`** list items, etc.) support, and where we assert **wrong operand types** in tests.
 
 | Category                      | Operation / form                                         | Typed resolve notes                                                                             | Wrong-type test                                                                                                                                                                                                                      |
 | ----------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

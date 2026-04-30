@@ -1,6 +1,6 @@
 # Supported SQL (parser)
 
-This document lists **SQL surface area that the typesql type-level parser understands** today: routing, schema shape updates, and validation. **Update this file whenever you add or change parser support** for a statement or construct.
+This document lists **SQL surface area that the dbtyper type-level parser understands** today: routing, schema shape updates, and validation. **Update this file whenever you add or change parser support** for a statement or construct.
 
 Lexing, token types, and monad mechanics are out of scope here.
 
@@ -28,7 +28,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 - Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
 - Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
-- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`SqlDatabase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`typesql/postgres`** with **`sqlDatabase({ driver: … })`**).
+- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`SqlDatabase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlDatabase({ driver: … })`**).
 
 ---
 

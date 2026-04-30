@@ -21,7 +21,7 @@ try {
 		on auth.users.id = public.agenda.user_id
 		order by email;
 	`)
-	console.log("users (typed rows from typesql + postgres):")
+	console.log("users (typed rows from dbtyper + postgres):")
 	for (const row of rows) {
 		console.log(`  ${row.email}\t${row.display_name ?? ""}\t${row.title}`, row)
 	}

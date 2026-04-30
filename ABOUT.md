@@ -1,4 +1,4 @@
-# qtype: TypeScript for SQL — a Compile-Time SQL Type Checker
+# dbtyper: TypeScript for SQL — a Compile-Time SQL Type Checker
 
 > _Write plain SQL. Get fully typed rows. No ORM. No query builder DSL. No N+1 footguns._
 
@@ -18,13 +18,13 @@ Let me say it again. **LLMs already know SQL extremely well.** Every model has b
 
 What we need is TypeScript for SQL. Typed SQL string literals that know your schema and turn every query into a type-checked statement — so that schema changes propagate as type errors, instantly, without running anything.
 
-That's `qtype` — a compile-time SQL parser written using the TypeScript type system.
+That's `dbtyper` — a compile-time SQL parser written using the TypeScript type system.
 
 ---
 
-## Enter qtype
+## Enter dbtyper
 
-`qtype` is a TypeScript library that parses your SQL string literals at the **type level** and returns a properly typed array of rows — no codegen, no build step, no DSL to learn.
+`dbtyper` is a TypeScript library that parses your SQL string literals at the **type level** and returns a properly typed array of rows — no codegen, no build step, no DSL to learn.
 
 ```typescript
 const rows = await db.query(`
@@ -48,8 +48,8 @@ The types come from your schema, which is declared once through your migration c
 
 ```typescript
 // db/index.ts
-import { sqlMigrations } from "qtype"
-import type { PostgresDriver } from "qtype/postgres"
+import { sqlMigrations } from "dbtyper"
+import type { PostgresDriver } from "dbtyper/postgres"
 
 export async function exampleDb(driver: PostgresDriver) {
 	return sqlMigrations({ driver })
@@ -67,7 +67,7 @@ Each migration contributes to the accumulated type-level schema. By the end of t
 
 ```typescript
 import postgres from "postgres"
-import { postgresSqlDriver } from "qtype/postgres"
+import { postgresSqlDriver } from "dbtyper/postgres"
 import { exampleDb } from "./db/index.js"
 
 const db = await exampleDb(postgresSqlDriver({ sql: postgres(connectionString, { max: 10 }) }))
@@ -221,7 +221,7 @@ export type DataBase<Db> = {
 
 ## Current limitations (and why they don't block you)
 
-`qtype` is under active development. The type-level SQL parser currently handles:
+`dbtyper` is under active development. The type-level SQL parser currently handles:
 
 ✅ `SELECT col1, col2 as col3` — named columns and aliases
 ✅ `SELECT *` or `SELECT table.*` — full table expansion  
@@ -268,13 +268,13 @@ const rows = await db.query(`
 
 ### 2. Schema changes propagate instantly
 
-The DB boundary is normally a black hole for TypeScript's type system. Migrations run, columns change, and your code only finds out at runtime. With `qtype`, the schema lives in the type system. A migration is a type-level event.
+The DB boundary is normally a black hole for TypeScript's type system. Migrations run, columns change, and your code only finds out at runtime. With `dbtyper`, the schema lives in the type system. A migration is a type-level event.
 
 ### 3. LLMs write better code with this
 
 SQL is universal. Every model has seen way more SQL examples than ORM ones.
 
-With `qtype`:
+With `dbtyper`:
 
 - The model writes plain SQL — shorter, clearer, more reliable
 - The type checker catches errors in the same edit cycle — no DB roundtrip needed
@@ -286,8 +286,8 @@ The feedback loop collapses from _write → run tests or deploy & run → crash 
 
 ## Interested? More:
 
-- [NestJS integration example](https://github.com/vadzim/qtype/tree/main/examples/nest-postgres)
-- [Plain postgres integration example](https://github.com/vadzim/qtype/tree/main/examples/typed-postgres)
+- [NestJS integration example](https://github.com/vadzim/dbtyper/tree/main/examples/nest-postgres)
+- [Plain postgres integration example](https://github.com/vadzim/dbtyper/tree/main/examples/typed-postgres)
 
 ## Is it production ready?
 

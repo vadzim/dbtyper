@@ -1,6 +1,6 @@
 # typed-postgres example
 
-End-to-end flow: **Docker Postgres** → **TS migrations** (typesql `migration()` + `.sql` export) → **`postgres.js`** runner → **typed queries** via `sqlDatabase({ driver: postgresSqlDriver(…) }).database()` with **`postgresSqlDriver`** from **`typesql/postgres`**.
+End-to-end flow: **Docker Postgres** → **TS migrations** (dbtyper `migration()` + `.sql` export) → **`postgres.js`** runner → **typed queries** via `sqlDatabase({ driver: postgresSqlDriver(…) }).database()` with **`postgresSqlDriver`** from **`dbtyper/postgres`**.
 
 ## Prerequisites
 
@@ -40,11 +40,11 @@ npm run example:test:integration
 npm run example:docker:down
 ```
 
-`db:migrate` prints the temp export directory on stderr (override with `TYPESQL_MIGRATIONS_OUT=/path` to pin a folder).
+`db:migrate` prints the temp export directory on stderr (override with `DBTYPER_MIGRATIONS_OUT=/path` to pin a folder).
 
 ## Layout
 
-- `docker-compose.yml` — Postgres 16, DB `typesql_example`, port **54333**
+- `docker-compose.yml` — Postgres 16, DB `dbtyper_example`, port **54333**
 - `migrations/*.js` — SQL strings via `migration(import.meta.url).add(\`...\`)`
 - `scripts/migrate.ts` — writes ordered `.sql` files with `postgres`, then runs them (no separate Flyway/Sqitch dependency)
 - `src/example-schema.ts` — `exampleDb()` chains DDL + seed migrations for **types**
@@ -52,9 +52,9 @@ npm run example:docker:down
 
 ### Patches vs migrations (exception)
 
-Some SQL should update the typesql catalog (`apply` → `database`) and runtime migrations together by keeping the same `migrations/*.do.*.js` modules in the chain and in postgrator.
+Some SQL should update the dbtyper catalog (`apply` → `database`) and runtime migrations together by keeping the same `migrations/*.do.*.js` modules in the chain and in postgrator.
 
-## typesql limitations touched here
+## dbtyper limitations touched here
 
 - Earlier caveats around **`ORDER BY`** typing are largely addressed in the library; this example uses `ORDER BY` in integration tests.
 - **Seed `INSERT`** migrations are included in `exampleDb()` so compile-time checks align with what `db:migrate` applies.

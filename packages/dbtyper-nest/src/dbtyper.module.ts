@@ -1,45 +1,45 @@
 import type { DynamicModule, ModuleMetadata, Provider } from "@nestjs/common"
 import { Inject, Module } from "@nestjs/common"
 
-const DEFAULT_TYPESQL_ID = Symbol()
+const DEFAULT_DBTYPER_ID = Symbol()
 
-export function InjectTypesql(id: string | symbol = DEFAULT_TYPESQL_ID): ParameterDecorator {
+export function InjectDbtyper(id: string | symbol = DEFAULT_DBTYPER_ID): ParameterDecorator {
 	return Inject(id)
 }
 
-type TypesqlDatabase = {
+type DbtyperDatabase = {
 	query: (...args: any[]) => Promise<Array<unknown>>
 	stream: (...args: any[]) => AsyncIterable<unknown>
 }
 
-type TypesqlModuleAsyncOptions = {
+type DbtyperModuleAsyncOptions = {
 	id?: string | symbol
 	imports?: ModuleMetadata["imports"]
 	inject?: any[]
-	useFactory: (...args: any[]) => TypesqlDatabase | Promise<TypesqlDatabase>
+	useFactory: (...args: any[]) => DbtyperDatabase | Promise<DbtyperDatabase>
 }
 
 @Module({})
-export class TypesqlModule {
+export class DbtyperModule {
 	static forRoot(
-		config: TypesqlDatabase | Promise<TypesqlDatabase>,
-		id: string | symbol = DEFAULT_TYPESQL_ID,
+		config: DbtyperDatabase | Promise<DbtyperDatabase>,
+		id: string | symbol = DEFAULT_DBTYPER_ID,
 	): DynamicModule {
 		const databaseProvider: Provider = {
 			provide: id,
 			useFactory: async () => await Promise.resolve(config),
 		}
-		return TypesqlModule.withProviders(id, databaseProvider, undefined)
+		return DbtyperModule.withProviders(id, databaseProvider, undefined)
 	}
 
-	static forRootAsync(options: TypesqlModuleAsyncOptions): DynamicModule {
-		const id = options.id ?? DEFAULT_TYPESQL_ID
+	static forRootAsync(options: DbtyperModuleAsyncOptions): DynamicModule {
+		const id = options.id ?? DEFAULT_DBTYPER_ID
 		const databaseProvider: Provider = {
 			provide: id,
 			useFactory: options.useFactory,
 			inject: options.inject ?? [],
 		}
-		return TypesqlModule.withProviders(id, databaseProvider, options.imports)
+		return DbtyperModule.withProviders(id, databaseProvider, options.imports)
 	}
 
 	private static withProviders(
@@ -48,7 +48,7 @@ export class TypesqlModule {
 		imports: ModuleMetadata["imports"] | undefined,
 	): DynamicModule {
 		return {
-			module: TypesqlModule,
+			module: DbtyperModule,
 			global: true,
 			imports: imports ?? [],
 			providers: [databaseProvider],

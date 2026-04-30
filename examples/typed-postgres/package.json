@@ -1,11 +1,11 @@
 {
-	"name": "@typesql/example-postgres",
+	"name": "@dbtyper/example-postgres",
 	"private": true,
 	"type": "module",
 	"dependencies": {
 		"postgrator": "^8.0.0",
 		"postgres": "^3.4.5",
-		"typesql": "file:../.."
+		"dbtyper": "file:../.."
 	},
 	"devDependencies": {
 		"prettier": "^3.8.1",

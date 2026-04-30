@@ -1,6 +1,6 @@
 # Notes
 
-**typesql** — TypeScript project notes.
+**dbtyper** — TypeScript project notes.
 
 In a type declaration body, ternary operators create a ternary tree.
 If there's no ternary operator in a type declaration body then the type declaration body ternary tree consists of exactly one tree node.

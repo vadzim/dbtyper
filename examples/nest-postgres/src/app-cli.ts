@@ -24,7 +24,7 @@ try {
 	const rows = await app.query<typeof stmt, { email_domain: { ts: string; sql: "text" } }>(stmt, {
 		email_domain: "@example\\.com$",
 	})
-	console.log("users (typed rows from typesql + postgres):")
+	console.log("users (typed rows from dbtyper + postgres):")
 	for (const row of rows) {
 		console.log(`  ${row.email}\t${row.display_name ?? ""}`)
 	}

@@ -1,4 +1,4 @@
-import { migration } from "typesql"
+import { migration } from "dbtyper"
 
 export const generateSql = () =>
 	migration(`

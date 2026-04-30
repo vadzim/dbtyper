@@ -1,4 +1,4 @@
-# TODO (typesql)
+# TODO (dbtyper)
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
@@ -75,4 +75,4 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 ## Example
 
-make example much closer to the real world. add a docker there, create several migrations as ts files, add one package script that export migrations from ts to some temporary folder and runs some migration tool you pick to run migrations; also let migrations to put some test data to the db; make another package script that run app which prints some data from the db from docker. and a package script which starts env like docker. i mean run those scripts to ensure all is ok. add a script which stops and removes docker with db. if you find some missing features in the typesql - implement them if they are not big, otherwise prepare a doc and ask me
+make example much closer to the real world. add a docker there, create several migrations as ts files, add one package script that export migrations from ts to some temporary folder and runs some migration tool you pick to run migrations; also let migrations to put some test data to the db; make another package script that run app which prints some data from the db from docker. and a package script which starts env like docker. i mean run those scripts to ensure all is ok. add a script which stops and removes docker with db. if you find some missing features in the dbtyper - implement them if they are not big, otherwise prepare a doc and ask me

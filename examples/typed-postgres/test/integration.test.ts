@@ -9,7 +9,7 @@ import { createExampleApp } from "../src/sample-app.ts"
 
 const exampleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
-const databaseUrl = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54333/typesql_example"
+const databaseUrl = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54333/dbtyper_example"
 
 /** Run when CI is set or explicitly opted in (requires Docker). */
 const runIntegration = process.env.CI === "true" || process.env.RUN_TYPED_PG_INTEGRATION === "1"

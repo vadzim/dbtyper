@@ -1,8 +1,8 @@
 # nest-postgres example
 
-Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: `PostgresModule` owns the `postgres` client, `TypesqlModule` binds `exampleDb(postgresSqlDriver({ sql }))` under `TYPESQL_ID`, and `UsersService` injects the typed `DataBase` via `@InjectTypesql(TYPESQL_ID)`.
+Same data path as [typed-postgres](../typed-postgres/README.md) (Docker Postgres → TS migrations → `postgres` runner), but the app is **NestJS**: `PostgresModule` owns the `postgres` client, `DbtyperModule` binds `exampleDb(postgresSqlDriver({ sql }))` under `DBTYPER_ID`, and `UsersService` injects the typed `DataBase` via `@InjectDbtyper(DBTYPER_ID)`.
 
-- **Port `54334`** and DB **`typesql_nest_example`** (so it can run beside the plain example on `54333`).
+- **Port `54334`** and DB **`dbtyper_nest_example`** (so it can run beside the plain example on `54333`).
 - **`GET /users`** returns JSON rows from **`UsersService.listUsers()`**, which uses typed SQL including **`public.agenda.*`** (qualified table star) on a **`LEFT JOIN`** with **`auth.users`**.
 - **`npm run app:cli`** runs **`src/app-cli.ts`**: same **`sample-app`** wiring as plain **`npm run app`**, with a **`JOIN`** query that selects **`public.agenda.*`**, **`email`**, **`display_name`**, a PostgreSQL regex **`WHERE email ~ …`**, and **`ORDER BY`**. Integration tests mirror [typed-postgres](../typed-postgres/README.md) (CLI stdout → `createExampleApp` query → Nest HTTP).
 
@@ -50,7 +50,7 @@ npm run example:nest:docker:down
 ## Layout
 
 - `src/sample-app.ts` / `src/app-cli.ts` — same typed CLI path as plain **`typed-postgres`** (`createExampleApp`, printed rows)
-- `src/app.module.ts` — `ConfigModule`, `PostgresModule`, and `TypesqlModule.forRootAsync({ id: TYPESQL_ID })`
+- `src/app.module.ts` — `ConfigModule`, `PostgresModule`, and `DbtyperModule.forRootAsync({ id: DBTYPER_ID })`
 - `src/postgres.module.ts` — owns the `postgres` client and closes it on module destroy
-- `src/users/` — `UsersService` with **`@InjectTypesql(TYPESQL_ID)`**, **`UsersController`** with **`@Inject(UsersService)`**
+- `src/users/` — `UsersService` with **`@InjectDbtyper(DBTYPER_ID)`**, **`UsersController`** with **`@Inject(UsersService)`**
 - `migrations/*.js` — same shape as the plain Postgres example (`migration()` for exported migrations — see **[`docs/MIGRATIONS.md`](../../docs/MIGRATIONS.md)**)

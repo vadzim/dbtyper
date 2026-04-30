@@ -1,5 +1,5 @@
 import postgres from "postgres"
-import { postgresSqlDriver } from "typesql/postgres"
+import { postgresSqlDriver } from "dbtyper/postgres"
 
 import { exampleDb } from "./example-schema.ts"
 

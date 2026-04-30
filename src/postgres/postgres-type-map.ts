@@ -1,6 +1,6 @@
 /**
  * PostgreSQL-oriented SQL scalar spellings (normalized identifiers / joined type words) → TypeScript types.
- * Inferred for `SqlDatabase` / `sqlDatabase` when `driver` is from **`postgresSqlDriver`** (`typesql/postgres`).
+ * Inferred for `SqlDatabase` / `sqlDatabase` when `driver` is from **`postgresSqlDriver`** (`dbtyper/postgres`).
  */
 export type PostgresTypeMap = {
 	uuid: string

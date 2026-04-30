@@ -7,7 +7,7 @@
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
 		"paths": {
-			"typesql": ["../../src/index.ts"]
+			"dbtyper": ["../../src/index.ts"]
 		},
 		"ignoreDeprecations": "6.0"
 	},

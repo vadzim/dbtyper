@@ -77,7 +77,7 @@ export function migration<S extends string>(source: S): S {
 		const caller = new Error().stack?.split("\n")[2]
 		if (caller && !/\.js:\d+\:\d+\)/.test(caller)) {
 			throw new Error(
-				"migration() should be called from a JavaScript file while running tests to test that typesql works with js",
+				"migration() should be called from a JavaScript file while running tests to test that dbtyper works with js",
 			)
 		}
 	}

@@ -1,5 +1,5 @@
-import { sqlMigrations } from "typesql"
-import type { PostgresDriver } from "typesql/postgres"
+import { sqlMigrations } from "dbtyper"
+import type { PostgresDriver } from "dbtyper/postgres"
 
 export async function exampleDb(driver: PostgresDriver) {
 	return sqlMigrations({ driver })

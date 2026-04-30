@@ -4,8 +4,8 @@
 		"noEmit": true,
 		"allowJs": true,
 		"paths": {
-			"typesql": ["../../src/index.ts"],
-			"typesql/postgres": ["../../src/postgres/index.ts"]
+			"dbtyper": ["../../src/index.ts"],
+			"dbtyper/postgres": ["../../src/postgres/index.ts"]
 		},
 		"ignoreDeprecations": "6.0"
 	},

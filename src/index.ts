@@ -1,4 +1,4 @@
-// typesql — package entry (published build). Internal modules import each other, not this file.
+// dbtyper — package entry (published build). Internal modules import each other, not this file.
 
 export type { SqlDatabaseConfig } from "./core/sql-database.ts"
 export {

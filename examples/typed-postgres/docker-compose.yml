@@ -4,11 +4,11 @@ services:
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: typesql_example
+            POSTGRES_DB: dbtyper_example
         ports:
             - "54333:5432"
         volumes:
-            - typesql_example_pgdata:/var/lib/postgresql/data
+            - dbtyper_example_pgdata:/var/lib/postgresql/data
 
 volumes:
-    typesql_example_pgdata:
+    dbtyper_example_pgdata:

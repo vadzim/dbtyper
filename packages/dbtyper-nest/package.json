@@ -1,11 +1,11 @@
 {
-	"name": "@typesql/nest",
+	"name": "@dbtyper/nest",
 	"version": "0.1.0",
-	"description": "NestJS integration for typesql (compiled schema + SqlDriver lifecycle).",
+	"description": "NestJS integration for dbtyper (compiled schema + SqlDriver lifecycle).",
 	"type": "module",
 	"license": "ISC",
 	"keywords": [
-		"typesql",
+		"dbtyper",
 		"nestjs",
 		"sql"
 	],
@@ -19,13 +19,13 @@
 	"peerDependencies": {
 		"@nestjs/common": "^10.0.0 || ^11.0.0",
 		"@nestjs/core": "^10.0.0 || ^11.0.0",
-		"typesql": "*"
+		"dbtyper": "*"
 	},
 	"devDependencies": {
 		"@nestjs/common": "^11.0.0",
 		"@nestjs/core": "^11.0.0",
 		"prettier": "^3.8.1",
-		"typesql": "file:../.."
+		"dbtyper": "file:../.."
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json",

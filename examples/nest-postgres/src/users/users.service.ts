@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common"
-import { InjectTypesql } from "@typesql/nest"
+import { InjectDbtyper } from "@dbtyper/nest"
 import type { ExampleDb } from "../example-schema.ts"
-import { TYPESQL_ID } from "../typesql-connection.ts"
+import { DBTYPER_ID } from "../dbtyper-connection.ts"
 
 @Injectable()
 export class UsersService {
-	constructor(@InjectTypesql(TYPESQL_ID) readonly db: ExampleDb) {}
+	constructor(@InjectDbtyper(DBTYPER_ID) readonly db: ExampleDb) {}
 
 	async listUsers() {
 		return this.db.query(`

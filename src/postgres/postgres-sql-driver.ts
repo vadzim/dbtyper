@@ -45,9 +45,9 @@ function createConnectedPostgresDriver(sql: ReturnType<typeof postgres>, pageSiz
 }
 
 /**
- * Adapts [postgres](https://github.com/porsager/postgres) to typesql’s {@link SqlDriver}.
+ * Adapts [postgres](https://github.com/porsager/postgres) to dbtyper’s {@link SqlDriver}.
  * Uses `unsafe` for dynamic SQL strings; only pass strings you already validated at compile time
- * via typesql (or trusted literals).
+ * via dbtyper (or trusted literals).
  *
  * Accepts positional parameter arrays or `:name` maps; `:name` tokens are rewritten to `$1`, `$2`, … (skipping
  * PostgreSQL `::` casts and `:name` inside single-quoted literals).

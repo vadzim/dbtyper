@@ -1,5 +1,5 @@
 {
-	"name": "@typesql/example-nest-postgres",
+	"name": "@dbtyper/example-nest-postgres",
 	"private": true,
 	"type": "module",
 	"dependencies": {
@@ -7,13 +7,13 @@
 		"@nestjs/config": "^4.0.0",
 		"@nestjs/core": "^11.0.0",
 		"@nestjs/platform-express": "^11.0.0",
-		"@typesql/nest": "file:../../packages/typesql-nest",
+		"@dbtyper/nest": "file:../../packages/dbtyper-nest",
 		"express": "^5.0.0",
 		"postgrator": "^8.0.0",
 		"postgres": "^3.4.5",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.1",
-		"typesql": "file:../.."
+		"dbtyper": "file:../.."
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.0",

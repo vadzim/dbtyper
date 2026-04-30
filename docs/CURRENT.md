@@ -1,4 +1,4 @@
-# Current state vs typesql goal
+# Current state vs dbtyper goal
 
 **Goal** (from `README.md`): type-safe queries against a schema—wrong tables/columns, bad nullability, and incompatible expressions should surface as **TypeScript type errors** at compile time, not only at runtime.
 
