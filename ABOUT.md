@@ -96,7 +96,7 @@ const rows = await db.query(`
 const rows = await db.query(`SELECT id, name FROM users`)
 ```
 
-![IDE hover showing inferred rows type for selected columns](docs/pictures/screenshot1.png)
+![IDE hover showing inferred rows type for selected columns](https://raw.githubusercontent.com/vadzim/dbtyper/main/docs/pictures/screenshot1.png)
 
 Hover over `rows` in your IDE and the inferred type is available immediately:
 
@@ -117,7 +117,7 @@ _The type tooltip appears inline — no annotation, no manual generic._
 const rows = await db.query(`SELECT * FROM users`)
 ```
 
-![IDE hover showing SELECT star expanded to the full table shape](docs/pictures/screenshot2.png)
+![IDE hover showing SELECT star expanded to the full table shape](https://raw.githubusercontent.com/vadzim/dbtyper/main/docs/pictures/screenshot2.png)
 
 Hover over `rows` and `SELECT *` expands to the known table shape:
 
@@ -150,7 +150,7 @@ const rows = await db.query(`
 `)
 ```
 
-![IDE hover showing joined query result type across schemas](docs/pictures/screenshot3.png)
+![IDE hover showing joined query result type across schemas](https://raw.githubusercontent.com/vadzim/dbtyper/main/docs/pictures/screenshot3.png)
 
 Hover over `rows` and the joined result type is merged from both tables:
 
@@ -173,7 +173,7 @@ const row: {
 
 Rename a column in your migration (`phone` → `phone_number`), and every `query()` call that references `phone` becomes a type error — immediately, without running anything.
 
-![IDE error showing a missing property after a schema change](docs/pictures/screenshot4.png)
+![IDE error showing a missing property after a schema change](https://raw.githubusercontent.com/vadzim/dbtyper/main/docs/pictures/screenshot4.png)
 
 After a column rename, TypeScript reports the stale property access:
 
