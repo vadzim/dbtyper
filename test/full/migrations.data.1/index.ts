@@ -11,6 +11,6 @@ export const createTestDatabase = async () =>
 	})
 		.apply((await import("./001.do.schemas.js")).generateSql())
 		.apply((await import("./002.do.users.js")).generateSql())
-		.apply((await import("./003.do.agenda.ts")).generateSql())
+		.apply((await import("./003.do.agenda.js")).generateSql())
 		.apply((await import("./004.do.seed_users.js")).generateSql())
 		.database()

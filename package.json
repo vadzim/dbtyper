@@ -10,7 +10,15 @@
 		"migrations"
 	],
 	"license": "ISC",
-	"author": "",
+	"author": "vadzimzienka@gmail.com",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/vadzim/typesql.git"
+	},
+	"bugs": {
+		"url": "https://github.com/vadzim/typesql/issues"
+	},
+	"homepage": "https://github.com/vadzim/typesql#readme",
 	"type": "module",
 	"workspaces": [
 		"examples/*",
