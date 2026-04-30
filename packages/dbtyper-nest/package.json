@@ -1,5 +1,5 @@
 {
-	"name": "@dbtyper/nest",
+	"name": "dbtyper-nest",
 	"version": "0.1.0",
 	"description": "NestJS integration for dbtyper (compiled schema + SqlDriver lifecycle).",
 	"type": "module",

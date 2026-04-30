@@ -2,7 +2,7 @@ import "reflect-metadata"
 
 import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
-import { DbtyperModule } from "@dbtyper/nest"
+import { DbtyperModule } from "dbtyper-nest"
 import { postgresSqlDriver } from "dbtyper/postgres"
 
 import { exampleDb } from "./example-schema.ts"

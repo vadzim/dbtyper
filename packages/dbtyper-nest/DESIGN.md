@@ -1,13 +1,13 @@
-# @dbtyper/nest — design
+# dbtyper-nest — design
 
 ## Boundaries
 
 - **dbtyper** stays responsible for compile-time `JsqlDatabaseShape`, `CompiledDataBase`, and `SqlDriver`.
 - **Nest** supplies dependency injection and async bootstrap (`forRootAsync`).
-- The application owns external resources such as the `postgres` client and closes them outside `@dbtyper/nest`.
+- The application owns external resources such as the `postgres` client and closes them outside `dbtyper-nest`.
 
 The connector does not parse SQL or own migrations; applications keep `sqlDatabase({ driver }).apply(…).database()` (or equivalent) in a factory and pass `{ database }`.
-The module binds each connection by `id`; `InjectDbtyper(id)` resolves the matching database provider, and the default id is internal to `@dbtyper/nest`.
+The module binds each connection by `id`; `InjectDbtyper(id)` resolves the matching database provider, and the default id is internal to `dbtyper-nest`.
 
 ## Flow
 

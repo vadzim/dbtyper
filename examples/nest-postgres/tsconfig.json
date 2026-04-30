@@ -8,7 +8,7 @@
 		"paths": {
 			"dbtyper": ["../../src/index.ts"],
 			"dbtyper/postgres": ["../../src/postgres/index.ts"],
-			"@dbtyper/nest": ["../../packages/dbtyper-nest/src/index.ts"]
+			"dbtyper-nest": ["../../packages/dbtyper-nest/src/index.ts"]
 		},
 		"ignoreDeprecations": "6.0"
 	},

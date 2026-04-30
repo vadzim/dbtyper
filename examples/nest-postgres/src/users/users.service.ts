@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import { InjectDbtyper } from "@dbtyper/nest"
+import { InjectDbtyper } from "dbtyper-nest"
 import type { ExampleDb } from "../example-schema.ts"
 import { DBTYPER_ID } from "../dbtyper-connection.ts"
 
