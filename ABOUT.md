@@ -289,6 +289,10 @@ The feedback loop collapses from _write → run tests or deploy & run → crash 
 - [NestJS integration example](https://github.com/vadzim/qtype/tree/main/examples/nest-postgres)
 - [Plain postgres integration example](https://github.com/vadzim/qtype/tree/main/examples/typed-postgres)
 
+## Is it production ready?
+
+Not at all. It's still alpha.
+
 ---
 
 _SQL already was the right abstraction. It just needed types._
