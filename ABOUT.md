@@ -100,10 +100,10 @@ const rows = await db.query(`SELECT id, name FROM users`)
 
 Hover over `rows` in your IDE and the inferred type is available immediately:
 
-```
+```typescript
 const rows: Array<{
-    id: number;
-    name: string;
+	id: number
+	name: string
 }>
 ```
 
@@ -121,14 +121,14 @@ const rows = await db.query(`SELECT * FROM users`)
 
 Hover over `rows` and `SELECT *` expands to the known table shape:
 
-```
+```typescript
 const rows: Array<{
-    id: number;
-    name: string;
-    email: string;
-    phone: string;
-    created_at: Date;
-    login_count: number;
+	id: number
+	name: string
+	email: string
+	phone: string
+	created_at: Date
+	login_count: number
 }>
 ```
 
@@ -154,16 +154,16 @@ const rows = await db.query(`
 
 Hover over `rows` and the joined result type is merged from both tables:
 
-```
+```typescript
 const row: {
-    agenda: string;
-    created_at: Date;
-    display_name: string;
-    email: string;
-    id: string;
-    login_count: number;
-    title: string;
-    user_id: string;
+	agenda: string
+	created_at: Date
+	display_name: string
+	email: string
+	id: string
+	login_count: number
+	title: string
+	user_id: string
 }
 ```
 
