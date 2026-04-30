@@ -1823,12 +1823,42 @@ type TryValueOperand<
 										? [Rbad, SqlParserError<"Unexpected token">]
 										: never
 
+type ParseValuePgCastSuffix<Tokens extends TokensList, Acc extends ExprAtom> =
+	PeekToken<Tokens> extends TokenKey<"::">
+		? ReadToken<Tokens> extends [infer R0 extends TokensList, TokenKey<"::">]
+			? ParseSqlTypeName<R0, []> extends [infer R1 extends TokensList, infer Parts]
+				? Parts extends SqlParserError<string>
+					? [R1, Parts]
+					: Parts extends readonly []
+						? [R1, SqlParserError<"Expected type name after ::">]
+						: Parts extends readonly string[]
+							? SqlCastTypeNorm<Parts> extends infer Norm extends string
+								? ResolveCastFromAtom<Acc, Norm> extends infer Casted
+									? Casted extends SqlParserError<string>
+										? [R1, Casted]
+										: Casted extends ExprAtom
+											? ParseValuePgCastSuffix<R1, Casted>
+											: never
+									: never
+								: SqlParserError<"Invalid cast target">
+							: never
+				: never
+			: never
+		: [Tokens, Acc]
+
 type ParsePrimaryValue<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = TryValueOperand<Tokens, Db, Scope, Params>
+> =
+	TryValueOperand<Tokens, Db, Scope, Params> extends [infer R extends TokensList, infer E]
+		? E extends SqlParserError<string>
+			? [R, E]
+			: E extends ExprAtom
+				? ParseValuePgCastSuffix<R, E>
+				: never
+		: never
 
 type ParseUnaryValue<
 	Tokens extends TokensList,

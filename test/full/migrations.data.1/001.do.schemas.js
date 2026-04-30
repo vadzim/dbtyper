@@ -1,4 +1,4 @@
-import { migration } from "typesql"
+import { migration } from "../../../src/core/sql-database.ts"
 
 export const generateSql = () =>
 	migration(`

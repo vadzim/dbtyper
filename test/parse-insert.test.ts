@@ -1,9 +1,10 @@
 import { describe, it } from "node:test"
-import type { JsqlInsertStatementResult } from "../src/core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlInsertStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 
 type DbUsers = {
@@ -121,6 +122,81 @@ type InsUpsertWhereReturning = ParseSqlStatement<
 type InsUpsertWhereReturningRes = Tuple3At2<InsUpsertWhereReturning>
 type _insUpsertWhereReturning = Expect<Extends<InsUpsertWhereReturningRes, JsqlInsertStatementResult>>
 type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["returning"]["columns"], { id: string }>>
+
+type SeedDb0 = {
+	defaultSchema: "public"
+	schemas: {}
+	scalarTypes: PackageScalarTypes
+}
+
+type SeedDb1 = ApplyStatements<
+	SeedDb0,
+	`
+  create schema if not exists auth;
+  create schema if not exists public;
+`
+>[0]
+
+type SeedDb2 = ApplyStatements<
+	SeedDb1,
+	`
+  create table if not exists auth.users (
+    id uuid not null,
+    email text not null,
+    display_name text,
+    login_count integer not null,
+    created_at timestamp with time zone null,
+    updated_at timestamp with time zone null,
+    deleted_at timestamp with time zone null,
+    constraint users_pkey primary key (id)
+  );
+`
+>[0]
+
+type SeedDb3 = ApplyStatements<
+	SeedDb2,
+	`
+  create table if not exists public.agenda (
+    id uuid not null,
+    created_at timestamp with time zone not null,
+    user_id uuid not null,
+    title text not null,
+    agenda text
+  );
+`
+>[0]
+
+type SeedUsers = ApplyStatements<
+	SeedDb3,
+	`
+  insert into auth.users (id, email, display_name, login_count)
+  values
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'alice@example.com', 'Alice', 0),
+    ('22222222-2222-2222-2222-222222222222'::uuid, 'bob@example.com', 'Bob', 0);
+`
+>
+type _seedUsersDbStillOk = Expect<Extends<SeedUsers[0], JsqlDatabaseShape>>
+type _seedUsersNoError = Expect<Matches<SeedUsers[1], null>>
+
+type SeedUsersOneRowNoCast = ApplyStatements<
+	SeedDb3,
+	`
+  insert into auth.users (id, email, display_name, login_count)
+  values
+    ('11111111-1111-1111-1111-111111111111', 'alice@example.com', 'Alice', 0);
+`
+>
+type _seedUsersOneRowNoCast = Expect<Matches<SeedUsersOneRowNoCast[1], null>>
+
+type SeedUsersOneRowCast = ApplyStatements<
+	SeedDb3,
+	`
+  insert into auth.users (id, email, display_name, login_count)
+  values
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'alice@example.com', 'Alice', 0);
+`
+>
+type _seedUsersOneRowCast = Expect<Matches<SeedUsersOneRowCast[1], null>>
 
 describe("parse-insert (type tests)", () => {
 	it("compile-time assertions above", () => {})

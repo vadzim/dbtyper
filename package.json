@@ -54,7 +54,7 @@
 		"example:nest:test:integration": "npm run test:integration -w @typesql/example-nest-postgres",
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
-		"test": "npm run --silent typecheck && npm run --silent typecheck -w @typesql/example-postgres && npm run --silent typecheck -w @typesql/example-nest-postgres && npm run --silent test -w @typesql/nest && node --test \"test/**/*.test.ts\" && npm run --silent test -w @typesql/example-postgres && npm run --silent test -w @typesql/example-nest-postgres && npm run --silent format:check",
+		"test": "npm run --silent typecheck && npm run --silent typecheck -w @typesql/example-postgres && npm run --silent typecheck -w @typesql/example-nest-postgres && npm run --silent test -w @typesql/nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent test -w @typesql/example-postgres && npm run --silent test -w @typesql/example-nest-postgres && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"monadcheck": "check-monad './core/**/*.ts' './src/**/*.ts' --monad ./core/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",

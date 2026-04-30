@@ -73,6 +73,14 @@ export type MigrationExport = {
 }
 
 export function migration<S extends string>(source: S): S {
+	if (process.env.TEST_MIGRATIONS) {
+		const caller = new Error().stack?.split("\n")[2]
+		if (caller && !/\.js:\d+\:\d+\)/.test(caller)) {
+			throw new Error(
+				"migration() should be called from a JavaScript file while running tests to test that typesql works with js",
+			)
+		}
+	}
 	return source
 }
 
