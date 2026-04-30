@@ -1,1 +1,1 @@
-export { InjectDbtyper, DbtyperModule } from "./dbtyper.module.ts"
+export { InjectDbtyper, DbtyperModule } from "./dbtyper.module.js"
