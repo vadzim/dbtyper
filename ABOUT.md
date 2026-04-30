@@ -28,14 +28,14 @@ That's `dbtyper` — a compile-time SQL parser written using the TypeScript type
 
 ```typescript
 const rows = await db.query(`
-    SELECT id, name, email FROM users
+    SELECT id, display_name as name, email FROM users
 `)
-// rows: Array<{ id: number; name: string; email: string }>
+// rows: Array<{ id: string; name: string; email: string }>
 ```
 
 ```typescript
 const rows = await db.query(`SELECT * FROM users`)
-// rows: Array<{ id: number; name: string; email: string; phone: string; created_at: Date }>
+// rows: Array<{ id: string; email: string; display_name: string; login_count: number... }>
 ```
 
 The types come from your schema, which is declared once through your migration chain. The SQL string is the source of truth for which columns appear in the result.
@@ -102,7 +102,7 @@ Hover over `rows` in your IDE and the inferred type is available immediately:
 
 ```typescript
 const rows: Array<{
-	id: number
+	id: string
 	name: string
 }>
 ```
@@ -123,7 +123,7 @@ Hover over `rows` and `SELECT *` expands to the known table shape:
 
 ```typescript
 const rows: Array<{
-	id: number
+	id: string
 	name: string
 	email: string
 	phone: string
@@ -178,7 +178,7 @@ Rename a column in your migration (`phone` → `phone_number`), and every `query
 After a column rename, TypeScript reports the stale property access:
 
 ```
-Property 'phone' does not exist on type '{ id: number; name: string; phone_number: string; ... }'
+Property 'phone' does not exist on type '{ id: string; name: string; phone_number: string; ... }'
 ```
 
 ---
@@ -264,7 +264,7 @@ const rows = await db.query(`
     FROM users u
     JOIN orders o ON u.id = o.user_id
 `)
-// rows: Array<{ id: number; name: string; total: number }>
+// rows: Array<{ id: string; name: string; total: number }>
 ```
 
 ### 2. Schema changes propagate instantly
