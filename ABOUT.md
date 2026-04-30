@@ -96,8 +96,9 @@ const rows = await db.query(`
 const rows = await db.query(`SELECT id, name FROM users`)
 ```
 
-📸 **[SCREENSHOT 1]**
-_Hover over `rows` in your IDE. Show the inferred type:_
+![IDE hover showing inferred rows type for selected columns](docs/pictures/screenshot1.png)
+
+Hover over `rows` in your IDE and the inferred type is available immediately:
 
 ```
 const rows: Array<{
@@ -116,8 +117,9 @@ _The type tooltip appears inline — no annotation, no manual generic._
 const rows = await db.query(`SELECT * FROM users`)
 ```
 
-📸 **[SCREENSHOT 2]**
-_Hover over `rows`. Show full expansion:_
+![IDE hover showing SELECT star expanded to the full table shape](docs/pictures/screenshot2.png)
+
+Hover over `rows` and `SELECT *` expands to the known table shape:
 
 ```
 const rows: Array<{
@@ -148,8 +150,9 @@ const rows = await db.query(`
 `)
 ```
 
-📸 **[SCREENSHOT 3]** _(this is the one from your existing screenshot)_
-_Hover over `row` in the for-loop below. Show the merged type:_
+![IDE hover showing joined query result type across schemas](docs/pictures/screenshot3.png)
+
+Hover over `rows` and the joined result type is merged from both tables:
 
 ```
 const row: {
@@ -170,8 +173,9 @@ const row: {
 
 Rename a column in your migration (`phone` → `phone_number`), and every `query()` call that references `phone` becomes a type error — immediately, without running anything.
 
-📸 **[SCREENSHOT 4]**
-_Show a red squiggle under `row.phone` after a column rename. Tooltip:_
+![IDE error showing a missing property after a schema change](docs/pictures/screenshot4.png)
+
+After a column rename, TypeScript reports the stale property access:
 
 ```
 Property 'phone' does not exist on type '{ id: number; name: string; phone_number: string; ... }'
@@ -179,14 +183,11 @@ Property 'phone' does not exist on type '{ id: number; name: string; phone_numbe
 
 ---
 
-### Params are typed too
+### Params are supported
 
 ```typescript
 const rows = await db.query(`SELECT * FROM users WHERE id = :id AND active = :active`, { id: 42, active: true })
 ```
-
-📸 **[SCREENSHOT 5]**
-_Show autocomplete on the params object — `id` and `active` appear as suggestions with their inferred types. Passing a wrong type (e.g. `id: "hello"`) shows a red squiggle._
 
 ---
 

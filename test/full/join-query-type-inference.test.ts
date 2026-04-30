@@ -1,6 +1,6 @@
+import { createTestDatabase } from "./migrations.data.1/index.ts"
 import { describe, it } from "node:test"
 import type { Expect, Matches } from "../test-utils/type-test-utils.ts"
-import { createTestDatabase } from "./migrations.data.1/index.ts"
 
 describe("migration query type inference", () => {
 	it("infers row types for joined queries after applying migrations", async () => {
