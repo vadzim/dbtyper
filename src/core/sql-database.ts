@@ -48,18 +48,21 @@ export type SqlDatabase<
 }
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
-	apply<Source extends string>(statement: Source, name?: string): SqlMigrations<ApplyStatements<Db, Source>[0]>
+	apply<Source extends string>(
+		statement: Source,
+		name?: string,
+	): SqlMigrations<FlattenedJsqlDatabase<ApplyStatements<Db, Source>[0]>>
 	database(): DataBase<FlattenedJsqlDatabase<Db>>
 	getDefaultSchema(): string
 }
 
-export function sqlMigrations<const DS extends string | undefined, D extends SqlDriver<Record<string, unknown>>>(
-	config: SqlDatabaseConfig<D>,
+export function sqlMigrations<D extends SqlDriver<Record<string, unknown>>, const DS extends string = "public">(
+	config: SqlDatabaseConfig<D> & { defaultSchema?: DS },
 ) {
 	const defaultSchema = config.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
-		SqlDatabase<DS extends string ? DS : "public", InferScalarTypesFromDriver<D>>
+		FlattenedJsqlDatabase<SqlDatabase<DS, InferScalarTypesFromDriver<D>>>
 	>
 	return result
 }
@@ -138,7 +141,8 @@ export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 							: never
 					}
 				: never
-		} & { scalarTypes: Db["scalarTypes"] }
+			scalarTypes: Db["scalarTypes"]
+		}
 	: Db
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
@@ -213,6 +217,8 @@ export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 		params: ParamRuntimeValues<Params>,
 	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
 
+	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
+
 	/**
 	 * Row-by-row iteration
 	 */
@@ -221,6 +227,8 @@ export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 		statement: Stmt,
 		params: ParamRuntimeValues<Params>,
 	): AsyncIterable<SqlSelectRowObject<Db, Stmt, Params>>
+
+	streamUntyped(statement: string, params?: Record<string, unknown>): AsyncIterable<any>
 
 	migrations: readonly MigrationExport[]
 	defaultSchema: string
@@ -253,6 +261,14 @@ export class DataBaseImpl {
 				yield row
 			}
 		})()
+	}
+
+	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<unknown>> {
+		return this.query(statement, params)
+	}
+
+	streamUntyped(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
+		return this.stream(statement, params)
 	}
 
 	migrations: readonly MigrationExport[]
