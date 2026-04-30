@@ -1,5 +1,5 @@
 {
-	"name": "typesql",
+	"name": "qtype",
 	"version": "0.1.0",
 	"description": "Compile-time SQL parsing and schema typing for TypeScript.",
 	"keywords": [
@@ -13,12 +13,12 @@
 	"author": "vadzimzienka@gmail.com",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/vadzim/typesql.git"
+		"url": "git+https://github.com/vadzim/qtype.git"
 	},
 	"bugs": {
-		"url": "https://github.com/vadzim/typesql/issues"
+		"url": "https://github.com/vadzim/qtype/issues"
 	},
-	"homepage": "https://github.com/vadzim/typesql#readme",
+	"homepage": "https://github.com/vadzim/qtype#readme",
 	"type": "module",
 	"workspaces": [
 		"examples/*",
@@ -47,22 +47,22 @@
 		"clean": "rm -rf dist",
 		"prepack": "npm run build",
 		"typecheck": "time tsgo --noEmit -p tsconfig.json && time npm run --silent monadcheck-log",
-		"example:docker:up": "npm run docker:up -w @typesql/example-postgres",
-		"example:docker:down": "npm run docker:down -w @typesql/example-postgres",
-		"example:db:migrate": "npm run db:migrate -w @typesql/example-postgres",
-		"example:app": "npm run app -w @typesql/example-postgres",
-		"example:test": "npm test -w @typesql/example-postgres",
-		"example:test:integration": "npm run test:integration -w @typesql/example-postgres",
-		"example:nest:docker:up": "npm run docker:up -w @typesql/example-nest-postgres",
-		"example:nest:docker:down": "npm run docker:down -w @typesql/example-nest-postgres",
-		"example:nest:db:migrate": "npm run db:migrate -w @typesql/example-nest-postgres",
-		"example:nest:app:cli": "npm run app:cli -w @typesql/example-nest-postgres",
-		"example:nest:start": "npm run start -w @typesql/example-nest-postgres",
-		"example:nest:test": "npm test -w @typesql/example-nest-postgres",
-		"example:nest:test:integration": "npm run test:integration -w @typesql/example-nest-postgres",
+		"example:docker:up": "npm run docker:up -w @qtype/example-postgres",
+		"example:docker:down": "npm run docker:down -w @qtype/example-postgres",
+		"example:db:migrate": "npm run db:migrate -w @qtype/example-postgres",
+		"example:app": "npm run app -w @qtype/example-postgres",
+		"example:test": "npm test -w @qtype/example-postgres",
+		"example:test:integration": "npm run test:integration -w @qtype/example-postgres",
+		"example:nest:docker:up": "npm run docker:up -w @qtype/example-nest-postgres",
+		"example:nest:docker:down": "npm run docker:down -w @qtype/example-nest-postgres",
+		"example:nest:db:migrate": "npm run db:migrate -w @qtype/example-nest-postgres",
+		"example:nest:app:cli": "npm run app:cli -w @qtype/example-nest-postgres",
+		"example:nest:start": "npm run start -w @qtype/example-nest-postgres",
+		"example:nest:test": "npm test -w @qtype/example-nest-postgres",
+		"example:nest:test:integration": "npm run test:integration -w @qtype/example-nest-postgres",
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w core -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
-		"test": "npm run --silent typecheck && npm run --silent typecheck -w @typesql/example-postgres && npm run --silent typecheck -w @typesql/example-nest-postgres && npm run --silent test -w @typesql/nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent test -w @typesql/example-postgres && npm run --silent test -w @typesql/example-nest-postgres && npm run --silent format:check",
+		"test": "npm run --silent typecheck && npm run --silent typecheck -w @qtype/example-postgres && npm run --silent typecheck -w @qtype/example-nest-postgres && npm run --silent test -w @qtype/nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent test -w @qtype/example-postgres && npm run --silent test -w @qtype/example-nest-postgres && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"monadcheck": "check-monad './core/**/*.ts' './src/**/*.ts' --monad ./core/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
