@@ -42,98 +42,48 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 			}
 			? Buffer<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
 			: never
-		: Head extends Digit
-			? GetNumber<Rest, Head>
-			: Head extends "."
-				? Rest extends `${infer Second}${infer Rest2}`
-					? Second extends Digit
-						? GetNumberFrac<Rest2, `${Head}${Second}`>
-						: Buffer<TokenKey<".">, Rest>
-					: Buffer<TokenKey<".">, Rest>
-				: Head extends '"'
-					? Rest extends `${infer String}"${infer Rest}`
-						? Buffer<TokenIdent<String>, Rest>
-						: Buffer<SqlParserError<"Unclosed quoted identifier literal">, S>
-					: Head extends "\x20" | "\n" | "\r" | "\t"
-						? ReadTokenFromString<SkipSpaces<Rest>>
-						: Head extends "'"
-							? ReadSingleQuotedString<Rest>
-							: Head extends "<"
-								? Rest extends `>${infer Rest}`
-									? Buffer<TokenKey<"<>">, Rest>
-									: Rest extends `=${infer Rest}`
-										? Buffer<TokenKey<"<=">, Rest>
-										: Rest extends `@${infer Rest}`
-											? Buffer<TokenKey<"<@">, Rest>
-											: Buffer<TokenKey<"<">, Rest>
-								: Head extends ">"
-									? Rest extends `=${infer Rest}`
-										? Buffer<TokenKey<">=">, Rest>
-										: Buffer<TokenKey<">">, Rest>
-									: Head extends "!"
-										? Rest extends `=${infer Rest}`
-											? Buffer<TokenKey<"!=">, Rest>
-											: Rest extends `~*${infer Rest}`
-												? Buffer<TokenKey<"!~*">, Rest>
-												: Rest extends `~~${infer Rest}`
-													? Buffer<TokenKey<"!~~">, Rest>
-													: Rest extends `~${infer Rest}`
-														? Buffer<TokenKey<"!~">, Rest>
-														: Buffer<TokenKey<"!">, Rest>
-										: Head extends "|"
-											? Rest extends `|${infer Rest}`
-												? Buffer<TokenKey<"||">, Rest>
-												: Buffer<TokenKey<"|">, Rest>
-											: Head extends ":"
-												? Rest extends `${infer Next}${infer Rest2}`
-													? Next extends ":"
-														? Buffer<TokenKey<"::">, Rest2>
-														: Next extends TokenChar
-															? ReadTokenChars<Rest2> extends {
-																	token: infer Token extends string
-																	rest: infer Rest3 extends string
-																}
-																? Buffer<TokenParam<`${Next}${Token}`>, Rest3>
-																: never
-															: Buffer<TokenKey<":">, Rest>
-													: Buffer<TokenKey<":">, Rest>
-												: Head extends "#"
-													? Rest extends `>>${infer Rest}`
-														? Buffer<TokenKey<"#>>">, Rest>
-														: Rest extends `>${infer Rest}`
-															? Buffer<TokenKey<"#>">, Rest>
-															: Buffer<TokenKey<"#">, Rest>
-													: Head extends "-"
-														? Rest extends `>>${infer Rest}`
-															? Buffer<TokenKey<"->>">, Rest>
-															: Rest extends `>${infer Rest}`
-																? Buffer<TokenKey<"->">, Rest>
-																: Rest extends `-${string}`
-																	? ReadTokenFromString<SkipSpaces<S>>
-																	: Buffer<TokenKey<"-">, Rest>
-														: Head extends "~"
-															? Rest extends `~${infer Rest}`
-																? Buffer<TokenKey<"~~">, Rest>
-																: Rest extends `*${infer Rest}`
-																	? Buffer<TokenKey<"~*">, Rest>
-																	: Buffer<TokenKey<"~">, Rest>
-															: Head extends "@"
-																? Rest extends `>${infer Rest}`
-																	? Buffer<TokenKey<"@>">, Rest>
-																	: Buffer<TokenKey<"@">, Rest>
-																: Head extends "&"
-																	? Rest extends `&${infer Rest}`
-																		? Buffer<TokenKey<"&&">, Rest>
-																		: Buffer<TokenKey<"&">, Rest>
-																	: Head extends "/"
-																		? Rest extends `*${infer Rest}`
-																			? ReadTokenFromString<
-																					SkipSpaces<SkipMultiComment<Rest>>
-																				>
-																			: Buffer<TokenKey<"/">, Rest>
-																		: Head extends "$"
-																			? ReadDollar<Rest>
-																			: Buffer<TokenKey<Head>, Rest>
+		: Head extends "/"
+			? Rest extends `*${string}`
+				? ReadTokenFromString<SkipSpaces<S>>
+				: ReadOperator<S>
+			: Head extends "-"
+				? Rest extends `-${string}`
+					? ReadTokenFromString<SkipSpaces<S>>
+					: ReadOperator<S>
+				: Head extends OperatorChars
+					? ReadOperator<S>
+					: Head extends Digit
+						? GetNumber<Rest, Head>
+						: Head extends "."
+							? Rest extends `${infer Second}${infer Rest2}`
+								? Second extends Digit
+									? GetNumberFrac<Rest2, `${Head}${Second}`>
+									: Buffer<TokenKey<".">, Rest>
+								: Buffer<TokenKey<".">, Rest>
+							: Head extends '"'
+								? Rest extends `${infer String}"${infer Rest}`
+									? Buffer<TokenIdent<String>, Rest>
+									: Buffer<SqlParserError<"Unclosed quoted identifier literal">, S>
+								: Head extends "\x20" | "\n" | "\r" | "\t"
+									? ReadTokenFromString<SkipSpaces<Rest>>
+									: Head extends "'"
+										? ReadSingleQuotedString<Rest>
+										: Head extends ":"
+											? Rest extends `${infer Next}${infer Rest2}`
+												? Next extends ":"
+													? Buffer<TokenKey<"::">, Rest2>
+													: Next extends TokenChar
+														? ReadTokenChars<Rest2> extends {
+																token: infer Token extends string
+																rest: infer Rest3 extends string
+															}
+															? Buffer<TokenParam<`${Next}${Token}`>, Rest3>
+															: never
+														: Buffer<TokenKey<":">, Rest>
+												: Buffer<TokenKey<":">, Rest>
+											: Head extends "$"
+												? ReadDollar<Rest>
+												: Buffer<TokenKey<Head>, Rest>
 	: Buffer<TokenEot, "">
 
 type ReadDollar<S extends string> = S extends `${infer Head}${infer Rest}`
@@ -198,6 +148,61 @@ type ReadTokenCharsRaw<
 		? ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`>
 		: { token: Acc; rest: S }
 	: { token: Acc; rest: "" }
+
+type OperatorChars = PlusMinus | NarrowOperatorChars | WideOperatorChars
+type PlusMinus = "+" | "-"
+type NarrowOperatorChars = "*" | "/" | "<" | ">" | "="
+type WideOperatorChars = "~" | "!" | "@" | "#" | "%" | "^" | "&" | "|" | "`" | "?"
+
+type ReadOperator<S extends string> =
+	OptimizedBySpaceReadOperatorChars<S> extends { token: infer Word extends string; rest: infer Tail extends string }
+		? Word extends `${infer Before}--${string}`
+			? S extends `${Before}${infer Rest}`
+				? Buffer<TokenKey<Before>, Rest>
+				: never
+			: Word extends `${infer Before}/*${string}`
+				? S extends `${Before}${infer Rest}`
+					? Buffer<TokenKey<Before>, Rest>
+					: never
+				: Buffer<TokenKey<Word>, Tail>
+		: never
+
+type OptimizedBySpaceReadOperatorChars<S extends string> =
+	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
+		? ReadOperatorChars<SmallerBuffer> extends {
+				token: infer T extends string
+				rest: infer SmallerRest extends string
+			}
+			? SmallerRest extends ""
+				? { token: T; rest: Rest }
+				: S extends `${T}${infer Rest2}`
+					? { token: T; rest: Rest2 }
+					: never
+			: ReadOperatorChars<S>
+		: ReadOperatorChars<S>
+
+type ReadOperatorChars<
+	S extends string,
+	Op extends string = "",
+	SNarrow extends string = S,
+	OpNarrow extends string = Op,
+> = S extends `${infer C}${infer Rest}`
+	? C extends WideOperatorChars
+		? ReadOperatorCharsWide<Rest, `${Op}${C}`>
+		: C extends NarrowOperatorChars
+			? ReadOperatorChars<Rest, `${Op}${C}`, Rest, `${Op}${C}`>
+			: C extends PlusMinus
+				? Op extends ""
+					? ReadOperatorChars<Rest, C, Rest, C>
+					: ReadOperatorChars<Rest, `${Op}${C}`, SNarrow, OpNarrow>
+				: { token: OpNarrow; rest: SNarrow }
+	: { token: OpNarrow; rest: SNarrow }
+
+type ReadOperatorCharsWide<S extends string, Op extends string> = S extends `${infer C}${infer Rest}`
+	? C extends OperatorChars
+		? ReadOperatorCharsWide<Rest, `${Op}${C}`>
+		: { token: Op; rest: S }
+	: { token: Op; rest: S }
 
 type SkipSpaces<S> =
 	SkipSomeSpaces<S> extends [infer R extends string, infer HasMoreSpace]

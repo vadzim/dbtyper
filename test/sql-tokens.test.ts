@@ -1,5 +1,6 @@
 import type { ParseSqlTokens, PeekToken, TokenKey, TokenNumber, TokenString } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { TestTokensL } from "./test-utils/lexer-test-utils.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 {
@@ -94,4 +95,28 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 	type Sp4 = `${Sp3}${Sp3}${Sp3}${Sp3}${Sp3}${Sp3}${Sp3}${Sp3}${Sp3}${Sp3}`
 	type test = PeekToken<ParseSqlTokens<`${Sp4} select 1`>>
 	type _expect = Expect<Matches<test, TokenKey<"select">>>
+}
+
+{
+	// operators
+	type test = TestTokensL<ParseSqlTokens<`+/++.-/-.+#++.@@-@--^^^\n////****///`>>[1]
+	type _expect = Expect<
+		Matches<
+			test,
+			[
+				TokenKey<"+/">,
+				TokenKey<"+">,
+				TokenKey<"+">,
+				TokenKey<".">,
+				TokenKey<"-/">,
+				TokenKey<"-">,
+				TokenKey<".">,
+				TokenKey<"+#++">,
+				TokenKey<".">,
+				TokenKey<"@@-@">,
+				TokenKey<"///">,
+				TokenKey<"//">,
+			]
+		>
+	>
 }
