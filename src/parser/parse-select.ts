@@ -101,9 +101,9 @@ type ParseSelectWithCtes<
 			? CteName extends keyof Acc
 				? [R1, Db, SqlParserError<"Duplicate WITH clause name">]
 				: PeekToken<R1> extends TokenKey<"as">
-					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"as">]
+					? SkipToken<R1> extends infer R2 extends TokensList
 						? PeekToken<R2> extends TokenKey<"(">
-							? ReadToken<R2> extends [infer R3 extends TokensList, TokenKey<"(">]
+							? SkipToken<R2> extends infer R3 extends TokensList
 								? ParseParenEnclosedSelect<R3, Db, Params> extends [
 										infer R4 extends TokensList,
 										infer SubOut,
@@ -198,11 +198,11 @@ type ParseOrderByOneTerm<
 		? E1 extends SqlParserError<string>
 			? [R1, E1]
 			: PeekToken<R1> extends TokenKey<"asc">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"asc">]
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? [R2, null]
 					: never
 				: PeekToken<R1> extends TokenKey<"desc">
-					? ReadToken<R1> extends [infer Rd extends TokensList, TokenKey<"desc">]
+					? SkipToken<R1> extends infer Rd extends TokensList
 						? [Rd, null]
 						: never
 					: [R1, null]
@@ -218,7 +218,7 @@ type ParseOrderByTerms<
 		? E1 extends SqlParserError<string>
 			? [R1, E1]
 			: PeekToken<R1> extends TokenKey<",">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<",">]
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? ParseOrderByTerms<R2, Db, Scope, Params>
 					: never
 				: [R1, null]
@@ -243,7 +243,7 @@ type ParseOptionalOrderByTokens<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"order">
-		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"order">]
+		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? ParseOrderByAfterOrderKw<R1, Db, Scope, Params>
 			: never
 		: [Tokens, null]
@@ -255,7 +255,7 @@ type LimitExprThenOptionalOffset<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Rl1> extends TokenKey<"offset">
-		? ReadToken<Rl1> extends [infer Ro0 extends TokensList, TokenKey<"offset">]
+		? SkipToken<Rl1> extends infer Ro0 extends TokensList
 			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
 				? Oe extends SqlParserError<string>
 					? [Ro1, Oe]
@@ -272,7 +272,7 @@ type OffsetExprThenOptionalLimit<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Ro1> extends TokenKey<"limit">
-		? ReadToken<Ro1> extends [infer Rl0 extends TokensList, TokenKey<"limit">]
+		? SkipToken<Ro1> extends infer Rl0 extends TokensList
 			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
 				? Le extends SqlParserError<string>
 					? [Rl1, Le]
@@ -283,17 +283,17 @@ type OffsetExprThenOptionalLimit<
 
 type ExpectRowOrRowsThenOnly<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"rows">
-		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"rows">]
+		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<"only">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"only">]
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? [R2, null]
 					: never
 				: [R1, SqlParserError<"Expected ONLY after FETCH … ROWS">]
 			: never
 		: PeekToken<Tokens> extends TokenKey<"row">
-			? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"row">]
+			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? PeekToken<R1> extends TokenKey<"only">
-					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"only">]
+					? SkipToken<R1> extends infer R2 extends TokensList
 						? [R2, null]
 						: never
 					: [R1, SqlParserError<"Expected ONLY after FETCH … ROW">]
@@ -307,7 +307,7 @@ type ParseFetchFirstAfterFetchKw<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<R1> extends TokenKey<"first">
-		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"first">]
+		? SkipToken<R1> extends infer R2 extends TokensList
 			? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
 				? E extends SqlParserError<string>
 					? [R3, E]
@@ -315,7 +315,7 @@ type ParseFetchFirstAfterFetchKw<
 				: never
 			: never
 		: PeekToken<R1> extends TokenKey<"next">
-			? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"next">]
+			? SkipToken<R1> extends infer R2 extends TokensList
 				? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
 					? E extends SqlParserError<string>
 						? [R3, E]
@@ -332,7 +332,7 @@ type ParseOptionalPagingTokens<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"limit">
-		? ReadToken<Tokens> extends [infer Rl0 extends TokensList, TokenKey<"limit">]
+		? SkipToken<Tokens> extends infer Rl0 extends TokensList
 			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
 				? Le extends SqlParserError<string>
 					? [Rl1, Le]
@@ -340,7 +340,7 @@ type ParseOptionalPagingTokens<
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenKey<"offset">
-			? ReadToken<Tokens> extends [infer Ro0 extends TokensList, TokenKey<"offset">]
+			? SkipToken<Tokens> extends infer Ro0 extends TokensList
 				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
 					? Oe extends SqlParserError<string>
 						? [Ro1, Oe]
@@ -348,7 +348,7 @@ type ParseOptionalPagingTokens<
 					: never
 				: never
 			: PeekToken<Tokens> extends TokenKey<"fetch">
-				? ReadToken<Tokens> extends [infer Rf extends TokensList, TokenKey<"fetch">]
+				? SkipToken<Tokens> extends infer Rf extends TokensList
 					? ParseFetchFirstAfterFetchKw<Rf, Db, Scope, Params>
 					: never
 				: [Tokens, null]
@@ -385,7 +385,7 @@ type FinishSelectStatement<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
-		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, Db, We]
@@ -480,7 +480,7 @@ type ParseOneRawSelectItem<
 
 type ParseOptionalAs<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"as">
-		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"as">]
+		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? ReadToken<R1> extends [infer R2 extends TokensList, TokenIdent<infer N extends string>]
 				? [R2, N]
 				: ReadToken<R1> extends [infer R2b extends TokensList, infer _T]
@@ -554,7 +554,7 @@ type ParseInnerParenSelectWhereClose<
 	Res extends JsqlSelectStatementResult,
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
-		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, We]
@@ -687,7 +687,7 @@ type ParseInnerDerivedWhereCloseAndAlias<
 	OuterScope extends ScopeMap,
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
-		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, We, ParserRefErrorThirdSentinel]
@@ -826,7 +826,7 @@ type ParseFromTableAfterLeadingIdent<
 	Scope extends ScopeMap,
 > =
 	PeekToken<R1> extends TokenKey<".">
-		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
+		? SkipToken<R1> extends infer R2 extends TokensList
 			? ReadToken<R2> extends [infer R3 extends TokensList, infer TokB]
 				? TokB extends TokenIdent<infer B extends string>
 					? ResolveTableShape<Db, A, B> extends infer Tbl extends JsqlTableShape

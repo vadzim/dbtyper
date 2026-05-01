@@ -85,7 +85,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
 		? Tok extends TokenIdent<infer A extends string>
 			? PeekToken<R1> extends TokenKey<".">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? ReadToken<R2> extends [infer R3 extends TokensList, infer TokB]
 						? TokB extends TokenIdent<infer B extends string>
 							? ResolveTableShape<Db, A, B> extends infer TblTry
@@ -134,7 +134,7 @@ type ParseUpdateSetAssignments<
 		? TokCol extends TokenIdent<infer Col extends string>
 			? Col extends keyof Tbl["columns"]
 				? PeekToken<R1> extends TokenKey<"=">
-					? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"=">]
+					? SkipToken<R1> extends infer R2 extends TokensList
 						? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
 							? Ev extends SqlParserError<string>
 								? [R3, Db, Ev]
@@ -144,7 +144,7 @@ type ParseUpdateSetAssignments<
 											? [R3, Db, V0]
 											: V0 extends true
 												? PeekToken<R3> extends TokenKey<",">
-													? ReadToken<R3> extends [infer R4 extends TokensList, TokenKey<",">]
+													? SkipToken<R3> extends infer R4 extends TokensList
 														? ParseUpdateSetAssignments<
 																R4,
 																Db,
@@ -192,7 +192,7 @@ type ParseUpdateAfterSetKeyword<
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"set">
-		? ReadToken<Tokens> extends [infer Rs extends TokensList, TokenKey<"set">]
+		? SkipToken<Tokens> extends infer Rs extends TokensList
 			? ParseUpdateSetAssignments<Rs, Db, Scope, Params, Tbl, Sch, Tab, readonly []>
 			: never
 		: [Tokens, Db, SqlParserError<"Expected SET in UPDATE">]
@@ -205,7 +205,7 @@ type FinishUpdateStatement<
 	Res extends JsqlUpdateStatementResult,
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
-		? ReadToken<Tokens> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, Db, We]

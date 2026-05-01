@@ -38,7 +38,7 @@ type ParseDeleteAfterFrom<
 			: Mid extends null
 				? Third extends ScopeMap
 					? PeekToken<R> extends TokenKey<"where">
-						? ReadToken<R> extends [infer Rw0 extends TokensList, TokenKey<"where">]
+						? SkipToken<R> extends infer Rw0 extends TokensList
 							? ParseWhereExpression<Rw0, Db, Third, Params> extends [
 									infer Rw extends TokensList,
 									infer We extends SqlParserError<string> | null,
@@ -69,7 +69,7 @@ type ParseDeleteFromTableRef<
 	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
 		? Tok extends TokenIdent<infer A extends string>
 			? PeekToken<R1> extends TokenKey<".">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? ReadToken<R2> extends [infer R3 extends TokensList, infer TokB]
 						? TokB extends TokenIdent<infer B extends string>
 							? ResolveTableShape<Db, A, B> extends infer TblTry

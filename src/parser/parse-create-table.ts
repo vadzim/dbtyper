@@ -201,7 +201,7 @@ type ResolveAfterNullability<
 				: [R1, Db, SqlParserError<"Expected `not` after column type">]
 			: never
 		: PeekToken<AfterType> extends TokenKey<"null">
-			? ReadToken<AfterType> extends [infer AfterNull extends TokensList, TokenKey<"null">]
+			? SkipToken<AfterType> extends infer AfterNull extends TokensList
 				? ContinueAfterColumnDef<AfterNull, Db, Schema, Table, Stack, ColName, Ts, Joined>
 				: never
 			: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, Ts, Joined>
@@ -217,7 +217,7 @@ type ContinueAfterColumnDef<
 	Joined extends string,
 > =
 	PeekToken<AfterNull> extends TokenKey<",">
-		? ReadToken<AfterNull> extends [infer AfterComma extends TokensList, TokenKey<",">]
+		? SkipToken<AfterNull> extends infer AfterComma extends TokensList
 			? ParseCreateTableBody<AfterComma, Db, Schema, Table, readonly [...Stack, readonly [ColName, Ts, Joined]]>
 			: never
 		: PeekToken<AfterNull> extends TokenKey<")"> | TokenKey<"constraint">

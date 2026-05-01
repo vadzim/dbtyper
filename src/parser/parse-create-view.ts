@@ -51,7 +51,7 @@ type ParseQualifiedViewNameAfterFirstIdent<
 	A extends string,
 > =
 	PeekToken<AfterFirst> extends TokenKey<".">
-		? ReadToken<AfterFirst> extends [infer Rdot extends TokensList, TokenKey<".">]
+		? SkipToken<AfterFirst> extends infer Rdot extends TokensList
 			? ParseQualifiedViewNameQualified<Rdot, Db, A>
 			: never
 		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
@@ -153,7 +153,7 @@ export type ParseCreateView<
 		? E extends null
 			? HasConcreteSchemaKey<Db, Sch> extends true
 				? PeekToken<R0> extends TokenKey<"as">
-					? ReadToken<R0> extends [infer R1 extends TokensList, TokenKey<"as">]
+					? SkipToken<R0> extends infer R1 extends TokensList
 						? ParseCreateViewAfterAs<R1, Db, Sch & keyof Db["schemas"] & string, Vname, Params>
 						: never
 					: [R0, Db, SqlParserError<"Expected AS in CREATE VIEW">]

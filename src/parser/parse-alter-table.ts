@@ -50,7 +50,7 @@ type SkipUntilCommaOrSemi<Tokens extends TokensList, Stack extends readonly unkn
 
 type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<".">
-		? ReadToken<AfterFirst> extends [infer Rd1 extends TokensList, TokenKey<".">]
+		? SkipToken<AfterFirst> extends infer Rd1 extends TokensList
 			? ReadToken<Rd1> extends [infer R2 extends TokensList, infer T2]
 				? T2 extends TokenIdent<infer B extends string>
 					? [R2, null, A, B]
@@ -199,15 +199,15 @@ type ApplyDropNotNull<T extends JsqlTableShape, Col extends string> = Col extend
 
 type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Ts, Joined extends string> =
 	PeekToken<Tokens> extends TokenKey<"not">
-		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"not">]
+		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<"null">
-				? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<"null">]
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? [R2, Ts, Joined]
 					: never
 				: [R1, Ts, Joined]
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
-			? ReadToken<Tokens> extends [infer Rn extends TokensList, TokenKey<"null">]
+			? SkipToken<Tokens> extends infer Rn extends TokensList
 				? [Rn, Ts, Joined]
 				: never
 			: [Tokens, Ts, Joined]
@@ -263,7 +263,7 @@ type ParseAlterActions<
 
 type ParseAlterAfterOptionalColumnKw<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"column">
-		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenKey<"column">]
+		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? [R1, null]
 			: never
 		: [Tokens, null]
@@ -298,7 +298,7 @@ type ParseAlterDropColumn<
 > =
 	ReadToken<Tokens> extends [infer R0 extends TokensList, TokenKey<"drop">]
 		? PeekToken<R0> extends TokenKey<"column">
-			? ReadToken<R0> extends [infer R1 extends TokensList, TokenKey<"column">]
+			? SkipToken<R0> extends infer R1 extends TokensList
 				? ReadToken<R1> extends [infer R2 extends TokensList, infer Tcol]
 					? Tcol extends TokenIdent<infer Col extends string>
 						? ApplyDropColumn<Tbl, Col> extends infer U
@@ -429,7 +429,7 @@ type ParseAlterColumnSetBranch<
 > =
 	ReadToken<R2> extends [infer Rs extends TokensList, TokenKey<"set">]
 		? PeekToken<Rs> extends TokenKey<"not">
-			? ReadToken<Rs> extends [infer Rn extends TokensList, TokenKey<"not">]
+			? SkipToken<Rs> extends infer Rn extends TokensList
 				? ReadToken<Rn> extends [infer Rnn extends TokensList, infer TkNull]
 					? TkNull extends TokenKey<"null">
 						? ApplySetNotNull<Tbl, Col> extends infer U
@@ -443,7 +443,7 @@ type ParseAlterColumnSetBranch<
 					: never
 				: never
 			: PeekToken<Rs> extends TokenKey<"default">
-				? ReadToken<Rs> extends [infer Rd extends TokensList, TokenKey<"default">]
+				? SkipToken<Rs> extends infer Rd extends TokensList
 					? SkipUntilCommaOrSemi<Rd> extends [infer Rsd extends TokensList, null]
 						? ParseAlterActions<Rsd, Db, Sch, Tab>
 						: never
