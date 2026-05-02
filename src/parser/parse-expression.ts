@@ -596,418 +596,267 @@ export type ParseExpressionAST<
 > = ParseOrScalarUntyped<Tokens, Env>
 
 /** Resolve after `FROM` scope is known */
+type ExpressionResolvers<
+	Ast,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> = {
+	true: ExprOk<true, "boolean">
+	false: ExprOk<false, "boolean">
+	sql_null: ExprSqlNull
+	string: Ast extends { kind: "string"; value: string } ? ExprOk<string, "text"> : never
+	number: Ast extends { kind: "number"; raw: string } ? ExprOk<number, "number"> : never
+	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
+	qualified_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
+	alias_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
+	col: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+		? ResolveIdentChainValue<Db, Scope, P>
+		: never
+	neg: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
+		? ResolveScalarExprAstNeg<I, Db, Scope, Params>
+		: never
+	mul: Ast extends {
+		kind: "mul"
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst
+	}
+		? ResolveScalarExprAstPair<L, R, Db, Scope, Params>
+		: never
+	add: Ast extends {
+		kind: "add"
+		left: infer La extends ScalarExprAst
+		right: infer Ra extends ScalarExprAst
+	}
+		? ResolveScalarExprAstPair<La, Ra, Db, Scope, Params>
+		: never
+	sub: Ast extends {
+		kind: "sub"
+		left: infer Ls extends ScalarExprAst
+		right: infer Rs extends ScalarExprAst
+	}
+		? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Params>
+		: never
+	not: Ast extends { kind: "not"; inner: infer I extends ScalarExprAst }
+		? ResolveExpressionAST<I, Db, Scope, Params> extends infer V
+			? MergeBoolNot<V>
+			: never
+		: never
+	and: Ast extends { kind: "and"; left: infer La extends ScalarExprAst; right: infer Ra extends ScalarExprAst }
+		? ResolveExpressionAST<La, Db, Scope, Params> extends infer Lv
+			? ResolveExpressionAST<Ra, Db, Scope, Params> extends infer Rv
+				? MergeBoolBinary<Lv, Rv, "AND operands must be boolean">
+				: never
+			: never
+		: never
+	or: Ast extends { kind: "or"; left: infer Lo extends ScalarExprAst; right: infer Ro extends ScalarExprAst }
+		? ResolveExpressionAST<Lo, Db, Scope, Params> extends infer Lv2
+			? ResolveExpressionAST<Ro, Db, Scope, Params> extends infer Rv2
+				? MergeBoolBinary<Lv2, Rv2, "OR operands must be boolean">
+				: never
+			: never
+		: never
+	cmp: Ast extends {
+		kind: "cmp"
+		op: infer _Op extends ScalarCmpOp
+		left: infer Lc extends ScalarExprAst
+		right: infer Rc extends ScalarExprAst
+	}
+		? ResolveExpressionAST<Lc, Db, Scope, Params> extends infer LcV
+			? ResolveExpressionAST<Rc, Db, Scope, Params> extends infer RcV
+				? LcV extends SqlParserError<string>
+					? LcV
+					: RcV extends SqlParserError<string>
+						? RcV
+						: LcV extends ExprAtom
+							? RcV extends ExprAtom
+								? MergeComparison<LcV, RcV>
+								: SqlParserError<"Invalid comparison operand">
+							: SqlParserError<"Invalid comparison operand">
+				: never
+			: never
+		: never
+	is_null: Ast extends { kind: "is_null"; expr: infer E0 extends ScalarExprAst }
+		? ResolveExpressionAST<E0, Db, Scope, Params> extends infer V0
+			? V0 extends SqlParserError<string>
+				? V0
+				: V0 extends ExprSqlNull
+					? ExprOk<true, "boolean">
+					: V0 extends ExprOk<unknown, string>
+						? ExprOk<false, "boolean">
+						: SqlParserError<"Invalid IS NULL operand">
+			: never
+		: never
+	is_not_null: Ast extends { kind: "is_not_null"; expr: infer E1 extends ScalarExprAst }
+		? ResolveExpressionAST<E1, Db, Scope, Params> extends infer V1
+			? V1 extends SqlParserError<string>
+				? V1
+				: V1 extends ExprSqlNull
+					? ExprOk<false, "boolean">
+					: V1 extends ExprOk<unknown, string>
+						? ExprOk<true, "boolean">
+						: SqlParserError<"Invalid IS NOT NULL operand">
+			: never
+		: never
+	pg_cast: Ast extends {
+		kind: "pg_cast"
+		expr: infer Exc extends ScalarExprAst
+		type_parts: infer Ptc extends readonly string[]
+	}
+		? ResolveExpressionAST<Exc, Db, Scope, Params> extends infer Evc
+			? Evc extends SqlParserError<string>
+				? Evc
+				: Evc extends ExprAtom
+					? SqlCastTypeNorm<Ptc> extends infer Normc extends string
+						? ResolveCastFromAtom<Evc, Normc>
+						: SqlParserError<"Invalid cast target">
+					: SqlParserError<"Invalid cast operand">
+			: never
+		: never
+	sql_cast: Ast extends {
+		kind: "sql_cast"
+		expr: infer Exs extends ScalarExprAst
+		type_parts: infer Pts extends readonly string[]
+	}
+		? ResolveExpressionAST<Exs, Db, Scope, Params> extends infer Evs
+			? Evs extends SqlParserError<string>
+				? Evs
+				: Evs extends ExprAtom
+					? SqlCastTypeNorm<Pts> extends infer Norms extends string
+						? ResolveCastFromAtom<Evs, Norms>
+						: SqlParserError<"Invalid cast target">
+					: SqlParserError<"Invalid cast operand">
+			: never
+		: never
+	between: Ast extends {
+		kind: "between"
+		expr: infer Eb extends ScalarExprAst
+		low: infer Lb extends ScalarExprAst
+		high: infer Hb extends ScalarExprAst
+	}
+		? ResolveExpressionAST<Eb, Db, Scope, Params> extends infer EvB
+			? EvB extends SqlParserError<string>
+				? EvB
+				: ResolveExpressionAST<Lb, Db, Scope, Params> extends infer LvB
+					? LvB extends SqlParserError<string>
+						? LvB
+						: ResolveExpressionAST<Hb, Db, Scope, Params> extends infer HvB
+							? HvB extends SqlParserError<string>
+								? HvB
+								: EvB extends ExprAtom
+									? LvB extends ExprAtom
+										? HvB extends ExprAtom
+											? MergeBetweenBounds<EvB, LvB, HvB>
+											: SqlParserError<"Invalid BETWEEN bound">
+										: SqlParserError<"Invalid BETWEEN bound">
+									: SqlParserError<"Invalid BETWEEN operand">
+							: never
+					: never
+			: never
+		: never
+	like: Ast extends {
+		kind: "like"
+		expr: infer Exl extends ScalarExprAst
+		pattern: infer Pl extends ScalarExprAst
+		case_insensitive: infer _CI extends boolean
+	}
+		? ResolveExpressionAST<Exl, Db, Scope, Params> extends infer EvL
+			? EvL extends SqlParserError<string>
+				? EvL
+				: ResolveExpressionAST<Pl, Db, Scope, Params> extends infer PvL
+					? PvL extends SqlParserError<string>
+						? PvL
+						: EvL extends ExprAtom
+							? PvL extends ExprAtom
+								? MergeLikeOperands<EvL, PvL>
+								: SqlParserError<"Invalid LIKE pattern">
+							: SqlParserError<"Invalid LIKE operand">
+					: never
+			: never
+		: never
+	pg_regex_match: Ast extends {
+		kind: "pg_regex_match"
+		expr: infer Exr extends ScalarExprAst
+		pattern: infer Pr extends ScalarExprAst
+		case_insensitive: infer _CR extends boolean
+	}
+		? ResolveExpressionAST<Exr, Db, Scope, Params> extends infer EvR
+			? EvR extends SqlParserError<string>
+				? EvR
+				: ResolveExpressionAST<Pr, Db, Scope, Params> extends infer PvR
+					? PvR extends SqlParserError<string>
+						? PvR
+						: EvR extends ExprAtom
+							? PvR extends ExprAtom
+								? MergeLikeOperands<EvR, PvR>
+								: SqlParserError<"Invalid ~ pattern">
+							: SqlParserError<"Invalid ~ operand">
+					: never
+			: never
+		: never
+	case_simple: Ast extends {
+		kind: "case_simple"
+		discriminant: infer Dsc extends ScalarExprAst
+		arms: infer ArmsS extends readonly {
+			when: ScalarExprAst
+			then: ScalarExprAst
+		}[]
+		else_: infer ElS extends ScalarExprAst | null
+	}
+		? ResolveCaseSimple<Dsc, ArmsS, ElS, Db, Scope, Params>
+		: never
+	case_searched: Ast extends {
+		kind: "case_searched"
+		arms: infer Arms extends readonly {
+			when: ScalarExprAst
+			then: ScalarExprAst
+		}[]
+		else_: infer Elc extends ScalarExprAst | null
+	}
+		? ResolveCaseSearched<Arms, Elc, Db, Scope, Params>
+		: never
+	exists_subquery: Ast extends {
+		kind: "exists_subquery"
+		sub: infer _Ex extends JsqlSelectStatementResult
+	}
+		? ExprOk<boolean, "boolean">
+		: never
+	scalar_subquery: Ast extends {
+		kind: "scalar_subquery"
+		sel: infer Sel extends JsqlSelectStatementResult
+	}
+		? ResolveScalarSubquerySel<Sel>
+		: never
+	in_subquery: Ast extends {
+		kind: "in_subquery"
+		expr: infer Ie extends ScalarExprAst
+		sub: infer Isub extends JsqlSelectStatementResult
+	}
+		? ResolveInSubqueryAst<Ie, Isub, Db, Scope, Params>
+		: never
+	in_list: Ast extends {
+		kind: "in_list"
+		expr: infer Eln extends ScalarExprAst
+		items: infer Ins extends readonly ScalarExprAst[]
+	}
+		? ResolveExpressionAST<Eln, Db, Scope, Params> extends infer LvIn
+			? LvIn extends SqlParserError<string>
+				? LvIn
+				: LvIn extends ExprAtom
+					? ResolveInListItemsAgainstLeft<LvIn, Ins, Db, Scope, Params>
+					: SqlParserError<"Invalid IN left operand">
+			: never
+		: never
+}
+
 export type ResolveExpressionAST<
 	Ast,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Ast extends { kind: "true" }
-	? ExprOk<true, "boolean">
-	: Ast extends { kind: "false" }
-		? ExprOk<false, "boolean">
-		: Ast extends { kind: "sql_null" }
-			? ExprSqlNull
-			: Ast extends { kind: "string"; value: string }
-				? ExprOk<string, "text">
-				: Ast extends { kind: "number"; raw: string }
-					? ExprOk<number, "number">
-					: Ast extends { kind: "param"; name: infer N extends string }
-						? LookupParam<Params, N>
-						: Ast extends { kind: "qualified_table_star" } | { kind: "alias_table_star" }
-							? SqlParserError<"Qualified table .* is only valid in SELECT lists">
-							: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
-								? ResolveIdentChainValue<Db, Scope, P>
-								: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
-									? ResolveScalarExprAstNeg<I, Db, Scope, Params>
-									: Ast extends {
-												kind: "mul"
-												left: infer L extends ScalarExprAst
-												right: infer R extends ScalarExprAst
-										  }
-										? ResolveScalarExprAstPair<L, R, Db, Scope, Params>
-										: Ast extends {
-													kind: "add"
-													left: infer La extends ScalarExprAst
-													right: infer Ra extends ScalarExprAst
-											  }
-											? ResolveScalarExprAstPair<La, Ra, Db, Scope, Params>
-											: Ast extends {
-														kind: "sub"
-														left: infer Ls extends ScalarExprAst
-														right: infer Rs extends ScalarExprAst
-												  }
-												? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Params>
-												: Ast extends { kind: "not"; inner: infer I extends ScalarExprAst }
-													? ResolveExpressionAST<I, Db, Scope, Params> extends infer V
-														? MergeBoolNot<V>
-														: never
-													: Ast extends {
-																kind: "and"
-																left: infer La extends ScalarExprAst
-																right: infer Ra extends ScalarExprAst
-														  }
-														? ResolveExpressionAST<La, Db, Scope, Params> extends infer Lv
-															? ResolveExpressionAST<
-																	Ra,
-																	Db,
-																	Scope,
-																	Params
-																> extends infer Rv
-																? MergeBoolBinary<
-																		Lv,
-																		Rv,
-																		"AND operands must be boolean"
-																	>
-																: never
-															: never
-														: Ast extends {
-																	kind: "or"
-																	left: infer Lo extends ScalarExprAst
-																	right: infer Ro extends ScalarExprAst
-															  }
-															? ResolveExpressionAST<
-																	Lo,
-																	Db,
-																	Scope,
-																	Params
-																> extends infer Lv2
-																? ResolveExpressionAST<
-																		Ro,
-																		Db,
-																		Scope,
-																		Params
-																	> extends infer Rv2
-																	? MergeBoolBinary<
-																			Lv2,
-																			Rv2,
-																			"OR operands must be boolean"
-																		>
-																	: never
-																: never
-															: Ast extends {
-																		kind: "cmp"
-																		op: infer _Op extends ScalarCmpOp
-																		left: infer Lc extends ScalarExprAst
-																		right: infer Rc extends ScalarExprAst
-																  }
-																? ResolveExpressionAST<
-																		Lc,
-																		Db,
-																		Scope,
-																		Params
-																	> extends infer LcV
-																	? ResolveExpressionAST<
-																			Rc,
-																			Db,
-																			Scope,
-																			Params
-																		> extends infer RcV
-																		? LcV extends SqlParserError<string>
-																			? LcV
-																			: RcV extends SqlParserError<string>
-																				? RcV
-																				: LcV extends ExprAtom
-																					? RcV extends ExprAtom
-																						? MergeComparison<LcV, RcV>
-																						: SqlParserError<"Invalid comparison operand">
-																					: SqlParserError<"Invalid comparison operand">
-																		: never
-																	: never
-																: Ast extends {
-																			kind: "is_null"
-																			expr: infer E0 extends ScalarExprAst
-																	  }
-																	? ResolveExpressionAST<
-																			E0,
-																			Db,
-																			Scope,
-																			Params
-																		> extends infer V0
-																		? V0 extends SqlParserError<string>
-																			? V0
-																			: V0 extends ExprSqlNull
-																				? ExprOk<true, "boolean">
-																				: V0 extends ExprOk<unknown, string>
-																					? ExprOk<false, "boolean">
-																					: SqlParserError<"Invalid IS NULL operand">
-																		: never
-																	: Ast extends {
-																				kind: "is_not_null"
-																				expr: infer E1 extends ScalarExprAst
-																		  }
-																		? ResolveExpressionAST<
-																				E1,
-																				Db,
-																				Scope,
-																				Params
-																			> extends infer V1
-																			? V1 extends SqlParserError<string>
-																				? V1
-																				: V1 extends ExprSqlNull
-																					? ExprOk<false, "boolean">
-																					: V1 extends ExprOk<unknown, string>
-																						? ExprOk<true, "boolean">
-																						: SqlParserError<"Invalid IS NOT NULL operand">
-																			: never
-																		: Ast extends {
-																					kind: "pg_cast"
-																					expr: infer Exc extends
-																						ScalarExprAst
-																					type_parts: infer Ptc extends
-																						readonly string[]
-																			  }
-																			? ResolveExpressionAST<
-																					Exc,
-																					Db,
-																					Scope,
-																					Params
-																				> extends infer Evc
-																				? Evc extends SqlParserError<string>
-																					? Evc
-																					: Evc extends ExprAtom
-																						? SqlCastTypeNorm<Ptc> extends infer Normc extends
-																								string
-																							? ResolveCastFromAtom<
-																									Evc,
-																									Normc
-																								>
-																							: SqlParserError<"Invalid cast target">
-																						: SqlParserError<"Invalid cast operand">
-																				: never
-																			: Ast extends {
-																						kind: "sql_cast"
-																						expr: infer Exs extends
-																							ScalarExprAst
-																						type_parts: infer Pts extends
-																							readonly string[]
-																				  }
-																				? ResolveExpressionAST<
-																						Exs,
-																						Db,
-																						Scope,
-																						Params
-																					> extends infer Evs
-																					? Evs extends SqlParserError<string>
-																						? Evs
-																						: Evs extends ExprAtom
-																							? SqlCastTypeNorm<Pts> extends infer Norms extends
-																									string
-																								? ResolveCastFromAtom<
-																										Evs,
-																										Norms
-																									>
-																								: SqlParserError<"Invalid cast target">
-																							: SqlParserError<"Invalid cast operand">
-																					: never
-																				: Ast extends {
-																							kind: "between"
-																							expr: infer Eb extends
-																								ScalarExprAst
-																							low: infer Lb extends
-																								ScalarExprAst
-																							high: infer Hb extends
-																								ScalarExprAst
-																					  }
-																					? ResolveExpressionAST<
-																							Eb,
-																							Db,
-																							Scope,
-																							Params
-																						> extends infer EvB
-																						? EvB extends SqlParserError<string>
-																							? EvB
-																							: ResolveExpressionAST<
-																										Lb,
-																										Db,
-																										Scope,
-																										Params
-																								  > extends infer LvB
-																								? LvB extends SqlParserError<string>
-																									? LvB
-																									: ResolveExpressionAST<
-																												Hb,
-																												Db,
-																												Scope,
-																												Params
-																										  > extends infer HvB
-																										? HvB extends SqlParserError<string>
-																											? HvB
-																											: EvB extends ExprAtom
-																												? LvB extends ExprAtom
-																													? HvB extends ExprAtom
-																														? MergeBetweenBounds<
-																																EvB,
-																																LvB,
-																																HvB
-																															>
-																														: SqlParserError<"Invalid BETWEEN bound">
-																													: SqlParserError<"Invalid BETWEEN bound">
-																												: SqlParserError<"Invalid BETWEEN operand">
-																										: never
-																								: never
-																						: never
-																					: Ast extends {
-																								kind: "like"
-																								expr: infer Exl extends
-																									ScalarExprAst
-																								pattern: infer Pl extends
-																									ScalarExprAst
-																								case_insensitive: infer _CI extends
-																									boolean
-																						  }
-																						? ResolveExpressionAST<
-																								Exl,
-																								Db,
-																								Scope,
-																								Params
-																							> extends infer EvL
-																							? EvL extends SqlParserError<string>
-																								? EvL
-																								: ResolveExpressionAST<
-																											Pl,
-																											Db,
-																											Scope,
-																											Params
-																									  > extends infer PvL
-																									? PvL extends SqlParserError<string>
-																										? PvL
-																										: EvL extends ExprAtom
-																											? PvL extends ExprAtom
-																												? MergeLikeOperands<
-																														EvL,
-																														PvL
-																													>
-																												: SqlParserError<"Invalid LIKE pattern">
-																											: SqlParserError<"Invalid LIKE operand">
-																									: never
-																							: never
-																						: Ast extends {
-																									kind: "pg_regex_match"
-																									expr: infer Exr extends
-																										ScalarExprAst
-																									pattern: infer Pr extends
-																										ScalarExprAst
-																									case_insensitive: infer _CR extends
-																										boolean
-																							  }
-																							? ResolveExpressionAST<
-																									Exr,
-																									Db,
-																									Scope,
-																									Params
-																								> extends infer EvR
-																								? EvR extends SqlParserError<string>
-																									? EvR
-																									: ResolveExpressionAST<
-																												Pr,
-																												Db,
-																												Scope,
-																												Params
-																										  > extends infer PvR
-																										? PvR extends SqlParserError<string>
-																											? PvR
-																											: EvR extends ExprAtom
-																												? PvR extends ExprAtom
-																													? MergeLikeOperands<
-																															EvR,
-																															PvR
-																														>
-																													: SqlParserError<"Invalid ~ pattern">
-																												: SqlParserError<"Invalid ~ operand">
-																										: never
-																								: never
-																							: Ast extends {
-																										kind: "case_simple"
-																										discriminant: infer Dsc extends
-																											ScalarExprAst
-																										arms: infer ArmsS extends
-																											readonly {
-																												when: ScalarExprAst
-																												then: ScalarExprAst
-																											}[]
-																										else_: infer ElS extends
-																											ScalarExprAst | null
-																								  }
-																								? ResolveCaseSimple<
-																										Dsc,
-																										ArmsS,
-																										ElS,
-																										Db,
-																										Scope,
-																										Params
-																									>
-																								: Ast extends {
-																											kind: "case_searched"
-																											arms: infer Arms extends
-																												readonly {
-																													when: ScalarExprAst
-																													then: ScalarExprAst
-																												}[]
-																											else_: infer Elc extends
-																												ScalarExprAst | null
-																									  }
-																									? ResolveCaseSearched<
-																											Arms,
-																											Elc,
-																											Db,
-																											Scope,
-																											Params
-																										>
-																									: Ast extends {
-																												kind: "exists_subquery"
-																												sub: infer _Ex extends
-																													JsqlSelectStatementResult
-																										  }
-																										? ExprOk<
-																												boolean,
-																												"boolean"
-																											>
-																										: Ast extends {
-																													kind: "scalar_subquery"
-																													sel: infer Sel extends
-																														JsqlSelectStatementResult
-																											  }
-																											? ResolveScalarSubquerySel<Sel>
-																											: Ast extends {
-																														kind: "in_subquery"
-																														expr: infer Ie extends
-																															ScalarExprAst
-																														sub: infer Isub extends
-																															JsqlSelectStatementResult
-																												  }
-																												? ResolveInSubqueryAst<
-																														Ie,
-																														Isub,
-																														Db,
-																														Scope,
-																														Params
-																													>
-																												: Ast extends {
-																															kind: "in_list"
-																															expr: infer Eln extends
-																																ScalarExprAst
-																															items: infer Ins extends
-																																readonly ScalarExprAst[]
-																													  }
-																													? ResolveExpressionAST<
-																															Eln,
-																															Db,
-																															Scope,
-																															Params
-																														> extends infer LvIn
-																														? LvIn extends SqlParserError<string>
-																															? LvIn
-																															: LvIn extends ExprAtom
-																																? ResolveInListItemsAgainstLeft<
-																																		LvIn,
-																																		Ins,
-																																		Db,
-																																		Scope,
-																																		Params
-																																	>
-																																: SqlParserError<"Invalid IN left operand">
-																														: never
-																													: SqlParserError<"Invalid scalar expression">
+> = Ast extends { kind: infer K extends keyof ExpressionResolvers<any, any, any, any> }
+	? ExpressionResolvers<Ast, Db, Scope, Params>[K]
+	: SqlParserError<"Invalid scalar expression">
 
 /** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path).
  * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
