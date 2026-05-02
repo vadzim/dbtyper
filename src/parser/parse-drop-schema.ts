@@ -1,14 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
 export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -35,29 +27,33 @@ type ParseDropSchemaAfterIdent<
 	IfExists extends boolean,
 	SchemaName extends string,
 > =
-	ReadToken<AfterName> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenKey<";"> | TokenEot
-			? IfExists extends true
-				? HasConcreteSchema<Db["schemas"], SchemaName> extends true
-					? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
-							JsqlDatabaseShape
-						? [R1, NewDb, null]
-						: never
-					: [R1, Db, null]
-				: HasConcreteSchema<Db["schemas"], SchemaName> extends true
-					? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
-							JsqlDatabaseShape
-						? [R1, NewDb, null]
-						: never
-					: [R1, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
-			: [R1, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
+	PeekToken<AfterName> extends infer Tok
+		? SkipToken<AfterName> extends infer R1 extends TokensList
+			? Tok extends TokenKey<";"> | TokenEot
+				? IfExists extends true
+					? HasConcreteSchema<Db["schemas"], SchemaName> extends true
+						? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
+								JsqlDatabaseShape
+							? [R1, NewDb, null]
+							: never
+						: [R1, Db, null]
+					: HasConcreteSchema<Db["schemas"], SchemaName> extends true
+						? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
+								JsqlDatabaseShape
+							? [R1, NewDb, null]
+							: never
+						: [R1, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
+				: [R1, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
+			: never
 		: never
 
 type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
-	ReadToken<Tokens> extends [infer AfterName extends TokensList, infer NameTok]
-		? NameTok extends TokenIdent<infer SchemaName extends string>
-			? ParseDropSchemaAfterIdent<AfterName, Db, IfExists, SchemaName>
-			: [AfterName, Db, SqlParserError<"Expected schema name in DROP SCHEMA">]
+	PeekToken<Tokens> extends infer NameTok
+		? SkipToken<Tokens> extends infer AfterName extends TokensList
+			? NameTok extends TokenIdent<infer SchemaName extends string>
+				? ParseDropSchemaAfterIdent<AfterName, Db, IfExists, SchemaName>
+				: [AfterName, Db, SqlParserError<"Expected schema name in DROP SCHEMA">]
+			: never
 		: never
 
 type RemoveSchemaFromDb<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"]> = MergeDbPreserveScalars<

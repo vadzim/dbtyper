@@ -26,7 +26,6 @@ export type TokensList = Buffer<TokenStreamHead, string>
 
 export type PeekToken<Tokens extends TokensList> = Tokens[typeof tokenKey]
 export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens[typeof restKey]>
-export type ReadToken<Tokens extends TokensList> = [SkipToken<Tokens>, PeekToken<Tokens>]
 
 type Buffer<Token extends TokenStreamHead, Rest extends string> = {
 	[tokenKey]: Token

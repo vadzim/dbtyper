@@ -1,7 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlTableShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
-	ReadToken,
 	SkipToken,
 	TokenEot,
 	TokenIdent,
@@ -96,29 +95,31 @@ type ParseSelectWithCtes<
 	Params extends ExpressionParamsShape,
 	Acc extends ScopeMap,
 > =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokCteName]
-		? TokCteName extends TokenIdent<infer CteName extends string>
-			? CteName extends keyof Acc
-				? [R1, Db, SqlParserError<"Duplicate WITH clause name">]
-				: PeekToken<R1> extends TokenKey<"as">
-					? SkipToken<R1> extends infer R2 extends TokensList
-						? PeekToken<R2> extends TokenKey<"(">
-							? SkipToken<R2> extends infer R3 extends TokensList
-								? ParseParenEnclosedSelect<R3, Db, Params> extends [
-										infer R4 extends TokensList,
-										infer SubOut,
-									]
-									? SubOut extends SqlParserError<string>
-										? [R4, Db, SubOut]
-										: SubOut extends JsqlSelectStatementResult
-											? ParseSelectWithCtesAfterSubquery<R4, Db, Params, Acc, CteName, SubOut>
-											: never
+	PeekToken<Tokens> extends infer TokCteName
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? TokCteName extends TokenIdent<infer CteName extends string>
+				? CteName extends keyof Acc
+					? [R1, Db, SqlParserError<"Duplicate WITH clause name">]
+					: PeekToken<R1> extends TokenKey<"as">
+						? SkipToken<R1> extends infer R2 extends TokensList
+							? PeekToken<R2> extends TokenKey<"(">
+								? SkipToken<R2> extends infer R3 extends TokensList
+									? ParseParenEnclosedSelect<R3, Db, Params> extends [
+											infer R4 extends TokensList,
+											infer SubOut,
+										]
+										? SubOut extends SqlParserError<string>
+											? [R4, Db, SubOut]
+											: SubOut extends JsqlSelectStatementResult
+												? ParseSelectWithCtesAfterSubquery<R4, Db, Params, Acc, CteName, SubOut>
+												: never
+										: never
 									: never
-								: never
-							: [R2, Db, SqlParserError<"Expected open paren after AS in WITH">]
+								: [R2, Db, SqlParserError<"Expected open paren after AS in WITH">]
+							: never
 						: never
-					: never
-			: [R1, Db, SqlParserError<"Expected CTE name in WITH">]
+				: [R1, Db, SqlParserError<"Expected CTE name in WITH">]
+			: never
 		: never
 
 type ParseSelectAfterDistinct<
@@ -230,10 +231,12 @@ type ParseOrderByAfterOrderKw<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ReadToken<R1> extends [infer R2 extends TokensList, infer TBy]
-		? TBy extends TokenKey<"by">
-			? ParseOrderByTerms<R2, Db, Scope, Params>
-			: [R2, SqlParserError<"Expected BY after ORDER">]
+	PeekToken<R1> extends infer TBy
+		? SkipToken<R1> extends infer R2 extends TokensList
+			? TBy extends TokenKey<"by">
+				? ParseOrderByTerms<R2, Db, Scope, Params>
+				: [R2, SqlParserError<"Expected BY after ORDER">]
+			: never
 		: never
 
 type ParseOptionalOrderByTokens<
@@ -371,10 +374,12 @@ type ParseSelectTrailingClauses<
 		: never
 
 type FinishSelectTerminator<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
-	ReadToken<Tokens> extends [infer R2 extends TokensList, infer Tok]
-		? Tok extends TokenKey<";"> | TokenEot
-			? [R2, Db, Res]
-			: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer R2 extends TokensList
+			? Tok extends TokenKey<";"> | TokenEot
+				? [R2, Db, Res]
+				: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
+			: never
 		: never
 
 type FinishSelectStatement<
@@ -455,7 +460,7 @@ type ParseOneRawSelectItem<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenParam<infer P extends string>
-		? ReadToken<Tokens> extends [infer R1 extends TokensList, TokenParam<P>]
+		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? ParseOptionalAs<R1> extends [infer M2 extends TokensList, infer As extends string | undefined]
 				? [M2, RawSelectParamItem<P, As>]
 				: never
@@ -481,12 +486,14 @@ type ParseOneRawSelectItem<
 type ParseOptionalAs<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ReadToken<R1> extends [infer R2 extends TokensList, TokenIdent<infer N extends string>]
-				? [R2, N]
-				: ReadToken<R1> extends [infer R2b extends TokensList, infer _T]
+			? PeekToken<R1> extends TokenIdent<infer N extends string>
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? [R2, N]
+					: never
+				: SkipToken<R1> extends infer R2b extends TokensList
 					? [R2b, undefined]
 					: never
-			: ReadToken<Tokens> extends [infer R1b extends TokensList, infer _T]
+			: SkipToken<Tokens> extends infer R1b extends TokensList
 				? [R1b, undefined]
 				: never
 		: [Tokens, undefined]
@@ -515,15 +522,21 @@ type ParseAliasAfterDerivedTable<
 				| TokenEot
 			? [Tokens, SqlParserError<"Expected AS or alias after derived table">, ParserRefErrorThirdSentinel]
 			: PeekToken<Tokens> extends TokenKey<"as">
-				? ReadToken<SkipToken<Tokens>> extends [infer Ra extends TokensList, infer TokName]
-					? TokName extends TokenIdent<infer Alias extends string>
-						? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
-						: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+				? SkipToken<Tokens> extends infer Ras0 extends TokensList
+					? PeekToken<Ras0> extends infer TokName
+						? SkipToken<Ras0> extends infer Ra extends TokensList
+							? TokName extends TokenIdent<infer Alias extends string>
+								? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
+								: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+							: never
+						: never
 					: never
-				: ReadToken<Tokens> extends [infer Ra extends TokensList, infer TokAlias]
-					? TokAlias extends TokenIdent<infer Alias extends string>
-						? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
-						: [Ra, SqlParserError<"Expected alias after derived table">, ParserRefErrorThirdSentinel]
+				: PeekToken<Tokens> extends infer TokAlias
+					? SkipToken<Tokens> extends infer Ra extends TokensList
+						? TokAlias extends TokenIdent<infer Alias extends string>
+							? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
+							: [Ra, SqlParserError<"Expected alias after derived table">, ParserRefErrorThirdSentinel]
+						: never
 					: never
 		: never
 
@@ -533,17 +546,21 @@ type ReadClosingParenAndAliasDerived<
 	OuterScope extends ScopeMap,
 	Res extends JsqlSelectStatementResult,
 > =
-	ReadToken<Tokens> extends [infer R2 extends TokensList, infer TokCl]
-		? TokCl extends TokenKey<")">
-			? ParseAliasAfterDerivedTable<R2, Db, OuterScope, Res>
-			: [R2, SqlParserError<"Expected `)` after derived table">, ParserRefErrorThirdSentinel]
+	PeekToken<Tokens> extends infer TokCl
+		? SkipToken<Tokens> extends infer R2 extends TokensList
+			? TokCl extends TokenKey<")">
+				? ParseAliasAfterDerivedTable<R2, Db, OuterScope, Res>
+				: [R2, SqlParserError<"Expected `)` after derived table">, ParserRefErrorThirdSentinel]
+			: never
 		: never
 
 type ReadClosingParenScalarSubqueryOnly<Tokens extends TokensList, Res extends JsqlSelectStatementResult> =
-	ReadToken<Tokens> extends [infer R2 extends TokensList, infer TokCl]
-		? TokCl extends TokenKey<")">
-			? [R2, Res]
-			: [R2, SqlParserError<"Expected `)` after subquery">]
+	PeekToken<Tokens> extends infer TokCl
+		? SkipToken<Tokens> extends infer R2 extends TokensList
+			? TokCl extends TokenKey<")">
+				? [R2, Res]
+				: [R2, SqlParserError<"Expected `)` after subquery">]
+			: never
 		: never
 
 type ParseInnerParenSelectWhereClose<
@@ -791,12 +808,14 @@ type ParseFromTableRef<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenKey<"(">
-			? ParseParenDerivedSelect<R1, Db, Scope, Params>
-			: Tok extends TokenIdent<infer A extends string>
-				? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
-				: [R1, SqlParserError<"Expected table name or `(` in FROM">, ParserRefErrorThirdSentinel]
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? Tok extends TokenKey<"(">
+				? ParseParenDerivedSelect<R1, Db, Scope, Params>
+				: Tok extends TokenIdent<infer A extends string>
+					? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
+					: [R1, SqlParserError<"Expected table name or `(` in FROM">, ParserRefErrorThirdSentinel]
+			: never
 		: never
 
 type ParseFromJoinScope<
@@ -827,12 +846,14 @@ type ParseFromTableAfterLeadingIdent<
 > =
 	PeekToken<R1> extends TokenKey<".">
 		? SkipToken<R1> extends infer R2 extends TokensList
-			? ReadToken<R2> extends [infer R3 extends TokensList, infer TokB]
-				? TokB extends TokenIdent<infer B extends string>
-					? ResolveTableShape<Db, A, B> extends infer Tbl extends JsqlTableShape
-						? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
-						: [R3, SqlParserError<"Unknown schema or table in FROM">, ParserRefErrorThirdSentinel]
-					: [R3, SqlParserError<"Expected table name after `.` in FROM">, ParserRefErrorThirdSentinel]
+			? PeekToken<R2> extends infer TokB
+				? SkipToken<R2> extends infer R3 extends TokensList
+					? TokB extends TokenIdent<infer B extends string>
+						? ResolveTableShape<Db, A, B> extends infer Tbl extends JsqlTableShape
+							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
+							: [R3, SqlParserError<"Unknown schema or table in FROM">, ParserRefErrorThirdSentinel]
+						: [R3, SqlParserError<"Expected table name after `.` in FROM">, ParserRefErrorThirdSentinel]
+					: never
 				: never
 			: never
 		: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
@@ -876,45 +897,51 @@ type ParseAliasAfterTable<
 				>,
 			]
 		: PeekToken<Tokens> extends TokenKey<"as">
-			? ReadToken<SkipToken<Tokens>> extends [infer Ra extends TokensList, infer TokName]
-				? TokName extends TokenIdent<infer Alias extends string>
-					? [
-							Ra,
-							null,
-							MergeScope<
-								Scope,
-								Record<
-									Alias,
-									{
-										schema: Sch
-										table: Tab
-										columns: Tbl["columns"]
-										column_sql_types: SqlTypesOf<Tbl>
-									}
-								>
-							>,
-						]
-					: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+			? SkipToken<Tokens> extends infer Ras0 extends TokensList
+				? PeekToken<Ras0> extends infer TokName
+					? SkipToken<Ras0> extends infer Ra extends TokensList
+						? TokName extends TokenIdent<infer Alias extends string>
+							? [
+									Ra,
+									null,
+									MergeScope<
+										Scope,
+										Record<
+											Alias,
+											{
+												schema: Sch
+												table: Tab
+												columns: Tbl["columns"]
+												column_sql_types: SqlTypesOf<Tbl>
+											}
+										>
+									>,
+								]
+							: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+						: never
+					: never
 				: never
-			: ReadToken<Tokens> extends [infer Ra extends TokensList, infer TokAlias]
-				? TokAlias extends TokenIdent<infer Alias extends string>
-					? [
-							Ra,
-							null,
-							MergeScope<
-								Scope,
-								Record<
-									Alias,
-									{
-										schema: Sch
-										table: Tab
-										columns: Tbl["columns"]
-										column_sql_types: SqlTypesOf<Tbl>
-									}
-								>
-							>,
-						]
-					: [Ra, SqlParserError<"Expected alias or join clause after table">, ParserRefErrorThirdSentinel]
+			: PeekToken<Tokens> extends infer TokAlias
+				? SkipToken<Tokens> extends infer Ra extends TokensList
+					? TokAlias extends TokenIdent<infer Alias extends string>
+						? [
+								Ra,
+								null,
+								MergeScope<
+									Scope,
+									Record<
+										Alias,
+										{
+											schema: Sch
+											table: Tab
+											columns: Tbl["columns"]
+											column_sql_types: SqlTypesOf<Tbl>
+										}
+									>
+								>,
+							]
+						: [Ra, SqlParserError<"Expected alias or join clause after table">, ParserRefErrorThirdSentinel]
+					: never
 				: never
 
 type ParseJoinChain<
@@ -995,16 +1022,18 @@ type ParseJoinOn<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokOn]
-		? TokOn extends TokenKeyOn
-			? ParseJoinEqPair<R1, Db, Scope> extends [infer R2 extends TokensList, infer Tag]
-				? Tag extends SqlParserError<string>
-					? [R2, Tag, ParserRefErrorThirdSentinel]
-					: Tag extends true
-						? ParseJoinChain<R2, Db, Scope, Params>
-						: never
-				: never
-			: [R1, SqlParserError<"Expected ON keyword">, ParserRefErrorThirdSentinel]
+	PeekToken<Tokens> extends infer TokOn
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? TokOn extends TokenKeyOn
+				? ParseJoinEqPair<R1, Db, Scope> extends [infer R2 extends TokensList, infer Tag]
+					? Tag extends SqlParserError<string>
+						? [R2, Tag, ParserRefErrorThirdSentinel]
+						: Tag extends true
+							? ParseJoinChain<R2, Db, Scope, Params>
+							: never
+					: never
+				: [R1, SqlParserError<"Expected ON keyword">, ParserRefErrorThirdSentinel]
+			: never
 		: never
 
 /** Both sides of `ON` are `schema.table.column`; validate against catalog. */
@@ -1027,14 +1056,20 @@ type ParseJoinEqPairAliasRightTail<
 	LeftAlias extends string,
 	LeftCol extends string,
 > =
-	ReadToken<R4> extends [infer R5 extends TokensList, TokenIdent<infer RightAlias extends string>]
-		? ReadToken<R5> extends [infer R6 extends TokensList, TokenKey<".">]
-			? ReadToken<R6> extends [infer R7 extends TokensList, TokenIdent<infer RightCol extends string>]
-				? ValidateCol<Scope, LeftAlias, LeftCol> extends true
-					? ValidateCol<Scope, RightAlias, RightCol> extends true
-						? [R7, true]
-						: [R7, SqlParserError<"Unknown column in JOIN (right side)">]
-					: [R7, SqlParserError<"Unknown column in JOIN (left side)">]
+	PeekToken<R4> extends TokenIdent<infer RightAlias extends string>
+		? SkipToken<R4> extends infer R5 extends TokensList
+			? PeekToken<R5> extends TokenKey<".">
+				? SkipToken<R5> extends infer R6 extends TokensList
+					? PeekToken<R6> extends TokenIdent<infer RightCol extends string>
+						? SkipToken<R6> extends infer R7 extends TokensList
+							? ValidateCol<Scope, LeftAlias, LeftCol> extends true
+								? ValidateCol<Scope, RightAlias, RightCol> extends true
+									? [R7, true]
+									: [R7, SqlParserError<"Unknown column in JOIN (right side)">]
+								: [R7, SqlParserError<"Unknown column in JOIN (left side)">]
+							: never
+						: never
+					: never
 				: never
 			: never
 		: never
@@ -1046,17 +1081,32 @@ type ParseJoinEqPairQualifiedRightTail<
 	Scope extends ScopeMap,
 	LeftParts extends readonly [string, string, string],
 > =
-	ReadToken<R6> extends [infer R7 extends TokensList, TokenIdent<infer S2 extends string>]
-		? ReadToken<R7> extends [infer R8 extends TokensList, TokenKey<".">]
-			? ReadToken<R8> extends [infer R9 extends TokensList, TokenIdent<infer T2 extends string>]
-				? ReadToken<R9> extends [infer R10 extends TokensList, TokenKey<".">]
-					? ReadToken<R10> extends [infer R11 extends TokensList, TokenIdent<infer C2 extends string>]
-						? JoinOnQualifiedEqOk<Db, Scope, LeftParts, readonly [S2, T2, C2]> extends infer Ok
-							? Ok extends true
-								? [R11, true]
-								: Ok extends SqlParserError<string>
-									? [R11, Ok]
+	PeekToken<R6> extends TokenIdent<infer S2 extends string>
+		? SkipToken<R6> extends infer R7 extends TokensList
+			? PeekToken<R7> extends TokenKey<".">
+				? SkipToken<R7> extends infer R8 extends TokensList
+					? PeekToken<R8> extends TokenIdent<infer T2 extends string>
+						? SkipToken<R8> extends infer R9 extends TokensList
+							? PeekToken<R9> extends TokenKey<".">
+								? SkipToken<R9> extends infer R10 extends TokensList
+									? PeekToken<R10> extends TokenIdent<infer C2 extends string>
+										? SkipToken<R10> extends infer R11 extends TokensList
+											? JoinOnQualifiedEqOk<
+													Db,
+													Scope,
+													LeftParts,
+													readonly [S2, T2, C2]
+												> extends infer Ok
+												? Ok extends true
+													? [R11, true]
+													: Ok extends SqlParserError<string>
+														? [R11, Ok]
+														: never
+												: never
+											: never
+										: never
 									: never
+								: never
 							: never
 						: never
 					: never
@@ -1074,9 +1124,13 @@ type ParseJoinEqPairAfterSecondIdent<
 	P2 extends string,
 > =
 	TokAfterP2 extends TokenKey<".">
-		? ReadToken<R4> extends [infer R5 extends TokensList, TokenIdent<infer P3 extends string>]
-			? ReadToken<R5> extends [infer R6 extends TokensList, TokenKey<"=">]
-				? ParseJoinEqPairQualifiedRightTail<R6, Db, Scope, readonly [P1, P2, P3]>
+		? PeekToken<R4> extends TokenIdent<infer P3 extends string>
+			? SkipToken<R4> extends infer R5 extends TokensList
+				? PeekToken<R5> extends TokenKey<"=">
+					? SkipToken<R5> extends infer R6 extends TokensList
+						? ParseJoinEqPairQualifiedRightTail<R6, Db, Scope, readonly [P1, P2, P3]>
+						: never
+					: never
 				: never
 			: never
 		: TokAfterP2 extends TokenKey<"=">
@@ -1085,11 +1139,19 @@ type ParseJoinEqPairAfterSecondIdent<
 
 /** `ON` equality: `alias.col = alias.col` or `schema.table.column = schema.table.column`. */
 type ParseJoinEqPair<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, TokenIdent<infer P1 extends string>]
-		? ReadToken<R1> extends [infer R2 extends TokensList, TokenKey<".">]
-			? ReadToken<R2> extends [infer R3 extends TokensList, TokenIdent<infer P2 extends string>]
-				? ReadToken<R3> extends [infer R4 extends TokensList, infer TokAfterP2]
-					? ParseJoinEqPairAfterSecondIdent<R4, TokAfterP2, Db, Scope, P1, P2>
+	PeekToken<Tokens> extends TokenIdent<infer P1 extends string>
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<".">
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? PeekToken<R2> extends TokenIdent<infer P2 extends string>
+						? SkipToken<R2> extends infer R3 extends TokensList
+							? PeekToken<R3> extends infer TokAfterP2
+								? SkipToken<R3> extends infer R4 extends TokensList
+									? ParseJoinEqPairAfterSecondIdent<R4, TokAfterP2, Db, Scope, P1, P2>
+									: never
+								: never
+							: never
+						: never
 					: never
 				: never
 			: never

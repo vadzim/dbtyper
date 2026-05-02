@@ -1,14 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelect } from "./parse-select.ts"
@@ -35,14 +27,16 @@ type ParseQualifiedViewNameUnqualified<AfterFirst extends TokensList, Db extends
 		: [AfterFirst, SqlParserError<"Expected AS or `.` before view name">, never, never]
 
 type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	ReadToken<Rdot> extends [infer AfterB extends TokensList, infer TokB]
-		? TokB extends TokenIdent<infer B extends string>
-			? HasConcreteSchemaKey<Db, A> extends true
-				? PeekToken<AfterB> extends TokenKey<"as">
-					? [AfterB, null, A & keyof Db["schemas"] & string, B]
-					: [AfterB, SqlParserError<"Expected AS after qualified view name">, never, never]
-				: [AfterB, SqlParserError<"Unknown schema for CREATE VIEW">, never, never]
-			: [AfterB, SqlParserError<"Expected view name after `.` in CREATE VIEW">, never, never]
+	PeekToken<Rdot> extends infer TokB
+		? SkipToken<Rdot> extends infer AfterB extends TokensList
+			? TokB extends TokenIdent<infer B extends string>
+				? HasConcreteSchemaKey<Db, A> extends true
+					? PeekToken<AfterB> extends TokenKey<"as">
+						? [AfterB, null, A & keyof Db["schemas"] & string, B]
+						: [AfterB, SqlParserError<"Expected AS after qualified view name">, never, never]
+					: [AfterB, SqlParserError<"Unknown schema for CREATE VIEW">, never, never]
+				: [AfterB, SqlParserError<"Expected view name after `.` in CREATE VIEW">, never, never]
+			: never
 		: never
 
 type ParseQualifiedViewNameAfterFirstIdent<
@@ -57,10 +51,12 @@ type ParseQualifiedViewNameAfterFirstIdent<
 		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
 
 type ParseQualifiedViewName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer AfterFirst extends TokensList, infer NameTok]
-		? NameTok extends TokenIdent<infer A extends string>
-			? ParseQualifiedViewNameAfterFirstIdent<AfterFirst, Db, A>
-			: [AfterFirst, SqlParserError<"Expected view name in CREATE VIEW">, never, never]
+	PeekToken<Tokens> extends infer NameTok
+		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
+			? NameTok extends TokenIdent<infer A extends string>
+				? ParseQualifiedViewNameAfterFirstIdent<AfterFirst, Db, A>
+				: [AfterFirst, SqlParserError<"Expected view name in CREATE VIEW">, never, never]
+			: never
 		: never
 
 type MergeViewIntoDb<
@@ -99,14 +95,16 @@ type ParseCreateViewAfterSelect<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 > =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokEnd]
-		? TokEnd extends TokenKey<";"> | TokenEot
-			? MergeViewIntoDb<Db, Schema, Name, Sel> extends infer NewDb
-				? NewDb extends JsqlDatabaseShape
-					? [R1, NewDb, null]
+	PeekToken<Tokens> extends infer TokEnd
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? TokEnd extends TokenKey<";"> | TokenEot
+				? MergeViewIntoDb<Db, Schema, Name, Sel> extends infer NewDb
+					? NewDb extends JsqlDatabaseShape
+						? [R1, NewDb, null]
+						: never
 					: never
-				: never
-			: [R1, Db, SqlParserError<"Expected semicolon after CREATE VIEW">]
+				: [R1, Db, SqlParserError<"Expected semicolon after CREATE VIEW">]
+			: never
 		: never
 
 type ParseCreateViewSelectAndSemi<

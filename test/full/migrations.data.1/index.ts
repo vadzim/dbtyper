@@ -1,4 +1,4 @@
-import type { PostgresTypeMap } from "dbtyper/postgres"
+import type { PostgresTypeMap } from "../../../src/postgres/index.ts"
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 
 export const createTestDatabase = async () =>

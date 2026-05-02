@@ -1,4 +1,11 @@
-import type { EmptyTokenList, ParseSqlTokens, ReadToken, TokensList, TokenType } from "../../src/lexer/sql-tokens.ts"
+import type {
+	EmptyTokenList,
+	ParseSqlTokens,
+	PeekToken,
+	SkipToken,
+	TokensList,
+	TokenType,
+} from "../../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../../src/sql-parser-error.ts"
 
 export type TestTokensS<S extends string> = TestTokensL<ParseSqlTokens<S>>[1]
@@ -7,10 +14,10 @@ export type TestTokensL<S extends TokensList, Acc extends unknown[] = []> = Acc[
 	? [EmptyTokenList, Acc]
 	: S extends EmptyTokenList
 		? [EmptyTokenList, Acc]
-		: ReadToken<S> extends [infer R extends TokensList, infer P]
+		: PeekToken<S> extends infer P
 			? P extends TokenType<infer _kind, infer Value>
-				? TestTokensL<R, [...Acc, P]>
+				? TestTokensL<SkipToken<S>, [...Acc, P]>
 				: P extends SqlParserError<infer Msg extends string>
-					? TestTokensL<R, [...Acc, P]>
+					? TestTokensL<SkipToken<S>, [...Acc, P]>
 					: never
 			: never

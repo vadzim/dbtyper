@@ -1,14 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
 export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -35,28 +27,32 @@ type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = MergeDbPre
 	}
 >
 
-/** One `ReadToken` after schema name: must be `;` or end. */
+/** One token after schema name: must be `;` or end. */
 type ParseCreateSchemaAfterSchemaName<
 	AfterName extends TokensList,
 	Db extends JsqlDatabaseShape,
 	SchemaName extends string,
 	IfNotExists extends boolean,
 > =
-	ReadToken<AfterName> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenKey<";"> | TokenEot
-			? IfNotExists extends true
-				? [SchemaName] extends [keyof Db["schemas"]]
-					? [R1, Db, null]
-					: [R1, MergeSchema<Db, SchemaName>, null]
-				: [SchemaName] extends [keyof Db["schemas"]]
-					? [R1, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
-					: [R1, MergeSchema<Db, SchemaName>, null]
-			: [R1, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
+	PeekToken<AfterName> extends infer Tok
+		? SkipToken<AfterName> extends infer R1 extends TokensList
+			? Tok extends TokenKey<";"> | TokenEot
+				? IfNotExists extends true
+					? [SchemaName] extends [keyof Db["schemas"]]
+						? [R1, Db, null]
+						: [R1, MergeSchema<Db, SchemaName>, null]
+					: [SchemaName] extends [keyof Db["schemas"]]
+						? [R1, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
+						: [R1, MergeSchema<Db, SchemaName>, null]
+				: [R1, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
+			: never
 		: never
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
-	ReadToken<Tokens> extends [infer AfterName extends TokensList, infer NameTok]
-		? NameTok extends TokenIdent<infer SchemaName extends string>
-			? ParseCreateSchemaAfterSchemaName<AfterName, Db, SchemaName, IfNotExists>
-			: [AfterName, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
+	PeekToken<Tokens> extends infer NameTok
+		? SkipToken<Tokens> extends infer AfterName extends TokensList
+			? NameTok extends TokenIdent<infer SchemaName extends string>
+				? ParseCreateSchemaAfterSchemaName<AfterName, Db, SchemaName, IfNotExists>
+				: [AfterName, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
+			: never
 		: never

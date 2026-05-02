@@ -1,14 +1,6 @@
 import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
 import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
 export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -44,32 +36,45 @@ type IsDroppableTableEntry<E> = E extends JsqlTableShape ? (E["kind"] extends "t
 
 /** After `schema.` in qualified `DROP TABLE schema.table`. */
 type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
-	ReadToken<AfterDot> extends [infer R2 extends TokensList, infer T2]
-		? T2 extends TokenIdent<infer B extends string>
-			? ReadToken<R2> extends [infer R3 extends TokensList, infer T3]
-				? T3 extends TokenKey<";"> | TokenEot
-					? [R3, null, A, B]
-					: [R3, SqlParserError<"Expected `;` after qualified table name in DROP TABLE">, never, never]
-				: never
-			: [R2, SqlParserError<"Expected table name after `.` in DROP TABLE">, never, never]
+	PeekToken<AfterDot> extends infer T2
+		? SkipToken<AfterDot> extends infer R2 extends TokensList
+			? T2 extends TokenIdent<infer B extends string>
+				? PeekToken<R2> extends infer T3
+					? SkipToken<R2> extends infer R3 extends TokensList
+						? T3 extends TokenKey<";"> | TokenEot
+							? [R3, null, A, B]
+							: [
+									R3,
+									SqlParserError<"Expected `;` after qualified table name in DROP TABLE">,
+									never,
+									never,
+								]
+						: never
+					: never
+				: [R2, SqlParserError<"Expected table name after `.` in DROP TABLE">, never, never]
+			: never
 		: never
 
 /** After first identifier (table or schema). */
 type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	ReadToken<AfterFirst> extends [infer R1 extends TokensList, infer T1]
-		? T1 extends TokenKey<";"> | TokenEot
-			? [R1, null, Db["defaultSchema"], A]
-			: T1 extends TokenKey<".">
-				? ParseDropQualifiedSecondIdent<R1, A>
-				: [R1, SqlParserError<"Expected `.` or end of table name in DROP TABLE">, never, never]
+	PeekToken<AfterFirst> extends infer T1
+		? SkipToken<AfterFirst> extends infer R1 extends TokensList
+			? T1 extends TokenKey<";"> | TokenEot
+				? [R1, null, Db["defaultSchema"], A]
+				: T1 extends TokenKey<".">
+					? ParseDropQualifiedSecondIdent<R1, A>
+					: [R1, SqlParserError<"Expected `.` or end of table name in DROP TABLE">, never, never]
+			: never
 		: never
 
 /** `[rest, null, schema, table]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer AfterFirst extends TokensList, infer NameTok]
-		? NameTok extends TokenIdent<infer A extends string>
-			? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-			: [AfterFirst, SqlParserError<"Expected table name in DROP TABLE">, never, never]
+	PeekToken<Tokens> extends infer NameTok
+		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
+			? NameTok extends TokenIdent<infer A extends string>
+				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
+				: [AfterFirst, SqlParserError<"Expected table name in DROP TABLE">, never, never]
+			: never
 		: never
 
 type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
@@ -103,10 +108,12 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		: never
 
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenKey<";"> | TokenEot
-			? [R1, Db, null]
-			: [R1, Db, SqlParserError<"Expected `;` after DROP TABLE">]
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? Tok extends TokenKey<";"> | TokenEot
+				? [R1, Db, null]
+				: [R1, Db, SqlParserError<"Expected `;` after DROP TABLE">]
+			: never
 		: never
 
 type RemoveTableFromDb<

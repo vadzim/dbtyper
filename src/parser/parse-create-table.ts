@@ -1,14 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, SqlJoinedToTs, TypeWordsToString } from "./parse-sql-type-words.ts"
@@ -91,14 +83,16 @@ type ParseCreateTableOpenParen<
 	Table extends string,
 	IfNotExists extends boolean,
 > =
-	ReadToken<Tokens> extends [infer AfterOpen extends TokensList, infer OpenTok]
-		? OpenTok extends TokenKey<"(">
-			? IfNotExists extends true
-				? HasConcreteSet<Db["schemas"][Schema & keyof Db["schemas"]]["sets"], Table> extends true
-					? ParseCreateTableBodySkipOnly<AfterOpen, Db>
+	PeekToken<Tokens> extends infer OpenTok
+		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
+			? OpenTok extends TokenKey<"(">
+				? IfNotExists extends true
+					? HasConcreteSet<Db["schemas"][Schema & keyof Db["schemas"]]["sets"], Table> extends true
+						? ParseCreateTableBodySkipOnly<AfterOpen, Db>
+						: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
-				: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
-			: [AfterOpen, Db, SqlParserError<"Expected `(` before column list in CREATE TABLE">]
+				: [AfterOpen, Db, SqlParserError<"Expected `(` before column list in CREATE TABLE">]
+			: never
 		: never
 
 type ParseCreateTableBodySkipOnly<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -108,16 +102,20 @@ type ParseCreateTableBodySkipOnly<Tokens extends TokensList, Db extends JsqlData
 			: [AfterSemi, Db, null]
 		: never
 
-/** After `)`, read `;` or end (two sequential `ReadToken`s, tuple patterns only). */
+/** After `)`, read `;` or end. */
 type ParseCreateTableCloseParenAndSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok1]
-		? Tok1 extends TokenKey<")">
-			? ReadToken<R1> extends [infer R2 extends TokensList, infer Tok2]
-				? Tok2 extends TokenKey<";"> | TokenEot
-					? [R2, NewDb, null]
-					: [R2, NewDb, SqlParserError<"Expected `;` after CREATE TABLE">]
-				: never
-			: [R1, NewDb, SqlParserError<"Expected `)` before end of CREATE TABLE">]
+	PeekToken<Tokens> extends infer Tok1
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? Tok1 extends TokenKey<")">
+				? PeekToken<R1> extends infer Tok2
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? Tok2 extends TokenKey<";"> | TokenEot
+							? [R2, NewDb, null]
+							: [R2, NewDb, SqlParserError<"Expected `;` after CREATE TABLE">]
+						: never
+					: never
+				: [R1, NewDb, SqlParserError<"Expected `)` before end of CREATE TABLE">]
+			: never
 		: never
 
 type ParseCreateTableBody<
@@ -174,10 +172,12 @@ type ParseOneColumn<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 > =
-	ReadToken<Tokens> extends [infer AfterColName extends TokensList, infer NameTok]
-		? NameTok extends TokenIdent<infer ColName extends string>
-			? ParseOneColumnAfterColName<AfterColName, Db, Schema, Table, Stack, ColName>
-			: [AfterColName, Db, SqlParserError<"Expected column name in CREATE TABLE">]
+	PeekToken<Tokens> extends infer NameTok
+		? SkipToken<Tokens> extends infer AfterColName extends TokensList
+			? NameTok extends TokenIdent<infer ColName extends string>
+				? ParseOneColumnAfterColName<AfterColName, Db, Schema, Table, Stack, ColName>
+				: [AfterColName, Db, SqlParserError<"Expected column name in CREATE TABLE">]
+			: never
 		: never
 
 type ResolveAfterNullability<
@@ -191,14 +191,14 @@ type ResolveAfterNullability<
 	Joined extends string,
 > =
 	PeekToken<AfterType> extends TokenKey<"not">
-		? ReadToken<AfterType> extends [infer R1 extends TokensList, infer T1]
-			? T1 extends TokenKey<"not">
-				? ReadToken<R1> extends [infer R2 extends TokensList, infer T2]
+		? SkipToken<AfterType> extends infer R1 extends TokensList
+			? PeekToken<R1> extends infer T2
+				? SkipToken<R1> extends infer R2 extends TokensList
 					? T2 extends TokenKey<"null">
 						? ContinueAfterColumnDef<R2, Db, Schema, Table, Stack, ColName, Ts, Joined>
 						: [R2, Db, SqlParserError<"Expected `null` after `NOT`">]
 					: never
-				: [R1, Db, SqlParserError<"Expected `not` after column type">]
+				: never
 			: never
 		: PeekToken<AfterType> extends TokenKey<"null">
 			? SkipToken<AfterType> extends infer AfterNull extends TokensList
@@ -301,40 +301,50 @@ type MergeTableIntoDb<
 	: never
 
 type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
-	ReadToken<AfterKeyTok> extends [infer AfterLp extends TokensList, infer T4]
-		? T4 extends TokenKey<"(">
-			? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends TokensList, infer Res]
-				? Res extends SqlParserError<string>
-					? [R, Res]
-					: [R, null]
-				: never
-			: [AfterLp, null]
+	PeekToken<AfterKeyTok> extends infer T4
+		? SkipToken<AfterKeyTok> extends infer AfterLp extends TokensList
+			? T4 extends TokenKey<"(">
+				? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends TokensList, infer Res]
+					? Res extends SqlParserError<string>
+						? [R, Res]
+						: [R, null]
+					: never
+				: [AfterLp, null]
+			: never
 		: never
 
 type SkipConstraintAfterPrim<AfterPrim extends TokensList> =
-	ReadToken<AfterPrim> extends [infer AfterKeyTok extends TokensList, infer T3]
-		? T3 extends TokenKey<"key">
-			? SkipConstraintAfterKeyTok<AfterKeyTok>
-			: [AfterKeyTok, null]
+	PeekToken<AfterPrim> extends infer T3
+		? SkipToken<AfterPrim> extends infer AfterKeyTok extends TokensList
+			? T3 extends TokenKey<"key">
+				? SkipConstraintAfterKeyTok<AfterKeyTok>
+				: [AfterKeyTok, null]
+			: never
 		: never
 
 type SkipConstraintAfterName<AfterName extends TokensList> =
-	ReadToken<AfterName> extends [infer AfterPrim extends TokensList, infer T2]
-		? T2 extends TokenKey<"primary">
-			? SkipConstraintAfterPrim<AfterPrim>
-			: [AfterPrim, null]
+	PeekToken<AfterName> extends infer T2
+		? SkipToken<AfterName> extends infer AfterPrim extends TokensList
+			? T2 extends TokenKey<"primary">
+				? SkipConstraintAfterPrim<AfterPrim>
+				: [AfterPrim, null]
+			: never
 		: never
 
 type SkipConstraintAfterKw<AfterKw extends TokensList> =
-	ReadToken<AfterKw> extends [infer AfterName extends TokensList, infer T1]
-		? T1 extends TokenIdent<string>
-			? SkipConstraintAfterName<AfterName>
-			: [AfterName, null]
+	PeekToken<AfterKw> extends infer T1
+		? SkipToken<AfterKw> extends infer AfterName extends TokensList
+			? T1 extends TokenIdent<string>
+				? SkipConstraintAfterName<AfterName>
+				: [AfterName, null]
+			: never
 		: never
 
 type SkipConstraintClause<Tokens extends TokensList> =
-	ReadToken<Tokens> extends [infer AfterKw extends TokensList, infer T0]
-		? T0 extends TokenKey<"constraint">
-			? SkipConstraintAfterKw<AfterKw>
-			: [AfterKw, null]
+	PeekToken<Tokens> extends infer T0
+		? SkipToken<Tokens> extends infer AfterKw extends TokensList
+			? T0 extends TokenKey<"constraint">
+				? SkipConstraintAfterKw<AfterKw>
+				: [AfterKw, null]
+			: never
 		: never

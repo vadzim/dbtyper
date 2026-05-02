@@ -1,13 +1,5 @@
 import type { JsqlDatabaseShape, JsqlTableShape, JsqlUpdateStatementResult } from "../core/jsql-shapes.ts"
-import type {
-	PeekToken,
-	ReadToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -53,71 +45,77 @@ type ParseUpdateAliasAfterTable<
 					table: Tab
 				},
 			]
-		: ReadToken<Tokens> extends [infer Ra extends TokensList, infer TokAlias]
-			? TokAlias extends TokenIdent<infer Alias extends string>
-				? PeekToken<Ra> extends TokenKey<"set">
-					? [
-							Ra,
-							null,
-							{
-								scope: MergeScope<
-									{},
-									Record<
-										Alias,
-										{
-											schema: Sch
-											table: Tab
-											columns: Tbl["columns"]
-											column_sql_types: SqlTypesOf<Tbl>
-										}
+		: PeekToken<Tokens> extends infer TokAlias
+			? SkipToken<Tokens> extends infer Ra extends TokensList
+				? TokAlias extends TokenIdent<infer Alias extends string>
+					? PeekToken<Ra> extends TokenKey<"set">
+						? [
+								Ra,
+								null,
+								{
+									scope: MergeScope<
+										{},
+										Record<
+											Alias,
+											{
+												schema: Sch
+												table: Tab
+												columns: Tbl["columns"]
+												column_sql_types: SqlTypesOf<Tbl>
+											}
+										>
 									>
-								>
-								tbl: Tbl
-								schema: Sch
-								table: Tab
-							},
-						]
+									tbl: Tbl
+									schema: Sch
+									table: Tab
+								},
+							]
+						: [Ra, SqlParserError<"Expected SET after table in UPDATE">, ParserRefErrorThirdSentinel]
 					: [Ra, SqlParserError<"Expected SET after table in UPDATE">, ParserRefErrorThirdSentinel]
-				: [Ra, SqlParserError<"Expected SET after table in UPDATE">, ParserRefErrorThirdSentinel]
+				: never
 			: never
 
 type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer Tok]
-		? Tok extends TokenIdent<infer A extends string>
-			? PeekToken<R1> extends TokenKey<".">
-				? SkipToken<R1> extends infer R2 extends TokensList
-					? ReadToken<R2> extends [infer R3 extends TokensList, infer TokB]
-						? TokB extends TokenIdent<infer B extends string>
-							? ResolveTableShape<Db, A, B> extends infer TblTry
-								? [TblTry] extends [never]
-									? [
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? Tok extends TokenIdent<infer A extends string>
+				? PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? PeekToken<R2> extends infer TokB
+							? SkipToken<R2> extends infer R3 extends TokensList
+								? TokB extends TokenIdent<infer B extends string>
+									? ResolveTableShape<Db, A, B> extends infer TblTry
+										? [TblTry] extends [never]
+											? [
+													R3,
+													SqlParserError<"Unknown schema or table in UPDATE">,
+													ParserRefErrorThirdSentinel,
+												]
+											: TblTry extends JsqlTableShape
+												? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
+												: [
+														R3,
+														SqlParserError<"Unknown schema or table in UPDATE">,
+														ParserRefErrorThirdSentinel,
+													]
+										: never
+									: [
 											R3,
-											SqlParserError<"Unknown schema or table in UPDATE">,
+											SqlParserError<"Expected table name after `.` in UPDATE">,
 											ParserRefErrorThirdSentinel,
 										]
-									: TblTry extends JsqlTableShape
-										? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
-										: [
-												R3,
-												SqlParserError<"Unknown schema or table in UPDATE">,
-												ParserRefErrorThirdSentinel,
-											]
 								: never
-							: [
-									R3,
-									SqlParserError<"Expected table name after `.` in UPDATE">,
-									ParserRefErrorThirdSentinel,
-								]
+							: never
 						: never
-					: never
-				: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry
-					? [TblTry] extends [never]
-						? [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
-						: TblTry extends JsqlTableShape
-							? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
-							: [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
-					: never
-			: [R1, SqlParserError<"Expected table name in UPDATE">, ParserRefErrorThirdSentinel]
+					: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry
+						? [TblTry] extends [never]
+							? [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
+							: TblTry extends JsqlTableShape
+								? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
+								: [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
+						: never
+				: [R1, SqlParserError<"Expected table name in UPDATE">, ParserRefErrorThirdSentinel]
+			: never
 		: never
 
 type ParseUpdateSetAssignments<
@@ -130,56 +128,61 @@ type ParseUpdateSetAssignments<
 	Tab extends string,
 	Acc extends readonly string[],
 > =
-	ReadToken<Tokens> extends [infer R1 extends TokensList, infer TokCol]
-		? TokCol extends TokenIdent<infer Col extends string>
-			? Col extends keyof Tbl["columns"]
-				? PeekToken<R1> extends TokenKey<"=">
-					? SkipToken<R1> extends infer R2 extends TokensList
-						? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
-							? Ev extends SqlParserError<string>
-								? [R3, Db, Ev]
-								: Ev extends ExprAtom
-									? ValidateMutationValueForColumn<Tbl, Col, Ev> extends infer V0
-										? V0 extends SqlParserError<string>
-											? [R3, Db, V0]
-											: V0 extends true
-												? PeekToken<R3> extends TokenKey<",">
-													? SkipToken<R3> extends infer R4 extends TokensList
-														? ParseUpdateSetAssignments<
-																R4,
-																Db,
-																Scope,
-																Params,
-																Tbl,
-																Sch,
-																Tab,
-																readonly [...Acc, Col]
-															>
-														: never
-													: PeekToken<R3> extends TokenKey<"where"> | TokenKey<";"> | TokenEot
-														? [
-																R3,
-																Db,
-																{
-																	kind: "update"
-																	table: Tab
-																	schema: Sch
-																	set_columns: readonly [...Acc, Col]
-																},
-															]
-														: [
-																R3,
-																Db,
-																SqlParserError<"Expected `,`, WHERE, or end after UPDATE assignment">,
-															]
-												: never
-										: never
-									: [R3, Db, SqlParserError<"Invalid value expression in UPDATE">]
+	PeekToken<Tokens> extends infer TokCol
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? TokCol extends TokenIdent<infer Col extends string>
+				? Col extends keyof Tbl["columns"]
+					? PeekToken<R1> extends TokenKey<"=">
+						? SkipToken<R1> extends infer R2 extends TokensList
+							? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
+								? Ev extends SqlParserError<string>
+									? [R3, Db, Ev]
+									: Ev extends ExprAtom
+										? ValidateMutationValueForColumn<Tbl, Col, Ev> extends infer V0
+											? V0 extends SqlParserError<string>
+												? [R3, Db, V0]
+												: V0 extends true
+													? PeekToken<R3> extends TokenKey<",">
+														? SkipToken<R3> extends infer R4 extends TokensList
+															? ParseUpdateSetAssignments<
+																	R4,
+																	Db,
+																	Scope,
+																	Params,
+																	Tbl,
+																	Sch,
+																	Tab,
+																	readonly [...Acc, Col]
+																>
+															: never
+														: PeekToken<R3> extends
+																	| TokenKey<"where">
+																	| TokenKey<";">
+																	| TokenEot
+															? [
+																	R3,
+																	Db,
+																	{
+																		kind: "update"
+																		table: Tab
+																		schema: Sch
+																		set_columns: readonly [...Acc, Col]
+																	},
+																]
+															: [
+																	R3,
+																	Db,
+																	SqlParserError<"Expected `,`, WHERE, or end after UPDATE assignment">,
+																]
+													: never
+											: never
+										: [R3, Db, SqlParserError<"Invalid value expression in UPDATE">]
+								: never
 							: never
-						: never
-					: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
-				: [R1, Db, SqlParserError<"Unknown column in UPDATE SET">]
-			: [R1, Db, SqlParserError<"Expected column name in UPDATE SET">]
+						: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
+					: [R1, Db, SqlParserError<"Unknown column in UPDATE SET">]
+				: [R1, Db, SqlParserError<"Expected column name in UPDATE SET">]
+			: never
 		: never
 
 type ParseUpdateAfterSetKeyword<
@@ -219,10 +222,12 @@ type FinishUpdateSemicolon<
 	Db extends JsqlDatabaseShape,
 	Res extends JsqlUpdateStatementResult,
 > =
-	ReadToken<Tokens> extends [infer AfterSemi extends TokensList, infer Tok]
-		? Tok extends TokenKey<";"> | TokenEot
-			? [AfterSemi, Db, Res]
-			: [AfterSemi, Db, SqlParserError<"Expected `;` after UPDATE">]
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer AfterSemi extends TokensList
+			? Tok extends TokenKey<";"> | TokenEot
+				? [AfterSemi, Db, Res]
+				: [AfterSemi, Db, SqlParserError<"Expected `;` after UPDATE">]
+			: never
 		: never
 
 type ParseUpdateAfterTableRef<
