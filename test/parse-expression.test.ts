@@ -147,6 +147,21 @@ type WInSubqueryOk = ParseWhereExpression<
 >
 type _wInSubqueryOk = Expect<Extends<Tuple2At1<WInSubqueryOk>, null>>
 
+type UMod = ParseExpressionAST<ParseSqlTokens<`5 % 2`>>
+type _uMod = Expect<Extends<Tuple2At1<UMod>, { kind: "mod" }>>
+
+type UExp = ParseExpressionAST<ParseSqlTokens<`2 ^ 3`>>
+type _uExp = Expect<Extends<Tuple2At1<UExp>, { kind: "exp" }>>
+
+type UCustomOp = ParseExpressionAST<ParseSqlTokens<`a || b`>>
+type _uCustomOp = Expect<Extends<Tuple2At1<UCustomOp>, { kind: "custom_op"; op: "||" }>>
+
+type UCustomOp2 = ParseExpressionAST<ParseSqlTokens<`a ->> b`>>
+type _uCustomOp2 = Expect<Extends<Tuple2At1<UCustomOp2>, { kind: "custom_op"; op: "->>" }>>
+
+type UOperatorSym = ParseExpressionAST<ParseSqlTokens<`a OPERATOR(+) b`>>
+type _uOperatorSym = Expect<Extends<Tuple2At1<UOperatorSym>, { kind: "custom_op"; op: "+" }>>
+
 describe("parse-expression (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

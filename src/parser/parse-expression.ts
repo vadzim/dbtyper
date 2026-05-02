@@ -108,6 +108,9 @@ export type ScalarExprAst =
 			arms: readonly { when: ScalarExprAst; then: ScalarExprAst }[]
 			else_: ScalarExprAst | null
 	  }
+	| { kind: "custom_op"; op: string; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "exp"; left: ScalarExprAst; right: ScalarExprAst }
+	| { kind: "mod"; left: ScalarExprAst; right: ScalarExprAst }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
@@ -299,7 +302,7 @@ type ParseBetweenAfterL<Tokens extends TokensList, L extends ScalarExprAst, Env 
 					? [Rlow, Low]
 					: PeekToken<Rlow> extends TokenKey<"and">
 						? SkipToken<Rlow> extends infer Ra extends TokensList
-							? ParseAddScalarUntyped<Ra, Env> extends [infer Rh extends TokensList, infer High]
+							? ParseOtherOpScalarUntyped<Ra, Env> extends [infer Rh extends TokensList, infer High]
 								? High extends SqlParserError<string>
 									? [Rh, High]
 									: [Rh, { kind: "between"; expr: L; low: Low; high: High }]
@@ -314,7 +317,7 @@ type ParseLikeAfterL<Tokens extends TokensList, L extends ScalarExprAst, CI exte
 	PeekToken<Tokens> extends infer TokKw
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokKw extends TokenKey<"like"> | TokenKey<"ilike">
-				? ParseAddScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer Pat]
+				? ParseOtherOpScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer Pat]
 					? Pat extends SqlParserError<string>
 						? [R2, Pat]
 						: [R2, { kind: "like"; expr: L; pattern: Pat; case_insensitive: CI }]
@@ -447,7 +450,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 		? IsRelOp<P> extends true
 			? SkipToken<Tokens> extends infer R2 extends TokensList
 				? PeekToken<Tokens> extends infer OpTok
-					? ParseAddScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
+					? ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
 						? Rhs extends SqlParserError<string>
 							? [R3, Rhs]
 							: TokenToCmpOp<OpTok> extends infer Cop extends ScalarCmpOp
@@ -466,7 +469,10 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 						? ParseBetweenAfterL<Tokens, L, Env>
 						: P extends TokenKey<"~">
 							? SkipToken<Tokens> extends infer Rregex extends TokensList
-								? ParseAddScalarUntyped<Rregex, Env> extends [infer Rrp extends TokensList, infer Pat]
+								? ParseOtherOpScalarUntyped<Rregex, Env> extends [
+										infer Rrp extends TokensList,
+										infer Pat,
+									]
 									? Pat extends SqlParserError<string>
 										? [Rrp, Pat]
 										: [
@@ -482,7 +488,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 								: never
 							: P extends TokenKey<"~*">
 								? SkipToken<Tokens> extends infer Rregexi extends TokensList
-									? ParseAddScalarUntyped<Rregexi, Env> extends [
+									? ParseOtherOpScalarUntyped<Rregexi, Env> extends [
 											infer Rrpi extends TokensList,
 											infer Pati,
 										]
@@ -499,15 +505,59 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 												]
 										: never
 									: never
-								: P extends TokenKey<"like">
-									? ParseLikeAfterL<Tokens, L, false, Env>
-									: P extends TokenKey<"ilike">
-										? ParseLikeAfterL<Tokens, L, true, Env>
-										: [Tokens, L]
+								: P extends TokenKey<"!~">
+									? SkipToken<Tokens> extends infer Rnotregex extends TokensList
+										? ParseOtherOpScalarUntyped<Rnotregex, Env> extends [
+												infer Rrpn extends TokensList,
+												infer Patn,
+											]
+											? Patn extends SqlParserError<string>
+												? [Rrpn, Patn]
+												: [
+														Rrpn,
+														{
+															kind: "not"
+															inner: {
+																kind: "pg_regex_match"
+																expr: L
+																pattern: Patn
+																case_insensitive: false
+															}
+														},
+													]
+											: never
+										: never
+									: P extends TokenKey<"!~*">
+										? SkipToken<Tokens> extends infer Rnotregexi extends TokensList
+											? ParseOtherOpScalarUntyped<Rnotregexi, Env> extends [
+													infer Rrpni extends TokensList,
+													infer Patni,
+												]
+												? Patni extends SqlParserError<string>
+													? [Rrpni, Patni]
+													: [
+															Rrpni,
+															{
+																kind: "not"
+																inner: {
+																	kind: "pg_regex_match"
+																	expr: L
+																	pattern: Patni
+																	case_insensitive: true
+																}
+															},
+														]
+												: never
+											: never
+										: P extends TokenKey<"like">
+											? ParseLikeAfterL<Tokens, L, false, Env>
+											: P extends TokenKey<"ilike">
+												? ParseLikeAfterL<Tokens, L, true, Env>
+												: [Tokens, L]
 		: never
 
 type ParseRelScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
-	ParseAddScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E1]
+	ParseOtherOpScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E1]
 		? E1 extends SqlParserError<string>
 			? [R1, E1]
 			: E1 extends ScalarExprAst
@@ -589,6 +639,28 @@ type ParseOrScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 				: never
 		: never
 
+type ResolveCustomOp<
+	Op extends string,
+	L extends ScalarExprAst,
+	R extends ScalarExprAst,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	ResolveExpressionAST<L, Db, Scope, Params> extends infer Lv
+		? Lv extends SqlParserError<string>
+			? Lv
+			: ResolveExpressionAST<R, Db, Scope, Params> extends infer Rv
+				? Rv extends SqlParserError<string>
+					? Rv
+					: Lv extends ExprAtom
+						? Rv extends ExprAtom
+							? ExprOk<unknown, string>
+							: SqlParserError<"Invalid custom operator operand">
+						: SqlParserError<"Invalid custom operator operand">
+				: never
+		: never
+
 /** Parse expression to AST to be resolved later when `FROM` scope is known (`OR` … `AND` … `NOT` … comparisons … arithmetic). */
 export type ParseExpressionAST<
 	Tokens extends TokensList,
@@ -608,6 +680,20 @@ type ExpressionResolvers<
 	string: Ast extends { kind: "string"; value: string } ? ExprOk<string, "text"> : never
 	number: Ast extends { kind: "number"; raw: string } ? ExprOk<number, "number"> : never
 	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
+	custom_op: Ast extends {
+		kind: "custom_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst
+	}
+		? ResolveCustomOp<Op, L, R, Db, Scope, Params>
+		: never
+	exp: Ast extends { kind: "exp"; left: infer L extends ScalarExprAst; right: infer R extends ScalarExprAst }
+		? ResolveScalarExprAstPair<L, R, Db, Scope, Params>
+		: never
+	mod: Ast extends { kind: "mod"; left: infer L extends ScalarExprAst; right: infer R extends ScalarExprAst }
+		? ResolveScalarExprAstPair<L, R, Db, Scope, Params>
+		: never
 	qualified_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
 	alias_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
 	col: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
@@ -1472,30 +1558,151 @@ type ParseMulLoopAfterFirstScalarUntyped<
 	Acc extends ScalarExprAst,
 	Env extends ExprParseEnv,
 > =
-	PeekToken<Tokens> extends TokenKey<"*">
+	PeekToken<Tokens> extends TokenKey<"*" | "/" | "%">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseUnaryScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1]
+			? ParseExpScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1]
 				? E1 extends SqlParserError<string>
 					? [R2, E1]
 					: E1 extends ScalarExprAst
-						? ParseMulLoopAfterFirstScalarUntyped<R2, { kind: "mul"; left: Acc; right: E1 }, Env>
+						? PeekToken<Tokens> extends TokenKey<"%">
+							? ParseMulLoopAfterFirstScalarUntyped<R2, { kind: "mod"; left: Acc; right: E1 }, Env>
+							: ParseMulLoopAfterFirstScalarUntyped<R2, { kind: "mul"; left: Acc; right: E1 }, Env>
 						: never
 				: never
 			: never
 		: [Tokens, Acc]
 
-type ParseMulScalarUntypedEntry<Tokens extends TokensList, Env extends ExprParseEnv> =
+type ParseExpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenKey<"^">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? ParseUnaryScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1]
+				? E1 extends SqlParserError<string>
+					? [R2, E1]
+					: E1 extends ScalarExprAst
+						? ParseExpLoop<R2, { kind: "exp"; left: Acc; right: E1 }, Env>
+						: never
+				: never
+			: never
+		: [Tokens, Acc]
+
+type ParseExpScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	ParseUnaryScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ScalarExprAst
+				? ParseExpLoop<R0, E0, Env>
+				: never
+		: never
+
+type ParseMulScalarUntypedEntry<Tokens extends TokensList, Env extends ExprParseEnv> =
+	ParseExpScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0]
 		? E0 extends SqlParserError<string>
 			? [R0, E0]
 			: E0 extends ScalarExprAst
 				? ScalarAstNonNumericForMulHead<E0> extends true
 					? PeekToken<R0> extends infer P
-						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+						? P extends
+								| TokenKey<"+">
+								| TokenKey<"-">
+								| TokenKey<"*">
+								| TokenKey<"/">
+								| TokenKey<"%">
+								| TokenKey<"^">
 							? [R0, SqlParserError<"Incompatible types in arithmetic">]
 							: [R0, E0]
 						: never
 					: ParseMulLoopAfterFirstScalarUntyped<R0, E0, Env>
+				: never
+		: never
+
+type IsCustomOperatorString<S extends string> = S extends ""
+	? false
+	: S extends `${infer C}${infer Rest}`
+		? C extends "+" | "-" | "*" | "/" | "<" | ">" | "=" | "~" | "!" | "@" | "#" | "%" | "^" | "&" | "|" | "`" | "?"
+			? Rest extends ""
+				? true
+				: IsCustomOperatorString<Rest>
+			: false
+		: false
+
+type IsOtherOp<T> =
+	T extends TokenKey<infer K extends string>
+		? IsCustomOperatorString<K> extends true
+			? K extends
+					| "+"
+					| "-"
+					| "*"
+					| "/"
+					| "%"
+					| "^"
+					| "="
+					| "<>"
+					| "!="
+					| "<="
+					| ">="
+					| "<"
+					| ">"
+					| "~"
+					| "~*"
+					| "!~"
+					| "!~*"
+				? false
+				: true
+			: false
+		: false
+
+type ParseOtherOpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends infer P
+		? IsOtherOp<P> extends true
+			? SkipToken<Tokens> extends infer R1 extends TokensList
+				? P extends TokenKey<infer Op>
+					? ParseAddScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer Rhs]
+						? Rhs extends SqlParserError<string>
+							? [R2, Rhs]
+							: Rhs extends ScalarExprAst
+								? ParseOtherOpLoop<R2, { kind: "custom_op"; op: Op; left: Acc; right: Rhs }, Env>
+								: never
+						: never
+					: never
+				: never
+			: PeekToken<Tokens> extends TokenIdent<"operator">
+				? SkipToken<Tokens> extends infer R1 extends TokensList
+					? PeekToken<R1> extends TokenKey<"(">
+						? SkipToken<R1> extends infer R2 extends TokensList
+							? PeekToken<R2> extends TokenKey<infer Op>
+								? SkipToken<R2> extends infer R3 extends TokensList
+									? PeekToken<R3> extends TokenKey<")">
+										? SkipToken<R3> extends infer R4 extends TokensList
+											? ParseAddScalarUntyped<R4, Env> extends [
+													infer R5 extends TokensList,
+													infer Rhs,
+												]
+												? Rhs extends SqlParserError<string>
+													? [R5, Rhs]
+													: Rhs extends ScalarExprAst
+														? ParseOtherOpLoop<
+																R5,
+																{ kind: "custom_op"; op: Op; left: Acc; right: Rhs },
+																Env
+															>
+														: never
+												: never
+											: never
+										: [R3, SqlParserError<"Expected ) after OPERATOR(">]
+									: never
+								: [R2, SqlParserError<"Expected operator after OPERATOR(">]
+							: never
+						: [Tokens, Acc]
+					: never
+				: [Tokens, Acc]
+		: [Tokens, Acc]
+
+type ParseOtherOpScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
+	ParseAddScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0]
+		? E0 extends SqlParserError<string>
+			? [R0, E0]
+			: E0 extends ScalarExprAst
+				? ParseOtherOpLoop<R0, E0, Env>
 				: never
 		: never
 
