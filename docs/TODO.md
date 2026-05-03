@@ -2,8 +2,12 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
+**Roadmap anchor:** Maintainer decisions and work order **A → E** are recorded in **`docs/ROADMAP.md` § Active plan**.
+
 ## Documentation
 
+- [ ] In **`README.md`**, document **custom functions**: optional **`functions?: Record<string, …>`** on the typed **`JsqlDatabaseShape`** / migration **`Db`** (types-only registry; **no** runtime `extend` API for typings).
+- [ ] In **`README.md`**, document **`InferSqlErrors<Db, Stmt, Params?>`** (or finalized name/shape): when it resolves to **`SqlParserError<"…">`**, tooling can surface the same messages as **`db.query`** squiggles.
 - [ ] In **`README.md`**, add a **“Type-level API”** section: import path **`core/sql.ts`**, primary entry **`ParseSqlStatement<Tokens, Db, Params>`** (third generic defaults to **`{}`**), document the **`[RestTokens, Db, Result]`** triple for statements and when **`Result`** is **`SqlParserError<…>`** vs **`null`** (end).
 - [ ] In **`README.md`**, either **move the `SqlCreateTable` / `SqlSchema` / `SqlDatabase` example** behind a “Legacy / alternate path” note or **replace it** with a minimal example that uses **`ParseSqlTokens`** + **`ParseSqlStatement`** + a hand-written **`JsqlDatabaseShape`** (match **`test/parse-select.test.ts`** style).
 - [ ] **Diff `README.md` links** against **`core/sql.ts`** `export` list; fix any path or symbol that does not exist.
@@ -31,7 +35,8 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [x] **Implement `IN ( SELECT … )`**: single-column inner **`SELECT`**, **`IN`** comparison-class rules; **`parse-expression.test.ts`** (`WHERE`) + **`parse-select.test.ts`** as needed.
 - [x] **Implement `EXISTS ( SELECT … )`**: boolean result; inner **`SELECT`** uses empty inner **`FROM`** scope (no outer correlation in **`EXISTS`** body); tests in **`parse-expression.test.ts`**.
 - [x] **Implement `WITH cte AS ( SELECT … ) , …`**: CTE list, forward names for main **`SELECT`**, **`ScopeMap`** merge; **`parse-select.test.ts`** success + duplicate CTE name error. **Not implemented**: CTE cycle detection as a dedicated error.
-- [ ] **Implement correlated subqueries** beyond current wiring: outer **`FROM`** is visible in **`WHERE`** / some expression sites; **`SELECT`** list inner subqueries still use an empty outer scope unless extended; no **lateral** / **`SELECT`**-list correlation tests yet.
+- [ ] **Implement correlated subqueries** beyond current wiring: outer **`FROM`** visible in **`WHERE`** / expression sites as needed; extend **`SELECT`**-list inner subquery scope deliberately; add tests (**v1 excludes `LATERAL`** per **`ROADMAP.md`**).
+- [ ] **`LATERAL` (deferred past v1 correlation milestone):** **`JOIN LATERAL`**, **`CROSS JOIN LATERAL`**, correlated derived tables in **`FROM`** — parse, scope (**outer row visible inside**), nullability; document in **`SUPPORTED-SQL.md`** when started.
 - [x] **`CREATE VIEW`**: routed in **`ParseSqlStatement`**; **`kind: "view"`** + **`columns` / `column_sql_types`** from inner **`SELECT`**; type test in **`test/apply-statements.test.ts`** (qualified view name + **`ParseQualifiedViewName`**).
 
 ## `CREATE INDEX` / other `CREATE`
@@ -40,11 +45,42 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [ ] If parsed: merge into **`JsqlDatabaseShape`** (new optional **`indexes`** map or attached to table) or return a **`JsqlSelectStatementResult`–free** result type; add tests.
 - [ ] **`CREATE` variants** beyond **`TABLE` / `SCHEMA`**: list unsupported prefixes and add one **`ParseSqlStatement`** test each that asserts **skip** behavior (**`RestTokens`** advanced, **`Db`** unchanged) where skip is intended.
 
-## Typed built-in calls
+## Error UX + tooling (priority **B** in **`ROADMAP.md`**)
 
-- [ ] **Introduce a registry** (type-level map) of **SQL functions** **`name(arg, …)`** with arity + argument **`ExprAtom`** types + return **`ExprOk`**, e.g. **`lower(text) -> text`**.
-- [ ] **Replace `TryOperandIdentOrCall` “balanced skip only”** for registered names with real **`ParseExpressionAST`** argument lists + **`ResolveExpressionAST`**; keep skip for unknown names or document rejection.
-- [ ] Add **`test/parse-expression.test.ts`** (or **`parse-where-expression`**) for **one known function** success and **unknown function** still skipped or error per design.
+- [ ] **`DataBase.query` / `.stream`** (and migrations **`apply`** if applicable): retain **parameter constraint** so invalid SQL resolves the first generic to **`SqlParserError`** message literals (**squiggle on the string**).
+- [ ] Tune messages for common mistakes (stable string templates for **`Expect`**).
+
+## Error tooling (`InferSqlErrors`)
+
+- [ ] Export **`InferSqlErrors<Db, Stmt, Params?>`** (name final TBD): alias of or wrapper around **`SqlSelectRow`** / **`ParseSqlStatement`** error extraction so **`SqlParserError<string>`** is inspectable **without** `Parameters<typeof db.query<…>>`.
+- [ ] Add **`Expect<Extends<InferSqlErrors<…>, SqlParserError<`expected fragment`>>>>`** (or message-specific) smoke tests beside **`CheckSql`** / **`db.query`** tests.
+- [ ] Cross-link from **`README.md`** and **`SUPPORTED-SQL.md`** error examples.
+
+## Function registry (**types-only**, config on **`Db`)
+
+- [ ] (**Option A**) Ensure **`functions?: …`** on **`JsqlDatabaseShape`** flows through **`sqlMigrations` → `FlattenedJsqlDatabase` → `ResolveFunctionCall`**; custom names map to **`ExprOk<…>`** return types (**no** runtime-only registration for typings).
+- [ ] Maintain a **built-in catalog** (**`lower`**, **`count`**, etc.) inside **`ResolveFunctionCall`** (or an extracted map) separately from **`Db["functions"]`** merge rules.
+- [ ] **Replace balanced skip** with real arg parse where **`function_call`** is produced; unify **`TryOperandIdentOrCall`** / **`ParseScalarExprUntypedFromIdent`** paths (`LOG.md`).
+- [ ] **`test/function-registry.test.ts`** (or **`parse-expression`**)：** one custom function** + **one unknown function** (**`SqlParserError`**) case.
+
+## `GROUP BY` / `HAVING` (priority **C** in **`ROADMAP.md`**)
+
+- [ ] Parse **`GROUP BY`** (one or more expressions / columns) after **`WHERE`** ordering; lexer: do not treat **`GROUP`** / **`HAVING`** as table aliases (**`ParseAliasAfterTable`** termination list).
+- [ ] Parse **`HAVING`** boolean expression against **post-aggregation / grouped** scope rules (subset first if full inference is too heavy).
+- [ ] Infer **`JsqlSelectStatementResult`** columns: non-aggregated keys vs aggregate expressions; align with **`SUPPORTED-SQL.md`**.
+- [ ] **`test/group-by.test.ts`** (or **`parse-select.test.ts`**): minimal success path + **one** invalid aggregate/column combo error.
+
+## PostgreSQL arrays (minimal MVP, then widen)
+
+**MVP (do first)**
+
+- [ ] One-dimensional literals / indexing agreed in **`SUPPORTED-SQL.md`** (`ARRAY[…]` **or** documented literal subset).
+- [ ] At least **one containment or overlap operator** (**`@>`** **or** **`&&`**) typed enough for **`Expect`** tests — keep parser/resolver shallow.
+
+**Later (explicit backlog, not MVP)**
+
+- [ ] Multidimensional arrays, full **`ARRAY`** constructor parity, slicing **`[:]`,** full operator set (**`||`**, **`<@`**, …), **`ANY`/`ALL`** with arrays coordinated with subquery **`ANY`/`ALL`**.
+- [ ] Track dialect notes in **`SUPPORTED-SQL.md`** so users see what is stubbed vs real.
 
 ## Tests — `ApplyStatements` / skip / docs
 
