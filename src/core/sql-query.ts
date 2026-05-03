@@ -26,3 +26,10 @@ export type SqlSelectRow<
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Db extends SqlParserError<string> ? Db : Db extends JsqlDatabaseShape ? SqlSelectRowForDb<Db, Text, Params> : never
+
+/** `SqlParserError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
+export type InferSqlErrors<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Stmt extends string,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer M>] ? SqlParserError<M> : null

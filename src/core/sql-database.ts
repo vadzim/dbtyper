@@ -51,7 +51,7 @@ export type SqlDatabase<
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
 	apply<Source extends string>(
-		statement: Source,
+		statement: Source extends CheckSqlMigrationSource<Db, Source> ? Source : CheckSqlMigrationSource<Db, Source>,
 		name?: string,
 	): SqlMigrations<FlattenedJsqlDatabase<ApplyStatements<Db, Source>[0]>>
 	database(): DataBase<FlattenedJsqlDatabase<Db>>
@@ -217,13 +217,24 @@ type SqlSelectRowObject<
 			: { [K in keyof R]: R[K] }
 		: never
 
+type CheckSqlValid<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Stmt extends string,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer Msg>] ? Msg : Stmt
+
+type CheckSqlMigrationSource<Db extends JsqlDatabaseShape | SqlParserError<string>, Source extends string> =
+	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M> ? M : Source
+
 export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 	/**
 	 * All rows at once.
 	 */
-	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
+	query<Stmt extends string>(
+		statement: Stmt extends CheckSqlValid<Db, Stmt> ? Stmt : CheckSqlValid<Db, Stmt>,
+	): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
 	query<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt,
+		statement: Stmt extends CheckSqlValid<Db, Stmt, Params> ? Stmt : CheckSqlValid<Db, Stmt, Params>,
 		params: ParamRuntimeValues<Params>,
 	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
 
@@ -232,9 +243,11 @@ export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 	/**
 	 * Row-by-row iteration
 	 */
-	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
+	stream<Stmt extends string>(
+		statement: Stmt extends CheckSqlValid<Db, Stmt> ? Stmt : CheckSqlValid<Db, Stmt>,
+	): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
 	stream<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt,
+		statement: Stmt extends CheckSqlValid<Db, Stmt, Params> ? Stmt : CheckSqlValid<Db, Stmt, Params>,
 		params: ParamRuntimeValues<Params>,
 	): AsyncIterable<SqlSelectRowObject<Db, Stmt, Params>>
 
