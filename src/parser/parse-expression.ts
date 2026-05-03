@@ -111,6 +111,11 @@ export type ScalarExprAst =
 	| { kind: "custom_op"; op: string; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "exp"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "mod"; left: ScalarExprAst; right: ScalarExprAst }
+	| {
+			kind: "function_call"
+			name: string
+			args: readonly (ScalarExprAst | { kind: "star" })[]
+	  }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
@@ -639,6 +644,93 @@ type ParseOrScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 				: never
 		: never
 
+type ResolveFunctionArgsList<
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Acc extends readonly ExprAtom[] = [],
+> = Args extends readonly [infer First, ...infer Rest extends readonly (ScalarExprAst | { kind: "star" })[]]
+	? First extends { kind: "star" }
+		? ResolveFunctionArgsList<Rest, Db, Scope, Params, readonly [...Acc, ExprOk<unknown, "unknown">]>
+		: First extends ScalarExprAst
+			? ResolveExpressionAST<First, Db, Scope, Params> extends infer Res
+				? Res extends SqlParserError<string>
+					? Res
+					: Res extends ExprAtom
+						? ResolveFunctionArgsList<Rest, Db, Scope, Params, readonly [...Acc, Res]>
+						: never
+				: never
+			: never
+	: Acc
+
+type ArgsTupleContainsStar<Args extends readonly (ScalarExprAst | { kind: "star" })[]> = Args extends readonly [
+	infer Head,
+	...infer Tail extends readonly (ScalarExprAst | { kind: "star" })[],
+]
+	? Head extends { kind: "star" }
+		? true
+		: ArgsTupleContainsStar<Tail>
+	: false
+
+type ResolveFunctionCall<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	L extends string = Lowercase<Name>,
+> =
+	ArgsTupleContainsStar<Args> extends true
+		? L extends "count"
+			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+				? ArgsRes extends SqlParserError<string>
+					? ArgsRes
+					: ArgsRes extends readonly ExprAtom[]
+						? ExprOk<number, "integer">
+						: never
+				: never
+			: SqlParserError<"`*` is only allowed as COUNT(*) argument">
+		: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+			? ArgsRes extends SqlParserError<string>
+				? ArgsRes
+				: ArgsRes extends readonly ExprAtom[]
+					? L extends "count"
+						? ExprOk<number, "integer">
+						: L extends "lower" | "upper"
+							? ArgsRes extends readonly [ExprOk<string, infer _S>, ...infer _Rest]
+								? ExprOk<string, "text">
+								: ArgsRes extends readonly []
+									? SqlParserError<"Function requires at least one argument">
+									: SqlParserError<"Function expects text argument">
+							: L extends "coalesce"
+								? ArgsRes extends readonly []
+									? SqlParserError<"coalesce() requires at least one argument">
+									: ArgsRes[0] extends ExprOk<infer T0, infer S0>
+										? ExprOk<T0, S0>
+										: ExprOk<unknown, "unknown">
+								: L extends "now"
+									? ArgsRes extends readonly []
+										? ExprOk<Date, "timestamp">
+										: SqlParserError<"now() takes no arguments">
+									: L extends "sum"
+										? ArgsRes extends readonly [ExprAtom, ...infer _R]
+											? ExprOk<number, "numeric">
+											: SqlParserError<"sum() requires an argument">
+										: L extends "uuid_generate_v4" | "gen_random_uuid"
+											? ArgsRes extends readonly []
+												? ExprOk<string, "uuid">
+												: SqlParserError<"This function takes no arguments">
+											: "functions" extends keyof Db
+												? Db["functions"] extends Record<string, unknown>
+													? L extends keyof Db["functions"]
+														? ExprOk<Db["functions"][L & keyof Db["functions"]], "unknown">
+														: SqlParserError<`Unknown function: ${Name}`>
+													: SqlParserError<`Unknown function: ${Name}`>
+												: SqlParserError<`Unknown function: ${Name}`>
+					: never
+			: never
+
 type ResolveCustomOp<
 	Op extends string,
 	L extends ScalarExprAst,
@@ -693,6 +785,13 @@ type ExpressionResolvers<
 		: never
 	mod: Ast extends { kind: "mod"; left: infer L extends ScalarExprAst; right: infer R extends ScalarExprAst }
 		? ResolveScalarExprAstPair<L, R, Db, Scope, Params>
+		: never
+	function_call: Ast extends {
+		kind: "function_call"
+		name: infer FnName extends string
+		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
+	}
+		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params>
 		: never
 	qualified_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
 	alias_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
@@ -1028,23 +1127,52 @@ type TryOperandIdentColumnRefBody<
 				: never
 			: never
 
-type TryOperandIdentOrCall<
+type ParseFunctionArgsAccum<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Env extends ExprParseEnv,
+	Acc extends readonly (ScalarExprAst | { kind: "star" })[],
 > =
+	PeekToken<Tokens> extends TokenKey<")">
+		? [SkipToken<Tokens>, Acc]
+		: ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E]
+			? E extends SqlParserError<string>
+				? [R1, E]
+				: E extends ScalarExprAst
+					? PeekToken<R1> extends TokenKey<")">
+						? [SkipToken<R1>, readonly [...Acc, E]]
+						: PeekToken<R1> extends TokenKey<",">
+							? ParseFunctionArgsAccum<SkipToken<R1>, Env, readonly [...Acc, E]>
+							: [R1, SqlParserError<"Expected `,` or `)` in argument list">]
+					: never
+			: never
+
+type ParseFunctionArgs<Tokens extends TokensList, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenKey<"*">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<")">
+				? [SkipToken<R1>, readonly [{ kind: "star" }]]
+				: [R1, SqlParserError<"Expected `)` after `*`">]
+			: never
+		: PeekToken<Tokens> extends TokenKey<")">
+			? [SkipToken<Tokens>, readonly []]
+			: ParseFunctionArgsAccum<Tokens, Env, readonly []>
+
+type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts]
 		? Parts extends readonly ["__ats__", string] | readonly ["__qts__", string, string]
 			? [Rm, SqlParserError<"Qualified table .* is only valid in SELECT lists">]
 			: PeekToken<Rm> extends TokenKey<"(">
-				? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends TokensList, infer Rs]
-					? Rs extends SqlParserError<string>
-						? [After, SqlParserError<"Unbalanced parentheses">]
-						: [After, SqlParserError<"Unsupported parenthesized expression">]
+				? ParseFunctionArgs<SkipToken<Rm>, Env> extends [infer After extends TokensList, infer Args]
+					? Args extends SqlParserError<string>
+						? [After, Args]
+						: Args extends readonly (ScalarExprAst | { kind: "star" })[]
+							? Parts extends readonly [infer FnName extends string]
+								? [After, { kind: "function_call"; name: FnName; args: Args }]
+								: [After, SqlParserError<"Qualified function names are not supported">]
+							: never
 					: never
 				: Parts extends ScalarIdentParts
-					? TryOperandIdentColumnRefBody<Rm, Parts, Db, Scope>
+					? TryOperandIdentColumnRefBody<Rm, Parts, Env["db"], Env["outerScope"]>
 					: never
 		: never
 
@@ -1778,13 +1906,14 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 					: [Rm, { kind: "qualified_table_star"; schema: Sch; table: Tab }]
 				: Parts extends ScalarIdentParts
 					? PeekToken<Rm> extends TokenKey<"(">
-						? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [
-								infer After extends TokensList,
-								infer Rs,
-							]
-							? Rs extends SqlParserError<string>
-								? [After, SqlParserError<"Unbalanced parentheses">]
-								: [After, SqlParserError<"Unsupported parenthesized expression">]
+						? ParseFunctionArgs<SkipToken<Rm>, Env> extends [infer After extends TokensList, infer Args]
+							? Args extends SqlParserError<string>
+								? [After, Args]
+								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
+									? Parts extends readonly [infer FnName extends string]
+										? [After, { kind: "function_call"; name: FnName; args: Args }]
+										: [After, SqlParserError<"Qualified function names are not supported">]
+									: never
 							: never
 						: PeekToken<Rm> extends infer Pa
 							? Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
@@ -1898,7 +2027,7 @@ type TryValueOperand<
 										: never
 									: never
 								: PeekToken<Tokens> extends TokenIdent<string>
-									? TryOperandIdentOrCall<Tokens, Db, Scope, Params>
+									? TryOperandIdentOrCall<Tokens, { db: Db; params: Params; outerScope: Scope }>
 									: SkipToken<Tokens> extends infer Rbad extends TokensList
 										? [Rbad, SqlParserError<"Unexpected token">]
 										: never

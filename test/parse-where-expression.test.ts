@@ -125,9 +125,9 @@ type _wAndBad = Expect<Extends<Tuple2At1<WAndBad>, SqlParserError<"Unknown quali
 type WNotBad = ParseWhereExpression<ParseSqlTokens<`not users.nope = 'u'`>, DbUsers, UsersScope>
 type _wNotBad = Expect<Extends<Tuple2At1<WNotBad>, SqlParserError<"Unknown qualified column">>>
 
-/** Function-like call on RHS: unbalanced parens inside skipped region. */
+/** Function-like call on RHS: missing closing `)` in argument list. */
 type WFuncUnbal = ParseWhereExpression<ParseSqlTokens<`users.id = lower( 'x'`>, DbUsers, UsersScope>
-type _wFuncUnbal = Expect<Extends<Tuple2At1<WFuncUnbal>, SqlParserError<"Unbalanced parentheses">>>
+type _wFuncUnbal = Expect<Extends<Tuple2At1<WFuncUnbal>, SqlParserError<"Expected `,` or `)` in argument list">>>
 
 /** Success: comparison operators and literals. */
 type WNe = ParseWhereExpression<ParseSqlTokens<`users.id <> 'v'`>, DbUsers, UsersScope>

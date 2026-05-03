@@ -328,7 +328,6 @@ const serviceWordsMap = {
 	natural: true,
 	next: true,
 	not: true,
-	now: true,
 	null: true,
 	offset: true,
 	on: true,
