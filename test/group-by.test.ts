@@ -104,6 +104,27 @@ type TGroupCountStar = ParseSqlStatement<
 
 type _groupCountStar = Expect<Extends<Tuple3At2<TGroupCountStar>, JsqlSelectStatementResult>>
 
+/** Trailing `ORDER BY` / `LIMIT` / `OFFSET` after `GROUP BY` must not drop grouped-projection validation. */
+type TGroupOrderLimit = ParseSqlStatement<
+	ParseSqlTokens<`select region from sales group by region order by region limit 10 offset 2;`>,
+	DbGroup
+>
+
+type _groupOrderLimit = Expect<Extends<Tuple3At2<TGroupOrderLimit>, JsqlSelectStatementResult>>
+
+/** Same trail but projection violates grouped rules — still error. */
+type TGroupOrderLimitBad = ParseSqlStatement<
+	ParseSqlTokens<`select region, amount from sales group by region order by region limit 1;`>,
+	DbGroup
+>
+
+type _groupOrderLimitBad = Expect<
+	Extends<
+		Tuple3At2<TGroupOrderLimitBad>,
+		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
+	>
+>
+
 describe("GROUP BY / HAVING (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

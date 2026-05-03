@@ -48,6 +48,11 @@ type _arrayCtorOnly = Expect<
 	Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: readonly unknown[] } }>
 >
 
+/** Empty `ARRAY[]` constructor (typed as empty readonly tuple). */
+type TArrayEmpty = ParseSqlStatement<ParseSqlTokens<`select array[] as e from sales;`>, DbTiny>
+
+type _arrayEmpty = Expect<Extends<Tuple3At2<TArrayEmpty>, { kind: "select"; columns: { e: readonly unknown[] } }>>
+
 describe("PostgreSQL ARRAY constructor + containment / overlap ops (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
