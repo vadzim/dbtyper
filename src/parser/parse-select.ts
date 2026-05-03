@@ -356,6 +356,75 @@ type ParseOptionalPagingTokens<
 					: never
 				: [Tokens, null]
 
+type ParseGroupByTerms<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseOrderByScalarExpr<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
+		? E1 extends SqlParserError<string>
+			? [R1, E1]
+			: PeekToken<R1> extends TokenKey<",">
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? ParseGroupByTerms<R2, Db, Scope, Params>
+					: never
+				: [R1, null]
+		: never
+
+type ParseOptionalHavingClause<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"having">
+		? SkipToken<Tokens> extends infer Rh extends TokensList
+			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends TokensList, infer He]
+				? He extends SqlParserError<string>
+					? [Rhw, He]
+					: [Rhw, null]
+				: never
+			: never
+		: [Tokens, null]
+
+type ParseOptionalGroupHaving<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"group">
+		? SkipToken<Tokens> extends infer R0 extends TokensList
+			? PeekToken<R0> extends TokenKey<"by">
+				? SkipToken<R0> extends infer R1 extends TokensList
+					? ParseGroupByTerms<R1, Db, Scope, Params> extends [infer R2 extends TokensList, infer Eg]
+						? Eg extends SqlParserError<string>
+							? [R2, Eg]
+							: ParseOptionalHavingClause<R2, Db, Scope, Params>
+						: never
+					: never
+				: [R0, SqlParserError<"Expected BY after GROUP">]
+			: never
+		: ParseOptionalHavingClause<Tokens, Db, Scope, Params>
+
+type SelectAfterWhereAndGroupHaving<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Res,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends [infer T1 extends TokensList, infer Gh]
+		? Gh extends SqlParserError<string>
+			? [T1, Db, Gh]
+			: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
+				? Te extends SqlParserError<string>
+					? [Rt, Db, Te]
+					: FinishSelectTerminator<Rt, Db, Res>
+				: never
+		: never
+
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
 type ParseSelectTrailingClauses<
 	Tokens extends TokensList,
@@ -394,18 +463,10 @@ type FinishSelectStatement<
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, Db, We]
-					: ParseSelectTrailingClauses<Rw, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
-						? Te extends SqlParserError<string>
-							? [Rt, Db, Te]
-							: FinishSelectTerminator<Rt, Db, Res>
-						: never
+					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params>
 				: never
 			: never
-		: ParseSelectTrailingClauses<Tokens, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
-			? Te extends SqlParserError<string>
-				? [Rt, Db, Te]
-				: FinishSelectTerminator<Rt, Db, Res>
-			: never
+		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params>
 
 type ParseRawSelectList<
 	Tokens extends TokensList,
@@ -877,6 +938,8 @@ type ParseAliasAfterTable<
 		| TokenKey<"limit">
 		| TokenKey<"offset">
 		| TokenKey<"fetch">
+		| TokenKey<"group">
+		| TokenKey<"having">
 		| TokenKey<")">
 		| TokenKey<";">
 		| TokenEot
