@@ -41,10 +41,12 @@ export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
 export type SqlDatabase<
 	DefaultSchema extends string = "public",
 	ScalarTypes extends Record<string, unknown> = DefaultSqlScalarTypeMap,
+	Functions extends Record<string, unknown> = Record<string, never>,
 > = {
 	defaultSchema: DefaultSchema
 	schemas: {}
 	scalarTypes: ScalarTypes
+	functions?: Functions
 }
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
@@ -62,7 +64,7 @@ export function sqlMigrations<D extends SqlDriver<Record<string, unknown>>, cons
 	const defaultSchema = config.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
-		FlattenedJsqlDatabase<SqlDatabase<DS, InferScalarTypesFromDriver<D>>>
+		FlattenedJsqlDatabase<SqlDatabase<DS, InferScalarTypesFromDriver<D>, Record<string, never>>>
 	>
 	return result
 }
@@ -150,7 +152,7 @@ export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 					}
 				: never
 			scalarTypes: Db["scalarTypes"]
-		}
+		} & Pick<Db, Extract<keyof Db, "functions">>
 	: Db
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
