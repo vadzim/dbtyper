@@ -1,5 +1,12 @@
 # dbtyper Implementation Log
 
+## 2026-05-03 — Implementation checkpoint
+
+- Landed **`functions?:`** on **`JsqlDatabaseShape`**, **`function_call`** parse + **`ResolveFunctionCall`** (built-ins + **`Db.functions`** lookup). Removed lexer **`now`** keyword so **`now()`** parses as an identifier/function.
+- **`InferSqlErrors`** (**`InferSqlErrors` → `SqlParserError<M> | null`**, tuple form avoids widen). **`CheckSqlValid`** wires **`sqlMigrations.apply`**, **`DataBase.query`**, **`DataBase.stream`** parameter constraints.
+- **`GROUP BY`** / **`HAVING`** clause chain before **`ORDER BY`** (**`parse-select.ts`**). Tests: **`test/function-registry.test.ts`**, **`test/group-by.test.ts`**.
+- **Not done in this pass:** correlated subquery scope hardening, **`LATERAL`**, PostgreSQL array MVP (**`array_index`** / operators). Prior WIP remains in **`git stash`** (`agent-wip-broken`, `agent-wip-tests-utils`).
+
 ## 2026-05-03 — Maintainer decisions (docs)
 
 Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.md`** / **`docs/CURRENT.md`**:
