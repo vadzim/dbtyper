@@ -36,6 +36,18 @@ type _arrayOpsBool = Expect<
 	>
 >
 
+/** Chained subscript: `ARRAY[1,2,3][2]` parses as nested `array_index`. */
+type TArrayChainedIndex = ParseSqlStatement<ParseSqlTokens<`select array[1,2,3][2] as el from sales;`>, DbTiny>
+
+type _arrayChainedIndex = Expect<Extends<Tuple3At2<TArrayChainedIndex>, { kind: "select"; columns: { el: unknown } }>>
+
+/** Unary `ARRAY` constructor only (no `@>` / `&&`). */
+type TArrayCtorOnly = ParseSqlStatement<ParseSqlTokens<`select array[true,false] as flags from sales;`>, DbTiny>
+
+type _arrayCtorOnly = Expect<
+	Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: readonly unknown[] } }>
+>
+
 describe("PostgreSQL ARRAY constructor + containment / overlap ops (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
