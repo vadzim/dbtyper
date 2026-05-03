@@ -32,6 +32,12 @@ type _customFn = Expect<Extends<Tuple3At2<TCustomFn>, { kind: "select"; columns:
 type TCountStar = ParseSqlStatement<ParseSqlTokens<`select count(*) from t`>, DbFns>
 type _countStar = Expect<Extends<Tuple3At2<TCountStar>, { kind: "select"; columns: { "?column?": number } }>>
 
+type TCountOne = ParseSqlStatement<ParseSqlTokens<`select count(1) from t`>, DbFns>
+type _countOne = Expect<Extends<Tuple3At2<TCountOne>, { kind: "select"; columns: { "?column?": number } }>>
+
+type TUuidV4 = ParseSqlStatement<ParseSqlTokens<`select uuid_generate_v4() from t`>, DbFns>
+type _uuidV4 = Expect<Extends<Tuple3At2<TUuidV4>, { kind: "select"; columns: { "?column?": string } }>>
+
 type TLower = ParseSqlStatement<ParseSqlTokens<`select lower('a') from t`>, DbFns>
 type _lower = Expect<Extends<Tuple3At2<TLower>, { kind: "select"; columns: { "?column?": string } }>>
 

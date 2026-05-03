@@ -40,6 +40,12 @@ type _i4 = Expect<Extends<I4, SqlParserError<string>>>
 type I5 = InferSqlErrors<DbFns, `delete from u`>
 type _i5 = Expect<Extends<I5, SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">>>
 
+type I6 = InferSqlErrors<DbFns, `with c as (select u.id as cid from u) select c.cid from u`>
+type _i6 = Expect<Extends<I6, null>>
+
+type I7 = InferSqlErrors<DbFns, `select :ghost from u`>
+type _i7 = Expect<Extends<I7, SqlParserError<string>>>
+
 /** {@link SqlSelectRow} matches projection after successful inference. */
 type Row1 = SqlSelectRow<DbFns, `select custom_fn(n) as cf from u`>
 type _row1 = Expect<Extends<Row1, { cf: number }>>

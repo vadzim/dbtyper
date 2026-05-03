@@ -653,6 +653,18 @@ type _selectPgCastBoolIntErr = Expect<
 	Extends<Tuple3At2<TSelectPgCastBoolIntErr>, SqlParserError<"Invalid cast to integer">>
 >
 
+/** Two **`WITH`** CTEs (parser must accept a comma-separated CTE list before the main **`SELECT`**). */
+type TWithTwoCtes = ParseSqlStatement<
+	ParseSqlTokens<`
+with
+  a as (select users.id as uid from users),
+  b as (select users.name as n from users)
+select users.id from users;
+`>,
+	DbJoinDefaultAndExplicit
+>
+type _withTwoCtes = Expect<Extends<Tuple3At2<TWithTwoCtes>, { kind: "select"; columns: { id: string } }>>
+
 describe("parse-select (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
