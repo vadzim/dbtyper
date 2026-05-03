@@ -39,6 +39,24 @@ type THavingBad = ParseSqlStatement<
 
 type _havingBad = Expect<Extends<Tuple3At2<THavingBad>, SqlParserError<string>>>
 
+type TGroupProjViol = ParseSqlStatement<ParseSqlTokens<`select region, amount from sales group by region;`>, DbGroup>
+
+type _groupProjViol = Expect<
+	Extends<
+		Tuple3At2<TGroupProjViol>,
+		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
+	>
+>
+
+type TGroupProjAggOk = ParseSqlStatement<
+	ParseSqlTokens<`select region, sum(amount) as ts from sales group by region;`>,
+	DbGroup
+>
+
+type _groupProjAggOk = Expect<
+	Extends<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { ts: number; region: string } }>
+>
+
 describe("GROUP BY / HAVING (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

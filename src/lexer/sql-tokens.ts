@@ -326,6 +326,7 @@ const serviceWordsMap = {
 	like: true,
 	limit: true,
 	natural: true,
+	array: true,
 	next: true,
 	not: true,
 	null: true,

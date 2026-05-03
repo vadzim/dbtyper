@@ -157,7 +157,14 @@ type ParseSelectAfterDistinct<
 													> extends infer Res
 													? Res extends SqlParserError<infer _Msg extends string>
 														? [R, Db, Res]
-														: FinishSelectStatement<R, Db, Res, JoinScopeOnly<Tail>, Params>
+														: FinishSelectStatement<
+																R,
+																Db,
+																Res,
+																JoinScopeOnly<Tail>,
+																Params,
+																Items
+															>
 													: never
 												: never
 										: never
@@ -356,23 +363,93 @@ type ParseOptionalPagingTokens<
 					: never
 				: [Tokens, null]
 
-type ParseGroupByTerms<
-	Tokens extends TokensList,
+type SelectGroupClauseMeta = {
+	readonly have_explicit_group_by: boolean
+	readonly has_having_clause: boolean
+	readonly group_key_asts: readonly ScalarExprAst[]
+}
+
+type GroupByAstResolution<
+	R1 extends TokensList,
+	Ast extends ScalarExprAst,
+	Acc extends readonly ScalarExprAst[],
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseOrderByScalarExpr<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
-		? E1 extends SqlParserError<string>
-			? [R1, E1]
-			: PeekToken<R1> extends TokenKey<",">
-				? SkipToken<R1> extends infer R2 extends TokensList
-					? ParseGroupByTerms<R2, Db, Scope, Params>
-					: never
-				: [R1, null]
+	ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Rv
+		? Rv extends SqlParserError<string>
+			? readonly [R1, { readonly error: Rv }]
+			: Rv extends ExprAtom
+				? PeekToken<R1> extends TokenKey<",">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? ParseGroupByTermsAcc<R2, Db, Scope, Params, readonly [...Acc, Ast]>
+						: never
+					: readonly [R1, { readonly keys: readonly [...Acc, Ast] }]
+				: readonly [R1, { readonly error: SqlParserError<"Invalid GROUP BY expression"> }]
 		: never
 
-type ParseOptionalHavingClause<
+type ParseGroupByTermsAcc<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Acc extends readonly ScalarExprAst[] = readonly [],
+> =
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+		infer R1 extends TokensList,
+		infer Ast,
+	]
+		? Ast extends SqlParserError<string>
+			? readonly [R1, { readonly error: Ast }]
+			: Ast extends ScalarExprAst
+				? GroupByAstResolution<R1, Ast, Acc, Db, Scope, Params>
+				: readonly [R1, { readonly error: SqlParserError<"Invalid GROUP BY expression"> }]
+		: never
+
+/** After `GROUP BY expr[, …]`; optionally parse `HAVING`. */
+type ParseOptionalHavingClauseAfterGroupTerms<
+	R2 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Gbs extends readonly ScalarExprAst[],
+> =
+	PeekToken<R2> extends TokenKey<"having">
+		? SkipToken<R2> extends infer Rh extends TokensList
+			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends TokensList, infer He]
+				? He extends SqlParserError<string>
+					? readonly [
+							Rhw,
+							He,
+							{
+								have_explicit_group_by: false
+								has_having_clause: false
+								group_key_asts: readonly []
+							},
+						]
+					: readonly [
+							Rhw,
+							null,
+							{
+								have_explicit_group_by: true
+								has_having_clause: true
+								group_key_asts: Gbs
+							},
+						]
+				: never
+			: never
+		: readonly [
+				R2,
+				null,
+				{
+					have_explicit_group_by: true
+					has_having_clause: false
+					group_key_asts: Gbs
+				},
+			]
+
+type ParseOptionalHavingWithoutGroupClause<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -382,11 +459,59 @@ type ParseOptionalHavingClause<
 		? SkipToken<Tokens> extends infer Rh extends TokensList
 			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends TokensList, infer He]
 				? He extends SqlParserError<string>
-					? [Rhw, He]
-					: [Rhw, null]
+					? readonly [
+							Rhw,
+							He,
+							{
+								have_explicit_group_by: false
+								has_having_clause: false
+								group_key_asts: readonly []
+							},
+						]
+					: readonly [
+							Rhw,
+							null,
+							{
+								have_explicit_group_by: false
+								has_having_clause: true
+								group_key_asts: readonly []
+							},
+						]
 				: never
 			: never
-		: [Tokens, null]
+		: readonly [
+				Tokens,
+				null,
+				{
+					have_explicit_group_by: false
+					has_having_clause: false
+					group_key_asts: readonly []
+				},
+			]
+
+type EmptyGroupClauseMetaPlain = {
+	have_explicit_group_by: false
+	has_having_clause: false
+	group_key_asts: readonly []
+}
+
+type ParseGroupTailAfterTerms<
+	R2 extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Outcome,
+> = Outcome extends { readonly error: infer Ge extends SqlParserError<string> }
+	? readonly [R2, Ge, EmptyGroupClauseMetaPlain]
+	: Outcome extends { readonly keys: infer Gbs extends readonly ScalarExprAst[] }
+		? ParseOptionalHavingClauseAfterGroupTerms<R2, Db, Scope, Params, Gbs> extends readonly [
+				infer R3 extends TokensList,
+				infer He,
+				infer Meta extends SelectGroupClauseMeta,
+			]
+			? readonly [R3, He, Meta]
+			: never
+		: never
 
 type ParseOptionalGroupHaving<
 	Tokens extends TokensList,
@@ -398,15 +523,571 @@ type ParseOptionalGroupHaving<
 		? SkipToken<Tokens> extends infer R0 extends TokensList
 			? PeekToken<R0> extends TokenKey<"by">
 				? SkipToken<R0> extends infer R1 extends TokensList
-					? ParseGroupByTerms<R1, Db, Scope, Params> extends [infer R2 extends TokensList, infer Eg]
-						? Eg extends SqlParserError<string>
-							? [R2, Eg]
-							: ParseOptionalHavingClause<R2, Db, Scope, Params>
+					? ParseGroupByTermsAcc<R1, Db, Scope, Params> extends infer GB
+						? GB extends readonly [infer R2 extends TokensList, infer Outcome]
+							? ParseGroupTailAfterTerms<R2, Db, Scope, Params, Outcome>
+							: never
 						: never
 					: never
-				: [R0, SqlParserError<"Expected BY after GROUP">]
+				: readonly [R0, SqlParserError<"Expected BY after GROUP">, EmptyGroupClauseMetaPlain]
 			: never
-		: ParseOptionalHavingClause<Tokens, Db, Scope, Params>
+		: ParseOptionalHavingWithoutGroupClause<Tokens, Db, Scope, Params>
+
+type KnownAggregateName<N extends string> =
+	Lowercase<N> extends infer L extends string
+		? L extends "count" | "sum" | "avg" | "min" | "max"
+			? true
+			: false
+		: false
+
+type TypeBoolAnd<A, B> = A extends true ? (B extends true ? true : false) : false
+
+type AstColPartsMatchGroupKey<KeyAst extends ScalarExprAst, Parts extends ScalarIdentParts> = KeyAst extends {
+	kind: "col"
+	parts: infer Q extends ScalarIdentParts
+}
+	? [Q] extends [Parts]
+		? true
+		: [Parts] extends [Q]
+			? true
+			: false
+	: false
+
+type GroupKeySetContainsColParts<
+	Parts extends ScalarIdentParts,
+	Keys extends readonly ScalarExprAst[],
+> = Keys extends readonly [infer K extends ScalarExprAst, ...infer Rest extends readonly ScalarExprAst[]]
+	? AstColPartsMatchGroupKey<K, Parts> extends true
+		? true
+		: GroupKeySetContainsColParts<Parts, Rest>
+	: false
+
+type FnArgsGroupedCheck<
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	GroupKeys extends readonly ScalarExprAst[],
+	InsideAgg extends boolean,
+> = Args extends readonly [infer A, ...infer R extends readonly (ScalarExprAst | { kind: "star" })[]]
+	? A extends { kind: "star" }
+		? FnArgsGroupedCheck<R, GroupKeys, InsideAgg>
+		: A extends ScalarExprAst
+			? ExprValidInsideGroupedSelection<A, GroupKeys, InsideAgg> extends true
+				? FnArgsGroupedCheck<R, GroupKeys, InsideAgg>
+				: false
+			: FnArgsGroupedCheck<R, GroupKeys, InsideAgg>
+	: true
+
+type ExprValidInsideGroupedSelection<
+	Ast extends ScalarExprAst,
+	GroupKeys extends readonly ScalarExprAst[],
+	InsideAgg extends boolean,
+> = InsideAgg extends true
+	? true
+	: Ast extends { kind: "true" } | { kind: "false" } | { kind: "sql_null" } | { kind: "string" } | { kind: "number" }
+		? true
+		: Ast extends { kind: "param" }
+			? false
+			: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+				? GroupKeySetContainsColParts<P, GroupKeys>
+				: Ast extends {
+							kind: "function_call"
+							name: infer N extends string
+							args: infer Args extends readonly (ScalarExprAst | { kind: "star" })[]
+					  }
+					? KnownAggregateName<N> extends true
+						? FnArgsGroupedCheck<Args, GroupKeys, true>
+						: FnArgsGroupedCheck<Args, GroupKeys, false>
+					: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
+						? ExprValidInsideGroupedSelection<I, GroupKeys, false>
+						: Ast extends {
+									kind: "add"
+									left: infer L extends ScalarExprAst
+									right: infer R extends ScalarExprAst
+							  }
+							? TypeBoolAnd<
+									ExprValidInsideGroupedSelection<L, GroupKeys, false>,
+									ExprValidInsideGroupedSelection<R, GroupKeys, false>
+								>
+							: Ast extends {
+										kind: "sub"
+										left: infer Ls extends ScalarExprAst
+										right: infer Rs extends ScalarExprAst
+								  }
+								? TypeBoolAnd<
+										ExprValidInsideGroupedSelection<Ls, GroupKeys, false>,
+										ExprValidInsideGroupedSelection<Rs, GroupKeys, false>
+									>
+								: Ast extends {
+											kind: "mul"
+											left: infer Lm extends ScalarExprAst
+											right: infer Rm extends ScalarExprAst
+									  }
+									? TypeBoolAnd<
+											ExprValidInsideGroupedSelection<Lm, GroupKeys, false>,
+											ExprValidInsideGroupedSelection<Rm, GroupKeys, false>
+										>
+									: Ast extends {
+												kind: "exp" | "mod"
+												left: infer Le extends ScalarExprAst
+												right: infer Re extends ScalarExprAst
+										  }
+										? TypeBoolAnd<
+												ExprValidInsideGroupedSelection<Le, GroupKeys, false>,
+												ExprValidInsideGroupedSelection<Re, GroupKeys, false>
+											>
+										: Ast extends { kind: "not"; inner: infer In extends ScalarExprAst }
+											? ExprValidInsideGroupedSelection<In, GroupKeys, false>
+											: Ast extends {
+														kind: "and" | "or"
+														left: infer La extends ScalarExprAst
+														right: infer Ra extends ScalarExprAst
+												  }
+												? TypeBoolAnd<
+														ExprValidInsideGroupedSelection<La, GroupKeys, false>,
+														ExprValidInsideGroupedSelection<Ra, GroupKeys, false>
+													>
+												: Ast extends {
+															kind: "cmp"
+															left: infer Lc extends ScalarExprAst
+															right: infer Rc extends ScalarExprAst
+													  }
+													? TypeBoolAnd<
+															ExprValidInsideGroupedSelection<Lc, GroupKeys, false>,
+															ExprValidInsideGroupedSelection<Rc, GroupKeys, false>
+														>
+													: Ast extends {
+																kind: "between"
+																expr: infer Eb extends ScalarExprAst
+																low: infer Lb extends ScalarExprAst
+																high: infer Hb extends ScalarExprAst
+														  }
+														? TypeBoolAnd<
+																ExprValidInsideGroupedSelection<Eb, GroupKeys, false>,
+																TypeBoolAnd<
+																	ExprValidInsideGroupedSelection<
+																		Lb,
+																		GroupKeys,
+																		false
+																	>,
+																	ExprValidInsideGroupedSelection<
+																		Hb,
+																		GroupKeys,
+																		false
+																	>
+																>
+															>
+														: Ast extends {
+																	kind: "like" | "pg_regex_match"
+																	expr: infer Ex extends ScalarExprAst
+																	pattern: infer Pat extends ScalarExprAst
+															  }
+															? TypeBoolAnd<
+																	ExprValidInsideGroupedSelection<
+																		Ex,
+																		GroupKeys,
+																		false
+																	>,
+																	ExprValidInsideGroupedSelection<
+																		Pat,
+																		GroupKeys,
+																		false
+																	>
+																>
+															: Ast extends {
+																		kind: "is_null" | "is_not_null"
+																		expr: infer En extends ScalarExprAst
+																  }
+																? ExprValidInsideGroupedSelection<En, GroupKeys, false>
+																: Ast extends {
+																			kind: "in_list"
+																			expr: infer El extends ScalarExprAst
+																			items: infer Ins extends
+																				readonly ScalarExprAst[]
+																	  }
+																	? ExprValidInsideGroupedSelection<
+																			El,
+																			GroupKeys,
+																			false
+																		> extends true
+																		? Ins extends readonly [
+																				infer HIn extends ScalarExprAst,
+																				...infer TIn extends
+																					readonly ScalarExprAst[],
+																			]
+																			? ExprValidInsideGroupedSelection<
+																					HIn,
+																					GroupKeys,
+																					false
+																				> extends true
+																				? TIn extends readonly []
+																					? true
+																					: ExprValidInsideGroupedSelection<
+																							{
+																								kind: "in_list"
+																								expr: El
+																								items: TIn
+																							},
+																							GroupKeys,
+																							false
+																						>
+																				: false
+																			: true
+																		: false
+																	: Ast extends {
+																				kind: "pg_cast" | "sql_cast"
+																				expr: infer Xc extends ScalarExprAst
+																		  }
+																		? ExprValidInsideGroupedSelection<
+																				Xc,
+																				GroupKeys,
+																				false
+																			>
+																		: Ast extends {
+																					kind: "case_simple"
+																					discriminant: infer Dsc extends
+																						ScalarExprAst
+																					arms: infer Arms extends readonly {
+																						when: ScalarExprAst
+																						then: ScalarExprAst
+																					}[]
+																					else_: infer El extends
+																						ScalarExprAst | null
+																			  }
+																			? CaseArmsGroupedValid<
+																					Arms,
+																					GroupKeys
+																				> extends true
+																				? ExprValidInsideGroupedSelection<
+																						Dsc,
+																						GroupKeys,
+																						false
+																					> extends true
+																					? El extends ScalarExprAst
+																						? ExprValidInsideGroupedSelection<
+																								El,
+																								GroupKeys,
+																								false
+																							>
+																						: true
+																					: false
+																				: false
+																			: Ast extends {
+																						kind: "case_searched"
+																						arms: infer Arms2 extends
+																							readonly {
+																								when: ScalarExprAst
+																								then: ScalarExprAst
+																							}[]
+																						else_: infer El2 extends
+																							ScalarExprAst | null
+																				  }
+																				? CaseArmsGroupedValid<
+																						Arms2,
+																						GroupKeys
+																					> extends true
+																					? El2 extends ScalarExprAst
+																						? ExprValidInsideGroupedSelection<
+																								El2,
+																								GroupKeys,
+																								false
+																							>
+																						: true
+																					: false
+																				: Ast extends {
+																							kind: "array_index"
+																							base: infer B extends
+																								ScalarExprAst
+																							index: infer Id extends
+																								ScalarExprAst
+																					  }
+																					? TypeBoolAnd<
+																							ExprValidInsideGroupedSelection<
+																								B,
+																								GroupKeys,
+																								false
+																							>,
+																							ExprValidInsideGroupedSelection<
+																								Id,
+																								GroupKeys,
+																								false
+																							>
+																						>
+																					: Ast extends {
+																								kind: "array_ctor"
+																								elements: infer Els extends
+																									readonly ScalarExprAst[]
+																						  }
+																						? ArrayCtorEltsGroupedValid<
+																								Els,
+																								GroupKeys
+																							>
+																						: Ast extends {
+																									kind: "custom_op"
+																									left: infer Lc extends
+																										ScalarExprAst
+																									right: infer Rc extends
+																										ScalarExprAst
+																							  }
+																							? TypeBoolAnd<
+																									ExprValidInsideGroupedSelection<
+																										Lc,
+																										GroupKeys,
+																										false
+																									>,
+																									ExprValidInsideGroupedSelection<
+																										Rc,
+																										GroupKeys,
+																										false
+																									>
+																								>
+																							: Ast extends {
+																										kind:
+																											| "in_subquery"
+																											| "in_subquery_pending"
+																										expr: infer Ie extends
+																											ScalarExprAst
+																								  }
+																								? ExprValidInsideGroupedSelection<
+																										Ie,
+																										GroupKeys,
+																										false
+																									>
+																								: Ast extends {
+																											kind:
+																												| "scalar_subquery"
+																												| "scalar_subquery_pending"
+																												| "exists_subquery"
+																												| "exists_subquery_pending"
+																									  }
+																									? true
+																									: false
+
+type CaseArmsGroupedValid<
+	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+	GroupKeys extends readonly ScalarExprAst[],
+> = Arms extends readonly [
+	infer Arm extends { when: ScalarExprAst; then: ScalarExprAst },
+	...infer Rest extends readonly {
+		when: ScalarExprAst
+		then: ScalarExprAst
+	}[],
+]
+	? TypeBoolAnd<
+			TypeBoolAnd<
+				ExprValidInsideGroupedSelection<Arm["when"], GroupKeys, false>,
+				ExprValidInsideGroupedSelection<Arm["then"], GroupKeys, false>
+			>,
+			Rest extends readonly [] ? true : CaseArmsGroupedValid<Rest, GroupKeys>
+		>
+	: true
+
+type ArrayCtorEltsGroupedValid<
+	Els extends readonly ScalarExprAst[],
+	GroupKeys extends readonly ScalarExprAst[],
+> = Els extends readonly [infer H extends ScalarExprAst, ...infer T extends readonly ScalarExprAst[]]
+	? ExprValidInsideGroupedSelection<H, GroupKeys, false> extends true
+		? T extends readonly []
+			? true
+			: ArrayCtorEltsGroupedValid<T, GroupKeys>
+		: false
+	: true
+
+type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
+	kind: "function_call"
+	name: infer N extends string
+}
+	? KnownAggregateName<N> extends true
+		? true
+		: false
+	: Ast extends {
+				kind: "add" | "sub" | "mul" | "exp" | "mod"
+				left: infer L extends ScalarExprAst
+				right: infer R extends ScalarExprAst
+		  }
+		? AstContainsAggregateCall<L> extends true
+			? true
+			: AstContainsAggregateCall<R>
+		: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
+			? AstContainsAggregateCall<I>
+			: Ast extends { kind: "not"; inner: infer In extends ScalarExprAst }
+				? AstContainsAggregateCall<In>
+				: Ast extends {
+							kind: "and" | "or" | "cmp"
+							left: infer La extends ScalarExprAst
+							right: infer Ra extends ScalarExprAst
+					  }
+					? AstContainsAggregateCall<La> extends true
+						? true
+						: AstContainsAggregateCall<Ra>
+					: Ast extends {
+								kind: "between"
+								expr: infer Eb extends ScalarExprAst
+								low: infer Lb extends ScalarExprAst
+								high: infer Hb extends ScalarExprAst
+						  }
+						? AstContainsAggregateCall<Eb> extends true
+							? true
+							: AstContainsAggregateCall<Lb> extends true
+								? true
+								: AstContainsAggregateCall<Hb>
+						: Ast extends {
+									kind: "like" | "pg_regex_match"
+									expr: infer Ex extends ScalarExprAst
+									pattern: infer Pat extends ScalarExprAst
+							  }
+							? AstContainsAggregateCall<Ex> extends true
+								? true
+								: AstContainsAggregateCall<Pat>
+							: Ast extends { kind: "is_null" | "is_not_null"; expr: infer En extends ScalarExprAst }
+								? AstContainsAggregateCall<En>
+								: Ast extends {
+											kind: "in_list"
+											expr: infer El extends ScalarExprAst
+											items: infer Ins extends readonly ScalarExprAst[]
+									  }
+									? AstContainsAggregateCall<El> extends true
+										? true
+										: Ins extends readonly [
+													infer H extends ScalarExprAst,
+													...infer T extends readonly ScalarExprAst[],
+											  ]
+											? AstContainsAggregateCall<H> extends true
+												? true
+												: T extends readonly []
+													? false
+													: AstContainsAggregateCall<{ kind: "in_list"; expr: El; items: T }>
+											: false
+									: Ast extends {
+												kind: "pg_cast" | "sql_cast"
+												expr: infer Ex2 extends ScalarExprAst
+										  }
+										? AstContainsAggregateCall<Ex2>
+										: Ast extends {
+													kind: "case_simple"
+													discriminant: infer D extends ScalarExprAst
+													arms: infer Arms extends readonly {
+														when: ScalarExprAst
+														then: ScalarExprAst
+													}[]
+													else_: infer Elc extends ScalarExprAst | null
+											  }
+											? AstContainsAggregateCall<D> extends true
+												? true
+												: CaseArmsContainAgg<Arms> extends true
+													? true
+													: Elc extends ScalarExprAst
+														? AstContainsAggregateCall<Elc>
+														: false
+											: Ast extends {
+														kind: "case_searched"
+														arms: infer Arms2 extends readonly {
+															when: ScalarExprAst
+															then: ScalarExprAst
+														}[]
+														else_: infer Elc2 extends ScalarExprAst | null
+												  }
+												? CaseArmsContainAgg<Arms2> extends true
+													? true
+													: Elc2 extends ScalarExprAst
+														? AstContainsAggregateCall<Elc2>
+														: false
+												: Ast extends {
+															kind: "array_index"
+															base: infer B extends ScalarExprAst
+															index: infer Id extends ScalarExprAst
+													  }
+													? AstContainsAggregateCall<B> extends true
+														? true
+														: AstContainsAggregateCall<Id>
+													: Ast extends {
+																kind: "array_ctor"
+																elements: infer Els extends readonly ScalarExprAst[]
+														  }
+														? ArrayCtorContainsAgg<Els>
+														: Ast extends {
+																	kind: "custom_op"
+																	left: infer Lc extends ScalarExprAst
+																	right: infer Rc extends ScalarExprAst
+															  }
+															? AstContainsAggregateCall<Lc> extends true
+																? true
+																: AstContainsAggregateCall<Rc>
+															: Ast extends {
+																		kind:
+																			| "in_subquery"
+																			| "in_subquery_pending"
+																			| "scalar_subquery_pending"
+																			| "exists_subquery_pending"
+																		expr?: infer Lex extends ScalarExprAst
+																  }
+																? Lex extends ScalarExprAst
+																	? AstContainsAggregateCall<Lex>
+																	: false
+																: false
+
+type CaseArmsContainAgg<Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[]> = Arms extends readonly [
+	infer Arm extends { when: ScalarExprAst; then: ScalarExprAst },
+	...infer Rest extends readonly {
+		when: ScalarExprAst
+		then: ScalarExprAst
+	}[],
+]
+	? AstContainsAggregateCall<Arm["when"]> extends true
+		? true
+		: AstContainsAggregateCall<Arm["then"]> extends true
+			? true
+			: Rest extends readonly []
+				? false
+				: CaseArmsContainAgg<Rest>
+	: false
+
+type ArrayCtorContainsAgg<Els extends readonly ScalarExprAst[]> = Els extends readonly [
+	infer H extends ScalarExprAst,
+	...infer T extends readonly ScalarExprAst[],
+]
+	? AstContainsAggregateCall<H> extends true
+		? true
+		: T extends readonly []
+			? false
+			: ArrayCtorContainsAgg<T>
+	: false
+
+type SelectItemsNeedGroupedProjRules<
+	Meta extends SelectGroupClauseMeta,
+	Items extends readonly RawSelectItem[],
+> = Meta["has_having_clause"] extends true
+	? true
+	: Meta["have_explicit_group_by"] extends true
+		? true
+		: RawSelectItemsHaveAggregateCall<Items>
+
+type RawSelectItemsHaveAggregateCall<Items extends readonly RawSelectItem[]> = Items extends readonly [
+	infer H extends RawSelectItem,
+	...infer R extends readonly RawSelectItem[],
+]
+	? H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+		? AstContainsAggregateCall<Ast> extends true
+			? true
+			: RawSelectItemsHaveAggregateCall<R>
+		: RawSelectItemsHaveAggregateCall<R>
+	: false
+
+type ValidateGroupedSelectItemsAgainstKeys<
+	Items extends readonly RawSelectItem[],
+	GroupKeys extends readonly ScalarExprAst[],
+> = Items extends readonly [infer H extends RawSelectItem, ...infer Rest extends readonly RawSelectItem[]]
+	? H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+		? ExprValidInsideGroupedSelection<Ast, GroupKeys, false> extends true
+			? ValidateGroupedSelectItemsAgainstKeys<Rest, GroupKeys>
+			: SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
+		: H extends { kind: "star" } | { kind: "param" }
+			? ValidateGroupedSelectItemsAgainstKeys<Rest, GroupKeys>
+			: never
+	: true
+
+type GroupedProjValidationOutcome<Items extends readonly RawSelectItem[], Meta extends SelectGroupClauseMeta> =
+	SelectItemsNeedGroupedProjRules<Meta, Items> extends true
+		? ValidateGroupedSelectItemsAgainstKeys<Items, Meta["group_key_asts"]>
+		: true
 
 type SelectAfterWhereAndGroupHaving<
 	Tokens extends TokensList,
@@ -414,15 +1095,25 @@ type SelectAfterWhereAndGroupHaving<
 	Res,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Items extends readonly RawSelectItem[],
 > =
-	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends [infer T1 extends TokensList, infer Gh]
-		? Gh extends SqlParserError<string>
-			? [T1, Db, Gh]
-			: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
-				? Te extends SqlParserError<string>
-					? [Rt, Db, Te]
-					: FinishSelectTerminator<Rt, Db, Res>
-				: never
+	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends infer PH
+		? PH extends readonly [infer T1 extends TokensList, infer Gh, infer Meta extends SelectGroupClauseMeta]
+			? Gh extends SqlParserError<string>
+				? [T1, Db, Gh]
+				: GroupedProjValidationOutcome<Items, Meta> extends infer V
+					? V extends SqlParserError<string>
+						? [T1, Db, V]
+						: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [
+									infer Rt extends TokensList,
+									infer Te,
+							  ]
+							? Te extends SqlParserError<string>
+								? [Rt, Db, Te]
+								: FinishSelectTerminator<Rt, Db, Res>
+							: never
+					: never
+			: never
 		: never
 
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
@@ -457,16 +1148,17 @@ type FinishSelectStatement<
 	Res,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Items extends readonly RawSelectItem[],
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
 		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, Db, We]
-					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params>
+					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params, Items>
 				: never
 			: never
-		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params>
+		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params, Items>
 
 type ParseRawSelectList<
 	Tokens extends TokensList,
@@ -540,6 +1232,8 @@ type ParseOneRawSelectItem<
 						| TokenKey<"not">
 						| TokenKey<"cast">
 						| TokenKey<"case">
+						| TokenKey<"exists">
+						| TokenKey<"array">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params>
 					: never
 				: never
