@@ -4,38 +4,36 @@ This document sketches where the project could go. It is aspirational and unorde
 
 ## Active plan — decisions and sequence (2026-05)
 
-The following items are **maintainer decisions** for upcoming work. They override older open questions in ad hoc notes. Details and backlog lines live in `**docs/TODO.md`**.
+The following items are **maintainer decisions** for upcoming work. They override older open questions in ad hoc notes. Details and backlog lines live in `**docs/TODO.md`\*\*.
 
 ### Locked decisions
 
 1. **Function registry (types only, Option A)**
-  Custom and extended built-in functions are modeled **only in types**: a `**functions?`** map on `**JsqlDatabaseShape**` / migration-derived `**Db**` (e.g. passed through `**sqlMigrations` config** as part of the typed database shape). There is **no** separate runtime `**database().extendFunctions()`** API for typing in v1. Runtime registration, if ever added, must not become a second source of truth without codegen or explicit module augmentation.
+   Custom and extended built-in functions are modeled **only in types**: a `**functions?`** map on `**JsqlDatabaseShape**`/ migration-derived`**Db**`(e.g. passed through`**sqlMigrations`config** as part of the typed database shape). There is **no** separate runtime`**database().extendFunctions()`** API for typing in v1. Runtime registration, if ever added, must not become a second source of truth without codegen or explicit module augmentation.
 2. **Error channel**
-  Keep **squiggle-on-SQL-literal** via parameter constraints (`**CheckSqlValid`** / `**CheckSqlMigrationsValid**`) **and** expose a **public type helper `InferSqlErrors<…>`** (exact arity and generics TBD alongside `**SqlSelectRow**`) so tests, CLI, and editor tooling can read `**SqlParserError<…>**` without abusing `**Parameters<typeof db.query<…>>**`.
+   Keep **squiggle-on-SQL-literal** via parameter constraints (`**CheckSqlValid`** / `**CheckSqlMigrationsValid**`) **and** expose a **public type helper `InferSqlErrors<…>`** (exact arity and generics TBD alongside `**SqlSelectRow**`) so tests, CLI, and editor tooling can read `**SqlParserError<…>**`without abusing`**Parameters<typeof db.query<…>>\*\*`.
 3. **PostgreSQL arrays**
-  Implement a **minimal slice** first (see `**docs/TODO.md` § Arrays**): enough real SQL to be useful without chasing full Postgres array semantics in one step. Fuller surface (multidimensional literals, slicing, full operator matrix, `**ANY`/`ALL`** interplay) stays **explicit backlog**.
-4. `**LATERAL` / correlated `FROM`**
-  **Not** required for v1 of subquery/correlation work. `**LATERAL`** and `**CROSS`/`LEFT JOIN LATERAL**` are **deferred** and listed under `**docs/TODO.md`**.
+   Implement a **minimal slice** first (see `**docs/TODO.md` § Arrays**): enough real SQL to be useful without chasing full Postgres array semantics in one step. Fuller surface (multidimensional literals, slicing, full operator matrix, `**ANY`/`ALL`** interplay) stays **explicit backlog\*\*.
+4. `**LATERAL` / correlated `FROM`\*\*
+   **Not** required for v1 of subquery/correlation work. `**LATERAL`** and `**CROSS`/`LEFT JOIN LATERAL**` are **deferred** and listed under `**docs/TODO.md`\*\*.
 
 ### Work priority when time-bound
 
 Execute in order; each slice should leave `**npm test**` green (`typecheck`, workspace checks, `**node --test**`).
 
-
-| Order | Track                     | Contents                                                                                                                                                                                                           |
-| ----- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **A** | Core pipeline             | Function registry (**types/config**); fix `**SELECT`** routing (`**SkipToken**` before `**ParseSelect**` invariant); stabilize `**ApplyParsedStatements**` / `**Db**` (no `**SqlParserError**` leaking as catalog) |
-| **B** | Error UX                  | Parameter-constraint errors on literals; `**InferSqlErrors`** export + smoke tests                                                                                                                                 |
-| **C** | `**GROUP BY` / `HAVING`** | Parse + grouped result typing behind small commits                                                                                                                                                                 |
-| **D** | Subqueries                | Scalar, `**EXISTS`**, `**IN (SELECT …)**`, correlation `**WHERE`/expression-level** — **without** `**LATERAL`** in v1                                                                                              |
-| **E** | Arrays                    | Minimal slice only; expand only via `**TODO`**                                                                                                                                                                     |
-
+| Order | Track                       | Contents                                                                                                                                                                                                     |
+| ----- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A** | Core pipeline               | Function registry (**types/config**); fix `**SELECT`** routing (`**SkipToken**`before`**ParseSelect**`invariant); stabilize`**ApplyParsedStatements**`/`**Db**`(no`**SqlParserError\*\*` leaking as catalog) |
+| **B** | Error UX                    | Parameter-constraint errors on literals; `**InferSqlErrors`\*\* export + smoke tests                                                                                                                         |
+| **C** | `**GROUP BY` / `HAVING`\*\* | Parse + grouped result typing behind small commits                                                                                                                                                           |
+| **D** | Subqueries                  | Scalar, `**EXISTS`**, `**IN (SELECT …)**`, correlation `**WHERE`/expression-level** — **without** `**LATERAL`** in v1                                                                                        |
+| **E** | Arrays                      | Minimal slice only; expand only via `**TODO`\*\*                                                                                                                                                             |
 
 ### Implementation habits
 
-- Prefer **small commits**: one logical change, `**npm test`**, then commit.
-- Large or risky features: **feature branch** and/or `**Db["features"]` (or equivalent) behind a flag** so rollback is one revert.
-- Known regression from experiments: `**ParseSqlStatement`** must not call `**ParseSelect<Tokens>**` with `**Tokens` still headed by `select**` unless `**ParseSelect**` itself consumes that keyword—the previous failure mode produced `**Expected SELECT (or WITH … SELECT) for row typing**` for valid SQL.
+- Prefer **small commits**: one logical change, `**npm test`\*\*, then commit.
+- Large or risky features: **feature branch** and/or `**Db["features"]` (or equivalent) behind a flag\*\* so rollback is one revert.
+- Known regression from experiments: `**ParseSqlStatement`** must not call `**ParseSelect<Tokens>**`with`**Tokens`still headed by`select**`unless`**ParseSelect**`itself consumes that keyword—the previous failure mode produced`**Expected SELECT (or WITH … SELECT) for row typing\*\*` for valid SQL.
 
 ---
 
@@ -89,6 +87,6 @@ Constraints that should stay visible in future work:
 
 ## How to use this document
 
-Treat the **Vision**, **near/mid/long horizon**, and **non-goals** sections as **backlog themes** once **§ Active plan** is accounted for. When priorities shift, update **§ Active plan** and `**docs/TODO.md`** together so decisions stay single-sourced.
+Treat the **Vision**, **near/mid/long horizon**, and **non-goals** sections as **backlog themes** once **§ Active plan** is accounted for. When priorities shift, update **§ Active plan** and `**docs/TODO.md`\*\* together so decisions stay single-sourced.
 
 For day-to-day shipped vs gaps, see `**docs/CURRENT.md**`.

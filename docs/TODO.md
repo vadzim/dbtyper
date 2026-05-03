@@ -56,7 +56,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [ ] Add **`Expect<Extends<InferSqlErrors<…>, SqlParserError<`expected fragment`>>>>`** (or message-specific) smoke tests beside **`CheckSql`** / **`db.query`** tests.
 - [ ] Cross-link from **`README.md`** and **`SUPPORTED-SQL.md`** error examples.
 
-## Function registry (**types-only**, config on **`Db`)
+## Function registry (**types-only**, config on \*\*`Db`)
 
 - [ ] (**Option A**) Ensure **`functions?: …`** on **`JsqlDatabaseShape`** flows through **`sqlMigrations` → `FlattenedJsqlDatabase` → `ResolveFunctionCall`**; custom names map to **`ExprOk<…>`** return types (**no** runtime-only registration for typings).
 - [ ] Maintain a **built-in catalog** (**`lower`**, **`count`**, etc.) inside **`ResolveFunctionCall`** (or an extracted map) separately from **`Db["functions"]`** merge rules.

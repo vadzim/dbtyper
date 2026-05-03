@@ -41,13 +41,17 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 - Add array and JSON access operators `[]` and JSON typing.
 
 2026-05-03T00:31:27Z
+
 ### Implemented function call parsing and fixed 'now()' as identifier
+
 - Removed 'now' from service words map in sql-tokens.ts to allow it as a function name.
 - Verified built-in and custom functions with tests in test/function-registry.test.ts.
 - All function tests passed.
 
 2026-05-02T22:39:40Z
+
 ### Subqueries, Array Indexing, and Grouping/Having
+
 - Implemented **Array Indexing** support (`col[index]`) in `ParseExprSuffixes`.
 - Implemented **Scalar Subqueries** support (`(SELECT ...)`) in `TryParenOperandScalarUntyped`.
 - Refactored **Identifier Parsing** in `ParseScalarExprUntypedFromIdent` to properly chain operator loops (Exponentiation -> Multiplication -> Addition), fixing precedence for expressions starting with identifiers.
@@ -57,10 +61,12 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 - Verified all features with new tests in `test/group-by.test.ts` and updated `test/function-registry.test.ts`.
 
 2026-05-02T22:45:45Z
+
 ### Finalizing Error Reporting and Robustness
+
 - Added **Error Reporting Tests** in `test/error-reporting.test.ts` covering syntax errors, schema mismatches, and complex clauses.
 - Fixed **never-safety issue** in `ResolveTableShape` and `ResolveColumnRefValue` where missing entities were incorrectly passing `extends JsqlTableShape` checks.
 - Enforced **Strict Projections** in `SELECT` statements (erroring on empty column lists).
 - Updated **Function Resolver** to report `Unknown function` errors instead of returning `unknown` types.
 - Verified that all error messages are correctly surfaced through the `db.query` Parameter Constraint pattern.
-2026-05-02 22:58 - Finished Point 1 (CASE), 2 (LEFT JOIN Nullability), 3 (RETURNING clauses). Starting Point 4 (Set Operations: UNION, INTERSECT, EXCEPT).
+  2026-05-02 22:58 - Finished Point 1 (CASE), 2 (LEFT JOIN Nullability), 3 (RETURNING clauses). Starting Point 4 (Set Operations: UNION, INTERSECT, EXCEPT).
