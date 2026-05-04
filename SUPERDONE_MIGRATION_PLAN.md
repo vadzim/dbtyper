@@ -144,10 +144,17 @@ ROW_NUMBER() OVER (ORDER BY f.embedding <=> query_embedding) AS vec_rank
 
 ---
 
-### 6. [ ] JSONB Operators (->>, ->)
+### 6. [x] JSONB Operators (->>, ->) ✅
 
 **Priority:** HIGH  
-**Status:** ❌ Not implemented
+**Status:** ✅ **ALREADY IMPLEMENTED**
+
+**Implemented:**
+
+- ✅ Parse ->> operator (JSONB field as text)
+- ✅ Parse -> operator (JSONB field as JSONB)
+- ✅ Type inference: ->> returns text, -> returns jsonb
+- ✅ Working correctly in queries
 
 **Example from superdone.ai:**
 
@@ -344,11 +351,11 @@ CREATE TRIGGER update_chats_updated_at BEFORE UPDATE ON chats
 1. ✅ CTE column validation fix (2026-05-04)
 2. ✅ COALESCE function (already implemented)
 3. ✅ String concatenation (||) (already implemented)
+4. ✅ JSONB operators (->>, ->) (already implemented)
 
 ### Critical (Must Have)
 
-4. FULL OUTER JOIN
-5. JSONB operators (->>, ->)
+5. FULL OUTER JOIN
 6. ANY() array operator
 7. Function calls in expressions
 
@@ -381,8 +388,8 @@ CREATE TRIGGER update_chats_updated_at BEFORE UPDATE ON chats
 
 - [x] COALESCE function ✅ Already implemented
 - [x] String concatenation (||) ✅ Already implemented
+- [x] JSONB operators (->>, ->) ✅ Already implemented
 - [ ] Function call type inference
-- [ ] JSONB operators (->>, ->)
 - [ ] ANY() array operator
 
 ### Phase 3: JOIN Extensions
