@@ -1,7 +1,7 @@
 # Implementation Plan: Fix db.query() to Support Non-RETURNING Statements
 
 **Date:** 2026-05-04 20:19  
-**Status:** Investigation Complete — Ready for Implementation
+**Status:** ✅ RESOLVED — Fixed by ScalarTypes refactoring (commit a68d039)
 
 ---
 
@@ -179,4 +179,24 @@ const bad = await db.query(
 
 ---
 
-**Ready for implementation.**
+## Resolution
+
+**Verified:** 2026-05-04 21:00
+
+The issue was already resolved during the ScalarTypes refactoring (commit a68d039). Testing confirms:
+
+```typescript
+// ✅ All work without errors:
+await db.query(`delete from users where id = '1';`)
+await db.query(`insert into users (id, name) values ('1', 'Alice');`)
+await db.query(`update users set name = 'Bob' where id = '1';`)
+```
+
+**Root cause of original issue:** The investigation was based on an outdated codebase state. The ScalarTypes parameter addition fixed the type resolution, allowing non-RETURNING statements to work correctly.
+
+**Current test status:**
+- 76/81 integration tests enabled (94%)
+- All enabled tests passing ✅
+- 5 tests skipped (complex features: INSERT...SELECT, UPDATE...FROM, DELETE...USING, CTE validation)
+
+**No further action needed.**
