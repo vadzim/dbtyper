@@ -19,12 +19,13 @@ import type {
 	IsUnknownOrAny,
 	ParseExpressionAST,
 	ResolveExpressionAST,
+	SameComparisonClass,
 	ScalarExprAst,
 	ScalarIdentParts,
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
-import type { MergeScope, ScopeEntry, ScopeMap, ValidateCol } from "./parser-scope.ts"
+import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
@@ -1796,11 +1797,38 @@ type JoinOnQualifiedEqOk<
 		? SqlParserError<"Unknown column in JOIN ON (left)">
 		: ResolveColumnRefValue<Db, Scope, R> extends SqlParserError<string>
 			? SqlParserError<"Unknown column in JOIN ON (right)">
-			: true
+			: ResolveColumnRefValue<Db, Scope, L> extends { ts: infer Lt }
+				? ResolveColumnRefValue<Db, Scope, R> extends { ts: infer Rt }
+					? SameComparisonClass<Lt, Rt> extends true
+						? true
+						: SqlParserError<"Incompatible types in JOIN ON">
+					: SqlParserError<"Unknown column in JOIN ON (right)">
+				: SqlParserError<"Unknown column in JOIN ON (left)">
+
+type JoinOnAliasEqOk<
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	LeftAlias extends string,
+	LeftCol extends string,
+	RightAlias extends string,
+	RightCol extends string,
+> =
+	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends SqlParserError<string>
+		? SqlParserError<"Unknown column in JOIN (left side)">
+		: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends SqlParserError<string>
+			? SqlParserError<"Unknown column in JOIN (right side)">
+			: ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends { ts: infer Lt }
+				? ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends { ts: infer Rt }
+					? SameComparisonClass<Lt, Rt> extends true
+						? true
+						: SqlParserError<"Incompatible types in JOIN ON">
+					: SqlParserError<"Unknown column in JOIN (right side)">
+				: SqlParserError<"Unknown column in JOIN (left side)">
 
 /** After `=` when the join predicate uses `alias.col = alias.col`. */
 type ParseJoinEqPairAliasRightTail<
 	R4 extends TokensList,
+	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	LeftAlias extends string,
 	LeftCol extends string,
@@ -1811,11 +1839,13 @@ type ParseJoinEqPairAliasRightTail<
 				? SkipToken<R5> extends infer R6 extends TokensList
 					? PeekToken<R6> extends TokenIdent<infer RightCol extends string>
 						? SkipToken<R6> extends infer R7 extends TokensList
-							? ValidateCol<Scope, LeftAlias, LeftCol> extends true
-								? ValidateCol<Scope, RightAlias, RightCol> extends true
+							? JoinOnAliasEqOk<Db, Scope, LeftAlias, LeftCol, RightAlias, RightCol> extends infer Ok
+								? Ok extends true
 									? [R7, true]
-									: [R7, SqlParserError<"Unknown column in JOIN (right side)">]
-								: [R7, SqlParserError<"Unknown column in JOIN (left side)">]
+									: Ok extends SqlParserError<string>
+										? [R7, Ok]
+										: never
+								: never
 							: never
 						: never
 					: never
@@ -1883,7 +1913,7 @@ type ParseJoinEqPairAfterSecondIdent<
 				: never
 			: never
 		: TokAfterP2 extends TokenKey<"=">
-			? ParseJoinEqPairAliasRightTail<R4, Scope, P1, P2>
+			? ParseJoinEqPairAliasRightTail<R4, Db, Scope, P1, P2>
 			: never
 
 /** `ON` equality: `alias.col = alias.col` or `schema.table.column = schema.table.column`. */
