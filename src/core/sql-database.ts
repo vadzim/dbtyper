@@ -9,7 +9,7 @@ import type { SqlSelectRow } from "./sql-query.ts"
 /** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlMigrations}; same keys as {@link PostgresTypeMap}. */
 type DefaultSqlScalarTypeMap = PostgresTypeMap
 
-export type { MergeDbPreserveScalars }
+export type { MergeDbPreserveScalars } // TODO: remove that, never reexport symbols unless in the main index.ts
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
