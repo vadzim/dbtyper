@@ -16,13 +16,13 @@
 ## Remaining gaps (prioritized for the goal)
 
 1. **README example vs repo layout** — The README still shows `./src/sql.ts` and `SqlCreateTable` / `SqlSchema`; the thin public barrel is `core/sql.ts` (re-exports only). Either restore a documented `ParseSqlStatement<…, Db, Params>` path in the README or add a small “current API” snippet so newcomers land on the real entry points.
-2. `**TODO.md` / `ROADMAP.md`** — Use `**docs/ROADMAP.md`§ Active plan** for **locked priorities** (**A→E**) and`**docs/TODO.md`** as the actionable backlog (function registry typings-only `**InferSqlErrors**`, arrays MVP vs later, `**LATERAL**`, `**GROUP BY`/`HAVING**`).
+2. `**TODO.md` / `ROADMAP.md`** — Use `**docs/ROADMAP.md`§ Active plan** for **locked priorities** (**A→E**) and`**docs/TODO.md`** as the actionable backlog (function registry typings-only `**InferSqlErrors`**, arrays MVP vs later, `**LATERAL**`, `**GROUP BY`/`HAVING**`).
 3. **Simple `CASE expr WHEN …`** — Implemented (discriminant vs each `WHEN` uses `=` comparison-class rules; `THEN`/`ELSE` merge like searched `CASE`).
 4. **Other keyword-led `SELECT` items** — `CASE` is wired for non-ident starts; extend the same union if more expression-leading keywords are added to the lexer.
-5. **Subqueries / CTEs / views** — **Derived tables** in `**FROM` / `JOIN`**, scalar / `**IN (SELECT …)**`/`**EXISTS**`, leading `**WITH**`CTEs, and`**CREATE VIEW**`are covered in`**SUPPORTED-SQL.md**`. Correlation in `**SELECT**`list subqueries remains limited (see`**docs/TODO.md**`). `**LATERAL**` joins are **explicitly deferred** past the v1 correlation milestone (`**docs/ROADMAP.md`\*\*). CTE cycle detection is not implemented.
-6. `**ALTER TABLE` / `CREATE INDEX**` — Still skipped at statement level.
+5. **Subqueries / CTEs / views** — **Derived tables** in `**FROM` / `JOIN`**, scalar / `**IN (SELECT …)`**/`**EXISTS**`, leading `**WITH**`CTEs, and`**CREATE VIEW**`are covered in`**SUPPORTED-SQL.md**`. Correlation in `**SELECT**`list subqueries remains limited (see`**docs/TODO.md**`). `**LATERAL**` joins are **explicitly deferred** past the v1 correlation milestone (`**docs/ROADMAP.md`). CTE cycle detection is not implemented.
+6. `**ALTER TABLE` / `CREATE INDEX`** — Still skipped at statement level.
 7. **Runtime query execution** — Explicitly out of scope per README; no change.
-8. `**SELECT … ORDER BY`\*\* — Typed row inference for some `ORDER BY` forms can degrade to `never` (see `examples/typed-postgres`: avoid `ORDER BY` in the SQL string and sort in JS). Full `ORDER BY` typing for arbitrary projections is still open.
+8. `**SELECT … ORDER BY` — Typed row inference for some `ORDER BY` forms can degrade to `never` (see `examples/typed-postgres`: avoid `ORDER BY` in the SQL string and sort in JS). Full `ORDER BY` typing for arbitrary projections is still open.
 
 ## Performance note
 
