@@ -221,7 +221,7 @@ type CheckSqlValid<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer Msg>] ? Msg : Stmt
+> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer Msg>] ? `Error in query: ${Msg}` : Stmt
 
 type CheckSqlMigrationSource<Db extends JsqlDatabaseShape | SqlParserError<string>, Source extends string> =
 	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M> ? M : Source
