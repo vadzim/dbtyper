@@ -14,6 +14,7 @@ import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
  * This applies SQL-to-TypeScript conversion using the database's scalarTypes map.
  */
 export type SqlSelectRow<
+	// TODO: it seems this type is used only in tests. if true it should be mobed to test utils
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
@@ -23,6 +24,7 @@ export type SqlSelectRow<
 
 /** `SqlParserError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
 export type InferSqlErrors<
+	// TODO: it seems this type is used only in tests. if true it should be mobed to test utils
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
