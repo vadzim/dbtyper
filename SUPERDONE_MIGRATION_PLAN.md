@@ -13,17 +13,23 @@ Analyzed migrations and SQL queries in:
 
 ## Required Features
 
-### 1. [ ] CTE (Common Table Expressions) - Column Validation
+### 1. [x] CTE (Common Table Expressions) - Column Validation ✅
 
 **Priority:** HIGH  
-**Status:** ⚠️ Partially implemented - parsing works, validation broken
+**Status:** ✅ **COMPLETED** (2026-05-04)
 
-**Current state:**
+**Implemented:**
 
 - ✅ WITH clause parsing works
 - ✅ Multiple CTEs supported (WITH a AS (...), b AS (...))
-- ❌ Column validation doesn't work (unknown columns don't error)
-- ❌ Type validation in JOIN ON with CTE columns fails
+- ✅ Column validation works correctly
+- ✅ Type validation in JOIN ON with CTE columns works
+- ✅ Integration tests passing
+
+**Fix details:**
+- Added CTE scope check in `ParseFromTableAfterLeadingIdent`
+- Created `ParseAliasAfterCTE` to handle CTE references
+- All CTE tests enabled and passing
 
 **Example from superdone.ai:**
 
@@ -73,10 +79,17 @@ FULL OUTER JOIN fts_ranked fr ON vr.id = fr.id
 
 ---
 
-### 3. [ ] COALESCE Function
+### 3. [x] COALESCE Function ✅
 
 **Priority:** HIGH  
-**Status:** ❌ Not implemented
+**Status:** ✅ **ALREADY IMPLEMENTED**
+
+**Implemented:**
+
+- ✅ Parse COALESCE(expr1, expr2, ...) syntax
+- ✅ Type inference: return type is first non-null argument type
+- ✅ Support multiple arguments
+- ✅ Working correctly in queries
 
 **Example from superdone.ai:**
 
@@ -320,11 +333,14 @@ CREATE TRIGGER update_chats_updated_at BEFORE UPDATE ON chats
 
 ## Priority Summary
 
+### ✅ Completed
+
+1. ✅ CTE column validation fix (2026-05-04)
+2. ✅ COALESCE function (already implemented)
+
 ### Critical (Must Have)
 
-1. CTE column validation fix
-2. FULL OUTER JOIN
-3. COALESCE function
+3. FULL OUTER JOIN
 4. JSONB operators (->>, ->)
 5. ANY() array operator
 6. Function calls in expressions
@@ -348,23 +364,23 @@ CREATE TRIGGER update_chats_updated_at BEFORE UPDATE ON chats
 
 ## Implementation Order
 
-### Phase 1: Fix CTE (Week 1)
+### Phase 1: Fix CTE ✅ COMPLETED (2026-05-04)
 
-- [ ] Fix CTE column validation
-- [ ] Add integration tests for CTE with invalid columns
-- [ ] Add integration tests for CTE in JOIN
+- [x] Fix CTE column validation
+- [x] Add integration tests for CTE with invalid columns
+- [x] Add integration tests for CTE in JOIN
 
-### Phase 2: Core Functions (Week 2)
+### Phase 2: Core Functions (Current Priority)
 
-- [ ] COALESCE function
+- [x] COALESCE function ✅ Already implemented
 - [ ] Function call type inference
 - [ ] JSONB operators (->>, ->)
 - [ ] ANY() array operator
 
-### Phase 3: JOIN Extensions (Week 3)
+### Phase 3: JOIN Extensions
 
 - [ ] FULL OUTER JOIN
-- [ ] Fix CTE type checking in JOIN ON
+- [x] Fix CTE type checking in JOIN ON ✅ Completed
 
 ### Phase 4: Operators (Week 4)
 
