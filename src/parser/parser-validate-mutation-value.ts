@@ -17,10 +17,8 @@ export type ValidateMutationValueForColumn<
 	Col extends string,
 	Val extends ExprAtom,
 > = Col extends keyof Tbl["columns"]
-	? Col extends keyof NonNullable<Tbl["column_sql_types"]>
-		? NonNullable<Tbl["column_sql_types"]>[Col] extends infer ColSql extends string
-			? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
-			: ValidateMutationValueBySql<Tbl, Col, Val, "unknown">
+	? Tbl["columns"][Col] extends infer ColSql extends string
+		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
 		: ValidateMutationValueBySql<Tbl, Col, Val, "unknown">
 	: SqlParserError<"Unknown column in INSERT">
 

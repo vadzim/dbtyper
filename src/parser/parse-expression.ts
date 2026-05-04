@@ -699,7 +699,7 @@ type ResolveFunctionCall<
 				? ArgsRes extends SqlParserError<string>
 					? ArgsRes
 					: ArgsRes extends readonly ExprAtom[]
-						? ExprOk<number, "integer">
+						? ExprOk<number, "bigint">
 						: never
 				: never
 			: SqlParserError<"`*` is only allowed as COUNT(*) argument">
@@ -708,7 +708,7 @@ type ResolveFunctionCall<
 				? ArgsRes
 				: ArgsRes extends readonly ExprAtom[]
 					? L extends "count"
-						? ExprOk<number, "integer">
+						? ExprOk<number, "bigint">
 						: L extends "lower" | "upper"
 							? ArgsRes extends readonly [ExprOk<string, infer _S>, ...infer _Rest]
 								? ExprOk<string, "text">
@@ -723,7 +723,7 @@ type ResolveFunctionCall<
 										: ExprOk<unknown, "unknown">
 								: L extends "now"
 									? ArgsRes extends readonly []
-										? ExprOk<Date, "timestamp">
+										? ExprOk<Date, "timestamp with time zone">
 										: SqlParserError<"now() takes no arguments">
 									: L extends "sum"
 										? ArgsRes extends readonly [ExprAtom, ...infer _R]
@@ -736,7 +736,11 @@ type ResolveFunctionCall<
 											: "functions" extends keyof Db
 												? Db["functions"] extends Record<string, unknown>
 													? L extends keyof Db["functions"]
-														? ExprOk<Db["functions"][L & keyof Db["functions"]], "unknown">
+														? Db["functions"][L &
+																keyof Db["functions"]] extends infer SqlType extends
+																string
+															? ExprOk<unknown, SqlType>
+															: ExprOk<unknown, "unknown">
 														: SqlParserError<`Unknown function: ${Name}`>
 													: SqlParserError<`Unknown function: ${Name}`>
 												: SqlParserError<`Unknown function: ${Name}`>
@@ -799,7 +803,7 @@ type ExpressionResolvers<
 	false: ExprOk<false, "boolean">
 	sql_null: ExprSqlNull
 	string: Ast extends { kind: "string"; value: string } ? ExprOk<string, "text"> : never
-	number: Ast extends { kind: "number"; raw: string } ? ExprOk<number, "number"> : never
+	number: Ast extends { kind: "number"; raw: string } ? ExprOk<number, "integer"> : never
 	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
 	custom_op: Ast extends {
 		kind: "custom_op"
@@ -1526,17 +1530,14 @@ type ResolveInListItemsAgainstLeft<
 type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? ExprOk<
-					S["columns"][K] | null,
-					K extends keyof S["column_sql_types"] ? S["column_sql_types"][K] : "unknown"
-				>
+			? ExprOk<S["columns"][K] | null, S["columns"][K]>
 			: SqlParserError<"Scalar subquery column inference failed">
 		: SqlParserError<"Scalar subquery must project exactly one column">
 
 type SubSelectColumnAtom<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? ExprOk<S["columns"][K], K extends keyof S["column_sql_types"] ? S["column_sql_types"][K] : "unknown">
+			? ExprOk<S["columns"][K], S["columns"][K]>
 			: SqlParserError<"IN subquery column inference failed">
 		: SqlParserError<"IN subquery must project exactly one column">
 
@@ -1636,7 +1637,7 @@ type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends 
 			? R extends ExprOk<infer _TsR, infer Sr extends string>
 				? IsSqlNumericType<Sl> extends true
 					? IsSqlNumericType<Sr> extends true
-						? ExprOk<number, "number">
+						? ExprOk<number, Sl>
 						: SqlParserError<"Incompatible types in arithmetic">
 					: SqlParserError<"Incompatible types in arithmetic">
 				: never
@@ -2133,7 +2134,7 @@ type ResolveScalarExprAstNeg<
 			? U
 			: U extends ExprOk<infer _Tu, infer Su extends string>
 				? IsSqlNumericType<Su> extends true
-					? ExprOk<number, "number">
+					? ExprOk<number, Su>
 					: SqlParserError<"Unary minus requires a number">
 				: SqlParserError<"Unary minus requires a number">
 		: never
@@ -2179,7 +2180,7 @@ type TryValueOperand<
 							: never
 						: PeekToken<Tokens> extends TokenNumber<string>
 							? SkipToken<Tokens> extends infer Rnum extends TokensList
-								? [Rnum, ExprOk<number, "number">]
+								? [Rnum, ExprOk<number, "integer">]
 								: never
 							: PeekToken<Tokens> extends TokenParam<infer P extends string>
 								? SkipToken<Tokens> extends infer Rp extends TokensList
@@ -2256,7 +2257,7 @@ type ParseUnaryValue<
 					? [Ru, U]
 					: U extends ExprOk<infer _Tu, infer Su extends string>
 						? IsSqlNumericType<Su> extends true
-							? [Ru, ExprOk<number, "number">]
+							? [Ru, ExprOk<number, Su>]
 							: [Ru, SqlParserError<"Unary minus requires a number">]
 						: never
 				: never
@@ -2279,7 +2280,7 @@ type ParseMulLoopAfterFirst<
 						? MergeNumericArithmetic<Acc, E1> extends infer M
 							? M extends SqlParserError<string>
 								? [R2, M]
-								: M extends ExprOk<number, "number">
+								: M extends ExprOk<number, string>
 									? ParseMulLoopAfterFirst<R2, Db, Scope, M, Params>
 									: never
 							: never
@@ -2324,7 +2325,7 @@ type ParseAddLoopAfterFirst<
 						? MergeNumericArithmetic<Acc, E1> extends infer M
 							? M extends SqlParserError<string>
 								? [R2, M]
-								: M extends ExprOk<number, "number">
+								: M extends ExprOk<number, string>
 									? ParseAddLoopAfterFirst<R2, Db, Scope, M, Params>
 									: never
 							: never
@@ -2340,7 +2341,7 @@ type ParseAddLoopAfterFirst<
 							? MergeNumericArithmetic<Acc, E2> extends infer M2
 								? M2 extends SqlParserError<string>
 									? [R4, M2]
-									: M2 extends ExprOk<number, "number">
+									: M2 extends ExprOk<number, string>
 										? ParseAddLoopAfterFirst<R4, Db, Scope, M2, Params>
 										: never
 								: never

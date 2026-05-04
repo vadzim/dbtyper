@@ -12,9 +12,7 @@ type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab ext
 		? Col extends keyof Tbl["columns"]
 			? {
 					ts: Tbl["columns"][Col]
-					sql: Col extends keyof NonNullable<Tbl["column_sql_types"]>
-						? NonNullable<Tbl["column_sql_types"]>[Col]
-						: "unknown"
+					sql: Tbl["columns"][Col]
 				}
 			: SqlParserError<"Unknown column (schema.table.column)">
 		: SqlParserError<"Unknown schema or table">
@@ -31,9 +29,7 @@ type ValidateColumnPartsShared<
 				? C extends keyof Scope[A]["columns"]
 					? {
 							ts: Scope[A]["columns"][C]
-							sql: C extends keyof Scope[A]["column_sql_types"]
-								? Scope[A]["column_sql_types"][C]
-								: "unknown"
+							sql: Scope[A]["columns"][C]
 						}
 					: never
 				: never
@@ -48,9 +44,7 @@ type ValidateColumnPartsShared<
 							? C0 extends keyof Scope[U]["columns"]
 								? {
 										ts: Scope[U]["columns"][C0]
-										sql: C0 extends keyof Scope[U]["column_sql_types"]
-											? Scope[U]["column_sql_types"][C0]
-											: "unknown"
+										sql: Scope[U]["columns"][C0]
 									}
 								: never
 							: never

@@ -65,12 +65,6 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				email: string
-				display_name: string | null
-				created_at: Date | null
-				agenda_id: string
-			}
-			column_sql_types: {
 				email: "text"
 				display_name: "text"
 				created_at: "timestamp with time zone"
@@ -120,12 +114,6 @@ type _nestPostgresAppCliSelectColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				id: string
-				user_id: string
-				email: string
-				display_name: string | null
-			}
-			column_sql_types: {
 				id: "uuid"
 				user_id: "uuid"
 				email: "text"

@@ -12,8 +12,7 @@ type DbGroup = {
 			sets: {
 				sales: {
 					kind: "table"
-					columns: { region: string; amount: number }
-					column_sql_types: { region: "text"; amount: "numeric" }
+					columns: { region: "text"; amount: "numeric" }
 				}
 			}
 		}
@@ -54,7 +53,7 @@ type TGroupProjAggOk = ParseSqlStatement<
 >
 
 type _groupProjAggOk = Expect<
-	Extends<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { ts: number; region: string } }>
+	Extends<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { ts: "numeric"; region: "text" } }>
 >
 
 /** `HAVING` without `GROUP BY` still enforces “aggregates or constants / grouped columns” on projections. */

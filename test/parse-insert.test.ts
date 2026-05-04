@@ -14,8 +14,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: string; name: string }
-					column_sql_types: { id: "text"; name: "text" }
+					columns: { id: "text"; name: "text" }
 					column_facts: { id: { not_null: true } }
 				}
 			}
@@ -62,8 +61,7 @@ type DbAppDefaultPublicUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: string; name: string }
-					column_sql_types: { id: "text"; name: "text" }
+					columns: { id: "text"; name: "text" }
 					column_facts: { id: { not_null: true } }
 				}
 			}
@@ -110,7 +108,7 @@ type InsReturning = ParseSqlStatement<
 >
 type InsReturningRes = Tuple3At2<InsReturning>
 type _insReturning = Expect<Extends<InsReturningRes, JsqlInsertStatementResult>>
-type _insReturningProj = Expect<Extends<InsReturningRes["returning"]["columns"], { id: string; name: string }>>
+type _insReturningProj = Expect<Extends<InsReturningRes["returning"]["columns"], { id: "text"; name: "text" }>>
 
 type InsUpsert = ParseSqlStatement<
 	ParseSqlTokens<`insert into users (id, name) values ('u1','n1') on conflict (id) do update set name = excluded.name;`>,
@@ -126,7 +124,7 @@ type InsUpsertWhereReturning = ParseSqlStatement<
 >
 type InsUpsertWhereReturningRes = Tuple3At2<InsUpsertWhereReturning>
 type _insUpsertWhereReturning = Expect<Extends<InsUpsertWhereReturningRes, JsqlInsertStatementResult>>
-type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["returning"]["columns"], { id: string }>>
+type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["returning"]["columns"], { id: "text" }>>
 
 type SeedDb0 = {
 	defaultSchema: "public"

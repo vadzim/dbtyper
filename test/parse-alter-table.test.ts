@@ -14,8 +14,7 @@ type DbItems = {
 			sets: {
 				items: {
 					kind: "table"
-					columns: { id: string; title: string }
-					column_sql_types: { id: "uuid"; title: "text" }
+					columns: { id: "uuid"; title: "text" }
 					column_facts: { id: { not_null: true } }
 				}
 			}
@@ -31,8 +30,7 @@ type DbItemsWithDraft = {
 			sets: {
 				items: {
 					kind: "table"
-					columns: { id: string; title: string; draft: boolean }
-					column_sql_types: { id: "uuid"; title: "text"; draft: "boolean" }
+					columns: { id: "uuid"; title: "text"; draft: "boolean" }
 					column_facts: { id: { not_null: true } }
 				}
 			}
@@ -44,23 +42,22 @@ type DbItemsWithDraft = {
 type TAlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.items add column body text;`>, DbItems>
 type _alterAddOk = Expect<Extends<Tuple3At2<TAlterAdd>, null>>
 type ItemsAfterAdd = TAlterAdd[1]["schemas"]["public"]["sets"]["items"]
-type _alterAddCols = Expect<Extends<ItemsAfterAdd["columns"], { id: string; title: string; body: string }>>
+type _alterAddCols = Expect<Extends<ItemsAfterAdd["columns"], { id: "uuid"; title: "text"; body: "text" }>>
 
 type TAlterDrop = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column draft;`>, DbItemsWithDraft>
 type _alterDropOk = Expect<Extends<Tuple3At2<TAlterDrop>, null>>
 type ItemsAfterDrop = TAlterDrop[1]["schemas"]["public"]["sets"]["items"]
-type _alterDropCols = Expect<Extends<ItemsAfterDrop["columns"], { id: string; title: string }>>
+type _alterDropCols = Expect<Extends<ItemsAfterDrop["columns"], { id: "uuid"; title: "text" }>>
 
 type TAlterRename = ParseSqlStatement<ParseSqlTokens<`alter table public.items rename column title to label;`>, DbItems>
 type _alterRenameOk = Expect<Extends<Tuple3At2<TAlterRename>, null>>
 type ItemsAfterRename = TAlterRename[1]["schemas"]["public"]["sets"]["items"]
-type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: string; label: string }>>
-type _alterRenameSqlTypes = Expect<Extends<ItemsAfterRename["column_sql_types"], { id: "uuid"; label: "text" }>>
+type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: "uuid"; label: "text" }>>
 
 type TAlterType = ParseSqlStatement<ParseSqlTokens<`alter table public.items alter column id type bigint;`>, DbItems>
 type _alterTypeOk = Expect<Extends<Tuple3At2<TAlterType>, null>>
 type ItemsAfterType = TAlterType[1]["schemas"]["public"]["sets"]["items"]
-type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], bigint>>
+type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], "bigint">>
 
 type TAlterSetNotNull = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set not null;`>,
@@ -85,7 +82,7 @@ type TAlterConstraintNoopThenAdd = ParseSqlStatement<
 >
 type _alterNoopChainOk = Expect<Extends<Tuple3At2<TAlterConstraintNoopThenAdd>, null>>
 type ItemsAfterChain = TAlterConstraintNoopThenAdd[1]["schemas"]["public"]["sets"]["items"]
-type _alterNoopChainMeta = Expect<Extends<ItemsAfterChain["columns"], { id: string; title: string; meta: number }>>
+type _alterNoopChainMeta = Expect<Extends<ItemsAfterChain["columns"], { id: "uuid"; title: "text"; meta: "int" }>>
 
 /** Unknown schema in qualified table name. */
 type TAlterBadSchema = ParseSqlStatement<ParseSqlTokens<`alter table missing.items add column x int;`>, DbItems>

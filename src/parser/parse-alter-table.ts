@@ -88,12 +88,7 @@ type ApplyAddColumn<
 	? SqlParserError<"Column already exists">
 	: {
 			kind: T["kind"]
-			columns: MergeRecords<T["columns"], Record<Col, Ts>>
-			column_sql_types: T["column_sql_types"] extends infer S
-				? S extends Record<string, string>
-					? MergeStringRecords<S, Record<Col, Sql>>
-					: Record<Col, Sql>
-				: Record<Col, Sql>
+			columns: MergeRecords<T["columns"], Record<Col, Sql>>
 			constraints?: T["constraints"]
 			column_facts?: T["column_facts"]
 		} & JsqlTableShape
@@ -102,11 +97,6 @@ type ApplyDropColumn<T extends JsqlTableShape, Col extends string> = Col extends
 	? {
 			kind: T["kind"]
 			columns: Omit<T["columns"], Col>
-			column_sql_types: T["column_sql_types"] extends infer S
-				? S extends Record<string, string>
-					? Omit<S, Col>
-					: S
-				: undefined
 			constraints?: T["constraints"]
 			column_facts: T["column_facts"] extends infer F
 				? F extends Record<string, JsqlColumnFactsEntry>
@@ -126,13 +116,6 @@ type ApplyRenameColumn<
 		: {
 				kind: T["kind"]
 				columns: MergeRecords<Omit<T["columns"], Old>, Record<New, T["columns"][Old]>>
-				column_sql_types: T["column_sql_types"] extends infer S
-					? S extends Record<string, string>
-						? Old extends keyof S
-							? MergeStringRecords<Omit<S, Old>, Record<New, S[Old]>>
-							: Record<New, string>
-						: Record<New, string>
-					: Record<New, string>
 				constraints?: T["constraints"]
 				column_facts: T["column_facts"] extends infer F
 					? F extends Record<string, JsqlColumnFactsEntry>
@@ -152,12 +135,7 @@ type ApplyAlterColumnType<
 > = Col extends keyof T["columns"]
 	? {
 			kind: T["kind"]
-			columns: MergeRecords<T["columns"], Record<Col, Ts>>
-			column_sql_types: T["column_sql_types"] extends infer S
-				? S extends Record<string, string>
-					? MergeStringRecords<S, Record<Col, Sql>>
-					: Record<Col, Sql>
-				: Record<Col, Sql>
+			columns: MergeRecords<T["columns"], Record<Col, Sql>>
 			constraints?: T["constraints"]
 			column_facts?: T["column_facts"]
 		} & JsqlTableShape

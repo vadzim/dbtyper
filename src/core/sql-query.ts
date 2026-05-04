@@ -9,6 +9,15 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
 
+/** Maps SQL type string to TypeScript type using the database's scalarTypes map. */
+type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string, unknown>> =
+	Lowercase<SqlType> extends infer K extends string ? (K extends keyof ScalarMap ? ScalarMap[K] : unknown) : unknown
+
+/** Converts a record of SQL type strings to TypeScript types. */
+type SqlColumnsToTs<SqlCols extends Record<string, string>, ScalarMap extends Record<string, unknown>> = {
+	[K in keyof SqlCols]: SqlTypeToTs<SqlCols[K], ScalarMap>
+}
+
 type SqlSelectRowForDb<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
@@ -17,17 +26,19 @@ type SqlSelectRowForDb<
 	ParseSqlStatement<ParseSqlTokens<Text>, Db, Params> extends [infer _Rest extends TokensList, infer _Db, infer Res]
 		? Res extends SqlParserError<string>
 			? Res
-			: RowShapeFromStatementResult<Res>
+			: RowShapeFromStatementResult<Res, Db["scalarTypes"]>
 		: never
 
-type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
-	? Res["columns"]
+type RowShapeFromStatementResult<Res, ScalarMap extends Record<string, unknown>> = Res extends JsqlSelectStatementResult
+	? SqlColumnsToTs<Res["columns"], ScalarMap>
 	: Res extends JsqlInsertStatementResult
 		? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
-			? Ret["columns"]
+			? SqlColumnsToTs<Ret["columns"], ScalarMap>
 			: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
 		: Res extends JsqlUpdateStatementResult
-			? SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+			? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
+				? SqlColumnsToTs<Ret["columns"], ScalarMap>
+				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
 			: Res extends null
 				? SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
 				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">

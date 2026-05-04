@@ -21,7 +21,7 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
-type ColumnTriple = readonly [string, unknown, string, boolean]
+type ColumnTriple = readonly [string, string, boolean]
 
 /** True when `Tab` is already a concrete key of `sets` (not an open-ended index signature). */
 type HasConcreteSet<Sets extends object, Tab extends string> = string extends keyof Sets
@@ -127,11 +127,10 @@ type ParseCreateTableBody<
 > =
 	PeekToken<Tokens> extends TokenKey<")">
 		? ColumnsFromStack<Stack> extends infer M extends {
-				cols: Record<string, unknown>
-				sqls: Record<string, string>
+				cols: Record<string, string>
 				facts: Record<string, unknown>
 			}
-			? MergeTableIntoDb<Db, Schema, Table, M["cols"], M["sqls"], M["facts"]> extends infer NewDb
+			? MergeTableIntoDb<Db, Schema, Table, M["cols"], M["facts"]> extends infer NewDb
 				? NewDb extends JsqlDatabaseShape
 					? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
 					: never
@@ -160,9 +159,7 @@ type ParseOneColumnAfterColName<
 		infer Words extends readonly string[],
 	]
 		? TypeWordsToString<Words> extends infer Joined extends string
-			? SqlJoinedToTs<Joined, Db["scalarTypes"]> extends infer Ts
-				? ResolveAfterNullability<AfterType, Db, Schema, Table, Stack, ColName, Ts, Joined>
-				: [AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">]
+			? ResolveAfterNullability<AfterType, Db, Schema, Table, Stack, ColName, Joined>
 			: [AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">]
 		: never
 
@@ -188,7 +185,6 @@ type ResolveAfterNullability<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
-	Ts,
 	Joined extends string,
 > =
 	PeekToken<AfterType> extends TokenKey<"not">
@@ -196,16 +192,16 @@ type ResolveAfterNullability<
 			? PeekToken<R1> extends infer T2
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? T2 extends TokenKey<"null">
-						? ContinueAfterColumnDef<R2, Db, Schema, Table, Stack, ColName, Ts, Joined, true>
+						? ContinueAfterColumnDef<R2, Db, Schema, Table, Stack, ColName, Joined, true>
 						: [R2, Db, SqlParserError<"Expected `null` after `NOT`">]
 					: never
 				: never
 			: never
 		: PeekToken<AfterType> extends TokenKey<"null">
 			? SkipToken<AfterType> extends infer AfterNull extends TokensList
-				? ContinueAfterColumnDef<AfterNull, Db, Schema, Table, Stack, ColName, Ts, Joined, false>
+				? ContinueAfterColumnDef<AfterNull, Db, Schema, Table, Stack, ColName, Joined, false>
 				: never
-			: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, Ts, Joined, false>
+			: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, Joined, false>
 
 type ContinueAfterColumnDef<
 	AfterNull extends TokensList,
@@ -214,7 +210,6 @@ type ContinueAfterColumnDef<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
-	Ts,
 	Joined extends string,
 	NotNull extends boolean,
 > =
@@ -225,7 +220,7 @@ type ContinueAfterColumnDef<
 					Db,
 					Schema,
 					Table,
-					readonly [...Stack, readonly [ColName, Ts, Joined, NotNull]]
+					readonly [...Stack, readonly [ColName, Joined, NotNull]]
 				>
 			: never
 		: PeekToken<AfterNull> extends TokenKey<")"> | TokenKey<"constraint">
@@ -234,21 +229,19 @@ type ContinueAfterColumnDef<
 					Db,
 					Schema,
 					Table,
-					readonly [...Stack, readonly [ColName, Ts, Joined, NotNull]]
+					readonly [...Stack, readonly [ColName, Joined, NotNull]]
 				>
 			: [AfterNull, Db, SqlParserError<"Expected `,` or `)` after column definition">]
 
-type ColPair = { cols: Record<string, unknown>; sqls: Record<string, string>; facts: Record<string, unknown> }
+type ColPair = { cols: Record<string, string>; facts: Record<string, unknown> }
 
 type OneCol<C extends ColumnTriple> = C extends readonly [
 	infer N extends string,
-	infer Ts,
 	infer Sql extends string,
 	infer NotNull extends boolean,
 ]
 	? {
-			cols: Record<N, Ts>
-			sqls: Record<N, Sql>
+			cols: Record<N, Sql>
 			facts: NotNull extends true ? Record<N, { not_null: true }> : {}
 		}
 	: never
@@ -259,13 +252,12 @@ type MergeRecords<A extends Record<string, unknown>, B extends Record<string, un
 
 type MergeColPair<A extends ColPair, B extends ColPair> = {
 	cols: MergeRecords<A["cols"], B["cols"]>
-	sqls: MergeRecords<A["sqls"], B["sqls"]>
 	facts: MergeRecords<A["facts"], B["facts"]>
 }
 
 /** Batched merge (chunks of 4) to keep conditional-type depth bounded on wide tables. */
 type ColumnsFromStack<S extends readonly ColumnTriple[]> = S extends readonly []
-	? { cols: {}; sqls: {}; facts: {} }
+	? { cols: {}; facts: {} }
 	: S extends readonly [infer C0 extends ColumnTriple]
 		? OneCol<C0>
 		: S extends readonly [infer C0 extends ColumnTriple, infer C1 extends ColumnTriple]
@@ -292,14 +284,13 @@ type ColumnsFromStack<S extends readonly ColumnTriple[]> = S extends readonly []
 								>,
 								ColumnsFromStack<Rest>
 							>
-					: { cols: {}; sqls: {}; facts: {} }
+					: { cols: {}; facts: {} }
 
 type MergeTableIntoDb<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
-	Cols extends Record<string, unknown>,
-	SqlTypes extends Record<string, string>,
+	Cols extends Record<string, string>,
 	Facts extends Record<string, unknown>,
 > = Schema extends keyof Db["schemas"]
 	? MergeDbPreserveScalars<
@@ -315,7 +306,6 @@ type MergeTableIntoDb<
 										{
 											kind: "table"
 											columns: Cols
-											column_sql_types: SqlTypes
 											column_facts: Facts
 										}
 									>

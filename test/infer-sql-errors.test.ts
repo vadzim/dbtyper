@@ -5,20 +5,21 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
 
 type DbU = {
 	defaultSchema: "public"
 	schemas: {
 		public: {
 			sets: {
-				u: { kind: "table"; columns: { id: string; n: number }; column_sql_types: { id: "uuid"; n: "integer" } }
+				u: { kind: "table"; columns: { id: "uuid"; n: "integer" } }
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
+	scalarTypes: PackageScalarTypes
 } & JsqlDatabaseShape
 
-type DbFns = DbU & { functions: { custom_fn: number } }
+type DbFns = DbU & { functions: { custom_fn: "integer" } }
 
 type I1 = InferSqlErrors<DbFns, `select u.id as x from u`>
 type _i1 = Expect<Extends<I1, null>>

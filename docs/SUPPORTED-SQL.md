@@ -56,7 +56,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 ## `CREATE VIEW`
 
 - **`CREATE VIEW`** then **`view_name`** or **`schema.view_name`**, then **`AS`**, then **`SELECT`** or **`WITH`** … **`SELECT`** (same **`ParseSelect`** rules and **`Params`** as a top-level query).
-- The inner query must type-check; result columns and **`column_sql_types`** are copied onto **`sets[name]`** with **`kind: "view"`**.
+- The inner query must type-check; result columns (as SQL type strings) are copied onto **`sets[name]`** with **`kind: "view"`**.
 - **`;`** or end after the inner statement tail (same semicolon discipline as **`SELECT`**).
 - Errors include unknown schema, missing **`AS`**, name already in **`sets`**, and malformed inner **`SELECT`**.
 
@@ -80,13 +80,13 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - **`FROM` is required** after the select list.
 - **`FROM`**: `schema.table` or `table` (default schema); optional **table alias**.
 - **`WITH` / CTEs** (leading **`WITH`** on the statement): comma-separated **`name AS (` `SELECT` … `)`** list, then the main **`SELECT`**. Each CTE row shape is merged into the outer **`ScopeMap`** before **`FROM`** so the main query can reference **`cte_name.column`**. Duplicate CTE names error. **`ParseParenEnclosedSelect`** already ends past the CTE subquery’s **`)`**; the parser does **not** read a second **`)`** after it. CTE **cycle** detection is not implemented.
-- **Derived tables (subqueries in `FROM` / `JOIN`)**: **`(` `SELECT` … `)`** then **`AS alias`** or **`alias`** (alias is required; otherwise **`SqlParserError<"Expected AS or alias after derived table">`**). The inner `SELECT` uses the same rules as a top-level `SELECT` (list, required inner `FROM`, joins, optional typed `WHERE`, same **`Params`**). Inner `FROM` starts with an **empty** `ScopeMap` (no correlation with outer tables). The outer query only sees the subquery under its alias; column names and **`column_sql_types`** come from the inner projection’s **`JsqlSelectStatementResult`**.
+- **Derived tables (subqueries in `FROM` / `JOIN`)**: **`(` `SELECT` … `)`** then **`AS alias`** or **`alias`** (alias is required; otherwise **`SqlParserError<"Expected AS or alias after derived table">`**). The inner `SELECT` uses the same rules as a top-level `SELECT` (list, required inner `FROM`, joins, optional typed `WHERE`, same **`Params`**). Inner `FROM` starts with an **empty** `ScopeMap` (no correlation with outer tables). The outer query only sees the subquery under its alias; column names (as SQL type strings) come from the inner projection’s **`JsqlSelectStatementResult`**.
 - **Scalar subqueries in expressions**: **`(` `SELECT` … one non-`*` column … `FROM` … `)`** as a scalar operand (resolved after scope is known). **`IN (SELECT` … `)`** requires a **single-column** inner projection; **`EXISTS (` `SELECT` … `)`** is **`boolean`**. Outer **`FROM`** aliases are available in **`WHERE`** (and other sites that pass the join **`ScopeMap`** into **`ParseExpressionAST`**); inner subquery **`FROM`** still starts from an empty scope unless extended for correlation elsewhere.
 - **`JOIN`**: **`INNER JOIN`**, **`LEFT [OUTER] JOIN`**, **`JOIN`**. Each joined table must be followed by **`ON alias.column = alias.column`** (equality only; columns validated against join scope). The RHS may be a **derived table** as above, then **`ON`** as usual.
 - Optional **`WHERE`**: parsed and **type-checked** with **`ParseWhereExpression`** (same rules as **`DELETE`** / **`UPDATE`**) over the join **`ScopeMap`**; must end with **`;`** (or end).
 - **Query parameters**: every **`:name`** in the select list must appear in the optional third generic of **`ParseSqlStatement<…, Db, Params>`** (defaults to **`{}`** — then any `:name` is an error). Each binding is **`{ ts, sql }`**; if **`ts` is exactly `unknown`**, the projection errors (**no silent `unknown`**). The same **`Params`** map applies to **`INSERT`** / **`UPDATE`** value expressions and their **`WHERE`** clauses.
 - Statement ends with **`;`** or end after the parsed tail.
-- Output type: **`JsqlSelectStatementResult`** (`kind`, `columns`, `column_sql_types`). Passing DB value is unchanged.
+- Output type: **`JsqlSelectStatementResult`** (`kind`, `columns` as SQL type strings). Passing DB value is unchanged.
 
 ---
 
@@ -115,7 +115,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - Each **`VALUES`** expression is parsed with **`ParseAddValue`** (same typed scalar subset as **`WHERE`** operands: literals, **`:param`**, unqualified / qualified column refs via **`ScopeMap`** for the target table).
 - Each value is checked against the corresponding column’s **TypeScript type** in **`columns`** using the same **comparison-class** rules as **`=`**; **`NULL`** is rejected when **`column_facts`** marks the column **`not_null: true`**.
 - Optional **`ON CONFLICT (`** column names **`) DO UPDATE SET`** … — same **`SET`** assignment style as **`UPDATE`** (typed **`ParseAddValue`** RHS). The scope adds **`excluded`** (mirror of the target table) so **`excluded.column_name`** is valid. Optional **`WHERE`** after **`SET`** uses **`ParseWhereExpression`** on that merged scope. Parsed **`SET`** column names are recorded on the result as **`on_conflict_update_set_columns`**.
-- Optional **`RETURNING`** … — same projection rules as a **`SELECT`** list (including **`*`** where implemented); resolved against the insert/upsert row scope. When present, **`JsqlInsertStatementResult.returning`** is a **`JsqlSelectStatementResult`** (`columns`, **`column_sql_types`**).
+- Optional **`RETURNING`** … — same projection rules as a **`SELECT`** list (including **`*`** where implemented); resolved against the insert/upsert row scope. When present, **`JsqlInsertStatementResult.returning`** is a **`JsqlSelectStatementResult`** (`columns` as SQL type strings).
 - Success third slot: **`JsqlInsertStatementResult`** (`kind`, `schema`, `table`, **`columns`**, optional **`on_conflict_update_set_columns`**, optional **`returning`**). Schema shape is unchanged.
 
 ---

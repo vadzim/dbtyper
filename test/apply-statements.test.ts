@@ -14,8 +14,7 @@ type DbDefaultPublic = {
 			sets: {
 				t: {
 					kind: "table"
-					columns: { id: number }
-					column_sql_types: { id: "integer" }
+					columns: { id: "integer" }
 				}
 			}
 		}
@@ -26,7 +25,7 @@ type DbDefaultPublic = {
 type ApplyCreateThenSelect = ApplyStatements<DbDefaultPublic, `create table s ( id int not null ); select id from s;`>
 
 type _applyMergedTable = Expect<
-	Extends<ApplyCreateThenSelect[0]["schemas"]["public"]["sets"]["s"], { kind: "table"; columns: { id: number } }>
+	Extends<ApplyCreateThenSelect[0]["schemas"]["public"]["sets"]["s"], { kind: "table"; columns: { id: "int" } }>
 >
 type _applyMergedNoErr = Expect<Extends<ApplyCreateThenSelect[1], null>>
 

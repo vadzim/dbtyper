@@ -42,7 +42,6 @@ type ParseUpdateAliasAfterTable<
 								schema: Sch
 								table: Tab
 								columns: Tbl["columns"]
-								column_sql_types: SqlTypesOf<Tbl>
 							}
 						>
 					>
@@ -67,7 +66,6 @@ type ParseUpdateAliasAfterTable<
 												schema: Sch
 												table: Tab
 												columns: Tbl["columns"]
-												column_sql_types: SqlTypesOf<Tbl>
 											}
 										>
 									>

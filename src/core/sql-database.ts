@@ -118,17 +118,6 @@ export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 																		[CK in keyof Columns as NonIndexKey<CK>]: Columns[CK]
 																	}
 																: never
-															column_sql_types: "column_sql_types" extends keyof Table
-																? Table["column_sql_types"] extends infer SqlCols
-																	? SqlCols extends { [k: string]: string }
-																		? [keyof SqlCols] extends [never]
-																			? {}
-																			: {
-																					[SK in keyof SqlCols as NonIndexKey<SK>]: SqlCols[SK]
-																				}
-																		: {}
-																	: {}
-																: {}
 															column_facts: Table["column_facts"] extends infer ColumnFacts
 																? [keyof ColumnFacts] extends [never]
 																	? {}

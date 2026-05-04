@@ -10,8 +10,8 @@ export type JsqlDatabaseShape = {
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
 export type JsqlSelectStatementResult = {
 	kind: "select"
-	columns: { [K: string]: unknown }
-	column_sql_types: { [K: string]: string }
+	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
+	columns: { [K: string]: string }
 }
 
 /** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */
@@ -42,9 +42,8 @@ export type JsqlSchemaShape = {
 
 export type JsqlTableShape = {
 	kind: "table" | "view"
-	columns: { [K: string]: unknown }
-	/** Original SQL type strings per column (normalized spacing, lowercased) for validation. */
-	column_sql_types?: { [K: string]: string }
+	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
+	columns: { [K: string]: string }
 	constraints?: JsqlConstraintMap
 	column_facts?: JsqlColumnFactsMap
 }

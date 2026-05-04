@@ -11,8 +11,7 @@ type DbTiny = {
 			sets: {
 				sales: {
 					kind: "table"
-					columns: { id: number }
-					column_sql_types: { id: "integer" }
+					columns: { id: "integer" }
 				}
 			}
 		}
@@ -31,7 +30,7 @@ type _arrayOpsBool = Expect<
 		Tuple3At2<TArrayOps>,
 		{
 			kind: "select"
-			columns: { o1: boolean; o2: boolean }
+			columns: { o1: "boolean"; o2: "boolean" }
 		}
 	>
 >
@@ -44,14 +43,12 @@ type _arrayChainedIndex = Expect<Extends<Tuple3At2<TArrayChainedIndex>, { kind: 
 /** Unary `ARRAY` constructor only (no `@>` / `&&`). */
 type TArrayCtorOnly = ParseSqlStatement<ParseSqlTokens<`select array[true,false] as flags from sales;`>, DbTiny>
 
-type _arrayCtorOnly = Expect<
-	Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: readonly unknown[] } }>
->
+type _arrayCtorOnly = Expect<Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: "unknown" } }>>
 
 /** Empty `ARRAY[]` constructor (typed as empty readonly tuple). */
 type TArrayEmpty = ParseSqlStatement<ParseSqlTokens<`select array[] as e from sales;`>, DbTiny>
 
-type _arrayEmpty = Expect<Extends<Tuple3At2<TArrayEmpty>, { kind: "select"; columns: { e: readonly unknown[] } }>>
+type _arrayEmpty = Expect<Extends<Tuple3At2<TArrayEmpty>, { kind: "select"; columns: { e: "unknown" } }>>
 
 describe("PostgreSQL ARRAY constructor + containment / overlap ops (type tests)", () => {
 	it("compile-time assertions above", () => {})

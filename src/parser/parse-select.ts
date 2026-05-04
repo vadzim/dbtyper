@@ -1251,7 +1251,6 @@ type SelectResultToDerivedScopeEntry<Res extends JsqlSelectStatementResult> = {
 	schema: "__subquery__"
 	table: "__subquery__"
 	columns: Res["columns"]
-	column_sql_types: Res["column_sql_types"]
 }
 
 type ParseAliasAfterDerivedTable<
@@ -1641,7 +1640,6 @@ type ParseAliasAfterTable<
 							schema: Sch
 							table: Tab
 							columns: Tbl["columns"]
-							column_sql_types: SqlTypesOf<Tbl>
 						}
 					>
 				>,
@@ -1662,7 +1660,6 @@ type ParseAliasAfterTable<
 												schema: Sch
 												table: Tab
 												columns: Tbl["columns"]
-												column_sql_types: SqlTypesOf<Tbl>
 											}
 										>
 									>,
@@ -1685,7 +1682,6 @@ type ParseAliasAfterTable<
 											schema: Sch
 											table: Tab
 											columns: Tbl["columns"]
-											column_sql_types: SqlTypesOf<Tbl>
 										}
 									>
 								>,
@@ -1990,7 +1986,7 @@ type ResolveSelectListExprItem<
 					Scope,
 					Params,
 					MergeRecords<Cols, E["columns"]>,
-					MergeStringRecords<Sqls, E["column_sql_types"]>,
+					MergeStringRecords<Sqls, E["columns"]>,
 					AllItems
 				>
 			: SqlParserError<"Unknown table in SELECT ... *">
@@ -2004,7 +2000,7 @@ type ResolveSelectListExprItem<
 						Scope,
 						Params,
 						MergeRecords<Cols, E["columns"]>,
-						MergeStringRecords<Sqls, E["column_sql_types"]>,
+						MergeStringRecords<Sqls, E["columns"]>,
 						AllItems
 					>
 				: SqlParserError<"Unknown alias in SELECT ... *">
@@ -2080,7 +2076,7 @@ type ResolveSelectListAcc<
 						Scope,
 						Params,
 						MergeRecords<Cols, E["columns"]>,
-						MergeStringRecords<Sqls, E["column_sql_types"]>,
+						MergeStringRecords<Sqls, E["columns"]>,
 						AllItems
 					>
 				: SqlParserError<"SELECT * requires a single FROM table">
@@ -2090,7 +2086,7 @@ type ResolveSelectListAcc<
 			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
 				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Cols, Sqls, AllItems>
 				: never
-	: { kind: "select"; columns: Cols; column_sql_types: Sqls }
+	: { kind: "select"; columns: Sqls }
 
 type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
 	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : unknown

@@ -30,7 +30,7 @@ type DbPublicEmpty = {
 
 type CoreNoScalars = {
 	defaultSchema: "public"
-	schemas: { public: { sets: { t: { kind: "table"; columns: {}; column_sql_types: {} } } } }
+	schemas: { public: { sets: { t: { kind: "table"; columns: {} } } } }
 }
 type MergedFromDb = MergeDbPreserveScalars<DbPublicEmpty, CoreNoScalars>
 type _mergeDbPreservesScalars = Expect<Matches<MergedFromDb["scalarTypes"], OddScalarMap>>
@@ -48,8 +48,7 @@ type _oddColsFromScalarMap = Expect<
 		OddTable,
 		{
 			kind: "table"
-			columns: { id: string; body: number; flag: boolean }
-			column_sql_types: { id: "uuid"; body: "text"; flag: "int" }
+			columns: { id: "uuid"; body: "text"; flag: "int" }
 			column_facts: { id: { not_null: true }; body: { not_null: true }; flag: { not_null: true } }
 		}
 	>
@@ -77,8 +76,7 @@ type DbOneTable = {
 			sets: {
 				gone: {
 					kind: "table"
-					columns: { x: boolean }
-					column_sql_types: { x: "int" }
+					columns: { x: "int" }
 				}
 			}
 		}
@@ -108,8 +106,7 @@ type DbOneColTable = {
 			sets: {
 				t: {
 					kind: "table"
-					columns: { id: string }
-					column_sql_types: { id: "uuid" }
+					columns: { id: "uuid" }
 				}
 			}
 		}
@@ -119,7 +116,7 @@ type DbOneColTable = {
 type AlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.t add column body text;`>, DbOneColTable>
 type _alterAddKeepsScalars = Expect<Matches<AlterAdd[1]["scalarTypes"], OddScalarMap>>
 type AfterAlterCols = AlterAdd[1]["schemas"]["public"]["sets"]["t"]["columns"]
-type _alterAddUsesDbScalars = Expect<Extends<AfterAlterCols["body"], number>>
+type _alterAddUsesDbScalars = Expect<Extends<AfterAlterCols["body"], "text">>
 
 /** Multi-statement script: each merge preserves `scalarTypes` through {@link ApplyStatements}. */
 type MultiStmtDb = ApplyStatements<

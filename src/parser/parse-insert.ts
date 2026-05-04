@@ -53,7 +53,6 @@ type ParseInsertAliasAfterTable<
 								schema: Sch
 								table: Tab
 								columns: Tbl["columns"]
-								column_sql_types: SqlTypesOf<Tbl>
 							}
 						>
 					>
@@ -78,7 +77,6 @@ type ParseInsertAliasAfterTable<
 												schema: Sch
 												table: Tab
 												columns: Tbl["columns"]
-												column_sql_types: SqlTypesOf<Tbl>
 											}
 										>
 									>
@@ -366,7 +364,6 @@ type InsertExcludedScope<
 			schema: Sch
 			table: Tab
 			columns: Tbl["columns"]
-			column_sql_types: SqlTypesOf<Tbl>
 		}
 	>
 >

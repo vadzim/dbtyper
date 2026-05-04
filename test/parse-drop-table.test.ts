@@ -12,7 +12,7 @@ type DbAuthItems = {
 	schemas: {
 		auth: {
 			sets: {
-				items: { kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }
+				items: { kind: "table"; columns: { id: "uuid" } }
 			}
 		}
 	}
@@ -49,7 +49,7 @@ type DbDefaultPublicWithNotifications = {
 	schemas: {
 		public: {
 			sets: {
-				notifications: { kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }
+				notifications: { kind: "table"; columns: { id: "uuid" } }
 			}
 		}
 	}
@@ -82,7 +82,7 @@ type DbBillingWithInvoices = {
 		public: JsqlSchemaShape
 		billing: {
 			sets: {
-				invoices: { kind: "table"; columns: { amount: string }; column_sql_types: { amount: "numeric" } }
+				invoices: { kind: "table"; columns: { amount: "numeric" } }
 			}
 		}
 	}
@@ -107,7 +107,7 @@ type DbWithView = {
 	schemas: {
 		public: {
 			sets: {
-				v_reports: { kind: "view"; columns: { id: string }; column_sql_types: { id: "uuid" } }
+				v_reports: { kind: "view"; columns: { id: "uuid" } }
 			}
 		}
 	}

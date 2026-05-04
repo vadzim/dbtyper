@@ -22,8 +22,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: string; name: string }
-					column_sql_types: { id: "uuid"; name: "text" }
+					columns: { id: "uuid"; name: "text" }
 				}
 			}
 		}
@@ -34,8 +33,7 @@ type DbUsers = {
 type UsersEntry = {
 	schema: "public"
 	table: "users"
-	columns: { id: string; name: string }
-	column_sql_types: { id: "uuid"; name: "text" }
+	columns: { id: "uuid"; name: "text" }
 }
 
 type UsersScope = Record<"users", UsersEntry>
@@ -71,14 +69,8 @@ type _selectParamNoBind = Expect<
 	Extends<Tuple3At2<TSelectParamNoBind>, SqlParserError<"Unknown query parameter in SELECT">>
 >
 
-type InnerScope = Record<
-	"inner_t",
-	{ schema: "public"; table: "inner_t"; columns: { a: number }; column_sql_types: { a: "integer" } }
->
-type OuterScope = Record<
-	"outer_t",
-	{ schema: "public"; table: "outer_t"; columns: { b: string }; column_sql_types: { b: "text" } }
->
+type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: "integer" } }>
+type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: "text" } }>
 type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
 
 type ExprCross = ParseWhereExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner>
@@ -135,7 +127,7 @@ type RCaseNoElse = ResolveExpressionAST<
 	UsersScope,
 	EmptyExpressionParams
 >
-type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "number">>>
+type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "integer">>>
 
 type WExistsOk = ParseWhereExpression<ParseSqlTokens<`exists (select users.id from users)`>, DbUsers, UsersScope>
 type _wExistsOk = Expect<Extends<Tuple2At1<WExistsOk>, null>>

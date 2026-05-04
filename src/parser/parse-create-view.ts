@@ -78,7 +78,6 @@ type MergeViewIntoDb<
 										{
 											kind: "view"
 											columns: Sel["columns"]
-											column_sql_types: Sel["column_sql_types"]
 										}
 									>
 							}

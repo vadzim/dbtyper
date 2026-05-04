@@ -150,7 +150,6 @@ type ParseDeleteAliasAfterTable<
 							schema: Sch
 							table: Tab
 							columns: Tbl["columns"]
-							column_sql_types: SqlTypesOf<Tbl>
 						}
 					>
 				>,
@@ -169,7 +168,6 @@ type ParseDeleteAliasAfterTable<
 										schema: Sch
 										table: Tab
 										columns: Tbl["columns"]
-										column_sql_types: SqlTypesOf<Tbl>
 									}
 								>
 							>,

@@ -46,8 +46,7 @@ type DbDefaultPublic = {
 			sets: {
 				t: {
 					kind: "table"
-					columns: { id: number }
-					column_sql_types: { id: "integer" }
+					columns: { id: "integer" }
 				}
 			}
 		}

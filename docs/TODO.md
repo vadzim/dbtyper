@@ -2,17 +2,6 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
-- [ ] Let types in database extends string enum and be actual database types. Instead of:
-      export type JsqlTableShape = {
-      kind: "table" | "view"
-      columns: { [K: string]: unknown }
-      should be:
-      export type JsqlTableShape = {
-      kind: "table" | "view"
-      columns: { [K: string]: string }
-      same for selects/updates/etc. they should return database types.
-      only .query and .stream methods should convert database types to typescript types.
-
 - [ ] require values in inserts for non-null columns without default values. Question - is that as it works in real world?
 
 ## Documentation
@@ -48,7 +37,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [x] **Implement `WITH cte AS ( SELECT … ) , …`**: CTE list, forward names for main **`SELECT`**, **`ScopeMap`** merge; **`parse-select.test.ts`** success + duplicate CTE name error. **Not implemented**: CTE cycle detection as a dedicated error.
 - [ ] **Implement correlated subqueries** beyond current wiring: outer **`FROM`** visible in **`WHERE`** / expression sites as needed; extend **`SELECT`**-list inner subquery scope deliberately; add tests (**v1 excludes `LATERAL`** per **`ROADMAP.md`**).
 - [ ] **`LATERAL` (deferred past v1 correlation milestone):** **`JOIN LATERAL`**, **`CROSS JOIN LATERAL`**, correlated derived tables in **`FROM`** — parse, scope (**outer row visible inside**), nullability; document in **`SUPPORTED-SQL.md`** when started.
-- [x] **`CREATE VIEW`**: routed in **`ParseSqlStatement`**; **`kind: "view"`** + **`columns` / `column_sql_types`** from inner **`SELECT`**; type test in **`test/apply-statements.test.ts`** (qualified view name + **`ParseQualifiedViewName`**).
+- [x] **Implement `CREATE VIEW`**: routed in **`ParseSqlStatement`**; **`kind: "view"`** + **`columns`** from inner **`SELECT`**; type test in **`test/apply-statements.test.ts`** (qualified view name + **`ParseQualifiedViewName`**).
 
 ## `CREATE INDEX` / other `CREATE`
 
@@ -103,7 +92,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 ## Tests — `SELECT` derived tables (edge cases)
 
 - [x] **`test/parse-select.test.ts`**: inner derived **`WHERE`** filters inner columns only; assert success projection types.
-- [x] Same file: inner **`SELECT DISTINCT`** + **`FROM`** + alias; assert **`column_sql_types`**.
+- [x] Same file: inner **`SELECT DISTINCT`** + **`FROM`** + alias; assert column types.
 - [x] Same file: inner **`FROM a JOIN b ON a.id = b.id`** inside parentheses; outer references only inner alias.
 - [x] Same file: sole **`FROM`** item **`(select users.id from users) u`** without **`AS`** keyword; assert **`JsqlSelectStatementResult`**.
 - [x] Same file: **`left outer join (select …) q on …`** (full **`OUTER`** keyword sequence).

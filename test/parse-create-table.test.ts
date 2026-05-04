@@ -19,8 +19,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: string }
-					column_sql_types: { id: "uuid" }
+					columns: { id: "uuid" }
 				}
 			}
 		}
@@ -39,8 +38,7 @@ type _t1shape = Expect<
 		T1Table,
 		{
 			kind: "table"
-			columns: { id: string; body: string }
-			column_sql_types: { id: "uuid"; body: "text" }
+			columns: { id: "uuid"; body: "text" }
 			column_facts: { id: { not_null: true } }
 		}
 	>
@@ -55,7 +53,7 @@ type DbWithDup = {
 	schemas: {
 		auth: {
 			sets: {
-				dup: { kind: "table"; columns: {}; column_sql_types?: {} }
+				dup: { kind: "table"; columns: {} }
 			}
 		}
 	}
@@ -80,8 +78,7 @@ type _t4shape = Expect<
 		T4Table,
 		{
 			kind: "table"
-			columns: { at: Date }
-			column_sql_types: { at: "timestamp with time zone" }
+			columns: { at: "timestamp with time zone" }
 			column_facts: { at: { not_null: true } }
 		}
 	>
@@ -108,8 +105,7 @@ type _tExplicitShape = Expect<
 		TExplicitTable,
 		{
 			kind: "table"
-			columns: { amount: string; note: string }
-			column_sql_types: { amount: "numeric"; note: "text" }
+			columns: { amount: "numeric"; note: "text" }
 			column_facts: { amount: { not_null: true }; note: { not_null: true } }
 		}
 	>
@@ -126,8 +122,7 @@ type _tExplicitIfNotShape = Expect<
 		TExplicitIfNotTable,
 		{
 			kind: "table"
-			columns: { id: number }
-			column_sql_types: { id: "int" }
+			columns: { id: "int" }
 			column_facts: { id: { not_null: true } }
 		}
 	>
@@ -157,8 +152,7 @@ type _t5shape = Expect<
 		T5Table,
 		{
 			kind: "table"
-			columns: { id: string; title: string }
-			column_sql_types: { id: "uuid"; title: "text" }
+			columns: { id: "uuid"; title: "text" }
 			column_facts: { id: { not_null: true }; title: { not_null: true } }
 		}
 	>
@@ -175,8 +169,7 @@ type _t6shape = Expect<
 		T6Table,
 		{
 			kind: "table"
-			columns: { id: string; title: string }
-			column_sql_types: { id: "uuid"; title: "text" }
+			columns: { id: "uuid"; title: "text" }
 			column_facts: { id: { not_null: true }; title: { not_null: true } }
 		}
 	>
@@ -228,8 +221,7 @@ type _qualWhenDefaultMissingShape = Expect<
 		TQualifiedWidgets,
 		{
 			kind: "table"
-			columns: { id: string }
-			column_sql_types: { id: "uuid" }
+			columns: { id: "uuid" }
 			column_facts: { id: { not_null: true } }
 		}
 	>
