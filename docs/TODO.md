@@ -13,6 +13,8 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
       same for selects/updates/etc. they should return database types.
       only .query and .stream methods should convert database types to typescript types.
 
+- [ ] require values in inserts for non-null columns without default values. Question - is that as it works in real world?
+
 ## Documentation
 
 - [ ] In **`README.md`**, document **custom functions**: optional **`functions?: Record<string, …>`** on the typed **`JsqlDatabaseShape`** / migration **`Db`** (types-only registry; **no** runtime `extend` API for typings).
