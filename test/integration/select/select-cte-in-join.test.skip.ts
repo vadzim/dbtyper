@@ -14,9 +14,7 @@ async function testSelectCTEInJoin() {
 		.apply(`create table posts (id text, user_id text);`)
 		.database()
 
-	// Feature not implemented: Type compatibility checking in JOIN ON with CTEs
-	// Parser reports "Incompatible types in JOIN ON" for text = text comparison
-	// This appears to be a bug in type resolution for CTE columns in JOIN conditions
+	// Type compatibility checking in JOIN ON with CTEs
 	const result = await db.query(
 		`with active_users as (
        select id, name from users where id is not null

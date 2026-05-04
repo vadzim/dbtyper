@@ -14,8 +14,8 @@ async function testSelectCTEUnknownColumn() {
 		.database()
 
 	// ❌ ERROR: reference unknown column from CTE
-	// Feature not implemented: Parser does not validate CTE column names
 	const bad = await db.query(
+		// @ts-expect-error
 		`with active_users as (select id, name from users) 
      select invalid_column from active_users;`,
 	)

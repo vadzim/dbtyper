@@ -14,8 +14,7 @@ async function testUpdateWithFrom() {
 		.apply(`create table posts (id text, user_id text, title text);`)
 		.database()
 
-	// Feature not implemented: UPDATE...FROM clause (PostgreSQL extension)
-	// Requires parser support for FROM clause in UPDATE statements
+	// UPDATE...FROM clause (PostgreSQL extension)
 	const result = await db.query(
 		`update users set name = 'Author' from posts where users.id = posts.user_id returning users.*;`,
 	)
