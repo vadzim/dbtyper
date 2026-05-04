@@ -14,6 +14,3 @@ export type TypeWordsToString<A extends readonly string[]> = A extends readonly 
 		? H
 		: `${H} ${TypeWordsToString<T>}`
 	: ""
-
-export type SqlJoinedToTs<Joined extends string, ScalarMap extends Record<string, unknown>> =
-	Lowercase<Joined> extends infer K extends string ? (K extends keyof ScalarMap ? ScalarMap[K] : unknown) : unknown

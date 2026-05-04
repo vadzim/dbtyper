@@ -8,15 +8,7 @@ import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
-
-/** Maps SQL type string to TypeScript type using the database's scalarTypes map. */
-type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string, unknown>> =
-	Lowercase<SqlType> extends infer K extends string ? (K extends keyof ScalarMap ? ScalarMap[K] : unknown) : unknown
-
-/** Converts a record of SQL type strings to TypeScript types. */
-type SqlColumnsToTs<SqlCols extends Record<string, string>, ScalarMap extends Record<string, unknown>> = {
-	[K in keyof SqlCols]: SqlTypeToTs<SqlCols[K], ScalarMap>
-}
+import type { SqlColumnsToTs } from "./sql-to-ts-conversion.ts"
 
 type SqlSelectRowForDb<
 	Db extends JsqlDatabaseShape,

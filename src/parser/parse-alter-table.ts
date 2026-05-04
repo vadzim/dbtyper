@@ -2,7 +2,7 @@ import type { JsqlDatabaseShape, JsqlTableShape, JsqlColumnFactsEntry } from "..
 import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { CollectSqlTypeWords, SqlJoinedToTs, TypeWordsToString } from "./parse-sql-type-words.ts"
+import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
 
 /** True when `Tab` is a key of `sets` (including under `JsqlSchemaShape & { sets: { … } }` intersections). */
 type HasConcreteSet<Sets extends object, Tab extends string> = Tab extends keyof Sets ? true : false
@@ -79,12 +79,7 @@ type ReplaceTableInDb<
 	}
 >
 
-type ApplyAddColumn<
-	T extends JsqlTableShape,
-	Col extends string,
-	Ts,
-	Sql extends string,
-> = Col extends keyof T["columns"]
+type ApplyAddColumn<T extends JsqlTableShape, Col extends string, Sql extends string> = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">
 	: {
 			kind: T["kind"]
@@ -130,7 +125,6 @@ type ApplyRenameColumn<
 type ApplyAlterColumnType<
 	T extends JsqlTableShape,
 	Col extends string,
-	Ts,
 	Sql extends string,
 > = Col extends keyof T["columns"]
 	? {
@@ -171,20 +165,20 @@ type ApplyDropNotNull<T extends JsqlTableShape, Col extends string> = Col extend
 		: Omit<T, "column_facts"> & { column_facts: Record<Col, { nullable: true }> } & JsqlTableShape
 	: SqlParserError<"Column does not exist">
 
-type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Ts, Joined extends string> =
+type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends string> =
 	PeekToken<Tokens> extends TokenKey<"not">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<"null">
 				? SkipToken<R1> extends infer R2 extends TokensList
-					? [R2, Ts, Joined]
+					? [R2, Joined]
 					: never
-				: [R1, Ts, Joined]
+				: [R1, Joined]
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? SkipToken<Tokens> extends infer Rn extends TokensList
-				? [Rn, Ts, Joined]
+				? [Rn, Joined]
 				: never
-			: [Tokens, Ts, Joined]
+			: [Tokens, Joined]
 
 type ParseAlterAddColumnAfterColName<
 	R2 extends TokensList,
@@ -198,19 +192,16 @@ type ParseAlterAddColumnAfterColName<
 		? TypeWordsToString<Words> extends infer Joined extends string
 			? Joined extends ""
 				? [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: SqlJoinedToTs<Joined, Db["scalarTypes"]> extends infer Ts
-					? ParseAlterOptionalNullSuffix<AfterType, Ts, Joined> extends [
+				: ParseAlterOptionalNullSuffix<AfterType, Joined> extends [
 							infer R3 extends TokensList,
-							infer Ts2,
 							infer J2 extends string,
-						]
-						? ApplyAddColumn<Tbl, Col, Ts2, J2> extends infer U
-							? U extends SqlParserError<string>
-								? [R3, Db, U]
-								: U extends JsqlTableShape
-									? ParseAlterActions<R3, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
-									: never
-							: never
+					  ]
+					? ApplyAddColumn<Tbl, Col, J2> extends infer U
+						? U extends SqlParserError<string>
+							? [R3, Db, U]
+							: U extends JsqlTableShape
+								? ParseAlterActions<R3, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+								: never
 						: never
 					: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
@@ -385,19 +376,16 @@ type ParseAlterColumnTypeAfterTypeKw<
 		? TypeWordsToString<Words> extends infer Joined extends string
 			? Joined extends ""
 				? [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: SqlJoinedToTs<Joined, Db["scalarTypes"]> extends infer Ts
-					? ParseAlterOptionalNullSuffix<AfterType, Ts, Joined> extends [
+				: ParseAlterOptionalNullSuffix<AfterType, Joined> extends [
 							infer R4 extends TokensList,
-							infer Ts2,
 							infer J2 extends string,
-						]
-						? ApplyAlterColumnType<Tbl, Col, Ts2, J2> extends infer U
-							? U extends SqlParserError<string>
-								? [R4, Db, U]
-								: U extends JsqlTableShape
-									? ParseAlterActions<R4, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
-									: never
-							: never
+					  ]
+					? ApplyAlterColumnType<Tbl, Col, J2> extends infer U
+						? U extends SqlParserError<string>
+							? [R4, Db, U]
+							: U extends JsqlTableShape
+								? ParseAlterActions<R4, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+								: never
 						: never
 					: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
