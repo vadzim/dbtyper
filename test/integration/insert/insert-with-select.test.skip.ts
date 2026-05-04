@@ -14,7 +14,8 @@ async function testInsertWithSelect() {
 		.apply(`create table users_backup (id text, name text);`)
 		.database()
 
-	// ✅ SUCCESS: INSERT with SELECT
+	// Feature not implemented: INSERT...SELECT statement
+	// Requires parser support for SELECT as VALUES source in INSERT
 	const result = await db.query(`insert into users_backup (id, name) select id, name from users;`)
 
 	return result

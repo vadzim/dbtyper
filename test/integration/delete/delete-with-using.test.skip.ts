@@ -14,7 +14,8 @@ async function testDeleteWithUsing() {
 		.apply(`create table banned (user_id text);`)
 		.database()
 
-	// ✅ SUCCESS: DELETE with USING clause
+	// Feature not implemented: DELETE...USING clause (PostgreSQL extension)
+	// Requires parser support for USING clause in DELETE statements
 	const result = await db.query(`delete from users using banned where users.id = banned.user_id returning users.*;`)
 
 	return result

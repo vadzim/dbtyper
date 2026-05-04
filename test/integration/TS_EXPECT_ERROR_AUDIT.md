@@ -12,6 +12,7 @@ Audited all integration tests to ensure erroneous queries correctly use `@ts-exp
 ## Error Test Cases by Category
 
 ### DELETE Tests (5 error cases)
+
 - ✅ `delete-returning-unknown-column.test.ts` - RETURNING unknown column
 - ✅ `delete-where-type-mismatch.test.ts` - WHERE clause type mismatch
 - ✅ `delete-where-unknown-column.test.ts` - unknown column in WHERE
@@ -19,6 +20,7 @@ Audited all integration tests to ensure erroneous queries correctly use `@ts-exp
 - ✅ `smoke-delete.test.ts` - 2 cases: invalid table, invalid RETURNING column
 
 ### INSERT Tests (8 error cases)
+
 - ✅ `insert-missing-not-null-column.test.ts` - missing NOT NULL column
 - ✅ `insert-null-into-not-null-column.test.ts` - NULL into NOT NULL column
 - ✅ `insert-returning-unknown-column.test.ts` - RETURNING unknown column
@@ -28,6 +30,7 @@ Audited all integration tests to ensure erroneous queries correctly use `@ts-exp
 - ✅ `smoke-insert.test.ts` - 3 cases: invalid column, invalid table, invalid RETURNING column
 
 ### UPDATE Tests (8 error cases)
+
 - ✅ `update-returning-unknown-column.test.ts` - RETURNING unknown column
 - ✅ `update-set-null-into-not-null-column.test.ts` - SET NULL into NOT NULL column
 - ✅ `update-type-mismatch.test.ts` - type mismatch
@@ -38,6 +41,7 @@ Audited all integration tests to ensure erroneous queries correctly use `@ts-exp
 - ✅ `smoke-update.test.ts` - 3 cases: invalid column, invalid table, invalid RETURNING column
 
 ### SELECT Tests (6 error cases)
+
 - ✅ `select-invalid-group-by.test.ts` - SELECT non-grouped column without aggregate
 - ✅ `select-join-type-mismatch.test.ts` - JOIN condition type mismatch
 - ✅ `select-order-by-unknown-column.test.ts` - ORDER BY unknown column
