@@ -1,10 +1,10 @@
 import { describe, it } from "node:test"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { InferSqlErrors } from "../src/core/sql-database.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { InferSqlErrors } from "./test-utils/parser-test-utils.ts"
 
 /** Minimal catalog with typed custom SQL functions (`functions`). */
 type DbFns = {

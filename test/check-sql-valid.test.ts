@@ -4,10 +4,9 @@ import type { SqlDatabase } from "../src/core/sql-database.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../src/parser/parse-expression.ts"
-import type { SqlSelectRow } from "../src/core/sql-database.ts"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
+import type { PackageScalarTypes, SqlSelectRow } from "./test-utils/parser-test-utils.ts"
 
 /**
  * Mirrors the private {@link SqlDatabase.query} constraint in `sql-database.ts`
