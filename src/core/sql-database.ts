@@ -6,11 +6,6 @@ import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectRow } from "../../test/test-utils/parser-test-utils.ts"
 
-/** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlMigrations}; same keys as {@link PostgresTypeMap}. */
-type DefaultSqlScalarTypeMap = PostgresTypeMap
-
-export type { MergeDbPreserveScalars } // TODO: remove that, never reexport symbols unless in the main index.ts
-
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
  * `postgresSqlDriver`.
@@ -22,10 +17,6 @@ export type SqlDriver<S extends Record<string, unknown>> = {
 	stream?(sql: string, params?: SqlDriverParams): AsyncIterable<unknown>
 	readonly scalarTypes: S
 }
-
-/** Scalar map inferred from {@link SqlDriver}'s type parameter; used by {@link sqlMigrations}. */
-type InferScalarTypesFromDriver<D extends SqlDriver<Record<string, unknown>>> =
-	D extends SqlDriver<infer S> ? S : DefaultSqlScalarTypeMap
 
 /** Configuration for {@link sqlMigrations}: logical schema name (default `public`) plus the runtime {@link SqlDriver}. */
 export type SqlDatabaseConfig<D extends SqlDriver<Record<string, unknown>> = SqlDriver<Record<string, unknown>>> = {
@@ -287,3 +278,10 @@ export class DataBaseImpl {
 	defaultSchema: string
 	dbInterface: SqlDriver<Record<string, unknown>>
 }
+
+/** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlMigrations}; same keys as {@link PostgresTypeMap}. */
+type DefaultSqlScalarTypeMap = PostgresTypeMap
+
+/** Scalar map inferred from {@link SqlDriver}'s type parameter; used by {@link sqlMigrations}. */
+type InferScalarTypesFromDriver<D extends SqlDriver<Record<string, unknown>>> =
+	D extends SqlDriver<infer S> ? S : DefaultSqlScalarTypeMap
