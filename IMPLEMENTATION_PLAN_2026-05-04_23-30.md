@@ -129,10 +129,10 @@ DELETE FROM table USING other_table WHERE condition
 
 ---
 
-## 8. [ ] INSERT NOT NULL validation
+## 8. [x] INSERT NOT NULL validation
 
-**File:** `insert-require-not-null-columns.test.skip.ts`  
-**Missing:** Validation that NOT NULL columns without defaults are provided in INSERT
+**File:** `insert-require-not-null-columns.test.ts`  
+**Status:** ✅ Implemented - Validation excludes NOT NULL columns with DEFAULT values
 
 Should error when omitting required NOT NULL columns.
 

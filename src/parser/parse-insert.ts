@@ -173,7 +173,9 @@ type IsNotNullInsertColumn<Tbl extends JsqlTableShape, Col extends string> = Tbl
 }
 	? Col extends keyof Facts
 		? Facts[Col] extends { not_null: true }
-			? true
+			? Facts[Col] extends { default: true }
+				? false
+				: true
 			: false
 		: false
 	: false
