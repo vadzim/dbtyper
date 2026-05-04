@@ -1,8 +1,8 @@
 export type JsqlDatabaseShape = {
 	defaultSchema: string
 	schemas: { [K: string]: JsqlSchemaShape }
-	/** Typed SQL function names → TS return types (keys as used in SQL after identifier normalization, typically lowercase). */
-	functions?: Record<string, unknown>
+	/** Typed SQL function names → SQL return type strings (e.g., "integer", "text"). Keys as used in SQL after identifier normalization, typically lowercase. */
+	functions?: Record<string, string>
 }
 
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */

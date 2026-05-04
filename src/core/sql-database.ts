@@ -31,7 +31,7 @@ export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
 export type SqlDatabase<
 	DefaultSchema extends string = "public",
 	ScalarTypes extends Record<string, unknown> = DefaultSqlScalarTypeMap,
-	Functions extends Record<string, unknown> = Record<string, never>,
+	Functions extends Record<string, string> = Record<string, never>,
 > = {
 	defaultSchema: DefaultSchema
 	schemas: {}
