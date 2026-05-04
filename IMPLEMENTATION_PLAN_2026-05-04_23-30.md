@@ -1,6 +1,6 @@
 # Skipped Integration Tests (8 files)
 
-## 1. CREATE TABLE with DEFAULT values
+## 1. [ ] CREATE TABLE with DEFAULT values
 
 **File:** `create-table-with-defaults.test.skip.ts`  
 **Missing:** Parser support for DEFAULT clause in column definitions
@@ -17,7 +17,7 @@ Currently the parser skips DEFAULT expressions but doesn't parse them properly.
 
 ---
 
-## 2. CREATE TABLE with wrong DEFAULT types
+## 2. [ ] CREATE TABLE with wrong DEFAULT types
 
 **File:** `create-table-with-wrong-defaults.test.skip.ts`  
 **Missing:** Type validation for DEFAULT values
@@ -32,7 +32,7 @@ Requires DEFAULT clause parsing first.
 
 ---
 
-## 3. CTE in JOIN
+## 3. [ ] CTE in JOIN
 
 **File:** `select-cte-in-join.test.skip.ts`  
 **Missing:** Full CTE (Common Table Expression) implementation
@@ -54,7 +54,7 @@ WITH cte_name AS (SELECT ...) SELECT ... FROM cte_name JOIN ...
 
 ---
 
-## 4. CTE Unknown Column
+## 4. [ ] CTE Unknown Column
 
 **File:** `select-cte-unknown-column.test.skip.ts`  
 **Missing:** CTE column validation
@@ -72,7 +72,7 @@ Requires same CTE infrastructure as #3.
 
 ---
 
-## 5. INSERT...SELECT
+## 5. [ ] INSERT...SELECT
 
 **File:** `insert-with-select.test.skip.ts`  
 **Missing:** Subquery support in INSERT statements
@@ -91,7 +91,7 @@ INSERT INTO table (cols) SELECT cols FROM other_table
 
 ---
 
-## 6. UPDATE...FROM
+## 6. [ ] UPDATE...FROM
 
 **File:** `update-with-from.test.skip.ts`  
 **Missing:** FROM clause in UPDATE statements (PostgreSQL extension)
@@ -110,7 +110,7 @@ UPDATE table SET col = value FROM other_table WHERE condition
 
 ---
 
-## 7. DELETE...USING
+## 7. [ ] DELETE...USING
 
 **File:** `delete-with-using.test.skip.ts`  
 **Missing:** USING clause in DELETE statements (PostgreSQL extension)
@@ -129,7 +129,7 @@ DELETE FROM table USING other_table WHERE condition
 
 ---
 
-## 8. INSERT NOT NULL validation
+## 8. [ ] INSERT NOT NULL validation
 
 **File:** `insert-require-not-null-columns.test.skip.ts`  
 **Missing:** Validation that NOT NULL columns without defaults are provided in INSERT
