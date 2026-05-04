@@ -129,7 +129,7 @@ type ParseSelectAfterDistinct<
 	Params extends ExpressionParamsShape,
 	CteBase extends ScopeMap = {},
 > =
-	ParseRawSelectList<Tokens, Db, Params> extends [infer AfterList extends TokensList, infer Items]
+	ParseRawSelectList<Tokens, Db, Params, CteBase> extends [infer AfterList extends TokensList, infer Items]
 		? Items extends SqlParserError<string>
 			? [AfterList, Db, Items]
 			: Items extends readonly RawSelectItem[]
@@ -1157,17 +1157,21 @@ type ParseRawSelectList<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap = {},
 	Acc extends readonly RawSelectItem[] = [],
 > =
 	PeekToken<Tokens> extends TokenKey<"from">
 		? [Tokens, Acc]
 		: PeekToken<Tokens> extends TokenKey<"*">
-			? ParseRawSelectListAfterItem<SkipToken<Tokens>, Db, Params, [...Acc, { kind: "star" }]>
-			: ParseOneRawSelectItem<Tokens, Db, Params> extends [infer AfterItem extends TokensList, infer It]
+			? ParseRawSelectListAfterItem<SkipToken<Tokens>, Db, Params, OuterScope, [...Acc, { kind: "star" }]>
+			: ParseOneRawSelectItem<Tokens, Db, Params, OuterScope> extends [
+						infer AfterItem extends TokensList,
+						infer It,
+				  ]
 				? It extends SqlParserError<string>
 					? [AfterItem, It]
 					: It extends RawSelectItem
-						? ParseRawSelectListAfterItem<AfterItem, Db, Params, [...Acc, It]>
+						? ParseRawSelectListAfterItem<AfterItem, Db, Params, OuterScope, [...Acc, It]>
 						: never
 				: never
 
@@ -1175,15 +1179,20 @@ type ParseRawSelectListAfterItem<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
 	Acc extends readonly RawSelectItem[],
-> = PeekToken<Tokens> extends TokenKey<","> ? ParseRawSelectList<SkipToken<Tokens>, Db, Params, Acc> : [Tokens, Acc]
+> =
+	PeekToken<Tokens> extends TokenKey<",">
+		? ParseRawSelectList<SkipToken<Tokens>, Db, Params, OuterScope, Acc>
+		: [Tokens, Acc]
 
 type ParseOneRawSelectExprItem<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: {} }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope }> extends [
 		infer RExpr extends TokensList,
 		infer Out,
 	]
@@ -1204,6 +1213,7 @@ type ParseOneRawSelectItem<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
 > =
 	PeekToken<Tokens> extends TokenParam<infer P extends string>
 		? SkipToken<Tokens> extends infer R1 extends TokensList
@@ -1212,7 +1222,7 @@ type ParseOneRawSelectItem<
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenIdent<string>
-			? ParseOneRawSelectExprItem<Tokens, Db, Params>
+			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 			: PeekToken<Tokens> extends infer Head
 				? Head extends
 						| TokenKey<"(">
@@ -1227,7 +1237,7 @@ type ParseOneRawSelectItem<
 						| TokenKey<"case">
 						| TokenKey<"exists">
 						| TokenKey<"array">
-					? ParseOneRawSelectExprItem<Tokens, Db, Params>
+					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 					: never
 				: never
 
@@ -1360,7 +1370,7 @@ type ParseInnerParenSelectBody<
 	Proj extends "any" | "scalar",
 	OuterScope extends ScopeMap,
 > =
-	ParseRawSelectList<Tokens, Db, Params> extends [infer AfterList extends TokensList, infer Items]
+	ParseRawSelectList<Tokens, Db, Params, OuterScope> extends [infer AfterList extends TokensList, infer Items]
 		? Items extends SqlParserError<string>
 			? [AfterList, Items]
 			: Items extends readonly RawSelectItem[]
@@ -1395,7 +1405,7 @@ type ParseInnerParenSelectFromAndResolve<
 						? [JoinScopeOnly<Tail>] extends [never]
 							? never
 							: JoinScopeOnly<Tail> extends ScopeMap
-								? MergeScope<OuterScope, JoinScopeOnly<Tail>> extends infer Merged extends ScopeMap
+								? MergeScope<JoinScopeOnly<Tail>, OuterScope> extends infer Merged extends ScopeMap
 									? ResolveSelectList<Items, Db, Merged, Params> extends infer Res
 										? Res extends SqlParserError<infer _Msg extends string>
 											? [R, Res]
@@ -1478,7 +1488,7 @@ type ParseInnerDerivedBody<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 > =
-	ParseRawSelectList<Tokens, Db, Params> extends [infer AfterList extends TokensList, infer Items]
+	ParseRawSelectList<Tokens, Db, Params, OuterScope> extends [infer AfterList extends TokensList, infer Items]
 		? Items extends SqlParserError<string>
 			? [AfterList, Items, ParserRefErrorThirdSentinel]
 			: Items extends readonly RawSelectItem[]
@@ -2158,7 +2168,7 @@ export type ParseAndResolveReturningClause<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseRawSelectList<Tokens, Db, Params> extends [infer After extends TokensList, infer Items]
+	ParseRawSelectList<Tokens, Db, Params, {}> extends [infer After extends TokensList, infer Items]
 		? Items extends SqlParserError<string>
 			? [After, Db, Items]
 			: Items extends readonly RawSelectItem[]
