@@ -4,6 +4,7 @@ import type { SqlParserError } from "../../src/sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
 import type { SqlSelectRowSqlTypes } from "../../src/core/sql-query.ts"
 import type { ApplySqlToTsConversion } from "../../src/core/sql-to-ts-conversion.ts"
+import type { PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
 
 /** Default scalar map from {@link SqlDatabase} — add `scalarTypes: PackageScalarTypes` on manual test DB shapes. */
 export type PackageScalarTypes = SqlDatabase["scalarTypes"]
@@ -17,14 +18,14 @@ export type PackageScalarTypes = SqlDatabase["scalarTypes"]
 export type SqlSelectRow<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Text extends string,
+	ScalarTypes extends Record<string, unknown> = PostgresTypeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends JsqlDatabaseShape
-	? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, Db["scalarTypes"]>
-	: Db
+> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, ScalarTypes> : Db
 
 /** `SqlParserError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
 export type InferSqlErrors<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
+	ScalarTypes extends Record<string, unknown> = PostgresTypeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer M>] ? SqlParserError<M> : null
+> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer M>] ? SqlParserError<M> : null

@@ -7,6 +7,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "../src/parser
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { PackageScalarTypes, SqlSelectRow } from "./test-utils/parser-test-utils.ts"
+import type { PostgresTypeMap } from "../src/postgres/postgres-type-map.ts"
 
 /**
  * Mirrors the private {@link SqlDatabase.query} constraint in `sql-database.ts`
@@ -16,7 +17,7 @@ type CheckSqlValid<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer Msg>] ? Msg : Stmt
+> = [SqlSelectRow<Db, Stmt, PostgresTypeMap, Params>] extends [SqlParserError<infer Msg>] ? Msg : Stmt
 
 /** Same seeded shape as **`parse-select.test.ts`** (**`DbJoinDefaultAndExplicit`**). */
 type DbJoinUsersBilling = ApplyStatements<

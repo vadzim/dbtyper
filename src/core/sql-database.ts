@@ -1,4 +1,3 @@
-import type { MergeDbPreserveScalars } from "./sql-scalar-types.ts"
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "./jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
@@ -40,12 +39,15 @@ export type SqlDatabase<
 	functions?: Functions
 }
 
-export interface SqlMigrations<Db extends JsqlDatabaseShape | SqlParserError<string>> {
+export interface SqlMigrations<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	ScalarTypes extends Record<string, unknown>,
+> {
 	apply<Source extends string>(
 		statement: Source extends CheckSqlMigrationSource<Db, Source> ? Source : CheckSqlMigrationSource<Db, Source>,
 		name?: string,
-	): SqlMigrations<FlattenedJsqlDatabase<ApplyStatements<Db, Source>[0]>>
-	database(): DataBase<FlattenedJsqlDatabase<Db>>
+	): SqlMigrations<FlattenedJsqlDatabase<ApplyStatements<Db, Source>[0]>, ScalarTypes>
+	database(): DataBase<FlattenedJsqlDatabase<Db>, ScalarTypes>
 	getDefaultSchema(): string
 }
 
@@ -55,7 +57,8 @@ export function sqlMigrations<D extends SqlDriver<Record<string, unknown>>, cons
 	const defaultSchema = config.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
-		FlattenedJsqlDatabase<SqlDatabase<DS, InferScalarTypesFromDriver<D>, Record<string, never>>>
+		FlattenedJsqlDatabase<SqlDatabase<DS, InferScalarTypesFromDriver<D>, Record<string, never>>>,
+		InferScalarTypesFromDriver<D>
 	>
 	return result
 }
@@ -189,9 +192,10 @@ export class DBMigrations {
 type SqlSelectRowObject<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	ScalarTypes extends Record<string, unknown>,
+	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Db, Stmt, Params> extends infer R
+	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends infer R
 		? R extends SqlParserError<string>
 			? never
 			: { [K in keyof R]: R[K] }
@@ -200,23 +204,32 @@ type SqlSelectRowObject<
 type CheckSqlValid<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer Msg>] ? `Error in query: ${Msg}` : Stmt
+	ScalarTypes extends Record<string, unknown>,
+	Params extends ExpressionParamsShape,
+> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer Msg>] ? `Error in query: ${Msg}` : Stmt
 
 type CheckSqlMigrationSource<Db extends JsqlDatabaseShape | SqlParserError<string>, Source extends string> =
 	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M> ? M : Source
 
-export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
+export type DataBase<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	ScalarTypes extends Record<string, unknown>,
+> = {
 	/**
 	 * All rows at once.
 	 */
 	query<Stmt extends string>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt> ? Stmt : CheckSqlValid<Db, Stmt>,
-	): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
+		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>
+			? Stmt
+			: CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
+	): Promise<Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>>
+
 	query<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, Params> ? Stmt : CheckSqlValid<Db, Stmt, Params>,
+		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, Params>
+			? Stmt
+			: CheckSqlValid<Db, Stmt, ScalarTypes, Params>,
 		params: ParamRuntimeValues<Params>,
-	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
+	): Promise<Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>>
 
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
@@ -224,12 +237,17 @@ export type DataBase<Db extends JsqlDatabaseShape | SqlParserError<string>> = {
 	 * Row-by-row iteration
 	 */
 	stream<Stmt extends string>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt> ? Stmt : CheckSqlValid<Db, Stmt>,
-	): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
+		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>
+			? Stmt
+			: CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
+	): AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>
+
 	stream<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, Params> ? Stmt : CheckSqlValid<Db, Stmt, Params>,
+		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, Params>
+			? Stmt
+			: CheckSqlValid<Db, Stmt, ScalarTypes, Params>,
 		params: ParamRuntimeValues<Params>,
-	): AsyncIterable<SqlSelectRowObject<Db, Stmt, Params>>
+	): AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
 
 	streamUntyped(statement: string, params?: Record<string, unknown>): AsyncIterable<any>
 
