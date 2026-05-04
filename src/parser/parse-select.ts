@@ -1263,6 +1263,7 @@ type ParseAliasAfterDerivedTable<
 		? PeekToken<Tokens> extends
 				| TokenKey<"inner">
 				| TokenKey<"left">
+				| TokenKey<"cross">
 				| TokenKey<"join">
 				| TokenKey<"where">
 				| TokenKey<";">
@@ -1617,6 +1618,7 @@ type ParseAliasAfterTable<
 	PeekToken<Tokens> extends
 		| TokenKey<"inner">
 		| TokenKey<"left">
+		| TokenKey<"cross">
 		| TokenKey<"join">
 		| TokenKey<"on">
 		| TokenKey<"where">
@@ -1700,9 +1702,35 @@ type ParseJoinChain<
 		? ParseJoinAfterOptionalInner<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"left">
 			? ParseJoinAfterLeft<SkipToken<Tokens>, Db, Scope, Params>
-			: PeekToken<Tokens> extends TokenKey<"join">
-				? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-				: [Tokens, null, Scope]
+			: PeekToken<Tokens> extends TokenKey<"cross">
+				? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
+				: PeekToken<Tokens> extends TokenKey<"join">
+					? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+					: [Tokens, null, Scope]
+
+type ParseJoinAfterCross<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"join">
+		? SkipToken<Tokens> extends infer AfterJ extends TokensList
+			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [infer R0 extends TokensList, infer Mid, infer Third]
+				? Mid extends SqlParserError<string>
+					? Third extends ParserRefErrorThirdSentinel
+						? [R0, Mid, ParserRefErrorThirdSentinel]
+						: never
+					: Mid extends null
+						? [JoinScopeOnly<Third>] extends [never]
+							? never
+							: JoinScopeOnly<Third> extends ScopeMap
+								? ParseJoinChain<R0, Db, JoinScopeOnly<Third>, Params>
+								: never
+						: never
+				: never
+			: never
+		: [Tokens, SqlParserError<"Expected JOIN after CROSS">, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalInner<
 	Tokens extends TokensList,

@@ -589,6 +589,38 @@ select users.id from users;
 >
 type _withTwoCtes = Expect<Extends<Tuple3At2<TWithTwoCtes>, { kind: "select"; columns: { id: string } }>>
 
+type DbCrossJoin = ApplyStatements<
+	SqlDatabase,
+	`
+create schema public;
+create table users ( id text, name text );
+create table roles ( id text, role_name text );
+`
+>[0]
+
+type TCrossJoin = ParseSqlStatement<
+	ParseSqlTokens<`select users.name, roles.role_name from users cross join roles;`>,
+	DbCrossJoin
+>
+
+type _crossJoinResult = Expect<Extends<Tuple3At2<TCrossJoin>, JsqlSelectStatementResult>>
+type _crossJoinColumns = Expect<
+	Extends<
+		Tuple3At2<TCrossJoin>,
+		{
+			kind: "select"
+			columns: { name: "text"; role_name: "text" }
+		}
+	>
+>
+
+type TCrossJoinMultiple = ParseSqlStatement<
+	ParseSqlTokens<`select u.name, r.role_name from users u cross join roles r cross join users u2;`>,
+	DbCrossJoin
+>
+
+type _crossJoinMultiple = Expect<Extends<Tuple3At2<TCrossJoinMultiple>, JsqlSelectStatementResult>>
+
 describe("parse-select (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
