@@ -9,7 +9,7 @@ const mockDriver = {
 }
 
 async function testVariant1() {
-	const db = await sqlMigrations({ driver: mockDriver })
+	const db = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create table users (id text, name text);`)
 		.database()

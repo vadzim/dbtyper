@@ -56,7 +56,7 @@ Query builder з валідацыяй на кожным кроку.
 **Структура:**
 
 ```typescript
-const db = await sqlMigrations({ driver }).apply(`create table users (id text, name text);`).database()
+const db = sqlMigrations({ driver }).apply(`create table users (id text, name text);`).database()
 
 const rows = await db.query(`select id, name from users;`)
 ```

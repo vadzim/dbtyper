@@ -31,7 +31,7 @@
  *
  * Выкарыстанне:
  *
- * const db = await sqlMigrations({ driver }).apply(...).database()
+ * const db = sqlMigrations({ driver }).apply(...).database()
  *
  * // Тыпізаваны доступ
  * const typed: TypedDataBase<typeof db> = db
@@ -50,7 +50,7 @@ const mockDriver = {
 }
 
 async function testVariant3() {
-	const db = await sqlMigrations({ driver: mockDriver })
+	const db = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create table users (id text, name text);`)
 		.database()

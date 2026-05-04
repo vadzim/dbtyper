@@ -9,7 +9,7 @@
 ### Існуючы API
 
 ```typescript
-const db = await sqlMigrations({ driver }).apply(`CREATE TABLE users (id TEXT, name TEXT)`).database()
+const db = sqlMigrations({ driver }).apply(`CREATE TABLE users (id TEXT, name TEXT)`).database()
 
 // Гэта НЕ дае памылкі кампіляцыі (але павінна!)
 const rows = await db.query(`SELECT invalid_column FROM users`)
@@ -32,7 +32,7 @@ const rows = await db.query(`SELECT invalid_column FROM users`)
 **Код:**
 
 ```typescript
-const db = await sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
 
 // @ts-expect-error — чакаем памылку
 const badQuery = await db.query(`select invalid_column from users;`)
@@ -63,7 +63,7 @@ const badQuery = await db.query(`select invalid_column from users;`)
 **Код:**
 
 ```typescript
-const db = await sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
 
 const bad = await db.query(`select invalid_column from users;`)
 ```
@@ -174,7 +174,7 @@ const builder = await db.select(`id, name`).from(`users`).where(`active = true`)
 **✅ Бягучы API ідэальны!**
 
 ```typescript
-const db = await sqlMigrations({ driver }).apply(`create table users (id text, name text);`).database()
+const db = sqlMigrations({ driver }).apply(`create table users (id text, name text);`).database()
 
 // ✅ Правільны SQL — кампілюецца
 const good = await db.query(`select id, name from users;`)
