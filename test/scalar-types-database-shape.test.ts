@@ -50,6 +50,7 @@ type _oddColsFromScalarMap = Expect<
 			kind: "table"
 			columns: { id: string; body: number; flag: boolean }
 			column_sql_types: { id: "uuid"; body: "text"; flag: "int" }
+			column_facts: { id: { not_null: true }; body: { not_null: true }; flag: { not_null: true } }
 		}
 	>
 >

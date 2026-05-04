@@ -170,6 +170,30 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlTableS
 				: never
 			: never
 
+type IsNotNullInsertColumn<Tbl extends JsqlTableShape, Col extends string> = Tbl extends {
+	column_facts: infer Facts extends Record<string, unknown>
+}
+	? Col extends keyof Facts
+		? Facts[Col] extends { not_null: true }
+			? true
+			: false
+		: false
+	: false
+
+type MissingRequiredInsertColumn<Tbl extends JsqlTableShape, Cols extends readonly string[]> = {
+	[K in Extract<keyof Tbl["columns"], string>]: IsNotNullInsertColumn<Tbl, K> extends true
+		? K extends Cols[number]
+			? never
+			: K
+		: never
+}[Extract<keyof Tbl["columns"], string>]
+
+type ValidateInsertRequiredColumns<Tbl extends JsqlTableShape, Cols extends readonly string[]> = [
+	MissingRequiredInsertColumn<Tbl, Cols>,
+] extends [never]
+	? true
+	: SqlParserError<"Missing NOT NULL column in INSERT">
+
 type ParseInsertAfterOpenParenCols<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -204,7 +228,11 @@ type ParseInsertAfterColumnNames<
 	PeekToken<R1> extends infer TkValues
 		? SkipToken<R1> extends infer Rv extends TokensList
 			? TkValues extends TokenKey<"values">
-				? ParseInsertAfterValuesKeyword<Rv, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+				? ValidateInsertRequiredColumns<Tbl, Cols> extends infer RequiredColsOk
+					? RequiredColsOk extends SqlParserError<string>
+						? [Rv, Db, RequiredColsOk]
+						: ParseInsertAfterValuesKeyword<Rv, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+					: never
 				: [Rv, Db, SqlParserError<"Expected VALUES after column list in INSERT">]
 			: never
 		: never

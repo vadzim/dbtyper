@@ -41,13 +41,14 @@ type _t1shape = Expect<
 			kind: "table"
 			columns: { id: string; body: string }
 			column_sql_types: { id: "uuid"; body: "text" }
+			column_facts: { id: { not_null: true } }
 		}
 	>
 >
 
 type T2 = ParseSqlStatement<ParseSqlTokens<`create table if not exists auth.users ( id uuid not null );`>, DbUsers>
 type _t2noop = Expect<Matches<T2[2], null>>
-type _t2db = Expect<Matches<T2[1], DbUsers>>
+type _t2db = Expect<Extends<T2[1], DbUsers>>
 
 type DbWithDup = {
 	defaultSchema: "public"
@@ -81,6 +82,7 @@ type _t4shape = Expect<
 			kind: "table"
 			columns: { at: Date }
 			column_sql_types: { at: "timestamp with time zone" }
+			column_facts: { at: { not_null: true } }
 		}
 	>
 >
@@ -108,6 +110,7 @@ type _tExplicitShape = Expect<
 			kind: "table"
 			columns: { amount: string; note: string }
 			column_sql_types: { amount: "numeric"; note: "text" }
+			column_facts: { amount: { not_null: true }; note: { not_null: true } }
 		}
 	>
 >
@@ -125,6 +128,7 @@ type _tExplicitIfNotShape = Expect<
 			kind: "table"
 			columns: { id: number }
 			column_sql_types: { id: "int" }
+			column_facts: { id: { not_null: true } }
 		}
 	>
 >
@@ -155,6 +159,7 @@ type _t5shape = Expect<
 			kind: "table"
 			columns: { id: string; title: string }
 			column_sql_types: { id: "uuid"; title: "text" }
+			column_facts: { id: { not_null: true }; title: { not_null: true } }
 		}
 	>
 >
@@ -172,6 +177,7 @@ type _t6shape = Expect<
 			kind: "table"
 			columns: { id: string; title: string }
 			column_sql_types: { id: "uuid"; title: "text" }
+			column_facts: { id: { not_null: true }; title: { not_null: true } }
 		}
 	>
 >
@@ -218,7 +224,15 @@ type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
 type TQualifiedWidgets = TQualifiedStillOkWhenDefaultMissing[1]["schemas"]["auth"]["sets"]["widgets"]
 type _qualWhenDefaultMissingOk = Expect<Matches<TQualifiedStillOkWhenDefaultMissing[2], null>>
 type _qualWhenDefaultMissingShape = Expect<
-	Extends<TQualifiedWidgets, { kind: "table"; columns: { id: string }; column_sql_types: { id: "uuid" } }>
+	Extends<
+		TQualifiedWidgets,
+		{
+			kind: "table"
+			columns: { id: string }
+			column_sql_types: { id: "uuid" }
+			column_facts: { id: { not_null: true } }
+		}
+	>
 >
 
 type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>

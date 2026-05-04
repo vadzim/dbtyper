@@ -48,6 +48,11 @@ type _insNullNotNull = Expect<
 type InsUnknownCol = ParseSqlStatement<ParseSqlTokens<`insert into users (id, nope) values ('u', 'x');`>, DbUsers>
 type _insUnknownCol = Expect<Extends<Tuple3At2<InsUnknownCol>, SqlParserError<"Unknown column in INSERT column list">>>
 
+type InsMissingNotNull = ParseSqlStatement<ParseSqlTokens<`insert into users (name) values ('n1');`>, DbUsers>
+type _insMissingNotNull = Expect<
+	Extends<Tuple3At2<InsMissingNotNull>, SqlParserError<"Missing NOT NULL column in INSERT">>
+>
+
 /** Qualified `public.users` while `defaultSchema` is `app` (must not resolve via default only). */
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"
