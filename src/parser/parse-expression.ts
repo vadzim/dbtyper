@@ -86,14 +86,8 @@ export type ScalarExprAst =
 	| { kind: "is_not_null"; expr: ScalarExprAst }
 	| { kind: "in_list"; expr: ScalarExprAst; items: readonly ScalarExprAst[] }
 	| { kind: "in_subquery"; expr: ScalarExprAst; sub: JsqlSelectStatementResult }
-	/** Deferred `(SELECT …)` parsed at resolve time so outer FROM scope is visible (e.g. SELECT list correlations). `tokens` begins at `SELECT`. */
-	| { kind: "scalar_subquery_pending"; tokens: TokensList }
 	| { kind: "scalar_subquery"; sel: JsqlSelectStatementResult }
-	/** Deferred correlation for `EXISTS (SELECT …)` when the leading keyword is `select`. */
-	| { kind: "exists_subquery_pending"; tokens: TokensList }
 	| { kind: "exists_subquery"; sub: JsqlSelectStatementResult }
-	/** Deferred `(SELECT …)` inside `IN` for correlation; `tokens` begins at `SELECT`. */
-	| { kind: "in_subquery_pending"; expr: ScalarExprAst; tokens: TokensList }
 	/** PostgreSQL `ARRAY[` … `]` constructor (comma-separated scalar expressions). */
 	| { kind: "array_ctor"; elements: readonly ScalarExprAst[] }
 	/** One-based or zero-based semantics are dialect-specific at runtime; MVP element access typing. */
@@ -286,17 +280,19 @@ type SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends re
 					: SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
 				: SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
 
-/** Marker: `IN ( SELECT … )` tail defers parsing until resolve (outer scope). */
-type InSubqueryPendingTailMarker = { __inSubqueryPendingTail: TokensList }
-
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? [Tokens, SqlParserError<"IN list must not be empty">]
 		: PeekToken<Tokens> extends TokenKey<"select">
-			? SkipParenWrappedSelectTail<Tokens> extends [infer R9 extends TokensList, infer SkErr]
-				? SkErr extends SqlParserError<string>
-					? [R9, SkErr]
-					: [R9, { __inSubqueryPendingTail: Tokens }]
+			? ParseParenEnclosedSelect<Tokens, Env["db"], Env["params"], Env["outerScope"]> extends [
+					infer R9 extends TokensList,
+					infer Sub,
+				]
+				? Sub extends SqlParserError<string>
+					? [R9, Sub]
+					: Sub extends JsqlSelectStatementResult
+						? [R9, Sub]
+						: never
 				: never
 			: ParseInListUntypedAccum<Tokens, readonly [], Env>
 
@@ -307,8 +303,8 @@ type ParseInListUntypedAfterInKw<Tokens extends TokensList, L extends ScalarExpr
 				? ParseInListUntypedTail<SkipToken<R8>, Env> extends [infer R9 extends TokensList, infer ListRes]
 					? ListRes extends SqlParserError<string>
 						? [R9, ListRes]
-						: ListRes extends InSubqueryPendingTailMarker
-							? [R9, { kind: "in_subquery_pending"; expr: L; tokens: ListRes["__inSubqueryPendingTail"] }]
+						: ListRes extends JsqlSelectStatementResult
+							? [R9, { kind: "in_subquery"; expr: L; sub: ListRes }]
 							: ListRes extends readonly ScalarExprAst[]
 								? [R9, { kind: "in_list"; expr: L; items: ListRes }]
 								: never
@@ -440,9 +436,7 @@ type ParseAfterIsUntyped<Tokens extends TokensList, L extends ScalarExprAst> =
 			? PeekToken<R5> extends TokenKey<"null">
 				? SkipToken<R5> extends infer R6 extends TokensList
 					? [R6, { kind: "is_not_null"; expr: L }]
-					: SkipToken<R5> extends infer R5b extends TokensList
-						? [R5b, SqlParserError<"Expected NULL after IS NOT">]
-						: never
+					: never
 				: [R5, SqlParserError<"Expected NULL after IS NOT">]
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
@@ -472,14 +466,12 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 	PeekToken<Tokens> extends infer P
 		? IsRelOp<P> extends true
 			? SkipToken<Tokens> extends infer R2 extends TokensList
-				? PeekToken<Tokens> extends infer OpTok
-					? ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
-						? Rhs extends SqlParserError<string>
-							? [R3, Rhs]
-							: TokenToCmpOp<OpTok> extends infer Cop extends ScalarCmpOp
-								? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
-								: [R3, SqlParserError<"Invalid comparison operator">]
-						: never
+				? ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
+					? Rhs extends SqlParserError<string>
+						? [R3, Rhs]
+						: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
+							? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
+							: [R3, SqlParserError<"Invalid comparison operator">]
 					: never
 				: never
 			: P extends TokenKey<"is">
@@ -594,21 +586,17 @@ type ParseNotScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> 
 			? PeekToken<Rex0> extends TokenKey<"(">
 				? SkipToken<Rex0> extends infer Rex1 extends TokensList
 					? PeekToken<Rex1> extends TokenKey<"select">
-						? SkipParenWrappedSelectTail<Rex1> extends [infer Rex2 extends TokensList, infer ExSkErr]
-							? ExSkErr extends SqlParserError<string>
-								? [Rex2, ExSkErr]
-								: [Rex2, { kind: "exists_subquery_pending"; tokens: Rex1 }]
-							: never
-						: ParseParenEnclosedSelect<Rex1, Env["db"], Env["params"], Env["outerScope"]> extends [
-									infer Rex2 extends TokensList,
-									infer Sub,
-							  ]
+						? ParseParenEnclosedSelect<Rex1, Env["db"], Env["params"], Env["outerScope"]> extends [
+								infer Rex2 extends TokensList,
+								infer Sub,
+							]
 							? Sub extends SqlParserError<string>
 								? [Rex2, Sub]
 								: Sub extends JsqlSelectStatementResult
 									? [Rex2, { kind: "exists_subquery"; sub: Sub }]
 									: never
 							: never
+						: [Rex1, SqlParserError<"Expected SELECT in EXISTS subquery">]
 					: never
 				: [Rex0, SqlParserError<"Expected `(` after EXISTS">]
 			: never
@@ -1072,35 +1060,11 @@ type ExpressionResolvers<
 	}
 		? ExprOk<boolean, "boolean">
 		: never
-	exists_subquery_pending: Ast extends {
-		kind: "exists_subquery_pending"
-		tokens: infer Tkn extends TokensList
-	}
-		? ParseParenEnclosedSelect<Tkn, Db, Params, Scope> extends [infer _R, infer Sub]
-			? Sub extends SqlParserError<string>
-				? Sub
-				: Sub extends JsqlSelectStatementResult
-					? ExprOk<boolean, "boolean">
-					: never
-			: never
-		: never
 	scalar_subquery: Ast extends {
 		kind: "scalar_subquery"
 		sel: infer Sel extends JsqlSelectStatementResult
 	}
 		? ResolveScalarSubquerySel<Sel>
-		: never
-	scalar_subquery_pending: Ast extends {
-		kind: "scalar_subquery_pending"
-		tokens: infer Tkn extends TokensList
-	}
-		? ParseParenScalarSelect<Tkn, Db, Params, Scope> extends [infer _R, infer Sub]
-			? Sub extends SqlParserError<string>
-				? Sub
-				: Sub extends JsqlSelectStatementResult
-					? ResolveScalarSubquerySel<Sub>
-					: never
-			: never
 		: never
 	in_subquery: Ast extends {
 		kind: "in_subquery"
@@ -1108,21 +1072,6 @@ type ExpressionResolvers<
 		sub: infer Isub extends JsqlSelectStatementResult
 	}
 		? ResolveInSubqueryAst<Ie, Isub, Db, Scope, Params>
-		: never
-	in_subquery_pending: Ast extends {
-		kind: "in_subquery_pending"
-		expr: infer Iep extends ScalarExprAst
-		tokens: infer Tkn extends TokensList
-	}
-		? ParseParenEnclosedSelect<Tkn, Db, Params, Scope> extends [infer _R, infer Sub]
-			? Sub extends SqlParserError<string>
-				? Sub
-				: Sub extends JsqlSelectStatementResult
-					? SingleProjectionColumn<Sub["columns"]> extends true
-						? ResolveInSubqueryAst<Iep, Sub, Db, Scope, Params>
-						: SqlParserError<"IN subquery must project exactly one column">
-					: never
-			: never
 		: never
 	in_list: Ast extends {
 		kind: "in_list"
@@ -1698,19 +1647,13 @@ type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: 
 								: ScalarAstNonNumericForMulHead<Ics>
 							: E extends { kind: "exists_subquery" }
 								? true
-								: E extends { kind: "exists_subquery_pending" }
+								: E extends { kind: "in_subquery" }
 									? true
-									: E extends { kind: "scalar_subquery_pending" }
+									: E extends { kind: "array_ctor" }
 										? true
-										: E extends { kind: "in_subquery_pending" }
+										: E extends { kind: "array_index" }
 											? true
-											: E extends { kind: "in_subquery" }
-												? true
-												: E extends { kind: "array_ctor" }
-													? true
-													: E extends { kind: "array_index" }
-														? true
-														: false
+											: false
 
 /** Comma-separated contents of `ARRAY[ … ]`. */
 type ParseArrayCtorElementsAccum<
@@ -1768,10 +1711,15 @@ type TryParenOperandScalarUntyped<Tokens extends TokensList, Env extends ExprPar
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipToken<Tokens> extends infer Ri extends TokensList
 			? PeekToken<Ri> extends TokenKey<"select">
-				? SkipParenWrappedSelectTail<Ri> extends [infer Rk extends TokensList, infer SkErr]
-					? SkErr extends SqlParserError<string>
-						? [Rk, SkErr]
-						: [Rk, { kind: "scalar_subquery_pending"; tokens: Ri }]
+				? ParseParenScalarSelect<Ri, Env["db"], Env["params"], Env["outerScope"]> extends [
+						infer Rk extends TokensList,
+						infer Sub,
+					]
+					? Sub extends SqlParserError<string>
+						? [Rk, Sub]
+						: Sub extends JsqlSelectStatementResult
+							? [Rk, { kind: "scalar_subquery"; sel: Sub }]
+							: never
 					: never
 				: PeekToken<Ri> extends TokenKey<"with">
 					? ParseParenScalarSelect<Ri, Env["db"], Env["params"], Env["outerScope"]> extends [
@@ -2008,7 +1956,7 @@ type ParseOtherOpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env 
 									: never
 								: [R2, SqlParserError<"Expected operator after OPERATOR(">]
 							: never
-						: [Tokens, Acc]
+						: [R1, SqlParserError<"Expected `(` after OPERATOR">]
 					: never
 				: [Tokens, Acc]
 		: [Tokens, Acc]
@@ -2215,7 +2163,16 @@ type TryValueOperand<
 										: never
 									: never
 								: PeekToken<Tokens> extends TokenIdent<string>
-									? TryOperandIdentOrCall<Tokens, { db: Db; params: Params; outerScope: Scope }>
+									? TryOperandIdentOrCall<
+											Tokens,
+											{ db: Db; params: Params; outerScope: Scope }
+										> extends [infer Rident extends TokensList, infer IdentOut]
+										? IdentOut extends SqlParserError<string>
+											? [Rident, IdentOut]
+											: IdentOut extends ExprAtom
+												? [Rident, IdentOut]
+												: [Rident, SqlParserError<"Unsupported identifier expression">]
+										: never
 									: SkipToken<Tokens> extends infer Rbad extends TokensList
 										? [Rbad, SqlParserError<"Unexpected token">]
 										: never
@@ -2237,7 +2194,7 @@ type ParseValuePgCastSuffix<Tokens extends TokensList, Acc extends ExprAtom> =
 											? ParseValuePgCastSuffix<R1, Casted>
 											: never
 									: never
-								: SqlParserError<"Invalid cast target">
+								: [R1, SqlParserError<"Invalid cast target">]
 							: never
 				: never
 			: never

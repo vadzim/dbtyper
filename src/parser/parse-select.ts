@@ -523,10 +523,11 @@ type ParseOptionalGroupHaving<
 		? SkipToken<Tokens> extends infer R0 extends TokensList
 			? PeekToken<R0> extends TokenKey<"by">
 				? SkipToken<R0> extends infer R1 extends TokensList
-					? ParseGroupByTermsAcc<R1, Db, Scope, Params> extends infer GB
-						? GB extends readonly [infer R2 extends TokensList, infer Outcome]
-							? ParseGroupTailAfterTerms<R2, Db, Scope, Params, Outcome>
-							: never
+					? ParseGroupByTermsAcc<R1, Db, Scope, Params> extends readonly [
+							infer R2 extends TokensList,
+							infer Outcome,
+						]
+						? ParseGroupTailAfterTerms<R2, Db, Scope, Params, Outcome>
 						: never
 					: never
 				: readonly [R0, SqlParserError<"Expected BY after GROUP">, EmptyGroupClauseMetaPlain]
@@ -840,9 +841,7 @@ type ExprValidInsideGroupedSelection<
 																									>
 																								>
 																							: Ast extends {
-																										kind:
-																											| "in_subquery"
-																											| "in_subquery_pending"
+																										kind: "in_subquery"
 																										expr: infer Ie extends
 																											ScalarExprAst
 																								  }
@@ -854,9 +853,7 @@ type ExprValidInsideGroupedSelection<
 																								: Ast extends {
 																											kind:
 																												| "scalar_subquery"
-																												| "scalar_subquery_pending"
 																												| "exists_subquery"
-																												| "exists_subquery_pending"
 																									  }
 																									? true
 																									: false
@@ -1012,11 +1009,7 @@ type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
 																? true
 																: AstContainsAggregateCall<Rc>
 															: Ast extends {
-																		kind:
-																			| "in_subquery"
-																			| "in_subquery_pending"
-																			| "scalar_subquery_pending"
-																			| "exists_subquery_pending"
+																		kind: "in_subquery"
 																		expr?: infer Lex extends ScalarExprAst
 																  }
 																? Lex extends ScalarExprAst
@@ -1097,23 +1090,22 @@ type SelectAfterWhereAndGroupHaving<
 	Params extends ExpressionParamsShape,
 	Items extends readonly RawSelectItem[],
 > =
-	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends infer PH
-		? PH extends readonly [infer T1 extends TokensList, infer Gh, infer Meta extends SelectGroupClauseMeta]
-			? Gh extends SqlParserError<string>
-				? [T1, Db, Gh]
-				: GroupedProjValidationOutcome<Items, Meta> extends infer V
-					? V extends SqlParserError<string>
-						? [T1, Db, V]
-						: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [
-									infer Rt extends TokensList,
-									infer Te,
-							  ]
-							? Te extends SqlParserError<string>
-								? [Rt, Db, Te]
-								: FinishSelectTerminator<Rt, Db, Res>
-							: never
-					: never
-			: never
+	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends readonly [
+		infer T1 extends TokensList,
+		infer Gh,
+		infer Meta extends SelectGroupClauseMeta,
+	]
+		? Gh extends SqlParserError<string>
+			? [T1, Db, Gh]
+			: GroupedProjValidationOutcome<Items, Meta> extends infer V
+				? V extends SqlParserError<string>
+					? [T1, Db, V]
+					: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
+						? Te extends SqlParserError<string>
+							? [Rt, Db, Te]
+							: FinishSelectTerminator<Rt, Db, Res>
+						: never
+				: never
 		: never
 
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
