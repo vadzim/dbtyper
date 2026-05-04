@@ -18,6 +18,7 @@
 - ❌ UPDATE without RETURNING → `"Error in query: Expected SELECT (or WITH … SELECT) for row typing"`
 
 **What works:**
+
 - ✅ SELECT (always)
 - ✅ DELETE with RETURNING
 - ✅ INSERT with RETURNING
@@ -52,11 +53,13 @@ type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
 ### Why DELETE Returns `null`
 
 From `src/parser/parse-delete.ts` (line 79):
+
 ```typescript
 ? [AfterSemi, Db, Returning]
 ```
 
 Where `Returning` has type `JsqlSelectStatementResult | null`:
+
 - DELETE with RETURNING → `JsqlSelectStatementResult` ✅
 - DELETE without RETURNING → `null` ❌
 
@@ -78,13 +81,13 @@ type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
 	: Res extends JsqlInsertStatementResult
 		? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
 			? Ret["columns"]
-			: {}  // ← Changed: empty object instead of error
+			: {} // ← Changed: empty object instead of error
 		: Res extends JsqlUpdateStatementResult
 			? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
 				? Ret["columns"]
-				: {}  // ← Changed: empty object instead of error
+				: {} // ← Changed: empty object instead of error
 			: Res extends null
-				? {}  // ← Changed: empty object instead of error
+				? {} // ← Changed: empty object instead of error
 				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
 ```
 
@@ -97,16 +100,19 @@ type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
 This fix will unblock **~47 skipped tests** (60% of total):
 
 **High Priority (~30 tests):**
+
 - DELETE without WHERE
 - INSERT with VALUES (string literals)
 - UPDATE with SET (string literals)
 - Type validation in WHERE/SET expressions
 
 **Medium Priority (~10 tests):**
+
 - IS NULL / IS NOT NULL operators
 - Type validation edge cases
 
 **Lower Priority:**
+
 - CROSS JOIN support
 - CTE (WITH clause)
 - Complex subqueries
@@ -130,11 +136,11 @@ This fix will unblock **~47 skipped tests** (60% of total):
 2. Run `npm run typecheck` — should pass
 3. Enable and run blocked tests one by one
 4. Verify that:
-   - DELETE without RETURNING compiles ✅
-   - INSERT without RETURNING compiles ✅
-   - UPDATE without RETURNING compiles ✅
-   - String literals in WHERE/SET work ✅
-   - All existing tests still pass ✅
+    - DELETE without RETURNING compiles ✅
+    - INSERT without RETURNING compiles ✅
+    - UPDATE without RETURNING compiles ✅
+    - String literals in WHERE/SET work ✅
+    - All existing tests still pass ✅
 
 ---
 
