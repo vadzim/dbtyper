@@ -75,6 +75,22 @@ type UpMultiQualified = ParseSqlStatement<
 >
 type _upMultiQualified = Expect<Extends<Tuple3At2<UpMultiQualified>, JsqlUpdateStatementResult>>
 
+type UpReturning = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' returning id;`>, DbUsers>
+type _upReturning = Expect<
+	Extends<Tuple3At2<UpReturning>, { kind: "select"; columns: { id: string }; column_sql_types: { id: "text" } }>
+>
+
+type UpWithoutWhereReturning = ParseSqlStatement<
+	ParseSqlTokens<`update users set name = 'Everyone' returning *;`>,
+	DbUsers
+>
+type _upWithoutWhereReturning = Expect<
+	Extends<
+		Tuple3At2<UpWithoutWhereReturning>,
+		{ kind: "select"; columns: { id: string; name: string }; column_sql_types: { id: "text"; name: "text" } }
+	>
+>
+
 describe("parse-update (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

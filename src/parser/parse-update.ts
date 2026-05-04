@@ -163,6 +163,7 @@ type ParseUpdateSetAssignments<
 															: never
 														: PeekToken<R3> extends
 																	| TokenKey<"where">
+																	| TokenKey<"returning">
 																	| TokenKey<";">
 																	| TokenEot
 															? [
