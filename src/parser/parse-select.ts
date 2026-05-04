@@ -1614,9 +1614,52 @@ type ParseFromTableAfterLeadingIdent<
 					: never
 				: never
 			: never
-		: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
-			? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
-			: [R1, SqlParserError<"Unknown table in FROM">, ParserRefErrorThirdSentinel]
+		: A extends keyof Scope
+			? ParseAliasAfterCTE<R1, A, Scope[A], Scope>
+			: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
+				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
+				: [R1, SqlParserError<"Unknown table in FROM">, ParserRefErrorThirdSentinel]
+
+type ParseAliasAfterCTE<
+	Tokens extends TokensList,
+	CteName extends string,
+	CteEntry extends ScopeEntry,
+	Scope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends
+		| TokenKey<"inner">
+		| TokenKey<"left">
+		| TokenKey<"cross">
+		| TokenKey<"join">
+		| TokenKey<"on">
+		| TokenKey<"where">
+		| TokenKey<"order">
+		| TokenKey<"limit">
+		| TokenKey<"offset">
+		| TokenKey<"fetch">
+		| TokenKey<"group">
+		| TokenKey<"having">
+		| TokenKey<")">
+		| TokenKey<";">
+		| TokenEot
+		? [Tokens, null, MergeScope<Record<CteName, CteEntry>, Scope>]
+		: PeekToken<Tokens> extends TokenKey<"as">
+			? SkipToken<Tokens> extends infer Ras0 extends TokensList
+				? PeekToken<Ras0> extends infer TokName
+					? SkipToken<Ras0> extends infer Ra extends TokensList
+						? TokName extends TokenIdent<infer Alias extends string>
+							? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
+							: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
+						: never
+					: never
+				: never
+			: PeekToken<Tokens> extends infer TokAlias
+				? SkipToken<Tokens> extends infer Ra extends TokensList
+					? TokAlias extends TokenIdent<infer Alias extends string>
+						? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
+						: [Ra, SqlParserError<"Expected alias after CTE">, ParserRefErrorThirdSentinel]
+					: never
+				: never
 
 type ParseAliasAfterTable<
 	Tokens extends TokensList,

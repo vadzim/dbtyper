@@ -17,9 +17,10 @@
 **Problem:** CTE (Common Table Expressions) parse correctly but don't validate column references.
 
 **Evidence:**
+
 ```typescript
 // ❌ This should error but doesn't:
-with s as (select id, name from users) 
+with s as (select id, name from users)
 select s.invalid_column from s;
 
 // ✅ This correctly errors:
@@ -39,8 +40,8 @@ select s.invalid_column from (select id, name from users) as s;
 3. [ ] Add debug logging to understand the type resolution flow
 4. [ ] Fix CTE column validation
 5. [ ] Enable skipped CTE tests:
-   - `test/integration/select/select-cte-in-join.test.skip.ts`
-   - `test/integration/select/select-cte-unknown-column.test.skip.ts`
+    - `test/integration/select/select-cte-in-join.test.skip.ts`
+    - `test/integration/select/select-cte-unknown-column.test.skip.ts`
 
 ### Short Term (Superdone.ai Critical Features)
 

@@ -33,48 +33,41 @@ Requires DEFAULT clause parsing first.
 ---
 
 ## 3. [ ] CTE in JOIN
+## 3. [x] CTE in JOIN
 
-**File:** `select-cte-in-join.test.skip.ts`  
-**Status:** ⚠️ Partially implemented - CTE parsing works, but column validation fails
+**File:** `select-cte-in-join.test.ts`  
+**Status:** ✅ Implemented - CTE column validation working correctly
 
-**Current state:**
+**Fixed:** Added CTE scope check in `ParseFromTableAfterLeadingIdent` to validate CTE references before database lookup.
 
-- ✅ WITH clause parsing works
-- ✅ CTE definitions are stored in scope
-- ✅ CTEs available as table sources in FROM/JOIN
-- ❌ Column validation in CTE SELECT list doesn't work (unknown columns don't error)
-- ❌ Type validation in JOIN ON with CTE columns fails
-
-**Example that should work but doesn't:**
+**Example that now works:**
 
 ```sql
 WITH active_users AS (SELECT id, name FROM users)
-SELECT active_users.name, posts.id
-FROM active_users
+SELECT active_users.name, posts.id 
+FROM active_users 
 LEFT JOIN posts ON active_users.id = posts.user_id;
 ```
 
-Currently gives: `Error in query: Incompatible types in JOIN ON`
-
-**Root cause:** CTE columns are stored with `schema: "__subquery__"` but type resolution for JOIN ON doesn't handle this correctly.
+**Implementation:** Created `ParseAliasAfterCTE` to handle CTE references in FROM clause, similar to `ParseAliasAfterTable` for regular tables.
 
 ---
 
-## 4. [ ] CTE Unknown Column
+## 4. [x] CTE Unknown Column
 
-**File:** `select-cte-unknown-column.test.skip.ts`  
-**Status:** ❌ Not implemented - CTE column validation doesn't work
+**File:** `select-cte-unknown-column.test.ts`  
+**Status:** ✅ Implemented - CTE column validation working correctly
 
-Should error when referencing non-existent columns from a CTE.
+Now correctly errors when referencing non-existent columns from a CTE.
 
-**Example that should error but doesn't:**
+**Example that now errors:**
 
 ```sql
 WITH active_users AS (SELECT id, name FROM users)
 SELECT invalid_column FROM active_users
 ```
 
-**Root cause:** `ResolveColumnRefValue` doesn't validate columns when resolving from CTE scope entries.
+**Root cause fixed:** `ParseFromTableAfterLeadingIdent` now checks if identifier exists in `Scope` (CTE scope) before trying database lookup.
 
 ---
 

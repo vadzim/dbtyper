@@ -8,7 +8,7 @@ CTE column validation doesn't work. Example:
 
 ```typescript
 // ❌ Should error but doesn't:
-with s as (select id, name from users) 
+with s as (select id, name from users)
 select s.invalid_column from s;
 
 // ✅ Correctly errors:
@@ -30,6 +30,7 @@ When parsing `FROM s` where `s` is a CTE name:
 ## Why Derived Tables Work
 
 Derived tables use `ParseParenDerivedSelect` (line 1572), which:
+
 1. Parses the subquery
 2. Creates scope entry from subquery result
 3. Adds to scope with alias

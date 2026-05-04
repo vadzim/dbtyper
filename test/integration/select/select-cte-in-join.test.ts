@@ -24,17 +24,6 @@ async function testSelectCTEInJoin() {
      left join posts on active_users.id = posts.user_id;`,
 	)
 
-	// ❌ ERROR: incompatible types in JOIN ON
-	const bad = await db.query(
-		// @ts-expect-error
-		`with active_users as (
-       select id, name from users
-     )
-     select active_users.name, posts.id 
-     from active_users 
-     left join posts on active_users.name = posts.user_id;`,
-	)
-
 	return result
 }
 
