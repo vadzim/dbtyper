@@ -2,7 +2,16 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
-**Roadmap anchor:** Maintainer decisions and work order **A → E** are recorded in **`docs/ROADMAP.md` § Active plan**.
+- [ ] Let types in database extends string enum and be actual database types. Instead of:
+      export type JsqlTableShape = {
+      kind: "table" | "view"
+      columns: { [K: string]: unknown }
+      should be:
+      export type JsqlTableShape = {
+      kind: "table" | "view"
+      columns: { [K: string]: string }
+      same for selects/updates/etc. they should return database types.
+      only .query and .stream methods should convert database types to typescript types.
 
 ## Documentation
 
