@@ -14,6 +14,7 @@ async function testSelectCTEUnknownColumn() {
 		.database()
 
 	// ❌ ERROR: reference unknown column from CTE
+	// TODO: Parser should catch this error but currently doesn't
 	const bad = await db.query(
 		`with active_users as (select id, name from users) 
      select invalid_column from active_users;`,
