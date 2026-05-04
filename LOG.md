@@ -83,6 +83,7 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 ## 2026-05-04 — Integration Test Infrastructure & API Design Exploration
 
 ### Мэта
+
 Стварыць інфраструктуру для інтэграцыйных тэстаў, якія імітуюць рэальнае выкарыстанне бібліятэкі (міграцыі → схема → запыты → валідацыя).
 
 ### Эксперыменты: Дызайн тэставання памылак (4 падыходы)
@@ -90,23 +91,23 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 **Праблема:** Як тэставаць, што няправільныя SQL запыты даюць памылкі кампіляцыі?
 
 1. **Design 1: Runtime тэсты з `@ts-expect-error`** ❌
-   - Спроба: `await db.query(...)` з `@ts-expect-error` для няправільных запытаў
-   - Вынік: `@ts-expect-error` не паказвае "Unused directive" у `npm run typecheck`
-   - Праблема: `mockDriver` з пустым `scalarTypes: {}` не дае правільнай валідацыі
+    - Спроба: `await db.query(...)` з `@ts-expect-error` для няправільных запытаў
+    - Вынік: `@ts-expect-error` не паказвае "Unused directive" у `npm run typecheck`
+    - Праблема: `mockDriver` з пустым `scalarTypes: {}` не дае правільнай валідацыі
 
 2. **Design 2: Тыпавыя тэсты як у `parse-select.test.ts`** ❌
-   - Спроба: `ParseSqlStatement` + `Expect<Extends<Tuple3At2<...>>>`
-   - Вынік: Усе `Expect<Extends<...>>` даюць `Type 'false' does not satisfy the constraint 'true'`
-   - Праблема: Структура `TestDb` праз `ApplyStatements` не супадае
+    - Спроба: `ParseSqlStatement` + `Expect<Extends<Tuple3At2<...>>>`
+    - Вынік: Усе `Expect<Extends<...>>` даюць `Type 'false' does not satisfy the constraint 'true'`
+    - Праблема: Структура `TestDb` праз `ApplyStatements` не супадае
 
 3. **Design 3: `InferSqlErrors` API** ⚠️
-   - Спроба: Выкарыстоўваць `InferSqlErrors<Db, Stmt>` для праверкі памылак
-   - Вынік: Частковы поспех — поспешныя тэсты працуюць, памылкі не
+    - Спроба: Выкарыстоўваць `InferSqlErrors<Db, Stmt>` для праверкі памылак
+    - Вынік: Частковы поспех — поспешныя тэсты працуюць, памылкі не
 
 4. **Design 4: Дакладная копія стылю з `parse-select.test.ts`** ✅
-   - Спроба: Скапіраваць дакладна структуру існуючых тэстаў
-   - Вынік: **ПРАЦУЕ!** Валідацыя калонак працуе, валідацыя табліц не
-   - Створаны: `test/integration/smoke/01-basic-select.test.ts`
+    - Спроба: Скапіраваць дакладна структуру існуючых тэстаў
+    - Вынік: **ПРАЦУЕ!** Валідацыя калонак працуе, валідацыя табліц не
+    - Створаны: `test/integration/smoke/01-basic-select.test.ts`
 
 **Вынік:** Знойдзены працуючы падыход для тыпавых тэстаў.
 
@@ -115,25 +116,27 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 **Праблема:** Ці бягучы API `db.query()` рэальна валідуе SQL на ўзроўні тыпаў?
 
 1. **Design 1: Бягучы API з `@ts-expect-error`** ❌
-   - Спроба: Праверка, ці `CheckSqlValid` спрацоўвае
-   - Вынік: `@ts-expect-error` не паказвае памылку (але памылка ёсць!)
+    - Спроба: Праверка, ці `CheckSqlValid` спрацоўвае
+    - Вынік: `@ts-expect-error` не паказвае памылку (але памылка ёсць!)
 
 2. **Design 2: Дэталёвая праверка тыпу `db.query()`** ✅ **АДКРЫЦЦЁ!**
-   - Спроба: Праверка без `@ts-expect-error`
-   - Вынік: **API РЭАЛЬНА ПРАЦУЕ!**
-   ```
-   error TS2345: Argument of type '"select invalid_column from users;"' 
-   is not assignable to parameter of type '"Unknown column"'.
-   ```
-   - Высновы: Тып `Db` захоўваецца, `CheckSqlValid` валідуе, API ідэальны
+    - Спроба: Праверка без `@ts-expect-error`
+    - Вынік: **API РЭАЛЬНА ПРАЦУЕ!**
+
+    ```
+    error TS2345: Argument of type '"select invalid_column from users;"'
+    is not assignable to parameter of type '"Unknown column"'.
+    ```
+
+    - Высновы: Тып `Db` захоўваецца, `CheckSqlValid` валідуе, API ідэальны
 
 3. **Design 3: Альтэрнатыўны API з `.result()`** ❌
-   - Ідэя: `db.query(...).result()` замест `db.query(...)`
-   - Вынік: Не трэба — больш многаслоўна, не дае дадатковых магчымасцей
+    - Ідэя: `db.query(...).result()` замест `db.query(...)`
+    - Вынік: Не трэба — больш многаслоўна, не дае дадатковых магчымасцей
 
 4. **Design 4: Builder pattern API** ❌
-   - Ідэя: `db.select().from().where().execute()`
-   - Вынік: Не трэба — супярэчыць філасофіі "Write plain SQL", LLM лепш ведаюць SQL
+    - Ідэя: `db.select().from().where().execute()`
+    - Вынік: Не трэба — супярэчыць філасофіі "Write plain SQL", LLM лепш ведаюць SQL
 
 **Вынік:** Бягучы API ужо ідэальны, нічога мяняць не трэба.
 
@@ -142,21 +145,21 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 **Праблема:** Ці трэба мяняць `src/core/sql-database.ts` для лепшай валідацыі?
 
 1. **Variant 1: Бягучы API (baseline)** ✅
-   - Структура: `sqlMigrations().apply().database()` → `db.query(sql)`
-   - Валідацыя: `CheckSqlValid<Db, Stmt>` у parameter constraint
-   - Вынік: **ІДЭАЛЬНЫ** — просты, валідуе, адпавядае філасофіі
+    - Структура: `sqlMigrations().apply().database()` → `db.query(sql)`
+    - Валідацыя: `CheckSqlValid<Db, Stmt>` у parameter constraint
+    - Вынік: **ІДЭАЛЬНЫ** — просты, валідуе, адпавядае філасофіі
 
 2. **Variant 2: Explicit validation method** ❌
-   - Ідэя: Дадаць `.validateQuery()` для праверкі SQL без выканання
-   - Вынік: Не трэба — `InferSqlErrors` ужо існуе, runtime метад лішні
+    - Ідэя: Дадаць `.validateQuery()` для праверкі SQL без выканання
+    - Вынік: Не трэба — `InferSqlErrors` ужо існуе, runtime метад лішні
 
 3. **Variant 3: Separate typed/untyped interfaces** ❌
-   - Ідэя: Раздзяліць `DataBase` на `TypedDataBase` і `UntypedDataBase`
-   - Вынік: Не трэба — ускладняе без выгоды, `queryUntyped()` — escape hatch
+    - Ідэя: Раздзяліць `DataBase` на `TypedDataBase` і `UntypedDataBase`
+    - Вынік: Не трэба — ускладняе без выгоды, `queryUntyped()` — escape hatch
 
 4. **Variant 4: Query builder with validation** ❌
-   - Ідэя: `db.select().from().where().execute()` з валідацыяй на кожным кроку
-   - Вынік: Не трэба — многаслоўна, супярэчыць філасофіі, LLM лепш ведаюць SQL
+    - Ідэя: `db.select().from().where().execute()` з валідацыяй на кожным кроку
+    - Вынік: Не трэба — многаслоўна, супярэчыць філасофіі, LLM лепш ведаюць SQL
 
 **Вынік:** `src/core/sql-database.ts` не патрабуе змен.
 
@@ -181,4 +184,3 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 - Дадаць больш smoke tests (INSERT, UPDATE, DELETE, JOIN)
 - Створыць `TEST_COVERAGE.md` з поўным спісам тэстаў
 - Рэалізаваць усе тэсты згодна з планам
-

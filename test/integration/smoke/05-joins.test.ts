@@ -16,10 +16,14 @@ async function testJoins() {
 		.database()
 
 	// ✅ SUCCESS: INNER JOIN
-	const result1 = await db.query(`select users.name, posts.title from users inner join posts on users.id = posts.user_id;`)
+	const result1 = await db.query(
+		`select users.name, posts.title from users inner join posts on users.id = posts.user_id;`,
+	)
 
 	// ✅ SUCCESS: LEFT JOIN
-	const result2 = await db.query(`select users.name, posts.title from users left join posts on users.id = posts.user_id;`)
+	const result2 = await db.query(
+		`select users.name, posts.title from users left join posts on users.id = posts.user_id;`,
+	)
 
 	return { result1, result2 }
 }
