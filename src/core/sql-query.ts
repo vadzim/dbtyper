@@ -20,19 +20,21 @@ type SqlSelectRowForDb<
 			: RowShapeFromStatementResult<Res>
 		: never
 
+type ExpectedSelectResult = SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+
 type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
 	? Res["columns"]
 	: Res extends JsqlInsertStatementResult
 		? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
 			? Ret["columns"]
-			: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+			: ExpectedSelectResult
 		: Res extends JsqlUpdateStatementResult
 			? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
 				? Ret["columns"]
-				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+				: ExpectedSelectResult
 			: Res extends null
-				? SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
-				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+				? ExpectedSelectResult
+				: ExpectedSelectResult
 
 /**
  * Returns SQL column types as strings (e.g., { id: "uuid", name: "text" }).
