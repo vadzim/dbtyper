@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlTableShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
@@ -7,6 +7,7 @@ import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
+import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 
 export type ParseDelete<
 	Tokens extends TokensList,
@@ -37,19 +38,45 @@ type ParseDeleteAfterFrom<
 								]
 								? We extends SqlParserError<string>
 									? [Rw, Db, We]
-									: FinishDeleteStatement<Rw, Db>
+									: FinishDeleteStatement<Rw, Db, Third, Params>
 								: never
 							: never
-						: FinishDeleteStatement<R, Db>
+						: FinishDeleteStatement<R, Db, Third, Params>
 					: never
 				: never
 		: never
 
-type FinishDeleteStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+type FinishDeleteStatement<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap = {},
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	PeekToken<Tokens> extends TokenKey<"returning">
+		? SkipToken<Tokens> extends infer Rr extends TokensList
+			? ParseAndResolveReturningClause<Rr, Db, Scope, Params> extends [
+					infer Ra extends TokensList,
+					infer DbA extends JsqlDatabaseShape,
+					infer Ret,
+				]
+				? Ret extends SqlParserError<string>
+					? [Ra, DbA, Ret]
+					: Ret extends JsqlSelectStatementResult
+						? FinishDeleteSemicolon<Ra, DbA, Ret>
+						: never
+				: never
+			: never
+		: FinishDeleteSemicolon<Tokens, Db, null>
+
+type FinishDeleteSemicolon<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Returning extends JsqlSelectStatementResult | null,
+> =
 	PeekToken<Tokens> extends infer Tok
 		? SkipToken<Tokens> extends infer AfterSemi extends TokensList
 			? Tok extends TokenKey<";"> | TokenEot
-				? [AfterSemi, Db, null]
+				? [AfterSemi, Db, Returning]
 				: [AfterSemi, Db, SqlParserError<"Expected `;` after DELETE">]
 			: never
 		: never
@@ -111,7 +138,7 @@ type ParseDeleteAliasAfterTable<
 	Scope extends ScopeMap,
 	_Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends TokenKey<"where"> | TokenKey<";"> | TokenEot
+	PeekToken<Tokens> extends TokenKey<"where"> | TokenKey<"returning"> | TokenKey<";"> | TokenEot
 		? [
 				Tokens,
 				null,

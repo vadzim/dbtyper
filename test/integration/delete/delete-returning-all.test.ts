@@ -13,7 +13,7 @@ async function testDeleteReturningAll() {
 		.database()
 
 	// ✅ SUCCESS: RETURNING *
-	const result = await db.query(`delete from users where id = '1' returning *;`)
+	const result = await db.query(`delete from users returning *;`)
 
 	// Type should be: Array<{ id: string; name: string; email: string }>
 	const _typeCheck: typeof result = [] as Array<{
