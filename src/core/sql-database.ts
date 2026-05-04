@@ -3,7 +3,8 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import type { SqlSelectRow } from "../../test/test-utils/parser-test-utils.ts"
+import type { SqlSelectRowSqlTypes } from "./sql-query.ts"
+import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -188,6 +189,17 @@ export class DBMigrations {
 	}
 }
 
+/**
+ * Infers the **row object** type for SELECT/RETURNING statements.
+ * Used by .stream() which requires statements that return rows.
+ */
+type SqlSelectRow<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Text extends string,
+	ScalarTypes extends Record<string, unknown>,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, ScalarTypes> : Db
+
 type SqlSelectRowObject<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
@@ -200,12 +212,31 @@ type SqlSelectRowObject<
 			: { [K in keyof R]: R[K] }
 		: never
 
-type CheckSqlValid<
+/** Type check for .stream() - requires SELECT or RETURNING */
+type CheckSqlValidForStream<
 	Db extends JsqlDatabaseShape | SqlParserError<string>,
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
 > = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer Msg>] ? `Error in query: ${Msg}` : Stmt
+
+/** Type check for .query() - accepts any valid SQL (including non-RETURNING statements) */
+type CheckSqlValidForQuery<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Stmt extends string,
+	Params extends ExpressionParamsShape,
+> = ApplyStatements<Db, Stmt, Params>[1] extends SqlParserError<infer Msg> ? `Error in query: ${Msg}` : Stmt
+
+/** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
+type QueryReturnType<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Stmt extends string,
+	ScalarTypes extends Record<string, unknown>,
+	Params extends ExpressionParamsShape,
+> =
+	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends SqlParserError<string>
+		? unknown
+		: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
 
 type CheckSqlMigrationSource<Db extends JsqlDatabaseShape | SqlParserError<string>, Source extends string> =
 	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M> ? M : Source
@@ -215,36 +246,36 @@ export type DataBase<
 	ScalarTypes extends Record<string, unknown>,
 > = {
 	/**
-	 * All rows at once.
+	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, unknown for other statements.
 	 */
 	query<Stmt extends string>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValidForQuery<Db, Stmt, EmptyExpressionParams>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
-	): Promise<Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>>
+			: CheckSqlValidForQuery<Db, Stmt, EmptyExpressionParams>,
+	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, EmptyExpressionParams>>
 
 	query<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, Params>
+		statement: Stmt extends CheckSqlValidForQuery<Db, Stmt, Params>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, ScalarTypes, Params>,
+			: CheckSqlValidForQuery<Db, Stmt, Params>,
 		params: ParamRuntimeValues<Params>,
-	): Promise<Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>>
+	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, Params>>
 
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
 	/**
-	 * Row-by-row iteration
+	 * Row-by-row iteration. Requires SELECT or RETURNING statements.
 	 */
 	stream<Stmt extends string>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, EmptyExpressionParams>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
+			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
 	): AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>
 
 	stream<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, ScalarTypes, Params>
+		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, Params>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, ScalarTypes, Params>,
+			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, Params>,
 		params: ParamRuntimeValues<Params>,
 	): AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
 

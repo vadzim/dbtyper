@@ -8,7 +8,7 @@ export function InjectDbtyper(id: string | symbol = DEFAULT_DBTYPER_ID): Paramet
 }
 
 type DbtyperDatabase = {
-	query: (...args: any[]) => Promise<Array<unknown>>
+	query: (...args: any[]) => Promise<unknown>
 	stream: (...args: any[]) => AsyncIterable<unknown>
 }
 
