@@ -50,6 +50,18 @@ type _i7 = Expect<Extends<I7, SqlParserError<string>>>
 type Row1 = SqlSelectRow<DbFns, `select custom_fn(n) as cf from u`>
 type _row1 = Expect<Extends<Row1, { cf: number }>>
 
+type RowInsertReturning = SqlSelectRow<
+	DbFns,
+	`insert into u (id, n) values ('11111111-1111-1111-1111-111111111111'::uuid, 1) returning id, n`
+>
+type _rowInsertReturning = Expect<Extends<RowInsertReturning, { id: string; n: number }>>
+
+type RowUpdateReturning = SqlSelectRow<DbFns, `update u set n = 2 returning id`>
+type _rowUpdateReturning = Expect<Extends<RowUpdateReturning, { id: string }>>
+
+type RowDeleteReturning = SqlSelectRow<DbFns, `delete from u returning id`>
+type _rowDeleteReturning = Expect<Extends<RowDeleteReturning, { id: string }>>
+
 describe("InferSqlErrors / SqlSelectRow (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

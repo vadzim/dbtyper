@@ -1,4 +1,9 @@
-import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "./jsql-shapes.ts"
+import type {
+	JsqlDatabaseShape,
+	JsqlInsertStatementResult,
+	JsqlSelectStatementResult,
+	JsqlUpdateStatementResult,
+} from "./jsql-shapes.ts"
 import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
@@ -12,10 +17,20 @@ type SqlSelectRowForDb<
 	ParseSqlStatement<ParseSqlTokens<Text>, Db, Params> extends [infer _Rest extends TokensList, infer _Db, infer Res]
 		? Res extends SqlParserError<string>
 			? Res
-			: Res extends JsqlSelectStatementResult
-				? Res["columns"]
-				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+			: RowShapeFromStatementResult<Res>
 		: never
+
+type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
+	? Res["columns"]
+	: Res extends JsqlInsertStatementResult
+		? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
+			? Ret["columns"]
+			: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+		: Res extends JsqlUpdateStatementResult
+			? SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+			: Res extends null
+				? SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+				: SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
 
 /**
  * Infers the **row object** type for a single `SELECT` / `WITH … SELECT` string against `Db`.
