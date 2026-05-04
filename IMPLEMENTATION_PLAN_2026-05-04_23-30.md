@@ -72,10 +72,10 @@ Requires same CTE infrastructure as #3.
 
 ---
 
-## 5. [ ] INSERT...SELECT
+## 5. [x] INSERT...SELECT
 
-**File:** `insert-with-select.test.skip.ts`  
-**Missing:** Subquery support in INSERT statements
+**File:** `insert-with-select.test.ts`  
+**Status:** ✅ Implemented - Subquery support in INSERT statements with type validation
 
 **Needs:**
 

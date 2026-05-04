@@ -18,7 +18,7 @@ import type {
 	ExpressionParamsShape,
 	ParseAddValue,
 } from "./parse-expression.ts"
-import type { ParseAndResolveReturningClause } from "./parse-select.ts"
+import type { ParseAndResolveReturningClause, ParseSelect } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 
@@ -226,16 +226,93 @@ type ParseInsertAfterColumnNames<
 	Cols extends readonly string[],
 > =
 	PeekToken<R1> extends infer TkValues
-		? SkipToken<R1> extends infer Rv extends TokensList
-			? TkValues extends TokenKey<"values">
+		? TkValues extends TokenKey<"values">
+			? SkipToken<R1> extends infer Rv extends TokensList
 				? ValidateInsertRequiredColumns<Tbl, Cols> extends infer RequiredColsOk
 					? RequiredColsOk extends SqlParserError<string>
 						? [Rv, Db, RequiredColsOk]
 						: ParseInsertAfterValuesKeyword<Rv, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: never
-				: [Rv, Db, SqlParserError<"Expected VALUES after column list in INSERT">]
-			: never
+				: never
+			: TkValues extends TokenKey<"select">
+				? ParseInsertWithSelect<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+				: SkipToken<R1> extends infer Rv extends TokensList
+					? [Rv, Db, SqlParserError<"Expected VALUES or SELECT after column list in INSERT">]
+					: never
 		: never
+
+type ParseInsertWithSelect<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Tbl extends JsqlTableShape,
+	Sch extends string,
+	Tab extends string,
+	Cols extends readonly string[],
+> =
+	ParseSelect<Tokens, Db, Params> extends [infer RSelect extends TokensList, infer Db2, infer SelectRes]
+		? SelectRes extends SqlParserError<string>
+			? [RSelect, Db2, SelectRes]
+			: SelectRes extends JsqlSelectStatementResult
+				? ValidateInsertSelectColumns<Tbl, Cols, SelectRes> extends infer ValidationRes
+					? ValidationRes extends SqlParserError<string>
+						? [RSelect, Db2, ValidationRes]
+						: ValidationRes extends true
+							? Db2 extends JsqlDatabaseShape
+								? FinishInsertSemicolon<
+										RSelect,
+										Db2,
+										{
+											kind: "insert"
+											table: Tab
+											schema: Sch
+											columns: Cols
+										}
+									>
+								: never
+							: never
+					: never
+				: never
+		: never
+
+type ValidateInsertSelectColumns<
+	Tbl extends JsqlTableShape,
+	InsertCols extends readonly string[],
+	SelectRes extends JsqlSelectStatementResult,
+> =
+	ValidateInsertSelectColumnCount<InsertCols, SelectRes> extends infer CountCheck
+		? CountCheck extends SqlParserError<string>
+			? CountCheck
+			: ValidateInsertSelectColumnTypes<Tbl, InsertCols, SelectRes, InsertCols>
+		: never
+
+type ValidateInsertSelectColumnCount<
+	InsertCols extends readonly string[],
+	SelectRes extends JsqlSelectStatementResult,
+> = InsertCols["length"] extends keyof SelectRes["columns"] & number
+	? true
+	: SqlParserError<"INSERT...SELECT column count mismatch">
+
+type ValidateInsertSelectColumnTypes<
+	Tbl extends JsqlTableShape,
+	InsertCols extends readonly string[],
+	SelectRes extends JsqlSelectStatementResult,
+	AllCols extends readonly string[],
+	Idx extends readonly unknown[] = [],
+> = InsertCols extends readonly [infer Col extends string, ...infer RestCols extends readonly string[]]
+	? Idx["length"] extends keyof SelectRes["columns"] & number
+		? SelectRes["columns"][Idx["length"]] extends infer SelectType extends string
+			? Col extends keyof Tbl["columns"]
+				? Tbl["columns"][Col] extends infer InsertType extends string
+					? Lowercase<SelectType> extends Lowercase<InsertType>
+						? ValidateInsertSelectColumnTypes<Tbl, RestCols, SelectRes, AllCols, readonly [...Idx, 0]>
+						: SqlParserError<"INSERT...SELECT type mismatch for column">
+					: never
+				: SqlParserError<"Unknown column in INSERT">
+			: SqlParserError<"SELECT result missing column">
+		: SqlParserError<"SELECT result column index out of bounds">
+	: true
 
 /** Unwrap `InsertValuesRowCellsParsedMarker` after a `VALUES` row cell pass (same rules as after `VALUES (`). */
 type ParseInsertAfterValuesCellsOutcome<
