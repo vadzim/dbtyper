@@ -79,7 +79,7 @@ type ParseSelectWithCtesAfterSubquery<
 	SubOut extends JsqlSelectStatementResult,
 > =
 	SelectResultToDerivedScopeEntry<SubOut> extends infer Entry extends ScopeEntry
-		? MergeScope<Acc, Record<CteName, Entry>> extends infer NextAcc
+		? MergeScope<Record<CteName, Entry>, Acc> extends infer NextAcc
 			? NextAcc extends ScopeMap
 				? PeekToken<R4> extends TokenKey<",">
 					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc>
@@ -1284,7 +1284,7 @@ type ParseAliasAfterDerivedTable<
 					? PeekToken<Ras0> extends infer TokName
 						? SkipToken<Ras0> extends infer Ra extends TokensList
 							? TokName extends TokenIdent<infer Alias extends string>
-								? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
+								? [Ra, null, MergeScope<Record<Alias, Entry>, OuterScope>]
 								: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
 							: never
 						: never
@@ -1292,7 +1292,7 @@ type ParseAliasAfterDerivedTable<
 				: PeekToken<Tokens> extends infer TokAlias
 					? SkipToken<Tokens> extends infer Ra extends TokensList
 						? TokAlias extends TokenIdent<infer Alias extends string>
-							? [Ra, null, MergeScope<OuterScope, Record<Alias, Entry>>]
+							? [Ra, null, MergeScope<Record<Alias, Entry>, OuterScope>]
 							: [Ra, SqlParserError<"Expected alias after derived table">, ParserRefErrorThirdSentinel]
 						: never
 					: never
@@ -1645,7 +1645,6 @@ type ParseAliasAfterTable<
 				Tokens,
 				null,
 				MergeScope<
-					Scope,
 					Record<
 						Tab,
 						{
@@ -1653,7 +1652,8 @@ type ParseAliasAfterTable<
 							table: Tab
 							columns: Tbl["columns"]
 						}
-					>
+					>,
+					Scope
 				>,
 			]
 		: PeekToken<Tokens> extends TokenKey<"as">
@@ -1665,7 +1665,6 @@ type ParseAliasAfterTable<
 									Ra,
 									null,
 									MergeScope<
-										Scope,
 										Record<
 											Alias,
 											{
@@ -1673,7 +1672,8 @@ type ParseAliasAfterTable<
 												table: Tab
 												columns: Tbl["columns"]
 											}
-										>
+										>,
+										Scope
 									>,
 								]
 							: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
@@ -1687,7 +1687,6 @@ type ParseAliasAfterTable<
 								Ra,
 								null,
 								MergeScope<
-									Scope,
 									Record<
 										Alias,
 										{
@@ -1695,7 +1694,8 @@ type ParseAliasAfterTable<
 											table: Tab
 											columns: Tbl["columns"]
 										}
-									>
+									>,
+									Scope
 								>,
 							]
 						: [Ra, SqlParserError<"Expected alias or join clause after table">, ParserRefErrorThirdSentinel]

@@ -35,7 +35,6 @@ type ParseUpdateAliasAfterTable<
 				null,
 				{
 					scope: MergeScope<
-						{},
 						Record<
 							Tab,
 							{
@@ -43,7 +42,8 @@ type ParseUpdateAliasAfterTable<
 								table: Tab
 								columns: Tbl["columns"]
 							}
-						>
+						>,
+						{}
 					>
 					tbl: Tbl
 					schema: Sch
@@ -59,7 +59,6 @@ type ParseUpdateAliasAfterTable<
 								null,
 								{
 									scope: MergeScope<
-										{},
 										Record<
 											Alias,
 											{
@@ -67,7 +66,8 @@ type ParseUpdateAliasAfterTable<
 												table: Tab
 												columns: Tbl["columns"]
 											}
-										>
+										>,
+										{}
 									>
 									tbl: Tbl
 									schema: Sch

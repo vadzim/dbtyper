@@ -46,7 +46,6 @@ type ParseInsertAliasAfterTable<
 				null,
 				{
 					scope: MergeScope<
-						{},
 						Record<
 							Tab,
 							{
@@ -54,7 +53,8 @@ type ParseInsertAliasAfterTable<
 								table: Tab
 								columns: Tbl["columns"]
 							}
-						>
+						>,
+						{}
 					>
 					tbl: Tbl
 					schema: Sch
@@ -70,7 +70,6 @@ type ParseInsertAliasAfterTable<
 								null,
 								{
 									scope: MergeScope<
-										{},
 										Record<
 											Alias,
 											{
@@ -78,7 +77,8 @@ type ParseInsertAliasAfterTable<
 												table: Tab
 												columns: Tbl["columns"]
 											}
-										>
+										>,
+										{}
 									>
 									tbl: Tbl
 									schema: Sch
@@ -357,7 +357,6 @@ type InsertExcludedScope<
 	Tbl extends JsqlTableShape,
 	BaseScope extends ScopeMap,
 > = MergeScope<
-	BaseScope,
 	Record<
 		"excluded",
 		{
@@ -365,7 +364,8 @@ type InsertExcludedScope<
 			table: Tab
 			columns: Tbl["columns"]
 		}
-	>
+	>,
+	BaseScope
 >
 
 type BuildInsertResult<

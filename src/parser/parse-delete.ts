@@ -143,7 +143,6 @@ type ParseDeleteAliasAfterTable<
 				Tokens,
 				null,
 				MergeScope<
-					Scope,
 					Record<
 						Tab,
 						{
@@ -151,7 +150,8 @@ type ParseDeleteAliasAfterTable<
 							table: Tab
 							columns: Tbl["columns"]
 						}
-					>
+					>,
+					Scope
 				>,
 			]
 		: PeekToken<Tokens> extends infer TokAlias
@@ -161,7 +161,6 @@ type ParseDeleteAliasAfterTable<
 							Ra,
 							null,
 							MergeScope<
-								Scope,
 								Record<
 									Alias,
 									{
@@ -169,7 +168,8 @@ type ParseDeleteAliasAfterTable<
 										table: Tab
 										columns: Tbl["columns"]
 									}
-								>
+								>,
+								Scope
 							>,
 						]
 					: [Ra, SqlParserError<"Expected alias or end of table in DELETE FROM">, ParserRefErrorThirdSentinel]
