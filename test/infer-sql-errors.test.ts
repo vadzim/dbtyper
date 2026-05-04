@@ -37,7 +37,9 @@ type I4 = InferSqlErrors<DbFns, `select sum() from u`>
 type _i4 = Expect<Extends<I4, SqlParserError<string>>>
 
 type I5 = InferSqlErrors<DbFns, `delete from u`>
-type _i5 = Expect<Extends<I5, SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">>>
+type _i5 = Expect<
+	Extends<I5, SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">>
+>
 
 type I6 = InferSqlErrors<DbFns, `with c as (select u.id as cid from u) select c.cid from u`>
 type _i6 = Expect<Extends<I6, null>>

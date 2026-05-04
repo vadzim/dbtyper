@@ -20,21 +20,21 @@ type SqlSelectRowForDb<
 			: RowShapeFromStatementResult<Res>
 		: never
 
-type ExpectedSelectResult = SqlParserError<"Expected SELECT (or WITH … SELECT) for row typing">
+type ExpectedRowSetResult = SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">
 
 type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
 	? Res["columns"]
 	: Res extends JsqlInsertStatementResult
 		? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
 			? Ret["columns"]
-			: ExpectedSelectResult
+			: ExpectedRowSetResult
 		: Res extends JsqlUpdateStatementResult
 			? Res extends { returning: infer Ret extends JsqlSelectStatementResult }
 				? Ret["columns"]
-				: ExpectedSelectResult
+				: ExpectedRowSetResult
 			: Res extends null
-				? ExpectedSelectResult
-				: ExpectedSelectResult
+				? ExpectedRowSetResult
+				: ExpectedRowSetResult
 
 /**
  * Returns SQL column types as strings (e.g., { id: "uuid", name: "text" }).
