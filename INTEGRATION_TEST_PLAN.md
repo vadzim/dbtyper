@@ -1,122 +1,130 @@
 # Integration Test Plan — Real-World Usage Testing
 
-## Мэта
+## Goal
 
-Стварыць набор інтэграцыйных тэстаў, якія імітуюць рэальнае выкарыстанне бібліятэкі:
+Create a set of integration tests that simulate real-world library usage:
 
-- Міграцыі ствараюць схему БД
-- Тэсты правяраюць, што запыты кампілююцца (або не кампілююцца) як чакаецца
-- Кожны функцыянал павінен мець тэсты на **поспех** (запыт кампілюецца) і **памылку** (TypeScript памылка ў патрэбным месцы)
+- Migrations create the database schema
+- Tests verify that queries compile (or don't compile) as expected
+- Each feature should have tests for **success** (query compiles) and **error** (TypeScript error in the expected place)
 
-## Структура
+## Structure
 
 ```
 test/
-  integration/           # новая тэчка для інтэграцыйных тэстаў
-    setup/
-      migrations.ts      # агульныя міграцыі для тэстаў
-      test-db.ts         # helper для стварэння тыпізаванай БД
-    select.test.ts       # тэсты SELECT
-    insert.test.ts       # тэсты INSERT
-    update.test.ts       # тэсты UPDATE
-    delete.test.ts       # тэсты DELETE
-    joins.test.ts        # тэсты JOIN
-    subqueries.test.ts   # тэсты subqueries
-    functions.test.ts    # тэсты функцый
-    group-by.test.ts     # тэсты GROUP BY / HAVING
-    ...
+  integration/           # new folder for integration tests
+    smoke/               # basic smoke tests
+      01-basic-select.test.ts
+      02-insert.test.ts
+      03-update.test.ts
+      04-delete.test.ts
+      05-joins.test.ts
+      06-subqueries.test.ts
+      07-functions.test.ts
+      08-group-by.test.ts
+    edge-cases/          # detailed edge case tests
+      column-not-found.test.ts
+      type-mismatch.test.ts
+      null-handling.test.ts
+      ...
+    real-world/          # real-world scenarios
+      refactoring-schema.test.ts
+      copy-paste-errors.test.ts
+      incremental-query-building.test.ts
 ```
 
-## Падыход да тэставання
+## Testing Approach
 
-### Тэст на поспех (OK)
+### Success Test (OK)
 
 ```typescript
-// Запыт павінен кампіліравацца без памылак
+// Query should compile without errors
 const rows = await db.query(`SELECT id, name FROM users`)
-// TypeScript вылічае тып: Array<{ id: string; name: string }>
+// TypeScript infers type: Array<{ id: string; name: string }>
 ```
 
-### Тэст на памылку (ERROR)
+### Error Test (ERROR)
 
 ```typescript
-// @ts-expect-error — чакаем памылку: калонка 'invalid_column' не існуе
+// @ts-expect-error — expect error: column 'invalid_column' does not exist
 const rows = await db.query(`SELECT invalid_column FROM users`)
 ```
 
-Дырэктыва `@ts-expect-error` азначае:
+The `@ts-expect-error` directive means:
 
-- Наступны радок **павінен** даваць TypeScript памылку
-- Калі памылкі няма — тэст правальваецца
-- Калі памылка ёсць — тэст праходзіць
+- The next line **should** produce a TypeScript error
+- If there's no error — the test fails
+- If there's an error — the test passes
 
-## Этапы рэалізацыі
+## Implementation Phases
 
-### Этап 0: План (гэты дакумент)
+### Phase 0: Plan (this document)
 
-Запісаць падрабязны план усіх тэстаў, якія трэба рэалізаваць.
+Write a detailed plan of all tests to implement.
 
-### Этап 1: Пробныя тэсты (2 штукі)
+### Phase 1: Smoke Tests (basic coverage)
 
-Стварыць мінімальную інфраструктуру:
+Create minimal infrastructure:
 
-- `test/integration/setup/` — міграцыі і helpers
-- Адзін тэст на поспех: `SELECT id, name FROM users` кампілюецца
-- Адзін тэст на памылку: `SELECT invalid_column FROM users` дае TypeScript памылку
+- `test/integration/smoke/` — basic tests for each SQL operation
+- One success test: `SELECT id, name FROM users` compiles
+- One error test: `SELECT invalid_column FROM users` produces TypeScript error
 
-Калі працуе — push.
+If it works — push.
 
-### Этап 2: Дакумент са спісам усіх тэстаў
+### Phase 2: Test Coverage Document
 
-Створым `test/integration/TEST_COVERAGE.md` з поўным спісам:
+Create `test/integration/TEST_COVERAGE.md` with complete list:
 
-- Якія функцыяналы трэба пакрыць
-- Якія сцэнарыі поспеху
-- Якія сцэнарыі памылак
-- Прыярытэт кожнага тэста
+- Which features to cover
+- Which success scenarios
+- Which error scenarios
+- Priority of each test
 
-### Этап 3: Рэалізацыя тэстаў (без фіксаў)
+### Phase 3: Implement Tests (without fixes)
 
-Напісаць усе тэсты згодна з дакументам:
+Write all tests according to the document:
 
-- Тэсты на поспех (запыты павінны кампіліравацца)
-- Тэсты на памылку (з `@ts-expect-error`)
-- **Не фіксіць** код бібліятэкі, калі тэсты не праходзяць
+- Success tests (queries should compile)
+- Error tests (with `@ts-expect-error`)
+- **Don't fix** library code if tests don't pass
 
-### Этап 4: Фіксы кода
+### Phase 4: Code Fixes
 
-Выпраўляць код бібліятэкі, пакуль усе тэсты не запрацуюць:
+Fix library code until all tests pass:
 
-- Калі тэст на поспех не кампілюецца — фіксім парсер/resolver
-- Калі тэст на памылку не дае памылкі — дадаем валідацыю
-- Пасля кожнага фікса — `npm test` і commit
+- If success test doesn't compile — fix parser/resolver
+- If error test doesn't produce error — add validation
+- After each fix — `npm test` and commit
 
-## Прынцыпы
+## Principles
 
-1. **Кожны функцыянал** павінен мець мінімум 2 тэсты: поспех + памылка
-2. **Рэальныя сцэнарыі**: міграцыі → схема → запыты (як у `examples/typed-postgres`)
-3. **Ізаляваныя тэсты**: кожны файл тэстаў можа мець свае міграцыі або выкарыстоўваць агульныя
-4. **Дакументаваныя чаканні**: кожны `@ts-expect-error` павінен мець каментар, чаму гэта памылка
+1. **Each feature** should have at least 2 tests: success + error
+2. **Real scenarios**: migrations → schema → queries (like in `examples/typed-postgres`)
+3. **Isolated tests**: each test file can have its own migrations or use shared ones
+4. **Documented expectations**: each `@ts-expect-error` should have a comment explaining why it's an error
 
-## Пакрыццё функцыяналу (high-level)
+## Feature Coverage (high-level)
 
-### Базавыя SELECT
+### Basic SELECT
 
-- [x] SELECT named columns (ужо ёсць у `test/parse-select.test.ts`)
+- [x] SELECT named columns (already in smoke tests)
+- [x] SELECT with WHERE clause
 - [ ] SELECT \* expansion
 - [ ] SELECT with aliases
 - [ ] SELECT from qualified table (schema.table)
 
 ### JOIN
 
-- [ ] INNER JOIN
-- [ ] LEFT JOIN (nullability)
+- [x] INNER JOIN (already in smoke tests)
+- [x] LEFT JOIN (already in smoke tests)
 - [ ] Cross-schema JOIN
 - [ ] Multiple JOINs
+- [ ] JOIN with ambiguous columns
 
 ### WHERE
 
-- [ ] Simple conditions (=, !=, <, >)
+- [x] Simple conditions (=, !=, <, >) (already in smoke tests)
 - [ ] AND / OR / NOT
 - [ ] IN (list)
 - [ ] BETWEEN
@@ -124,21 +132,24 @@ const rows = await db.query(`SELECT invalid_column FROM users`)
 
 ### INSERT
 
-- [ ] INSERT single row
+- [x] INSERT single row (already in smoke tests)
+- [x] INSERT with RETURNING (already in smoke tests)
+- [x] INSERT type mismatch (error) (already in smoke tests)
 - [ ] INSERT multiple rows
-- [ ] INSERT with RETURNING
-- [ ] INSERT type mismatch (error)
+- [ ] INSERT missing required column (error)
 
 ### UPDATE
 
-- [ ] UPDATE with WHERE
-- [ ] UPDATE with RETURNING
-- [ ] UPDATE type mismatch (error)
+- [x] UPDATE with WHERE (already in smoke tests)
+- [x] UPDATE with RETURNING (already in smoke tests)
+- [x] UPDATE type mismatch (error) (already in smoke tests)
+- [ ] UPDATE non-existent column (error)
 
 ### DELETE
 
-- [ ] DELETE with WHERE
-- [ ] DELETE with RETURNING
+- [x] DELETE with WHERE (already in smoke tests)
+- [x] DELETE with RETURNING (already in smoke tests)
+- [ ] DELETE from non-existent table (error)
 
 ### Subqueries
 
@@ -174,18 +185,16 @@ const rows = await db.query(`SELECT invalid_column FROM users`)
 
 ### Error cases
 
+- [x] Unknown column (already in smoke tests)
 - [ ] Unknown table
-- [ ] Unknown column
 - [ ] Type mismatch in WHERE
-- [ ] Type mismatch in INSERT
 - [ ] Ambiguous column reference
 - [ ] Invalid JOIN condition
 
-## Наступныя крокі
+## Next Steps
 
-1. ✅ Запісаць план (гэты файл)
-2. ⏳ Дазволіць карыстальніку азнаёміцца з планам
-3. ⏳ Стварыць 2 пробныя тэсты (поспех + памылка)
-4. ⏳ Стварыць падрабязны дакумент TEST_COVERAGE.md
-5. ⏳ Рэалізаваць усе тэсты
-6. ⏳ Фіксіць код да праходжання ўсіх тэстаў
+1. ✅ Write plan (this file)
+2. ✅ Create basic smoke tests (SELECT, INSERT, UPDATE, DELETE, JOIN)
+3. ⏳ Create detailed TEST_COVERAGE.md document
+4. ⏳ Implement remaining tests
+5. ⏳ Fix code until all tests pass
