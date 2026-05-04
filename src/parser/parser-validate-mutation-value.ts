@@ -17,15 +17,24 @@ export type ValidateMutationValueForColumn<
 	Col extends string,
 	Val extends ExprAtom,
 > = Col extends keyof Tbl["columns"]
-	? Tbl["columns"][Col] extends infer ColTs
-		? Val extends ExprSqlNull
-			? InsertColNotNull<Tbl, Col> extends true
-				? SqlParserError<"NULL not allowed for NOT NULL column">
-				: true
-			: Val extends ExprOk<infer TsV, infer _Sv>
-				? SameComparisonClass<TsV, ColTs> extends true
-					? true
-					: SqlParserError<"Incompatible value type for column">
-				: SqlParserError<"Invalid value expression">
-		: never
+	? Col extends keyof NonNullable<Tbl["column_sql_types"]>
+		? NonNullable<Tbl["column_sql_types"]>[Col] extends infer ColSql extends string
+			? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
+			: ValidateMutationValueBySql<Tbl, Col, Val, "unknown">
+		: ValidateMutationValueBySql<Tbl, Col, Val, "unknown">
 	: SqlParserError<"Unknown column in INSERT">
+
+type ValidateMutationValueBySql<
+	Tbl extends JsqlTableShape,
+	Col extends string,
+	Val extends ExprAtom,
+	ColSql extends string,
+> = Val extends ExprSqlNull
+	? InsertColNotNull<Tbl, Col> extends true
+		? SqlParserError<"NULL not allowed for NOT NULL column">
+		: true
+	: Val extends ExprOk<infer _TsV, infer Sv extends string>
+		? SameComparisonClass<Sv, ColSql> extends true
+			? true
+			: SqlParserError<"Incompatible value type for column">
+		: SqlParserError<"Invalid value expression">

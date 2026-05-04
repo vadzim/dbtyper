@@ -1230,31 +1230,58 @@ type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> 
 					: never
 		: never
 
-export type SameComparisonClass<TsL, TsR> = TsL extends boolean
-	? TsR extends boolean
+type SqlComparisonClass<Sql extends string> =
+	Lowercase<Sql> extends
+		| "integer"
+		| "int"
+		| "int2"
+		| "int4"
+		| "int8"
+		| "smallint"
+		| "bigint"
+		| "real"
+		| "float4"
+		| "float8"
+		| "double precision"
+		| "numeric"
+		| "decimal"
+		| "number"
+		? "numeric"
+		: Lowercase<Sql> extends "boolean" | "bool"
+			? "boolean"
+			: Lowercase<Sql> extends "text" | "varchar" | "character varying" | "char"
+				? "text"
+				: Lowercase<Sql> extends "uuid"
+					? "uuid"
+					: Lowercase<Sql> extends
+								| "date"
+								| "time"
+								| "time with time zone"
+								| "timestamp"
+								| "timestamp with time zone"
+						? "datetime"
+						: "unknown"
+
+type IsSqlNumericType<Sql extends string> = SqlComparisonClass<Sql> extends "numeric" ? true : false
+type IsSqlBooleanType<Sql extends string> = SqlComparisonClass<Sql> extends "boolean" ? true : false
+type IsSqlTextType<Sql extends string> = SqlComparisonClass<Sql> extends "text" ? true : false
+
+export type SameComparisonClass<SqlL extends string, SqlR extends string> =
+	SqlComparisonClass<SqlL> extends "unknown"
 		? true
-		: false
-	: TsL extends string
-		? TsR extends string
+		: SqlComparisonClass<SqlR> extends "unknown"
 			? true
-			: false
-		: TsL extends number
-			? TsR extends number
+			: SqlComparisonClass<SqlL> extends SqlComparisonClass<SqlR>
 				? true
-				: false
-			: TsL extends bigint
-				? TsR extends bigint
-					? true
-					: false
 				: false
 
 type MergeComparison<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
 	? SqlParserError<"Use IS NULL instead of = null">
 	: R extends ExprSqlNull
 		? SqlParserError<"Use IS NULL instead of = null">
-		: L extends ExprOk<infer TsL, infer _Sl>
-			? R extends ExprOk<infer TsR, infer _Sr>
-				? SameComparisonClass<TsL, TsR> extends true
+		: L extends ExprOk<infer _TsL, infer Sl extends string>
+			? R extends ExprOk<infer _TsR, infer Sr extends string>
+				? SameComparisonClass<Sl, Sr> extends true
 					? ExprOk<boolean, "boolean">
 					: SqlParserError<"Incompatible types in comparison">
 				: never
@@ -1270,11 +1297,11 @@ type MergeBetweenBounds<E extends ExprAtom, Lm extends ExprAtom, H extends ExprA
 		? SqlParserError<"NULL not allowed in BETWEEN">
 		: H extends ExprSqlNull
 			? SqlParserError<"NULL not allowed in BETWEEN">
-			: E extends ExprOk<infer TsE, infer _Se>
-				? Lm extends ExprOk<infer TsL, infer _Sl>
-					? H extends ExprOk<infer TsH, infer _Sh>
-						? SameComparisonClass<TsE, TsL> extends true
-							? SameComparisonClass<TsE, TsH> extends true
+			: E extends ExprOk<infer _TsE, infer Se extends string>
+				? Lm extends ExprOk<infer _TsL, infer Sl extends string>
+					? H extends ExprOk<infer _TsH, infer Sh extends string>
+						? SameComparisonClass<Se, Sl> extends true
+							? SameComparisonClass<Se, Sh> extends true
 								? ExprOk<boolean, "boolean">
 								: SqlParserError<"Incompatible types in BETWEEN">
 							: SqlParserError<"Incompatible types in BETWEEN">
@@ -1286,10 +1313,10 @@ type MergeLikeOperands<Expr extends ExprAtom, Pat extends ExprAtom> = Expr exten
 	? SqlParserError<"NULL not allowed in LIKE">
 	: Pat extends ExprSqlNull
 		? SqlParserError<"NULL not allowed in LIKE">
-		: Expr extends ExprOk<infer TsE, infer _Se>
-			? Pat extends ExprOk<infer TsP, infer _Sp>
-				? TsE extends string
-					? TsP extends string
+		: Expr extends ExprOk<infer _TsE, infer Se extends string>
+			? Pat extends ExprOk<infer _TsP, infer Sp extends string>
+				? IsSqlTextType<Se> extends true
+					? IsSqlTextType<Sp> extends true
 						? ExprOk<boolean, "boolean">
 						: SqlParserError<"LIKE pattern must be text">
 					: SqlParserError<"LIKE left operand must be text">
@@ -1304,11 +1331,11 @@ type MergeCaseThenAccum<Acc extends ExprAtom | null, Tv extends ExprAtom> = Acc 
 			: Tv extends ExprOk<infer Tb, infer Sb>
 				? ExprOk<Tb | null, Sb>
 				: SqlParserError<"Invalid CASE branch">
-		: Acc extends ExprOk<infer Ta, infer Sa>
+		: Acc extends ExprOk<infer Ta, infer Sa extends string>
 			? Tv extends ExprSqlNull
 				? ExprOk<Ta | null, Sa>
-				: Tv extends ExprOk<infer Tb, infer Sb>
-					? SameComparisonClass<Ta, Tb> extends true
+				: Tv extends ExprOk<infer Tb, infer Sb extends string>
+					? SameComparisonClass<Sa, Sb> extends true
 						? ExprOk<Ta, Sa>
 						: SqlParserError<"Incompatible types in CASE">
 					: SqlParserError<"Invalid CASE branch">
@@ -1336,8 +1363,8 @@ type ResolveCaseSearchedArms<
 	? ResolveExpressionAST<A["when"], Db, Scope, Params> extends infer Wv
 		? Wv extends SqlParserError<string>
 			? Wv
-			: Wv extends ExprOk<infer Tw, infer _Sw>
-				? Tw extends boolean
+			: Wv extends ExprOk<infer _Tw, infer Sw extends string>
+				? IsSqlBooleanType<Sw> extends true
 					? ResolveExpressionAST<A["then"], Db, Scope, Params> extends infer Tv
 						? Tv extends SqlParserError<string>
 							? Tv
@@ -1464,9 +1491,9 @@ type ValidateInListElement<L extends ExprAtom, R extends ExprAtom> = L extends E
 	? SqlParserError<"Invalid IN left operand">
 	: R extends ExprSqlNull
 		? SqlParserError<"Incompatible types in IN list">
-		: L extends ExprOk<infer TsL, infer _Sl>
-			? R extends ExprOk<infer TsR, infer _Sr>
-				? SameComparisonClass<TsL, TsR> extends true
+		: L extends ExprOk<infer _TsL, infer Sl extends string>
+			? R extends ExprOk<infer _TsR, infer Sr extends string>
+				? SameComparisonClass<Sl, Sr> extends true
 					? true
 					: SqlParserError<"Incompatible types in IN list">
 				: SqlParserError<"Invalid IN list element">
@@ -1545,8 +1572,8 @@ type MergeBoolNot<V> =
 		? V
 		: V extends ExprSqlNull
 			? SqlParserError<"NOT argument must be boolean, not NULL">
-			: V extends ExprOk<infer T, infer _S>
-				? T extends boolean
+			: V extends ExprOk<infer _T, infer S extends string>
+				? IsSqlBooleanType<S> extends true
 					? ExprOk<boolean, "boolean">
 					: SqlParserError<"NOT requires a boolean operand">
 				: SqlParserError<"NOT requires a boolean operand">
@@ -1560,10 +1587,10 @@ type MergeBoolBinary<L, R, Msg extends string> =
 				? SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">
 				: R extends ExprSqlNull
 					? SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">
-					: L extends ExprOk<infer Tl, infer _Sl>
-						? R extends ExprOk<infer Tr, infer _Sr>
-							? Tl extends boolean
-								? Tr extends boolean
+					: L extends ExprOk<infer _Tl, infer Sl extends string>
+						? R extends ExprOk<infer _Tr, infer Sr extends string>
+							? IsSqlBooleanType<Sl> extends true
+								? IsSqlBooleanType<Sr> extends true
 									? ExprOk<boolean, "boolean">
 									: SqlParserError<Msg>
 								: SqlParserError<Msg>
@@ -1605,10 +1632,10 @@ type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends 
 	? SqlParserError<"NULL not allowed in arithmetic">
 	: R extends ExprSqlNull
 		? SqlParserError<"NULL not allowed in arithmetic">
-		: L extends ExprOk<infer TsL, infer _Sl>
-			? R extends ExprOk<infer TsR, infer _Sr>
-				? TsL extends number
-					? TsR extends number
+		: L extends ExprOk<infer _TsL, infer Sl extends string>
+			? R extends ExprOk<infer _TsR, infer Sr extends string>
+				? IsSqlNumericType<Sl> extends true
+					? IsSqlNumericType<Sr> extends true
 						? ExprOk<number, "number">
 						: SqlParserError<"Incompatible types in arithmetic">
 					: SqlParserError<"Incompatible types in arithmetic">
@@ -2104,8 +2131,10 @@ type ResolveScalarExprAstNeg<
 	ResolveExpressionAST<I, Db, Scope, Params> extends infer U
 		? U extends SqlParserError<string>
 			? U
-			: U extends ExprOk<number, infer _Sn>
-				? ExprOk<number, "number">
+			: U extends ExprOk<infer _Tu, infer Su extends string>
+				? IsSqlNumericType<Su> extends true
+					? ExprOk<number, "number">
+					: SqlParserError<"Unary minus requires a number">
 				: SqlParserError<"Unary minus requires a number">
 		: never
 
@@ -2225,8 +2254,8 @@ type ParseUnaryValue<
 			? ParseUnaryValue<Rn, Db, Scope, Params> extends [infer Ru extends TokensList, infer U]
 				? U extends SqlParserError<string>
 					? [Ru, U]
-					: U extends ExprOk<infer Tu, infer Su>
-						? Tu extends number
+					: U extends ExprOk<infer _Tu, infer Su extends string>
+						? IsSqlNumericType<Su> extends true
 							? [Ru, ExprOk<number, "number">]
 							: [Ru, SqlParserError<"Unary minus requires a number">]
 						: never
@@ -2268,11 +2297,9 @@ type ParseMulValue<
 	ParseUnaryValue<Tokens, Db, Scope, Params> extends [infer R0 extends TokensList, infer E0]
 		? E0 extends SqlParserError<string>
 			? [R0, E0]
-			: E0 extends ExprOk<infer T0, infer _S0>
-				? T0 extends number
-					? E0 extends ExprOk<number, infer Sacc extends string>
-						? ParseMulLoopAfterFirst<R0, Db, Scope, ExprOk<number, Sacc>, Params>
-						: never
+			: E0 extends ExprOk<infer _T0, infer S0 extends string>
+				? IsSqlNumericType<S0> extends true
+					? ParseMulLoopAfterFirst<R0, Db, Scope, ExprOk<number, S0>, Params>
 					: PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
 							? [R0, SqlParserError<"Incompatible types in arithmetic">]
@@ -2332,11 +2359,9 @@ export type ParseAddValue<
 	ParseMulValue<Tokens, Db, Scope, Params> extends [infer R0 extends TokensList, infer E0]
 		? E0 extends SqlParserError<string>
 			? [R0, E0]
-			: E0 extends ExprOk<infer T0, infer _S0>
-				? T0 extends number
-					? E0 extends ExprOk<number, infer Sacc extends string>
-						? ParseAddLoopAfterFirst<R0, Db, Scope, ExprOk<number, Sacc>, Params>
-						: never
+			: E0 extends ExprOk<infer _T0, infer S0 extends string>
+				? IsSqlNumericType<S0> extends true
+					? ParseAddLoopAfterFirst<R0, Db, Scope, ExprOk<number, S0>, Params>
 					: PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
 							? [R0, SqlParserError<"Incompatible types in arithmetic">]

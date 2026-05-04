@@ -14,7 +14,7 @@ type DbUsers = {
 				users: {
 					kind: "table"
 					columns: { id: string; name: string; amount: number }
-					column_sql_types: { id: "uuid"; name: "text" }
+					column_sql_types: { id: "text"; name: "text" }
 				}
 			}
 		}

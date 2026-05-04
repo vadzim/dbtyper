@@ -14,7 +14,7 @@ type DbUsers = {
 				users: {
 					kind: "table"
 					columns: { id: string; name: string }
-					column_sql_types: { id: "uuid"; name: "text" }
+					column_sql_types: { id: "text"; name: "text" }
 				}
 			}
 		}
@@ -61,7 +61,7 @@ type DbAppDefaultPublicUsers = {
 				users: {
 					kind: "table"
 					columns: { id: string; name: string }
-					column_sql_types: { id: "uuid"; name: "text" }
+					column_sql_types: { id: "text"; name: "text" }
 				}
 			}
 		}

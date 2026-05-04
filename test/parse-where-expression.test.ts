@@ -15,7 +15,7 @@ type DbUsers = {
 				users: {
 					kind: "table"
 					columns: { id: string; name: string }
-					column_sql_types: { id: "uuid"; name: "text" }
+					column_sql_types: { id: "text"; name: "text" }
 				}
 			}
 		}
@@ -27,7 +27,7 @@ type UsersEntry = {
 	schema: "public"
 	table: "users"
 	columns: { id: string; name: string }
-	column_sql_types: { id: "uuid"; name: "text" }
+	column_sql_types: { id: "text"; name: "text" }
 }
 
 type UsersScope = Record<"users", UsersEntry>
@@ -150,7 +150,7 @@ type WInList = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'a' , 'b' )`>,
 type _wInList = Expect<Extends<Tuple2At1<WInList>, null>>
 
 /** `IN` list: each element must match the left-hand comparison class (`uuid` column vs number literals). */
-type WInListTypeErr = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'a', 1 )`>, DbUsers, UsersScope>
+type WInListTypeErr = ParseWhereExpression<ParseSqlTokens<`users.id in ( 1, 2 )`>, DbUsers, UsersScope>
 type _wInListTypeErr = Expect<Extends<Tuple2At1<WInListTypeErr>, SqlParserError<"Incompatible types in IN list">>>
 type WNested = ParseWhereExpression<ParseSqlTokens<`( ( users.id = 'u' ) )`>, DbUsers, UsersScope>
 type _wNested = Expect<Extends<Tuple2At1<WNested>, null>>
@@ -252,7 +252,7 @@ type WCaseSimple = ParseWhereExpression<
 >
 type _wCaseSimple = Expect<Extends<Tuple2At1<WCaseSimple>, null>>
 type WCaseSimpleWhenMismatch = ParseWhereExpression<
-	ParseSqlTokens<`case users.id when 1 then true else false end`>,
+	ParseSqlTokens<`case users.name when 1 then true else false end`>,
 	DbUsers,
 	UsersScope
 >

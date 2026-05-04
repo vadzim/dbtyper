@@ -1797,9 +1797,9 @@ type JoinOnQualifiedEqOk<
 		? SqlParserError<"Unknown column in JOIN ON (left)">
 		: ResolveColumnRefValue<Db, Scope, R> extends SqlParserError<string>
 			? SqlParserError<"Unknown column in JOIN ON (right)">
-			: ResolveColumnRefValue<Db, Scope, L> extends { ts: infer Lt }
-				? ResolveColumnRefValue<Db, Scope, R> extends { ts: infer Rt }
-					? SameComparisonClass<Lt, Rt> extends true
+			: ResolveColumnRefValue<Db, Scope, L> extends { sql: infer Ls extends string }
+				? ResolveColumnRefValue<Db, Scope, R> extends { sql: infer Rs extends string }
+					? SameComparisonClass<Ls, Rs> extends true
 						? true
 						: SqlParserError<"Incompatible types in JOIN ON">
 					: SqlParserError<"Unknown column in JOIN ON (right)">
@@ -1817,9 +1817,13 @@ type JoinOnAliasEqOk<
 		? SqlParserError<"Unknown column in JOIN (left side)">
 		: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends SqlParserError<string>
 			? SqlParserError<"Unknown column in JOIN (right side)">
-			: ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends { ts: infer Lt }
-				? ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends { ts: infer Rt }
-					? SameComparisonClass<Lt, Rt> extends true
+			: ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends {
+						sql: infer Ls extends string
+				  }
+				? ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends {
+						sql: infer Rs extends string
+					}
+					? SameComparisonClass<Ls, Rs> extends true
 						? true
 						: SqlParserError<"Incompatible types in JOIN ON">
 					: SqlParserError<"Unknown column in JOIN (right side)">

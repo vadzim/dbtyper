@@ -15,7 +15,7 @@ type DbUsers = {
 				users: {
 					kind: "table"
 					columns: { id: string; name: string }
-					column_sql_types: { id: "uuid"; name: "text" }
+					column_sql_types: { id: "text"; name: "text" }
 					column_facts: { id: { not_null: true } }
 				}
 			}
@@ -30,7 +30,7 @@ type _insOk = Expect<Extends<Tuple3At2<InsOk>, JsqlInsertStatementResult>>
 type InsParam = ParseSqlStatement<
 	ParseSqlTokens<`insert into users (id, name) values (:id, :name);`>,
 	DbUsers,
-	{ id: { ts: string; sql: "uuid" }; name: { ts: string; sql: "text" } }
+	{ id: { ts: string; sql: "text" }; name: { ts: string; sql: "text" } }
 >
 type _insParam = Expect<Extends<Tuple3At2<InsParam>, JsqlInsertStatementResult>>
 
@@ -58,7 +58,7 @@ type DbAppDefaultPublicUsers = {
 				users: {
 					kind: "table"
 					columns: { id: string; name: string }
-					column_sql_types: { id: "uuid"; name: "text" }
+					column_sql_types: { id: "text"; name: "text" }
 					column_facts: { id: { not_null: true } }
 				}
 			}
@@ -186,7 +186,9 @@ type SeedUsersOneRowNoCast = ApplyStatements<
     ('11111111-1111-1111-1111-111111111111', 'alice@example.com', 'Alice', 0);
 `
 >
-type _seedUsersOneRowNoCast = Expect<Matches<SeedUsersOneRowNoCast[1], null>>
+type _seedUsersOneRowNoCast = Expect<
+	Extends<SeedUsersOneRowNoCast[1], SqlParserError<"Incompatible value type for column">>
+>
 
 type SeedUsersOneRowCast = ApplyStatements<
 	SeedDb3,

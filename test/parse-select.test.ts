@@ -159,7 +159,7 @@ type _selectCaseKw = Expect<Extends<Tuple3At2<TSelectCaseKw>, { kind: "select"; 
 
 /** Simple `CASE expr WHEN …` (distinct from searched `CASE WHEN boolean`). */
 type TSelectCaseSimple = ParseSqlStatement<
-	ParseSqlTokens<`select case users.id when 'u' then users.name else users.name end as x from users;`>,
+	ParseSqlTokens<`select case users.id when '00000000-0000-0000-0000-000000000001'::uuid then users.name else users.name end as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectCaseSimple = Expect<
@@ -173,7 +173,7 @@ type _selectCaseSimpleWhenMismatch = Expect<
 	Extends<Tuple3At2<TSelectCaseSimpleWhenMismatch>, SqlParserError<"Incompatible types in comparison">>
 >
 type TSelectCaseSimpleNoElse = ParseSqlStatement<
-	ParseSqlTokens<`select case users.id when 'u' then users.name end as x from users;`>,
+	ParseSqlTokens<`select case users.id when '00000000-0000-0000-0000-000000000001'::uuid then users.name end as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectCaseSimpleNoElse = Expect<
@@ -531,7 +531,7 @@ type _selectIsNull = Expect<
 >
 
 type TSelectInList = ParseSqlStatement<
-	ParseSqlTokens<`select (users.id in ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002')) as inside from users;`>,
+	ParseSqlTokens<`select (users.id in ('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000002'::uuid)) as inside from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectInList = Expect<
