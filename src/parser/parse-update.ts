@@ -1,4 +1,9 @@
-import type { JsqlDatabaseShape, JsqlTableShape, JsqlUpdateStatementResult, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type {
+	JsqlDatabaseShape,
+	JsqlTableShape,
+	JsqlUpdateStatementResult,
+	JsqlSelectStatementResult,
+} from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
