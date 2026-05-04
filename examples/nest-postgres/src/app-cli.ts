@@ -21,7 +21,7 @@ try {
 		order by display_name asc
 	` as const
 
-	const rows = await app.query<typeof stmt, { email_domain: { ts: string; sql: "text" } }>(stmt, {
+	const rows = await app.query(stmt, {
 		email_domain: "@example\\.com$",
 	})
 	console.log("users (typed rows from dbtyper + postgres):")

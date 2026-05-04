@@ -5,6 +5,7 @@ import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectRowSqlTypes } from "./sql-query.ts"
 import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
+import type { InferParamsFromValues } from "./infer-param-types.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -254,12 +255,12 @@ export type DataBase<
 			: CheckSqlValidForQuery<Db, Stmt, EmptyExpressionParams>,
 	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, EmptyExpressionParams>>
 
-	query<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt extends CheckSqlValidForQuery<Db, Stmt, Params>
+	query<Stmt extends string, ParamsValues extends Record<string, unknown>>(
+		statement: Stmt extends CheckSqlValidForQuery<Db, Stmt, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValidForQuery<Db, Stmt, Params>,
-		params: ParamRuntimeValues<Params>,
-	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, Params>>
+			: CheckSqlValidForQuery<Db, Stmt, InferParamsFromValues<ParamsValues>>,
+		params: ParamsValues,
+	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>>
 
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
@@ -272,12 +273,12 @@ export type DataBase<
 			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
 	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>>
 
-	stream<Stmt extends string, Params extends ExpressionParamsShape>(
-		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, Params>
+	stream<Stmt extends string, ParamsValues extends Record<string, unknown>>(
+		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, Params>,
-		params: ParamRuntimeValues<Params>,
-	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>>
+			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>,
+		params: ParamsValues,
+	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>>>
 
 	streamUntyped(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<any>>
 

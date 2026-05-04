@@ -20,7 +20,7 @@ describe("migration query type inference", () => {
 	            order by email;
 		` as const
 
-		const rows = await db.query<typeof statement, { email_domain: { ts: string; sql: "text" } }>(statement, {
+		const rows = await db.query(statement, {
 			email_domain: "@example\\.com$",
 		})
 
