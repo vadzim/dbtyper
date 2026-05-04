@@ -1,9 +1,14 @@
 // Integration Test: INSERT
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
 const mockDriver = {
 	query: async () => [],
-	scalarTypes: {},
+	scalarTypes: {
+		text: "" as string,
+		integer: 0 as number,
+		boolean: true as boolean,
+	},
 }
 
 async function testInsertCorrectTypes() {
