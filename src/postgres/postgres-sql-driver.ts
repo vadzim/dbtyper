@@ -33,13 +33,25 @@ function createConnectedPostgresDriver(sql: ReturnType<typeof postgres>, pageSiz
 			const rows = values.length > 0 ? await sql.unsafe(sqlText, [...values] as never) : await sql.unsafe(sqlText)
 			return [...rows] as unknown[]
 		},
-		async *stream(text: string, params?: SqlDriverParams): AsyncIterable<unknown> {
+
+		async stream(text: string, params?: SqlDriverParams): Promise<AsyncIterable<unknown>> {
 			const { text: sqlText, values } = pgQueryArgs(text, params)
-			const pending = values.length > 0 ? sql.unsafe(sqlText, [...values] as never) : sql.unsafe(sqlText)
-			for await (const batch of pending.cursor(pageSize)) {
-				yield* batch
-			}
+
+			return (async function* () {
+				// Use postgres.js cursor for true streaming with server-side cursor
+				const cursor =
+					values.length > 0
+						? sql.unsafe(sqlText, [...values] as never).cursor(pageSize)
+						: sql.unsafe(sqlText).cursor(pageSize)
+
+				for await (const rows of cursor) {
+					for (const row of rows) {
+						yield row
+					}
+				}
+			})()
 		},
+
 		scalarTypes: {} as PostgresTypeMap,
 	}
 }

@@ -14,7 +14,7 @@ export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
 
 export type SqlDriver<S extends Record<string, unknown>> = {
 	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
-	stream?(sql: string, params?: SqlDriverParams): AsyncIterable<unknown>
+	stream?(sql: string, params?: SqlDriverParams): Promise<AsyncIterable<unknown>>
 	readonly scalarTypes: S
 }
 
@@ -270,16 +270,16 @@ export type DataBase<
 		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, EmptyExpressionParams>
 			? Stmt
 			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, EmptyExpressionParams>,
-	): AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>
+	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>>
 
 	stream<Stmt extends string, Params extends ExpressionParamsShape>(
 		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, Params>
 			? Stmt
 			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, Params>,
 		params: ParamRuntimeValues<Params>,
-	): AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
+	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>>
 
-	streamUntyped(statement: string, params?: Record<string, unknown>): AsyncIterable<any>
+	streamUntyped(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<any>>
 
 	migrations: readonly MigrationExport[]
 	defaultSchema: string
@@ -300,17 +300,22 @@ export class DataBaseImpl {
 		return this.dbInterface.query(statement, params)
 	}
 
-	stream(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
+	async stream(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<unknown>> {
 		const streamFn = this.dbInterface.stream
+
 		if (streamFn !== undefined) {
-			return streamFn(statement, params)
+			return await streamFn(statement, params)
 		}
+
 		const db = this.dbInterface
+		const rows = await db.query(statement, params)
+
+		if (!Array.isArray(rows)) {
+			throw new Error("stream() requires a row-returning statement (SELECT or RETURNING clause)")
+		}
+
 		return (async function* () {
-			const rows = await db.query(statement, params)
-			for (const row of rows) {
-				yield row
-			}
+			yield* rows
 		})()
 	}
 
@@ -318,8 +323,8 @@ export class DataBaseImpl {
 		return this.query(statement, params)
 	}
 
-	streamUntyped(statement: string, params?: Record<string, unknown>): AsyncIterable<unknown> {
-		return this.stream(statement, params)
+	async streamUntyped(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<unknown>> {
+		return await this.stream(statement, params)
 	}
 
 	migrations: readonly MigrationExport[]

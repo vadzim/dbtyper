@@ -7,7 +7,10 @@ import type { PostgresTypeMap } from "dbtyper/postgres"
 test("exampleDb(..) resolves and exposes database()", async () => {
 	const db = await exampleDb({
 		query: async () => [],
-		async *stream() {},
+		stream: async () =>
+			(async function* () {
+				// Empty async generator
+			})(),
 		scalarTypes: {} as PostgresTypeMap,
 	})
 	assert.equal(typeof db.query, "function")

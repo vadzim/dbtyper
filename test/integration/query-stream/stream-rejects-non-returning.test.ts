@@ -53,7 +53,7 @@ async function testStreamAcceptsSelect() {
 		.database()
 
 	// ✅ SELECT should be accepted by stream()
-	const stream = db.stream(`select id, name from users;`)
+	const stream = await db.stream(`select id, name from users;`)
 
 	// Stream should yield typed objects
 	for await (const row of stream) {
@@ -71,7 +71,7 @@ async function testStreamAcceptsReturning() {
 		.database()
 
 	// ✅ DELETE with RETURNING should be accepted by stream()
-	const stream = db.stream(`delete from users where id = '1' returning id, name;`)
+	const stream = await db.stream(`delete from users where id = '1' returning id, name;`)
 
 	// Stream should yield typed objects
 	for await (const row of stream) {

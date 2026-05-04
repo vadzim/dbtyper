@@ -5,7 +5,10 @@ export const createTestDatabase = async () =>
 	sqlMigrations({
 		driver: {
 			query: async () => [],
-			async *stream() {},
+			stream: async () =>
+				(async function* () {
+					// Empty async generator
+				})(),
 			scalarTypes: {} as PostgresTypeMap,
 		},
 	})

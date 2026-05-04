@@ -9,7 +9,7 @@ export function InjectDbtyper(id: string | symbol = DEFAULT_DBTYPER_ID): Paramet
 
 type DbtyperDatabase = {
 	query: (...args: any[]) => Promise<unknown>
-	stream: (...args: any[]) => AsyncIterable<unknown>
+	stream: (...args: any[]) => Promise<AsyncIterable<unknown>>
 }
 
 type DbtyperModuleAsyncOptions = {

@@ -13,7 +13,7 @@ try {
 		"select email, display_name, login_count, created_at from auth.users order by email asc;",
 	)
 	console.log("typed rows:", rows)
-	for await (const row of app.stream("select email from auth.users limit 5;")) {
+	for await (const row of await app.stream("select email from auth.users limit 5;")) {
 		console.log("stream row:", row)
 	}
 } finally {
