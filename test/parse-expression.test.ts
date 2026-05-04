@@ -13,7 +13,7 @@ import type {
 } from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
-import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
+import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 type DbUsers = {
 	defaultSchema: "public"

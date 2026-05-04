@@ -4,7 +4,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
+import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 type EmptyDb = {
 	defaultSchema: "public"

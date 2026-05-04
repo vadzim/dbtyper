@@ -3,7 +3,7 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
-import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
+import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 import type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /** `public` with one table so **`CREATE VIEW … AS SELECT`** can resolve `FROM`. */

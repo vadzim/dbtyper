@@ -7,7 +7,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "../src/parser
 import type { SqlSelectRow } from "../src/core/sql-database.ts"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
-import type { PackageScalarTypes } from "./test-utils/package-scalar-types.ts"
+import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 /**
  * Mirrors the private {@link SqlDatabase.query} constraint in `sql-database.ts`
