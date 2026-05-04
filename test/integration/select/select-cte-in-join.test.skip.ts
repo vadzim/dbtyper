@@ -16,12 +16,12 @@ async function testSelectCTEInJoin() {
 
 	// ✅ SUCCESS: CTE used in JOIN
 	const result = await db.query(
-		`with post_counts as (
-       select user_id, count(*) as count from posts group by user_id
+		`with active_users as (
+       select id, name from users where id is not null
      )
-     select users.name, post_counts.count 
-     from users 
-     left join post_counts on users.id = post_counts.user_id;`,
+     select active_users.name, posts.id 
+     from active_users 
+     left join posts on active_users.id = posts.user_id;`,
 	)
 
 	return result

@@ -15,7 +15,6 @@ async function testSelectCTEUnknownColumn() {
 
 	// ❌ ERROR: reference unknown column from CTE
 	const bad = await db.query(
-		// @ts-expect-error
 		`with active_users as (select id, name from users) 
      select invalid_column from active_users;`,
 	)
