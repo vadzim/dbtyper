@@ -110,10 +110,10 @@ UPDATE table SET col = value FROM other_table WHERE condition
 
 ---
 
-## 7. [ ] DELETE...USING
+## 7. [x] DELETE...USING
 
-**File:** `delete-with-using.test.skip.ts`  
-**Missing:** USING clause in DELETE statements (PostgreSQL extension)
+**File:** `delete-with-using.test.ts`  
+**Status:** ✅ Implemented - USING clause in DELETE statements (PostgreSQL extension)
 
 **Needs:**
 

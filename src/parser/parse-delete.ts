@@ -30,21 +30,164 @@ type ParseDeleteAfterFrom<
 				: never
 			: Mid extends null
 				? Third extends ScopeMap
-					? PeekToken<R> extends TokenKey<"where">
-						? SkipToken<R> extends infer Rw0 extends TokensList
-							? ParseWhereExpression<Rw0, Db, Third, Params> extends [
-									infer Rw extends TokensList,
-									infer We extends SqlParserError<string> | null,
-								]
-								? We extends SqlParserError<string>
-									? [Rw, Db, We]
-									: FinishDeleteStatement<Rw, Db, Third, Params>
-								: never
+					? PeekToken<R> extends TokenKey<"using">
+						? SkipToken<R> extends infer Ru extends TokensList
+							? ParseDeleteUsingClause<Ru, Db, Third, Params>
 							: never
-						: FinishDeleteStatement<R, Db, Third, Params>
+						: PeekToken<R> extends TokenKey<"where">
+							? SkipToken<R> extends infer Rw0 extends TokensList
+								? ParseWhereExpression<Rw0, Db, Third, Params> extends [
+										infer Rw extends TokensList,
+										infer We extends SqlParserError<string> | null,
+									]
+									? We extends SqlParserError<string>
+										? [Rw, Db, We]
+										: FinishDeleteStatement<Rw, Db, Third, Params>
+									: never
+								: never
+							: FinishDeleteStatement<R, Db, Third, Params>
 					: never
 				: never
 		: never
+
+type ParseDeleteUsingClause<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseDeleteUsingTableRef<Tokens, Db, Scope, Params> extends [
+		infer RUsing extends TokensList,
+		infer UsingErr,
+		infer UsingScope,
+	]
+		? UsingErr extends SqlParserError<string>
+			? [RUsing, Db, UsingErr]
+			: UsingScope extends ScopeMap
+				? MergeScope<Scope, UsingScope> extends infer MergedScope
+					? MergedScope extends ScopeMap
+						? PeekToken<RUsing> extends TokenKey<"where">
+							? SkipToken<RUsing> extends infer Rw0 extends TokensList
+								? ParseWhereExpression<Rw0, Db, MergedScope, Params> extends [
+										infer Rw extends TokensList,
+										infer We,
+									]
+									? We extends SqlParserError<string>
+										? [Rw, Db, We]
+										: FinishDeleteStatement<Rw, Db, MergedScope, Params>
+									: never
+								: never
+							: FinishDeleteStatement<RUsing, Db, MergedScope, Params>
+						: never
+					: never
+				: never
+		: never
+
+type ParseDeleteUsingTableRef<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? Tok extends TokenIdent<infer A extends string>
+				? PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? PeekToken<R2> extends infer TokB
+							? SkipToken<R2> extends infer R3 extends TokensList
+								? TokB extends TokenIdent<infer B extends string>
+									? ResolveTableShape<Db, A, B> extends infer TblTry
+										? [TblTry] extends [never]
+											? [
+													R3,
+													SqlParserError<"Unknown schema or table in DELETE USING">,
+													ParserRefErrorThirdSentinel,
+												]
+											: TblTry extends JsqlTableShape
+												? ParseDeleteUsingTableAlias<R3, A, B, TblTry>
+												: [
+														R3,
+														SqlParserError<"Invalid table in DELETE USING">,
+														ParserRefErrorThirdSentinel,
+													]
+										: never
+									: [
+											R3,
+											SqlParserError<"Expected table name in DELETE USING">,
+											ParserRefErrorThirdSentinel,
+										]
+								: never
+							: never
+						: never
+					: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry2
+						? [TblTry2] extends [never]
+							? [R1, SqlParserError<"Unknown table in DELETE USING">, ParserRefErrorThirdSentinel]
+							: TblTry2 extends JsqlTableShape
+								? ParseDeleteUsingTableAlias<R1, Db["defaultSchema"], A, TblTry2>
+								: [R1, SqlParserError<"Invalid table in DELETE USING">, ParserRefErrorThirdSentinel]
+						: never
+				: [R1, SqlParserError<"Expected table name in DELETE USING">, ParserRefErrorThirdSentinel]
+			: never
+		: never
+
+type ParseDeleteUsingTableAlias<
+	Tokens extends TokensList,
+	Sch extends string,
+	Tab extends string,
+	Tbl extends JsqlTableShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"where"> | TokenKey<"returning"> | TokenKey<";"> | TokenEot
+		? [
+				Tokens,
+				null,
+				MergeScope<
+					Record<
+						Tab,
+						{
+							schema: Sch
+							table: Tab
+							columns: Tbl["columns"]
+						}
+					>,
+					{}
+				>,
+			]
+		: PeekToken<Tokens> extends infer TokAlias
+			? SkipToken<Tokens> extends infer Ra extends TokensList
+				? TokAlias extends TokenIdent<infer Alias extends string>
+					? [
+							Ra,
+							null,
+							MergeScope<
+								Record<
+									Alias,
+									{
+										schema: Sch
+										table: Tab
+										columns: Tbl["columns"]
+									}
+								>,
+								{}
+							>,
+						]
+					: [
+							Ra,
+							null,
+							MergeScope<
+								Record<
+									Tab,
+									{
+										schema: Sch
+										table: Tab
+										columns: Tbl["columns"]
+									}
+								>,
+								{}
+							>,
+						]
+				: never
+			: never
 
 type FinishDeleteStatement<
 	Tokens extends TokensList,
@@ -138,7 +281,7 @@ type ParseDeleteAliasAfterTable<
 	Scope extends ScopeMap,
 	_Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends TokenKey<"where"> | TokenKey<"returning"> | TokenKey<";"> | TokenEot
+	PeekToken<Tokens> extends TokenKey<"using"> | TokenKey<"where"> | TokenKey<"returning"> | TokenKey<";"> | TokenEot
 		? [
 				Tokens,
 				null,
