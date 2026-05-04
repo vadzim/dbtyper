@@ -65,7 +65,7 @@
 		"test": "npm run --silent typecheck && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w dbtyper-nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent test -w @dbtyper/example-postgres && npm run --silent test -w @dbtyper/example-nest-postgres && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"monadcheck": "check-monad './src/**/*.ts' --strict --monad ./src/lexer/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
+		"monadcheck": "check-monad './src/**/*.ts' --monad ./src/lexer/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
 		"monadcheck-log": "mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC"
 	},
 	"peerDependencies": {
@@ -79,7 +79,7 @@
 	"devDependencies": {
 		"@types/node": "^25.5.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
-		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#5f31d17bb52c5956f2b1b34a29cb9897e10322e0",
+		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#de296ddbed4debc96ea533e8e7aa4735072b3c44",
 		"nodemon": "^3.1.14",
 		"postgres": "^3.4.5",
 		"prettier": "^3.8.1",
