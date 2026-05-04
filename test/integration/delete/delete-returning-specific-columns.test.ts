@@ -13,7 +13,7 @@ async function testDeleteReturningSpecificColumns() {
 		.database()
 
 	// ✅ SUCCESS: RETURNING specific columns
-	const result = await db.query(`delete from users where id = '1' returning id, name;`)
+	const result = await db.query(`delete from users returning id, name;`)
 
 	// Type should be: Array<{ id: string; name: string }>
 	const _typeCheck: typeof result = [] as Array<{
