@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -56,10 +55,7 @@ type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape
 			: never
 		: never
 
-type RemoveSchemaFromDb<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"]> = MergeDbPreserveScalars<
-	Db,
-	{
-		defaultSchema: Db["defaultSchema"]
-		schemas: Omit<Db["schemas"], Sch>
-	}
->
+type RemoveSchemaFromDb<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"]> = {
+	defaultSchema: Db["defaultSchema"]
+	schemas: Omit<Db["schemas"], Sch>
+}

@@ -5,7 +5,6 @@ import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 type DbUsers = {
 	defaultSchema: "public"
@@ -20,7 +19,6 @@ type DbUsers = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 type InsOk = ParseSqlStatement<ParseSqlTokens<`insert into users (id, name) values ('u1', 'n1');`>, DbUsers>
@@ -67,7 +65,6 @@ type DbAppDefaultPublicUsers = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 type InsQualified = ParseSqlStatement<
@@ -129,7 +126,6 @@ type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["ret
 type SeedDb0 = {
 	defaultSchema: "public"
 	schemas: {}
-	scalarTypes: PackageScalarTypes
 }
 
 type SeedDb1 = ApplyStatements<

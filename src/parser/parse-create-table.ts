@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
@@ -293,27 +292,24 @@ type MergeTableIntoDb<
 	Cols extends Record<string, string>,
 	Facts extends Record<string, unknown>,
 > = Schema extends keyof Db["schemas"]
-	? MergeDbPreserveScalars<
-			Db,
-			{
-				defaultSchema: Db["defaultSchema"]
-				schemas: {
-					[K in keyof Db["schemas"]]: K extends Schema
-						? {
-								sets: Db["schemas"][K]["sets"] &
-									Record<
-										Table,
-										{
-											kind: "table"
-											columns: Cols
-											column_facts: Facts
-										}
-									>
-							}
-						: Db["schemas"][K]
-				}
+	? {
+			defaultSchema: Db["defaultSchema"]
+			schemas: {
+				[K in keyof Db["schemas"]]: K extends Schema
+					? {
+							sets: Db["schemas"][K]["sets"] &
+								Record<
+									Table,
+									{
+										kind: "table"
+										columns: Cols
+										column_facts: Facts
+									}
+								>
+						}
+					: Db["schemas"][K]
 			}
-		>
+		}
 	: never
 
 type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =

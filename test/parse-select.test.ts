@@ -5,7 +5,6 @@ import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 /**
  * `public` is default: `FROM users` resolves to `schemas.public.sets.users`.
@@ -342,7 +341,6 @@ type DbJoinWithRowCount = {
 		}
 		billing: DbJoinDefaultAndExplicit["schemas"]["billing"]
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 type TColPlusOne = ParseSqlStatement<ParseSqlTokens<`select users.row_count + 1 as x from users;`>, DbJoinWithRowCount>

@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -65,26 +64,23 @@ type MergeViewIntoDb<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 > = Schema extends keyof Db["schemas"]
-	? MergeDbPreserveScalars<
-			Db,
-			{
-				defaultSchema: Db["defaultSchema"]
-				schemas: {
-					[K in keyof Db["schemas"]]: K extends Schema
-						? {
-								sets: Db["schemas"][K]["sets"] &
-									Record<
-										Name,
-										{
-											kind: "view"
-											columns: Sel["columns"]
-										}
-									>
-							}
-						: Db["schemas"][K]
-				}
+	? {
+			defaultSchema: Db["defaultSchema"]
+			schemas: {
+				[K in keyof Db["schemas"]]: K extends Schema
+					? {
+							sets: Db["schemas"][K]["sets"] &
+								Record<
+									Name,
+									{
+										kind: "view"
+										columns: Sel["columns"]
+									}
+								>
+						}
+					: Db["schemas"][K]
 			}
-		>
+		}
 	: never
 
 type ParseCreateViewAfterSelect<

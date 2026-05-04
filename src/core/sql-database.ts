@@ -134,7 +134,6 @@ export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 							: never
 					}
 				: never
-			scalarTypes: Db["scalarTypes"]
 		} & Pick<Db, Extract<keyof Db, "functions">>
 	: Db
 

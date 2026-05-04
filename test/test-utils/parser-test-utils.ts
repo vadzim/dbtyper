@@ -1,13 +1,9 @@
-import type { SqlDatabase } from "../../src/core/sql-database.ts"
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
 import type { SqlParserError } from "../../src/sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
 import type { SqlSelectRowSqlTypes } from "../../src/core/sql-query.ts"
 import type { ApplySqlToTsConversion } from "../../src/core/sql-to-ts-conversion.ts"
 import type { PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
-
-/** Default scalar map from {@link SqlDatabase} — add `scalarTypes: PackageScalarTypes` on manual test DB shapes. */
-export type PackageScalarTypes = SqlDatabase["scalarTypes"]
 
 /**
  * Infers the **row object** type for a single `SELECT` / `WITH … SELECT` string against `Db`.

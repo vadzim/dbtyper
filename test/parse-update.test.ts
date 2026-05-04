@@ -4,7 +4,6 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 type DbUsers = {
 	defaultSchema: "public"
@@ -18,7 +17,6 @@ type DbUsers = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 type UpOk = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' where users.id = 'u';`>, DbUsers>
@@ -64,7 +62,6 @@ type DbAppDefaultPublicUsers = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 type UpMultiQualified = ParseSqlStatement<

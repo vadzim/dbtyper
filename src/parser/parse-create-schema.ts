@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -19,13 +18,10 @@ export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabase
 		: ParseCreateSchemaName<Tokens, Db, false>
 
 /** New schema starts with empty `sets`; avoid `JsqlSchemaShape` here so `sets` does not pick up `{ [K: string]: JsqlTableShape }` (cleaner IDE types after migrations). */
-type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = MergeDbPreserveScalars<
-	Db,
-	{
-		defaultSchema: Db["defaultSchema"]
-		schemas: Db["schemas"] & Record<Name, { sets: {} }>
-	}
->
+type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = {
+	defaultSchema: Db["defaultSchema"]
+	schemas: Db["schemas"] & Record<Name, { sets: {} }>
+}
 
 /** One token after schema name: must be `;` or end. */
 type ParseCreateSchemaAfterSchemaName<

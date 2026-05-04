@@ -2,7 +2,6 @@ import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /** Concrete `sets` so `keyof columns` does not widen with an index signature. */
@@ -18,7 +17,6 @@ type DbUsers = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 /** Tokens after `delete` (i.e. start with `from`). */

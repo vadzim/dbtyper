@@ -4,7 +4,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
-import type { InferSqlErrors, PackageScalarTypes, SqlSelectRow } from "./test-utils/parser-test-utils.ts"
+import type { InferSqlErrors, SqlSelectRow } from "./test-utils/parser-test-utils.ts"
 
 type DbU = {
 	defaultSchema: "public"
@@ -15,7 +15,6 @@ type DbU = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 } & JsqlDatabaseShape
 
 type DbFns = DbU & { functions: { custom_fn: "integer" } }

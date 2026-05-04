@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -121,15 +120,12 @@ type RemoveTableFromDb<
 	Sch extends keyof Db["schemas"],
 	Tab extends string,
 > = Tab extends keyof Db["schemas"][Sch]["sets"]
-	? MergeDbPreserveScalars<
-			Db,
-			{
-				defaultSchema: Db["defaultSchema"]
-				schemas: {
-					[K in keyof Db["schemas"]]: K extends Sch
-						? { sets: Omit<Db["schemas"][Sch]["sets"], Tab> } & Omit<Db["schemas"][Sch], "sets">
-						: Db["schemas"][K]
-				}
+	? {
+			defaultSchema: Db["defaultSchema"]
+			schemas: {
+				[K in keyof Db["schemas"]]: K extends Sch
+					? { sets: Omit<Db["schemas"][Sch]["sets"], Tab> } & Omit<Db["schemas"][Sch], "sets">
+					: Db["schemas"][K]
 			}
-		>
+		}
 	: never

@@ -1,42 +1,13 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../src/core/sql-scalar-types.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-
-/**
- * Intentionally non-default TS column types to prove CREATE TABLE uses `Db["scalarTypes"]`
- * (not a package default map).
- */
-type OddScalarMap = {
-	uuid: string
-	text: number
-	int: boolean
-}
-
-type DbEmpty = {
-	defaultSchema: "public"
-	schemas: {}
-	scalarTypes: OddScalarMap
-}
 
 type DbPublicEmpty = {
 	defaultSchema: "public"
 	schemas: { public: JsqlSchemaShape }
-	scalarTypes: OddScalarMap
 }
-
-type CoreNoScalars = {
-	defaultSchema: "public"
-	schemas: { public: { sets: { t: { kind: "table"; columns: {} } } } }
-}
-type MergedFromDb = MergeDbPreserveScalars<DbPublicEmpty, CoreNoScalars>
-type _mergeDbPreservesScalars = Expect<Matches<MergedFromDb["scalarTypes"], OddScalarMap>>
-
-type CreatedSchema = ParseSqlStatement<ParseSqlTokens<`create schema extra;`>, DbEmpty>
-type _createSchemaKeepsScalars = Expect<Matches<CreatedSchema[1]["scalarTypes"], OddScalarMap>>
 
 type CreatedTable = ParseSqlStatement<
 	ParseSqlTokens<`create table odd_cols ( id uuid not null, body text not null, flag int not null );`>,
@@ -81,10 +52,8 @@ type DbOneTable = {
 			}
 		}
 	}
-	scalarTypes: OddScalarMap
 }
 type DropTable = ParseSqlStatement<ParseSqlTokens<`drop table gone;`>, DbOneTable>
-type _dropTableKeepsScalars = Expect<Matches<DropTable[1]["scalarTypes"], OddScalarMap>>
 type _dropTableSucceeded = Expect<Extends<DropTable[2], null>>
 
 type DbTwoSchemas = {
@@ -93,10 +62,8 @@ type DbTwoSchemas = {
 		public: { sets: {} }
 		spare: { sets: {} }
 	}
-	scalarTypes: OddScalarMap
 }
 type DropSchema = ParseSqlStatement<ParseSqlTokens<`drop schema spare;`>, DbTwoSchemas>
-type _dropSchemaKeepsScalars = Expect<Matches<DropSchema[1]["scalarTypes"], OddScalarMap>>
 type _dropSchemaSucceeded = Expect<Extends<DropSchema[2], null>>
 
 type DbOneColTable = {
@@ -111,10 +78,8 @@ type DbOneColTable = {
 			}
 		}
 	}
-	scalarTypes: OddScalarMap
 }
 type AlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.t add column body text;`>, DbOneColTable>
-type _alterAddKeepsScalars = Expect<Matches<AlterAdd[1]["scalarTypes"], OddScalarMap>>
 type AfterAlterCols = AlterAdd[1]["schemas"]["public"]["sets"]["t"]["columns"]
 type _alterAddUsesDbScalars = Expect<Extends<AfterAlterCols["body"], "text">>
 
@@ -126,7 +91,6 @@ create table base ( id uuid not null );
 create view v as select id from base;
 `
 >
-type _applyPreservesScalars = Expect<Matches<MultiStmtDb[0]["scalarTypes"], OddScalarMap>>
 type _applyNoErr = Expect<Matches<MultiStmtDb[1], null>>
 
 describe("scalar types + database shape (type tests)", () => {

@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape, JsqlTableShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
-import type { MergeDbPreserveScalars } from "../core/sql-scalar-types.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
@@ -67,17 +66,14 @@ type ReplaceTableInDb<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 	NewShape extends JsqlTableShape,
-> = MergeDbPreserveScalars<
-	Db,
-	{
-		defaultSchema: Db["defaultSchema"]
-		schemas: {
-			[K in keyof Db["schemas"]]: K extends Sch
-				? { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> } & Omit<Db["schemas"][K], "sets">
-				: Db["schemas"][K]
-		}
+> = {
+	defaultSchema: Db["defaultSchema"]
+	schemas: {
+		[K in keyof Db["schemas"]]: K extends Sch
+			? { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> } & Omit<Db["schemas"][K], "sets">
+			: Db["schemas"][K]
 	}
->
+}
 
 type ApplyAddColumn<T extends JsqlTableShape, Col extends string, Sql extends string> = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">

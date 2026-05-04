@@ -3,31 +3,26 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbWithAuth = {
 	defaultSchema: "public"
 	schemas: { auth: JsqlSchemaShape }
-	scalarTypes: PackageScalarTypes
 }
 
 type DbAuthDropped = {
 	defaultSchema: "public"
 	schemas: Omit<DbWithAuth["schemas"], "auth">
-	scalarTypes: PackageScalarTypes
 }
 
 type DbMulti = {
 	defaultSchema: "public"
 	schemas: { auth: JsqlSchemaShape; logs: JsqlSchemaShape }
-	scalarTypes: PackageScalarTypes
 }
 
 type DbMultiDroppedAuth = {
 	defaultSchema: "public"
 	schemas: Omit<DbMulti["schemas"], "auth">
-	scalarTypes: PackageScalarTypes
 }
 
 type D1 = ParseSqlStatement<ParseSqlTokens<`drop schema auth;`>, DbWithAuth>

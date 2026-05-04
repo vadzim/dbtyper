@@ -5,7 +5,6 @@ import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type { Expect, Extends, Tuple2At1 } from "./test-utils/type-test-utils.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { HasAmbiguousUnqualifiedColumn } from "../src/parser/scope-unqualified-helpers.ts"
-import type { PackageScalarTypes } from "./test-utils/parser-test-utils.ts"
 
 type DbUsers = {
 	defaultSchema: "public"
@@ -19,7 +18,6 @@ type DbUsers = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 
 type UsersEntry = {
@@ -175,7 +173,6 @@ type DbUsersWithAmount = {
 			}
 		}
 	}
-	scalarTypes: PackageScalarTypes
 }
 type UsersScopeWithAmount = Record<
 	"users",
