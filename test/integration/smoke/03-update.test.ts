@@ -15,16 +15,22 @@ async function testUpdate() {
 		.database()
 
 	// ❌ ERROR: UPDATE няправільнай калонкі
-	// @ts-expect-error
-	const bad1 = await db.query(`update users set invalid_column = null;`)
+	const bad1 = await db.query(
+		// @ts-expect-error
+		`update users set invalid_column = null;`,
+	)
 
 	// ❌ ERROR: UPDATE няправільнай табліцы
-	// @ts-expect-error
-	const bad2 = await db.query(`update invalid_table set name = null;`)
+	const bad2 = await db.query(
+		// @ts-expect-error
+		`update invalid_table set name = null;`,
+	)
 
 	// ❌ ERROR: RETURNING з няправільнай калонкай
-	// @ts-expect-error
-	const bad3 = await db.query(`update users set name = null returning invalid_column;`)
+	const bad3 = await db.query(
+		// @ts-expect-error
+		`update users set name = null returning invalid_column;`,
+	)
 
 	return {}
 }

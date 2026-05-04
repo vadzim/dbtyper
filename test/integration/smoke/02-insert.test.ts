@@ -15,16 +15,22 @@ async function testInsert() {
 		.database()
 
 	// ❌ ERROR: Няправільная назва калонкі
-	// @ts-expect-error
-	const bad1 = await db.query(`insert into users (id, invalid_column) values (null, null);`)
+	const bad1 = await db.query(
+		// @ts-expect-error
+		`insert into users (id, invalid_column) values (null, null);`,
+	)
 
 	// ❌ ERROR: Няправільная назва табліцы
-	// @ts-expect-error
-	const bad2 = await db.query(`insert into invalid_table (id) values (null);`)
+	const bad2 = await db.query(
+		// @ts-expect-error
+		`insert into invalid_table (id) values (null);`,
+	)
 
 	// ❌ ERROR: RETURNING з няправільнай калонкай
-	// @ts-expect-error
-	const bad3 = await db.query(`insert into users (id, name) values (null, null) returning invalid_column;`)
+	const bad3 = await db.query(
+		// @ts-expect-error
+		`insert into users (id, name) values (null, null) returning invalid_column;`,
+	)
 
 	return {}
 }

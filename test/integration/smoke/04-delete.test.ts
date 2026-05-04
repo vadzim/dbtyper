@@ -15,12 +15,16 @@ async function testDelete() {
 		.database()
 
 	// ❌ ERROR: DELETE з няправільнай табліцы
-	// @ts-expect-error
-	const bad1 = await db.query(`delete from invalid_table;`)
+	const bad1 = await db.query(
+		// @ts-expect-error
+		`delete from invalid_table;`,
+	)
 
 	// ❌ ERROR: RETURNING з няправільнай калонкай
-	// @ts-expect-error
-	const bad2 = await db.query(`delete from users returning invalid_column;`)
+	const bad2 = await db.query(
+		// @ts-expect-error
+		`delete from users returning invalid_column;`,
+	)
 
 	return {}
 }

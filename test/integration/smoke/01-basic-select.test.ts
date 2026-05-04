@@ -21,8 +21,10 @@ async function testBasicSelect() {
 	const result2 = await db.query(`select * from users;`)
 
 	// ❌ ERROR: няправільная калонка
-	// @ts-expect-error
-	const bad1 = await db.query(`select wrong_col from users;`)
+	const bad1 = await db.query(
+		// @ts-expect-error
+		`select wrong_col from users;`,
+	)
 
 	return { result1, result2 }
 }
