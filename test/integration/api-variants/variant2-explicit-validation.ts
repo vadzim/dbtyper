@@ -31,7 +31,7 @@
  */
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { InferSqlErrors } from "../../../src/core/sql-query.ts"
+import type { InferSqlErrors } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
 const mockDriver = {

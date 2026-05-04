@@ -4,7 +4,29 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import type { SqlSelectRow } from "./sql-query.ts"
+import type { SqlSelectRowSqlTypes } from "./sql-query.ts"
+import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
+
+/**
+ * Infers the **row object** type for a single `SELECT` / `WITH … SELECT` string against `Db`.
+ * Non-select statements resolve to {@link SqlParserError} so invalid uses become type errors.
+ *
+ * This applies SQL-to-TypeScript conversion using the database's scalarTypes map.
+ */
+export type SqlSelectRow<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Text extends string,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = Db extends JsqlDatabaseShape
+	? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, Db["scalarTypes"]>
+	: Db
+
+/** `SqlParserError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
+export type InferSqlErrors<
+	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Stmt extends string,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = [SqlSelectRow<Db, Stmt, Params>] extends [SqlParserError<infer M>] ? SqlParserError<M> : null
 
 /** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlMigrations}; same keys as {@link PostgresTypeMap}. */
 type DefaultSqlScalarTypeMap = PostgresTypeMap

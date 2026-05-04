@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
-import type { InferSqlErrors, SqlSelectRow } from "../src/core/sql-query.ts"
+import type { InferSqlErrors, SqlSelectRow } from "../src/core/sql-database.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
