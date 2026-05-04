@@ -1,20 +1,20 @@
 # API Implementation Design Log
 
-## Мэта
+## Goal
 
-Стварыць 4 варыянты рэалізацыі API ў `src/core/sql-database.ts` і праверыць, які лепш для валідацыі памылак.
+Create 4 API implementation variants in `src/core/sql-database.ts` and verify which one is best for error validation.
 
-## Бягучы стан
+## Current state
 
-Файл: `src/core/sql-database.ts`
+File: `src/core/sql-database.ts`
 
-Ключавыя тыпы:
+Key types:
 
-- `SqlMigrations<Db>` — інтэрфейс для міграцый
-- `DataBase<Db>` — інтэрфейс для БД з `query()` і `stream()`
-- `CheckSqlValid<Db, Stmt>` — валідацыя SQL на ўзроўні тыпаў
+- `SqlMigrations<Db>` - migration interface
+- `DataBase<Db>` - database interface with `query()` and `stream()`
+- `CheckSqlValid<Db, Stmt>` - type-level SQL validation
 
-Бягучая рэалізацыя:
+Current implementation:
 
 ```typescript
 export interface SqlMigrations<Db> {
@@ -27,33 +27,33 @@ export type DataBase<Db> = {
 }
 ```
 
-## План
+## Plan
 
-Стварыць 4 варыянты рэалізацыі:
+Create 4 implementation variants:
 
-### Variant 1: Бягучы API (baseline)
+### Variant 1: Current API (baseline)
 
-Захаваць як ёсць для параўнання.
+Keep as-is for comparison.
 
 ### Variant 2: Explicit validation method
 
-Дадаць `.validate()` метад для праверкі SQL перад выкананнем.
+Add a `.validate()` method to validate SQL before execution.
 
 ### Variant 3: Separate typed/untyped interfaces
 
-Раздзяліць `DataBase` на `TypedDataBase` і `UntypedDataBase`.
+Split `DataBase` into `TypedDataBase` and `UntypedDataBase`.
 
 ### Variant 4: Builder-style with validation
 
-Query builder з валідацыяй на кожным кроку.
+Query builder with validation at each step.
 
-## Эксперыменты
+## Experiments
 
-### Variant 1: Бягучы API (BASELINE) ✅
+### Variant 1: Current API (BASELINE) ✅
 
-**Файл:** `test/integration/api-variants/variant1-baseline.ts`
+**File:** `test/integration/api-variants/variant1-baseline.ts`
 
-**Структура:**
+**Structure:**
 
 ```typescript
 const db = sqlMigrations({ driver }).apply(`create table users (id text, name text);`).database()
@@ -61,55 +61,55 @@ const db = sqlMigrations({ driver }).apply(`create table users (id text, name te
 const rows = await db.query(`select id, name from users;`)
 ```
 
-**Перавагі:**
+**Advantages:**
 
-- ✅ Просты і інтуітыўны
-- ✅ Валідацыя працуе праз `CheckSqlValid`
-- ✅ Адпавядае філасофіі "Write plain SQL"
-- ✅ LLM могуць пісаць SQL адразу
+- ✅ Simple and intuitive
+- ✅ Validation works through `CheckSqlValid`
+- ✅ Matches the "Write plain SQL" philosophy
+- ✅ LLMs can write SQL directly
 
-**Недахопы:**
+**Disadvantages:**
 
-- ⚠️ Error messages могуць быць больш выразнымі
-- ⚠️ Няма спосабу праверыць SQL без выканання (але ёсць `InferSqlErrors`)
+- ⚠️ Error messages could be clearer
+- ⚠️ No way to validate SQL without execution (but `InferSqlErrors` exists)
 
-**Статус:** ✅ Працуе ідэальна
+**Status:** ✅ Works perfectly
 
 ---
 
 ### Variant 2: Explicit Validation Method ❌
 
-**Файл:** `test/integration/api-variants/variant2-explicit-validation.ts`
+**File:** `test/integration/api-variants/variant2-explicit-validation.ts`
 
-**Ідэя:** Дадаць `.validateQuery()` для праверкі SQL без выканання
+**Idea:** Add `.validateQuery()` to validate SQL without execution
 
-**Прапанаваныя змены:**
+**Proposed changes:**
 
 ```typescript
 export type DataBase<Db> = {
   query<Stmt>(...): Promise<Array<...>>
-  validateQuery<Stmt>(statement: Stmt): InferSqlErrors<Db, Stmt>  // НОВЫ
+  validateQuery<Stmt>(statement: Stmt): InferSqlErrors<Db, Stmt>  // NEW
 }
 ```
 
-**Высновы:**
+**Conclusions:**
 
-- ❌ **НЕ ТРЭБА**
-- `InferSqlErrors<Db, Stmt>` ужо існуе як тыпавы helper
-- Runtime метад не трэба (няма runtime валідацыі)
-- Дадатковы API surface без выгоды
+- ❌ **NOT NEEDED**
+- `InferSqlErrors<Db, Stmt>` already exists as a type-level helper
+- Runtime method is unnecessary (there is no runtime validation)
+- Additional API surface without benefit
 
-**Статус:** ❌ Адхілена
+**Status:** ❌ Rejected
 
 ---
 
 ### Variant 3: Separate Typed/Untyped Interfaces ❌
 
-**Файл:** `test/integration/api-variants/variant3-separate-interfaces.ts`
+**File:** `test/integration/api-variants/variant3-separate-interfaces.ts`
 
-**Ідэя:** Раздзяліць `DataBase` на `TypedDataBase` і `UntypedDataBase`
+**Idea:** Split `DataBase` into `TypedDataBase` and `UntypedDataBase`
 
-**Прапанаваныя змены:**
+**Proposed changes:**
 
 ```typescript
 export type TypedDataBase<Db> = {
@@ -125,30 +125,30 @@ export type UntypedDataBase = {
 export type DataBase<Db> = TypedDataBase<Db> & UntypedDataBase & {...}
 ```
 
-**Высновы:**
+**Conclusions:**
 
-- ❌ **НЕ ТРЭБА**
-- Раздзяленне не дае практычнай выгоды
-- Ускладняе структуру без дадатковай бяспекі
-- `queryUntyped()` — escape hatch, не асноўны API
+- ❌ **NOT NEEDED**
+- The split provides no practical benefit
+- It complicates structure without additional safety
+- `queryUntyped()` is an escape hatch, not the main API
 
-**Статус:** ❌ Адхілена
+**Status:** ❌ Rejected
 
 ---
 
 ### Variant 4: Query Builder with Validation ❌
 
-**Файл:** `test/integration/api-variants/variant4-query-builder.ts`
+**File:** `test/integration/api-variants/variant4-query-builder.ts`
 
-**Ідэя:** `db.select().from().where().execute()` з валідацыяй на кожным кроку
+**Idea:** `db.select().from().where().execute()` with validation at each step
 
-**Прапанаваныя змены:**
+**Proposed changes:**
 
 ```typescript
 export type DataBase<Db> = {
   query<Stmt>(...): Promise<Array<...>>
 
-  // НОВЫ builder API
+  // NEW builder API
   select<Cols>(columns: Cols): SelectBuilder<Db, Cols>
 }
 
@@ -162,48 +162,48 @@ type FromBuilder<Db, Cols, Table> = {
 }
 ```
 
-**Параўнанне:**
+**Comparison:**
 
 ```typescript
-// Бягучы API (1 радок)
+// Current API (1 line)
 await db.query(`select id, name from users where active = true`)
 
-// Builder API (5 радкоў)
+// Builder API (5 lines)
 await db.select(`id, name`).from(`users`).where(`active = true`).execute()
 ```
 
-**Высновы:**
+**Conclusions:**
 
-- ❌ **НЕ ТРЭБА**
-- Супярэчыць філасофіі "Write plain SQL"
-- Вельмі многаслоўна
-- LLM лепш ведаюць SQL, чым builder DSL
-- Не ўсе SQL features можна выразіць праз builder
+- ❌ **NOT NEEDED**
+- Contradicts the "Write plain SQL" philosophy
+- Very verbose
+- LLMs understand SQL better than a builder DSL
+- Not all SQL features can be expressed via a builder
 
-**Статус:** ❌ Адхілена
+**Status:** ❌ Rejected
 
 ---
 
-## Фінальны вынік
+## Final result
 
-**✅ VARIANT 1 (бягучы API) — ідэальны!**
+**✅ VARIANT 1 (current API) is ideal!**
 
-Няма патрэбы мяняць `src/core/sql-database.ts`.
+There is no need to change `src/core/sql-database.ts`.
 
-**Чаму бягучы API лепш за ўсе альтэрнатывы:**
+**Why the current API is better than all alternatives:**
 
-1. **Простата** — `db.query(sql)` інтуітыўна зразумела
-2. **Валідацыя працуе** — `CheckSqlValid` ловіць памылкі
-3. **Plain SQL** — адпавядае філасофіі бібліятэкі
-4. **LLM-friendly** — модэлі ведаюць SQL, не builder DSL
-5. **Кампактна** — менш кода, больш выразна
-6. **Поўнасць** — падтрымлівае ўвесь SQL, не толькі builder subset
+1. **Simplicity** - `db.query(sql)` is intuitive
+2. **Validation works** - `CheckSqlValid` catches errors
+3. **Plain SQL** - matches the library philosophy
+4. **LLM-friendly** - models know SQL, not builder DSL
+5. **Compact** - less code, more clarity
+6. **Complete** - supports full SQL, not only a builder subset
 
-**Што ўжо ёсць:**
+**What already exists:**
 
-- ✅ `db.query()` — тыпізаваныя запыты
-- ✅ `db.queryUntyped()` — escape hatch
-- ✅ `InferSqlErrors<Db, Stmt>` — тыпавая праверка
-- ✅ `CheckSqlValid` — валідацыя ў parameter constraint
+- ✅ `db.query()` - typed queries
+- ✅ `db.queryUntyped()` - escape hatch
+- ✅ `InferSqlErrors<Db, Stmt>` - type-level checks
+- ✅ `CheckSqlValid` - validation in the parameter constraint
 
-**Рэкамендацыя:** Захаваць бягучы API без змен.
+**Recommendation:** Keep the current API unchanged.

@@ -1,66 +1,66 @@
 # API Design Log: db.query() Error Handling
 
-## Мэта
+## Goal
 
-Дызайніць API для `db.query()` і `db.stream()`, каб **няправільныя SQL запыты давалі памылкі кампіляцыі TypeScript** у рэальным выкарыстанні (не толькі ў тыпавых тэстах).
+Design an API for `db.query()` and `db.stream()` so that **invalid SQL queries produce TypeScript compile-time errors** in real usage (not only in type-level tests).
 
-## Бягучы стан
+## Current state
 
-### Існуючы API
+### Existing API
 
 ```typescript
 const db = sqlMigrations({ driver }).apply(`CREATE TABLE users (id TEXT, name TEXT)`).database()
 
-// Гэта НЕ дае памылкі кампіляцыі (але павінна!)
+// This does NOT produce a compile-time error (but it should!)
 const rows = await db.query(`SELECT invalid_column FROM users`)
 ```
 
-### Праблема
+### Problem
 
-- `db.query()` выкарыстоўвае `CheckSqlValid` у parameter constraint
-- Але ў рэальным выкарыстанні памылкі не з'яўляюцца
-- Магчыма праблема ў тым, што `Db` тып не захоўваецца праз `.database()`
+- `db.query()` uses `CheckSqlValid` in a parameter constraint
+- But in real usage, errors do not appear
+- The issue might be that the `Db` type is not preserved through `.database()`
 
-## Эксперыменты
+## Experiments
 
-### Design 1: Бягучы API (FAILED)
+### Design 1: Current API (FAILED)
 
-**Ідэя:** Праверыць, ці працуе `CheckSqlValid` у бягучым API.
+**Idea:** Verify whether `CheckSqlValid` works in the current API.
 
-**Спроба:** `test/integration/api-design/01-current-api.ts`
+**Attempt:** `test/integration/api-design/01-current-api.ts`
 
-**Код:**
+**Code:**
 
 ```typescript
 const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
 
-// @ts-expect-error — чакаем памылку
+// @ts-expect-error - expecting an error
 const badQuery = await db.query(`select invalid_column from users;`)
 ```
 
-**Вынік:** ❌ **НЕ ПРАЦУЕ**
+**Result:** ❌ **DOES NOT WORK**
 
-- `@ts-expect-error` не спрацоўвае — памылкі кампіляцыі няма
-- `db.query()` прымае любы SQL без валідацыі
-- `CheckSqlValid` не спрацоўвае ў runtime выкарыстанні
+- `@ts-expect-error` does not trigger - there is no compile-time error
+- `db.query()` accepts any SQL without validation
+- `CheckSqlValid` does not trigger in runtime-style usage
 
-**Праблема:**
+**Problem:**
 
-- Тып `Db` губляецца праз `.database()`
-- Або `CheckSqlValid` не можа вылічыць тып `Db` у runtime
-- Магчыма трэба іншы спосаб захавання тыпу БД
+- The `Db` type is lost through `.database()`
+- Or `CheckSqlValid` cannot compute the `Db` type in runtime-style usage
+- A different way to preserve the DB type may be required
 
-**Статус:** Трэба іншы дызайн API
+**Status:** A different API design is needed
 
 ---
 
-### Design 2: Дэталёвая праверка тыпу db.query() (SUCCESS!)
+### Design 2: Detailed db.query() type check (SUCCESS!)
 
-**Ідэя:** Праверыць, ці `CheckSqlValid` рэальна бачыць тып `Db` і валідуе запыты.
+**Idea:** Check whether `CheckSqlValid` truly sees the `Db` type and validates queries.
 
-**Спроба:** `test/integration/api-design/02b-query-signature.ts`
+**Attempt:** `test/integration/api-design/02b-query-signature.ts`
 
-**Код:**
+**Code:**
 
 ```typescript
 const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
@@ -68,132 +68,132 @@ const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id t
 const bad = await db.query(`select invalid_column from users;`)
 ```
 
-**Вынік:** ✅ **ПРАЦУЕ!**
+**Result:** ✅ **WORKS!**
 
 ```
 error TS2345: Argument of type '"select invalid_column from users;"'
 is not assignable to parameter of type '"Unknown column"'.
 ```
 
-**Высновы:**
+**Conclusions:**
 
-- ✅ **API рэальна працуе!** `CheckSqlValid` валідуе запыты
-- ✅ Тып `Db` захоўваецца праз `.database()`
-- ✅ Няправільныя запыты даюць памылкі кампіляцыі
-- ❌ Праблема Design 1: `@ts-expect-error` не паказвае памылку ў `npm run typecheck` (але памылка ёсць!)
+- ✅ **The API really works!** `CheckSqlValid` validates queries
+- ✅ The `Db` type is preserved through `.database()`
+- ✅ Invalid queries produce compile-time errors
+- ❌ Design 1 issue: `@ts-expect-error` does not surface the error in `npm run typecheck` (but the error exists!)
 
-**Рашэнне:**
-Бягучы API **ужо працуе правільна**! Для тэстаў трэба выкарыстоўваць **тыпавыя тэсты** (як у Design 4 з DESIGN_LOG.md), а не `@ts-expect-error`.
+**Decision:**
+The current API **already works correctly**. Tests should use **type-level tests** (as in Design 4 from `DESIGN_LOG.md`), not `@ts-expect-error`.
 
-**Статус:** ✅ API працуе! Трэба толькі правільна тэставаць
+**Status:** ✅ API works! It only needs correct testing style
 
 ---
 
-### Design 3: Альтэрнатыўны API з .result() (NOT NEEDED)
+### Design 3: Alternative API with .result() (NOT NEEDED)
 
-**Ідэя:** `db.query(...).result()` замест `db.query(...)`
+**Idea:** `db.query(...).result()` instead of `db.query(...)`
 
-**Спроба:** `test/integration/api-design/03-result-api.ts`
+**Attempt:** `test/integration/api-design/03-result-api.ts`
 
-**Код:**
+**Code:**
 
 ```typescript
-// Бягучы API
+// Current API
 const current = await db.query(`select id from users;`)
 
-// Альтэрнатыўны API
+// Alternative API
 const alternative = await db.query(`select id from users`).result()
 ```
 
-**Вынік:** ❌ **НЕ ТРЭБА**
+**Result:** ❌ **NOT NEEDED**
 
-**Перавагі:**
+**Advantages:**
 
-- Больш выразны (відавочна, що гэта async)
-- Можна дадаць .validate() або .check() перад .result()
+- More explicit (clearly async)
+- Could allow adding .validate() or .check() before .result()
 
-**Недахопы:**
+**Disadvantages:**
 
-- Больш многаслоўна
-- Breaking change без выгоды
-- Не дае дадатковых магчымасцей для валідацыі
+- More verbose
+- Breaking change without benefit
+- No additional validation capabilities
 
-**Высновы:**
+**Conclusions:**
 
-- Бягучы API ужо працуе і валідуе
-- .result() не дае дадатковых магчымасцей
-- Прасцей і лепш: `db.query(...)`
+- The current API already works and validates
+- `.result()` adds no extra capabilities
+- Simpler and better: `db.query(...)`
 
-**Статус:** ❌ Адхілена
+**Status:** ❌ Rejected
 
 ---
 
 ### Design 4: Builder pattern API (NOT NEEDED)
 
-**Ідэя:** `db.select(...).from(...).where(...).execute()`
+**Idea:** `db.select(...).from(...).where(...).execute()`
 
-**Спроба:** `test/integration/api-design/04-builder-api.ts`
+**Attempt:** `test/integration/api-design/04-builder-api.ts`
 
-**Код:**
+**Code:**
 
 ```typescript
-// Бягучы API
+// Current API
 const current = await db.query(`select id, name from users where active = true;`)
 
 // Builder API
 const builder = await db.select(`id, name`).from(`users`).where(`active = true`).execute()
 ```
 
-**Вынік:** ❌ **НЕ ТРЭБА**
+**Result:** ❌ **NOT NEEDED**
 
-**Перавагі:**
+**Advantages:**
 
-- Больш структураваны
-- Можна валідаваць кожны крок асобна
-- Лепшая аўтакамплітацыя
+- More structured
+- Can validate each step separately
+- Better autocompletion
 
-**Недахопы:**
+**Disadvantages:**
 
-- Вельмі многаслоўна
-- Губляецца простата SQL
-- Гэта ўжо query builder (супярэчыць філасофіі бібліятэкі)
-- LLM лепш ведаюць SQL, чым builder DSL
+- Very verbose
+- SQL simplicity is lost
+- This is already a query builder (contradicts library philosophy)
+- LLMs know SQL better than a builder DSL
 
-**Высновы:**
+**Conclusions:**
 
-- Супярэчыць філасофіі "Write plain SQL"
-- LLM лепш ведаюць SQL, чым builder DSL
-- Бягучы API прасцей і выразней
+- Contradicts the "Write plain SQL" philosophy
+- LLMs know SQL better than a builder DSL
+- The current API is simpler and clearer
 
-**Статус:** ❌ Адхілена
+**Status:** ❌ Rejected
 
 ---
 
-## Фінальны вынік
+## Final result
 
-**✅ Бягучы API ідэальны!**
+**✅ The current API is ideal!**
 
 ```typescript
 const db = sqlMigrations({ driver }).apply(`create table users (id text, name text);`).database()
 
-// ✅ Правільны SQL — кампілюецца
+// ✅ Valid SQL - compiles
 const good = await db.query(`select id, name from users;`)
 
-// ❌ Няправільны SQL — памылка кампіляцыі
+// ❌ Invalid SQL - compile-time error
 const bad = await db.query(`select invalid_column from users;`)
 // error TS2345: Argument of type '"select invalid_column from users;"'
 // is not assignable to parameter of type '"Unknown column"'.
 ```
 
-**Чаму бягучы API лепш:**
+**Why the current API is better:**
 
-1. ✅ Валідацыя працуе праз `CheckSqlValid`
-2. ✅ Просты SQL (універсальны, вядомы ўсім)
-3. ✅ LLM могуць пісаць SQL адразу
-4. ✅ Менш кода, больш выразна
-5. ✅ Адпавядае філасофіі "Write plain SQL"
+1. ✅ Validation works through `CheckSqlValid`
+2. ✅ Plain SQL (universal and familiar)
+3. ✅ LLMs can write SQL directly
+4. ✅ Less code, more clarity
+5. ✅ Matches the "Write plain SQL" philosophy
 
-**Што трэба для тэстаў:**
+**What tests should use:**
 
-- Выкарыстоўваць **тыпавыя тэсты** (як у `test/integration/smoke/01-basic-select.test.ts`)
-- НЕ выкарыстоўваць `@ts-expect-error` (не паказвае памылкі ў typecheck)
+- Use **type-level tests** (as in `test/integration/smoke/01-basic-select.test.ts`)
+- DO NOT use `@ts-expect-error` (it does not surface errors in typecheck)

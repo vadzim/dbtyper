@@ -1,91 +1,91 @@
 # Design Log: Integration Tests Error Handling
 
-## Мэта
+## Goal
 
-Знайсці спосаб тэставання, каб **няправільныя SQL запыты давалі памылкі кампіляцыі TypeScript**.
+Find a testing approach so that **invalid SQL queries produce TypeScript compile-time errors**.
 
-## Праблема
+## Problem
 
-- `@ts-expect-error` у runtime тэстах не спрацоўвае
-- `db.query()` выкарыстоўвае `CheckSqlValid`, але памылкі не з'яўляюцца
-- Існуючыя тэсты выкарыстоўваюць тыпавыя тэсты (`Expect<Extends<...>>`), не runtime
+- `@ts-expect-error` does not work in runtime tests
+- `db.query()` uses `CheckSqlValid`, but errors do not appear
+- Existing tests use type-level tests (`Expect<Extends<...>>`), not runtime tests
 
-## Эксперыменты
+## Experiments
 
-### Design 1: Runtime тэсты з @ts-expect-error (FAILED)
+### Design 1: Runtime tests with @ts-expect-error (FAILED)
 
-**Ідэя:** Выкарыстоўваць `await db.query(...)` з `@ts-expect-error` для няправільных запытаў.
+**Idea:** Use `await db.query(...)` with `@ts-expect-error` for invalid queries.
 
-**Спроба:** `test/integration/smoke/01-basic-select.test.ts`
+**Attempt:** `test/integration/smoke/01-basic-select.test.ts`
 
-**Вынік:** ❌ Не працуе
+**Result:** ❌ Does not work
 
-- `@ts-expect-error` паказвае "Unused directive" — памылкі няма
-- `mockDriver` з пустым `scalarTypes: {}` не дае правільнай валідацыі
-- Трэба правільны PostgresTypeMap
+- `@ts-expect-error` shows "Unused directive" - no error is produced
+- `mockDriver` with empty `scalarTypes: {}` does not provide correct validation
+- A proper `PostgresTypeMap` is required
 
-**Статус:** Адкат, спрабуем іншае
+**Status:** Reverted, trying another approach
 
 ---
 
-### Design 2: Тыпавыя тэсты як у parse-select.test.ts (FAILED)
+### Design 2: Type-level tests like in parse-select.test.ts (FAILED)
 
-**Ідэя:** Выкарыстоўваць `ParseSqlStatement` + `Expect<Extends<Tuple3At2<...>>>` як у існуючых тэстах.
+**Idea:** Use `ParseSqlStatement` + `Expect<Extends<Tuple3At2<...>>>` as in existing tests.
 
-**Спроба:** `test/integration/smoke/02-design2-type-level.test.ts`
+**Attempt:** `test/integration/smoke/02-design2-type-level.test.ts`
 
-**Вынік:** ❌ Не працуе
+**Result:** ❌ Does not work
 
-- Усе `Expect<Extends<...>>` даюць `Type 'false' does not satisfy the constraint 'true'`
-- Магчыма праблема ў `ApplyStatements` або структуры `TestDb`
-- Трэба глыбей разабрацца, чаму тыпы не супадаюць
+- All `Expect<Extends<...>>` checks fail with `Type 'false' does not satisfy the constraint 'true'`
+- The issue may be in `ApplyStatements` or in `TestDb` structure
+- It requires deeper investigation to understand why types do not match
 
-**Статус:** Адкат, спрабуем іншае
+**Status:** Reverted, trying another approach
 
 ---
 
 ### Design 3: InferSqlErrors API (PARTIAL SUCCESS)
 
-**Ідэя:** Выкарыстоўваць `InferSqlErrors<Db, Stmt>` — публічны API для праверкі памылак.
+**Idea:** Use `InferSqlErrors<Db, Stmt>` - public API for checking errors.
 
-**Спроба:** `test/integration/smoke/03-design3-infer-errors.test.ts`
+**Attempt:** `test/integration/smoke/03-design3-infer-errors.test.ts`
 
-**Вынік:** ⚠️ Частковы поспех
+**Result:** ⚠️ Partial success
 
-- ✅ Тэсты на поспех (правільныя запыты) **працуюць** — `InferSqlErrors` вяртае `null`
-- ❌ Тэсты на памылкі **не працуюць** — `InferSqlErrors` не вяртае `SqlParserError` для няправільных запытаў
-- Магчыма валідацыя калонак/табліц не рэалізавана ў парсеры
+- ✅ Success-case tests (valid queries) **work** - `InferSqlErrors` returns `null`
+- ❌ Error-case tests **do not work** - `InferSqlErrors` does not return `SqlParserError` for invalid queries
+- Column/table validation may not be implemented in the parser
 
-**Высновы:**
+**Conclusions:**
 
-- API `InferSqlErrors` існуе і працуе для поспешных сцэнараў
-- Але валідацыя памылак (няправільныя калонкі/табліцы) можа не быць рэалізавана
-- Трэба праверыць, ці парсер рэальна валідуе існаванне калонак/табліц
+- `InferSqlErrors` API exists and works for success scenarios
+- But error validation (invalid columns/tables) may not be implemented
+- Need to verify whether parser actually validates column/table existence
 
-**Статус:** Трэба глыбей даследаваць, ці валідацыя ўвогуле рэалізавана
+**Status:** Need deeper investigation into whether validation is implemented at all
 
 ---
 
-### Design 4: Скапіраваць дакладна як у parse-select.test.ts (SUCCESS!)
+### Design 4: Copy exactly from parse-select.test.ts (SUCCESS!)
 
-**Ідэя:** Выкарыстоўваць **дакладна** тую ж структуру БД і стыль тэстаў як у `parse-select.test.ts`.
+**Idea:** Use **exactly** the same DB structure and test style as in `parse-select.test.ts`.
 
-**Спроба:** `test/integration/smoke/04-design4-exact-copy.test.ts`
+**Attempt:** `test/integration/smoke/04-design4-exact-copy.test.ts`
 
-**Вынік:** ✅ **ПОСПЕХ!**
+**Result:** ✅ **SUCCESS!**
 
-- ✅ Тэст на поспех (правільны SELECT) — **працуе**
-- ✅ Тэст на памылку (няправільная калонка) — **працуе**! `SqlParserError` вяртаецца
-- ❌ Тэст на памылку (няправільная табліца) — **не працуе** (магчыма валідацыя табліц не рэалізавана)
+- ✅ Success-case test (valid SELECT) - **works**
+- ✅ Error-case test (invalid column) - **works**! `SqlParserError` is returned
+- ❌ Error-case test (invalid table) - **does not work** (table validation may not be implemented)
 
-**Высновы:**
+**Conclusions:**
 
-- ✅ **Валідацыя калонак працуе!** Парсер правярае існаванне калонак у табліцы
-- ❌ Валідацыя табліц можа не працаваць (або патрабуе іншага падыходу)
-- ✅ **Знойдзены працуючы падыход:** `ParseSqlStatement` + `Tuple3At2` + `Expect<Extends<..., SqlParserError<string>>>`
+- ✅ **Column validation works!** The parser checks column existence in a table
+- ❌ Table validation may not work (or may require a different approach)
+- ✅ **Working approach found:** `ParseSqlStatement` + `Tuple3At2` + `Expect<Extends<..., SqlParserError<string>>>`
 
-**Рашэнне:**
-Выкарыстоўваць гэты стыль для ўсіх інтэграцыйных тэстаў:
+**Decision:**
+Use this style for all integration tests:
 
 ```typescript
 type TestDb = ApplyStatements<SqlDatabase, `create schema public; create table users (...);`>[0]
@@ -93,26 +93,26 @@ type TBadQuery = ParseSqlStatement<ParseSqlTokens<`select wrong_col from users;`
 type _test = Expect<Extends<Tuple3At2<TBadQuery>, SqlParserError<string>>>
 ```
 
-**Статус:** ✅ Гатова! Маем працуючы дызайн
+**Status:** ✅ Done! We have a working design
 
 ---
 
-## Падсумаванне
+## Summary
 
-**Працуючы дызайн:** Design 4
+**Working design:** Design 4
 
-**Што працуе:**
+**What works:**
 
-- ✅ Тыпавыя тэсты праз `ParseSqlStatement` + `Tuple3At2`
-- ✅ Валідацыя калонак (няправільная калонка → `SqlParserError`)
-- ✅ Тэсты на поспех (правільны SQL → `JsqlSelectStatementResult`)
+- ✅ Type-level tests via `ParseSqlStatement` + `Tuple3At2`
+- ✅ Column validation (invalid column -> `SqlParserError`)
+- ✅ Success-case tests (valid SQL -> `JsqlSelectStatementResult`)
 
-**Што не працуе:**
+**What does not work:**
 
-- ❌ Валідацыя табліц (магчыма не рэалізавана або патрабуе іншага падыходу)
+- ❌ Table validation (possibly not implemented or requires a different approach)
 
-**Наступныя крокі:**
+**Next steps:**
 
-1. Выкарыстоўваць Design 4 для smoke tests
-2. Даследаваць, чаму валідацыя табліц не працуе
-3. Пакрыць усе функцыяналы тэстамі ў гэтым стылі
+1. Use Design 4 for smoke tests
+2. Investigate why table validation does not work
+3. Cover all functionality with tests in this style
