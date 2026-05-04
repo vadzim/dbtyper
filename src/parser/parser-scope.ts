@@ -14,7 +14,11 @@ export type ScopeEntry = {
  */
 export type ScopeMap = Record<string, ScopeEntry>
 
-export type MergeScope<A extends ScopeMap, B extends ScopeMap> = A & B
+/**
+ * Merge two scopes with proper shadowing: Inner scope shadows/hides Outer scope.
+ * If both scopes have the same alias, Inner wins (standard lexical scoping).
+ */
+export type MergeScope<Inner extends ScopeMap, Outer extends ScopeMap> = Inner & Omit<Outer, keyof Inner>
 
 export type ValidateCol<Scope extends ScopeMap, Alias extends string, Col extends string> = Alias extends keyof Scope
 	? Col extends keyof Scope[Alias]["columns"]
