@@ -1,9 +1,9 @@
 # Skipped Integration Tests (8 files)
 
-## 1. [ ] CREATE TABLE with DEFAULT values
+## 1. [x] CREATE TABLE with DEFAULT values
 
-**File:** `create-table-with-defaults.test.skip.ts`  
-**Missing:** Parser support for DEFAULT clause in column definitions
+**File:** `create-table-with-defaults.test.ts`  
+**Status:** ✅ Implemented - Parser supports DEFAULT clause with type validation
 
 **Example:**
 
@@ -17,10 +17,10 @@ Currently the parser skips DEFAULT expressions but doesn't parse them properly.
 
 ---
 
-## 2. [ ] CREATE TABLE with wrong DEFAULT types
+## 2. [x] CREATE TABLE with wrong DEFAULT types
 
-**File:** `create-table-with-wrong-defaults.test.skip.ts`  
-**Missing:** Type validation for DEFAULT values
+**File:** `create-table-with-wrong-defaults.test.ts`  
+**Status:** ✅ Implemented - Type validation for DEFAULT values working
 
 **Example:**
 

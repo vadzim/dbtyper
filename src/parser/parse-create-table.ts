@@ -1,5 +1,14 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokenNumber,
+	TokenString,
+	TokensList,
+} from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
@@ -20,7 +29,7 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
-type ColumnTriple = readonly [string, string, boolean]
+type ColumnTriple = readonly [string, string, boolean, boolean]
 
 /** True when `Tab` is already a concrete key of `sets` (not an open-ended index signature). */
 type HasConcreteSet<Sets extends object, Tab extends string> = string extends keyof Sets
@@ -202,6 +211,92 @@ type ResolveAfterNullability<
 				: never
 			: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, Joined, false>
 
+type SqlTypeClass<Sql extends string> =
+	Lowercase<Sql> extends
+		| "integer"
+		| "int"
+		| "int2"
+		| "int4"
+		| "int8"
+		| "smallint"
+		| "bigint"
+		| "real"
+		| "float4"
+		| "float8"
+		| "double precision"
+		| "numeric"
+		| "decimal"
+		| "number"
+		? "numeric"
+		: Lowercase<Sql> extends "boolean" | "bool"
+			? "boolean"
+			: Lowercase<Sql> extends "text" | "varchar" | "character varying" | "char"
+				? "text"
+				: Lowercase<Sql> extends "uuid"
+					? "uuid"
+					: Lowercase<Sql> extends
+								| "date"
+								| "time"
+								| "time with time zone"
+								| "timestamp"
+								| "timestamp with time zone"
+						? "datetime"
+						: "unknown"
+
+type ParseDefaultValue<Tokens extends TokensList, Db extends JsqlDatabaseShape, ColumnType extends string> =
+	PeekToken<Tokens> extends TokenNumber<infer _Raw>
+		? SkipToken<Tokens> extends infer R extends TokensList
+			? SqlTypeClass<ColumnType> extends "numeric"
+				? [R, null]
+				: [R, SqlParserError<"DEFAULT value type mismatch: expected numeric column for numeric literal">]
+			: never
+		: PeekToken<Tokens> extends TokenString<infer _Str>
+			? SkipToken<Tokens> extends infer R extends TokensList
+				? SqlTypeClass<ColumnType> extends "text" | "uuid" | "unknown"
+					? [R, null]
+					: [R, SqlParserError<"DEFAULT value type mismatch: expected text/uuid column for string literal">]
+				: never
+			: PeekToken<Tokens> extends TokenKey<"true"> | TokenKey<"false">
+				? SkipToken<Tokens> extends infer R extends TokensList
+					? SqlTypeClass<ColumnType> extends "boolean"
+						? [R, null]
+						: [
+								R,
+								SqlParserError<"DEFAULT value type mismatch: expected boolean column for boolean literal">,
+							]
+					: never
+				: PeekToken<Tokens> extends TokenKey<"null">
+					? SkipToken<Tokens> extends infer R extends TokensList
+						? [R, null]
+						: never
+					: PeekToken<Tokens> extends TokenIdent<infer FnName>
+						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
+						: [Tokens, SqlParserError<"Expected DEFAULT value">]
+
+type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends string, ColumnType extends string> =
+	SkipToken<Tokens> extends infer R1 extends TokensList
+		? PeekToken<R1> extends TokenKey<"(">
+			? SkipToken<R1> extends infer R2 extends TokensList
+				? PeekToken<R2> extends TokenKey<")">
+					? SkipToken<R2> extends infer R3 extends TokensList
+						? Lowercase<FnName> extends "now"
+							? SqlTypeClass<ColumnType> extends "datetime"
+								? [R3, null]
+								: [R3, SqlParserError<"DEFAULT value type mismatch: now() requires timestamp column">]
+							: Lowercase<FnName> extends "uuid_generate_v4" | "gen_random_uuid"
+								? SqlTypeClass<ColumnType> extends "uuid"
+									? [R3, null]
+									: [
+											R3,
+											SqlParserError<"DEFAULT value type mismatch: UUID function requires uuid column">,
+										]
+								: [R3, null]
+						: never
+					: [R2, SqlParserError<"Expected `)` after function name in DEFAULT">]
+				: never
+			: [R1, null]
+		: never
+
 type ContinueAfterColumnDef<
 	AfterNull extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -212,25 +307,69 @@ type ContinueAfterColumnDef<
 	Joined extends string,
 	NotNull extends boolean,
 > =
-	PeekToken<AfterNull> extends TokenKey<",">
-		? SkipToken<AfterNull> extends infer AfterComma extends TokensList
+	PeekToken<AfterNull> extends TokenKey<"default">
+		? SkipToken<AfterNull> extends infer AfterDefault extends TokensList
+			? ParseDefaultValue<AfterDefault, Db, Joined> extends [
+					infer AfterDefaultVal extends TokensList,
+					infer DefaultErr,
+				]
+				? DefaultErr extends null
+					? ContinueAfterDefault<AfterDefaultVal, Db, Schema, Table, Stack, ColName, Joined, NotNull, true>
+					: DefaultErr extends SqlParserError<string>
+						? [AfterDefaultVal, Db, DefaultErr]
+						: never
+				: never
+			: never
+		: PeekToken<AfterNull> extends TokenKey<",">
+			? SkipToken<AfterNull> extends infer AfterComma extends TokensList
+				? ParseCreateTableBody<
+						AfterComma,
+						Db,
+						Schema,
+						Table,
+						readonly [...Stack, readonly [ColName, Joined, NotNull, false]]
+					>
+				: never
+			: PeekToken<AfterNull> extends TokenKey<")"> | TokenKey<"constraint">
+				? ParseCreateTableBody<
+						AfterNull,
+						Db,
+						Schema,
+						Table,
+						readonly [...Stack, readonly [ColName, Joined, NotNull, false]]
+					>
+				: [AfterNull, Db, SqlParserError<"Expected `,` or `)` after column definition">]
+
+type ContinueAfterDefault<
+	AfterDefaultVal extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnTriple[],
+	ColName extends string,
+	Joined extends string,
+	NotNull extends boolean,
+	HasDefault extends boolean,
+> =
+	PeekToken<AfterDefaultVal> extends TokenKey<",">
+		? SkipToken<AfterDefaultVal> extends infer AfterComma extends TokensList
 			? ParseCreateTableBody<
 					AfterComma,
 					Db,
 					Schema,
 					Table,
-					readonly [...Stack, readonly [ColName, Joined, NotNull]]
+					readonly [...Stack, readonly [ColName, Joined, NotNull, HasDefault]]
 				>
 			: never
-		: PeekToken<AfterNull> extends TokenKey<")"> | TokenKey<"constraint">
+		: PeekToken<AfterDefaultVal> extends TokenKey<")"> | TokenKey<"constraint">
 			? ParseCreateTableBody<
-					AfterNull,
+					AfterDefaultVal,
 					Db,
 					Schema,
 					Table,
-					readonly [...Stack, readonly [ColName, Joined, NotNull]]
+					readonly [...Stack, readonly [ColName, Joined, NotNull, HasDefault]]
 				>
-			: [AfterNull, Db, SqlParserError<"Expected `,` or `)` after column definition">]
+			: [AfterDefaultVal, Db, SqlParserError<"Expected `,` or `)` after DEFAULT value">]
 
 type ColPair = { cols: Record<string, string>; facts: Record<string, unknown> }
 
@@ -238,10 +377,17 @@ type OneCol<C extends ColumnTriple> = C extends readonly [
 	infer N extends string,
 	infer Sql extends string,
 	infer NotNull extends boolean,
+	infer HasDefault extends boolean,
 ]
 	? {
 			cols: Record<N, Sql>
-			facts: NotNull extends true ? Record<N, { not_null: true }> : {}
+			facts: NotNull extends true
+				? HasDefault extends true
+					? Record<N, { not_null: true; default: true }>
+					: Record<N, { not_null: true }>
+				: HasDefault extends true
+					? Record<N, { default: true }>
+					: {}
 		}
 	: never
 
