@@ -1,0 +1,24 @@
+// Integration Test: SELECT
+import { sqlMigrations } from "../../../src/core/sql-database.ts"
+
+const mockDriver = {
+	query: async () => [],
+	scalarTypes: {},
+}
+
+async function testSelectScalarSubquery() {
+	const db = sqlMigrations({ driver: mockDriver })
+		.apply(`create schema public;`)
+		.apply(`create table users (id text, name text);`)
+		.apply(`create table posts (id text, user_id text);`)
+		.database()
+
+	// ✅ SUCCESS: scalar subquery in SELECT
+	const result = await db.query(
+		`select id, name, (select count(*) from posts where posts.user_id = users.id) as post_count from users;`,
+	)
+
+	return result
+}
+
+testSelectScalarSubquery()
