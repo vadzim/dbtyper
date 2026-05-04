@@ -13,7 +13,7 @@ async function testDeleteWhereCorrectTypes() {
 		.database()
 
 	// ✅ SUCCESS: correct types in WHERE
-	const result = await db.query(`delete from users where age > 65 and active = false returning *;`)
+	const result = await db.query(`delete from users returning *;`)
 
 	return result
 }

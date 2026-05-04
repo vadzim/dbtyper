@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTableShape, JsqlUpdateStatementResult } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlTableShape, JsqlUpdateStatementResult, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
@@ -8,6 +8,7 @@ import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
+import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 
 type UpdateTableContext = {
 	scope: ScopeMap
@@ -212,20 +213,44 @@ type FinishUpdateStatement<
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
 					? [Rw, Db, We]
-					: FinishUpdateSemicolon<Rw, Db, Res>
+					: FinishUpdateReturning<Rw, Db, Scope, Params, Res>
 				: never
 			: never
-		: FinishUpdateSemicolon<Tokens, Db, Res>
+		: FinishUpdateReturning<Tokens, Db, Scope, Params, Res>
+
+type FinishUpdateReturning<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Res extends JsqlUpdateStatementResult,
+> =
+	PeekToken<Tokens> extends TokenKey<"returning">
+		? SkipToken<Tokens> extends infer Rr extends TokensList
+			? ParseAndResolveReturningClause<Rr, Db, Scope, Params> extends [
+					infer Ra extends TokensList,
+					infer DbA extends JsqlDatabaseShape,
+					infer Ret,
+				]
+				? Ret extends SqlParserError<string>
+					? [Ra, DbA, Ret]
+					: Ret extends JsqlSelectStatementResult
+						? FinishUpdateSemicolon<Ra, DbA, Res, Ret>
+						: never
+				: never
+			: never
+		: FinishUpdateSemicolon<Tokens, Db, Res, null>
 
 type FinishUpdateSemicolon<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Res extends JsqlUpdateStatementResult,
+	Returning extends JsqlSelectStatementResult | null,
 > =
 	PeekToken<Tokens> extends infer Tok
 		? SkipToken<Tokens> extends infer AfterSemi extends TokensList
 			? Tok extends TokenKey<";"> | TokenEot
-				? [AfterSemi, Db, Res]
+				? [AfterSemi, Db, Returning extends null ? Res : Returning]
 				: [AfterSemi, Db, SqlParserError<"Expected `;` after UPDATE">]
 			: never
 		: never
