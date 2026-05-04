@@ -160,6 +160,7 @@ type ParseUpdateSetAssignments<
 																>
 															: never
 														: PeekToken<R3> extends
+																	| TokenKey<"from">
 																	| TokenKey<"where">
 																	| TokenKey<"returning">
 																	| TokenKey<";">
@@ -177,7 +178,7 @@ type ParseUpdateSetAssignments<
 															: [
 																	R3,
 																	Db,
-																	SqlParserError<"Expected `,`, WHERE, or end after UPDATE assignment">,
+																	SqlParserError<"Expected `,`, FROM, WHERE, or end after UPDATE assignment">,
 																]
 													: never
 											: never
@@ -205,6 +206,146 @@ type ParseUpdateAfterSetKeyword<
 			: never
 		: [Tokens, Db, SqlParserError<"Expected SET in UPDATE">]
 
+type ParseUpdateFromClause<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Res extends JsqlUpdateStatementResult,
+> =
+	ParseUpdateFromClauseTableRef<Tokens, Db, Scope, Params> extends [
+		infer RFrom extends TokensList,
+		infer FromErr,
+		infer FromScope,
+	]
+		? FromErr extends SqlParserError<string>
+			? [RFrom, Db, FromErr]
+			: FromScope extends ScopeMap
+				? MergeScope<Scope, FromScope> extends infer MergedScope
+					? MergedScope extends ScopeMap
+						? PeekToken<RFrom> extends TokenKey<"where">
+							? SkipToken<RFrom> extends infer Rw0 extends TokensList
+								? ParseWhereExpression<Rw0, Db, MergedScope, Params> extends [
+										infer Rw extends TokensList,
+										infer We,
+									]
+									? We extends SqlParserError<string>
+										? [Rw, Db, We]
+										: FinishUpdateReturning<Rw, Db, MergedScope, Params, Res>
+									: never
+								: never
+							: FinishUpdateReturning<RFrom, Db, MergedScope, Params, Res>
+						: never
+					: never
+				: never
+		: never
+
+type ParseUpdateFromClauseTableRef<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends infer Tok
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? Tok extends TokenIdent<infer A extends string>
+				? PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? PeekToken<R2> extends infer TokB
+							? SkipToken<R2> extends infer R3 extends TokensList
+								? TokB extends TokenIdent<infer B extends string>
+									? ResolveTableShape<Db, A, B> extends infer TblTry
+										? [TblTry] extends [never]
+											? [
+													R3,
+													SqlParserError<"Unknown schema or table in UPDATE FROM">,
+													ParserRefErrorThirdSentinel,
+												]
+											: TblTry extends JsqlTableShape
+												? ParseUpdateFromClauseTableAlias<R3, A, B, TblTry>
+												: [
+														R3,
+														SqlParserError<"Invalid table in UPDATE FROM">,
+														ParserRefErrorThirdSentinel,
+													]
+										: never
+									: [
+											R3,
+											SqlParserError<"Expected table name in UPDATE FROM">,
+											ParserRefErrorThirdSentinel,
+										]
+								: never
+							: never
+						: never
+					: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry2
+						? [TblTry2] extends [never]
+							? [R1, SqlParserError<"Unknown table in UPDATE FROM">, ParserRefErrorThirdSentinel]
+							: TblTry2 extends JsqlTableShape
+								? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
+								: [R1, SqlParserError<"Invalid table in UPDATE FROM">, ParserRefErrorThirdSentinel]
+						: never
+				: [R1, SqlParserError<"Expected table name in UPDATE FROM">, ParserRefErrorThirdSentinel]
+			: never
+		: never
+
+type ParseUpdateFromClauseTableAlias<
+	Tokens extends TokensList,
+	Sch extends string,
+	Tab extends string,
+	Tbl extends JsqlTableShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"where"> | TokenKey<"returning"> | TokenKey<";"> | TokenEot
+		? [
+				Tokens,
+				null,
+				MergeScope<
+					Record<
+						Tab,
+						{
+							schema: Sch
+							table: Tab
+							columns: Tbl["columns"]
+						}
+					>,
+					{}
+				>,
+			]
+		: PeekToken<Tokens> extends infer TokAlias
+			? SkipToken<Tokens> extends infer Ra extends TokensList
+				? TokAlias extends TokenIdent<infer Alias extends string>
+					? [
+							Ra,
+							null,
+							MergeScope<
+								Record<
+									Alias,
+									{
+										schema: Sch
+										table: Tab
+										columns: Tbl["columns"]
+									}
+								>,
+								{}
+							>,
+						]
+					: [
+							Ra,
+							null,
+							MergeScope<
+								Record<
+									Tab,
+									{
+										schema: Sch
+										table: Tab
+										columns: Tbl["columns"]
+									}
+								>,
+								{}
+							>,
+						]
+				: never
+			: never
+
 type FinishUpdateStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -212,15 +353,19 @@ type FinishUpdateStatement<
 	Params extends ExpressionParamsShape,
 	Res extends JsqlUpdateStatementResult,
 > =
-	PeekToken<Tokens> extends TokenKey<"where">
-		? SkipToken<Tokens> extends infer Rw0 extends TokensList
-			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
-				? We extends SqlParserError<string>
-					? [Rw, Db, We]
-					: FinishUpdateReturning<Rw, Db, Scope, Params, Res>
-				: never
+	PeekToken<Tokens> extends TokenKey<"from">
+		? SkipToken<Tokens> extends infer Rf extends TokensList
+			? ParseUpdateFromClause<Rf, Db, Scope, Params, Res>
 			: never
-		: FinishUpdateReturning<Tokens, Db, Scope, Params, Res>
+		: PeekToken<Tokens> extends TokenKey<"where">
+			? SkipToken<Tokens> extends infer Rw0 extends TokensList
+				? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
+					? We extends SqlParserError<string>
+						? [Rw, Db, We]
+						: FinishUpdateReturning<Rw, Db, Scope, Params, Res>
+					: never
+				: never
+			: FinishUpdateReturning<Tokens, Db, Scope, Params, Res>
 
 type FinishUpdateReturning<
 	Tokens extends TokensList,

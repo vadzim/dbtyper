@@ -91,10 +91,10 @@ INSERT INTO table (cols) SELECT cols FROM other_table
 
 ---
 
-## 6. [ ] UPDATE...FROM
+## 6. [x] UPDATE...FROM
 
-**File:** `update-with-from.test.skip.ts`  
-**Missing:** FROM clause in UPDATE statements (PostgreSQL extension)
+**File:** `update-with-from.test.ts`  
+**Status:** ✅ Implemented - FROM clause in UPDATE statements (PostgreSQL extension)
 
 **Needs:**
 
