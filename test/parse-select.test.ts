@@ -621,6 +621,47 @@ type TCrossJoinMultiple = ParseSqlStatement<
 
 type _crossJoinMultiple = Expect<Extends<Tuple3At2<TCrossJoinMultiple>, JsqlSelectStatementResult>>
 
+type DbSubqueries = ApplyStatements<
+	SqlDatabase,
+	`
+create schema public;
+create table users ( id text, name text );
+create table posts ( id text, user_id text, title text );
+`
+>[0]
+
+type TSubqueryInWhere = ParseSqlStatement<
+	ParseSqlTokens<`select * from users where id in (select user_id from posts);`>,
+	DbSubqueries
+>
+
+type _subqueryInWhereResult = Expect<Extends<Tuple3At2<TSubqueryInWhere>, JsqlSelectStatementResult>>
+type _subqueryInWhereColumns = Expect<
+	Extends<
+		Tuple3At2<TSubqueryInWhere>,
+		{
+			kind: "select"
+			columns: { id: "text"; name: "text" }
+		}
+	>
+>
+
+type TExistsSubquery = ParseSqlStatement<
+	ParseSqlTokens<`select * from users where exists (select 1 from posts where posts.user_id = users.id);`>,
+	DbSubqueries
+>
+
+type _existsSubqueryResult = Expect<Extends<Tuple3At2<TExistsSubquery>, JsqlSelectStatementResult>>
+type _existsSubqueryColumns = Expect<
+	Extends<
+		Tuple3At2<TExistsSubquery>,
+		{
+			kind: "select"
+			columns: { id: "text"; name: "text" }
+		}
+	>
+>
+
 describe("parse-select (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
