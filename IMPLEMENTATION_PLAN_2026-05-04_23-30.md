@@ -35,40 +35,45 @@ Requires DEFAULT clause parsing first.
 ## 3. [ ] CTE in JOIN
 
 **File:** `select-cte-in-join.test.skip.ts`  
-**Missing:** Full CTE (Common Table Expression) implementation
+**Status:** ⚠️ Partially implemented - CTE parsing works, but column validation fails
 
-**Needs:**
+**Current state:**
+- ✅ WITH clause parsing works
+- ✅ CTE definitions are stored in scope
+- ✅ CTEs available as table sources in FROM/JOIN
+- ❌ Column validation in CTE SELECT list doesn't work (unknown columns don't error)
+- ❌ Type validation in JOIN ON with CTE columns fails
+
+**Example that should work but doesn't:**
 
 ```sql
-WITH cte_name AS (SELECT ...) SELECT ... FROM cte_name JOIN ...
+WITH active_users AS (SELECT id, name FROM users)
+SELECT active_users.name, posts.id 
+FROM active_users 
+LEFT JOIN posts ON active_users.id = posts.user_id;
 ```
 
-**Requires:**
+Currently gives: `Error in query: Incompatible types in JOIN ON`
 
-- Parsing WITH clause and CTE definitions
-- Storing CTE results in scope
-- Making CTEs available as table sources in FROM/JOIN
-- Type validation for CTE columns in JOIN ON conditions
-
-**Blocked by:** IS NULL support (the test uses `WHERE id IS NOT NULL`)
+**Root cause:** CTE columns are stored with `schema: "__subquery__"` but type resolution for JOIN ON doesn't handle this correctly.
 
 ---
 
 ## 4. [ ] CTE Unknown Column
 
 **File:** `select-cte-unknown-column.test.skip.ts`  
-**Missing:** CTE column validation
+**Status:** ❌ Not implemented - CTE column validation doesn't work
 
 Should error when referencing non-existent columns from a CTE.
 
-**Example:**
+**Example that should error but doesn't:**
 
 ```sql
 WITH active_users AS (SELECT id, name FROM users)
 SELECT invalid_column FROM active_users
 ```
 
-Requires same CTE infrastructure as #3.
+**Root cause:** `ResolveColumnRefValue` doesn't validate columns when resolving from CTE scope entries.
 
 ---
 
