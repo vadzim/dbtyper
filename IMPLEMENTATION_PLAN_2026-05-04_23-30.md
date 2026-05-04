@@ -38,6 +38,7 @@ Requires DEFAULT clause parsing first.
 **Status:** ⚠️ Partially implemented - CTE parsing works, but column validation fails
 
 **Current state:**
+
 - ✅ WITH clause parsing works
 - ✅ CTE definitions are stored in scope
 - ✅ CTEs available as table sources in FROM/JOIN
@@ -48,8 +49,8 @@ Requires DEFAULT clause parsing first.
 
 ```sql
 WITH active_users AS (SELECT id, name FROM users)
-SELECT active_users.name, posts.id 
-FROM active_users 
+SELECT active_users.name, posts.id
+FROM active_users
 LEFT JOIN posts ON active_users.id = posts.user_id;
 ```
 

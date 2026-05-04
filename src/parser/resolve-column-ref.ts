@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { ScopeMap, ValidateCol } from "./parser-scope.ts"
+import type { ScopeMap } from "./parser-scope.ts"
 import type { ResolveTableShape } from "./resolve-table-shape.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
 
@@ -24,15 +24,13 @@ type ValidateColumnPartsShared<
 > = Parts extends readonly [infer S extends string, infer T extends string, infer C extends string]
 	? GetColMeta3Shared<Db, S, T, C>
 	: Parts extends readonly [infer A extends string, infer C extends string]
-		? ValidateCol<Scope, A, C> extends true
-			? A extends keyof Scope
-				? C extends keyof Scope[A]["columns"]
-					? {
-							ts: Scope[A]["columns"][C]
-							sql: Scope[A]["columns"][C]
-						}
-					: never
-				: never
+		? A extends keyof Scope
+			? C extends keyof Scope[A]["columns"]
+				? {
+						ts: Scope[A]["columns"][C]
+						sql: Scope[A]["columns"][C]
+					}
+				: SqlParserError<"Unknown qualified column">
 			: SqlParserError<"Unknown qualified column">
 		: Parts extends readonly [infer C0 extends string]
 			? true extends HasAmbiguousUnqualifiedColumn<Scope, C0>
