@@ -1,5 +1,5 @@
 // Integration Test: DELETE statements
-// Мінімальныя тэсты, якія дэманструюць працу API
+// Minimal tests demonstrating API functionality
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 
@@ -14,13 +14,13 @@ async function testDelete() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-	// ❌ ERROR: DELETE з няправільнай табліцы
+	// ❌ ERROR: DELETE from invalid table
 	const bad1 = await db.query(
 		// @ts-expect-error
 		`delete from invalid_table;`,
 	)
 
-	// ❌ ERROR: RETURNING з няправільнай калонкай
+	// ❌ ERROR: RETURNING with invalid column
 	const bad2 = await db.query(
 		// @ts-expect-error
 		`delete from users returning invalid_column;`,

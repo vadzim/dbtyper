@@ -1,5 +1,5 @@
 // Integration Test: JOIN statements
-// Мінімальныя тэсты, якія дэманструюць працу API
+// Minimal tests demonstrating API functionality
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 

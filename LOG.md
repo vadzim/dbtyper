@@ -82,105 +82,105 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 
 ## 2026-05-04 — Integration Test Infrastructure & API Design Exploration
 
-### Мэта
+### Goal
 
-Стварыць інфраструктуру для інтэграцыйных тэстаў, якія імітуюць рэальнае выкарыстанне бібліятэкі (міграцыі → схема → запыты → валідацыя).
+Create integration test infrastructure that mimics real-world library usage (migrations → schema → queries → validation).
 
-### Эксперыменты: Дызайн тэставання памылак (4 падыходы)
+### Experiments: Error Testing Design (4 approaches)
 
-**Праблема:** Як тэставаць, што няправільныя SQL запыты даюць памылкі кампіляцыі?
+**Problem:** How to test that invalid SQL queries produce compilation errors?
 
-1. **Design 1: Runtime тэсты з `@ts-expect-error`** ❌
-    - Спроба: `await db.query(...)` з `@ts-expect-error` для няправільных запытаў
-    - Вынік: `@ts-expect-error` не паказвае "Unused directive" у `npm run typecheck`
-    - Праблема: `mockDriver` з пустым `scalarTypes: {}` не дае правільнай валідацыі
+1. **Design 1: Runtime tests with `@ts-expect-error`** ❌
+    - Attempt: `await db.query(...)` with `@ts-expect-error` for invalid queries
+    - Result: `@ts-expect-error` doesn't show "Unused directive" in `npm run typecheck`
+    - Issue: `mockDriver` with empty `scalarTypes: {}` doesn't provide proper validation
 
-2. **Design 2: Тыпавыя тэсты як у `parse-select.test.ts`** ❌
-    - Спроба: `ParseSqlStatement` + `Expect<Extends<Tuple3At2<...>>>`
-    - Вынік: Усе `Expect<Extends<...>>` даюць `Type 'false' does not satisfy the constraint 'true'`
-    - Праблема: Структура `TestDb` праз `ApplyStatements` не супадае
+2. **Design 2: Type-level tests like `parse-select.test.ts`** ❌
+    - Attempt: `ParseSqlStatement` + `Expect<Extends<Tuple3At2<...>>>`
+    - Result: All `Expect<Extends<...>>` give `Type 'false' does not satisfy the constraint 'true'`
+    - Issue: `TestDb` structure via `ApplyStatements` doesn't match
 
 3. **Design 3: `InferSqlErrors` API** ⚠️
-    - Спроба: Выкарыстоўваць `InferSqlErrors<Db, Stmt>` для праверкі памылак
-    - Вынік: Частковы поспех — поспешныя тэсты працуюць, памылкі не
+    - Attempt: Use `InferSqlErrors<Db, Stmt>` to check for errors
+    - Result: Partial success — success tests work, error tests don't
 
-4. **Design 4: Дакладная копія стылю з `parse-select.test.ts`** ✅
-    - Спроба: Скапіраваць дакладна структуру існуючых тэстаў
-    - Вынік: **ПРАЦУЕ!** Валідацыя калонак працуе, валідацыя табліц не
-    - Створаны: `test/integration/smoke/01-basic-select.test.ts`
+4. **Design 4: Exact copy of `parse-select.test.ts` style** ✅
+    - Attempt: Copy exact structure of existing tests
+    - Result: **WORKS!** Column validation works, table validation doesn't
+    - Created: `test/integration/smoke/01-basic-select.test.ts`
 
-**Вынік:** Знойдзены працуючы падыход для тыпавых тэстаў.
+**Result:** Found working approach for type-level tests.
 
-### Эксперыменты: Дызайн API для валідацыі (4 падыходы)
+### Experiments: API Validation Design (4 approaches)
 
-**Праблема:** Ці бягучы API `db.query()` рэальна валідуе SQL на ўзроўні тыпаў?
+**Problem:** Does current `db.query()` API actually validate SQL at type level?
 
-1. **Design 1: Бягучы API з `@ts-expect-error`** ❌
-    - Спроба: Праверка, ці `CheckSqlValid` спрацоўвае
-    - Вынік: `@ts-expect-error` не паказвае памылку (але памылка ёсць!)
+1. **Design 1: Current API with `@ts-expect-error`** ❌
+    - Attempt: Check if `CheckSqlValid` works
+    - Result: `@ts-expect-error` doesn't show error (but error exists!)
 
-2. **Design 2: Дэталёвая праверка тыпу `db.query()`** ✅ **АДКРЫЦЦЁ!**
-    - Спроба: Праверка без `@ts-expect-error`
-    - Вынік: **API РЭАЛЬНА ПРАЦУЕ!**
+2. **Design 2: Detailed type check of `db.query()`** ✅ **DISCOVERY!**
+    - Attempt: Check without `@ts-expect-error`
+    - Result: **API ACTUALLY WORKS!**
 
     ```
     error TS2345: Argument of type '"select invalid_column from users;"'
     is not assignable to parameter of type '"Unknown column"'.
     ```
 
-    - Высновы: Тып `Db` захоўваецца, `CheckSqlValid` валідуе, API ідэальны
+    - Conclusion: `Db` type is preserved, `CheckSqlValid` validates, API is ideal
 
-3. **Design 3: Альтэрнатыўны API з `.result()`** ❌
-    - Ідэя: `db.query(...).result()` замест `db.query(...)`
-    - Вынік: Не трэба — больш многаслоўна, не дае дадатковых магчымасцей
+3. **Design 3: Alternative API with `.result()`** ❌
+    - Idea: `db.query(...).result()` instead of `db.query(...)`
+    - Result: Not needed — more verbose, no additional benefits
 
 4. **Design 4: Builder pattern API** ❌
-    - Ідэя: `db.select().from().where().execute()`
-    - Вынік: Не трэба — супярэчыць філасофіі "Write plain SQL", LLM лепш ведаюць SQL
+    - Idea: `db.select().from().where().execute()`
+    - Result: Not needed — contradicts "Write plain SQL" philosophy, LLMs know SQL better
 
-**Вынік:** Бягучы API ужо ідэальны, нічога мяняць не трэба.
+**Result:** Current API is already ideal, no changes needed.
 
-### Эксперыменты: Дызайн рэалізацыі API (4 варыянты)
+### Experiments: API Implementation Design (4 variants)
 
-**Праблема:** Ці трэба мяняць `src/core/sql-database.ts` для лепшай валідацыі?
+**Problem:** Should we change `src/core/sql-database.ts` for better validation?
 
-1. **Variant 1: Бягучы API (baseline)** ✅
-    - Структура: `sqlMigrations().apply().database()` → `db.query(sql)`
-    - Валідацыя: `CheckSqlValid<Db, Stmt>` у parameter constraint
-    - Вынік: **ІДЭАЛЬНЫ** — просты, валідуе, адпавядае філасофіі
+1. **Variant 1: Current API (baseline)** ✅
+    - Structure: `sqlMigrations().apply().database()` → `db.query(sql)`
+    - Validation: `CheckSqlValid<Db, Stmt>` in parameter constraint
+    - Result: **IDEAL** — simple, validates, follows philosophy
 
 2. **Variant 2: Explicit validation method** ❌
-    - Ідэя: Дадаць `.validateQuery()` для праверкі SQL без выканання
-    - Вынік: Не трэба — `InferSqlErrors` ужо існуе, runtime метад лішні
+    - Idea: Add `.validateQuery()` to check SQL without execution
+    - Result: Not needed — `InferSqlErrors` already exists, runtime method is redundant
 
 3. **Variant 3: Separate typed/untyped interfaces** ❌
-    - Ідэя: Раздзяліць `DataBase` на `TypedDataBase` і `UntypedDataBase`
-    - Вынік: Не трэба — ускладняе без выгоды, `queryUntyped()` — escape hatch
+    - Idea: Split `DataBase` into `TypedDataBase` and `UntypedDataBase`
+    - Result: Not needed — adds complexity without benefit, `queryUntyped()` is escape hatch
 
 4. **Variant 4: Query builder with validation** ❌
-    - Ідэя: `db.select().from().where().execute()` з валідацыяй на кожным кроку
-    - Вынік: Не трэба — многаслоўна, супярэчыць філасофіі, LLM лепш ведаюць SQL
+    - Idea: `db.select().from().where().execute()` with validation at each step
+    - Result: Not needed — verbose, contradicts philosophy, LLMs know SQL better
 
-**Вынік:** `src/core/sql-database.ts` не патрабуе змен.
+**Result:** `src/core/sql-database.ts` requires no changes.
 
-### Створаныя файлы
+### Created Files
 
-- `INTEGRATION_TEST_PLAN.md` — план інтэграцыйных тэстаў
-- `test/integration/DESIGN_LOG.md` — 4 эксперыменты па дызайну тэставання
-- `test/integration/API_DESIGN_LOG.md` — 4 эксперыменты па дызайну API валідацыі
-- `test/integration/API_IMPLEMENTATION_LOG.md` — 4 варыянты рэалізацыі API
-- `test/integration/smoke/01-basic-select.test.ts` — першы працуючы smoke test
-- `test/integration/api-variants/` — 4 варыянты API для параўнання
+- `INTEGRATION_TEST_PLAN.md` — integration test plan
+- `test/integration/DESIGN_LOG.md` — 4 experiments on testing design
+- `test/integration/API_DESIGN_LOG.md` — 4 experiments on API validation design
+- `test/integration/API_IMPLEMENTATION_LOG.md` — 4 API implementation variants
+- `test/integration/smoke/01-basic-select.test.ts` — first working smoke test
+- `test/integration/api-variants/` — 4 API variants for comparison
 
-### Высновы
+### Conclusions
 
-1. **API ужо ідэальны** — `db.query()` валідуе SQL праз `CheckSqlValid`
-2. **Тыпавыя тэсты працуюць** — стыль як у `parse-select.test.ts`
-3. **Нічого мяняць не трэба** — бягучы дызайн оптымальны
-4. **Plain SQL > Builder** — прасцей, выразней, LLM-friendly
+1. **API is already ideal** — `db.query()` validates SQL via `CheckSqlValid`
+2. **Type-level tests work** — style like `parse-select.test.ts`
+3. **No changes needed** — current design is optimal
+4. **Plain SQL > Builder** — simpler, clearer, LLM-friendly
 
-### Наступныя крокі
+### Next Steps
 
-- Дадаць больш smoke tests (INSERT, UPDATE, DELETE, JOIN)
-- Створыць `TEST_COVERAGE.md` з поўным спісам тэстаў
-- Рэалізаваць усе тэсты згодна з планам
+- Add more smoke tests (INSERT, UPDATE, DELETE, JOIN)
+- Create `TEST_COVERAGE.md` with complete test list
+- Implement all tests according to plan

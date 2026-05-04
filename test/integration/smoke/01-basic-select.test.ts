@@ -1,5 +1,5 @@
 // Integration Test: Basic SELECT queries
-// Мінімальныя тэсты, якія дэманструюць працу API
+// Minimal tests demonstrating API functionality
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 
@@ -20,7 +20,7 @@ async function testBasicSelect() {
 	// ✅ SUCCESS: SELECT *
 	const result2 = await db.query(`select * from users;`)
 
-	// ❌ ERROR: няправільная калонка
+	// ❌ ERROR: invalid column
 	const bad1 = await db.query(
 		// @ts-expect-error
 		`select wrong_col from users;`,
