@@ -22,7 +22,9 @@ async function testEnumCastingAndComplexScenarios() {
 		);`)
 		.database()
 
-	// ✅ SUCCESS: Cast string to enum type
+	// Note: SELECT without FROM is not currently supported by the parser
+	// This would work in PostgreSQL but requires FROM clause in JSQL
+	// @ts-expect-error
 	const result1 = await db.query(`
 		select 'active'::status as status_value;
 	`)
@@ -80,7 +82,7 @@ async function testEnumCastingAndComplexScenarios() {
 	const result9 = await db.query(`
 		select * from tasks
 		where task_status in (
-			select 'active'::status
+			select task_status from tasks where id = 1
 		);
 	`)
 

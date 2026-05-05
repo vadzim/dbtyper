@@ -157,9 +157,13 @@ type ParseSqlTypeName<Tokens extends TokensList, Acc extends readonly string[] =
 						? [R2, Rs]
 						: ParseSqlTypeName<R2, readonly [...Acc, W]>
 					: never
-				: PeekToken<R1> extends TokenIdent<string>
-					? ParseSqlTypeName<R1, readonly [...Acc, W]>
-					: [R1, readonly [...Acc, W]]
+				: PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? ParseSqlTypeName<R2, readonly [...Acc, W]>
+						: never
+					: PeekToken<R1> extends TokenIdent<string>
+						? ParseSqlTypeName<R1, readonly [...Acc, W]>
+						: [R1, readonly [...Acc, W]]
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
 			? Acc extends readonly []
@@ -2017,7 +2021,7 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 												? Ts extends number
 													? ExprOk<number, "number">
 													: SqlParserError<"Invalid cast to floating-point or numeric type">
-												: SqlParserError<"Unsupported cast target type">
+												: ExprOk<unknown, N>
 		: SqlParserError<"Invalid cast operand">
 
 type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull

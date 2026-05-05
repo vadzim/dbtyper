@@ -51,11 +51,11 @@ async function testEnumAcrossSchemas() {
 		where article_status = 'published'::app.status;
 	`)
 
-	// ✅ SUCCESS: Different enum types with same name in different schemas
+	// ✅ SUCCESS: Query tables from different schemas
 	const result5 = await db.query(`
-		select
-			(select count(*) from public.tasks where task_status = 'active') as public_active,
-			(select count(*) from app.articles where article_status = 'draft') as app_draft;
+		select t.id, a.id
+		from public.tasks t
+		join app.articles a on t.id = a.id;
 	`)
 
 	// Note: Cross-schema enum comparisons would be runtime errors

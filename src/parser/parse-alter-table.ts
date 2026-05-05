@@ -70,7 +70,12 @@ type ReplaceTableInDb<
 	defaultSchema: Db["defaultSchema"]
 	schemas: {
 		[K in keyof Db["schemas"]]: K extends Sch
-			? { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> } & Omit<Db["schemas"][K], "sets">
+			? Db["schemas"][K]["types"] extends object
+				? {
+						sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape>
+						types: Db["schemas"][K]["types"]
+					}
+				: { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> }
 			: Db["schemas"][K]
 	}
 }
