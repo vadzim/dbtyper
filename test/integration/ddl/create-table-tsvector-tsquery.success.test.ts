@@ -16,4 +16,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 const result = await db.query(`select id, search_vector, search_query from documents;`)
-type _check = Expect<Extends<typeof result, unknown>>
+type _check = Expect<Matches<typeof result, { id: number; search_vector: unknown; search_query: unknown }[]>>

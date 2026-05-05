@@ -16,9 +16,11 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: multiple LEFT JOINs (nullability propagates)
-const result = db.query(
+const result = await db.query(
 	`select users.name, posts.title, comments.content 
      from users 
      left join posts on users.id = posts.user_id 
      left join comments on posts.id = comments.post_id;`,
 )
+
+type _check = Expect<Matches<typeof result, { name: string; title: string; content: string }[]>>

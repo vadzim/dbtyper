@@ -19,4 +19,4 @@ const result = await db.query(`
 		select posts.derived_col 
 		from (select 'test' as derived_col from users) as posts;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { derived_col: string }[]>>

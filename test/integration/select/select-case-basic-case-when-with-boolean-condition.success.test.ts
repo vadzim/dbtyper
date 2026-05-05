@@ -30,4 +30,4 @@ const result = await db.query(`
 			end as category
 		from users;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { name: string; category: string }[]>>

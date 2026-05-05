@@ -27,4 +27,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // Comparing enum with integer (runtime failure, not compile-time)
 const result = await db.query(`select * from tasks
 		where task_status = 123;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<
+	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
+>

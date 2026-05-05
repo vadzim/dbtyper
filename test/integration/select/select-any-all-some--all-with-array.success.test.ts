@@ -16,4 +16,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: > ALL with array
 const result = await db.query(`select * from items where priority > all(array[1,2,3]);`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number; tags: unknown; priority: number }[]>>

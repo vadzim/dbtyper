@@ -15,4 +15,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: array_length function
 const result = await db.query(`select array_length(tags, 1) as len from items;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { len: number }[]>>

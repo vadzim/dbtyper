@@ -14,4 +14,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: HAVING clause
 const result = await db.query(`select user_id, count(*) as count from posts group by user_id having count(*) > 5;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { count: bigint; user_id: string }[]>>

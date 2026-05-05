@@ -35,4 +35,4 @@ const result = await db.query(`
 		select * from public.tasks
 		where task_status = 'active'::public.status;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number; task_status: unknown }[]>>

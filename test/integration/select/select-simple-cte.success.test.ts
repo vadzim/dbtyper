@@ -14,7 +14,8 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: simple CTE
-const result = db.query(
+const result = await db.query(
 	`with active_users as (select * from users where id is not null) 
      select * from active_users;`,
 )
+type _check = Expect<Matches<typeof result, { name: string; id: string }[]>>

@@ -35,4 +35,4 @@ const result = await db.query(`
 		select * from public.tasks t
 		join app.articles a on t.task_status = a.article_status;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number }[]>>

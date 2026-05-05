@@ -16,6 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: LAG() with PARTITION BY and ORDER BY
-const result = db.query(
+const result = await db.query(
 	`select id, product, amount, lag(amount) over (partition by product order by sale_date) as prev_amount from sales;`,
 )
+type _check = Expect<Matches<typeof result, { id: number; amount: number; product: string; prev_amount: number }[]>>

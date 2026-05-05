@@ -16,4 +16,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: PARTITION BY without ORDER BY
 const result = await db.query(`select id, product, row_number() over (partition by product) as row_num from sales;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number; product: string; row_num: bigint }[]>>

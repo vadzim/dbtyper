@@ -14,4 +14,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table counters (id serial not null, count bigserial not null, small smallserial not null);`)
 	.database()
 const result = await db.query(`select id, count, small from counters;`)
-type _check = Expect<Extends<typeof result, unknown>>
+type _check = Expect<Matches<typeof result, { small: unknown; count: unknown; id: unknown }[]>>

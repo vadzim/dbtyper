@@ -15,7 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: CTE in JOIN with type checking
-const result = db.query(
+const result = await db.query(
 	`with active_users as (
        select id, name from users
      )
@@ -23,3 +23,4 @@ const result = db.query(
      from active_users 
      left join posts on active_users.id = posts.user_id;`,
 )
+type _check = Expect<Matches<typeof result, { name: string; id: string }[]>>

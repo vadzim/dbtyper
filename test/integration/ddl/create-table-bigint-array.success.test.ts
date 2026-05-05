@@ -14,4 +14,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table big_nums (id integer not null, nums bigint[] not null);`)
 	.database()
 const result = await db.query(`select id, nums from big_nums;`)
-type _check = Expect<Matches<typeof result, { id: number; nums: unknown; }[]>>
+type _check = Expect<Matches<typeof result, { id: number; nums: unknown }[]>>

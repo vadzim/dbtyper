@@ -15,4 +15,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: scalar subquery in SELECT (non-correlated)
 const result = await db.query(`select id, name, (select count(*) from posts) as post_count from users;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { name: string; id: string; post_count: bigint }[]>>

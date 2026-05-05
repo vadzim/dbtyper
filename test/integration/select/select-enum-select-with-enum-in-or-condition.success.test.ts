@@ -27,4 +27,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: Select with enum in OR condition
 const result = await db.query(`select * from tasks
 		where task_status = 'active' or task_status = 'pending';`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<
+	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
+>

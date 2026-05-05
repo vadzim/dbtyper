@@ -21,4 +21,4 @@ const result = await db.query(`
 			posts.user_id as outer_user_id
 		from posts;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { inner_id: string; outer_user_id: string }[]>>

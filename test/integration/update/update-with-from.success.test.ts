@@ -14,5 +14,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text, title text);`)
 	.database()
 // UPDATE...FROM clause (PostgreSQL extension)
-const result = await db.query(`update users set name = 'Author' from posts where users.id = posts.user_id returning users.*;`)
-type _check = Expect<Matches<typeof result, { name: string; id: string; }[]>>
+const result = await db.query(
+	`update users set name = 'Author' from posts where users.id = posts.user_id returning users.*;`,
+)
+type _check = Expect<Matches<typeof result, { name: string; id: string }[]>>

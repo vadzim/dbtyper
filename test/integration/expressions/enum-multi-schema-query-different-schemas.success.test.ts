@@ -36,4 +36,4 @@ const result = await db.query(`
 		from public.tasks t
 		join app.articles a on t.id = a.id;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number }[]>>

@@ -14,4 +14,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table flags (id integer not null, bits boolean[] not null);`)
 	.database()
 const result = await db.query(`select id, bits from flags;`)
-type _check = Expect<Matches<typeof result, { id: number; bits: unknown; }[]>>
+type _check = Expect<Matches<typeof result, { id: number; bits: unknown }[]>>

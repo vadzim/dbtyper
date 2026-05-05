@@ -14,4 +14,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table files (id integer not null, data bytea not null);`)
 	.database()
 const result = await db.query(`select id, data from files;`)
-type _check = Expect<Extends<typeof result, unknown>>
+type _check = Expect<Matches<typeof result, { id: number; data: unknown }[]>>

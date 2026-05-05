@@ -15,5 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 	.database()
 // ✅ SUCCESS: FULL OUTER JOIN with WHERE
-const result = await db.query(`select * from users full outer join orders on users.id = orders.user_id where orders.total > 100;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+const result = await db.query(
+	`select * from users full outer join orders on users.id = orders.user_id where orders.total > 100;`,
+)
+type _check = Expect<Matches<typeof result, { id: number }[]>>

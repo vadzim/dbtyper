@@ -14,4 +14,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: GROUP BY multiple columns
 const result = await db.query(`select user_id, category, count(*) as count from posts group by user_id, category;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { count: bigint; user_id: string; category: string }[]>>

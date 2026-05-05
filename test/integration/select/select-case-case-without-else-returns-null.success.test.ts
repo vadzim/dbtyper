@@ -29,4 +29,4 @@ const result = await db.query(`
 			end as is_active
 		from users;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { name: string; is_active: string }[]>>

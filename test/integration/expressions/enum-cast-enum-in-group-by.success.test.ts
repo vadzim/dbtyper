@@ -29,4 +29,4 @@ const result = await db.query(`
 		from tasks
 		group by task_status;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { task_status: unknown; cnt: unknown }[]>>

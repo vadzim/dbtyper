@@ -15,5 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: LEAD() with offset and default value
-const result = await db.query(`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+const result = await db.query(
+	`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`,
+)
+type _check = Expect<Matches<typeof result, { id: number; product: string; next_amount: number }[]>>

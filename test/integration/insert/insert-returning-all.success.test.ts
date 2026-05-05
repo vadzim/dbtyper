@@ -1,6 +1,7 @@
 // Integration Test: INSERT
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 
 const mockDriver = {
 	query: async () => [],
@@ -17,9 +18,4 @@ const result = await db.query(
 	`insert into users (id, name, email) values ('1', 'Alice', 'alice@example.com') returning *;`,
 )
 
-// Type should be: Array<{ id: string; name: string; email: string }>
-const _typeCheck: typeof result = [] as Array<{
-	id: string
-	name: string
-	email: string
-}>
+type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; email: string }>>>

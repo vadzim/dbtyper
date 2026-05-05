@@ -31,4 +31,6 @@ const result = await db.query(`
 		values (4, 'Task 4', 'invalid_status')
 		returning *;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<
+	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
+>

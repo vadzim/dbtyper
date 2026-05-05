@@ -15,4 +15,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Array concatenation with column
 const result = await db.query(`select tags || tags as doubled from items;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { doubled: unknown }[]>>

@@ -16,4 +16,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: RIGHT OUTER JOIN (explicit OUTER)
 const result = await db.query(`select * from users right outer join orders on users.id = orders.user_id;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number }[]>>

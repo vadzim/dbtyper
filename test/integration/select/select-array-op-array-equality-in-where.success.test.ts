@@ -15,4 +15,4 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Array equality in WHERE
 const result = await db.query(`select * from items where tags = array['a','b'];`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number; tags: unknown; nums: unknown }[]>>

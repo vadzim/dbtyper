@@ -35,4 +35,4 @@ const result = await db.query(`
 		select * from app.articles
 		where article_status = 'published'::app.status;
 	`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<Matches<typeof result, { id: number; article_status: unknown; article_priority: unknown }[]>>

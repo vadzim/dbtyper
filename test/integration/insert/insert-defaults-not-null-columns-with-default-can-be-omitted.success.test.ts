@@ -23,4 +23,6 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: NOT NULL columns with DEFAULT can be omitted
 const result = await db.query(`insert into users (id, name) values ('1', 'Alice') returning *;`)
-type _check = Expect<Extends<typeof result, unknown[]>>
+type _check = Expect<
+	Matches<typeof result, { name: string; id: string; active: boolean; created_at: Date; age: string }[]>
+>
