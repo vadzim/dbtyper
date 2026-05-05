@@ -127,6 +127,12 @@ export type ScalarExprAst =
 			name: string
 			args: readonly (ScalarExprAst | { kind: "star" })[]
 	  }
+	| {
+			kind: "window_function"
+			name: string
+			args: readonly (ScalarExprAst | { kind: "star" })[]
+			over: { order_by: readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[] }
+	  }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
@@ -843,6 +849,23 @@ type ResolveFunctionCall<
 					: never
 			: never
 
+type ResolveWindowFunction<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	L extends string = Lowercase<Name>,
+> = L extends "row_number"
+	? Args extends readonly []
+		? ExprOk<number, "bigint">
+		: SqlParserError<"ROW_NUMBER() takes no arguments">
+	: L extends "rank" | "dense_rank"
+		? Args extends readonly []
+			? ExprOk<number, "bigint">
+			: SqlParserError<"RANK/DENSE_RANK takes no arguments">
+		: SqlParserError<"Unknown window function">
+
 type ResolveCustomOp<
 	Op extends string,
 	L extends ScalarExprAst,
@@ -923,6 +946,14 @@ type ExpressionResolvers<
 		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
 	}
 		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params>
+		: never
+	window_function: Ast extends {
+		kind: "window_function"
+		name: infer FnName extends string
+		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
+		over: infer _Over
+	}
+		? ResolveWindowFunction<FnName, FArgs, Db, Scope, Params>
 		: never
 	qualified_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
 	alias_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
@@ -1337,6 +1368,81 @@ type ParseFunctionArgs<Tokens extends TokensList, Env extends ExprParseEnv> =
 			? [SkipToken<Tokens>, readonly []]
 			: ParseFunctionArgsAccum<Tokens, Env, readonly []>
 
+type ParseOptionalOverClause<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
+	PeekToken<Tokens> extends TokenKey<"over">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<"(">
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? PeekToken<R2> extends TokenKey<"order">
+						? SkipToken<R2> extends infer R3 extends TokensList
+							? PeekToken<R3> extends TokenKey<"by">
+								? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
+										infer R4 extends TokensList,
+										infer OrderList,
+									]
+									? OrderList extends SqlParserError<string>
+										? [R4, OrderList]
+										: OrderList extends readonly {
+													expr: ScalarExprAst
+													direction: "asc" | "desc" | null
+											  }[]
+											? PeekToken<R4> extends TokenKey<")">
+												? [
+														SkipToken<R4>,
+														{
+															kind: "window_function"
+															name: FnName
+															args: Args
+															over: { order_by: OrderList }
+														},
+													]
+												: [R4, SqlParserError<"Expected ) after OVER clause">]
+											: never
+									: never
+								: [R3, SqlParserError<"Expected BY after ORDER in OVER clause">]
+							: never
+						: [R2, SqlParserError<"Expected ORDER BY in OVER clause">]
+					: never
+				: [R1, SqlParserError<"Expected ( after OVER">]
+			: never
+		: [Tokens, { kind: "function_call"; name: FnName; args: Args }]
+
+type ParseWindowOrderByList<
+	Tokens extends TokensList,
+	Env extends ExprParseEnv,
+	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[] = readonly [],
+> =
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr]
+		? Expr extends SqlParserError<string>
+			? [R1, Expr]
+			: Expr extends ScalarExprAst
+				? PeekToken<R1> extends TokenKey<"asc">
+					? ParseWindowOrderByListTail<
+							SkipToken<R1>,
+							Env,
+							readonly [...Acc, { expr: Expr; direction: "asc" }]
+						>
+					: PeekToken<R1> extends TokenKey<"desc">
+						? ParseWindowOrderByListTail<
+								SkipToken<R1>,
+								Env,
+								readonly [...Acc, { expr: Expr; direction: "desc" }]
+							>
+						: ParseWindowOrderByListTail<R1, Env, readonly [...Acc, { expr: Expr; direction: null }]>
+				: never
+		: never
+
+type ParseWindowOrderByListTail<
+	Tokens extends TokensList,
+	Env extends ExprParseEnv,
+	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
+> = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc]
+
 type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts]
 		? Parts extends readonly ["__ats__", string] | readonly ["__qts__", string, string]
@@ -1347,7 +1453,7 @@ type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> 
 						? [After, Args]
 						: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 							? Parts extends readonly [infer FnName extends string]
-								? [After, { kind: "function_call"; name: FnName; args: Args }]
+								? ParseOptionalOverClause<After, FnName, Args, Env>
 								: [After, SqlParserError<"Qualified function names are not supported">]
 							: never
 					: never
@@ -2266,7 +2372,7 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 								? [After, Args]
 								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 									? Parts extends readonly [infer FnName extends string]
-										? [After, { kind: "function_call"; name: FnName; args: Args }]
+										? ParseOptionalOverClause<After, FnName, Args, Env>
 										: [After, SqlParserError<"Qualified function names are not supported">]
 									: never
 							: never
