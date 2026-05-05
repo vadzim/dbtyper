@@ -1,8 +1,29 @@
 export type JsqlDatabaseShape = {
 	defaultSchema: string
-	schemas: { [K: string]: JsqlSchemaShape }
+	schemas: Record<string, JsqlSchemaShape>
 	/** Typed SQL function names → SQL return type strings (e.g., "integer", "text"). Keys as used in SQL after identifier normalization, typically lowercase. */
 	functions?: Record<string, string>
+}
+
+export type JsqlSchemaShape = {
+	/** Named relations in the schema (base tables and views). */
+	sets: Record<string, JsqlTableShape>
+	/** Named types in the schema (enums, etc.). */
+	types?: Record<string, JsqlTypeShape>
+}
+
+export type JsqlTypeShape = {
+	kind: "enum"
+	/** Enum values in order. */
+	values: readonly string[]
+}
+
+export type JsqlTableShape = {
+	kind: "table" | "view"
+	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
+	columns: Record<string, string>
+	constraints?: JsqlConstraintMap
+	column_facts?: JsqlColumnFactsMap
 }
 
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
@@ -31,19 +52,6 @@ export type JsqlUpdateStatementResult = {
 	schema: string
 	/** Column names that appeared in `SET` (each assignment is type-checked). */
 	set_columns: readonly string[]
-}
-
-export type JsqlSchemaShape = {
-	/** Named relations in the schema (base tables and views). */
-	sets: { [K: string]: JsqlTableShape }
-}
-
-export type JsqlTableShape = {
-	kind: "table" | "view"
-	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
-	columns: { [K: string]: string }
-	constraints?: JsqlConstraintMap
-	column_facts?: JsqlColumnFactsMap
 }
 
 export type JsqlConstraintEntry =

@@ -1,4 +1,4 @@
-import type { PeekToken, SkipToken, TokenIdent, TokensList } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
 export type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
@@ -14,3 +14,15 @@ export type TypeWordsToString<A extends readonly string[]> = A extends readonly 
 		? H
 		: `${H} ${TypeWordsToString<T>}`
 	: ""
+
+/** Parse array suffix `[]` after a type name, returning the type with `[]` appended. */
+export type ParseArraySuffix<Tokens extends TokensList, BaseType extends string> =
+	PeekToken<Tokens> extends TokenKey<"[">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<"]">
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? [R2, `${BaseType}[]`]
+					: never
+				: [R1, SqlParserError<"Expected ] after [ in array type">]
+			: never
+		: [Tokens, BaseType]

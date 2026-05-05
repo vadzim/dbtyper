@@ -11,7 +11,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
-import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
+import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -167,7 +167,13 @@ type ParseOneColumnAfterColName<
 		infer Words extends readonly string[],
 	]
 		? TypeWordsToString<Words> extends infer Joined extends string
-			? ResolveAfterNullability<AfterType, Db, Schema, Table, Stack, ColName, Joined>
+			? ParseArraySuffix<AfterType, Joined> extends [infer AfterArray extends TokensList, infer FinalType]
+				? FinalType extends SqlParserError<string>
+					? [AfterArray, Db, FinalType]
+					: FinalType extends string
+						? ResolveAfterNullability<AfterArray, Db, Schema, Table, Stack, ColName, FinalType>
+						: never
+				: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">]
 		: never
 
@@ -211,22 +217,26 @@ type ResolveAfterNullability<
 				: never
 			: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, Joined, false>
 
-type SqlTypeClass<Sql extends string> =
-	Lowercase<Sql> extends
-		| "integer"
-		| "int"
-		| "int2"
-		| "int4"
-		| "int8"
-		| "smallint"
-		| "bigint"
-		| "real"
-		| "float4"
-		| "float8"
-		| "double precision"
-		| "numeric"
-		| "decimal"
-		| "number"
+type SqlTypeClass<Sql extends string> = Sql extends `${infer Base}[]`
+	? "array"
+	: Lowercase<Sql> extends
+				| "integer"
+				| "int"
+				| "int2"
+				| "int4"
+				| "int8"
+				| "smallint"
+				| "bigint"
+				| "serial"
+				| "bigserial"
+				| "smallserial"
+				| "real"
+				| "float4"
+				| "float8"
+				| "double precision"
+				| "numeric"
+				| "decimal"
+				| "number"
 		? "numeric"
 		: Lowercase<Sql> extends "boolean" | "bool"
 			? "boolean"
@@ -234,14 +244,23 @@ type SqlTypeClass<Sql extends string> =
 				? "text"
 				: Lowercase<Sql> extends "uuid"
 					? "uuid"
-					: Lowercase<Sql> extends
-								| "date"
-								| "time"
-								| "time with time zone"
-								| "timestamp"
-								| "timestamp with time zone"
-						? "datetime"
-						: "unknown"
+					: Lowercase<Sql> extends "bytea"
+						? "bytea"
+						: Lowercase<Sql> extends
+									| "date"
+									| "time"
+									| "time with time zone"
+									| "timetz"
+									| "timestamp"
+									| "timestamp with time zone"
+									| "timestamptz"
+									| "interval"
+							? "datetime"
+							: Lowercase<Sql> extends "inet" | "cidr"
+								? "network"
+								: Lowercase<Sql> extends "tsvector" | "tsquery"
+									? "fulltext"
+									: "unknown"
 
 type ParseDefaultValue<Tokens extends TokensList, ColumnType extends string> =
 	PeekToken<Tokens> extends TokenNumber<infer _Raw>
@@ -452,7 +471,7 @@ type MergeTableIntoDb<
 										column_facts: Facts
 									}
 								>
-						}
+						} & Omit<Db["schemas"][K], "sets">
 					: Db["schemas"][K]
 			}
 		}

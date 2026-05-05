@@ -1629,6 +1629,8 @@ type ParseAliasAfterCTE<
 	PeekToken<Tokens> extends
 		| TokenKey<"inner">
 		| TokenKey<"left">
+		| TokenKey<"right">
+		| TokenKey<"full">
 		| TokenKey<"cross">
 		| TokenKey<"join">
 		| TokenKey<"on">
@@ -1671,6 +1673,8 @@ type ParseAliasAfterTable<
 	PeekToken<Tokens> extends
 		| TokenKey<"inner">
 		| TokenKey<"left">
+		| TokenKey<"right">
+		| TokenKey<"full">
 		| TokenKey<"cross">
 		| TokenKey<"join">
 		| TokenKey<"on">
@@ -1755,11 +1759,15 @@ type ParseJoinChain<
 		? ParseJoinAfterOptionalInner<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"left">
 			? ParseJoinAfterLeft<SkipToken<Tokens>, Db, Scope, Params>
-			: PeekToken<Tokens> extends TokenKey<"cross">
-				? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
-				: PeekToken<Tokens> extends TokenKey<"join">
-					? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-					: [Tokens, null, Scope]
+			: PeekToken<Tokens> extends TokenKey<"right">
+				? ParseJoinAfterRight<SkipToken<Tokens>, Db, Scope, Params>
+				: PeekToken<Tokens> extends TokenKey<"full">
+					? ParseJoinAfterFull<SkipToken<Tokens>, Db, Scope, Params>
+					: PeekToken<Tokens> extends TokenKey<"cross">
+						? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
+						: PeekToken<Tokens> extends TokenKey<"join">
+							? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+							: [Tokens, null, Scope]
 
 type ParseJoinAfterCross<
 	Tokens extends TokensList,
@@ -1806,6 +1814,50 @@ type ParseJoinAfterLeft<
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
 			: [Tokens, SqlParserError<"Expected OUTER or JOIN after LEFT">, ParserRefErrorThirdSentinel]
+
+type ParseJoinAfterRight<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"outer">
+		? ParseJoinAfterRightOuter<SkipToken<Tokens>, Db, Scope, Params>
+		: PeekToken<Tokens> extends TokenKey<"join">
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+			: [Tokens, SqlParserError<"Expected OUTER or JOIN after RIGHT">, ParserRefErrorThirdSentinel]
+
+type ParseJoinAfterRightOuter<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"join">
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+		: [Tokens, SqlParserError<"Expected JOIN after RIGHT OUTER">, ParserRefErrorThirdSentinel]
+
+type ParseJoinAfterFull<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"outer">
+		? ParseJoinAfterFullOuter<SkipToken<Tokens>, Db, Scope, Params>
+		: PeekToken<Tokens> extends TokenKey<"join">
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+			: [Tokens, SqlParserError<"Expected OUTER or JOIN after FULL">, ParserRefErrorThirdSentinel]
+
+type ParseJoinAfterFullOuter<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"join">
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+		: [Tokens, SqlParserError<"Expected JOIN after FULL OUTER">, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalOuter<
 	Tokens extends TokensList,

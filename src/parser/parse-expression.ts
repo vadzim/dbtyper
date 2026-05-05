@@ -88,6 +88,12 @@ export type ScalarExprAst =
 	| { kind: "in_subquery"; expr: ScalarExprAst; sub: JsqlSelectStatementResult }
 	| { kind: "scalar_subquery"; sel: JsqlSelectStatementResult }
 	| { kind: "exists_subquery"; sub: JsqlSelectStatementResult }
+	/** PostgreSQL `= ANY(array_expr)` or `= ANY(subquery)` */
+	| { kind: "any_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }
+	/** PostgreSQL `= ALL(array_expr)` or `= ALL(subquery)` */
+	| { kind: "all_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }
+	/** PostgreSQL `= SOME(array_expr)` or `= SOME(subquery)` (alias for ANY) */
+	| { kind: "some_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }
 	/** PostgreSQL `ARRAY[` … `]` constructor (comma-separated scalar expressions). */
 	| { kind: "array_ctor"; elements: readonly ScalarExprAst[] }
 	/** One-based or zero-based semantics are dialect-specific at runtime; MVP element access typing. */
@@ -121,6 +127,15 @@ export type ScalarExprAst =
 			name: string
 			args: readonly (ScalarExprAst | { kind: "star" })[]
 	  }
+	| {
+			kind: "window_function"
+			name: string
+			args: readonly (ScalarExprAst | { kind: "star" })[]
+			over: {
+				partition_by?: readonly ScalarExprAst[]
+				order_by: readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+			}
+	  }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
@@ -142,9 +157,13 @@ type ParseSqlTypeName<Tokens extends TokensList, Acc extends readonly string[] =
 						? [R2, Rs]
 						: ParseSqlTypeName<R2, readonly [...Acc, W]>
 					: never
-				: PeekToken<R1> extends TokenIdent<string>
-					? ParseSqlTypeName<R1, readonly [...Acc, W]>
-					: [R1, readonly [...Acc, W]]
+				: PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? ParseSqlTypeName<R2, readonly [...Acc, W]>
+						: never
+					: PeekToken<R1> extends TokenIdent<string>
+						? ParseSqlTypeName<R1, readonly [...Acc, W]>
+						: [R1, readonly [...Acc, W]]
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
 			? Acc extends readonly []
@@ -462,17 +481,77 @@ type IsRelOp<T> =
 								? true
 								: false
 
+type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, OpToken, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends infer Kw
+		? Kw extends TokenKey<"any"> | TokenKey<"all"> | TokenKey<"some">
+			? SkipToken<Tokens> extends infer R1 extends TokensList
+				? PeekToken<R1> extends TokenKey<"(">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? PeekToken<R2> extends TokenKey<"select">
+							? ParseParenEnclosedSelect<R2, Env["db"], Env["params"], Env["outerScope"]> extends [
+									infer R3 extends TokensList,
+									infer Sub,
+								]
+								? Sub extends SqlParserError<string>
+									? [R3, Sub]
+									: Sub extends JsqlSelectStatementResult
+										? TokenToCmpOp<OpToken> extends infer Op extends ScalarCmpOp
+											? Kw extends TokenKey<"any">
+												? [R3, { kind: "any_op"; op: Op; left: L; right: Sub }]
+												: Kw extends TokenKey<"all">
+													? [R3, { kind: "all_op"; op: Op; left: L; right: Sub }]
+													: Kw extends TokenKey<"some">
+														? [R3, { kind: "some_op"; op: Op; left: L; right: Sub }]
+														: never
+											: [R3, SqlParserError<"Invalid comparison operator">]
+										: never
+								: never
+							: ParseOrScalarUntyped<R2, Env> extends [infer R4 extends TokensList, infer ArrExpr]
+								? ArrExpr extends SqlParserError<string>
+									? [R4, ArrExpr]
+									: ArrExpr extends ScalarExprAst
+										? PeekToken<R4> extends TokenKey<")">
+											? SkipToken<R4> extends infer R5 extends TokensList
+												? TokenToCmpOp<OpToken> extends infer Op extends ScalarCmpOp
+													? Kw extends TokenKey<"any">
+														? [R5, { kind: "any_op"; op: Op; left: L; right: ArrExpr }]
+														: Kw extends TokenKey<"all">
+															? [R5, { kind: "all_op"; op: Op; left: L; right: ArrExpr }]
+															: Kw extends TokenKey<"some">
+																? [
+																		R5,
+																		{
+																			kind: "some_op"
+																			op: Op
+																			left: L
+																			right: ArrExpr
+																		},
+																	]
+																: never
+													: [R5, SqlParserError<"Invalid comparison operator">]
+												: never
+											: [R4, SqlParserError<"Expected ) after ANY/ALL/SOME expression">]
+										: never
+								: never
+						: never
+					: [R1, SqlParserError<"Expected ( after ANY/ALL/SOME">]
+				: never
+			: never
+		: never
+
 type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends infer P
 		? IsRelOp<P> extends true
 			? SkipToken<Tokens> extends infer R2 extends TokensList
-				? ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
-					? Rhs extends SqlParserError<string>
-						? [R3, Rhs]
-						: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
-							? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
-							: [R3, SqlParserError<"Invalid comparison operator">]
-					: never
+				? PeekToken<R2> extends TokenKey<"any"> | TokenKey<"all"> | TokenKey<"some">
+					? ParseAnyAllSomeAfterOp<R2, L, P, Env>
+					: ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
+						? Rhs extends SqlParserError<string>
+							? [R3, Rhs]
+							: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
+								? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
+								: [R3, SqlParserError<"Invalid comparison operator">]
+						: never
 				: never
 			: P extends TokenKey<"is">
 				? SkipToken<Tokens> extends infer R4 extends TokensList
@@ -733,19 +812,76 @@ type ResolveFunctionCall<
 											? ArgsRes extends readonly []
 												? ExprOk<string, "uuid">
 												: SqlParserError<"This function takes no arguments">
-											: "functions" extends keyof Db
-												? Db["functions"] extends Record<string, unknown>
-													? L extends keyof Db["functions"]
-														? Db["functions"][L &
-																keyof Db["functions"]] extends infer SqlType extends
-																string
-															? ExprOk<unknown, SqlType>
-															: ExprOk<unknown, "unknown">
-														: SqlParserError<`Unknown function: ${Name}`>
-													: SqlParserError<`Unknown function: ${Name}`>
-												: SqlParserError<`Unknown function: ${Name}`>
+											: L extends "array_length"
+												? ArgsRes extends readonly [
+														ExprOk<infer _T1, infer S1>,
+														ExprOk<number, infer _S2>,
+													]
+													? S1 extends `${string}[]` | "unknown"
+														? ExprOk<number, "integer">
+														: SqlParserError<"array_length expects (array, integer)">
+													: SqlParserError<"array_length requires 2 arguments">
+												: L extends "array_append"
+													? ArgsRes extends readonly [ExprOk<infer _T1, infer S1>, ExprAtom]
+														? S1 extends `${string}[]` | "unknown"
+															? ExprOk<readonly unknown[], "unknown">
+															: SqlParserError<"array_append expects (array, element)">
+														: SqlParserError<"array_append requires 2 arguments">
+													: L extends "array_prepend"
+														? ArgsRes extends readonly [
+																ExprAtom,
+																ExprOk<infer _T2, infer S2>,
+															]
+															? S2 extends `${string}[]` | "unknown"
+																? ExprOk<readonly unknown[], "unknown">
+																: SqlParserError<"array_prepend expects (element, array)">
+															: SqlParserError<"array_prepend requires 2 arguments">
+														: L extends "unnest"
+															? ArgsRes extends readonly [ExprOk<infer _T1, infer S1>]
+																? S1 extends `${string}[]` | "unknown"
+																	? ExprOk<unknown, "unknown">
+																	: SqlParserError<"unnest expects an array">
+																: SqlParserError<"unnest requires 1 argument">
+															: "functions" extends keyof Db
+																? Db["functions"] extends Record<string, unknown>
+																	? L extends keyof Db["functions"]
+																		? Db["functions"][L &
+																				keyof Db["functions"]] extends infer SqlType extends
+																				string
+																			? ExprOk<unknown, SqlType>
+																			: ExprOk<unknown, "unknown">
+																		: SqlParserError<`Unknown function: ${Name}`>
+																	: SqlParserError<`Unknown function: ${Name}`>
+																: SqlParserError<`Unknown function: ${Name}`>
 					: never
 			: never
+
+type ResolveWindowFunction<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	L extends string = Lowercase<Name>,
+> = L extends "row_number"
+	? Args extends readonly []
+		? ExprOk<number, "bigint">
+		: SqlParserError<"ROW_NUMBER() takes no arguments">
+	: L extends "rank" | "dense_rank"
+		? Args extends readonly []
+			? ExprOk<number, "bigint">
+			: SqlParserError<"RANK/DENSE_RANK takes no arguments">
+		: L extends "lag" | "lead"
+			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+				? ArgsRes extends SqlParserError<string>
+					? ArgsRes
+					: ArgsRes extends readonly [ExprOk<infer T, infer S>, ...infer _Rest]
+						? ExprOk<T | null, S>
+						: ArgsRes extends readonly []
+							? SqlParserError<"LAG/LEAD requires at least 1 argument">
+							: SqlParserError<"Invalid LAG/LEAD arguments">
+				: never
+			: SqlParserError<"Unknown window function">
 
 type ResolveCustomOp<
 	Op extends string,
@@ -763,9 +899,11 @@ type ResolveCustomOp<
 					? Rv
 					: Lv extends ExprAtom
 						? Rv extends ExprAtom
-							? Op extends "@>" | "&&"
+							? Op extends "@>" | "&&" | "<@"
 								? ExprOk<boolean, "boolean">
-								: ExprOk<unknown, string>
+								: Op extends "||"
+									? ExprOk<readonly unknown[], "unknown">
+									: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
 				: never
@@ -825,6 +963,14 @@ type ExpressionResolvers<
 		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
 	}
 		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params>
+		: never
+	window_function: Ast extends {
+		kind: "window_function"
+		name: infer FnName extends string
+		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
+		over: infer _Over
+	}
+		? ResolveWindowFunction<FnName, FArgs, Db, Scope, Params>
 		: never
 	qualified_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
 	alias_table_star: SqlParserError<"Qualified table .* is only valid in SELECT lists">
@@ -1077,6 +1223,30 @@ type ExpressionResolvers<
 	}
 		? ResolveInSubqueryAst<Ie, Isub, Db, Scope, Params>
 		: never
+	any_op: Ast extends {
+		kind: "any_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst | JsqlSelectStatementResult
+	}
+		? ResolveAnyAllSomeOp<Op, L, R, Db, Scope, Params>
+		: never
+	all_op: Ast extends {
+		kind: "all_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst | JsqlSelectStatementResult
+	}
+		? ResolveAnyAllSomeOp<Op, L, R, Db, Scope, Params>
+		: never
+	some_op: Ast extends {
+		kind: "some_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst | JsqlSelectStatementResult
+	}
+		? ResolveAnyAllSomeOp<Op, L, R, Db, Scope, Params>
+		: never
 	in_list: Ast extends {
 		kind: "in_list"
 		expr: infer Eln extends ScalarExprAst
@@ -1215,6 +1385,162 @@ type ParseFunctionArgs<Tokens extends TokensList, Env extends ExprParseEnv> =
 			? [SkipToken<Tokens>, readonly []]
 			: ParseFunctionArgsAccum<Tokens, Env, readonly []>
 
+type ParseOptionalOverClause<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
+	PeekToken<Tokens> extends TokenKey<"over">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<"(">
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? ParseWindowClauseContent<R2, FnName, Args, Env>
+					: never
+				: [R1, SqlParserError<"Expected ( after OVER">]
+			: never
+		: [Tokens, { kind: "function_call"; name: FnName; args: Args }]
+
+type ParseWindowClauseContent<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
+	PeekToken<Tokens> extends TokenKey<"partition">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<"by">
+				? ParseWindowPartitionByList<SkipToken<R1>, Env> extends [
+						infer R2 extends TokensList,
+						infer PartitionList,
+					]
+					? PartitionList extends SqlParserError<string>
+						? [R2, PartitionList]
+						: PartitionList extends readonly ScalarExprAst[]
+							? PeekToken<R2> extends TokenKey<"order">
+								? ParseWindowOrderByAfterPartition<R2, FnName, Args, PartitionList, Env>
+								: PeekToken<R2> extends TokenKey<")">
+									? [
+											SkipToken<R2>,
+											{
+												kind: "window_function"
+												name: FnName
+												args: Args
+												over: { partition_by: PartitionList; order_by: readonly [] }
+											},
+										]
+									: [R2, SqlParserError<"Expected ORDER BY or ) after PARTITION BY">]
+							: never
+					: never
+				: [R1, SqlParserError<"Expected BY after PARTITION">]
+			: never
+		: PeekToken<Tokens> extends TokenKey<"order">
+			? ParseWindowOrderByWithoutPartition<Tokens, FnName, Args, Env>
+			: [Tokens, SqlParserError<"Expected PARTITION BY or ORDER BY in OVER clause">]
+
+type ParseWindowOrderByWithoutPartition<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
+	SkipToken<Tokens> extends infer R3 extends TokensList
+		? PeekToken<R3> extends TokenKey<"by">
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [infer R4 extends TokensList, infer OrderList]
+				? OrderList extends SqlParserError<string>
+					? [R4, OrderList]
+					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+						? PeekToken<R4> extends TokenKey<")">
+							? [
+									SkipToken<R4>,
+									{
+										kind: "window_function"
+										name: FnName
+										args: Args
+										over: { order_by: OrderList }
+									},
+								]
+							: [R4, SqlParserError<"Expected ) after OVER clause">]
+						: never
+				: never
+			: [R3, SqlParserError<"Expected BY after ORDER in OVER clause">]
+		: never
+
+type ParseWindowOrderByAfterPartition<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	PartitionList extends readonly ScalarExprAst[],
+	Env extends ExprParseEnv,
+> =
+	SkipToken<Tokens> extends infer R3 extends TokensList
+		? PeekToken<R3> extends TokenKey<"by">
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [infer R4 extends TokensList, infer OrderList]
+				? OrderList extends SqlParserError<string>
+					? [R4, OrderList]
+					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+						? PeekToken<R4> extends TokenKey<")">
+							? [
+									SkipToken<R4>,
+									{
+										kind: "window_function"
+										name: FnName
+										args: Args
+										over: { partition_by: PartitionList; order_by: OrderList }
+									},
+								]
+							: [R4, SqlParserError<"Expected ) after OVER clause">]
+						: never
+				: never
+			: [R3, SqlParserError<"Expected BY after ORDER">]
+		: never
+
+type ParseWindowPartitionByList<
+	Tokens extends TokensList,
+	Env extends ExprParseEnv,
+	Acc extends readonly ScalarExprAst[] = readonly [],
+> =
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr]
+		? Expr extends SqlParserError<string>
+			? [R1, Expr]
+			: Expr extends ScalarExprAst
+				? PeekToken<R1> extends TokenKey<",">
+					? ParseWindowPartitionByList<SkipToken<R1>, Env, readonly [...Acc, Expr]>
+					: [R1, readonly [...Acc, Expr]]
+				: never
+		: never
+
+type ParseWindowOrderByList<
+	Tokens extends TokensList,
+	Env extends ExprParseEnv,
+	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[] = readonly [],
+> =
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr]
+		? Expr extends SqlParserError<string>
+			? [R1, Expr]
+			: Expr extends ScalarExprAst
+				? PeekToken<R1> extends TokenKey<"asc">
+					? ParseWindowOrderByListTail<
+							SkipToken<R1>,
+							Env,
+							readonly [...Acc, { expr: Expr; direction: "asc" }]
+						>
+					: PeekToken<R1> extends TokenKey<"desc">
+						? ParseWindowOrderByListTail<
+								SkipToken<R1>,
+								Env,
+								readonly [...Acc, { expr: Expr; direction: "desc" }]
+							>
+						: ParseWindowOrderByListTail<R1, Env, readonly [...Acc, { expr: Expr; direction: null }]>
+				: never
+		: never
+
+type ParseWindowOrderByListTail<
+	Tokens extends TokensList,
+	Env extends ExprParseEnv,
+	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
+> = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc]
+
 type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts]
 		? Parts extends readonly ["__ats__", string] | readonly ["__qts__", string, string]
@@ -1225,7 +1551,7 @@ type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> 
 						? [After, Args]
 						: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 							? Parts extends readonly [infer FnName extends string]
-								? [After, { kind: "function_call"; name: FnName; args: Args }]
+								? ParseOptionalOverClause<After, FnName, Args, Env>
 								: [After, SqlParserError<"Qualified function names are not supported">]
 							: never
 					: never
@@ -1234,22 +1560,23 @@ type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> 
 					: never
 		: never
 
-type SqlComparisonClass<Sql extends string> =
-	Lowercase<Sql> extends
-		| "integer"
-		| "int"
-		| "int2"
-		| "int4"
-		| "int8"
-		| "smallint"
-		| "bigint"
-		| "real"
-		| "float4"
-		| "float8"
-		| "double precision"
-		| "numeric"
-		| "decimal"
-		| "number"
+type SqlComparisonClass<Sql extends string> = Sql extends `${infer Base}[]`
+	? `array_${SqlComparisonClass<Base>}`
+	: Lowercase<Sql> extends
+				| "integer"
+				| "int"
+				| "int2"
+				| "int4"
+				| "int8"
+				| "smallint"
+				| "bigint"
+				| "real"
+				| "float4"
+				| "float8"
+				| "double precision"
+				| "numeric"
+				| "decimal"
+				| "number"
 		? "numeric"
 		: Lowercase<Sql> extends "boolean" | "bool"
 			? "boolean"
@@ -1568,6 +1895,44 @@ type ResolveInSubqueryAst<
 				: SqlParserError<"Invalid IN left operand">
 		: never
 
+type ResolveAnyAllSomeOp<
+	Op extends string,
+	L extends ScalarExprAst,
+	R extends ScalarExprAst | JsqlSelectStatementResult,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	ResolveExpressionAST<L, Db, Scope, Params> extends infer Lv
+		? Lv extends SqlParserError<string>
+			? Lv
+			: Lv extends ExprAtom
+				? R extends JsqlSelectStatementResult
+					? SubSelectColumnAtom<R> extends infer Rv
+						? Rv extends SqlParserError<string>
+							? Rv
+							: Rv extends ExprAtom
+								? MergeComparison<Lv, Rv> extends infer V
+									? V extends SqlParserError<string>
+										? V
+										: ExprOk<boolean, "boolean">
+									: SqlParserError<"Invalid ANY/ALL/SOME comparison">
+								: SqlParserError<"Invalid ANY/ALL/SOME subquery column">
+						: SqlParserError<"Invalid ANY/ALL/SOME subquery column">
+					: R extends ScalarExprAst
+						? ResolveExpressionAST<R, Db, Scope, Params> extends infer Rv
+							? Rv extends SqlParserError<string>
+								? Rv
+								: Rv extends ExprOk<infer _RTs, infer RSql>
+									? RSql extends `${string}[]` | "unknown"
+										? ExprOk<boolean, "boolean">
+										: SqlParserError<"ANY/ALL/SOME requires an array or subquery">
+									: SqlParserError<"Invalid ANY/ALL/SOME operand">
+							: never
+						: SqlParserError<"Invalid ANY/ALL/SOME operand">
+				: SqlParserError<"Invalid ANY/ALL/SOME left operand">
+		: never
+
 type MergeBoolNot<V> =
 	V extends SqlParserError<string>
 		? V
@@ -1606,11 +1971,11 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 			? Ts extends string | number | boolean
 				? ExprOk<string, "text">
 				: SqlParserError<"Invalid cast to text">
-			: N extends "integer" | "int" | "int4" | "smallint" | "int2"
+			: N extends "integer" | "int" | "int4" | "smallint" | "int2" | "serial" | "smallserial"
 				? Ts extends number
 					? ExprOk<number, "integer">
 					: SqlParserError<"Invalid cast to integer">
-				: N extends "bigint" | "int8"
+				: N extends "bigint" | "int8" | "bigserial"
 					? Ts extends number
 						? ExprOk<number, "bigint">
 						: SqlParserError<"Invalid cast to bigint">
@@ -1622,11 +1987,41 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 							? Ts extends string
 								? ExprOk<string, "uuid">
 								: SqlParserError<"Invalid cast to uuid">
-							: N extends "real" | "float4" | "double precision" | "float8" | "numeric" | "decimal"
-								? Ts extends number
-									? ExprOk<number, "number">
-									: SqlParserError<"Invalid cast to floating-point or numeric type">
-								: SqlParserError<"Unsupported cast target type">
+							: N extends "bytea"
+								? Ts extends string
+									? ExprOk<string, "bytea">
+									: SqlParserError<"Invalid cast to bytea">
+								: N extends
+											| "timestamp"
+											| "timestamp with time zone"
+											| "timestamptz"
+											| "date"
+											| "time"
+											| "time with time zone"
+											| "timetz"
+											| "interval"
+									? Ts extends string
+										? ExprOk<string, N>
+										: SqlParserError<"Invalid cast to datetime/interval type">
+									: N extends "inet" | "cidr"
+										? Ts extends string
+											? ExprOk<string, N>
+											: SqlParserError<"Invalid cast to network address type">
+										: N extends "tsvector" | "tsquery"
+											? Ts extends string
+												? ExprOk<string, N>
+												: SqlParserError<"Invalid cast to full-text search type">
+											: N extends
+														| "real"
+														| "float4"
+														| "double precision"
+														| "float8"
+														| "numeric"
+														| "decimal"
+												? Ts extends number
+													? ExprOk<number, "number">
+													: SqlParserError<"Invalid cast to floating-point or numeric type">
+												: ExprOk<unknown, N>
 		: SqlParserError<"Invalid cast operand">
 
 type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
@@ -2075,14 +2470,23 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 								? [After, Args]
 								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 									? Parts extends readonly [infer FnName extends string]
-										? [After, { kind: "function_call"; name: FnName; args: Args }]
+										? ParseOptionalOverClause<After, FnName, Args, Env>
 										: [After, SqlParserError<"Qualified function names are not supported">]
 									: never
 							: never
 						: PeekToken<Rm> extends infer Pa
-							? Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-								? ParseAddLoopAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
-								: [Rm, { kind: "col"; parts: Parts }]
+							? Pa extends TokenKey<"::">
+								? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts }> extends [
+										infer Rcast extends TokensList,
+										infer Casted extends ScalarExprAst,
+									]
+									? PeekToken<Rcast> extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+										? ParseAddLoopAfterFirstScalarUntyped<Rcast, Casted, Env>
+										: [Rcast, Casted]
+									: never
+								: Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+									? ParseAddLoopAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
+									: [Rm, { kind: "col"; parts: Parts }]
 							: never
 					: never
 		: never

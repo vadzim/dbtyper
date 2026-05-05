@@ -3,17 +3,31 @@ import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList }
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
 
-/** True when `Tab` is a key of `sets` (including under `JsqlSchemaShape & { sets: { … } }` intersections). */
-type HasConcreteSet<Sets extends object, Tab extends string> = Tab extends keyof Sets ? true : false
-
-/** `sets[Tab]` can widen with `& { [K: string]: JsqlTableShape }`; narrow to a concrete base table (not `Extract<…, { kind: "table" }>`, which degrades on index signatures). */
-type AlterTableShapeAt<Sets extends object, Tab extends string> = Tab extends keyof Sets
-	? Sets[Tab] extends JsqlTableShape
-		? Sets[Tab]["kind"] extends "table"
-			? Sets[Tab]
+/** Helper to distribute over unions/intersections and extract the non-Record part */
+type ExtractConcreteTableType<T, Tab extends string> =
+	T extends Record<Tab, infer U>
+		? U extends JsqlTableShape
+			? [U] extends [JsqlTableShape]
+				? U
+				: never
 			: never
 		: never
-	: never
+
+/** Extract the table type from Sets by checking if Tab is assignable to a key. */
+type ExtractTableType<Sets, Tab extends string> = ExtractConcreteTableType<Sets, Tab>
+
+/** True when `Tab` is a key of `sets`. */
+type HasConcreteSet<Sets extends object, Tab extends string> = ExtractTableType<Sets, Tab> extends never ? false : true
+
+/** `sets[Tab]` can widen with `& { [K: string]: JsqlTableShape }`; narrow to a concrete base table. */
+type AlterTableShapeAt<Sets extends object, Tab extends string> =
+	ExtractTableType<Sets, Tab> extends infer T
+		? T extends JsqlTableShape
+			? T["kind"] extends "table"
+				? T
+				: never
+			: never
+		: never
 
 type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
 	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : unknown
@@ -70,7 +84,12 @@ type ReplaceTableInDb<
 	defaultSchema: Db["defaultSchema"]
 	schemas: {
 		[K in keyof Db["schemas"]]: K extends Sch
-			? { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> } & Omit<Db["schemas"][K], "sets">
+			? Db["schemas"][K]["types"] extends object
+				? {
+						sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape>
+						types: Db["schemas"][K]["types"]
+					}
+				: { sets: Omit<Db["schemas"][K]["sets"], Tab> & Record<Tab, NewShape> }
 			: Db["schemas"][K]
 	}
 }
