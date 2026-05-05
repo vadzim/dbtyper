@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: Array equality in WHERE
 	const result = await db.query(`select * from items where tags = array['a','b'];`)
 

@@ -15,7 +15,6 @@ async function test() {
 		.apply(`create table posts (id text, user_id text);`)
 		.database()
 
-
 	// ✅ SUCCESS: Subquery FROM scope shadows outer FROM scope
 	const result = await db.query(`
 		select 

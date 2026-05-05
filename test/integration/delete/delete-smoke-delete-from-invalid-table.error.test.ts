@@ -16,10 +16,11 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ❌ ERROR: DELETE from invalid table
-	const result = await db.query(// @ts-expect-error
-		`delete from invalid_table;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`delete from invalid_table;`,
+	)
 
 	return result
 }

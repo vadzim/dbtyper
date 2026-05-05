@@ -14,11 +14,11 @@ async function test() {
 		.apply(`create table users (id text not null, name text not null, email text);`)
 		.database()
 
-
 	// ❌ ERROR: missing NOT NULL column 'name'
 	const result = await db.query(
 		// @ts-expect-error
-		`insert into users (id) values ('3') returning *;`,)
+		`insert into users (id) values ('3') returning *;`,
+	)
 
 	return result
 }

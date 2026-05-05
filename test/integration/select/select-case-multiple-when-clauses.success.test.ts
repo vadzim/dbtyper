@@ -21,7 +21,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: Multiple WHEN clauses
 	const result = await db.query(`
 		select

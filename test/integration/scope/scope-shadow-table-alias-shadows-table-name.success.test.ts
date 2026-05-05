@@ -15,7 +15,6 @@ async function test() {
 		.apply(`create table posts (id text, user_id text);`)
 		.database()
 
-
 	// ✅ SUCCESS: Table alias shadows table name
 	const result = await db.query(`
 		select posts.id from users as posts;

@@ -16,7 +16,9 @@ async function test() {
 		.database()
 
 	// ✅ SUCCESS: DENSE_RANK() with ORDER BY
-	const result = await db.query(`select id, product, dense_rank() over (order by amount) as dense_rank_num from sales;`,)
+	const result = await db.query(
+		`select id, product, dense_rank() over (order by amount) as dense_rank_num from sales;`,
+	)
 
 	return result
 }

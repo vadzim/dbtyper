@@ -21,10 +21,11 @@ async function test() {
 		)
 		.database()
 
-
 	// ❌ ERROR: CASE in WHERE must return boolean
-	const result = await db.query(// @ts-expect-error
-		`select * from users where case when active then 'yes' else 'no' end;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`select * from users where case when active then 'yes' else 'no' end;`,
+	)
 
 	return result
 }

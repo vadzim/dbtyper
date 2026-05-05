@@ -21,10 +21,11 @@ async function test() {
 		)
 		.database()
 
-
 	// ❌ ERROR: Incompatible types across multiple WHEN branches
-	const result = await db.query(// @ts-expect-error
-		`select case when age < 18 then 'minor' when age >= 18 then 42 else 'unknown' end from users;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`select case when age < 18 then 'minor' when age >= 18 then 42 else 'unknown' end from users;`,
+	)
 
 	return result
 }

@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table users (id text not null, name text not null, email text);`)
 		.database()
 
-
 	// ✅ SUCCESS: all NOT NULL columns provided
 	const result = await db.query(`insert into users (id, name) values ('1', 'Alice') returning *;`)
 

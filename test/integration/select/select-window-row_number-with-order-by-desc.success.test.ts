@@ -16,7 +16,7 @@ async function test() {
 		.database()
 
 	// ✅ SUCCESS: ROW_NUMBER() with ORDER BY DESC
-	const result = await db.query(`select id, product, row_number() over (order by amount desc) as row_num from sales;`,)
+	const result = await db.query(`select id, product, row_number() over (order by amount desc) as row_num from sales;`)
 
 	return result
 }

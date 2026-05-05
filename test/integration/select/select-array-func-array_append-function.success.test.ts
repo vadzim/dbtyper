@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: array_append function
 	const result = await db.query(`select array_append(tags, 'new') as appended from items;`)
 

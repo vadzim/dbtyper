@@ -15,7 +15,6 @@ async function test() {
 		.apply(`create table priorities (value integer not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: = ANY with column array
 	const result = await db.query(`select * from items where 'important' = any(tags);`)
 

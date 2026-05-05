@@ -21,7 +21,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: CASE in WHERE clause
 	const result = await db.query(`
 		select * from users

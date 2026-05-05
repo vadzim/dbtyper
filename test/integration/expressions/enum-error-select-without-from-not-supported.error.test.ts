@@ -15,20 +15,24 @@ async function test() {
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 		.apply(`create type priority as enum ('low', 'medium', 'high');`)
-		.apply(`create table tasks (
+		.apply(
+			`create table tasks (
 			id integer not null,
 			name text not null,
 			task_status status not null,
 			task_priority priority,
 			is_urgent boolean
-		);`)
+		);`,
+		)
 		.database()
 
 	// Note: SELECT without FROM is not currently supported by the parser
-	// @ts-expect-error
-	const result = await db.query(`
+	const result = await db.query(
+		// @ts-expect-error
+		`
 		select 'invalid'::status;
-	`)
+	`,
+	)
 
 	return result
 }

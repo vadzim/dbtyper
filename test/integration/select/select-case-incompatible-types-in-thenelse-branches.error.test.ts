@@ -21,10 +21,11 @@ async function test() {
 		)
 		.database()
 
-
 	// ❌ ERROR: Incompatible types in THEN/ELSE branches
-	const result = await db.query(// @ts-expect-error
-		`select case when active then 'text' else 123 end from users;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`select case when active then 'text' else 123 end from users;`,
+	)
 
 	return result
 }

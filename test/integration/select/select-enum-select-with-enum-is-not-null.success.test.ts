@@ -15,15 +15,17 @@ async function test() {
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 		.apply(`create type priority as enum ('low', 'medium', 'high');`)
-		.apply(`create table tasks (
+		.apply(
+			`create table tasks (
 			id integer not null,
 			name text not null,
 			task_status status not null,
 			task_priority priority
-		);`)
+		);`,
+		)
 		.database()
 
-// ✅ SUCCESS: Select with enum IS NOT NULL
+	// ✅ SUCCESS: Select with enum IS NOT NULL
 	const result = await db.query(`select * from tasks
 		where task_priority is not null;`)
 

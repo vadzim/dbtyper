@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table users (id text not null, name text not null, email text);`)
 		.database()
 
-
 	// ✅ SUCCESS: nullable column can be omitted
 	const result = await db.query(`insert into users (id, name, email) values ('2', 'Bob', null) returning *;`)
 

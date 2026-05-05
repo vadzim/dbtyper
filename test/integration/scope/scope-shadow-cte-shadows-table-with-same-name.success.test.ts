@@ -15,7 +15,6 @@ async function test() {
 		.apply(`create table posts (id text, user_id text);`)
 		.database()
 
-
 	// ✅ SUCCESS: CTE shadows table with same name
 	const result = await db.query(`
 		with users as (select id from posts)

@@ -21,10 +21,11 @@ async function test() {
 		)
 		.database()
 
-
 	// ❌ ERROR: Boolean THEN with integer ELSE
-	const result = await db.query(// @ts-expect-error
-		`select case when active then true else 0 end from users;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`select case when active then true else 0 end from users;`,
+	)
 
 	return result
 }

@@ -21,7 +21,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: Nested CASE expressions
 	const result = await db.query(`
 		select

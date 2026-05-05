@@ -16,10 +16,11 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ❌ ERROR: Invalid table name
-	const result = await db.query(// @ts-expect-error
-		`insert into invalid_table (id) values (null);`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`insert into invalid_table (id) values (null);`,
+	)
 
 	return result
 }

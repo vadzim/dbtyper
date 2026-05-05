@@ -22,7 +22,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: can mix omitted and provided DEFAULT columns
 	const result = await db.query(`insert into users (id, name, age) values ('3', 'Charlie', 30) returning *;`)
 

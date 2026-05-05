@@ -16,6 +16,7 @@ Each file now has exactly one `.query()` or `.stream()` call.
 ### 1. Fixed TypeScript Compilation Errors (3 files)
 
 Fixed 3 `[monad.multipleConsumption]` errors by reordering PeekToken/SkipToken checks:
+
 - `src/parser/parse-qualified-name.ts`
 - `src/parser/parse-alter-type.ts`
 - `src/parser/parse-drop-type.ts`
@@ -23,16 +24,19 @@ Fixed 3 `[monad.multipleConsumption]` errors by reordering PeekToken/SkipToken c
 ### 2. Renamed Integration Test Files (110 files)
 
 Classified and renamed based on `@ts-expect-error` presence:
+
 - Files with `@ts-expect-error` → `.error.test.ts`
 - Files without → `.success.test.ts`
 
 ### 3. Split Files with Multiple .query() Calls (28 → 237 files)
 
 **Batch 1: Window functions and enums (2 files → 25 files)**
+
 - select-window-functions.success.test.ts (14 queries) → 14 files
 - select-with-enums.success.test.ts (11 queries) → 11 files
 
 **Batch 2: Auto-processable files (15 files → 70 files)**
+
 - select-any-all-some (10) → 10 files
 - select-array-functions (8) → 8 files
 - select-array-operators (8) → 8 files
@@ -50,10 +54,12 @@ Classified and renamed based on `@ts-expect-error` presence:
 - smoke-basic-select (3) → 3 files
 
 **Batch 3: Query-stream files (2 files → 10 files)**
+
 - query-accepts-non-returning (5 queries) → 5 files
 - stream-rejects-non-returning (5 queries) → 5 files (3 error, 2 success)
 
 **Batch 4: Enum files (5 files → 40 files)**
+
 - insert-with-enums (7 queries) → 7 files (6 success, 1 error)
 - update-with-enums (6 queries) → 6 files (5 success, 1 error)
 - enum-multi-schema (6 queries) → 6 files (all success)
@@ -61,6 +67,7 @@ Classified and renamed based on `@ts-expect-error` presence:
 - enum-error-cases (11 queries) → 11 files (8 success, 3 error)
 
 **Batch 5: CASE expressions (1 file → 11 files)**
+
 - select-case-searched (11 queries) → 11 files (5 success, 6 error)
 
 ### 4. Fixed Validation Issues
@@ -80,6 +87,7 @@ This is a design decision - files test multiple scenarios with different databas
 Further splitting would create 500+ files, which may be excessive.
 
 **Options:**
+
 1. Accept current structure and relax validator
 2. Further split into 500+ files (one sqlMigrations per file)
 3. Refactor tests to reuse single database setup where possible
@@ -87,6 +95,7 @@ Further splitting would create 500+ files, which may be excessive.
 ## Files Created
 
 **Documentation (moved to docs/integration-tests/):**
+
 - API_DESIGN_LOG.md
 - API_IMPLEMENTATION_LOG.md
 - DESIGN_LOG.md
@@ -95,6 +104,7 @@ Further splitting would create 500+ files, which may be excessive.
 - TS_EXPECT_ERROR_AUDIT.md
 
 **Helper scripts:**
+
 - scripts/split-test-file.py (Python script for splitting test files)
 
 ## Commits
@@ -113,6 +123,7 @@ Further splitting would create 500+ files, which may be excessive.
 ## Next Steps
 
 Decision needed on validator requirements:
+
 - Keep current structure (one .query() per file) ✅
 - Further split to one sqlMigrations() per file? (500+ files)
 - Or relax validator to allow multiple sqlMigrations()?

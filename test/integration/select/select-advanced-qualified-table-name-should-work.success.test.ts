@@ -16,7 +16,6 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ✅ SUCCESS: qualified table name should work
 	const result = await db.query(`select id, name from public.users;`)
 

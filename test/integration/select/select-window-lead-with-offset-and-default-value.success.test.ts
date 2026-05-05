@@ -16,7 +16,9 @@ async function test() {
 		.database()
 
 	// ✅ SUCCESS: LEAD() with offset and default value
-	const result = await db.query(`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`,)
+	const result = await db.query(
+		`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`,
+	)
 
 	return result
 }

@@ -21,7 +21,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: Basic CASE WHEN with boolean condition
 	const result = await db.query(`
 		select

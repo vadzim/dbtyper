@@ -16,7 +16,9 @@ async function test() {
 		.database()
 
 	// ✅ SUCCESS: LEAD() with PARTITION BY and ORDER BY
-	const result = await db.query(`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`,)
+	const result = await db.query(
+		`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`,
+	)
 
 	return result
 }

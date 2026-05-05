@@ -21,7 +21,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: CASE without ELSE (returns NULL)
 	const result = await db.query(`
 		select

@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: Array concatenation with column
 	const result = await db.query(`select tags || tags as doubled from items;`)
 

@@ -16,7 +16,9 @@ async function test() {
 		.database()
 
 	// ✅ SUCCESS: LAG() with offset
-	const result = await db.query(`select id, product, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`,)
+	const result = await db.query(
+		`select id, product, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`,
+	)
 
 	return result
 }

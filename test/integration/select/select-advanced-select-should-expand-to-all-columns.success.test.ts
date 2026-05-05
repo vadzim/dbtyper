@@ -16,7 +16,6 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ✅ SUCCESS: SELECT * should expand to all columns
 	const result = await db.query(`select * from users;`)
 

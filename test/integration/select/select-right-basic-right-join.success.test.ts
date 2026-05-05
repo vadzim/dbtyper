@@ -15,7 +15,6 @@ async function test() {
 		.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: Basic RIGHT JOIN
 	const result = await db.query(`select * from users right join orders on users.id = orders.user_id;`)
 

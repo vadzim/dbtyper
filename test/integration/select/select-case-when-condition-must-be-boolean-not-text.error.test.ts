@@ -21,10 +21,11 @@ async function test() {
 		)
 		.database()
 
-
 	// ❌ ERROR: WHEN condition must be boolean, not text
-	const result = await db.query(// @ts-expect-error
-		`select case when name then 'yes' else 'no' end from users;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`select case when name then 'yes' else 'no' end from users;`,
+	)
 
 	return result
 }

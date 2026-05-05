@@ -22,9 +22,10 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: can provide explicit values for DEFAULT columns
-	const result = await db.query(`insert into users (id, name, age, active) values ('2', 'Bob', 25, false) returning *;`,)
+	const result = await db.query(
+		`insert into users (id, name, age, active) values ('2', 'Bob', 25, false) returning *;`,
+	)
 
 	return result
 }

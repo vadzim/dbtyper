@@ -15,9 +15,10 @@ async function test() {
 		.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: FULL OUTER JOIN with WHERE
-	const result = await db.query(`select * from users full outer join orders on users.id = orders.user_id where orders.total > 100;`,)
+	const result = await db.query(
+		`select * from users full outer join orders on users.id = orders.user_id where orders.total > 100;`,
+	)
 
 	return result
 }

@@ -1,5 +1,13 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokenString, TokensList } from "../lexer/sql-tokens.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokenString,
+	TokensList,
+} from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 
@@ -84,7 +92,10 @@ type ParseCreateTypeAsEnum<
 					? SkipToken<AfterAs> extends infer AfterEnum extends TokensList
 						? EnumTok extends TokenKey<"enum">
 							? IfNotExists extends true
-								? HasConcreteType<Db["schemas"][Schema & keyof Db["schemas"]]["types"], TypeName> extends true
+								? HasConcreteType<
+										Db["schemas"][Schema & keyof Db["schemas"]]["types"],
+										TypeName
+									> extends true
 									? ParseCreateTypeSkipEnumBody<AfterEnum, Db>
 									: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
 								: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>

@@ -1,5 +1,13 @@
 import type { JsqlDatabaseShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokenString, TokensList } from "../lexer/sql-tokens.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokenString,
+	TokensList,
+} from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 
@@ -128,7 +136,7 @@ type ParseAlterTypeAddValue<
 					? NewValue extends Values[number]
 						? [AfterVal, Db, SqlParserError<"Enum value already exists">]
 						: UpdateTypeInDb<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewDb extends
-								JsqlDatabaseShape
+									JsqlDatabaseShape
 							? ParseAlterTypeCloseSemi<AfterVal, NewDb>
 							: never
 					: [AfterVal, Db, SqlParserError<"Type is not an enum">]

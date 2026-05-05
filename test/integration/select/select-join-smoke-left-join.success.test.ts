@@ -17,9 +17,10 @@ async function test() {
 		.apply(`create table posts (id text, user_id text, title text);`)
 		.database()
 
-
 	// ✅ SUCCESS: LEFT JOIN
-	const result = await db.query(`select users.name, posts.title from users left join posts on users.id = posts.user_id;`,)
+	const result = await db.query(
+		`select users.name, posts.title from users left join posts on users.id = posts.user_id;`,
+	)
 
 	return result
 }

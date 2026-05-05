@@ -14,10 +14,11 @@ async function test() {
 		.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 		.database()
 
-
 	// ❌ ERROR: Cannot cast integer to boolean
-	const result = await db.query(// @ts-expect-error
-		`select id::boolean from data;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`select id::boolean from data;`,
+	)
 
 	return result
 }

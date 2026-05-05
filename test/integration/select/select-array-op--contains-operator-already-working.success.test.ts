@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: @> (contains) operator - already working
 	const result = await db.query(`select tags @> array['a'] as contains from items;`)
 

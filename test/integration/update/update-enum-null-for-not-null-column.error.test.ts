@@ -15,21 +15,25 @@ async function test() {
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 		.apply(`create type priority as enum ('low', 'medium', 'high');`)
-		.apply(`create table tasks (
+		.apply(
+			`create table tasks (
 			id integer not null,
 			name text not null,
 			task_status status not null,
 			task_priority priority
-		);`)
+		);`,
+		)
 		.database()
 
 	// ❌ ERROR: NULL for NOT NULL enum column (caught at compile-time)
-	// @ts-expect-error
-	const result = await db.query(`
+	const result = await db.query(
+		// @ts-expect-error
+		`
 		update tasks
 		set task_status = null
 		where id = 6;
-	`)
+	`,
+	)
 
 	return result
 }

@@ -5,6 +5,7 @@ This document describes the enum type support in JSQL expressions.
 ## Overview
 
 JSQL now supports PostgreSQL-style enum types in expressions. Enum types can be:
+
 - Created with `CREATE TYPE ... AS ENUM`
 - Used in table column definitions
 - Used in INSERT, UPDATE, SELECT, and other DML statements
@@ -19,21 +20,22 @@ Enum types are treated as "unknown" types in the comparison class system. This m
 1. **String literals can be compared with enum columns** - This matches PostgreSQL behavior where string literals are implicitly castable to enum types.
 
 2. **Compile-time validation is limited** - The type system validates:
-   - ✅ NULL constraints (e.g., NULL not allowed for NOT NULL enum columns)
-   - ✅ Basic type compatibility (enums work with string-like operations)
-   - ❌ Specific enum value validation (e.g., 'invalid_value' for a status enum)
-   - ❌ Cross-enum-type validation (e.g., using 'high' from priority enum for status column)
+    - ✅ NULL constraints (e.g., NULL not allowed for NOT NULL enum columns)
+    - ✅ Basic type compatibility (enums work with string-like operations)
+    - ❌ Specific enum value validation (e.g., 'invalid_value' for a status enum)
+    - ❌ Cross-enum-type validation (e.g., using 'high' from priority enum for status column)
 
 3. **Runtime validation** - PostgreSQL performs full validation at runtime:
-   - Enum value must exist in the enum type definition
-   - Enum types must match (can't compare status enum with priority enum)
-   - Type conversions must be valid
+    - Enum value must exist in the enum type definition
+    - Enum types must match (can't compare status enum with priority enum)
+    - Type conversions must be valid
 
 This design matches PostgreSQL's behavior where enum validation is primarily a runtime concern.
 
 ## Supported Operations
 
 ### INSERT
+
 ```sql
 -- ✅ Valid enum value
 INSERT INTO tasks (id, status) VALUES (1, 'active');
@@ -46,6 +48,7 @@ INSERT INTO tasks (id, status) VALUES (3, NULL);
 ```
 
 ### UPDATE
+
 ```sql
 -- ✅ Update with valid enum value
 UPDATE tasks SET status = 'active' WHERE id = 1;
@@ -58,6 +61,7 @@ UPDATE tasks SET status = NULL WHERE id = 3;
 ```
 
 ### SELECT
+
 ```sql
 -- ✅ Compare enum with string literal
 SELECT * FROM tasks WHERE status = 'active';
@@ -76,6 +80,7 @@ SELECT status, COUNT(*) FROM tasks GROUP BY status;
 ```
 
 ### Type Casting
+
 ```sql
 -- ✅ Cast string to enum
 SELECT 'active'::status;
@@ -88,6 +93,7 @@ SELECT CAST('active' AS status);
 ```
 
 ### Complex Expressions
+
 ```sql
 -- ✅ CASE expression with enum
 SELECT
@@ -109,6 +115,7 @@ SELECT * FROM tasks WHERE status <> 'inactive';
 ```
 
 ### Multi-Schema Support
+
 ```sql
 -- ✅ Schema-qualified enum types
 CREATE TYPE public.status AS ENUM ('active', 'inactive');
@@ -148,34 +155,34 @@ SELECT 'invalid'::status;
 Comprehensive integration tests cover:
 
 1. **INSERT operations** (`test/integration/insert/insert-with-enums.test.ts`)
-   - Valid enum values
-   - NULL handling
-   - Runtime error scenarios
+    - Valid enum values
+    - NULL handling
+    - Runtime error scenarios
 
 2. **UPDATE operations** (`test/integration/update/update-with-enums.test.ts`)
-   - Updating enum columns
-   - NULL handling
-   - Runtime error scenarios
+    - Updating enum columns
+    - NULL handling
+    - Runtime error scenarios
 
 3. **SELECT operations** (`test/integration/select/select-with-enums.test.ts`)
-   - WHERE clauses with enums
-   - IN clauses
-   - IS NULL / IS NOT NULL
-   - Runtime error scenarios
+    - WHERE clauses with enums
+    - IN clauses
+    - IS NULL / IS NOT NULL
+    - Runtime error scenarios
 
 4. **Complex expressions** (`test/integration/expressions/enum-casting-complex.test.ts`)
-   - Type casting
-   - CASE expressions
-   - ORDER BY and GROUP BY
-   - COALESCE and other functions
+    - Type casting
+    - CASE expressions
+    - ORDER BY and GROUP BY
+    - COALESCE and other functions
 
 5. **Error cases** (`test/integration/expressions/enum-error-cases.test.ts`)
-   - Compile-time errors (NULL constraints)
-   - Runtime errors (invalid values, type mismatches)
+    - Compile-time errors (NULL constraints)
+    - Runtime errors (invalid values, type mismatches)
 
 6. **Multi-schema** (`test/integration/expressions/enum-multi-schema.test.ts`)
-   - Enums across different schemas
-   - Schema-qualified enum types
+    - Enums across different schemas
+    - Schema-qualified enum types
 
 ## Implementation Details
 
@@ -184,7 +191,7 @@ Comprehensive integration tests cover:
 Enum types are classified as "unknown" in `SqlComparisonClass`:
 
 ```typescript
-type SqlComparisonClass<Sql extends string> = 
+type SqlComparisonClass<Sql extends string> =
   // ... numeric, boolean, text, uuid, datetime ...
   : "unknown"  // Includes enum types
 ```
@@ -197,13 +204,13 @@ The `SameComparisonClass` type allows comparisons when either side is "unknown":
 
 ```typescript
 export type SameComparisonClass<SqlL extends string, SqlR extends string> =
-  SqlComparisonClass<SqlL> extends "unknown"
-    ? true
-    : SqlComparisonClass<SqlR> extends "unknown"
-      ? true
-      : SqlComparisonClass<SqlL> extends SqlComparisonClass<SqlR>
-        ? true
-        : false
+	SqlComparisonClass<SqlL> extends "unknown"
+		? true
+		: SqlComparisonClass<SqlR> extends "unknown"
+			? true
+			: SqlComparisonClass<SqlL> extends SqlComparisonClass<SqlR>
+				? true
+				: false
 ```
 
 This enables enum-to-string comparisons while maintaining type safety for known types.

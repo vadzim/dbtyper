@@ -15,7 +15,6 @@ async function test() {
 		.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: RIGHT OUTER JOIN (explicit OUTER)
 	const result = await db.query(`select * from users right outer join orders on users.id = orders.user_id;`)
 

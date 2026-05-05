@@ -16,7 +16,9 @@ async function test() {
 		.database()
 
 	// ✅ SUCCESS: ROW_NUMBER() with PARTITION BY
-	const result = await db.query(`select id, product, row_number() over (partition by product order by amount) as row_num from sales;`,)
+	const result = await db.query(
+		`select id, product, row_number() over (partition by product order by amount) as row_num from sales;`,
+	)
 
 	return result
 }

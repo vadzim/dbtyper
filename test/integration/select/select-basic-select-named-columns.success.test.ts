@@ -16,7 +16,6 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ✅ SUCCESS: SELECT named columns
 	const result = await db.query(`select id, name from users;`)
 

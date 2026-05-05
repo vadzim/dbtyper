@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: Cast text to uuid
 	const result = await db.query(`select value::uuid as value_uuid from data;`)
 

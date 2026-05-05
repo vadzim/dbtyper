@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: array functions with ARRAY constructor
 	const result = await db.query(`select array_length(array['a','b','c'], 1) as literal_len from items;`)
 

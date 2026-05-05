@@ -22,11 +22,11 @@ async function test() {
 		)
 		.database()
 
-
 	// ❌ ERROR: still must provide NOT NULL columns without DEFAULT
 	const result = await db.query(
 		// @ts-expect-error
-		`insert into users (age) values (20) returning *;`,)
+		`insert into users (age) values (20) returning *;`,
+	)
 
 	return result
 }

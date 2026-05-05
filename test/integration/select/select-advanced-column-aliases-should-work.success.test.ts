@@ -16,7 +16,6 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ✅ SUCCESS: column aliases should work
 	const result = await db.query(`select id as user_id, name as user_name from users;`)
 

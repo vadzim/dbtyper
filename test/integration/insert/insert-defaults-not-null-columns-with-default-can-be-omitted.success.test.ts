@@ -22,7 +22,6 @@ async function test() {
 		)
 		.database()
 
-
 	// ✅ SUCCESS: NOT NULL columns with DEFAULT can be omitted
 	const result = await db.query(`insert into users (id, name) values ('1', 'Alice') returning *;`)
 

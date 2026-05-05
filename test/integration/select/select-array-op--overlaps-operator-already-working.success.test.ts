@@ -14,7 +14,6 @@ async function test() {
 		.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 		.database()
 
-
 	// ✅ SUCCESS: && (overlaps) operator - already working
 	const result = await db.query(`select tags && array['a','b'] as overlaps from items;`)
 

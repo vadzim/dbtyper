@@ -4,7 +4,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
 
 /** Helper to distribute over unions/intersections and extract the non-Record part */
-type ExtractConcreteTableType<T, Tab extends string> = 
+type ExtractConcreteTableType<T, Tab extends string> =
 	T extends Record<Tab, infer U>
 		? U extends JsqlTableShape
 			? [U] extends [JsqlTableShape]
@@ -14,17 +14,13 @@ type ExtractConcreteTableType<T, Tab extends string> =
 		: never
 
 /** Extract the table type from Sets by checking if Tab is assignable to a key. */
-type ExtractTableType<Sets, Tab extends string> = 
-	ExtractConcreteTableType<Sets, Tab>
+type ExtractTableType<Sets, Tab extends string> = ExtractConcreteTableType<Sets, Tab>
 
 /** True when `Tab` is a key of `sets`. */
-type HasConcreteSet<Sets extends object, Tab extends string> = 
-	ExtractTableType<Sets, Tab> extends never
-		? false
-		: true
+type HasConcreteSet<Sets extends object, Tab extends string> = ExtractTableType<Sets, Tab> extends never ? false : true
 
 /** `sets[Tab]` can widen with `& { [K: string]: JsqlTableShape }`; narrow to a concrete base table. */
-type AlterTableShapeAt<Sets extends object, Tab extends string> = 
+type AlterTableShapeAt<Sets extends object, Tab extends string> =
 	ExtractTableType<Sets, Tab> extends infer T
 		? T extends JsqlTableShape
 			? T["kind"] extends "table"

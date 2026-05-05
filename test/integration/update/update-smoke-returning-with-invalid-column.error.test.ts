@@ -16,10 +16,11 @@ async function test() {
 		.apply(`create table users (id text, name text, email text);`)
 		.database()
 
-
 	// ❌ ERROR: RETURNING with invalid column
-	const result = await db.query(// @ts-expect-error
-		`update users set name = null returning invalid_column;`,)
+	const result = await db.query(
+		// @ts-expect-error
+		`update users set name = null returning invalid_column;`,
+	)
 
 	return result
 }

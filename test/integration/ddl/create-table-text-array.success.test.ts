@@ -1,5 +1,4 @@
-// Integration Test: SELECT with type casts - Cannot cast integer to uuid (uuid requires string)
-// Integration Test: PostgreSQL type casts (::type)
+// Integration Test: CREATE TABLE with array types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
@@ -9,14 +8,12 @@ const mockDriver = {
 }
 
 async function test() {
+	// ✅ SUCCESS: text array
 	const db = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		.apply(`create table data (id integer not null, value text not null, num integer not null);`)
+		.apply(`create table tags (id integer not null, labels text[] not null);`)
 		.database()
-
-
-	// ❌ ERROR: Cannot cast integer to uuid (uuid requires string)
-	const result = await db.query(`select id::uuid from data;`)
+	const result = await db.query(`select id, labels from tags;`)
 
 	return result
 }
