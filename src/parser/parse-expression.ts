@@ -1606,11 +1606,11 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 			? Ts extends string | number | boolean
 				? ExprOk<string, "text">
 				: SqlParserError<"Invalid cast to text">
-			: N extends "integer" | "int" | "int4" | "smallint" | "int2"
+			: N extends "integer" | "int" | "int4" | "smallint" | "int2" | "serial" | "smallserial"
 				? Ts extends number
 					? ExprOk<number, "integer">
 					: SqlParserError<"Invalid cast to integer">
-				: N extends "bigint" | "int8"
+				: N extends "bigint" | "int8" | "bigserial"
 					? Ts extends number
 						? ExprOk<number, "bigint">
 						: SqlParserError<"Invalid cast to bigint">
@@ -1622,11 +1622,41 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 							? Ts extends string
 								? ExprOk<string, "uuid">
 								: SqlParserError<"Invalid cast to uuid">
-							: N extends "real" | "float4" | "double precision" | "float8" | "numeric" | "decimal"
-								? Ts extends number
-									? ExprOk<number, "number">
-									: SqlParserError<"Invalid cast to floating-point or numeric type">
-								: SqlParserError<"Unsupported cast target type">
+							: N extends "bytea"
+								? Ts extends string
+									? ExprOk<string, "bytea">
+									: SqlParserError<"Invalid cast to bytea">
+								: N extends
+											| "timestamp"
+											| "timestamp with time zone"
+											| "timestamptz"
+											| "date"
+											| "time"
+											| "time with time zone"
+											| "timetz"
+											| "interval"
+									? Ts extends string
+										? ExprOk<string, N>
+										: SqlParserError<"Invalid cast to datetime/interval type">
+									: N extends "inet" | "cidr"
+										? Ts extends string
+											? ExprOk<string, N>
+											: SqlParserError<"Invalid cast to network address type">
+										: N extends "tsvector" | "tsquery"
+											? Ts extends string
+												? ExprOk<string, N>
+												: SqlParserError<"Invalid cast to full-text search type">
+											: N extends
+														| "real"
+														| "float4"
+														| "double precision"
+														| "float8"
+														| "numeric"
+														| "decimal"
+												? Ts extends number
+													? ExprOk<number, "number">
+													: SqlParserError<"Invalid cast to floating-point or numeric type">
+												: SqlParserError<"Unsupported cast target type">
 		: SqlParserError<"Invalid cast operand">
 
 type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
@@ -2080,9 +2110,18 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 									: never
 							: never
 						: PeekToken<Rm> extends infer Pa
-							? Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-								? ParseAddLoopAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
-								: [Rm, { kind: "col"; parts: Parts }]
+							? Pa extends TokenKey<"::">
+								? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts }> extends [
+										infer Rcast extends TokensList,
+										infer Casted extends ScalarExprAst,
+									]
+									? PeekToken<Rcast> extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+										? ParseAddLoopAfterFirstScalarUntyped<Rcast, Casted, Env>
+										: [Rcast, Casted]
+									: never
+								: Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
+									? ParseAddLoopAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
+									: [Rm, { kind: "col"; parts: Parts }]
 							: never
 					: never
 		: never
