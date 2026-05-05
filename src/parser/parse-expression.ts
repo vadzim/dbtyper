@@ -763,9 +763,11 @@ type ResolveCustomOp<
 					? Rv
 					: Lv extends ExprAtom
 						? Rv extends ExprAtom
-							? Op extends "@>" | "&&"
+							? Op extends "@>" | "&&" | "<@"
 								? ExprOk<boolean, "boolean">
-								: ExprOk<unknown, string>
+								: Op extends "||"
+									? ExprOk<readonly unknown[], "unknown">
+									: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
 				: never
@@ -1234,22 +1236,23 @@ type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> 
 					: never
 		: never
 
-type SqlComparisonClass<Sql extends string> =
-	Lowercase<Sql> extends
-		| "integer"
-		| "int"
-		| "int2"
-		| "int4"
-		| "int8"
-		| "smallint"
-		| "bigint"
-		| "real"
-		| "float4"
-		| "float8"
-		| "double precision"
-		| "numeric"
-		| "decimal"
-		| "number"
+type SqlComparisonClass<Sql extends string> = Sql extends `${infer Base}[]`
+	? `array_${SqlComparisonClass<Base>}`
+	: Lowercase<Sql> extends
+				| "integer"
+				| "int"
+				| "int2"
+				| "int4"
+				| "int8"
+				| "smallint"
+				| "bigint"
+				| "real"
+				| "float4"
+				| "float8"
+				| "double precision"
+				| "numeric"
+				| "decimal"
+				| "number"
 		? "numeric"
 		: Lowercase<Sql> extends "boolean" | "bool"
 			? "boolean"
