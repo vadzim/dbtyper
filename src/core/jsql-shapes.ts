@@ -5,6 +5,19 @@ export type JsqlDatabaseShape = {
 	functions?: Record<string, string>
 }
 
+export type JsqlSchemaShape = {
+	/** Named relations in the schema (base tables and views). */
+	sets: { [K: string]: JsqlTableShape }
+}
+
+export type JsqlTableShape = {
+	kind: "table" | "view"
+	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
+	columns: { [K: string]: string }
+	constraints?: JsqlConstraintMap
+	column_facts?: JsqlColumnFactsMap
+}
+
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
 export type JsqlSelectStatementResult = {
 	kind: "select"
@@ -31,19 +44,6 @@ export type JsqlUpdateStatementResult = {
 	schema: string
 	/** Column names that appeared in `SET` (each assignment is type-checked). */
 	set_columns: readonly string[]
-}
-
-export type JsqlSchemaShape = {
-	/** Named relations in the schema (base tables and views). */
-	sets: { [K: string]: JsqlTableShape }
-}
-
-export type JsqlTableShape = {
-	kind: "table" | "view"
-	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
-	columns: { [K: string]: string }
-	constraints?: JsqlConstraintMap
-	column_facts?: JsqlColumnFactsMap
 }
 
 export type JsqlConstraintEntry =
