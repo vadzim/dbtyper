@@ -294,6 +294,7 @@ const serviceWordsMap = {
 	default: true,
 	delete: true,
 	else: true,
+	enum: true,
 	desc: true,
 	distinct: true,
 	do: true,
