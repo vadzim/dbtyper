@@ -867,7 +867,17 @@ type ResolveWindowFunction<
 		? Args extends readonly []
 			? ExprOk<number, "bigint">
 			: SqlParserError<"RANK/DENSE_RANK takes no arguments">
-		: SqlParserError<"Unknown window function">
+		: L extends "lag" | "lead"
+			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+				? ArgsRes extends SqlParserError<string>
+					? ArgsRes
+					: ArgsRes extends readonly [ExprOk<infer T, infer S>, ...infer _Rest]
+						? ExprOk<T | null, S>
+						: ArgsRes extends readonly []
+							? SqlParserError<"LAG/LEAD requires at least 1 argument">
+							: SqlParserError<"Invalid LAG/LEAD arguments">
+				: never
+			: SqlParserError<"Unknown window function">
 
 type ResolveCustomOp<
 	Op extends string,

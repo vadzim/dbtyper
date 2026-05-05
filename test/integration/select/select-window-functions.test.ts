@@ -61,7 +61,42 @@ async function testWindowFunctions() {
 		`select id, product, row_number() over (partition by product) as row_num from sales;`,
 	)
 
-	return { result1, result2, result3, result4, result5, result6, result7, result8, result9, result10 }
+	// ✅ SUCCESS: LAG() with PARTITION BY and ORDER BY
+	const result11 = await db.query(
+		`select id, product, amount, lag(amount) over (partition by product order by sale_date) as prev_amount from sales;`,
+	)
+
+	// ✅ SUCCESS: LEAD() with PARTITION BY and ORDER BY
+	const result12 = await db.query(
+		`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`,
+	)
+
+	// ✅ SUCCESS: LAG() with offset
+	const result13 = await db.query(
+		`select id, product, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`,
+	)
+
+	// ✅ SUCCESS: LEAD() with offset and default value
+	const result14 = await db.query(
+		`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`,
+	)
+
+	return {
+		result1,
+		result2,
+		result3,
+		result4,
+		result5,
+		result6,
+		result7,
+		result8,
+		result9,
+		result10,
+		result11,
+		result12,
+		result13,
+		result14,
+	}
 }
 
 testWindowFunctions()

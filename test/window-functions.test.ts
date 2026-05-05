@@ -100,6 +100,34 @@ type _tMultiPartition = Expect<
 	Extends<Tuple3At2<TMultiPartition>, { kind: "select"; columns: { id: "integer"; row_num: "bigint" } }>
 >
 
+// Test LAG() with PARTITION BY and ORDER BY
+type TLag = ParseSqlStatement<
+	ParseSqlTokens<`select id, product, amount, lag(amount) over (partition by product order by sale_date) as prev_amount from sales;`>,
+	DbWindow
+>
+type _tLag = Expect<Extends<Tuple3At2<TLag>, { kind: "select" }>>
+
+// Test LEAD() with PARTITION BY and ORDER BY
+type TLead = ParseSqlStatement<
+	ParseSqlTokens<`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`>,
+	DbWindow
+>
+type _tLead = Expect<Extends<Tuple3At2<TLead>, { kind: "select" }>>
+
+// Test LAG() with offset
+type TLagOffset = ParseSqlStatement<
+	ParseSqlTokens<`select id, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`>,
+	DbWindow
+>
+type _tLagOffset = Expect<Extends<Tuple3At2<TLagOffset>, { kind: "select" }>>
+
+// Test LEAD() with offset and default
+type TLeadDefault = ParseSqlStatement<
+	ParseSqlTokens<`select id, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`>,
+	DbWindow
+>
+type _tLeadDefault = Expect<Extends<Tuple3At2<TLeadDefault>, { kind: "select" }>>
+
 describe("window-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
