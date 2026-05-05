@@ -12,7 +12,6 @@ async function testAlterTypeAddValue() {
 	const db1 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'pending';`)
 		.database()
 
@@ -20,11 +19,8 @@ async function testAlterTypeAddValue() {
 	const db2 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'inactive';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'pending';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'archived';`)
 		.database()
 
@@ -46,7 +42,6 @@ async function testAlterTypeAddValue() {
 		.apply(`create schema public;`)
 		.apply(`create schema app;`)
 		.apply(`create type app.status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type app.status add value 'pending';`)
 		.database()
 
@@ -54,32 +49,36 @@ async function testAlterTypeAddValue() {
 	const db6 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'in-progress';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'waiting_approval';`)
 		.database()
 
 	// ❌ ERROR: ALTER non-existing type
 	const db7 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`alter type missing add value 'new';`)
+		.apply(
+			// @ts-expect-error
+			`alter type missing add value 'new';`,
+		)
 		.database()
 
 	// ❌ ERROR: Add duplicate value
 	const db8 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
-		// @ts-expect-error
-		.apply(`alter type status add value 'active';`)
+		.apply(
+			// @ts-expect-error
+			`alter type status add value 'active';`,
+		)
 		.database()
 
 	// ❌ ERROR: ALTER type from unknown schema
 	const db9 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`alter type ghost.status add value 'new';`)
+		.apply(
+			// @ts-expect-error
+			`alter type ghost.status add value 'new';`,
+		)
 		.database()
 
 	return { db1, db2, db3, db4, db5, db6, db7, db8, db9 }

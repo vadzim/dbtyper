@@ -52,35 +52,46 @@ async function testCreateTypeEnum() {
 	const db7 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active');`)
-		.apply(`create type status as enum ('new');`)
+		.apply(
+			// @ts-expect-error
+			`create type status as enum ('new');`,
+		)
 		.database()
 
 	// ❌ ERROR: Empty enum values
 	const db8 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`create type empty as enum ();`)
+		.apply(
+			// @ts-expect-error
+			`create type empty as enum ();`,
+		)
 		.database()
 
 	// ❌ ERROR: Unknown schema
 	const db9 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`create type ghost.status as enum ('active');`)
+		.apply(
+			// @ts-expect-error
+			`create type ghost.status as enum ('active');`,
+		)
 		.database()
 
 	// ❌ ERROR: Missing AS keyword
 	const db10 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`create type status enum ('active');`)
+		.apply(
+			// @ts-expect-error
+			`create type status enum ('active');`,
+		)
 		.database()
 
 	// ❌ ERROR: Missing ENUM keyword
 	const db11 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`create type status as ('active');`)
+		.apply(
+			// @ts-expect-error
+			`create type status as ('active');`,
+		)
 		.database()
 
 	return { db1, db2, db3, db4, db5, db6, db7, db8, db9, db10, db11 }

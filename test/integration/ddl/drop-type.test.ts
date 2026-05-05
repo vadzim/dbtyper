@@ -34,7 +34,6 @@ async function testDropType() {
 		.apply(`create schema public;`)
 		.apply(`create schema app;`)
 		.apply(`create type app.status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type app.status;`)
 		.database()
 
@@ -43,9 +42,7 @@ async function testDropType() {
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
 		.apply(`create type priority as enum ('low', 'high');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type status;`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type priority;`)
 		.database()
 
@@ -53,7 +50,6 @@ async function testDropType() {
 	const db6 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type status;`)
 		.apply(`create type status as enum ('new', 'old');`)
 		.database()
@@ -61,15 +57,19 @@ async function testDropType() {
 	// ❌ ERROR: DROP non-existing type
 	const db7 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`drop type missing;`)
+		.apply(
+			// @ts-expect-error
+			`drop type missing;`,
+		)
 		.database()
 
 	// ❌ ERROR: DROP type from unknown schema
 	const db8 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
-		// @ts-expect-error
-		.apply(`drop type ghost.status;`)
+		.apply(
+			// @ts-expect-error
+			`drop type ghost.status;`,
+		)
 		.database()
 
 	return { db1, db2, db3, db4, db5, db6, db7, db8 }
