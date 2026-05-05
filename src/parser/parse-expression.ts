@@ -733,17 +733,47 @@ type ResolveFunctionCall<
 											? ArgsRes extends readonly []
 												? ExprOk<string, "uuid">
 												: SqlParserError<"This function takes no arguments">
-											: "functions" extends keyof Db
-												? Db["functions"] extends Record<string, unknown>
-													? L extends keyof Db["functions"]
-														? Db["functions"][L &
-																keyof Db["functions"]] extends infer SqlType extends
-																string
-															? ExprOk<unknown, SqlType>
-															: ExprOk<unknown, "unknown">
-														: SqlParserError<`Unknown function: ${Name}`>
-													: SqlParserError<`Unknown function: ${Name}`>
-												: SqlParserError<`Unknown function: ${Name}`>
+											: L extends "array_length"
+												? ArgsRes extends readonly [
+														ExprOk<infer _T1, infer S1>,
+														ExprOk<number, infer _S2>,
+													]
+													? S1 extends `${string}[]` | "unknown"
+														? ExprOk<number, "integer">
+														: SqlParserError<"array_length expects (array, integer)">
+													: SqlParserError<"array_length requires 2 arguments">
+												: L extends "array_append"
+													? ArgsRes extends readonly [ExprOk<infer _T1, infer S1>, ExprAtom]
+														? S1 extends `${string}[]` | "unknown"
+															? ExprOk<readonly unknown[], "unknown">
+															: SqlParserError<"array_append expects (array, element)">
+														: SqlParserError<"array_append requires 2 arguments">
+													: L extends "array_prepend"
+														? ArgsRes extends readonly [
+																ExprAtom,
+																ExprOk<infer _T2, infer S2>,
+															]
+															? S2 extends `${string}[]` | "unknown"
+																? ExprOk<readonly unknown[], "unknown">
+																: SqlParserError<"array_prepend expects (element, array)">
+															: SqlParserError<"array_prepend requires 2 arguments">
+														: L extends "unnest"
+															? ArgsRes extends readonly [ExprOk<infer _T1, infer S1>]
+																? S1 extends `${string}[]` | "unknown"
+																	? ExprOk<unknown, "unknown">
+																	: SqlParserError<"unnest expects an array">
+																: SqlParserError<"unnest requires 1 argument">
+															: "functions" extends keyof Db
+																? Db["functions"] extends Record<string, unknown>
+																	? L extends keyof Db["functions"]
+																		? Db["functions"][L &
+																				keyof Db["functions"]] extends infer SqlType extends
+																				string
+																			? ExprOk<unknown, SqlType>
+																			: ExprOk<unknown, "unknown">
+																		: SqlParserError<`Unknown function: ${Name}`>
+																	: SqlParserError<`Unknown function: ${Name}`>
+																: SqlParserError<`Unknown function: ${Name}`>
 					: never
 			: never
 
