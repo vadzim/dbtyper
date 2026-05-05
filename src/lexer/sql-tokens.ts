@@ -268,9 +268,11 @@ type LowerCaseLetter =
 
 const serviceWordsMap = {
 	add: true,
+	all: true,
 	alter: true,
 	always: true,
 	and: true,
+	any: true,
 	as: true,
 	asc: true,
 	begin: true,
@@ -349,6 +351,7 @@ const serviceWordsMap = {
 	schema: true,
 	select: true,
 	set: true,
+	some: true,
 	stored: true,
 	table: true,
 	then: true,

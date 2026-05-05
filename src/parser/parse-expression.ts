@@ -88,6 +88,12 @@ export type ScalarExprAst =
 	| { kind: "in_subquery"; expr: ScalarExprAst; sub: JsqlSelectStatementResult }
 	| { kind: "scalar_subquery"; sel: JsqlSelectStatementResult }
 	| { kind: "exists_subquery"; sub: JsqlSelectStatementResult }
+	/** PostgreSQL `= ANY(array_expr)` or `= ANY(subquery)` */
+	| { kind: "any_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }
+	/** PostgreSQL `= ALL(array_expr)` or `= ALL(subquery)` */
+	| { kind: "all_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }
+	/** PostgreSQL `= SOME(array_expr)` or `= SOME(subquery)` (alias for ANY) */
+	| { kind: "some_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }
 	/** PostgreSQL `ARRAY[` … `]` constructor (comma-separated scalar expressions). */
 	| { kind: "array_ctor"; elements: readonly ScalarExprAst[] }
 	/** One-based or zero-based semantics are dialect-specific at runtime; MVP element access typing. */
@@ -462,17 +468,77 @@ type IsRelOp<T> =
 								? true
 								: false
 
+type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, OpToken, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends infer Kw
+		? Kw extends TokenKey<"any"> | TokenKey<"all"> | TokenKey<"some">
+			? SkipToken<Tokens> extends infer R1 extends TokensList
+				? PeekToken<R1> extends TokenKey<"(">
+					? SkipToken<R1> extends infer R2 extends TokensList
+						? PeekToken<R2> extends TokenKey<"select">
+							? ParseParenEnclosedSelect<R2, Env["db"], Env["params"], Env["outerScope"]> extends [
+									infer R3 extends TokensList,
+									infer Sub,
+								]
+								? Sub extends SqlParserError<string>
+									? [R3, Sub]
+									: Sub extends JsqlSelectStatementResult
+										? TokenToCmpOp<OpToken> extends infer Op extends ScalarCmpOp
+											? Kw extends TokenKey<"any">
+												? [R3, { kind: "any_op"; op: Op; left: L; right: Sub }]
+												: Kw extends TokenKey<"all">
+													? [R3, { kind: "all_op"; op: Op; left: L; right: Sub }]
+													: Kw extends TokenKey<"some">
+														? [R3, { kind: "some_op"; op: Op; left: L; right: Sub }]
+														: never
+											: [R3, SqlParserError<"Invalid comparison operator">]
+										: never
+								: never
+							: ParseOrScalarUntyped<R2, Env> extends [infer R4 extends TokensList, infer ArrExpr]
+								? ArrExpr extends SqlParserError<string>
+									? [R4, ArrExpr]
+									: ArrExpr extends ScalarExprAst
+										? PeekToken<R4> extends TokenKey<")">
+											? SkipToken<R4> extends infer R5 extends TokensList
+												? TokenToCmpOp<OpToken> extends infer Op extends ScalarCmpOp
+													? Kw extends TokenKey<"any">
+														? [R5, { kind: "any_op"; op: Op; left: L; right: ArrExpr }]
+														: Kw extends TokenKey<"all">
+															? [R5, { kind: "all_op"; op: Op; left: L; right: ArrExpr }]
+															: Kw extends TokenKey<"some">
+																? [
+																		R5,
+																		{
+																			kind: "some_op"
+																			op: Op
+																			left: L
+																			right: ArrExpr
+																		},
+																	]
+																: never
+													: [R5, SqlParserError<"Invalid comparison operator">]
+												: never
+											: [R4, SqlParserError<"Expected ) after ANY/ALL/SOME expression">]
+										: never
+								: never
+						: never
+					: [R1, SqlParserError<"Expected ( after ANY/ALL/SOME">]
+				: never
+			: never
+		: never
+
 type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends infer P
 		? IsRelOp<P> extends true
 			? SkipToken<Tokens> extends infer R2 extends TokensList
-				? ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
-					? Rhs extends SqlParserError<string>
-						? [R3, Rhs]
-						: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
-							? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
-							: [R3, SqlParserError<"Invalid comparison operator">]
-					: never
+				? PeekToken<R2> extends TokenKey<"any"> | TokenKey<"all"> | TokenKey<"some">
+					? ParseAnyAllSomeAfterOp<R2, L, P, Env>
+					: ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs]
+						? Rhs extends SqlParserError<string>
+							? [R3, Rhs]
+							: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
+								? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
+								: [R3, SqlParserError<"Invalid comparison operator">]
+						: never
 				: never
 			: P extends TokenKey<"is">
 				? SkipToken<Tokens> extends infer R4 extends TokensList
@@ -1109,6 +1175,30 @@ type ExpressionResolvers<
 	}
 		? ResolveInSubqueryAst<Ie, Isub, Db, Scope, Params>
 		: never
+	any_op: Ast extends {
+		kind: "any_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst | JsqlSelectStatementResult
+	}
+		? ResolveAnyAllSomeOp<Op, L, R, Db, Scope, Params>
+		: never
+	all_op: Ast extends {
+		kind: "all_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst | JsqlSelectStatementResult
+	}
+		? ResolveAnyAllSomeOp<Op, L, R, Db, Scope, Params>
+		: never
+	some_op: Ast extends {
+		kind: "some_op"
+		op: infer Op extends string
+		left: infer L extends ScalarExprAst
+		right: infer R extends ScalarExprAst | JsqlSelectStatementResult
+	}
+		? ResolveAnyAllSomeOp<Op, L, R, Db, Scope, Params>
+		: never
 	in_list: Ast extends {
 		kind: "in_list"
 		expr: infer Eln extends ScalarExprAst
@@ -1599,6 +1689,44 @@ type ResolveInSubqueryAst<
 							: SqlParserError<"Invalid IN subquery column">
 					: SqlParserError<"Invalid IN subquery column">
 				: SqlParserError<"Invalid IN left operand">
+		: never
+
+type ResolveAnyAllSomeOp<
+	Op extends string,
+	L extends ScalarExprAst,
+	R extends ScalarExprAst | JsqlSelectStatementResult,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	ResolveExpressionAST<L, Db, Scope, Params> extends infer Lv
+		? Lv extends SqlParserError<string>
+			? Lv
+			: Lv extends ExprAtom
+				? R extends JsqlSelectStatementResult
+					? SubSelectColumnAtom<R> extends infer Rv
+						? Rv extends SqlParserError<string>
+							? Rv
+							: Rv extends ExprAtom
+								? MergeComparison<Lv, Rv> extends infer V
+									? V extends SqlParserError<string>
+										? V
+										: ExprOk<boolean, "boolean">
+									: SqlParserError<"Invalid ANY/ALL/SOME comparison">
+								: SqlParserError<"Invalid ANY/ALL/SOME subquery column">
+						: SqlParserError<"Invalid ANY/ALL/SOME subquery column">
+					: R extends ScalarExprAst
+						? ResolveExpressionAST<R, Db, Scope, Params> extends infer Rv
+							? Rv extends SqlParserError<string>
+								? Rv
+								: Rv extends ExprOk<infer _RTs, infer RSql>
+									? RSql extends `${string}[]` | "unknown"
+										? ExprOk<boolean, "boolean">
+										: SqlParserError<"ANY/ALL/SOME requires an array or subquery">
+									: SqlParserError<"Invalid ANY/ALL/SOME operand">
+							: never
+						: SqlParserError<"Invalid ANY/ALL/SOME operand">
+				: SqlParserError<"Invalid ANY/ALL/SOME left operand">
 		: never
 
 type MergeBoolNot<V> =
