@@ -243,7 +243,7 @@ type SqlTypeClass<Sql extends string> =
 						? "datetime"
 						: "unknown"
 
-type ParseDefaultValue<Tokens extends TokensList, Db extends JsqlDatabaseShape, ColumnType extends string> =
+type ParseDefaultValue<Tokens extends TokensList, ColumnType extends string> =
 	PeekToken<Tokens> extends TokenNumber<infer _Raw>
 		? SkipToken<Tokens> extends infer R extends TokensList
 			? SqlTypeClass<ColumnType> extends "numeric"
@@ -309,7 +309,7 @@ type ContinueAfterColumnDef<
 > =
 	PeekToken<AfterNull> extends TokenKey<"default">
 		? SkipToken<AfterNull> extends infer AfterDefault extends TokensList
-			? ParseDefaultValue<AfterDefault, Db, Joined> extends [
+			? ParseDefaultValue<AfterDefault, Joined> extends [
 					infer AfterDefaultVal extends TokensList,
 					infer DefaultErr,
 				]
