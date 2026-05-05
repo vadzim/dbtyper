@@ -339,6 +339,7 @@ const serviceWordsMap = {
 	order: true,
 	outer: true,
 	over: true,
+	partition: true,
 	primary: true,
 	references: true,
 	rename: true,

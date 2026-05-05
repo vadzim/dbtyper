@@ -131,7 +131,10 @@ export type ScalarExprAst =
 			kind: "window_function"
 			name: string
 			args: readonly (ScalarExprAst | { kind: "star" })[]
-			over: { order_by: readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[] }
+			over: {
+				partition_by?: readonly ScalarExprAst[]
+				order_by: readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+			}
 	  }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
@@ -1378,39 +1381,120 @@ type ParseOptionalOverClause<
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<"(">
 				? SkipToken<R1> extends infer R2 extends TokensList
-					? PeekToken<R2> extends TokenKey<"order">
-						? SkipToken<R2> extends infer R3 extends TokensList
-							? PeekToken<R3> extends TokenKey<"by">
-								? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
-										infer R4 extends TokensList,
-										infer OrderList,
-									]
-									? OrderList extends SqlParserError<string>
-										? [R4, OrderList]
-										: OrderList extends readonly {
-													expr: ScalarExprAst
-													direction: "asc" | "desc" | null
-											  }[]
-											? PeekToken<R4> extends TokenKey<")">
-												? [
-														SkipToken<R4>,
-														{
-															kind: "window_function"
-															name: FnName
-															args: Args
-															over: { order_by: OrderList }
-														},
-													]
-												: [R4, SqlParserError<"Expected ) after OVER clause">]
-											: never
-									: never
-								: [R3, SqlParserError<"Expected BY after ORDER in OVER clause">]
-							: never
-						: [R2, SqlParserError<"Expected ORDER BY in OVER clause">]
+					? ParseWindowClauseContent<R2, FnName, Args, Env>
 					: never
 				: [R1, SqlParserError<"Expected ( after OVER">]
 			: never
 		: [Tokens, { kind: "function_call"; name: FnName; args: Args }]
+
+type ParseWindowClauseContent<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
+	PeekToken<Tokens> extends TokenKey<"partition">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<"by">
+				? ParseWindowPartitionByList<SkipToken<R1>, Env> extends [
+						infer R2 extends TokensList,
+						infer PartitionList,
+					]
+					? PartitionList extends SqlParserError<string>
+						? [R2, PartitionList]
+						: PartitionList extends readonly ScalarExprAst[]
+							? PeekToken<R2> extends TokenKey<"order">
+								? ParseWindowOrderByAfterPartition<R2, FnName, Args, PartitionList, Env>
+								: PeekToken<R2> extends TokenKey<")">
+									? [
+											SkipToken<R2>,
+											{
+												kind: "window_function"
+												name: FnName
+												args: Args
+												over: { partition_by: PartitionList; order_by: readonly [] }
+											},
+										]
+									: [R2, SqlParserError<"Expected ORDER BY or ) after PARTITION BY">]
+							: never
+					: never
+				: [R1, SqlParserError<"Expected BY after PARTITION">]
+			: never
+		: PeekToken<Tokens> extends TokenKey<"order">
+			? ParseWindowOrderByWithoutPartition<Tokens, FnName, Args, Env>
+			: [Tokens, SqlParserError<"Expected PARTITION BY or ORDER BY in OVER clause">]
+
+type ParseWindowOrderByWithoutPartition<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
+	SkipToken<Tokens> extends infer R3 extends TokensList
+		? PeekToken<R3> extends TokenKey<"by">
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [infer R4 extends TokensList, infer OrderList]
+				? OrderList extends SqlParserError<string>
+					? [R4, OrderList]
+					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+						? PeekToken<R4> extends TokenKey<")">
+							? [
+									SkipToken<R4>,
+									{
+										kind: "window_function"
+										name: FnName
+										args: Args
+										over: { order_by: OrderList }
+									},
+								]
+							: [R4, SqlParserError<"Expected ) after OVER clause">]
+						: never
+				: never
+			: [R3, SqlParserError<"Expected BY after ORDER in OVER clause">]
+		: never
+
+type ParseWindowOrderByAfterPartition<
+	Tokens extends TokensList,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	PartitionList extends readonly ScalarExprAst[],
+	Env extends ExprParseEnv,
+> =
+	SkipToken<Tokens> extends infer R3 extends TokensList
+		? PeekToken<R3> extends TokenKey<"by">
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [infer R4 extends TokensList, infer OrderList]
+				? OrderList extends SqlParserError<string>
+					? [R4, OrderList]
+					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+						? PeekToken<R4> extends TokenKey<")">
+							? [
+									SkipToken<R4>,
+									{
+										kind: "window_function"
+										name: FnName
+										args: Args
+										over: { partition_by: PartitionList; order_by: OrderList }
+									},
+								]
+							: [R4, SqlParserError<"Expected ) after OVER clause">]
+						: never
+				: never
+			: [R3, SqlParserError<"Expected BY after ORDER">]
+		: never
+
+type ParseWindowPartitionByList<
+	Tokens extends TokensList,
+	Env extends ExprParseEnv,
+	Acc extends readonly ScalarExprAst[] = readonly [],
+> =
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr]
+		? Expr extends SqlParserError<string>
+			? [R1, Expr]
+			: Expr extends ScalarExprAst
+				? PeekToken<R1> extends TokenKey<",">
+					? ParseWindowPartitionByList<SkipToken<R1>, Env, readonly [...Acc, Expr]>
+					: [R1, readonly [...Acc, Expr]]
+				: never
+		: never
 
 type ParseWindowOrderByList<
 	Tokens extends TokensList,

@@ -41,7 +41,27 @@ async function testWindowFunctions() {
 		`select id, product, row_number() over (order by amount) as row_num, rank() over (order by amount) as rank_num from sales;`,
 	)
 
-	return { result1, result2, result3, result4, result5, result6 }
+	// ✅ SUCCESS: ROW_NUMBER() with PARTITION BY
+	const result7 = await db.query(
+		`select id, product, row_number() over (partition by product order by amount) as row_num from sales;`,
+	)
+
+	// ✅ SUCCESS: RANK() with PARTITION BY and multiple ORDER BY columns
+	const result8 = await db.query(
+		`select id, product, rank() over (partition by product order by amount desc, sale_date) as rank_num from sales;`,
+	)
+
+	// ✅ SUCCESS: Multiple PARTITION BY columns
+	const result9 = await db.query(
+		`select id, product, row_number() over (partition by product, sale_date order by amount) as row_num from sales;`,
+	)
+
+	// ✅ SUCCESS: PARTITION BY without ORDER BY
+	const result10 = await db.query(
+		`select id, product, row_number() over (partition by product) as row_num from sales;`,
+	)
+
+	return { result1, result2, result3, result4, result5, result6, result7, result8, result9, result10 }
 }
 
 testWindowFunctions()

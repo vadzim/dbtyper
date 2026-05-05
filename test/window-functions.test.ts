@@ -73,6 +73,33 @@ type _tMultipleWindow = Expect<
 	>
 >
 
+// Test ROW_NUMBER() with PARTITION BY
+type TPartitionBy = ParseSqlStatement<
+	ParseSqlTokens<`select id, product, row_number() over (partition by product order by amount) as row_num from sales;`>,
+	DbWindow
+>
+type _tPartitionBy = Expect<
+	Extends<Tuple3At2<TPartitionBy>, { kind: "select"; columns: { id: "integer"; product: "text"; row_num: "bigint" } }>
+>
+
+// Test RANK() with PARTITION BY and multiple ORDER BY
+type TPartitionByMultiOrder = ParseSqlStatement<
+	ParseSqlTokens<`select id, rank() over (partition by product order by amount desc, sale_date) as rank_num from sales;`>,
+	DbWindow
+>
+type _tPartitionByMultiOrder = Expect<
+	Extends<Tuple3At2<TPartitionByMultiOrder>, { kind: "select"; columns: { id: "integer"; rank_num: "bigint" } }>
+>
+
+// Test multiple PARTITION BY columns
+type TMultiPartition = ParseSqlStatement<
+	ParseSqlTokens<`select id, row_number() over (partition by product, sale_date order by amount) as row_num from sales;`>,
+	DbWindow
+>
+type _tMultiPartition = Expect<
+	Extends<Tuple3At2<TMultiPartition>, { kind: "select"; columns: { id: "integer"; row_num: "bigint" } }>
+>
+
 describe("window-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })
