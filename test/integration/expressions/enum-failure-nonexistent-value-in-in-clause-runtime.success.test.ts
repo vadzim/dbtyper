@@ -24,9 +24,9 @@ async function test() {
 		);`)
 		.database()
 
-	// Comparing enum with boolean (runtime error)
+	// Using non-existent enum value in IN clause (runtime failure)
 	const result = await db.query(`
-		select * from tasks where task_status = true;
+		select * from tasks where task_status in ('active', 'nonexistent');
 	`)
 
 	return result

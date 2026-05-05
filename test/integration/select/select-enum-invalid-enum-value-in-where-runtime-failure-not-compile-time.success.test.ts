@@ -1,4 +1,4 @@
-// Integration Test: UPDATE with enum types
+// Integration Test: SELECT with enum types - Invalid enum value in WHERE (runtime failure, not compile-time)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
@@ -23,12 +23,9 @@ async function test() {
 		);`)
 		.database()
 
-	// Invalid enum value (runtime error, not compile-time)
-	const result = await db.query(`
-		update tasks
-		set task_status = 'invalid_status'
-		where id = 4;
-	`)
+// Invalid enum value in WHERE (runtime failure, not compile-time)
+	const result = await db.query(`select * from tasks
+		where task_status = 'invalid_status';`)
 
 	return result
 }

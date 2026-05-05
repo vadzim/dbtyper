@@ -53,7 +53,7 @@ async function testAlterTypeAddValue() {
 		.apply(`alter type status add value 'waiting_approval';`)
 		.database()
 
-	// ❌ ERROR: ALTER non-existing type
+	// ❌ FAILURE: ALTER non-existing type
 	const db7 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(
@@ -62,7 +62,7 @@ async function testAlterTypeAddValue() {
 		)
 		.database()
 
-	// ❌ ERROR: Add duplicate value
+	// ❌ FAILURE: Add duplicate value
 	const db8 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
@@ -72,7 +72,7 @@ async function testAlterTypeAddValue() {
 		)
 		.database()
 
-	// ❌ ERROR: ALTER type from unknown schema
+	// ❌ FAILURE: ALTER type from unknown schema
 	const db9 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(

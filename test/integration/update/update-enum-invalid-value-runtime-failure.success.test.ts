@@ -1,4 +1,4 @@
-// Integration Test: INSERT with enum types
+// Integration Test: UPDATE with enum types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
@@ -23,15 +23,14 @@ async function test() {
 		);`)
 		.database()
 
-	// Invalid enum value (runtime error, not compile-time)
-	// Invalid enum value (runtime error, not compile-time)
+	// Invalid enum value (runtime failure, not compile-time)
 	const result = await db.query(`
-		insert into tasks (id, name, task_status)
-		values (4, 'Task 4', 'invalid_status')
-		returning *;
+		update tasks
+		set task_status = 'invalid_status'
+		where id = 4;
 	`)
 
-	return resulte
+	return result
 }
 
 test()

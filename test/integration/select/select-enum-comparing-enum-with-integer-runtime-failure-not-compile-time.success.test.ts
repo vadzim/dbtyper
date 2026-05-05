@@ -1,12 +1,12 @@
-// Integration Test: Enum error cases and edge cases
+// Integration Test: SELECT with enum types - Comparing enum with integer (runtime failure, not compile-time)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
 const mockDriver = {
 	query: async () => [],
 	scalarTypes: {
 		text: "" as string,
 		integer: 0 as number,
-		boolean: true as boolean,
 	},
 }
 
@@ -19,15 +19,13 @@ async function test() {
 			id integer not null,
 			name text not null,
 			task_status status not null,
-			task_priority priority,
-			is_urgent boolean
+			task_priority priority
 		);`)
 		.database()
 
-	// Using non-existent enum value in IN clause (runtime error)
-	const result = await db.query(`
-		select * from tasks where task_status in ('active', 'nonexistent');
-	`)
+// Comparing enum with integer (runtime failure, not compile-time)
+	const result = await db.query(`select * from tasks
+		where task_status = 123;`)
 
 	return result
 }

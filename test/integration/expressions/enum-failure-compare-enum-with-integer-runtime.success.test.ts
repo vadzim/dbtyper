@@ -24,9 +24,9 @@ async function test() {
 		);`)
 		.database()
 
-	// Comparing different enum types (runtime error)
+	// Comparing enum with wrong type (runtime failure)
 	const result = await db.query(`
-		select * from tasks where task_status = task_priority;
+		select * from tasks where task_status = 123;
 	`)
 
 	return result

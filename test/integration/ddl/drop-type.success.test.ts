@@ -53,7 +53,7 @@ async function testDropType() {
 		.apply(`create type status as enum ('new', 'old');`)
 		.database()
 
-	// ❌ ERROR: DROP non-existing type
+	// ❌ FAILURE: DROP non-existing type
 	const db7 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(
@@ -62,7 +62,7 @@ async function testDropType() {
 		)
 		.database()
 
-	// ❌ ERROR: DROP type from unknown schema
+	// ❌ FAILURE: DROP type from unknown schema
 	const db8 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(

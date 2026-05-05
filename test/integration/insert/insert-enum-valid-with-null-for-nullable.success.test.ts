@@ -31,7 +31,7 @@ async function test() {
 		returning *;
 	`)
 
-	return resultn
+	return result
 }
 
 test()

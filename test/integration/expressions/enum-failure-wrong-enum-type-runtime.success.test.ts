@@ -1,12 +1,12 @@
-// Integration Test: SELECT with enum types - Wrong enum type in comparison (runtime error, not compile-time)
+// Integration Test: Enum error cases and edge cases
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 
 const mockDriver = {
 	query: async () => [],
 	scalarTypes: {
 		text: "" as string,
 		integer: 0 as number,
+		boolean: true as boolean,
 	},
 }
 
@@ -19,13 +19,16 @@ async function test() {
 			id integer not null,
 			name text not null,
 			task_status status not null,
-			task_priority priority
+			task_priority priority,
+			is_urgent boolean
 		);`)
 		.database()
 
-// Wrong enum type in comparison (runtime error, not compile-time)
-	const result = await db.query(`select * from tasks
-		where task_status = 'high';`)
+	// Wrong enum type (runtime failure)
+	const result = await db.query(`
+		insert into tasks (id, name, task_status)
+		values (4, 'Task', 'high');
+	`)
 
 	return result
 }

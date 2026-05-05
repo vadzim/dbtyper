@@ -48,7 +48,7 @@ async function testCreateTypeEnum() {
 		.apply(`create type singleton as enum ('only');`)
 		.database()
 
-	// ❌ ERROR: Duplicate type name
+	// ❌ FAILURE: Duplicate type name
 	const db7 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active');`)
@@ -58,7 +58,7 @@ async function testCreateTypeEnum() {
 		)
 		.database()
 
-	// ❌ ERROR: Empty enum values
+	// ❌ FAILURE: Empty enum values
 	const db8 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(
@@ -67,7 +67,7 @@ async function testCreateTypeEnum() {
 		)
 		.database()
 
-	// ❌ ERROR: Unknown schema
+	// ❌ FAILURE: Unknown schema
 	const db9 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(
@@ -76,7 +76,7 @@ async function testCreateTypeEnum() {
 		)
 		.database()
 
-	// ❌ ERROR: Missing AS keyword
+	// ❌ FAILURE: Missing AS keyword
 	const db10 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(
@@ -85,7 +85,7 @@ async function testCreateTypeEnum() {
 		)
 		.database()
 
-	// ❌ ERROR: Missing ENUM keyword
+	// ❌ FAILURE: Missing ENUM keyword
 	const db11 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(

@@ -27,7 +27,7 @@ async function test() {
 		);`)
 		.database()
 
-	// Comparing enums from different schemas (runtime error)
+	// Comparing enums from different schemas (runtime failure)
 	const result = await db.query(`
 		select * from public.tasks t
 		join app.articles a on t.task_status = a.article_status;

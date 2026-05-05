@@ -32,7 +32,7 @@ async function test() {
 		returning *;
 	`)
 
-	return resultc
+	return result
 }
 
 test()
