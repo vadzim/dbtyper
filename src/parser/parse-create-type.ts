@@ -20,11 +20,9 @@ export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseSh
 
 /** True when `Typ` is already a concrete key of `types` (not an open-ended index signature). */
 type HasConcreteType<Types extends object | undefined, Typ extends string> = Types extends object
-	? string extends keyof Types
-		? false
-		: Typ extends keyof Types
-			? true
-			: false
+	? Typ extends keyof Types
+		? true
+		: false
 	: false
 
 /**

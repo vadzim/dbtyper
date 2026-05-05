@@ -16,11 +16,9 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 
 /** True when `Typ` is already a concrete key of `types` (not only an open-ended index signature). */
 type HasConcreteType<Types extends object | undefined, Typ extends string> = Types extends object
-	? string extends keyof Types
-		? false
-		: Typ extends keyof Types
-			? true
-			: false
+	? Typ extends keyof Types
+		? true
+		: false
 	: false
 
 type TypeEntry<
@@ -47,15 +45,15 @@ type ParseAlterQualifiedSecondIdent<AfterDot extends TokensList, A extends strin
 
 /** After first identifier (type or schema). */
 type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends infer T1
-		? SkipToken<AfterFirst> extends infer R1 extends TokensList
-			? T1 extends TokenKey<".">
-				? ParseAlterQualifiedSecondIdent<R1, A>
-				: T1 extends TokenKey<"add">
-					? [AfterFirst, null, Db["defaultSchema"], A]
+	PeekToken<AfterFirst> extends TokenKey<"add">
+		? [AfterFirst, null, Db["defaultSchema"], A]
+		: PeekToken<AfterFirst> extends infer T1
+			? SkipToken<AfterFirst> extends infer R1 extends TokensList
+				? T1 extends TokenKey<".">
+					? ParseAlterQualifiedSecondIdent<R1, A>
 					: [R1, SqlParserError<"Expected `.` or `ADD` in ALTER TYPE">, never, never]
+				: never
 			: never
-		: never
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTypeNameForAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =

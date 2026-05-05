@@ -16,11 +16,9 @@ export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShap
 
 /** True when `Typ` is already a concrete key of `types` (not only an open-ended index signature). */
 type HasConcreteType<Types extends object | undefined, Typ extends string> = Types extends object
-	? string extends keyof Types
-		? false
-		: Typ extends keyof Types
-			? true
-			: false
+	? Typ extends keyof Types
+		? true
+		: false
 	: false
 
 type TypeEntry<
@@ -50,15 +48,15 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 
 /** After first identifier (type or schema). */
 type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends infer T1
-		? SkipToken<AfterFirst> extends infer R1 extends TokensList
-			? T1 extends TokenKey<";"> | TokenEot
-				? [AfterFirst, null, Db["defaultSchema"], A]
-				: T1 extends TokenKey<".">
+	PeekToken<AfterFirst> extends TokenKey<";"> | TokenEot
+		? [AfterFirst, null, Db["defaultSchema"], A]
+		: PeekToken<AfterFirst> extends infer T1
+			? SkipToken<AfterFirst> extends infer R1 extends TokensList
+				? T1 extends TokenKey<".">
 					? ParseDropQualifiedSecondIdent<R1, A>
 					: [R1, SqlParserError<"Expected `.` or `;` after type name in DROP TYPE">, never, never]
+				: never
 			: never
-		: never
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTypeNameForDrop<Tokens extends TokensList, Db extends JsqlDatabaseShape> =

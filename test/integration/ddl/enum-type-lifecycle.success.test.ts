@@ -12,11 +12,8 @@ async function testEnumTypeLifecycle() {
 	const db1 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'pending';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'archived';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type status;`)
 		.database()
 
@@ -25,11 +22,8 @@ async function testEnumTypeLifecycle() {
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
 		.apply(`create type priority as enum ('low', 'high');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'pending';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type priority add value 'medium';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type status;`)
 		.apply(`create type status as enum ('new', 'old');`)
 		.database()
@@ -42,11 +36,8 @@ async function testEnumTypeLifecycle() {
 		.apply(`create type public.status as enum ('active', 'inactive');`)
 		.apply(`create type app.priority as enum ('low', 'high');`)
 		.apply(`create type admin.role as enum ('user', 'admin');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type public.status add value 'pending';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type app.priority add value 'medium';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type admin.role add value 'superadmin';`)
 		.database()
 
@@ -66,9 +57,7 @@ async function testEnumTypeLifecycle() {
 		.apply(`create schema public;`)
 		.apply(`create type old_status as enum ('active', 'inactive');`)
 		.apply(`create type new_status as enum ('enabled', 'disabled');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type new_status add value 'pending';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type old_status;`)
 		.apply(`create type status as enum ('live', 'archived');`)
 		.database()
@@ -77,13 +66,9 @@ async function testEnumTypeLifecycle() {
 	const db6 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type day_of_week as enum ('monday', 'tuesday', 'wednesday');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type day_of_week add value 'thursday';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type day_of_week add value 'friday';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type day_of_week add value 'saturday';`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type day_of_week add value 'sunday';`)
 		.database()
 
@@ -92,7 +77,6 @@ async function testEnumTypeLifecycle() {
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
 		.apply(`create table users (id integer not null, name text not null);`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`alter type status add value 'pending';`)
 		.apply(`create table posts (id integer not null, title text not null);`)
 		.database()
@@ -102,7 +86,6 @@ async function testEnumTypeLifecycle() {
 		.apply(`create schema public;`)
 		.apply(`create schema temp;`)
 		.apply(`create type temp.status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type temp.status;`)
 		.apply(`drop schema temp;`)
 		.database()

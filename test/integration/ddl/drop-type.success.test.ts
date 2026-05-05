@@ -12,7 +12,6 @@ async function testDropType() {
 	const db1 = sqlMigrations({ driver: mockDriver })
 		.apply(`create schema public;`)
 		.apply(`create type status as enum ('active', 'inactive');`)
-		// @ts-expect-error - type created in previous apply
 		.apply(`drop type status;`)
 		.database()
 

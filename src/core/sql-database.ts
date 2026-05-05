@@ -132,6 +132,13 @@ export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 													: never
 											}
 										: never
+									types: Schema["types"] extends infer Types
+										? Types extends object
+											? {
+													[TKey in keyof Types as NonIndexKey<TKey>]: Types[TKey]
+												}
+											: {}
+										: {}
 								}
 							: never
 					}

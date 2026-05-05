@@ -87,7 +87,7 @@ export type ParseSqlStatement<
 
 type ParseAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">
-		? ParseAlterTable<SkipToken<Tokens>, Db>
+		? ParseAlterTable<Tokens, Db>
 		: PeekToken<Tokens> extends TokenKey<"type">
 			? ParseAlterType<SkipToken<Tokens>, Db>
 			: ParseSkipStatement<Tokens, Db>
