@@ -2,8 +2,7 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
-- [ ] require values in inserts for non-null columns without default values. Question - is that as it works in real world?
-- [ ] fix result for .query method - it should return smth reasonable for all the queries, not only row sets.
+- [ ] fix result for .query method - it should return smth reasonable for all the queries, not only row sets or unknown.
 - [ ] make better error messages - like column "..." has wrong value or table "..." does not exist
 - [ ] in every migration test wich has @ts-expect-error directive add a way to check the text of message.
 

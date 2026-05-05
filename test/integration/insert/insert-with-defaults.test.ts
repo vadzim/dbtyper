@@ -14,8 +14,8 @@ async function testInsertWithDefaults() {
 			`create table users (
 				id text not null,
 				name text not null,
-				age numeric default 18,
-				active boolean default true,
+				age numeric not null default 18,
+				active boolean not null default true,
 				created_at timestamp default now()
 			);`,
 		)
