@@ -19,6 +19,7 @@ Analyzed 50+ SQL migration files and seed data from `~/work/superdone.ai/repos/a
 3. **Real Usage**: Focused on actual production code, not theoretical features
 4. **Frequency Analysis**: Prioritized features by usage frequency
 5. **Code Analysis**: Examined TypeScript services using `dataSource.query()` for dynamic SQL
+6. **TypeORM Analysis**: Analyzed 100+ TypeORM QueryBuilder usages (see `TYPEORM_QUERYBUILDER_ANALYSIS.md`)
 
 ---
 
@@ -63,6 +64,9 @@ Analyzed 50+ SQL migration files and seed data from `~/work/superdone.ai/repos/a
 | EXTRACT() function | 4+ | 2 migrations + TypeScript | `EXTRACT(EPOCH FROM (now() - date))` |
 | GREATEST() function | 3+ | 2 migrations + TypeScript | `GREATEST(max_results * 5, 100)`, `GREATEST(1, ($4::int / 2))` |
 | DATE_TRUNC() function | 6+ | TypeScript services | `DATE_TRUNC('week', m.meeting_date)::date::text` |
+| IS NULL / IS NOT NULL | 2+ | TypeORM QueryBuilder | `WHERE meeting.meeting_start IS NOT NULL` |
+| LOWER() / UPPER() | 2+ | TypeORM QueryBuilder | `WHERE LOWER(note.title) LIKE $1` |
+| Subqueries in WHERE | 1+ | TypeORM QueryBuilder | `WHERE project.id IN (SELECT ...)` |
 | ts_rank_cd() | 3 | 3 migrations | Full-text search ranking |
 | plainto_tsquery() | 3 | 3 migrations | Full-text search query parsing |
 | @@ operator | 3 | 3 migrations | Full-text search matching |
@@ -383,9 +387,9 @@ ROW_NUMBER() OVER (
 
 ---
 
-### Phase 5: String & Pattern Matching (MEDIUM - 3-4 hours)
+### Phase 5: String & Pattern Matching (HIGH - 6-7 hours)
 
-**Priority:** 🟡 MEDIUM - Used in search filtering
+**Priority:** 🟠 HIGH - Used in search filtering and TypeORM queries
 
 #### 5.1 ILIKE Operator - 2 hours
 **Usage:** 6+ occurrences in search filters
@@ -417,22 +421,101 @@ WHERE p ILIKE $${paramIndex}
 
 **Functions to implement:**
 ```sql
-LOWER(text) → text
-UPPER(text) → text
+LOWER(text) → text  -- 2+ occurrences in TypeORM
+UPPER(text) → text  -- 2+ occurrences in TypeORM
 TRIM(text) → text
 CONCAT(text, ...) → text  -- variadic
 format(format_string, ...) → text  -- variadic
 to_char(timestamp, format) → text
 ```
 
+**Examples from superdone.ai:**
+```sql
+-- TypeORM QueryBuilder
+WHERE LOWER(note.title) LIKE $1
+WHERE (LOWER(note.title) LIKE $1 OR LOWER(note.note_raw) LIKE $1)
+```
+
 **Implementation Tasks:**
-- [ ] Add string function parsing
+- [ ] Add LOWER() function - returns text
+- [ ] Add UPPER() function - returns text
+- [ ] Add TRIM() function - returns text
+- [ ] Add CONCAT() function - variadic, returns text
 - [ ] Type inference for each function
 - [ ] Integration tests
 
 **Files to modify:**
 - `src/parser/parse-expression.ts` - add string functions
 - `test/integration/functions/string-functions.test.ts`
+
+---
+
+#### 5.3 IS NULL / IS NOT NULL Operators - 1 hour
+**Usage:** 2+ occurrences in TypeORM QueryBuilder - CRITICAL
+
+**Examples from superdone.ai:**
+```sql
+-- TypeORM QueryBuilder
+WHERE meeting.meeting_start IS NOT NULL
+WHERE meeting.meeting_end IS NOT NULL
+WHERE column IS NULL
+```
+
+**Implementation Tasks:**
+- [ ] Parse IS NULL operator
+- [ ] Parse IS NOT NULL operator
+- [ ] Type checking: result is boolean
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-expression.ts` - add IS NULL/IS NOT NULL
+- `test/integration/select/select-is-null.test.ts`
+
+---
+
+#### 5.4 Subqueries in WHERE - 2 hours
+**Usage:** 1+ occurrence in TypeORM QueryBuilder - CRITICAL
+
+**Examples from superdone.ai:**
+```sql
+-- TypeORM QueryBuilder with subquery
+WHERE project.id IN (
+  SELECT project_user.project_id
+  FROM project_user
+  WHERE project_user.user_id = $1
+)
+```
+
+**Implementation Tasks:**
+- [ ] Parse subqueries in WHERE clause
+- [ ] Support IN (subquery)
+- [ ] Support comparison operators with subqueries
+- [ ] Type checking for subquery results
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-expression.ts` - add subquery support
+- `src/parser/parse-select.ts` - handle subqueries in expressions
+- `test/integration/select/select-subquery-where.test.ts`
+
+---
+
+#### 5.5 LIKE ESCAPE Clause - 30 minutes
+**Usage:** 1 occurrence in TypeORM QueryBuilder
+
+**Example from superdone.ai:**
+```sql
+WHERE pin.topic_path LIKE $1 ESCAPE '\\'
+```
+
+**Implementation Tasks:**
+- [ ] Parse ESCAPE clause after LIKE
+- [ ] Type checking
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/binary-operator.ts` - add ESCAPE support to LIKE
+- `test/integration/select/select-like-escape.test.ts`
 
 ---
 
@@ -854,11 +937,14 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 
 ### Sprint 5: String & Math Functions (Week 3) - 7-9 hours
 1. ✅ ILIKE Operator - 2 hours
-2. ✅ String Functions - 1-2 hours
-3. ✅ Math Functions (GREATEST, EXTRACT, ABS) - 2-3 hours
-4. ✅ Date/Time Functions (DATE_TRUNC, NOW) - 2 hours
+2. ✅ String Functions (LOWER, UPPER, TRIM) - 1-2 hours
+3. ✅ IS NULL / IS NOT NULL - 1 hour (CRITICAL - TypeORM)
+4. ✅ Subqueries in WHERE - 2 hours (CRITICAL - TypeORM)
+5. ✅ LIKE ESCAPE - 30 minutes
+6. ✅ Math Functions (GREATEST, EXTRACT, ABS) - 2-3 hours
+7. ✅ Date/Time Functions (DATE_TRUNC, NOW) - 2 hours
 
-**Deliverable:** All superdone.ai filtering and scoring works
+**Deliverable:** All superdone.ai filtering, scoring, and TypeORM queries work
 
 ---
 
@@ -985,17 +1071,19 @@ Advanced Features (Phase 7-8)
 | Phase 2: Array Operations | 6-8 | 🔴 CRITICAL |
 | Phase 3: JOIN Extensions | 3-4 | 🟠 HIGH |
 | Phase 4: Window Functions | 4-6 | 🟠 HIGH |
-| Phase 5: String & Pattern Matching | 3-4 | 🟡 MEDIUM |
+| Phase 5: String & Pattern Matching | 6-7 | 🟠 HIGH (TypeORM critical) |
 | Phase 6: Math & Aggregate Functions | 4-5 | 🟡 MEDIUM |
 | Phase 7: JSONB & Array Functions | 4-5 | 🟡 MEDIUM |
 | Phase 8: Full-Text Search | 4-6 | 🟢 LOW |
 | Phase 9: Advanced SQL Features | 8-10 | 🟢 LOW (except ON CONFLICT - CRITICAL) |
-| **TOTAL** | **44-60 hours** | |
+| **TOTAL** | **47-63 hours** | |
 
-**Critical Path (Phases 1-4 + ON CONFLICT):** 24-33 hours  
-**Full Implementation:** 44-60 hours
+**Critical Path (Phases 1-5 + ON CONFLICT):** 30-40 hours  
+**Full Implementation:** 47-63 hours
 
-**Note:** INSERT...ON CONFLICT (9 occurrences) and RETURNING (4 occurrences) are CRITICAL despite being in Phase 9, as they're used extensively in TypeScript services for upsert operations.
+**Note:** 
+- INSERT...ON CONFLICT (9 occurrences) and RETURNING (4 occurrences) are CRITICAL despite being in Phase 9
+- IS NULL/IS NOT NULL, LOWER/UPPER, and subqueries in WHERE are CRITICAL for TypeORM compatibility (Phase 5)
 
 ---
 
