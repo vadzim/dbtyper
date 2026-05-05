@@ -42,8 +42,8 @@
  * const any = await untyped.queryUntyped(`select * from users`)
  */
 
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import { sqlMigrations } from "../core/sql-database.ts"
+import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 
 const mockDriver = {
 	query: async () => [],
