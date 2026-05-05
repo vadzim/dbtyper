@@ -14,10 +14,11 @@ Analyzed 50+ SQL migration files and seed data from `~/work/superdone.ai/repos/a
 
 ## Analysis Methodology
 
-1. **File Coverage**: Scanned all `.sql` files in migrations and seeds directories
+1. **File Coverage**: Scanned all `.sql` files in migrations and seeds directories + TypeScript code in `src/`
 2. **Pattern Matching**: Searched for specific SQL patterns (ANY, FULL OUTER JOIN, ::, arrays, window functions, etc.)
 3. **Real Usage**: Focused on actual production code, not theoretical features
 4. **Frequency Analysis**: Prioritized features by usage frequency
+5. **Code Analysis**: Examined TypeScript services using `dataSource.query()` for dynamic SQL
 
 ---
 
@@ -45,29 +46,45 @@ Analyzed 50+ SQL migration files and seed data from `~/work/superdone.ai/repos/a
 
 | Feature | Occurrences | Files | Example Usage |
 |---------|-------------|-------|---------------|
-| Type casts (::) | 49 | 15+ | `'value'::uuid`, `column::text`, `'[]'::jsonb` |
-| Array types | 49 | 12+ | `uuid[]`, `text[]`, `ARRAY[1,2,3]` |
-| ANY() operator | 8 | 5 | `WHERE id = ANY(p_project_ids)` |
-| FULL OUTER JOIN | 3 | 3 | Hybrid search (vector + FTS) |
-| ROW_NUMBER() OVER | 11 | 4 | Ranking in search results |
-| JSONB operations | 20+ | 10+ | `metadata @>`, `->`, `->>`, `DEFAULT '{}'::jsonb` |
+| Type casts (::) | 49+ | 15+ migrations + TypeScript | `'value'::uuid`, `column::text`, `'[]'::jsonb`, `$1::vector` |
+| Array types | 49+ | 12+ migrations + TypeScript | `uuid[]`, `text[]`, `ARRAY[1,2,3]`, `$1::text[]` |
+| ANY() operator | 8 | 5 migrations | `WHERE id = ANY(p_project_ids)` |
+| FULL OUTER JOIN | 3 | 3 migrations | Hybrid search (vector + FTS) |
+| ROW_NUMBER() OVER | 11 | 4 migrations | Ranking in search results |
+| JSONB operations | 20+ | 10+ migrations + TypeScript | `metadata @>`, `->`, `->>`, `DEFAULT '{}'::jsonb` |
+| INSERT...ON CONFLICT | 9 | 6 TypeScript services | `ON CONFLICT (id) DO UPDATE SET ...` |
+| RETURNING clause | 4 | 3 TypeScript services | `INSERT ... RETURNING id` |
 
 ### Medium-Frequency Features (High Priority)
 
 | Feature | Occurrences | Files | Example Usage |
 |---------|-------------|-------|---------------|
-| ILIKE operator | 6 | 3 | `metadata->>'user' ILIKE '%' \|\| filter \|\| '%'` |
-| EXTRACT() function | 2 | 2 | `EXTRACT(EPOCH FROM (now() - date))` |
-| GREATEST() function | 2 | 2 | `GREATEST(max_results * 5, 100)` |
-| ts_rank_cd() | 3 | 3 | Full-text search ranking |
-| plainto_tsquery() | 3 | 3 | Full-text search query parsing |
-| @@ operator | 3 | 3 | Full-text search matching |
+| ILIKE operator | 6+ | 3 migrations + TypeScript | `metadata->>'user' ILIKE '%' \|\| filter \|\| '%'` |
+| EXTRACT() function | 4+ | 2 migrations + TypeScript | `EXTRACT(EPOCH FROM (now() - date))` |
+| GREATEST() function | 3+ | 2 migrations + TypeScript | `GREATEST(max_results * 5, 100)`, `GREATEST(1, ($4::int / 2))` |
+| DATE_TRUNC() function | 6+ | TypeScript services | `DATE_TRUNC('week', m.meeting_date)::date::text` |
+| ts_rank_cd() | 3 | 3 migrations | Full-text search ranking |
+| plainto_tsquery() | 3 | 3 migrations | Full-text search query parsing |
+| @@ operator | 3 | 3 migrations | Full-text search matching |
+| LIMIT/OFFSET | 30+ | TypeScript services | `LIMIT $1 OFFSET $2` |
+| ORDER BY...NULLS | 2 | TypeScript services | `ORDER BY col DESC NULLS LAST` |
+| GROUP BY | 6+ | TypeScript services | `GROUP BY DATE_TRUNC('week', date)` |
+| HAVING | 1 | TypeScript service | `HAVING COUNT(*) > 1` |
 
 ### Low-Frequency Features (Medium Priority)
 
 | Feature | Occurrences | Files | Example Usage |
 |---------|-------------|-------|---------------|
-| CASE expressions | 1 | 1 | `CASE share_type::text WHEN 'private' THEN 'open'::share_type` |
+| CASE expressions | 1 | 1 migration | `CASE share_type::text WHEN 'private' THEN 'open'::share_type` |
+| CTE (WITH clause) | 1 | TypeScript service | `WITH target_emails AS (SELECT unnest($1::text[]) AS email)` |
+| CROSS JOIN LATERAL | 5 | TypeScript services | `CROSS JOIN LATERAL jsonb_array_elements(t.tasks::jsonb)` |
+| LEFT JOIN LATERAL | 1 | TypeScript service | `LEFT JOIN LATERAL unnest(m.participants) p ON true` |
+| jsonb_array_elements() | 5 | TypeScript services | `jsonb_array_elements(tasks::jsonb)` |
+| unnest() | 3 | TypeScript services | `unnest($1::text[])`, `unnest(m.participants)` |
+| ALL() operator | 1 | TypeScript service | `WHERE m.id != ALL($3::uuid[])` |
+| ABS() function | 1 | TypeScript service | `ABS(EXTRACT(EPOCH FROM (date1 - date2)))` |
+| jsonb_array_length() | 1 | TypeScript service | `jsonb_array_length(gce.attendees)` |
+| COUNT(*) with subquery | Multiple | TypeScript services | `(SELECT COUNT(*) FROM jsonb_array_elements(...))` |
 | RIGHT JOIN | 0 | 0 | Not used in superdone.ai |
 | Window functions (LAG, LEAD, RANK) | 0 | 0 | Not used yet |
 
@@ -371,13 +388,16 @@ ROW_NUMBER() OVER (
 **Priority:** 🟡 MEDIUM - Used in search filtering
 
 #### 5.1 ILIKE Operator - 2 hours
-**Usage:** 6 occurrences in search filters
+**Usage:** 6+ occurrences in search filters
 
 **Examples from superdone.ai:**
 ```sql
 -- Case-insensitive pattern matching
 WHERE se.metadata->>'user' ILIKE '%' || p_user_filter || '%'
 WHERE se.metadata->>'topic_title' ILIKE '%' || p_topic_filter || '%'
+
+-- From TypeScript code
+WHERE p ILIKE $${paramIndex}
 ```
 
 **Implementation Tasks:**
@@ -416,24 +436,40 @@ to_char(timestamp, format) → text
 
 ---
 
-### Phase 6: Math & Aggregate Functions (MEDIUM - 3-4 hours)
+### Phase 6: Math & Aggregate Functions (MEDIUM - 4-5 hours)
 
-**Priority:** 🟡 MEDIUM - Used in calculations
+**Priority:** 🟡 MEDIUM - Used in calculations and analytics
 
-#### 6.1 Math Functions - 2 hours
-**Usage:** Used in search scoring
+#### 6.1 Math Functions - 2-3 hours
+**Usage:** Used in search scoring and analytics
 
 **Functions from superdone.ai:**
 ```sql
-GREATEST(value1, value2, ...) → same type  -- 2 occurrences
+GREATEST(value1, value2, ...) → same type  -- 3+ occurrences
 LEAST(value1, value2, ...) → same type
-EXTRACT(field FROM timestamp) → numeric  -- 2 occurrences
+EXTRACT(field FROM timestamp) → numeric  -- 4+ occurrences
+ABS(numeric) → numeric  -- 1 occurrence
+```
+
+**Examples:**
+```sql
+-- Search scoring
+GREATEST(max_results * 5, 100)
+GREATEST(1, ($4::int / 2))
+
+-- Time calculations
+EXTRACT(EPOCH FROM (now() - date))
+EXTRACT(EPOCH FROM (meeting.meeting_end - meeting.meeting_start)) / 3600
+
+-- Absolute value
+ABS(EXTRACT(EPOCH FROM (m.meeting_date - gce.start_time))) < 86400
 ```
 
 **Implementation Tasks:**
 - [ ] Add GREATEST() - variadic, returns type of arguments
 - [ ] Add LEAST() - variadic, returns type of arguments
 - [ ] Add EXTRACT() - returns numeric
+- [ ] Add ABS() - returns same numeric type
 - [ ] Type checking: all arguments must be comparable
 - [ ] Integration tests
 
@@ -443,19 +479,31 @@ EXTRACT(field FROM timestamp) → numeric  -- 2 occurrences
 
 ---
 
-#### 6.2 Date/Time Functions - 1-2 hours
-**Usage:** Common in timestamps
+#### 6.2 Date/Time Functions - 2 hours
+**Usage:** Common in timestamps and analytics
 
-**Functions to implement:**
+**Functions from superdone.ai:**
 ```sql
 NOW() → timestamp with time zone
 CURRENT_TIMESTAMP → timestamp with time zone
-date_trunc(field, timestamp) → timestamp
+DATE_TRUNC(field, timestamp) → timestamp  -- 6+ occurrences
 timezone(zone, timestamp) → timestamp with time zone
 ```
 
+**Examples:**
+```sql
+-- Weekly aggregation
+DATE_TRUNC('week', m.meeting_date)::date::text
+
+-- Grouping by week
+GROUP BY DATE_TRUNC('week', t.created_at)
+```
+
 **Implementation Tasks:**
-- [ ] Add date/time function parsing
+- [ ] Add NOW() function
+- [ ] Add CURRENT_TIMESTAMP keyword
+- [ ] Add DATE_TRUNC() function
+- [ ] Add timezone() function
 - [ ] Type inference for each function
 - [ ] Integration tests
 
@@ -465,11 +513,91 @@ timezone(zone, timestamp) → timestamp with time zone
 
 ---
 
-### Phase 7: Full-Text Search (LOW - 4-6 hours)
+### Phase 7: JSONB & Array Functions (MEDIUM - 4-5 hours)
+
+**Priority:** 🟡 MEDIUM - Used in task management and analytics
+
+#### 7.1 JSONB Functions - 2-3 hours
+**Usage:** 5+ occurrences in TypeScript services
+
+**Functions from superdone.ai:**
+```sql
+jsonb_array_elements(jsonb) → setof jsonb  -- 5 occurrences
+jsonb_array_length(jsonb) → integer  -- 1 occurrence
+jsonb_build_object(key, value, ...) → jsonb  -- future
+to_jsonb(anyelement) → jsonb  -- future
+jsonb_agg(anyelement) → jsonb  -- future
+```
+
+**Examples:**
+```sql
+-- Expand JSONB array to rows
+CROSS JOIN LATERAL jsonb_array_elements(t.tasks::jsonb) AS task_item
+
+-- Count JSONB array elements
+SELECT MAX(jsonb_array_length(gce.attendees))
+
+-- Subquery with JSONB array
+(SELECT COUNT(*) FROM jsonb_array_elements(ce.attendees::jsonb) ae
+ WHERE lower(trim(ae->>'email')) IN (SELECT email FROM target_emails))
+```
+
+**Implementation Tasks:**
+- [ ] Add jsonb_array_elements() - returns set of jsonb
+- [ ] Add jsonb_array_length() - returns integer
+- [ ] Support CROSS JOIN LATERAL with set-returning functions
+- [ ] Type inference for JSONB functions
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-expression.ts` - add JSONB functions
+- `src/parser/parse-from.ts` - handle LATERAL with set-returning functions
+- `test/integration/functions/jsonb-functions.test.ts`
+
+---
+
+#### 7.2 Array Functions - 2 hours
+**Usage:** 3+ occurrences in TypeScript services
+
+**Functions from superdone.ai:**
+```sql
+unnest(array) → setof element  -- 3 occurrences
+array_agg(anyelement) → array  -- future
+array_length(array, dimension) → integer  -- future
+```
+
+**Examples:**
+```sql
+-- Expand array to rows
+WITH target_emails AS (
+  SELECT unnest($1::text[]) AS email
+)
+
+-- Join with array expansion
+LEFT JOIN LATERAL unnest(m.participants) p ON true
+
+-- Check array membership
+EXISTS (SELECT 1 FROM unnest(m.participants) p WHERE p ILIKE $${paramIndex})
+```
+
+**Implementation Tasks:**
+- [ ] Add unnest() - returns set of array element type
+- [ ] Support LATERAL with unnest()
+- [ ] Type inference: unnest(text[]) → text
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-expression.ts` - add unnest()
+- `src/parser/parse-from.ts` - handle LATERAL unnest
+- `test/integration/functions/array-functions.test.ts`
+
+---
+
+### Phase 8: Full-Text Search (LOW - 4-6 hours)
 
 **Priority:** 🟢 LOW - Specialized feature, used in 3 files
 
-#### 7.1 Full-Text Search Operators & Functions
+#### 8.1 Full-Text Search Operators & Functions
 **Usage:** 3 occurrences in search functions
 
 **Features to implement:**
@@ -500,11 +628,62 @@ tsvector @@ tsquery → boolean
 
 ---
 
-### Phase 8: Advanced Features (LOW - 6-8 hours)
+### Phase 9: Advanced SQL Features (LOW - 8-10 hours)
 
 **Priority:** 🟢 LOW - Nice to have, not blocking
 
-#### 8.1 CASE Expressions - 2-3 hours
+#### 9.1 LATERAL Joins - 3-4 hours
+**Usage:** 5+ occurrences in TypeScript services
+
+**Examples from superdone.ai:**
+```sql
+-- CROSS JOIN LATERAL with set-returning function
+CROSS JOIN LATERAL jsonb_array_elements(t.tasks::jsonb) AS task_item
+
+-- LEFT JOIN LATERAL with unnest
+LEFT JOIN LATERAL unnest(m.participants) p ON true
+
+-- CROSS JOIN LATERAL with subquery
+CROSS JOIN LATERAL (
+  SELECT ...
+  LIMIT 1
+) AS subq
+```
+
+**Implementation Tasks:**
+- [ ] Parse LATERAL keyword in JOIN clauses
+- [ ] Support LATERAL with set-returning functions (unnest, jsonb_array_elements)
+- [ ] Support LATERAL with subqueries
+- [ ] Type inference for LATERAL joins
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-from.ts` - add LATERAL support
+- `test/integration/select/select-lateral-join.test.ts`
+
+---
+
+#### 9.2 ALL() Operator - 1 hour
+**Usage:** 1 occurrence in TypeScript service
+
+**Example from superdone.ai:**
+```sql
+WHERE m.id != ALL($3::uuid[])
+```
+
+**Implementation Tasks:**
+- [ ] Parse ALL(array_expression) syntax
+- [ ] Type checking: similar to ANY()
+- [ ] Support for comparison operators: =, <>, <, >, <=, >=
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-expression.ts` - add ALL() parsing
+- `test/integration/select/select-all-operator.test.ts`
+
+---
+
+#### 9.3 CASE Expressions - 2-3 hours
 **Usage:** 1 occurrence
 
 **Example from superdone.ai:**
@@ -528,7 +707,73 @@ END
 
 ---
 
-#### 8.2 DISTINCT ON - 1-2 hours
+#### 9.4 INSERT...ON CONFLICT - 2-3 hours
+**Usage:** 9 occurrences in 6 TypeScript services - CRITICAL for upsert operations
+
+**Examples from superdone.ai:**
+```sql
+-- Upsert with DO UPDATE
+INSERT INTO search_embeddings
+  (project_id, meeting_id, content_type, content_text, ...)
+  VALUES ($1, $2, $3, $4, ...)
+  ON CONFLICT (meeting_id, content_type, content_hash)
+  DO UPDATE SET project_id = EXCLUDED.project_id,
+                embedding = EXCLUDED.embedding,
+                metadata = EXCLUDED.metadata,
+                updated_at = NOW()
+  RETURNING id
+
+-- Upsert with composite key
+ON CONFLICT (jira_issue_id, project_id)
+DO UPDATE SET embedding = EXCLUDED.embedding
+
+-- Upsert with single key
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description
+
+-- Upsert with DO NOTHING
+ON CONFLICT (agent_config_id) DO UPDATE SET embedding = EXCLUDED.embedding
+```
+
+**Implementation Tasks:**
+- [ ] Parse `ON CONFLICT (columns) DO UPDATE SET ...`
+- [ ] Parse `ON CONFLICT (columns) DO NOTHING`
+- [ ] Support EXCLUDED.column references in DO UPDATE
+- [ ] Type checking for conflict columns
+- [ ] Support RETURNING clause with ON CONFLICT
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-insert.ts` - add ON CONFLICT parsing
+- `test/integration/insert/insert-on-conflict.test.ts`
+
+---
+
+#### 9.5 RETURNING Clause - 1 hour
+**Usage:** 4 occurrences in TypeScript services
+
+**Examples from superdone.ai:**
+```sql
+INSERT INTO search_embeddings (...) VALUES (...) RETURNING id
+INSERT INTO topics_processing_embeddings (...) VALUES (...) RETURNING id
+```
+
+**Implementation Tasks:**
+- [ ] Parse RETURNING clause in INSERT/UPDATE/DELETE
+- [ ] Type inference for RETURNING columns
+- [ ] Support RETURNING * and RETURNING column_list
+- [ ] Integration tests
+
+**Files to modify:**
+- `src/parser/parse-insert.ts` - add RETURNING support
+- `src/parser/parse-update.ts` - add RETURNING support
+- `src/parser/parse-delete.ts` - add RETURNING support
+- `test/integration/insert/insert-returning.test.ts`
+
+---
+
+#### 9.6 DISTINCT ON - 1-2 hours
 **Usage:** Not found in current migrations, but common PostgreSQL feature
 
 **Example:**
@@ -549,7 +794,7 @@ ORDER BY user_id, created_at DESC
 
 ---
 
-#### 8.3 INSERT...ON CONFLICT - 2-3 hours
+#### 9.3 INSERT...ON CONFLICT - 2-3 hours
 **Usage:** Not found in current migrations, but common PostgreSQL feature
 
 **Example:**
@@ -599,21 +844,38 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 
 ---
 
-### Sprint 4: String & Math Functions (Week 3) - 6-8 hours
+### Sprint 4: INSERT Features (Week 2-3) - 3-4 hours
+1. ✅ INSERT...ON CONFLICT - 2-3 hours (CRITICAL - 9 occurrences)
+2. ✅ RETURNING Clause - 1 hour (4 occurrences)
+
+**Deliverable:** All superdone.ai upsert operations work
+
+---
+
+### Sprint 5: String & Math Functions (Week 3) - 7-9 hours
 1. ✅ ILIKE Operator - 2 hours
 2. ✅ String Functions - 1-2 hours
-3. ✅ Math Functions (GREATEST, EXTRACT) - 2 hours
-4. ✅ Date/Time Functions - 1-2 hours
+3. ✅ Math Functions (GREATEST, EXTRACT, ABS) - 2-3 hours
+4. ✅ Date/Time Functions (DATE_TRUNC, NOW) - 2 hours
 
 **Deliverable:** All superdone.ai filtering and scoring works
 
 ---
 
-### Sprint 5: Advanced Features (Week 3-4) - 10-14 hours
-1. ✅ Full-Text Search - 4-6 hours
-2. ✅ CASE Expressions - 2-3 hours
-3. ✅ DISTINCT ON - 1-2 hours
-4. ✅ INSERT...ON CONFLICT - 2-3 hours
+### Sprint 6: JSONB & Array Functions (Week 3-4) - 4-5 hours
+1. ✅ JSONB Functions (jsonb_array_elements, jsonb_array_length) - 2-3 hours
+2. ✅ Array Functions (unnest) - 2 hours
+
+**Deliverable:** All superdone.ai task queries work
+
+---
+
+### Sprint 7: Advanced Features (Week 4) - 12-16 hours
+1. ✅ LATERAL Joins - 3-4 hours (5+ occurrences)
+2. ✅ ALL() Operator - 1 hour
+3. ✅ Full-Text Search - 4-6 hours
+4. ✅ CASE Expressions - 2-3 hours
+5. ✅ DISTINCT ON - 1-2 hours
 
 **Deliverable:** 100% superdone.ai compatibility
 
@@ -724,13 +986,16 @@ Advanced Features (Phase 7-8)
 | Phase 3: JOIN Extensions | 3-4 | 🟠 HIGH |
 | Phase 4: Window Functions | 4-6 | 🟠 HIGH |
 | Phase 5: String & Pattern Matching | 3-4 | 🟡 MEDIUM |
-| Phase 6: Math & Aggregate Functions | 3-4 | 🟡 MEDIUM |
-| Phase 7: Full-Text Search | 4-6 | 🟢 LOW |
-| Phase 8: Advanced Features | 6-8 | 🟢 LOW |
-| **TOTAL** | **37-52 hours** | |
+| Phase 6: Math & Aggregate Functions | 4-5 | 🟡 MEDIUM |
+| Phase 7: JSONB & Array Functions | 4-5 | 🟡 MEDIUM |
+| Phase 8: Full-Text Search | 4-6 | 🟢 LOW |
+| Phase 9: Advanced SQL Features | 8-10 | 🟢 LOW (except ON CONFLICT - CRITICAL) |
+| **TOTAL** | **44-60 hours** | |
 
-**Critical Path (Phases 1-4):** 21-30 hours  
-**Full Implementation:** 37-52 hours
+**Critical Path (Phases 1-4 + ON CONFLICT):** 24-33 hours  
+**Full Implementation:** 44-60 hours
+
+**Note:** INSERT...ON CONFLICT (9 occurrences) and RETURNING (4 occurrences) are CRITICAL despite being in Phase 9, as they're used extensively in TypeScript services for upsert operations.
 
 ---
 
