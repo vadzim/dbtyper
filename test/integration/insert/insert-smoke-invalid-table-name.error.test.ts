@@ -10,19 +10,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text, email text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text, email text);`)
+	.database()
 
-	// ❌ ERROR: Invalid table name
-	const result = await db.query(
-		// @ts-expect-error
-		`insert into invalid_table (id) values (null);`,
-	)
-
-	return result
-}
-
-test()
+// ❌ ERROR: Invalid table name
+const result = db.query(
+	// @ts-expect-error
+	`insert into invalid_table (id) values (null);`,
+)

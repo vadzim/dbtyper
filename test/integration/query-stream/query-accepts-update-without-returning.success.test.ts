@@ -1,26 +1,20 @@
 // Integration Test: db․query() accepts non-RETURNING statements
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 
 const mockDriver = {
 	query: async () => [],
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text);`)
+	.database()
 
-	// ✅ UPDATE without RETURNING should be accepted by query()
-	const result = await db.query(`update users set name = 'Bob' where id = '1';`)
+// ✅ UPDATE without RETURNING should be accepted by query()
+const result = await db.query(`update users set name = 'Bob' where id = '1';`)
 
-	// Result type should be unknown
-	type ResultType = typeof result
-	type _check = ResultType extends unknown ? true : false
-
-	return result
-}
-
-test()
+// Result type should be unknown
+type _check = Expect<Matches<typeof result, unknown>>

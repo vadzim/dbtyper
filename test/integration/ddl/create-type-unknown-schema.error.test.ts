@@ -7,17 +7,11 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ❌ FAILURE: Unknown schema
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			// @ts-expect-error
-			`create type ghost.status as enum ('active');`,
-		)
-		.database()
-
-	return db
-}
-
-test()
+// ❌ FAILURE: Unknown schema
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(
+		// @ts-expect-error
+		`create type ghost.status as enum ('active');`,
+	)
+	.database()

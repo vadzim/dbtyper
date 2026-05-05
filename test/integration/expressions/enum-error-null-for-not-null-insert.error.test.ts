@@ -10,32 +10,26 @@ const mockDriver = {
 	},
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create type status as enum ('active', 'inactive', 'pending');`)
-		.apply(`create type priority as enum ('low', 'medium', 'high');`)
-		.apply(
-			`create table tasks (
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
+	.apply(`create type priority as enum ('low', 'medium', 'high');`)
+	.apply(
+		`create table tasks (
 			id integer not null,
 			name text not null,
 			task_status status not null,
 			task_priority priority,
 			is_urgent boolean
 		);`,
-		)
-		.database()
+	)
+	.database()
 
-	// ❌ ERROR: NULL for NOT NULL enum column (compile-time error)
-	const result = await db.query(
-		// @ts-expect-error
-		`
+// ❌ ERROR: NULL for NOT NULL enum column (compile-time error)
+const result = db.query(
+	// @ts-expect-error
+	`
 		insert into tasks (id, name, task_status)
 		values (2, 'Task', null);
 	`,
-	)
-
-	return result
-}
-
-test()
+)

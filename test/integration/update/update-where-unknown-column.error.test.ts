@@ -7,19 +7,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function testUpdateWhereUnknownColumn() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text);`)
+	.database()
 
-	// ❌ ERROR: unknown column in WHERE
-	const bad = await db.query(
-		// @ts-expect-error
-		`update users set name = 'Alice' where invalid_column = '1' returning *;`,
-	)
-
-	return bad
-}
-
-testUpdateWhereUnknownColumn()
+// ❌ ERROR: unknown column in WHERE
+await db.query(
+	// @ts-expect-error
+	`update users set name = 'Alice' where invalid_column = '1' returning *;`,
+)

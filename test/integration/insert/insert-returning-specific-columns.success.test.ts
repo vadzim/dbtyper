@@ -7,24 +7,18 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function testInsertReturningSpecificColumns() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text, email text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text, email text);`)
+	.database()
 
-	// ✅ SUCCESS: RETURNING specific columns
-	const result = await db.query(
-		`insert into users (id, name, email) values ('1', 'Alice', 'alice@example.com') returning id, name;`,
-	)
+// ✅ SUCCESS: RETURNING specific columns
+const result = await db.query(
+	`insert into users (id, name, email) values ('1', 'Alice', 'alice@example.com') returning id, name;`,
+)
 
-	// Type should be: Array<{ id: string; name: string }>
-	const _typeCheck: typeof result = [] as Array<{
-		id: string
-		name: string
-	}>
-
-	return result
-}
-
-testInsertReturningSpecificColumns()
+// Type should be: Array<{ id: string; name: string }>
+const _typeCheck: typeof result = [] as Array<{
+	id: string
+	name: string
+}>

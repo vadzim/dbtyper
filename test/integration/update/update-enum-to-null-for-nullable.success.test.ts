@@ -1,6 +1,7 @@
 // Integration Test: UPDATE with enum types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import type { Expect, Extends, Matches } from "../../test-utils/type-test-utils.ts"
 
 const mockDriver = {
 	query: async () => [],
@@ -10,29 +11,23 @@ const mockDriver = {
 	},
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create type status as enum ('active', 'inactive', 'pending');`)
-		.apply(`create type priority as enum ('low', 'medium', 'high');`)
-		.apply(
-			`create table tasks (
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
+	.apply(`create type priority as enum ('low', 'medium', 'high');`)
+	.apply(
+		`create table tasks (
 			id integer not null,
 			name text not null,
 			task_status status not null,
 			task_priority priority
 		);`,
-		)
-		.database()
-
-	// ✅ SUCCESS: Update enum to NULL (for nullable column)
-	const result = await db.query(`
+	)
+	.database()
+// ✅ SUCCESS: Update enum to NULL (for nullable column)
+const result = await db.query(`
 		update tasks
 		set task_priority = null
 		where id = 3;
 	`)
-
-	return result
-}
-
-test()
+type _check = Expect<Matches<typeof result, unknown>>

@@ -7,15 +7,9 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ✅ SUCCESS: CREATE TYPE IF NOT EXISTS (existing type, no-op)
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create type status as enum ('active', 'inactive');`)
-		.apply(`create type if not exists status as enum ('new');`)
-		.database()
-
-	return db
-}
-
-test()
+// ✅ SUCCESS: CREATE TYPE IF NOT EXISTS (existing type, no-op)
+sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create type status as enum ('active', 'inactive');`)
+	.apply(`create type if not exists status as enum ('new');`)
+	.database()

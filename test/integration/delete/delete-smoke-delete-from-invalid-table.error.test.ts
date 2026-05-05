@@ -10,19 +10,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text, email text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text, email text);`)
+	.database()
 
-	// ❌ ERROR: DELETE from invalid table
-	const result = await db.query(
-		// @ts-expect-error
-		`delete from invalid_table;`,
-	)
-
-	return result
-}
-
-test()
+// ❌ ERROR: DELETE from invalid table
+const result = db.query(
+	// @ts-expect-error
+	`delete from invalid_table;`,
+)

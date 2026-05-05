@@ -8,27 +8,21 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			`create table users (
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(
+		`create table users (
 				id text not null,
 				name text not null,
 				age numeric not null default 18,
 				active boolean not null default true,
 				created_at timestamp default now()
 			);`,
-		)
-		.database()
-
-	// ❌ ERROR: still must provide NOT NULL columns without DEFAULT
-	const result = await db.query(
-		// @ts-expect-error
-		`insert into users (age) values (20) returning *;`,
 	)
+	.database()
 
-	return result
-}
-
-test()
+// ❌ ERROR: still must provide NOT NULL columns without DEFAULT
+const result = db.query(
+	// @ts-expect-error
+	`insert into users (age) values (20) returning *;`,
+)

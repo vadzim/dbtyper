@@ -7,19 +7,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text);`)
+	.database()
 
-	// ❌ INSERT without RETURNING should be rejected by stream()
-	const stream = db.stream(
-		// @ts-expect-error
-		`insert into users (id, name) values ('1', 'Alice');`,
-	)
-
-	return stream
-}
-
-test()
+// ❌ INSERT without RETURNING should be rejected by stream()
+db.stream(
+	// @ts-expect-error
+	`insert into users (id, name) values ('1', 'Alice');`,
+)

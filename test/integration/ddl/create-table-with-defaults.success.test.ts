@@ -7,12 +7,11 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function testCreateTableWithDefaults() {
-	// ✅ SUCCESS: CREATE TABLE with DEFAULT values should parse
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			`create table users (
+// ✅ SUCCESS: CREATE TABLE with DEFAULT values should parse
+sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(
+		`create table users (
 				id text not null,
 				name text not null,
 				email text,
@@ -20,10 +19,5 @@ async function testCreateTableWithDefaults() {
 				active boolean default true,
 				created_at timestamp default now()
 			);`,
-		)
-		.database()
-
-	return db
-}
-
-testCreateTableWithDefaults()
+	)
+	.database()

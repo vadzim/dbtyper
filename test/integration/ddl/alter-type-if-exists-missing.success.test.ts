@@ -7,14 +7,8 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ✅ SUCCESS: ALTER TYPE IF EXISTS (non-existing type, no-op)
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`alter type if exists missing add value 'new';`)
-		.database()
-
-	return db
-}
-
-test()
+// ✅ SUCCESS: ALTER TYPE IF EXISTS (non-existing type, no-op)
+sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`alter type if exists missing add value 'new';`)
+	.database()

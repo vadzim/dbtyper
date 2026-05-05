@@ -7,6 +7,7 @@
 ## Summary
 
 Successfully refactored all integration tests to meet validation requirements:
+
 - Each file has exactly one `sqlMigrations()` call
 - Each file has exactly one `.query()` or `.stream()` call
 - All `.success.test.ts` files have no `@ts-expect-error` or error markers
@@ -22,6 +23,7 @@ Successfully refactored all integration tests to meet validation requirements:
 Split 28 files containing 184 queries into 237 separate files, each with exactly one `.query()` or `.stream()` call.
 
 **Batches:**
+
 1. Window functions and enums (2 → 25 files)
 2. Auto-processable files (15 → 70 files)
 3. Query-stream files (2 → 10 files)
@@ -33,6 +35,7 @@ Split 28 files containing 184 queries into 237 separate files, each with exactly
 Split 6 files containing 50 database instances into 50 separate files, each with exactly one `sqlMigrations()` call.
 
 **Files split:**
+
 - `create-type-enum.success.test.ts` (11 db instances) → 11 files (6 success, 5 error)
 - `alter-type-add-value.success.test.ts` (9 db instances) → 9 files (6 success, 3 error)
 - `drop-type.success.test.ts` (8 db instances) → 8 files (6 success, 2 error)
@@ -43,6 +46,7 @@ Split 6 files containing 50 database instances into 50 separate files, each with
 ### Phase 3: Validation fixes
 
 **Fixed issues:**
+
 - 7 files with `dbN.query()` references → changed to `db.query()`
 - 8 `.success.test.ts` files with "error" in comments → changed to "failure"
 - 9 `.error.test.ts` files with incorrect `@ts-expect-error` placement → moved right before backtick
@@ -53,10 +57,12 @@ Split 6 files containing 50 database instances into 50 separate files, each with
 ## File Structure
 
 **Integration test naming convention:**
+
 - `*.success.test.ts` - Tests that should compile without errors
 - `*.error.test.ts` - Tests that should produce TypeScript compilation errors
 
 **Validation rules enforced:**
+
 1. File must end with `.success.test.ts` or `.error.test.ts`
 2. File must have exactly one `sqlMigrations()` call
 3. File must have at most one `.query()` or `.stream()` call
@@ -66,18 +72,21 @@ Split 6 files containing 50 database instances into 50 separate files, each with
 ## Statistics
 
 **Before refactoring:**
+
 - 110 files (mixed naming)
 - Multiple queries per file
 - Multiple database instances per file
 - Validation: many failures
 
 **After refactoring:**
+
 - 281 files (consistent naming)
 - One query per file
 - One database instance per file
 - Validation: ✅ 0 errors
 
 **Growth:**
+
 - Files: 110 → 281 (+155%)
 - Better test isolation
 - Clearer test intent
@@ -86,6 +95,7 @@ Split 6 files containing 50 database instances into 50 separate files, each with
 ## Commits
 
 **Phase 1 (split by .query()):**
+
 1. `fix: resolve TypeScript monad.multipleConsumption errors and rename integration tests`
 2. `docs: add integration test refactoring status and roadmap`
 3. `refactor: split select-window-functions into 14 separate test files`
@@ -98,12 +108,12 @@ Split 6 files containing 50 database instances into 50 separate files, each with
 10. `refactor: fix integration test validation issues`
 11. `docs: update INTEGRATION_TEST_REFACTORING_STATUS.md - work completed`
 
-**Phase 2 (split by sqlMigrations()):**
-12. `refactor: split files to have exactly one sqlMigrations() per file`
+**Phase 2 (split by sqlMigrations()):** 12. `refactor: split files to have exactly one sqlMigrations() per file`
 
 ## Documentation
 
 **Moved to docs/integration-tests/:**
+
 - API_DESIGN_LOG.md
 - API_IMPLEMENTATION_LOG.md
 - DESIGN_LOG.md
