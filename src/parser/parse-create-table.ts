@@ -471,7 +471,7 @@ type MergeTableIntoDb<
 										column_facts: Facts
 									}
 								>
-						}
+						} & Omit<Db["schemas"][K], "sets">
 					: Db["schemas"][K]
 			}
 		}

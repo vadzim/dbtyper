@@ -8,6 +8,14 @@ export type JsqlDatabaseShape = {
 export type JsqlSchemaShape = {
 	/** Named relations in the schema (base tables and views). */
 	sets: { [K: string]: JsqlTableShape }
+	/** Named types in the schema (enums, etc.). */
+	types?: { [K: string]: JsqlTypeShape }
+}
+
+export type JsqlTypeShape = {
+	kind: "enum"
+	/** Enum values in order. */
+	values: readonly string[]
 }
 
 export type JsqlTableShape = {

@@ -360,6 +360,7 @@ const serviceWordsMap = {
 	then: true,
 	to: true,
 	true: true,
+	type: true,
 	union: true,
 	unique: true,
 	update: true,
