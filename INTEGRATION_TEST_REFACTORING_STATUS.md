@@ -197,7 +197,37 @@ Files with both `✅` and `❌` markers need to be split into separate `.success
 
 ## 📊 Progress Tracking
 
-- [ ] Phase 1: Split files with multiple queries (0/28 files)
+- [x] Phase 1: Split files with multiple queries (2/28 files) ✅
+  - [x] select-window-functions.success.test.ts → 14 files
+  - [x] select-with-enums.success.test.ts → 11 files
+  - [ ] 26 files remaining (156 queries total)
 - [ ] Phase 2: Separate mixed success/error files (0/~15 files)
 - [ ] Phase 3: Fix validation issues (0/~20 files)
 - [ ] All integration tests passing
+
+## 🔧 Tools Created
+
+- `scripts/split-test-file.py` - Python script for splitting test files (needs refinement)
+
+## 📝 Remaining Files to Split (26 files, 156 queries)
+
+| File | Queries | Type |
+|------|---------|------|
+| select/select-case-searched.success.test.ts | 11 | query |
+| expressions/enum-error-cases.success.test.ts | 11 | query |
+| select/select-any-all-some.success.test.ts | 10 | query |
+| expressions/enum-casting-complex.success.test.ts | 10 | query |
+| select/select-case-simple.success.test.ts | 9 | query |
+| select/select-array-functions.success.test.ts | 8 | query |
+| select/select-array-operators.success.test.ts | 8 | query |
+| insert/insert-with-enums.success.test.ts | 7 | query |
+| select/select-type-casts.success.test.ts | 7 | query |
+| ddl/create-table-array-types.success.test.ts | 7 | query |
+| ddl/create-table-postgresql-types.success.test.ts | 7 | query |
+| update/update-with-enums.success.test.ts | 6 | query |
+| query-stream/query-accepts-non-returning.success.test.ts | 6 | query |
+| query-stream/stream-rejects-non-returning.success.test.ts | 6 | stream |
+| expressions/enum-multi-schema.success.test.ts | 6 | query |
+| ... and 11 more files with 2-5 calls each | 46 | mixed |
+
+**Estimated time remaining:** 12-18 hours
