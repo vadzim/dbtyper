@@ -9,7 +9,7 @@ import type {
 	TokensList,
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
@@ -29,12 +29,7 @@ export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseSh
 							? [Rest, Db, Err]
 							: never
 					: never
-				: SkipFailedExpression<A0, SqlParserError<"Expected `not` after `IF` in CREATE TYPE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `not` after `IF` in CREATE TYPE">>
 			: never
 		: ParseCreateTypeQualified<Tokens, Db, false>
 
@@ -49,12 +44,7 @@ type ParseCreateTypeQualifiedWhenSchKnown<
 		? ParseCreateTypeAsEnum<R, Db, Sch, Typ, IfNotExists>
 		: IfNotExists extends true
 			? ParseCreateTypeAsEnum<R, Db, Sch, Typ, true>
-			: SkipFailedExpression<R, SqlParserError<"Type already exists; use IF NOT EXISTS">> extends [
-						infer Rest extends TokensList,
-						infer Err,
-				  ]
-				? [Rest, Db, Err]
-				: never
+			: SkipFailedStatement<R, Db, SqlParserError<"Type already exists; use IF NOT EXISTS">>
 
 type ParseCreateTypeQualifiedWhenNameOk<
 	R extends TokensList,
@@ -67,12 +57,7 @@ type ParseCreateTypeQualifiedWhenNameOk<
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTypeQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Typ>
 			: never
-		: SkipFailedExpression<R, SqlParserError<"Unknown schema for CREATE TYPE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<R, Db, SqlParserError<"Unknown schema for CREATE TYPE">>
 
 type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedName<Tokens, Db> extends [
@@ -143,12 +128,7 @@ type SkipToCloseParenAndSemi<Tokens extends TokensList, Db extends JsqlDatabaseS
 					? SkipToken<R> extends infer R2 extends TokensList
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, Db, null]
-							: SkipFailedExpression<R2, SqlParserError<"Expected `;` after CREATE TYPE">> extends [
-										infer Rest extends TokensList,
-										infer Err,
-								  ]
-								? [Rest, Db, Err]
-								: never
+							: SkipFailedStatement<R2, Db, SqlParserError<"Expected `;` after CREATE TYPE">>
 						: never
 					: never
 				: Tok extends TokenEot
@@ -230,9 +210,4 @@ type ParseAfterEnumValue<
 type ParseCreateTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after CREATE TYPE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, NewDb, Err]
-			: never
+		: SkipFailedStatement<Tokens, NewDb, SqlParserError<"Expected `;` after CREATE TYPE">>

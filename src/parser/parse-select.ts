@@ -28,7 +28,7 @@ import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
-import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
@@ -85,12 +85,7 @@ type ParseSelectWithCtesAfterSubquery<
 					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc>
 					: PeekToken<R4> extends TokenKey<"select">
 						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc>
-						: SkipFailedExpression<R4, SqlParserError<"Expected SELECT after WITH clause">> extends [
-									infer Rest extends TokensList,
-									infer Err,
-							  ]
-							? [Rest, Db, Err]
-							: never
+						: SkipFailedStatement<R4, Db, SqlParserError<"Expected SELECT after WITH clause">>
 				: never
 			: never
 		: never
@@ -129,12 +124,7 @@ type ParseSelectWithCtes<
 									: never
 							: never
 						: never
-				: SkipFailedExpression<R1, SqlParserError<"Expected CTE name in WITH">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R1, Db, SqlParserError<"Expected CTE name in WITH">>
 			: never
 		: never
 
@@ -186,12 +176,7 @@ type ParseSelectAfterDistinct<
 										: never
 								: never
 							: never
-						: SkipFailedExpression<AfterList, SqlParserError<"Expected FROM after SELECT list">> extends [
-									infer Rest extends TokensList,
-									infer Err,
-							  ]
-							? [Rest, Db, Err]
-							: never
+						: SkipFailedStatement<AfterList, Db, SqlParserError<"Expected FROM after SELECT list">>
 				: never
 		: never
 
@@ -1149,12 +1134,7 @@ type ParseSelectTrailingClauses<
 type FinishSelectTerminator<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected semicolon after SELECT">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected semicolon after SELECT">>
 
 type FinishSelectStatement<
 	Tokens extends TokensList,

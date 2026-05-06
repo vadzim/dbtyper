@@ -21,7 +21,7 @@ import type {
 import type { ParseAndResolveReturningClause, ParseSelect } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
-import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
@@ -363,12 +363,7 @@ type ParseInsertAfterValuesKeyword<
 								: never
 						: never
 					: never
-				: SkipFailedExpression<Rvals, SqlParserError<"Expected `(` after VALUES in INSERT">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<Rvals, Db, SqlParserError<"Expected `(` after VALUES in INSERT">>
 			: never
 		: never
 
@@ -418,12 +413,7 @@ type ParseInsertValuesCells<
 								: ParseInsertValuesCommaThenRest<R1, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
 							: never
 					: never
-				: SkipFailedExpression<R1, SqlParserError<"Invalid value expression in INSERT">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R1, Db, SqlParserError<"Invalid value expression in INSERT">>
 		: never
 	: never
 
@@ -442,12 +432,7 @@ type ParseInsertValuesCommaThenRest<
 		? SkipToken<Tokens> extends infer Rc extends TokensList
 			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
 			: never
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected `,` between INSERT values">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `,` between INSERT values">>
 
 type InsertExcludedScope<
 	Sch extends string,
@@ -530,12 +515,7 @@ type ParseInsertOptionalTail<
 				? SkipToken<ROn> extends infer Rcf extends TokensList
 					? ParseInsertOnConflictDoUpdate<Rcf, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: never
-				: SkipFailedExpression<ROn, SqlParserError<"Expected CONFLICT after ON in INSERT">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<ROn, Db, SqlParserError<"Expected CONFLICT after ON in INSERT">>
 			: never
 		: ParseInsertMaybeReturning<Tokens, Db, Scope, Params, Tbl, Sch, Tab, Cols, UpsertCols, Returning>
 
@@ -553,12 +533,7 @@ type ParseInsertOnConflictDoUpdate<
 		? SkipToken<Tokens> extends infer R0 extends TokensList
 			? T0 extends TokenKey<"(">
 				? ParseInsertOnConflictAfterOpenParen<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipFailedExpression<R0, SqlParserError<"Expected `(` after ON CONFLICT in INSERT">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R0, Db, SqlParserError<"Expected `(` after ON CONFLICT in INSERT">>
 			: never
 		: never
 
@@ -603,12 +578,7 @@ type ParseInsertOnConflictAfterConflictCloseParen<
 						: never
 				: never
 			: never
-		: SkipFailedExpression<R2, SqlParserError<"Expected DO after ON CONFLICT column list in INSERT">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<R2, Db, SqlParserError<"Expected DO after ON CONFLICT column list in INSERT">>
 
 type ParseInsertOnConflictAfterDoKw<
 	R3 extends TokensList,
@@ -624,12 +594,7 @@ type ParseInsertOnConflictAfterDoKw<
 		? SkipToken<R3> extends infer R4 extends TokensList
 			? TUp extends TokenKey<"update">
 				? ParseInsertOnConflictAfterUpdateKw<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipFailedExpression<R4, SqlParserError<"Expected UPDATE after DO in INSERT ON CONFLICT">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R4, Db, SqlParserError<"Expected UPDATE after DO in INSERT ON CONFLICT">>
 			: never
 		: never
 
@@ -659,12 +624,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 								: never
 						: never
 					: never
-				: SkipFailedExpression<R5, SqlParserError<"Expected SET after UPDATE in INSERT ON CONFLICT">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R5, Db, SqlParserError<"Expected SET after UPDATE in INSERT ON CONFLICT">>
 			: never
 		: never
 
@@ -758,12 +718,7 @@ type ParseInsertUpsertSetAssignments<
 							  > extends [infer Rest extends TokensList, infer Err]
 							? [Rest, Db, Err]
 							: never
-				: SkipFailedExpression<R1, SqlParserError<"Expected column name in ON CONFLICT UPDATE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R1, Db, SqlParserError<"Expected column name in ON CONFLICT UPDATE">>
 			: never
 		: never
 
@@ -823,12 +778,7 @@ type FinishInsertSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after INSERT">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `;` after INSERT">>
 
 type ParseInsertAfterInto<
 	Tokens extends TokensList,
@@ -862,9 +812,4 @@ export type ParseInsert<
 > =
 	PeekToken<Tokens> extends TokenKey<"into">
 		? ParseInsertAfterInto<SkipToken<Tokens>, Db, Params>
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected INTO after INSERT">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected INTO after INSERT">>

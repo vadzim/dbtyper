@@ -2,7 +2,7 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/
 import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -11,12 +11,7 @@ export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShap
 				? SkipToken<A0> extends infer A1 extends TokensList
 					? ParseDropTypeQualified<A1, Db, true>
 					: never
-				: SkipFailedExpression<A0, SqlParserError<"Expected `exists` after `IF` in DROP TYPE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP TYPE">>
 			: never
 		: ParseDropTypeQualified<Tokens, Db, false>
 
@@ -70,21 +65,11 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 					? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
 						? FinishDropStatement<R, NewDb>
 						: never
-					: SkipFailedExpression<R, SqlParserError<"Type does not exist; use IF EXISTS">> extends [
-								infer Rest extends TokensList,
-								infer Err,
-						  ]
-						? [Rest, Db, Err]
-						: never
+					: SkipFailedStatement<R, Db, SqlParserError<"Type does not exist; use IF EXISTS">>
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid DROP TYPE parse">]
 		: never
 
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after DROP TYPE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `;` after DROP TYPE">>

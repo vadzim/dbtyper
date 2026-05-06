@@ -2,7 +2,7 @@ import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbReplaceSchema, JsqlCreateSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -20,12 +20,7 @@ export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabase
 							? [Rest, Db, Err]
 							: never
 					: never
-				: SkipFailedExpression<A0, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">>
 			: never
 		: ParseCreateSchemaName<Tokens, Db, false>
 
@@ -44,19 +39,9 @@ type ParseCreateSchemaAfterSchemaName<
 			: [SchemaName] extends [keyof Db["schemas"]]
 				? [AfterName, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-		: SkipFailedExpression<AfterName, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<AfterName, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">>
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends TokenIdent<infer SchemaName extends string>
 		? ParseCreateSchemaAfterSchemaName<SkipToken<Tokens>, Db, SchemaName, IfNotExists>
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected schema name in CREATE SCHEMA">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">>

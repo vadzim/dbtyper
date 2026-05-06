@@ -9,7 +9,7 @@ import type {
 	TokensList,
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { JsqlDbGetSchema, JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
@@ -20,12 +20,7 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 				? SkipToken<A0> extends infer A1 extends TokensList
 					? ParseAlterTypeQualified<A1, Db, true>
 					: never
-				: SkipFailedExpression<A0, SqlParserError<"Expected `exists` after `IF` in ALTER TYPE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `exists` after `IF` in ALTER TYPE">>
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>
 
@@ -94,12 +89,7 @@ type ParseAlterTypeAction<
 								: never
 						: never
 					: never
-				: SkipFailedExpression<AfterAdd, SqlParserError<"Expected `add` in ALTER TYPE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<AfterAdd, Db, SqlParserError<"Expected `add` in ALTER TYPE">>
 			: never
 		: never
 
@@ -131,9 +121,4 @@ type ParseAlterTypeAddValue<
 type ParseAlterTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after ALTER TYPE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, NewDb, Err]
-			: never
+		: SkipFailedStatement<Tokens, NewDb, SqlParserError<"Expected `;` after ALTER TYPE">>

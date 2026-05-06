@@ -13,7 +13,7 @@ import type {
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
-import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -32,12 +32,7 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 							? [Rest, Db, Err]
 							: never
 					: never
-				: SkipFailedExpression<A0, SqlParserError<"Expected `not` after `IF` in CREATE TABLE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `not` after `IF` in CREATE TABLE">>
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
@@ -55,12 +50,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 			: IfNotExists extends true
 				? [R, Db, null]
-				: SkipFailedExpression<R, SqlParserError<"Table already exists; use IF NOT EXISTS">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, Db, Err]
-					: never
+				: SkipFailedStatement<R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">>
 		: never
 
 type NarrowSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"] ? Sch : never
@@ -76,12 +66,7 @@ type ParseCreateTableQualifiedWhenNameOk<
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never
-		: SkipFailedExpression<R, SqlParserError<"Unknown schema for CREATE TABLE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<R, Db, SqlParserError<"Unknown schema for CREATE TABLE">>
 
 type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedTableName<Tokens, Db> extends [
@@ -135,20 +120,10 @@ type ParseCreateTableCloseParenAndSemi<Tokens extends TokensList, NewDb extends 
 					? SkipToken<R1> extends infer R2 extends TokensList
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, NewDb, null]
-							: SkipFailedExpression<R2, SqlParserError<"Expected `;` after CREATE TABLE">> extends [
-										infer Rest extends TokensList,
-										infer Err,
-								  ]
-								? [Rest, NewDb, Err]
-								: never
+							: SkipFailedStatement<R2, NewDb, SqlParserError<"Expected `;` after CREATE TABLE">>
 						: never
 					: never
-				: SkipFailedExpression<R1, SqlParserError<"Expected `)` before end of CREATE TABLE">> extends [
-							infer Rest extends TokensList,
-							infer Err,
-					  ]
-					? [Rest, NewDb, Err]
-					: never
+				: SkipFailedStatement<R1, NewDb, SqlParserError<"Expected `)` before end of CREATE TABLE">>
 			: never
 		: never
 
@@ -200,12 +175,7 @@ type ParseOneColumnAfterColName<
 						? ResolveAfterNullability<AfterArray, Db, Schema, Table, Stack, ColName, FinalType>
 						: never
 				: never
-			: SkipFailedExpression<AfterType, SqlParserError<"Invalid column type in CREATE TABLE">> extends [
-						infer Rest extends TokensList,
-						infer Err,
-				  ]
-				? [Rest, Db, Err]
-				: never
+			: SkipFailedStatement<AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">>
 		: never
 
 type ParseOneColumn<
@@ -217,12 +187,7 @@ type ParseOneColumn<
 > =
 	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
 		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected column name in CREATE TABLE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected column name in CREATE TABLE">>
 
 type ResolveAfterNullability<
 	AfterType extends TokensList,
@@ -239,12 +204,7 @@ type ResolveAfterNullability<
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? T2 extends TokenKey<"null">
 						? ContinueAfterColumnDef<R2, Db, Schema, Table, Stack, ColName, Joined, true>
-						: SkipFailedExpression<R2, SqlParserError<"Expected `null` after `NOT`">> extends [
-									infer Rest extends TokensList,
-									infer Err,
-							  ]
-							? [Rest, Db, Err]
-							: never
+						: SkipFailedStatement<R2, Db, SqlParserError<"Expected `null` after `NOT`">>
 					: never
 				: never
 			: never
@@ -439,12 +399,7 @@ type ContinueAfterDefault<
 					Table,
 					readonly [...Stack, readonly [ColName, Joined, NotNull, HasDefault]]
 				>
-			: SkipFailedExpression<AfterDefaultVal, SqlParserError<"Expected `,` or `)` after DEFAULT value">> extends [
-						infer Rest extends TokensList,
-						infer Err,
-				  ]
-				? [Rest, Db, Err]
-				: never
+			: SkipFailedStatement<AfterDefaultVal, Db, SqlParserError<"Expected `,` or `)` after DEFAULT value">>
 
 type ColPair = { cols: Record<string, string>; facts: Record<string, unknown> }
 

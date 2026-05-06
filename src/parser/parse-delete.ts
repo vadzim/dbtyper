@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -16,12 +16,7 @@ export type ParseDelete<
 > =
 	PeekToken<Tokens> extends TokenKey<"from">
 		? ParseDeleteAfterFrom<SkipToken<Tokens>, Db, Params>
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected FROM after DELETE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected FROM after DELETE">>
 
 type ParseDeleteAfterFrom<
 	Tokens extends TokensList,
@@ -223,12 +218,7 @@ type FinishDeleteSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning]
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after DELETE">> extends [
-					infer Rest extends TokensList,
-					infer Err,
-			  ]
-			? [Rest, Db, Err]
-			: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `;` after DELETE">>
 
 type ParseDeleteFromTableRef<
 	Tokens extends TokensList,
