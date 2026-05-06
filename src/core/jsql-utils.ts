@@ -162,6 +162,12 @@ export type JsqlDataGetColumnType<Data extends JsqlDataShape | null, Col extends
 		: null
 	: null
 
+export type JsqlDataHasColumn<Data extends JsqlDataShape | null, Col extends string> = Data extends JsqlDataShape
+	? Col extends keyof Data["columns"]
+		? true
+		: false
+	: false
+
 export type JsqlTableGetColumnFacts<Table extends JsqlDataShape<"table"> | null, Col extends string> =
 	Table extends JsqlDataShape<"table">
 		? Table["column_facts"] extends infer Facts
