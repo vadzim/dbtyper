@@ -33,9 +33,9 @@ export type ApplyStatements<
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
-			infer FirstErr extends SqlParserError<string> | null,
+			infer Error extends SqlParserError<string> | null,
 		]
-		? [NewDB, FirstErr]
+		? [NewDB, Error]
 		: never
 	: [Db, null]
 
@@ -43,19 +43,231 @@ export type ApplyParsedStatements<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	Errors extends SqlParserError<string> | null = null,
-> =
-	PeekToken<Tokens> extends TokenEot
-		? [Tokens, Db, Errors]
-		: ParseSqlStatement<Tokens, Db, Params> extends [infer Rest extends TokensList, infer NewDB, infer Result]
+	Error extends SqlParserError<string> | null = null,
+	Depth extends number = 0,
+> = Depth extends 50 // Абмежаванне глыбіні
+	? [Tokens, Db, Error]
+	: PeekToken<Tokens> extends TokenEot
+		? [Tokens, Db, Error]
+		: ParseSqlStatement<Tokens, Db, Params> extends [
+					infer Rest extends TokensList,
+					infer NewDB extends JsqlDatabaseShape,
+					infer Result,
+			  ]
 			? Result extends SqlParserError<string>
-				? ParseSkipStatement<Rest, Db> extends [infer Rest2 extends TokensList, unknown, unknown]
-					? [Rest2, Db, Result]
-					: never
-				: NewDB extends JsqlDatabaseShape
-					? ApplyParsedStatements<Rest, NewDB, Params, Errors>
-					: never
+				? ApplyParsedStatementsAfterError<Rest, Db, Params, Error, Result, Depth>
+				: ApplyParsedStatements<Rest, NewDB, Params, Error, Inc<Depth>>
 			: never
+
+type ApplyParsedStatementsAfterError<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Error extends SqlParserError<string> | null,
+	Result extends SqlParserError<string>,
+	Depth extends number,
+> =
+	ParseSkipStatement<Tokens, Db> extends [infer Rest2 extends TokensList, unknown, unknown]
+		? Error extends null
+			? ApplyParsedStatements<Rest2, Db, Params, Result, Inc<Depth>>
+			: ApplyParsedStatements<Rest2, Db, Params, Error, Inc<Depth>>
+		: never
+
+type Inc<N extends number> = [N] extends [0]
+	? 1
+	: [N] extends [1]
+		? 2
+		: [N] extends [2]
+			? 3
+			: [N] extends [3]
+				? 4
+				: [N] extends [4]
+					? 5
+					: [N] extends [5]
+						? 6
+						: [N] extends [6]
+							? 7
+							: [N] extends [7]
+								? 8
+								: [N] extends [8]
+									? 9
+									: [N] extends [9]
+										? 10
+										: [N] extends [10]
+											? 11
+											: [N] extends [11]
+												? 12
+												: [N] extends [12]
+													? 13
+													: [N] extends [13]
+														? 14
+														: [N] extends [14]
+															? 15
+															: [N] extends [15]
+																? 16
+																: [N] extends [16]
+																	? 17
+																	: [N] extends [17]
+																		? 18
+																		: [N] extends [18]
+																			? 19
+																			: [N] extends [19]
+																				? 20
+																				: [N] extends [20]
+																					? 21
+																					: [N] extends [21]
+																						? 22
+																						: [N] extends [22]
+																							? 23
+																							: [N] extends [23]
+																								? 24
+																								: [N] extends [24]
+																									? 25
+																									: [N] extends [25]
+																										? 26
+																										: [N] extends [
+																													26,
+																											  ]
+																											? 27
+																											: [
+																														N,
+																												  ] extends [
+																														27,
+																												  ]
+																												? 28
+																												: [
+																															N,
+																													  ] extends [
+																															28,
+																													  ]
+																													? 29
+																													: [
+																																N,
+																														  ] extends [
+																																29,
+																														  ]
+																														? 30
+																														: [
+																																	N,
+																															  ] extends [
+																																	30,
+																															  ]
+																															? 31
+																															: [
+																																		N,
+																																  ] extends [
+																																		31,
+																																  ]
+																																? 32
+																																: [
+																																			N,
+																																	  ] extends [
+																																			32,
+																																	  ]
+																																	? 33
+																																	: [
+																																				N,
+																																		  ] extends [
+																																				33,
+																																		  ]
+																																		? 34
+																																		: [
+																																					N,
+																																			  ] extends [
+																																					34,
+																																			  ]
+																																			? 35
+																																			: [
+																																						N,
+																																				  ] extends [
+																																						35,
+																																				  ]
+																																				? 36
+																																				: [
+																																							N,
+																																					  ] extends [
+																																							36,
+																																					  ]
+																																					? 37
+																																					: [
+																																								N,
+																																						  ] extends [
+																																								37,
+																																						  ]
+																																						? 38
+																																						: [
+																																									N,
+																																							  ] extends [
+																																									38,
+																																							  ]
+																																							? 39
+																																							: [
+																																										N,
+																																								  ] extends [
+																																										39,
+																																								  ]
+																																								? 40
+																																								: [
+																																											N,
+																																									  ] extends [
+																																											40,
+																																									  ]
+																																									? 41
+																																									: [
+																																												N,
+																																										  ] extends [
+																																												41,
+																																										  ]
+																																										? 42
+																																										: [
+																																													N,
+																																											  ] extends [
+																																													42,
+																																											  ]
+																																											? 43
+																																											: [
+																																														N,
+																																												  ] extends [
+																																														43,
+																																												  ]
+																																												? 44
+																																												: [
+																																															N,
+																																													  ] extends [
+																																															44,
+																																													  ]
+																																													? 45
+																																													: [
+																																																N,
+																																														  ] extends [
+																																																45,
+																																														  ]
+																																														? 46
+																																														: [
+																																																	N,
+																																															  ] extends [
+																																																	46,
+																																															  ]
+																																															? 47
+																																															: [
+																																																		N,
+																																																  ] extends [
+																																																		47,
+																																																  ]
+																																																? 48
+																																																: [
+																																																			N,
+																																																	  ] extends [
+																																																			48,
+																																																	  ]
+																																																	? 49
+																																																	: [
+																																																				N,
+																																																		  ] extends [
+																																																				49,
+																																																		  ]
+																																																		? 50
+																																																		: 50
 
 export type ParseSqlStatement<
 	Tokens extends TokensList,
