@@ -8,9 +8,8 @@ import type {
 	JsqlDbReplaceColumn,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
-	JsqlTableReplaceColumn,
+	JsqlDbGetColumn,
 	JsqlCreateColumn,
-	JsqlTableGetColumn,
 	JsqlDbGetColumnType,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
@@ -154,13 +153,19 @@ type ParseAlterRenameAfterToKw<
 				? JsqlDbGetColumnType<Db, Sch, Tab, Old> extends null
 					? [SkipToken<R3>, Db, SqlParserError<"Column does not exist">]
 					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
-						? JsqlTableReplaceColumn<
-								JsqlTableReplaceColumn<Tbl, Old, null>,
-								New,
-								JsqlTableGetColumn<Tbl, Old>
-							> extends infer U extends JsqlDataShape<"table">
-							? ParseAlterActions<SkipToken<R3>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-							: [SkipToken<R3>, Db, SqlParserError<"Column rename failed">]
+						? JsqlDbGetColumn<Db, Sch, Tab, Old> extends infer OldCol extends
+								| (JsqlColumnFactsEntry & { type: string })
+								| null
+							? JsqlDbReplaceColumn<
+									JsqlDbReplaceColumn<Db, Sch, Tab, Old, null>,
+									Sch,
+									Tab,
+									New,
+									OldCol
+								> extends infer NewDb extends JsqlDatabaseShape
+								? ParseAlterActions<SkipToken<R3>, NewDb, Sch, Tab>
+								: [SkipToken<R3>, Db, SqlParserError<"Column rename failed">]
+							: never
 						: [SkipToken<R3>, Db, SqlParserError<"Column already exists">]
 				: [SkipToken<R3>, Db, SqlParserError<"Expected new column name after TO in RENAME COLUMN">]
 			: never
