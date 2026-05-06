@@ -13,13 +13,10 @@ type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl exten
 		: false
 	: false
 
-export type ValidateMutationValueForColumn<
-	Tbl extends JsqlDataShape,
-	Col extends string,
-	Val extends ExprAtom,
-> = JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends string
-	? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
-	: SqlParserError<"Unknown column in INSERT">
+export type ValidateMutationValueForColumn<Tbl extends JsqlDataShape, Col extends string, Val extends ExprAtom> =
+	JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends string
+		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
+		: SqlParserError<"Unknown column in INSERT">
 
 type ValidateMutationValueBySql<
 	Tbl extends JsqlDataShape,

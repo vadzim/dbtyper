@@ -186,7 +186,7 @@ type ParseUpdateSetAssignments<
 										: [R3, Db, SqlParserError<"Invalid value expression in UPDATE">]
 								: never
 							: never
-					: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
+						: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
 				: [R1, Db, SqlParserError<"Expected column name in UPDATE SET">]
 			: never
 		: never
