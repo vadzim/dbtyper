@@ -203,23 +203,6 @@ export type JsqlTableGetColumnDefault<Table extends JsqlDataShape<"table"> | nul
 			: null
 		: null
 
-export type JsqlTableAddColumn<
-	Table extends JsqlDataShape<"table"> | null,
-	Name extends string,
-	SqlType extends string,
-> = JsqlTableReplaceColumn<Table, Name, JsqlCreateColumn<SqlType>>
-
-export type JsqlTableDropColumn<
-	Table extends JsqlDataShape<"table"> | null,
-	Name extends string,
-> = JsqlTableReplaceColumn<Table, Name, null>
-
-export type JsqlTableRenameColumn<
-	Table extends JsqlDataShape<"table"> | null,
-	OldName extends string,
-	NewName extends string,
-> = JsqlTableReplaceColumn<JsqlTableReplaceColumn<Table, OldName, null>, NewName, JsqlTableGetColumn<Table, OldName>>
-
 export type JsqlTableReplaceColumn<
 	Table extends JsqlDataShape<"table"> | null,
 	Name extends string,
@@ -355,41 +338,6 @@ export type JsqlSchemaGetColumnDefault<
 	Col extends string,
 > = JsqlTableGetColumnDefault<JsqlSchemaGetTable<Schema, Tab>, Col>
 
-export type JsqlSchemaAddColumn<
-	Schema extends JsqlSchemaShape | null,
-	Tab extends string,
-	Name extends string,
-	SqlType extends string,
-> = Schema extends JsqlSchemaShape
-	? JsqlTableAddColumn<JsqlSchemaGetTable<Schema, Tab>, Name, SqlType> extends infer UpdatedTable extends
-			JsqlDataShape<"table">
-		? ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Tab, UpdatedTable>>
-		: null
-	: null
-
-export type JsqlSchemaDropColumn<
-	Schema extends JsqlSchemaShape | null,
-	Tab extends string,
-	Name extends string,
-> = Schema extends JsqlSchemaShape
-	? JsqlTableDropColumn<JsqlSchemaGetTable<Schema, Tab>, Name> extends infer UpdatedTable extends
-			JsqlDataShape<"table">
-		? ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Tab, UpdatedTable>>
-		: null
-	: null
-
-export type JsqlSchemaRenameColumn<
-	Schema extends JsqlSchemaShape | null,
-	Tab extends string,
-	OldName extends string,
-	NewName extends string,
-> = Schema extends JsqlSchemaShape
-	? JsqlTableRenameColumn<JsqlSchemaGetTable<Schema, Tab>, OldName, NewName> extends infer UpdatedTable extends
-			JsqlDataShape<"table">
-		? ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Tab, UpdatedTable>>
-		: null
-	: null
-
 export type JsqlSchemaReplaceColumn<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
@@ -471,29 +419,6 @@ export type JsqlDbGetColumnDefault<
 	Tab extends string,
 	Name extends string,
 > = JsqlSchemaGetColumnDefault<JsqlDbGetSchema<Db, Sch>, Tab, Name>
-
-export type JsqlDbAddColumn<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	Name extends string,
-	SqlType extends string,
-> = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaAddColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, SqlType>>
-
-export type JsqlDbDropColumn<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	Name extends string,
-> = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaDropColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name>>
-
-export type JsqlDbRenameColumn<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	OldName extends string,
-	NewName extends string,
-> = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaRenameColumn<JsqlDbGetSchema<Db, Sch>, Tab, OldName, NewName>>
 
 export type JsqlDbReplaceColumn<
 	Db extends JsqlDatabaseShape,

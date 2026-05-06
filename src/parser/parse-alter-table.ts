@@ -7,9 +7,9 @@ import type {
 	JsqlSchemaGetTable,
 	JsqlTableReplaceColumnType,
 	JsqlTableReplaceColumnNullability,
-	JsqlTableAddColumn,
-	JsqlTableDropColumn,
-	JsqlTableRenameColumn,
+	JsqlTableReplaceColumn,
+	JsqlCreateColumn,
+	JsqlTableGetColumn,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -49,12 +49,12 @@ type ApplyAddColumn<
 	Sql extends string,
 > = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">
-	: JsqlTableAddColumn<T, Col, Sql> extends infer U extends JsqlDataShape<"table">
+	: JsqlTableReplaceColumn<T, Col, JsqlCreateColumn<Sql>> extends infer U extends JsqlDataShape<"table">
 		? U
 		: SqlParserError<"Column add failed">
 
 type ApplyDropColumn<T extends JsqlDataShape<"table">, Col extends string> = Col extends keyof T["columns"]
-	? JsqlTableDropColumn<T, Col> extends infer U extends JsqlDataShape<"table">
+	? JsqlTableReplaceColumn<T, Col, null> extends infer U extends JsqlDataShape<"table">
 		? U
 		: SqlParserError<"Column drop failed">
 	: SqlParserError<"Column does not exist">
@@ -66,7 +66,11 @@ type ApplyRenameColumn<
 > = Old extends keyof T["columns"]
 	? New extends keyof T["columns"]
 		? SqlParserError<"Column already exists">
-		: JsqlTableRenameColumn<T, Old, New> extends infer U extends JsqlDataShape<"table">
+		: JsqlTableReplaceColumn<
+					JsqlTableReplaceColumn<T, Old, null>,
+					New,
+					JsqlTableGetColumn<T, Old>
+			  > extends infer U extends JsqlDataShape<"table">
 			? U
 			: SqlParserError<"Column rename failed">
 	: SqlParserError<"Column does not exist">
