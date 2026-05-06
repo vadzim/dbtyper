@@ -16,36 +16,21 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 
 /** After `schema.` in qualified `DROP TABLE schema.table`. */
 type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
-	PeekToken<AfterDot> extends infer T2
+	PeekToken<AfterDot> extends TokenIdent<infer B extends string>
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
-			? T2 extends TokenIdent<infer B extends string>
-				? PeekToken<R2> extends infer T3
-					? SkipToken<R2> extends infer R3 extends TokensList
-						? T3 extends TokenKey<";"> | TokenEot
-							? [R3, null, A, B]
-							: [
-									R3,
-									SqlParserError<"Expected `;` after qualified table name in DROP TABLE">,
-									never,
-									never,
-								]
-						: never
-					: never
-				: [R2, SqlParserError<"Expected table name after `.` in DROP TABLE">, never, never]
+			? PeekToken<R2> extends TokenKey<";"> | TokenEot
+				? [SkipToken<R2>, null, A, B]
+				: [R2, SqlParserError<"Expected `;` after qualified table name in DROP TABLE">, never, never]
 			: never
 		: never
 
 /** After first identifier (table or schema). */
 type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends infer T1
-		? SkipToken<AfterFirst> extends infer R1 extends TokensList
-			? T1 extends TokenKey<";"> | TokenEot
-				? [R1, null, Db["defaultSchema"], A]
-				: T1 extends TokenKey<".">
-					? ParseDropQualifiedSecondIdent<R1, A>
-					: [R1, SqlParserError<"Expected `.` or end of table name in DROP TABLE">, never, never]
-			: never
-		: never
+	PeekToken<AfterFirst> extends TokenKey<";"> | TokenEot
+		? [SkipToken<AfterFirst>, null, Db["defaultSchema"], A]
+		: PeekToken<AfterFirst> extends TokenKey<".">
+			? ParseDropQualifiedSecondIdent<SkipToken<AfterFirst>, A>
+			: [AfterFirst, SqlParserError<"Expected `.` or end of table name in DROP TABLE">, never, never]
 
 /** `[rest, null, schema, table]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
