@@ -1,6 +1,7 @@
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ExprAtom, ExprOk, ExprSqlNull, SameComparisonClass } from "./parse-expression.ts"
+import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 
 type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
 	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
@@ -16,10 +17,8 @@ export type ValidateMutationValueForColumn<
 	Tbl extends JsqlDataShape,
 	Col extends string,
 	Val extends ExprAtom,
-> = Col extends keyof Tbl["columns"]
-	? Tbl["columns"][Col] extends infer ColSql extends string
-		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
-		: ValidateMutationValueBySql<Tbl, Col, Val, "unknown">
+> = JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends string
+	? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
 	: SqlParserError<"Unknown column in INSERT">
 
 type ValidateMutationValueBySql<
