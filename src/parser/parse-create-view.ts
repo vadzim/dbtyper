@@ -1,11 +1,5 @@
-import type {
-	I,
-	JsqlDatabaseShape,
-	JsqlSchemaShape,
-	JsqlSelectStatementResult,
-	JsqlGetSchema,
-	JsqlGetSet,
-} from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { JsqlGetSchema, JsqlGetSet } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"

@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { JsqlGetSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -13,13 +14,6 @@ export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseSh
 			: never
 		: ParseDropSchemaName<Tokens, Db, false>
 
-/** True when `Sch` is already a concrete key of `schemas` (not only an open-ended index signature). */
-type HasConcreteSchema<Schemas extends object, Sch extends string> = string extends keyof Schemas
-	? false
-	: Sch extends keyof Schemas
-		? true
-		: false
-
 type ParseDropSchemaAfterIdent<
 	AfterName extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -30,18 +24,22 @@ type ParseDropSchemaAfterIdent<
 		? SkipToken<AfterName> extends infer R1 extends TokensList
 			? Tok extends TokenKey<";"> | TokenEot
 				? IfExists extends true
-					? HasConcreteSchema<Db["schemas"], SchemaName> extends true
-						? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
-								JsqlDatabaseShape
-							? [R1, NewDb, null]
+					? JsqlGetSchema<Db, SchemaName> extends null
+						? [R1, Db, null]
+						: SchemaName extends keyof Db["schemas"]
+							? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
+									JsqlDatabaseShape
+								? [R1, NewDb, null]
+								: never
 							: never
-						: [R1, Db, null]
-					: HasConcreteSchema<Db["schemas"], SchemaName> extends true
-						? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
-								JsqlDatabaseShape
-							? [R1, NewDb, null]
+					: JsqlGetSchema<Db, SchemaName> extends null
+						? [R1, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
+						: SchemaName extends keyof Db["schemas"]
+							? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
+									JsqlDatabaseShape
+								? [R1, NewDb, null]
+								: never
 							: never
-						: [R1, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
 				: [R1, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
 			: never
 		: never

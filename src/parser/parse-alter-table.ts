@@ -4,10 +4,8 @@ import type {
 	JsqlSchemaShape,
 	JsqlTableShape,
 	JsqlColumnFactsEntry,
-	JsqlGetSchema,
-	JsqlGetSet,
-	JsqlGetTable,
 } from "../core/jsql-shapes.ts"
+import type { JsqlGetSchema, JsqlGetSet, JsqlGetTable } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"

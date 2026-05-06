@@ -39,7 +39,6 @@ type ExoticTable = ParseSqlStatement<
 type ExoticCols = ExoticTable[1]["schemas"]["public"]["sets"]["exotic"]["columns"]
 type _unmappedSqlTypeIsUnknown = Expect<Extends<ExoticCols["payload"], unknown>>
 
-/** `sets` must be a concrete key map (no `JsqlSchemaShape &` on `sets`) so `HasConcreteSet` is true for `DROP TABLE`. */
 type DbOneTable = {
 	defaultSchema: "public"
 	schemas: {

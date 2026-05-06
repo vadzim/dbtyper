@@ -1,4 +1,5 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlGetSchema, JsqlGetType } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
+import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
 import type {
 	PeekToken,
 	SkipToken,

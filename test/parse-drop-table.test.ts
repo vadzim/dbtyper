@@ -5,7 +5,6 @@ import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
-/** Concrete `sets` keys only — `HasConcreteSet` is false when an index signature is merged in. */
 type DbAuthItems = {
 	defaultSchema: "auth"
 	schemas: {
