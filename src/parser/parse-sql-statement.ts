@@ -26,13 +26,13 @@ import type { ParseSkipStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 
 export type ApplyStatements<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Db extends JsqlDatabaseShape
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
 			infer _Rest extends TokensList,
-			infer NewDB extends JsqlDatabaseShape | SqlParserError<string>,
+			infer NewDB extends JsqlDatabaseShape,
 			infer FirstErr extends SqlParserError<string> | null,
 		]
 		? [NewDB, FirstErr]

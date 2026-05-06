@@ -41,10 +41,7 @@ export type SqlDatabase<
 	functions?: Functions
 }
 
-export interface SqlMigrations<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
-	ScalarTypes extends Record<string, unknown>,
-> {
+export interface SqlMigrations<Db extends JsqlDatabaseShape, ScalarTypes extends Record<string, unknown>> {
 	apply<Source extends string>(
 		statement: Source extends CheckSqlMigrationSource<Db, Source> ? Source : CheckSqlMigrationSource<Db, Source>,
 		name?: string,
@@ -95,54 +92,52 @@ type NonIndexKey<K extends PropertyKey> = string extends K
  * Pretty-printed `JsqlDatabaseShape` for IDE hints: homomorphic mapped types keep index keys from
  * `schemas` / `sets` / `columns`; remapping with {@link NonIndexKey} drops those keys.
  */
-export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: Db["schemas"] extends infer Schemas
-				? {
-						[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends
-							JsqlSchemaShape
-							? {
-									sets: Schema["sets"] extends infer Sets
-										? {
-												[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends
-													JsqlDataShape
-													? {
-															kind: Table["kind"]
-															columns: Table["columns"] extends infer Columns
-																? {
-																		[CK in keyof Columns as NonIndexKey<CK>]: Columns[CK]
-																	}
-																: never
-															column_facts: Table["column_facts"] extends infer ColumnFacts
-																? [keyof ColumnFacts] extends [never]
-																	? {}
-																	: {
-																			[FK in keyof ColumnFacts as NonIndexKey<FK>]: ColumnFacts[FK]
-																		}
-																: never
-															constraints: Table["constraints"] extends infer Constraints
-																? [keyof Constraints] extends [never]
-																	? {}
-																	: {
-																			[CKe in keyof Constraints as NonIndexKey<CKe>]: Constraints[CKe]
-																		}
-																: never
-														}
-													: never
-											}
-										: never
-									types: Schema["types"] extends infer Types
-										? {
-												[TKey in keyof Types as NonIndexKey<TKey>]: Types[TKey]
-											}
-										: {}
-								}
-							: never
-					}
-				: never
-		} & Pick<Db, Extract<keyof Db, "functions">>
-	: Db
+export type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
+	defaultSchema: Db["defaultSchema"]
+	functions: Db["functions"]
+	schemas: Db["schemas"] extends infer Schemas
+		? {
+				[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends JsqlSchemaShape
+					? {
+							sets: Schema["sets"] extends infer Sets
+								? {
+										[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends
+											JsqlDataShape
+											? {
+													kind: Table["kind"]
+													columns: Table["columns"] extends infer Columns
+														? {
+																[CK in keyof Columns as NonIndexKey<CK>]: Columns[CK]
+															}
+														: never
+													column_facts: Table["column_facts"] extends infer ColumnFacts
+														? [keyof ColumnFacts] extends [never]
+															? {}
+															: {
+																	[FK in keyof ColumnFacts as NonIndexKey<FK>]: ColumnFacts[FK]
+																}
+														: never
+													constraints: Table["constraints"] extends infer Constraints
+														? [keyof Constraints] extends [never]
+															? {}
+															: {
+																	[CKe in keyof Constraints as NonIndexKey<CKe>]: Constraints[CKe]
+																}
+														: never
+												}
+											: never
+									}
+								: never
+							types: Schema["types"] extends infer Types
+								? {
+										[TKey in keyof Types as NonIndexKey<TKey>]: Types[TKey]
+									}
+								: {}
+						}
+					: never
+			}
+		: never
+}
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 
@@ -200,14 +195,14 @@ export class DBMigrations {
  * Used by .stream() which requires statements that return rows.
  */
 type SqlSelectRow<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape,
 	Text extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, ScalarTypes> : Db
 
 type SqlSelectRowObject<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
@@ -220,22 +215,19 @@ type SqlSelectRowObject<
 
 /** Type check for .stream() - requires SELECT or RETURNING */
 type CheckSqlValidForStream<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
 > = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer Msg>] ? `Error in query: ${Msg}` : Stmt
 
 /** Type check for .query() - accepts any valid SQL (including non-RETURNING statements) */
-type CheckSqlValidForQuery<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
-	Stmt extends string,
-	Params extends ExpressionParamsShape,
-> = ApplyStatements<Db, Stmt, Params>[1] extends SqlParserError<infer Msg> ? `Error in query: ${Msg}` : Stmt
+type CheckSqlValidForQuery<Db extends JsqlDatabaseShape, Stmt extends string, Params extends ExpressionParamsShape> =
+	ApplyStatements<Db, Stmt, Params>[1] extends SqlParserError<infer Msg> ? `Error in query: ${Msg}` : Stmt
 
 /** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
 type QueryReturnType<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
@@ -244,13 +236,10 @@ type QueryReturnType<
 		? unknown
 		: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
 
-type CheckSqlMigrationSource<Db extends JsqlDatabaseShape | SqlParserError<string>, Source extends string> =
+type CheckSqlMigrationSource<Db extends JsqlDatabaseShape, Source extends string> =
 	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M> ? M : Source
 
-export type DataBase<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
-	ScalarTypes extends Record<string, unknown>,
-> = {
+export type DataBase<Db extends JsqlDatabaseShape, ScalarTypes extends Record<string, unknown>> = {
 	/**
 	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, unknown for other statements.
 	 */
