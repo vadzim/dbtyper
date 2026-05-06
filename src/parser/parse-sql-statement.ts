@@ -45,8 +45,28 @@ export type ApplyParsedStatements<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	Error extends SqlParserError<string> | null = null,
+	BatchDepth extends number = 0,
+> = BatchDepth extends 50 // Вонкавы цыкл: 50 батчаў
+	? [Tokens, Db, Error]
+	: PeekToken<Tokens> extends TokenEot
+		? [Tokens, Db, Error]
+		: ApplyParsedStatementsInner<Tokens, Db, Params, Error> extends [
+					infer Rest extends TokensList,
+					infer NewDB extends JsqlDatabaseShape,
+					infer NewError extends SqlParserError<string> | null,
+			  ]
+			? PeekToken<Rest> extends TokenEot
+				? [Rest, NewDB, NewError]
+				: ApplyParsedStatements<Rest, NewDB, Params, NewError, Inc[BatchDepth]>
+			: never
+
+type ApplyParsedStatementsInner<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Error extends SqlParserError<string> | null = null,
 	Depth extends number = 0,
-> = Depth extends 50 // Абмежаванне глыбіні
+> = Depth extends 50 // Унутраны цыкл: 50 statements
 	? [Tokens, Db, Error]
 	: PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error]
@@ -57,7 +77,7 @@ export type ApplyParsedStatements<
 			  ]
 			? Result extends SqlParserError<string>
 				? ApplyParsedStatementsAfterError<Rest, Db, Params, Error, Result, Depth>
-				: ApplyParsedStatements<Rest, NewDB, Params, Error, Inc[Depth]>
+				: ApplyParsedStatementsInner<Rest, NewDB, Params, Error, Inc[Depth]>
 			: never
 
 type ApplyParsedStatementsAfterError<
@@ -70,8 +90,8 @@ type ApplyParsedStatementsAfterError<
 > =
 	ParseSkipStatement<Tokens, Db> extends [infer Rest2 extends TokensList, unknown, unknown]
 		? Error extends null
-			? ApplyParsedStatements<Rest2, Db, Params, Result, Inc[Depth]>
-			: ApplyParsedStatements<Rest2, Db, Params, Error, Inc[Depth]>
+			? ApplyParsedStatementsInner<Rest2, Db, Params, Result, Inc[Depth]>
+			: ApplyParsedStatementsInner<Rest2, Db, Params, Error, Inc[Depth]>
 		: never
 
 export type ParseSqlStatement<
