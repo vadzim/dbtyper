@@ -20,27 +20,23 @@ type ParseDropSchemaAfterIdent<
 	IfExists extends boolean,
 	SchemaName extends string,
 > =
-	PeekToken<AfterName> extends infer Tok
-		? SkipToken<AfterName> extends infer R1 extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? IfExists extends true
-					? JsqlDbGetSchema<Db, SchemaName> extends null
-						? [R1, Db, null]
-						: SchemaName extends keyof Db["schemas"]
-							? JsqlDbReplaceSchema<Db, SchemaName, null> extends infer NewDb extends JsqlDatabaseShape
-								? [R1, NewDb, null]
-								: never
-							: never
-					: JsqlDbGetSchema<Db, SchemaName> extends null
-						? [R1, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
-						: SchemaName extends keyof Db["schemas"]
-							? JsqlDbReplaceSchema<Db, SchemaName, null> extends infer NewDb extends JsqlDatabaseShape
-								? [R1, NewDb, null]
-								: never
-							: never
-				: [R1, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
-			: never
-		: never
+	PeekToken<AfterName> extends TokenKey<";"> | TokenEot
+		? IfExists extends true
+			? JsqlDbGetSchema<Db, SchemaName> extends null
+				? [SkipToken<AfterName>, Db, null]
+				: SchemaName extends keyof Db["schemas"]
+					? JsqlDbReplaceSchema<Db, SchemaName, null> extends infer NewDb extends JsqlDatabaseShape
+						? [SkipToken<AfterName>, NewDb, null]
+						: never
+					: never
+			: JsqlDbGetSchema<Db, SchemaName> extends null
+				? [SkipToken<AfterName>, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
+				: SchemaName extends keyof Db["schemas"]
+					? JsqlDbReplaceSchema<Db, SchemaName, null> extends infer NewDb extends JsqlDatabaseShape
+						? [SkipToken<AfterName>, NewDb, null]
+						: never
+					: never
+		: [SkipToken<AfterName>, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
 
 type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	PeekToken<Tokens> extends infer NameTok

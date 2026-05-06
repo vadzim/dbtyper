@@ -25,19 +25,15 @@ type ParseCreateSchemaAfterSchemaName<
 	SchemaName extends string,
 	IfNotExists extends boolean,
 > =
-	PeekToken<AfterName> extends infer Tok
-		? SkipToken<AfterName> extends infer R1 extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? IfNotExists extends true
-					? [SchemaName] extends [keyof Db["schemas"]]
-						? [R1, Db, null]
-						: [R1, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-					: [SchemaName] extends [keyof Db["schemas"]]
-						? [R1, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
-						: [R1, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-				: [R1, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
-			: never
-		: never
+	PeekToken<AfterName> extends TokenKey<";"> | TokenEot
+		? IfNotExists extends true
+			? [SchemaName] extends [keyof Db["schemas"]]
+				? [SkipToken<AfterName>, Db, null]
+				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
+			: [SchemaName] extends [keyof Db["schemas"]]
+				? [SkipToken<AfterName>, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
+				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
+		: [SkipToken<AfterName>, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends infer NameTok
