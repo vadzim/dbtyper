@@ -117,10 +117,6 @@ type ParseAlterTypeAddValue<
 		: never
 
 type ParseAlterTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? [R, NewDb, null]
-				: [R, NewDb, SqlParserError<"Expected `;` after ALTER TYPE">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? [SkipToken<Tokens>, NewDb, null]
+		: [SkipToken<Tokens>, NewDb, SqlParserError<"Expected `;` after ALTER TYPE">]
