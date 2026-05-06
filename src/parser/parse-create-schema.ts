@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbReplaceSchema, JsqlCreateSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 
 export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -12,9 +13,19 @@ export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabase
 						? SkipToken<A1> extends infer A2 extends TokensList
 							? ParseCreateSchemaName<A2, Db, true>
 							: never
-						: [A1, Db, SqlParserError<"Expected `exists` after `IF NOT` in CREATE SCHEMA">]
+						: SkipFailedExpression<
+									A1,
+									SqlParserError<"Expected `exists` after `IF NOT` in CREATE SCHEMA">
+							  > extends [infer Rest extends TokensList, infer Err]
+							? [Rest, Db, Err]
+							: never
 					: never
-				: [A0, Db, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">]
+				: SkipFailedExpression<A0, SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: ParseCreateSchemaName<Tokens, Db, false>
 
@@ -33,9 +44,19 @@ type ParseCreateSchemaAfterSchemaName<
 			: [SchemaName] extends [keyof Db["schemas"]]
 				? [AfterName, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-		: [AfterName, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
+		: SkipFailedExpression<AfterName, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends TokenIdent<infer SchemaName extends string>
 		? ParseCreateSchemaAfterSchemaName<SkipToken<Tokens>, Db, SchemaName, IfNotExists>
-		: [Tokens, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
+		: SkipFailedExpression<Tokens, SqlParserError<"Expected schema name in CREATE SCHEMA">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never

@@ -9,6 +9,7 @@ import type {
 	TokensList,
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { JsqlDbGetSchema, JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
@@ -19,7 +20,12 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 				? SkipToken<A0> extends infer A1 extends TokensList
 					? ParseAlterTypeQualified<A1, Db, true>
 					: never
-				: [A0, Db, SqlParserError<"Expected `exists` after `IF` in ALTER TYPE">]
+				: SkipFailedExpression<A0, SqlParserError<"Expected `exists` after `IF` in ALTER TYPE">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>
 
@@ -57,7 +63,12 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 					: [R, Db, null]
 				: JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
 					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
-					: [R, Db, SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">]
+					: SkipFailedExpression<
+								R,
+								SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">
+						  > extends [infer Rest extends TokensList, infer Err]
+						? [Rest, Db, Err]
+						: never
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid ALTER TYPE parse">]
 		: never
 
@@ -75,10 +86,20 @@ type ParseAlterTypeAction<
 					? SkipToken<AfterAdd> extends infer AfterValue extends TokensList
 						? ValueTok extends TokenIdent<"value">
 							? ParseAlterTypeAddValue<AfterValue, Db, Sch, Typ, Values>
-							: [AfterValue, Db, SqlParserError<"Expected `value` after `ADD` in ALTER TYPE">]
+							: SkipFailedExpression<
+										AfterValue,
+										SqlParserError<"Expected `value` after `ADD` in ALTER TYPE">
+								  > extends [infer Rest extends TokensList, infer Err]
+								? [Rest, Db, Err]
+								: never
 						: never
 					: never
-				: [AfterAdd, Db, SqlParserError<"Expected `add` in ALTER TYPE">]
+				: SkipFailedExpression<AfterAdd, SqlParserError<"Expected `add` in ALTER TYPE">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -98,11 +119,21 @@ type ParseAlterTypeAddValue<
 								JsqlDatabaseShape
 						? ParseAlterTypeCloseSemi<AfterVal, NewDb>
 						: never
-				: [AfterVal, Db, SqlParserError<"Expected string literal for enum value in ALTER TYPE">]
+				: SkipFailedExpression<
+							AfterVal,
+							SqlParserError<"Expected string literal for enum value in ALTER TYPE">
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
 type ParseAlterTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: [Tokens, NewDb, SqlParserError<"Expected `;` after ALTER TYPE">]
+		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after ALTER TYPE">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, NewDb, Err]
+			: never
