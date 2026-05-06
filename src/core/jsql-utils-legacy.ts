@@ -12,7 +12,7 @@ export type MergeViewIntoDb<
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Schema
 					? {
-							sets: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"] &
+							sets: I<I<Db, "schemas">, K, JsqlSchemaShape>["sets"] &
 								Record<
 									Name,
 									{
@@ -37,15 +37,13 @@ export type ReplaceTableInDb<
 			defaultSchema: Db["defaultSchema"]
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Sch
-					? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
+					? I<I<Db, "schemas">, K, JsqlSchemaShape>["types"] extends object
 						? {
-								sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> &
-									Record<Tab, NewShape>
-								types: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
+								sets: Omit<I<I<Db, "schemas">, K, JsqlSchemaShape>["sets"], Tab> & Record<Tab, NewShape>
+								types: I<I<Db, "schemas">, K, JsqlSchemaShape>["types"]
 							}
 						: {
-								sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> &
-									Record<Tab, NewShape>
+								sets: Omit<I<I<Db, "schemas">, K, JsqlSchemaShape>["sets"], Tab> & Record<Tab, NewShape>
 							}
 					: Db["schemas"][K]
 			}
@@ -65,7 +63,7 @@ export type MergeTableIntoDb<
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Schema
 					? {
-							sets: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"] &
+							sets: I<I<Db, "schemas">, K, JsqlSchemaShape>["sets"] &
 								Record<
 									Table,
 									{
@@ -74,7 +72,7 @@ export type MergeTableIntoDb<
 										column_facts: Facts
 									}
 								>
-						} & Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>, "sets">
+						} & Omit<I<I<Db, "schemas">, K, JsqlSchemaShape>, "sets">
 					: Db["schemas"][K]
 			}
 		}
