@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } fr
 import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelect } from "./parse-select.ts"
@@ -13,7 +14,7 @@ import type { ParseSelect } from "./parse-select.ts"
 type ParseQualifiedViewNameUnqualified<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<"as">
 		? [AfterFirst, null, Db["defaultSchema"], A]
-		: [AfterFirst, SqlParserError<"Expected AS or `.` before view name">, never, never]
+		: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected AS or `.` before view name">>
 
 type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<Rdot> extends TokenIdent<infer B extends string>
@@ -23,10 +24,10 @@ type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDat
 					? A extends keyof Db["schemas"]
 						? [AfterB, null, A & keyof Db["schemas"] & string, B]
 						: never
-					: [AfterB, SqlParserError<"Expected AS after qualified view name">, never, never]
-				: [AfterB, SqlParserError<"Unknown schema for CREATE VIEW">, never, never]
+					: SkipFailedQualifiedName<AfterB, SqlParserError<"Expected AS after qualified view name">>
+				: SkipFailedQualifiedName<AfterB, SqlParserError<"Unknown schema for CREATE VIEW">>
 			: never
-		: [Rdot, SqlParserError<"Expected view name after `.` in CREATE VIEW">, never, never]
+		: SkipFailedQualifiedName<Rdot, SqlParserError<"Expected view name after `.` in CREATE VIEW">>
 
 type ParseQualifiedViewNameAfterFirstIdent<
 	AfterFirst extends TokensList,
@@ -42,7 +43,7 @@ type ParseQualifiedViewNameAfterFirstIdent<
 type ParseQualifiedViewName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseQualifiedViewNameAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: [Tokens, SqlParserError<"Expected view name in CREATE VIEW">, never, never]
+		: SkipFailedQualifiedName<Tokens, SqlParserError<"Expected view name in CREATE VIEW">>
 
 type ParseCreateViewAfterSelect<
 	Tokens extends TokensList,

@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -19,7 +20,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
 			? PeekToken<R2> extends TokenKey<";"> | TokenEot
 				? [SkipToken<R2>, null, A, B]
-				: [R2, SqlParserError<"Expected `;` after qualified table name in DROP TABLE">, never, never]
+				: SkipFailedQualifiedName<R2, SqlParserError<"Expected `;` after qualified table name in DROP TABLE">>
 			: never
 		: never
 
@@ -29,7 +30,7 @@ type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlData
 		? [SkipToken<AfterFirst>, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends TokenKey<".">
 			? ParseDropQualifiedSecondIdent<SkipToken<AfterFirst>, A>
-			: [AfterFirst, SqlParserError<"Expected `.` or end of table name in DROP TABLE">, never, never]
+			: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected `.` or end of table name in DROP TABLE">>
 
 /** `[rest, null, schema, table]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -37,7 +38,7 @@ type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDa
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-				: [AfterFirst, SqlParserError<"Expected table name in DROP TABLE">, never, never]
+				: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected table name in DROP TABLE">>
 			: never
 		: never
 

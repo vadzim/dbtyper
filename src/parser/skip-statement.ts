@@ -23,6 +23,15 @@ export type SkipFailedStatement<
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > = SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown] ? [Rest, Db, Error] : never
 
+export type SkipFailedQualifiedName<
+	Tokens extends TokensList,
+	Error extends SqlParserError<string>,
+	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
+> =
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+		? [Rest, Error, never, never]
+		: never
+
 export type SkipBracketedUntil<
 	Tokens extends TokensList,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,

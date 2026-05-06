@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/
 import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -21,7 +22,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
 			? T2 extends TokenIdent<infer B extends string>
 				? [R2, null, A, B]
-				: [R2, SqlParserError<"Expected type name after `.` in DROP TYPE">, never, never]
+				: SkipFailedQualifiedName<R2, SqlParserError<"Expected type name after `.` in DROP TYPE">>
 			: never
 		: never
 
@@ -33,7 +34,7 @@ type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlData
 			? SkipToken<AfterFirst> extends infer R1 extends TokensList
 				? T1 extends TokenKey<".">
 					? ParseDropQualifiedSecondIdent<R1, A>
-					: [R1, SqlParserError<"Expected `.` or `;` after type name in DROP TYPE">, never, never]
+					: SkipFailedQualifiedName<R1, SqlParserError<"Expected `.` or `;` after type name in DROP TYPE">>
 				: never
 			: never
 
@@ -43,7 +44,7 @@ type ParseQualifiedTypeNameForDrop<Tokens extends TokensList, Db extends JsqlDat
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-				: [AfterFirst, SqlParserError<"Expected type name in DROP TYPE">, never, never]
+				: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected type name in DROP TYPE">>
 			: never
 		: never
 

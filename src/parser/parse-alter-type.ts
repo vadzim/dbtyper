@@ -9,6 +9,7 @@ import type {
 	TokensList,
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { JsqlDbGetSchema, JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
@@ -28,7 +29,7 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 type ParseAlterQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
 	PeekToken<AfterDot> extends TokenIdent<infer B extends string>
 		? [SkipToken<AfterDot>, null, A, B]
-		: [AfterDot, SqlParserError<"Expected type name after `.` in ALTER TYPE">, never, never]
+		: SkipFailedQualifiedName<AfterDot, SqlParserError<"Expected type name after `.` in ALTER TYPE">>
 
 /** After first identifier (type or schema). */
 type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
@@ -36,13 +37,13 @@ type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDat
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends TokenKey<".">
 			? ParseAlterQualifiedSecondIdent<SkipToken<AfterFirst>, A>
-			: [AfterFirst, SqlParserError<"Expected `.` or `ADD` in ALTER TYPE">, never, never]
+			: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected `.` or `ADD` in ALTER TYPE">>
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTypeNameForAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: [Tokens, SqlParserError<"Expected type name in ALTER TYPE">, never, never]
+		: SkipFailedQualifiedName<Tokens, SqlParserError<"Expected type name in ALTER TYPE">>
 
 type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	ParseQualifiedTypeNameForAlter<Tokens, Db> extends [
