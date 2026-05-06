@@ -1,12 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type {
-	JsqlDbGetSchema,
-	JsqlDbGetTable,
-	JsqlDbGetData,
-	JsqlSchemaGetData,
-	JsqlSchemaGetTable,
-	JsqlDbReplaceData,
-} from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -21,10 +14,7 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
 
-type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlSchemaGetData<
-	JsqlDbGetSchema<Db, Sch>,
-	Tab
->
+type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlDbGetData<Db, Sch, Tab>
 
 /** `DROP TABLE` may only remove a relation whose `kind` is `"table"`. */
 type IsDroppableTableEntry<E> = E extends JsqlDataShape ? (E["kind"] extends "table" ? true : false) : false

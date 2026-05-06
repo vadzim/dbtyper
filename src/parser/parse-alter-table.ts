@@ -5,8 +5,6 @@ import type {
 	JsqlDbGetTable,
 	JsqlDbGetData,
 	JsqlDbReplaceData,
-	JsqlSchemaGetData,
-	JsqlSchemaGetTable,
 	JsqlTableReplaceColumnType,
 	JsqlTableReplaceColumnNullability,
 	JsqlTableReplaceColumn,

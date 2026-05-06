@@ -10,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlDbGetSchema, JsqlDbGetType, JsqlSchemaGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">

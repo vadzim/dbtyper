@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetSchema, JsqlDbGetType, JsqlSchemaGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 

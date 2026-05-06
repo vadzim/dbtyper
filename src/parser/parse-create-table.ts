@@ -14,13 +14,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
-import type {
-	JsqlCreateTable,
-	JsqlDbGetSchema,
-	JsqlDbGetData,
-	JsqlDbReplaceData,
-	JsqlSchemaGetData,
-} from "../core/jsql-utils.ts"
+import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
