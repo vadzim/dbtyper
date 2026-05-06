@@ -55,11 +55,23 @@ type ParseCreateTableQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 > =
-	HasConcreteSet<I<I<Db, "schemas">, Sch, JsqlSchemaShape>["sets"], Tab> extends true
-		? IfNotExists extends true
-			? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
-			: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
+	I<Db, "schemas"> extends infer Schemas
+		? I<Schemas, Sch, JsqlSchemaShape> extends infer SchShape
+			? I<SchShape, "sets"> extends infer Sets
+				? Sets extends object
+					? [string] extends [keyof Sets]
+						? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+						: Tab extends keyof Sets
+							? IfNotExists extends true
+								? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
+								: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
+							: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+					: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+				: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+			: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 		: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+
+type NarrowSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"] ? Sch : never
 
 type ParseCreateTableQualifiedWhenNameOk<
 	R extends TokensList,
@@ -69,10 +81,8 @@ type ParseCreateTableQualifiedWhenNameOk<
 	Tab extends string,
 > =
 	HasConcreteSchemaKey<Db, Sch> extends true
-		? Sch extends keyof Db["schemas"]
-			? Sch extends string
-				? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch, Tab>
-				: never
+		? NarrowSchemaKey<Db, Sch> extends infer NarrowedSch extends keyof Db["schemas"] & string
+			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, NarrowedSch, Tab>
 			: never
 		: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
 
