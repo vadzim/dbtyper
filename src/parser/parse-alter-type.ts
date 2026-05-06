@@ -1,6 +1,4 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { I } from "../core/type-utils.ts"
-import type { UpdateTypeInDb } from "../core/jsql-utils-legacy.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -12,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
+import type { JsqlGetSchema, JsqlGetEnum, JsqlDbReplaceEnum, JsqlReplaceSchema } from "../core/jsql-utils.ts"
 
 export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -24,11 +22,6 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 				: [A0, Db, SqlParserError<"Expected `exists` after `IF` in ALTER TYPE">]
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>
-
-type TypeEntry<Db extends JsqlDatabaseShape, Sch extends string, Typ extends string> = JsqlGetType<
-	JsqlGetSchema<Db, Sch>,
-	Typ
->
 
 /** After `schema.` in qualified `ALTER TYPE schema.type`. */
 type ParseAlterQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
@@ -72,16 +65,12 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		? E extends null
 			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
-					? JsqlGetType<Schema, Typ> extends infer Entry extends JsqlTypeShape
-						? Sch extends keyof Db["schemas"]
-							? ParseAlterTypeAction<R, Db, Sch, Typ, Entry>
-							: never
+					? JsqlGetEnum<Schema, Typ> extends infer Values extends readonly string[]
+						? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
 						: [R, Db, null]
-					: JsqlGetType<Schema, Typ> extends infer Entry extends JsqlTypeShape
-						? Sch extends keyof Db["schemas"]
-							? ParseAlterTypeAction<R, Db, Sch, Typ, Entry>
-							: never
-						: [R, Db, SqlParserError<"Type does not exist; use IF EXISTS">]
+					: JsqlGetEnum<Schema, Typ> extends infer Values extends readonly string[]
+						? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
+						: [R, Db, SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">]
 				: [R, Db, SqlParserError<"Unknown schema for ALTER TYPE">]
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid ALTER TYPE parse">]
 		: never
@@ -91,7 +80,7 @@ type ParseAlterTypeAction<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Typ extends string,
-	Entry extends JsqlTypeShape,
+	Values extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer AddTok
 		? SkipToken<Tokens> extends infer AfterAdd extends TokensList
@@ -99,7 +88,7 @@ type ParseAlterTypeAction<
 				? PeekToken<AfterAdd> extends infer ValueTok
 					? SkipToken<AfterAdd> extends infer AfterValue extends TokensList
 						? ValueTok extends TokenIdent<"value">
-							? ParseAlterTypeAddValue<AfterValue, Db, Sch, Typ, Entry>
+							? ParseAlterTypeAddValue<AfterValue, Db, Sch, Typ, Values>
 							: [AfterValue, Db, SqlParserError<"Expected `value` after `ADD` in ALTER TYPE">]
 						: never
 					: never
@@ -112,19 +101,19 @@ type ParseAlterTypeAddValue<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Typ extends string,
-	Entry extends JsqlTypeShape,
+	Values extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer ValTok
 		? SkipToken<Tokens> extends infer AfterVal extends TokensList
 			? ValTok extends TokenString<infer NewValue extends string>
-				? Entry extends { kind: "enum"; values: infer Values extends readonly string[] }
-					? NewValue extends Values[number]
-						? [AfterVal, Db, SqlParserError<"Enum value already exists">]
-						: UpdateTypeInDb<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewDb extends
-									JsqlDatabaseShape
+				? NewValue extends Values[number]
+					? [AfterVal, Db, SqlParserError<"Enum value already exists">]
+					: JsqlDbReplaceEnum<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewSchema extends
+								JsqlSchemaShape
+						? JsqlReplaceSchema<Db, Sch, NewSchema> extends infer NewDb extends JsqlDatabaseShape
 							? ParseAlterTypeCloseSemi<AfterVal, NewDb>
 							: never
-					: [AfterVal, Db, SqlParserError<"Type is not an enum">]
+						: never
 				: [AfterVal, Db, SqlParserError<"Expected string literal for enum value in ALTER TYPE">]
 			: never
 		: never
