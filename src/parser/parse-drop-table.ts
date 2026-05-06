@@ -14,8 +14,6 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
 
-type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlDbGetData<Db, Sch, Tab>
-
 /** `DROP TABLE` may only remove a relation whose `kind` is `"table"`. */
 type IsDroppableTableEntry<E> = E extends JsqlDataShape ? (E["kind"] extends "table" ? true : false) : false
 
