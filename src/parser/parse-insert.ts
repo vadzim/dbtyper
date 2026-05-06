@@ -20,7 +20,7 @@ import type {
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause, ParseSelect } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
+import type { JsqlDbGetSet } from "../core/jsql-utils.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
@@ -111,7 +111,7 @@ type ParseInsertFromTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-									? ResolveTableShape<Db, A, B> extends infer TblTry
+									? JsqlDbGetSet<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
 											? [
 													R3,
@@ -134,7 +134,7 @@ type ParseInsertFromTableRef<
 								: never
 							: never
 						: never
-					: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry
+					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [R1, SqlParserError<"Unknown table in INSERT INTO">, ParserRefErrorThirdSentinel]
 							: TblTry extends JsqlTableShape
