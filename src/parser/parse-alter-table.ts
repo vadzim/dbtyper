@@ -185,6 +185,13 @@ type ParseAlterAddColumn<
 			: never
 		: never
 
+type ParseOptionalColumnKeyword<Tokens extends TokensList> =
+	PeekToken<Tokens> extends TokenKey<"column">
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? [R1, null]
+			: never
+		: [Tokens, null]
+
 type ParseAlterDropColumn<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -193,34 +200,18 @@ type ParseAlterDropColumn<
 	Tbl extends JsqlDataShape<"table">,
 > =
 	PeekToken<Tokens> extends TokenKey<"drop">
-		? SkipToken<Tokens> extends infer R0 extends TokensList
-			? PeekToken<R0> extends TokenKey<"column">
-				? SkipToken<R0> extends infer R1 extends TokensList
-					? PeekToken<R1> extends infer Tcol
-						? SkipToken<R1> extends infer R2 extends TokensList
-							? Tcol extends TokenIdent<infer Col extends string>
-								? ApplyDropColumn<Tbl, Col> extends infer U
-									? U extends SqlParserError<string>
-										? [R2, Db, U]
-										: U extends JsqlDataShape
-											? ParseAlterActions<R2, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-											: never
-									: never
-								: [R2, Db, SqlParserError<"Expected column name after DROP COLUMN">]
-							: never
+		? ParseOptionalColumnKeyword<SkipToken<Tokens>> extends [infer R1 extends TokensList, null]
+			? PeekToken<R1> extends infer Tcol
+				? Tcol extends TokenIdent<infer Col extends string>
+					? ApplyDropColumn<Tbl, Col> extends infer U
+						? U extends SqlParserError<string>
+							? [SkipToken<R1>, Db, U]
+							: U extends JsqlDataShape
+								? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+								: never
 						: never
-					: never
-				: PeekToken<R0> extends TokenIdent<infer Col2 extends string>
-					? SkipToken<R0> extends infer R1b extends TokensList
-						? ApplyDropColumn<Tbl, Col2> extends infer U2
-							? U2 extends SqlParserError<string>
-								? [R1b, Db, U2]
-								: U2 extends JsqlDataShape
-									? ParseAlterActions<R1b, JsqlDbReplaceData<Db, Sch, Tab, U2>, Sch, Tab>
-									: never
-							: never
-						: never
-					: never
+					: [SkipToken<R1>, Db, SqlParserError<"Expected column name after DROP COLUMN">]
+				: never
 			: never
 		: never
 
@@ -375,17 +366,15 @@ type ParseAlterColumnDropNotNullChain<
 	PeekToken<Rd0> extends TokenKey<"not">
 		? SkipToken<Rd0> extends infer Rd1 extends TokensList
 			? PeekToken<Rd1> extends infer Tk2
-				? SkipToken<Rd1> extends infer Rd2 extends TokensList
-					? Tk2 extends TokenKey<"null">
-						? ApplyDropNotNull<Tbl, Col> extends infer U
-							? U extends SqlParserError<string>
-								? [Rd2, Db, U]
-								: U extends JsqlDataShape
-									? ParseAlterActions<Rd2, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-									: never
-							: never
-						: [Rd2, Db, SqlParserError<"Expected NULL after DROP NOT">]
-					: never
+				? Tk2 extends TokenKey<"null">
+					? ApplyDropNotNull<Tbl, Col> extends infer U
+						? U extends SqlParserError<string>
+							? [SkipToken<Rd1>, Db, U]
+							: U extends JsqlDataShape
+								? ParseAlterActions<SkipToken<Rd1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+								: never
+						: never
+					: [SkipToken<Rd1>, Db, SqlParserError<"Expected NULL after DROP NOT">]
 				: never
 			: never
 		: never
