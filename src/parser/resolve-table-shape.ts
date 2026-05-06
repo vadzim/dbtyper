@@ -1,11 +1,4 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlDbGetSet } from "../core/jsql-shapes.ts"
 
-export type ResolveTableShape<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-> = Sch extends keyof Db["schemas"]
-	? Tab extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"]
-		? I<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>, "sets", {}>[Tab]
-		: never
-	: never
+export type ResolveTableShape<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> =
+	JsqlDbGetSet<Db, Sch, Tab> extends infer T extends object ? T : never

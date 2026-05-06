@@ -4,6 +4,9 @@ import type {
 	JsqlSchemaShape,
 	JsqlTableShape,
 	JsqlColumnFactsEntry,
+	JsqlGetSchema,
+	JsqlGetSet,
+	JsqlGetTable,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -21,9 +24,6 @@ type ExtractConcreteTableType<T, Tab extends string> =
 
 /** Extract the table type from Sets by checking if Tab is assignable to a key. */
 type ExtractTableType<Sets, Tab extends string> = ExtractConcreteTableType<Sets, Tab>
-
-/** True when `Tab` is a key of `sets`. */
-type HasConcreteSet<Sets extends object, Tab extends string> = ExtractTableType<Sets, Tab> extends never ? false : true
 
 /** `sets[Tab]` can widen with `& { [K: string]: JsqlTableShape }`; narrow to a concrete base table. */
 type AlterTableShapeAt<Sets extends object, Tab extends string> =
@@ -83,22 +83,28 @@ type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlData
 
 type ReplaceTableInDb<
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	NewShape extends JsqlTableShape,
-> = {
-	defaultSchema: Db["defaultSchema"]
-	schemas: {
-		[K in keyof Db["schemas"]]: K extends Sch
-			? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
-				? {
-						sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> & Record<Tab, NewShape>
-						types: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
-					}
-				: { sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> & Record<Tab, NewShape> }
-			: Db["schemas"][K]
-	}
-}
+> = Sch extends keyof Db["schemas"]
+	? {
+			defaultSchema: Db["defaultSchema"]
+			schemas: {
+				[K in keyof Db["schemas"]]: K extends Sch
+					? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
+						? {
+								sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> &
+									Record<Tab, NewShape>
+								types: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
+							}
+						: {
+								sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> &
+									Record<Tab, NewShape>
+							}
+					: Db["schemas"][K]
+			}
+		}
+	: never
 
 type ApplyAddColumn<T extends JsqlTableShape, Col extends string, Sql extends string> = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">
@@ -204,7 +210,7 @@ type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends stri
 type ParseAlterAddColumnAfterColName<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -240,7 +246,7 @@ type FinishAlterStatement<Tokens extends TokensList, Db extends JsqlDatabaseShap
 type ParseAlterActions<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
@@ -259,7 +265,7 @@ type ParseAlterAfterOptionalColumnKw<Tokens extends TokensList> =
 type ParseAlterAddColumn<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 > =
@@ -288,7 +294,7 @@ type ParseAlterAddColumn<
 type ParseAlterDropColumn<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 > =
@@ -327,7 +333,7 @@ type ParseAlterDropColumn<
 type ParseAlterRenameAfterToKw<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Old extends string,
@@ -356,7 +362,7 @@ type ParseAlterRenameAfterOldIdent<
 	R2 extends TokensList,
 	Told,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 > =
@@ -369,7 +375,7 @@ type ParseAlterRenameAfterOldIdent<
 type ParseAlterRenameColumn<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 > =
@@ -388,7 +394,7 @@ type ParseAlterRenameColumn<
 type ParseAlterColumnTypeAfterTypeKw<
 	R3 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -415,7 +421,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 type ParseAlterColumnTypeBranch<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -431,7 +437,7 @@ type ParseAlterColumnTypeBranch<
 type ParseAlterColumnSetBranch<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -467,7 +473,7 @@ type ParseAlterColumnSetBranch<
 type ParseAlterColumnDropNotNullChain<
 	Rd0 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -493,7 +499,7 @@ type ParseAlterColumnDropNotNullChain<
 type ParseAlterColumnDropDefaultNoop<
 	Rd0 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -511,7 +517,7 @@ type ParseAlterColumnDropDefaultNoop<
 type ParseAlterColumnDropAfterRd0<
 	Rd0 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -525,7 +531,7 @@ type ParseAlterColumnDropAfterRd0<
 type ParseAlterColumnDropBranch<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -539,7 +545,7 @@ type ParseAlterColumnDropBranch<
 type ParseAlterColumnAfterIdent<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 	Col extends string,
@@ -555,7 +561,7 @@ type ParseAlterColumnAfterIdent<
 type ParseAlterColumnAfterAlterKw<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlTableShape,
 > =
@@ -576,47 +582,22 @@ type ParseAlterColumnAfterAlterKw<
 type ParseAlterOneAction<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"] & string,
+	Sch extends string,
 	Tab extends string,
-> = I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"] extends object
-	? Tab extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"]
-		? AlterTableShapeAt<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> extends never
-			? [Tokens, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
-			: PeekToken<Tokens> extends TokenKey<"add">
-				? ParseAlterAddColumn<
-						Tokens,
-						Db,
-						Sch,
-						Tab,
-						AlterTableShapeAt<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab>
-					>
-				: PeekToken<Tokens> extends TokenKey<"drop">
-					? ParseAlterDropColumn<
-							Tokens,
-							Db,
-							Sch,
-							Tab,
-							AlterTableShapeAt<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab>
-						>
-					: PeekToken<Tokens> extends TokenKey<"rename">
-						? ParseAlterRenameColumn<
-								Tokens,
-								Db,
-								Sch,
-								Tab,
-								AlterTableShapeAt<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab>
-							>
-						: PeekToken<Tokens> extends TokenKey<"alter">
-							? ParseAlterColumnAfterAlterKw<
-									Tokens,
-									Db,
-									Sch,
-									Tab,
-									AlterTableShapeAt<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab>
-								>
-							: [Tokens, Db, SqlParserError<"Unsupported ALTER TABLE action">]
-		: [Tokens, Db, SqlParserError<"Table key mismatch in ALTER TABLE">]
-	: never
+> =
+	JsqlGetTable<JsqlGetSchema<Db, Sch>, Tab> extends infer Tbl extends JsqlTableShape<"table">
+		? PeekToken<Tokens> extends TokenKey<"add">
+			? ParseAlterAddColumn<Tokens, Db, Sch, Tab, Tbl>
+			: PeekToken<Tokens> extends TokenKey<"drop">
+				? ParseAlterDropColumn<Tokens, Db, Sch, Tab, Tbl>
+				: PeekToken<Tokens> extends TokenKey<"rename">
+					? ParseAlterRenameColumn<Tokens, Db, Sch, Tab, Tbl>
+					: PeekToken<Tokens> extends TokenKey<"alter">
+						? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab, Tbl>
+						: [Tokens, Db, SqlParserError<"Unsupported ALTER TABLE action">]
+		: JsqlGetSet<JsqlGetSchema<Db, Sch>, Tab> extends null
+			? [Tokens, Db, SqlParserError<"Table key mismatch in ALTER TABLE">]
+			: [Tokens, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
 
 type ParseAlterAfterQualified<
 	R extends TokensList,
@@ -625,11 +606,11 @@ type ParseAlterAfterQualified<
 	Sch extends string,
 	Tab extends string,
 > = Err extends null
-	? Sch extends keyof Db["schemas"]
-		? HasConcreteSet<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> extends true
-			? AlterTableShapeAt<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> extends never
-				? [R, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
-				: ParseAlterActions<R, Db, Sch & keyof Db["schemas"] & string, Tab & string>
+	? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+		? JsqlGetTable<Schema, Tab> extends object
+			? Sch extends keyof Db["schemas"]
+				? ParseAlterActions<R, Db, Sch & string, Tab & string>
+				: never
 			: [R, Db, SqlParserError<"Table does not exist">]
 		: [R, Db, SqlParserError<"Unknown schema for ALTER TABLE">]
 	: [R, Db, Err extends SqlParserError<string> ? Err : SqlParserError<"Invalid ALTER TABLE name">]

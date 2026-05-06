@@ -1,4 +1,11 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
+import type {
+	I,
+	JsqlDatabaseShape,
+	JsqlSchemaShape,
+	JsqlTypeShape,
+	JsqlGetSchema,
+	JsqlGetType,
+} from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -22,20 +29,10 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>
 
-/** True when `Typ` is already a concrete key of `types` (not only an open-ended index signature). */
-type HasConcreteType<Types extends object | undefined, Typ extends string> = Types extends object
-	? Typ extends keyof Types
-		? true
-		: false
-	: false
-
-type TypeEntry<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"], Typ extends string> = Sch extends string
-	? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"] extends object
-		? Typ extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"]
-			? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"][Typ]
-			: never
-		: never
-	: never
+type TypeEntry<Db extends JsqlDatabaseShape, Sch extends string, Typ extends string> = JsqlGetType<
+	JsqlGetSchema<Db, Sch>,
+	Typ
+>
 
 /** After `schema.` in qualified `ALTER TYPE schema.type`. */
 type ParseAlterQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
@@ -77,20 +74,16 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		infer Typ extends string,
 	]
 		? E extends null
-			? Sch extends keyof Db["schemas"]
+			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
-					? HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
-						? TypeEntry<Db, Sch & keyof Db["schemas"], Typ> extends infer Entry
-							? Entry extends JsqlTypeShape
-								? ParseAlterTypeAction<R, Db, Sch & keyof Db["schemas"], Typ, Entry>
-								: [R, Db, SqlParserError<"Type does not exist or is not alterable">]
+					? JsqlGetType<Schema, Typ> extends infer Entry extends JsqlTypeShape
+						? Sch extends keyof Db["schemas"]
+							? ParseAlterTypeAction<R, Db, Sch, Typ, Entry>
 							: never
 						: [R, Db, null]
-					: HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
-						? TypeEntry<Db, Sch & keyof Db["schemas"], Typ> extends infer Entry
-							? Entry extends JsqlTypeShape
-								? ParseAlterTypeAction<R, Db, Sch & keyof Db["schemas"], Typ, Entry>
-								: [R, Db, SqlParserError<"Type does not exist or is not alterable">]
+					: JsqlGetType<Schema, Typ> extends infer Entry extends JsqlTypeShape
+						? Sch extends keyof Db["schemas"]
+							? ParseAlterTypeAction<R, Db, Sch, Typ, Entry>
 							: never
 						: [R, Db, SqlParserError<"Type does not exist; use IF EXISTS">]
 				: [R, Db, SqlParserError<"Unknown schema for ALTER TYPE">]
@@ -100,7 +93,7 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 type ParseAlterTypeAction<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"],
+	Sch extends string,
 	Typ extends string,
 	Entry extends JsqlTypeShape,
 > =
@@ -121,7 +114,7 @@ type ParseAlterTypeAction<
 type ParseAlterTypeAddValue<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"],
+	Sch extends string,
 	Typ extends string,
 	Entry extends JsqlTypeShape,
 > =
@@ -151,30 +144,38 @@ type ParseAlterTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDataba
 
 type UpdateTypeInDb<
 	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"],
+	Sch extends string,
 	Typ extends string,
 	NewValues extends readonly string[],
-> = Sch extends string
-	? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"] extends object
-		? Typ extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"]
-			? {
-					defaultSchema: Db["defaultSchema"]
-					schemas: {
-						[K in keyof Db["schemas"]]: K extends Sch
-							? {
-									types: {
-										[T in keyof I<
-											I<Db, "schemas", {}>,
-											Sch,
-											JsqlSchemaShape
-										>["types"]]: T extends Typ
-											? { kind: "enum"; values: NewValues }
-											: I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"][T]
-									}
-								} & Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>, "types">
-							: Db["schemas"][K]
+> =
+	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+		? JsqlGetType<Schema, Typ> extends object
+			? Sch extends keyof Db["schemas"]
+				? {
+						defaultSchema: Db["defaultSchema"]
+						schemas: {
+							[K in keyof Db["schemas"]]: K extends Sch
+								? {
+										types: {
+											[T in keyof I<
+												I<Db, "schemas", {}>,
+												Sch & keyof Db["schemas"],
+												JsqlSchemaShape
+											>["types"]]: T extends Typ
+												? { kind: "enum"; values: NewValues }
+												: I<
+														I<Db, "schemas", {}>,
+														Sch & keyof Db["schemas"],
+														JsqlSchemaShape
+													>["types"][T]
+										}
+									} & Omit<
+										I<I<Db, "schemas", {}>, Sch & keyof Db["schemas"], JsqlSchemaShape>,
+										"types"
+									>
+								: Db["schemas"][K]
+						}
 					}
-				}
+				: never
 			: never
 		: never
-	: never

@@ -1,4 +1,4 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlGetSchema, JsqlGetType } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -26,22 +26,6 @@ export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseSh
 			: never
 		: ParseCreateTypeQualified<Tokens, Db, false>
 
-/** True when `Typ` is already a concrete key of `types` (not an open-ended index signature). */
-type HasConcreteType<Types extends object | undefined, Typ extends string> = Types extends object
-	? Typ extends keyof Types
-		? true
-		: false
-	: false
-
-/**
- * True when `Sch` is a real schema key on this DB (not satisfied only by an open `schemas` index signature).
- */
-type HasConcreteSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = string extends keyof Db["schemas"]
-	? false
-	: Sch extends keyof Db["schemas"]
-		? true
-		: false
-
 type ParseCreateTypeQualifiedWhenSchKnown<
 	R extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -49,11 +33,11 @@ type ParseCreateTypeQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Typ extends string,
 > =
-	HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
-		? IfNotExists extends true
+	JsqlGetType<JsqlGetSchema<Db, Sch>, Typ> extends null
+		? ParseCreateTypeAsEnum<R, Db, Sch, Typ, IfNotExists>
+		: IfNotExists extends true
 			? ParseCreateTypeAsEnum<R, Db, Sch, Typ, true>
 			: [R, Db, SqlParserError<"Type already exists; use IF NOT EXISTS">]
-		: ParseCreateTypeAsEnum<R, Db, Sch, Typ, IfNotExists>
 
 type ParseCreateTypeQualifiedWhenNameOk<
 	R extends TokensList,
@@ -62,8 +46,10 @@ type ParseCreateTypeQualifiedWhenNameOk<
 	Sch extends string,
 	Typ extends string,
 > =
-	HasConcreteSchemaKey<Db, Sch> extends true
-		? ParseCreateTypeQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Typ>
+	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+		? Sch extends keyof Db["schemas"]
+			? ParseCreateTypeQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Typ>
+			: never
 		: [R, Db, SqlParserError<"Unknown schema for CREATE TYPE">]
 
 type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
@@ -92,12 +78,9 @@ type ParseCreateTypeAsEnum<
 					? SkipToken<AfterAs> extends infer AfterEnum extends TokensList
 						? EnumTok extends TokenKey<"enum">
 							? IfNotExists extends true
-								? HasConcreteType<
-										I<I<Db, "schemas", {}>, Schema & keyof Db["schemas"], JsqlSchemaShape>["types"],
-										TypeName
-									> extends true
-									? ParseCreateTypeSkipEnumBody<AfterEnum, Db>
-									: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
+								? JsqlGetType<JsqlGetSchema<Db, Schema>, TypeName> extends null
+									? ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
+									: ParseCreateTypeSkipEnumBody<AfterEnum, Db>
 								: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
 							: [AfterEnum, Db, SqlParserError<"Expected `enum` after `AS` in CREATE TYPE">]
 						: never

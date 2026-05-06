@@ -51,10 +51,8 @@ type HasNeverDeep<T> =
 					? IsNeverOrAny<U> extends true
 						? false
 						: HasNeverDeep<U>
-					: T extends object
-						? true extends {
+					: true extends {
 								[K in keyof T]-?: IsNeverOrAny<T[K]> extends true ? true : HasNeverDeep<T[K]>
-							}[keyof T]
-							? true
-							: false
+						  }[keyof T]
+						? true
 						: false

@@ -26,3 +26,5 @@ export type LT = Diag<Repeat<false, NN>, Repeat<true, NN>>
 export type LTE = [Repeat<true, NN>, ...LT]
 export type GT = Diag<Repeat<true, NN>, Repeat<false, NN>>
 export type GTE = [Repeat<false, NN>, ...GT]
+
+export type HasKey<T, K extends string> = K extends keyof T ? true : false

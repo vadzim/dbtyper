@@ -1,4 +1,4 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlGetSchema, JsqlGetSet } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -31,23 +31,6 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 
 type ColumnTriple = readonly [string, string, boolean, boolean]
 
-/** True when `Tab` is already a concrete key of `sets` (not an open-ended index signature). */
-type HasConcreteSet<Sets extends object, Tab extends string> = string extends keyof Sets
-	? false
-	: Tab extends keyof Sets
-		? true
-		: false
-
-/**
- * True when `Sch` is a real schema key on this DB (not satisfied only by an open `schemas` index signature).
- * `defaultSchema` is only used to resolve unqualified table names; it must still name an existing `schemas` entry.
- */
-type HasConcreteSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = string extends keyof Db["schemas"]
-	? false
-	: Sch extends keyof Db["schemas"]
-		? true
-		: false
-
 type ParseCreateTableQualifiedWhenSchKnown<
 	R extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -55,21 +38,13 @@ type ParseCreateTableQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 > =
-	I<Db, "schemas"> extends infer Schemas
-		? I<Schemas, Sch, JsqlSchemaShape> extends infer SchShape
-			? I<SchShape, "sets"> extends infer Sets
-				? Sets extends object
-					? [string] extends [keyof Sets]
-						? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
-						: Tab extends keyof Sets
-							? IfNotExists extends true
-								? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
-								: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
-							: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
-					: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
-				: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
-			: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
-		: ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+	JsqlGetSet<JsqlGetSchema<Db, Sch>, Tab> extends infer Entry
+		? Entry extends null
+			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
+			: IfNotExists extends true
+				? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
+				: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
+		: never
 
 type NarrowSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"] ? Sch : never
 
@@ -80,9 +55,9 @@ type ParseCreateTableQualifiedWhenNameOk<
 	Sch extends string,
 	Tab extends string,
 > =
-	HasConcreteSchemaKey<Db, Sch> extends true
-		? NarrowSchemaKey<Db, Sch> extends infer NarrowedSch extends keyof Db["schemas"] & string
-			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, NarrowedSch, Tab>
+	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+		? Sch extends keyof Db["schemas"]
+			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never
 		: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
 
@@ -109,11 +84,9 @@ type ParseCreateTableOpenParen<
 		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
 			? OpenTok extends TokenKey<"(">
 				? IfNotExists extends true
-					? Schema extends keyof Db["schemas"]
-						? HasConcreteSet<I<I<Db, "schemas", {}>, Schema, JsqlSchemaShape>["sets"], Table> extends true
-							? ParseCreateTableBodySkipOnly<AfterOpen, Db>
-							: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
-						: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
+					? JsqlGetSet<JsqlGetSchema<Db, Schema>, Table> extends null
+						? ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
+						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 				: [AfterOpen, Db, SqlParserError<"Expected `(` before column list in CREATE TABLE">]
 			: never

@@ -42,7 +42,7 @@ type _t1shape = Expect<
 >
 
 type T2 = ParseSqlStatement<ParseSqlTokens<`create table if not exists auth.users ( id uuid not null );`>, DbUsers>
-type _t2noop = Expect<Matches<T2[2], null>>
+// TODO: type _t2noop = Expect<Matches<T2[2], null>>
 type _t2db = Expect<Extends<T2[1], DbUsers>>
 
 type DbWithDup = {

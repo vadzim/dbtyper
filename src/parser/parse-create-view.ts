@@ -1,20 +1,15 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type {
+	I,
+	JsqlDatabaseShape,
+	JsqlSchemaShape,
+	JsqlSelectStatementResult,
+	JsqlGetSchema,
+	JsqlGetSet,
+} from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelect } from "./parse-select.ts"
-
-type HasConcreteSet<Sets extends object, Tab extends string> = string extends keyof Sets
-	? false
-	: Tab extends keyof Sets
-		? true
-		: false
-
-type HasConcreteSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = string extends keyof Db["schemas"]
-	? false
-	: Sch extends keyof Db["schemas"]
-		? true
-		: false
 
 /**
  * `view_name AS` or `schema.view_name AS` (unlike {@link ParseQualifiedTableName}, not followed by `(`).
@@ -29,9 +24,11 @@ type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDat
 	PeekToken<Rdot> extends infer TokB
 		? SkipToken<Rdot> extends infer AfterB extends TokensList
 			? TokB extends TokenIdent<infer B extends string>
-				? HasConcreteSchemaKey<Db, A> extends true
+				? JsqlGetSchema<Db, A> extends infer Schema extends JsqlSchemaShape
 					? PeekToken<AfterB> extends TokenKey<"as">
-						? [AfterB, null, A & keyof Db["schemas"] & string, B]
+						? A extends keyof Db["schemas"]
+							? [AfterB, null, A & keyof Db["schemas"] & string, B]
+							: never
 						: [AfterB, SqlParserError<"Expected AS after qualified view name">, never, never]
 					: [AfterB, SqlParserError<"Unknown schema for CREATE VIEW">, never, never]
 				: [AfterB, SqlParserError<"Expected view name after `.` in CREATE VIEW">, never, never]
@@ -109,15 +106,15 @@ type ParseCreateViewSelectAndSemi<
 	Vname extends string,
 	Params extends ExpressionParamsShape,
 > =
-	HasConcreteSet<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Vname> extends true
-		? [R2, Db, SqlParserError<"View or table already exists in schema">]
-		: ParseSelect<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
+	JsqlGetSet<JsqlGetSchema<Db, Sch>, Vname> extends null
+		? ParseSelect<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
 			? Res extends SqlParserError<string>
 				? [R3, Db, Res]
 				: Res extends JsqlSelectStatementResult
 					? ParseCreateViewAfterSelect<R3, Db, Sch, Vname, Res>
 					: never
 			: never
+		: [R2, Db, SqlParserError<"View or table already exists in schema">]
 
 type ParseCreateViewAfterAs<
 	R1 extends TokensList,
@@ -144,10 +141,12 @@ export type ParseCreateView<
 		infer Vname extends string,
 	]
 		? E extends null
-			? HasConcreteSchemaKey<Db, Sch> extends true
+			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? PeekToken<R0> extends TokenKey<"as">
 					? SkipToken<R0> extends infer R1 extends TokensList
-						? ParseCreateViewAfterAs<R1, Db, Sch & keyof Db["schemas"] & string, Vname, Params>
+						? Sch extends keyof Db["schemas"]
+							? ParseCreateViewAfterAs<R1, Db, Sch & keyof Db["schemas"] & string, Vname, Params>
+							: never
 						: never
 					: [R0, Db, SqlParserError<"Expected AS in CREATE VIEW">]
 				: [R0, Db, SqlParserError<"Unknown schema for CREATE VIEW">]
