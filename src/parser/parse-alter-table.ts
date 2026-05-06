@@ -136,15 +136,13 @@ type ParseAlterDropColumn<
 > =
 	PeekToken<Tokens> extends TokenKey<"drop">
 		? ParseOptionalColumnKeyword<SkipToken<Tokens>> extends [infer R1 extends TokensList, null]
-			? PeekToken<R1> extends infer Tcol
-				? Tcol extends TokenIdent<infer Col extends string>
-					? JsqlDataGetColumnType<Tbl, Col> extends null
-						? [SkipToken<R1>, Db, SqlParserError<"Column does not exist">]
-						: JsqlTableReplaceColumn<Tbl, Col, null> extends infer U extends JsqlDataShape<"table">
-							? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-							: [SkipToken<R1>, Db, SqlParserError<"Column drop failed">]
-					: [SkipToken<R1>, Db, SqlParserError<"Expected column name after DROP COLUMN">]
-				: never
+			? PeekToken<R1> extends TokenIdent<infer Col extends string>
+				? JsqlDataGetColumnType<Tbl, Col> extends null
+					? [SkipToken<R1>, Db, SqlParserError<"Column does not exist">]
+					: JsqlTableReplaceColumn<Tbl, Col, null> extends infer U extends JsqlDataShape<"table">
+						? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+						: [SkipToken<R1>, Db, SqlParserError<"Column drop failed">]
+				: [R1, Db, SqlParserError<"Expected column name after DROP COLUMN">]
 			: never
 		: never
 

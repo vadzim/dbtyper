@@ -15,19 +15,17 @@ type ParseQualifiedViewNameUnqualified<AfterFirst extends TokensList, Db extends
 		: [AfterFirst, SqlParserError<"Expected AS or `.` before view name">, never, never]
 
 type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<Rdot> extends infer TokB
+	PeekToken<Rdot> extends TokenIdent<infer B extends string>
 		? SkipToken<Rdot> extends infer AfterB extends TokensList
-			? TokB extends TokenIdent<infer B extends string>
-				? JsqlDbGetSchema<Db, A> extends JsqlSchemaShape
-					? PeekToken<AfterB> extends TokenKey<"as">
-						? A extends keyof Db["schemas"]
-							? [AfterB, null, A & keyof Db["schemas"] & string, B]
-							: never
-						: [AfterB, SqlParserError<"Expected AS after qualified view name">, never, never]
-					: [AfterB, SqlParserError<"Unknown schema for CREATE VIEW">, never, never]
-				: [AfterB, SqlParserError<"Expected view name after `.` in CREATE VIEW">, never, never]
+			? JsqlDbGetSchema<Db, A> extends JsqlSchemaShape
+				? PeekToken<AfterB> extends TokenKey<"as">
+					? A extends keyof Db["schemas"]
+						? [AfterB, null, A & keyof Db["schemas"] & string, B]
+						: never
+					: [AfterB, SqlParserError<"Expected AS after qualified view name">, never, never]
+				: [AfterB, SqlParserError<"Unknown schema for CREATE VIEW">, never, never]
 			: never
-		: never
+		: [Rdot, SqlParserError<"Expected view name after `.` in CREATE VIEW">, never, never]
 
 type ParseQualifiedViewNameAfterFirstIdent<
 	AfterFirst extends TokensList,
@@ -41,13 +39,9 @@ type ParseQualifiedViewNameAfterFirstIdent<
 		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
 
 type ParseQualifiedViewName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends infer NameTok
-		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
-			? NameTok extends TokenIdent<infer A extends string>
-				? ParseQualifiedViewNameAfterFirstIdent<AfterFirst, Db, A>
-				: [AfterFirst, SqlParserError<"Expected view name in CREATE VIEW">, never, never]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenIdent<infer A extends string>
+		? ParseQualifiedViewNameAfterFirstIdent<SkipToken<Tokens>, Db, A>
+		: [Tokens, SqlParserError<"Expected view name in CREATE VIEW">, never, never]
 
 type ParseCreateViewAfterSelect<
 	Tokens extends TokensList,

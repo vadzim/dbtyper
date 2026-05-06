@@ -175,13 +175,9 @@ type ParseOneColumn<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 > =
-	PeekToken<Tokens> extends infer NameTok
-		? SkipToken<Tokens> extends infer AfterColName extends TokensList
-			? NameTok extends TokenIdent<infer ColName extends string>
-				? ParseOneColumnAfterColName<AfterColName, Db, Schema, Table, Stack, ColName>
-				: [AfterColName, Db, SqlParserError<"Expected column name in CREATE TABLE">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
+		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
+		: [Tokens, Db, SqlParserError<"Expected column name in CREATE TABLE">]
 
 type ResolveAfterNullability<
 	AfterType extends TokensList,
