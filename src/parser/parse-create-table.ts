@@ -25,9 +25,19 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 						? SkipToken<A1> extends infer A2 extends TokensList
 							? ParseCreateTableQualified<A2, Db, true>
 							: never
-						: [A1, Db, SqlParserError<"Expected `exists` after `IF NOT` in CREATE TABLE">]
+						: SkipFailedExpression<
+									A1,
+									SqlParserError<"Expected `exists` after `IF NOT` in CREATE TABLE">
+							  > extends [infer Rest extends TokensList, infer Err]
+							? [Rest, Db, Err]
+							: never
 					: never
-				: [A0, Db, SqlParserError<"Expected `not` after `IF` in CREATE TABLE">]
+				: SkipFailedExpression<A0, SqlParserError<"Expected `not` after `IF` in CREATE TABLE">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
@@ -45,7 +55,12 @@ type ParseCreateTableQualifiedWhenSchKnown<
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 			: IfNotExists extends true
 				? [R, Db, null]
-				: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
+				: SkipFailedExpression<R, SqlParserError<"Table already exists; use IF NOT EXISTS">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 		: never
 
 type NarrowSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"] ? Sch : never
@@ -61,7 +76,12 @@ type ParseCreateTableQualifiedWhenNameOk<
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never
-		: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
+		: SkipFailedExpression<R, SqlParserError<"Unknown schema for CREATE TABLE">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedTableName<Tokens, Db> extends [
@@ -90,7 +110,12 @@ type ParseCreateTableOpenParen<
 						? ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
-				: [AfterOpen, Db, SqlParserError<"Expected `(` before column list in CREATE TABLE">]
+				: SkipFailedExpression<
+							AfterOpen,
+							SqlParserError<"Expected `(` before column list in CREATE TABLE">
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -110,10 +135,20 @@ type ParseCreateTableCloseParenAndSemi<Tokens extends TokensList, NewDb extends 
 					? SkipToken<R1> extends infer R2 extends TokensList
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, NewDb, null]
-							: [R2, NewDb, SqlParserError<"Expected `;` after CREATE TABLE">]
+							: SkipFailedExpression<R2, SqlParserError<"Expected `;` after CREATE TABLE">> extends [
+										infer Rest extends TokensList,
+										infer Err,
+								  ]
+								? [Rest, NewDb, Err]
+								: never
 						: never
 					: never
-				: [R1, NewDb, SqlParserError<"Expected `)` before end of CREATE TABLE">]
+				: SkipFailedExpression<R1, SqlParserError<"Expected `)` before end of CREATE TABLE">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, NewDb, Err]
+					: never
 			: never
 		: never
 
@@ -165,7 +200,12 @@ type ParseOneColumnAfterColName<
 						? ResolveAfterNullability<AfterArray, Db, Schema, Table, Stack, ColName, FinalType>
 						: never
 				: never
-			: [AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">]
+			: SkipFailedExpression<AfterType, SqlParserError<"Invalid column type in CREATE TABLE">> extends [
+						infer Rest extends TokensList,
+						infer Err,
+				  ]
+				? [Rest, Db, Err]
+				: never
 		: never
 
 type ParseOneColumn<
@@ -177,7 +217,12 @@ type ParseOneColumn<
 > =
 	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
 		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
-		: [Tokens, Db, SqlParserError<"Expected column name in CREATE TABLE">]
+		: SkipFailedExpression<Tokens, SqlParserError<"Expected column name in CREATE TABLE">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ResolveAfterNullability<
 	AfterType extends TokensList,
@@ -194,7 +239,12 @@ type ResolveAfterNullability<
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? T2 extends TokenKey<"null">
 						? ContinueAfterColumnDef<R2, Db, Schema, Table, Stack, ColName, Joined, true>
-						: [R2, Db, SqlParserError<"Expected `null` after `NOT`">]
+						: SkipFailedExpression<R2, SqlParserError<"Expected `null` after `NOT`">> extends [
+									infer Rest extends TokensList,
+									infer Err,
+							  ]
+							? [Rest, Db, Err]
+							: never
 					: never
 				: never
 			: never
@@ -353,7 +403,12 @@ type ContinueAfterColumnDef<
 						Table,
 						readonly [...Stack, readonly [ColName, Joined, NotNull, false]]
 					>
-				: [AfterNull, Db, SqlParserError<"Expected `,` or `)` after column definition">]
+				: SkipFailedExpression<
+							AfterNull,
+							SqlParserError<"Expected `,` or `)` after column definition">
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 
 type ContinueAfterDefault<
 	AfterDefaultVal extends TokensList,
@@ -384,7 +439,12 @@ type ContinueAfterDefault<
 					Table,
 					readonly [...Stack, readonly [ColName, Joined, NotNull, HasDefault]]
 				>
-			: [AfterDefaultVal, Db, SqlParserError<"Expected `,` or `)` after DEFAULT value">]
+			: SkipFailedExpression<AfterDefaultVal, SqlParserError<"Expected `,` or `)` after DEFAULT value">> extends [
+						infer Rest extends TokensList,
+						infer Err,
+				  ]
+				? [Rest, Db, Err]
+				: never
 
 type ColPair = { cols: Record<string, string>; facts: Record<string, unknown> }
 

@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetSchema, JsqlDbReplaceSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 
 export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -10,7 +11,12 @@ export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseSh
 				? SkipToken<A0> extends infer A1 extends TokensList
 					? ParseDropSchemaName<A1, Db, true>
 					: never
-				: [A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP SCHEMA">]
+				: SkipFailedExpression<A0, SqlParserError<"Expected `exists` after `IF` in DROP SCHEMA">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: ParseDropSchemaName<Tokens, Db, false>
 
@@ -36,13 +42,23 @@ type ParseDropSchemaAfterIdent<
 						? [SkipToken<AfterName>, NewDb, null]
 						: never
 					: never
-		: [AfterName, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
+		: SkipFailedExpression<AfterName, SqlParserError<"Expected `;` after DROP SCHEMA">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	PeekToken<Tokens> extends infer NameTok
 		? SkipToken<Tokens> extends infer AfterName extends TokensList
 			? NameTok extends TokenIdent<infer SchemaName extends string>
 				? ParseDropSchemaAfterIdent<AfterName, Db, IfExists, SchemaName>
-				: [AfterName, Db, SqlParserError<"Expected schema name in DROP SCHEMA">]
+				: SkipFailedExpression<AfterName, SqlParserError<"Expected schema name in DROP SCHEMA">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never

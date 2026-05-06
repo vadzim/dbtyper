@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } fr
 import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelect } from "./parse-select.ts"
 
@@ -58,7 +59,12 @@ type ParseCreateViewAfterSelect<
 						? [R1, NewDb, null]
 						: never
 					: never
-				: [R1, Db, SqlParserError<"Expected semicolon after CREATE VIEW">]
+				: SkipFailedExpression<R1, SqlParserError<"Expected semicolon after CREATE VIEW">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -77,7 +83,12 @@ type ParseCreateViewSelectAndSemi<
 					? ParseCreateViewAfterSelect<R3, Db, Sch, Vname, Res>
 					: never
 			: never
-		: [R2, Db, SqlParserError<"View or table already exists in schema">]
+		: SkipFailedExpression<R2, SqlParserError<"View or table already exists in schema">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ParseCreateViewAfterAs<
 	R1 extends TokensList,
@@ -90,7 +101,12 @@ type ParseCreateViewAfterAs<
 		? ParseCreateViewSelectAndSemi<R1, Db, Sch, Vname, Params>
 		: PeekToken<R1> extends TokenKey<"select">
 			? ParseCreateViewSelectAndSemi<SkipToken<R1>, Db, Sch, Vname, Params>
-			: [R1, Db, SqlParserError<"Expected SELECT or WITH after AS in CREATE VIEW">]
+			: SkipFailedExpression<R1, SqlParserError<"Expected SELECT or WITH after AS in CREATE VIEW">> extends [
+						infer Rest extends TokensList,
+						infer Err,
+				  ]
+				? [Rest, Db, Err]
+				: never
 
 export type ParseCreateView<
 	Tokens extends TokensList,
@@ -111,7 +127,17 @@ export type ParseCreateView<
 							? ParseCreateViewAfterAs<R1, Db, Sch & keyof Db["schemas"] & string, Vname, Params>
 							: never
 						: never
-					: [R0, Db, SqlParserError<"Expected AS in CREATE VIEW">]
-				: [R0, Db, SqlParserError<"Unknown schema for CREATE VIEW">]
+					: SkipFailedExpression<R0, SqlParserError<"Expected AS in CREATE VIEW">> extends [
+								infer Rest extends TokensList,
+								infer Err,
+						  ]
+						? [Rest, Db, Err]
+						: never
+				: SkipFailedExpression<R0, SqlParserError<"Unknown schema for CREATE VIEW">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: [R0, Db, E]
 		: never

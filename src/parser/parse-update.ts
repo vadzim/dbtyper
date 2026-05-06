@@ -6,6 +6,7 @@ import type {
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExprAtom, ExpressionParamsShape, ParseAddValue } from "./parse-expression.ts"
@@ -183,11 +184,26 @@ type ParseUpdateSetAssignments<
 																]
 													: never
 											: never
-										: [R3, Db, SqlParserError<"Invalid value expression in UPDATE">]
+										: SkipFailedExpression<
+													R3,
+													SqlParserError<"Invalid value expression in UPDATE">
+											  > extends [infer Rest extends TokensList, infer Err]
+											? [Rest, Db, Err]
+											: never
 								: never
 							: never
-						: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
-				: [R1, Db, SqlParserError<"Expected column name in UPDATE SET">]
+						: SkipFailedExpression<R1, SqlParserError<"Expected `=` after column in UPDATE SET">> extends [
+									infer Rest extends TokensList,
+									infer Err,
+							  ]
+							? [Rest, Db, Err]
+							: never
+				: SkipFailedExpression<R1, SqlParserError<"Expected column name in UPDATE SET">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -204,7 +220,12 @@ type ParseUpdateAfterSetKeyword<
 		? SkipToken<Tokens> extends infer Rs extends TokensList
 			? ParseUpdateSetAssignments<Rs, Db, Scope, Params, Tbl, Sch, Tab, readonly []>
 			: never
-		: [Tokens, Db, SqlParserError<"Expected SET in UPDATE">]
+		: SkipFailedExpression<Tokens, SqlParserError<"Expected SET in UPDATE">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ParseUpdateFromClause<
 	Tokens extends TokensList,
@@ -398,7 +419,12 @@ type FinishUpdateSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning extends null ? Res : Returning]
-		: [Tokens, Db, SqlParserError<"Expected `;` after UPDATE">]
+		: SkipFailedExpression<Tokens, SqlParserError<"Expected `;` after UPDATE">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type ParseUpdateAfterTableRef<
 	Tokens extends TokensList,

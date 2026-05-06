@@ -85,7 +85,12 @@ type ParseSelectWithCtesAfterSubquery<
 					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc>
 					: PeekToken<R4> extends TokenKey<"select">
 						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc>
-						: [R4, Db, SqlParserError<"Expected SELECT after WITH clause">]
+						: SkipFailedExpression<R4, SqlParserError<"Expected SELECT after WITH clause">> extends [
+									infer Rest extends TokensList,
+									infer Err,
+							  ]
+							? [Rest, Db, Err]
+							: never
 				: never
 			: never
 		: never
@@ -116,10 +121,20 @@ type ParseSelectWithCtes<
 												: never
 										: never
 									: never
-								: [R2, Db, SqlParserError<"Expected open paren after AS in WITH">]
+								: SkipFailedExpression<
+											R2,
+											SqlParserError<"Expected open paren after AS in WITH">
+									  > extends [infer Rest extends TokensList, infer Err]
+									? [Rest, Db, Err]
+									: never
 							: never
 						: never
-				: [R1, Db, SqlParserError<"Expected CTE name in WITH">]
+				: SkipFailedExpression<R1, SqlParserError<"Expected CTE name in WITH">> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -171,7 +186,12 @@ type ParseSelectAfterDistinct<
 										: never
 								: never
 							: never
-						: [AfterList, Db, SqlParserError<"Expected FROM after SELECT list">]
+						: SkipFailedExpression<AfterList, SqlParserError<"Expected FROM after SELECT list">> extends [
+									infer Rest extends TokensList,
+									infer Err,
+							  ]
+							? [Rest, Db, Err]
+							: never
 				: never
 		: never
 
@@ -1129,7 +1149,12 @@ type ParseSelectTrailingClauses<
 type FinishSelectTerminator<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: [Tokens, Db, SqlParserError<"Expected semicolon after SELECT">]
+		: SkipFailedExpression<Tokens, SqlParserError<"Expected semicolon after SELECT">> extends [
+					infer Rest extends TokensList,
+					infer Err,
+			  ]
+			? [Rest, Db, Err]
+			: never
 
 type FinishSelectStatement<
 	Tokens extends TokensList,
