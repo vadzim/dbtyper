@@ -1,6 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { MergeViewIntoDb } from "../core/jsql-utils-legacy.ts"
-import type { JsqlDbGetSchema, JsqlSchemaGetSet } from "../core/jsql-utils.ts"
+import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbReplaceSet, JsqlSchemaGetSet } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -60,7 +59,7 @@ type ParseCreateViewAfterSelect<
 	PeekToken<Tokens> extends infer TokEnd
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokEnd extends TokenKey<";"> | TokenEot
-				? MergeViewIntoDb<Db, Schema, Name, Sel> extends infer NewDb
+				? JsqlDbReplaceSet<Db, Schema, Name, JsqlCreateView<Sel["columns"]>> extends infer NewDb
 					? NewDb extends JsqlDatabaseShape
 						? [R1, NewDb, null]
 						: never

@@ -1,6 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { I } from "../core/type-utils.ts"
-import type { MergeTableIntoDb } from "../core/jsql-utils-legacy.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -15,7 +14,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
-import type { JsqlDbGetSchema, JsqlSchemaGetSet } from "../core/jsql-utils.ts"
+import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbReplaceSet, JsqlSchemaGetSet } from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -130,7 +129,7 @@ type ParseCreateTableBody<
 				cols: Record<string, string>
 				facts: Record<string, unknown>
 			}
-			? MergeTableIntoDb<Db, Schema, Table, M["cols"], M["facts"]> extends infer NewDb
+			? JsqlDbReplaceSet<Db, Schema, Table, JsqlCreateTable<M["cols"], M["facts"]>> extends infer NewDb
 				? NewDb extends JsqlDatabaseShape
 					? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
 					: never
