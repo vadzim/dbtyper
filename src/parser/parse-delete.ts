@@ -4,7 +4,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
-import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
+import type { JsqlDbGetSet } from "../core/jsql-utils.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 
@@ -96,7 +96,7 @@ type ParseDeleteUsingTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-									? ResolveTableShape<Db, A, B> extends infer TblTry
+									? JsqlDbGetSet<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
 											? [
 													R3,
@@ -119,7 +119,7 @@ type ParseDeleteUsingTableRef<
 								: never
 							: never
 						: never
-					: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry2
+					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry2
 						? [TblTry2] extends [never]
 							? [R1, SqlParserError<"Unknown table in DELETE USING">, ParserRefErrorThirdSentinel]
 							: TblTry2 extends JsqlTableShape
@@ -237,7 +237,7 @@ type ParseDeleteFromTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-									? ResolveTableShape<Db, A, B> extends infer TblTry
+									? JsqlDbGetSet<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
 											? [
 													R3,
@@ -260,7 +260,7 @@ type ParseDeleteFromTableRef<
 								: never
 							: never
 						: never
-					: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer TblTry
+					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [R1, SqlParserError<"Unknown table in DELETE FROM">, ParserRefErrorThirdSentinel]
 							: TblTry extends JsqlTableShape
