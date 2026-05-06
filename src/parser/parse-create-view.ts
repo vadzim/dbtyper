@@ -1,5 +1,11 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbReplaceData, JsqlSchemaGetData } from "../core/jsql-utils.ts"
+import type {
+	JsqlCreateView,
+	JsqlDbGetSchema,
+	JsqlDbGetData,
+	JsqlDbReplaceData,
+	JsqlSchemaGetData,
+} from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -75,7 +81,7 @@ type ParseCreateViewSelectAndSemi<
 	Vname extends string,
 	Params extends ExpressionParamsShape,
 > =
-	JsqlSchemaGetData<JsqlDbGetSchema<Db, Sch>, Vname> extends null
+	JsqlDbGetData<Db, Sch, Vname> extends null
 		? ParseSelect<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
 			? Res extends SqlParserError<string>
 				? [R3, Db, Res]

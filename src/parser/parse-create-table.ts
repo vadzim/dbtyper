@@ -14,7 +14,13 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
-import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbReplaceData, JsqlSchemaGetData } from "../core/jsql-utils.ts"
+import type {
+	JsqlCreateTable,
+	JsqlDbGetSchema,
+	JsqlDbGetData,
+	JsqlDbReplaceData,
+	JsqlSchemaGetData,
+} from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -40,7 +46,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 > =
-	JsqlSchemaGetData<JsqlDbGetSchema<Db, Sch>, Tab> extends infer Entry
+	JsqlDbGetData<Db, Sch, Tab> extends infer Entry
 		? Entry extends null
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 			: IfNotExists extends true
@@ -86,7 +92,7 @@ type ParseCreateTableOpenParen<
 		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
 			? OpenTok extends TokenKey<"(">
 				? IfNotExists extends true
-					? JsqlSchemaGetData<JsqlDbGetSchema<Db, Schema>, Table> extends null
+					? JsqlDbGetData<Db, Schema, Table> extends null
 						? ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
