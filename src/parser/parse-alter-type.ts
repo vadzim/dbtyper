@@ -10,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlDbGetSchema, JsqlSchemaGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetEnum, JsqlSchemaGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -63,15 +63,13 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		infer Typ extends string,
 	]
 		? E extends null
-			? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-				? IfExists extends true
-					? JsqlSchemaGetEnum<Schema, Typ> extends infer Values extends readonly string[]
-						? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
-						: [R, Db, null]
-					: JsqlSchemaGetEnum<Schema, Typ> extends infer Values extends readonly string[]
-						? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
-						: [R, Db, SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">]
-				: [R, Db, SqlParserError<"Unknown schema for ALTER TYPE">]
+			? IfExists extends true
+				? JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
+					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
+					: [R, Db, null]
+				: JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
+					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
+					: [R, Db, SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">]
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid ALTER TYPE parse">]
 		: never
 

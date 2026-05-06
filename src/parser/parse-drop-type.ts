@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetSchema, JsqlSchemaGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetType, JsqlSchemaGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -54,19 +54,17 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 		infer Typ extends string,
 	]
 		? E extends null
-			? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-				? IfExists extends true
-					? JsqlSchemaGetType<Schema, Typ> extends JsqlTypeShape
-						? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
-							? FinishDropStatement<R, NewDb>
-							: never
-						: FinishDropStatement<R, Db>
-					: JsqlSchemaGetType<Schema, Typ> extends JsqlTypeShape
-						? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
-							? FinishDropStatement<R, NewDb>
-							: never
-						: [R, Db, SqlParserError<"Type does not exist; use IF EXISTS">]
-				: [R, Db, SqlParserError<"Unknown schema for DROP TYPE">]
+			? IfExists extends true
+				? JsqlDbGetType<Db, Sch, Typ> extends JsqlTypeShape
+					? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
+						? FinishDropStatement<R, NewDb>
+						: never
+					: FinishDropStatement<R, Db>
+				: JsqlDbGetType<Db, Sch, Typ> extends JsqlTypeShape
+					? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
+						? FinishDropStatement<R, NewDb>
+						: never
+					: [R, Db, SqlParserError<"Type does not exist; use IF EXISTS">]
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid DROP TYPE parse">]
 		: never
 
