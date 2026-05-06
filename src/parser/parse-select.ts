@@ -27,7 +27,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
-import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
+import type { JsqlDbGetSet } from "../core/jsql-utils.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
@@ -1607,7 +1607,7 @@ type ParseFromTableAfterLeadingIdent<
 			? PeekToken<R2> extends infer TokB
 				? SkipToken<R2> extends infer R3 extends TokensList
 					? TokB extends TokenIdent<infer B extends string>
-						? ResolveTableShape<Db, A, B> extends infer Tbl extends JsqlTableShape
+						? JsqlDbGetSet<Db, A, B> extends infer Tbl extends JsqlTableShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
 							: [R3, SqlParserError<"Unknown schema or table in FROM">, ParserRefErrorThirdSentinel]
 						: [R3, SqlParserError<"Expected table name after `.` in FROM">, ParserRefErrorThirdSentinel]
@@ -1616,7 +1616,7 @@ type ParseFromTableAfterLeadingIdent<
 			: never
 		: A extends keyof Scope
 			? ParseAliasAfterCTE<R1, A, Scope[A], Scope>
-			: ResolveTableShape<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
+			: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
 				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
 				: [R1, SqlParserError<"Unknown table in FROM">, ParserRefErrorThirdSentinel]
 
