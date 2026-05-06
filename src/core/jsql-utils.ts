@@ -46,7 +46,7 @@ export type JsqlDbGetView<Db extends JsqlDatabaseShape, Sch extends string, Tab 
 export type JsqlReplaceSchema<
 	Db extends JsqlDatabaseShape,
 	Name extends string,
-	Schema extends JsqlSchemaShape,
+	Schema extends JsqlSchemaShape | null,
 > = ReplaceProp<Db, "schemas", ReplaceProp<Db["schemas"], Name, Schema>>
 
 export type JsqlRemoveSchema<Db extends JsqlDatabaseShape, Name extends string> = ReplaceProp<
@@ -66,10 +66,7 @@ export type JsqlDbReplaceSet<
 	Schema extends string,
 	Name extends string,
 	Set extends JsqlTableShape,
-> =
-	JsqlReplaceSet<JsqlGetSchema<Db, Schema>, Name, Set> extends infer UpdatedSchema extends JsqlSchemaShape
-		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
-		: null
+> = JsqlReplaceSchema<Db, Schema, JsqlReplaceSet<JsqlGetSchema<Db, Schema>, Name, Set>>
 
 export type JsqlRemoveSet<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
 	? ReplaceProp<Schema, "sets", Omit<Schema["sets"], Name>>

@@ -1,15 +1,15 @@
 export type JsqlDatabaseShape = {
 	defaultSchema: string
-	schemas: {}
+	schemas: unknown
 	/** Typed SQL function names → SQL return type strings (e.g., "integer", "text"). Keys as used in SQL after identifier normalization, typically lowercase. */
-	functions?: {} | undefined
+	functions?: unknown
 }
 
 export type JsqlSchemaShape = {
 	/** Named relations in the schema (base tables and views). */
-	sets: {}
+	sets: unknown
 	/** Named types in the schema (enums, etc.). */
-	types?: {}
+	types?: unknown
 }
 
 export type JsqlTypeShape = {
@@ -22,8 +22,8 @@ export type JsqlTableShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind
 	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
 	columns: Record<string, string>
-	column_facts?: {}
-	constraints?: {}
+	column_facts?: unknown
+	constraints?: unknown
 }
 
 export type JsqlConstraintEntry =

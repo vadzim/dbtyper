@@ -7,7 +7,7 @@ import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type EmptyDb = {
 	defaultSchema: "public"
-	schemas: {}
+	schemas: unknown
 }
 
 type DbWithAuth = {
@@ -17,7 +17,7 @@ type DbWithAuth = {
 
 type NewSchema = ParseSqlStatement<ParseSqlTokens<"create schema bar;">, EmptyDb>
 type _newAddsSchema = Expect<Matches<NewSchema[2], null>>
-type _newDbHasBar = Expect<Matches<NewSchema[1]["schemas"]["bar"], JsqlSchemaShape>>
+type _newDbHasBar = Expect<Extends<NewSchema[1], { schemas: Record<"bar", JsqlSchemaShape> }>>
 
 type DupSchema = ParseSqlStatement<ParseSqlTokens<"create schema auth;">, DbWithAuth>
 type _dupIsError = Expect<Matches<DupSchema[2], SqlParserError<"Schema already exists; use IF NOT EXISTS">>>
@@ -29,7 +29,7 @@ type _ifNotDupDb = Expect<Matches<IfNotDup[1], DbWithAuth>>
 
 type IfNotNew = ParseSqlStatement<ParseSqlTokens<"create schema if not exists other;">, EmptyDb>
 type _ifNotNewAdds = Expect<Matches<IfNotNew[2], null>>
-type _ifNotNewHasOther = Expect<Matches<IfNotNew[1]["schemas"]["other"], JsqlSchemaShape>>
+type _ifNotNewHasOther = Expect<Extends<IfNotNew[1], { schemas: Record<"other", JsqlSchemaShape> }>>
 
 type TIfExistsWrong = ParseSqlStatement<ParseSqlTokens<"create schema if exists should_fail;">, EmptyDb>
 type _ifExistsWrong = Expect<Extends<TIfExistsWrong[2], SqlParserError<"Expected `not` after `IF` in CREATE SCHEMA">>>
