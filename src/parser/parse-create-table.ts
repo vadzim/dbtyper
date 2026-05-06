@@ -44,7 +44,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 		? Entry extends null
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 			: IfNotExists extends true
-				? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
+				? [R, Db, null]
 				: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
 		: never
 
