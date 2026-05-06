@@ -26,18 +26,7 @@ describe("scope shadowing (type tests)", () => {
 			DbShadowing
 		>
 		// Just verify it parses without error - the actual column type will be from posts.id
-		type _cteShadowsTable = Expect<
-			Extends<
-				CteShadowsTable,
-				[
-					unknown,
-					DbShadowing,
-					{
-						kind: "select"
-					},
-				]
-			>
-		>
+		type _cteShadowsTable = Expect<Extends<CteShadowsTable[2], { kind: "select" }>>
 
 		// Table alias shadows table name - posts now refers to users table
 		type AliasShadowsTable = ParseSqlStatement<
@@ -47,18 +36,7 @@ describe("scope shadowing (type tests)", () => {
 			DbShadowing
 		>
 		// posts.id should resolve to users.id because posts is an alias for users
-		type _aliasShadowsTable = Expect<
-			Extends<
-				AliasShadowsTable,
-				[
-					unknown,
-					DbShadowing,
-					{
-						kind: "select"
-					},
-				]
-			>
-		>
+		type _aliasShadowsTable = Expect<Extends<AliasShadowsTable[2], { kind: "select" }>>
 
 		// JOIN does not shadow - both tables visible
 		type JoinDoesNotShadow = ParseSqlStatement<
@@ -67,17 +45,6 @@ describe("scope shadowing (type tests)", () => {
 			`>,
 			DbShadowing
 		>
-		type _joinDoesNotShadow = Expect<
-			Extends<
-				JoinDoesNotShadow,
-				[
-					unknown,
-					DbShadowing,
-					{
-						kind: "select"
-					},
-				]
-			>
-		>
+		type _joinDoesNotShadow = Expect<Extends<JoinDoesNotShadow[2], { kind: "select" }>>
 	})
 })

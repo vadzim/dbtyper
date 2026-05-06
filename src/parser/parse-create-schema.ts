@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { MergeSchemaIntoDb } from "../core/jsql-utils-legacy.ts"
+import type { JsqlDbReplaceSchema, JsqlCreateSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -31,10 +31,10 @@ type ParseCreateSchemaAfterSchemaName<
 				? IfNotExists extends true
 					? [SchemaName] extends [keyof Db["schemas"]]
 						? [R1, Db, null]
-						: [R1, MergeSchemaIntoDb<Db, SchemaName>, null]
+						: [R1, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
 					: [SchemaName] extends [keyof Db["schemas"]]
 						? [R1, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
-						: [R1, MergeSchemaIntoDb<Db, SchemaName>, null]
+						: [R1, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
 				: [R1, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
 			: never
 		: never

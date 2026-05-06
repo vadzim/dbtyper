@@ -52,7 +52,7 @@ type _upMultiBadSecond = Expect<
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"
 	schemas: {
-		app: { sets: {} }
+		app: { sets: unknown }
 		public: {
 			sets: {
 				users: {

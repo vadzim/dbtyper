@@ -54,7 +54,7 @@ type _insMissingNotNull = Expect<
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"
 	schemas: {
-		app: { sets: {} }
+		app: { sets: unknown }
 		public: {
 			sets: {
 				users: {
@@ -125,7 +125,7 @@ type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["ret
 
 type SeedDb0 = {
 	defaultSchema: "public"
-	schemas: {}
+	schemas: unknown
 }
 
 type SeedDb1 = ApplyStatements<

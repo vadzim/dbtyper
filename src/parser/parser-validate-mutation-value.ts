@@ -1,8 +1,8 @@
-import type { JsqlColumnFactsEntry, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ExprAtom, ExprOk, ExprSqlNull, SameComparisonClass } from "./parse-expression.ts"
 
-type InsertColNotNull<Tbl extends JsqlTableShape, Col extends string> = Tbl extends {
+type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
 	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
 }
 	? Col extends keyof F
@@ -13,7 +13,7 @@ type InsertColNotNull<Tbl extends JsqlTableShape, Col extends string> = Tbl exte
 	: false
 
 export type ValidateMutationValueForColumn<
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 	Val extends ExprAtom,
 > = Col extends keyof Tbl["columns"]
@@ -23,7 +23,7 @@ export type ValidateMutationValueForColumn<
 	: SqlParserError<"Unknown column in INSERT">
 
 type ValidateMutationValueBySql<
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 	Val extends ExprAtom,
 	ColSql extends string,

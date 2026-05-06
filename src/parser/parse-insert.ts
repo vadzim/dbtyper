@@ -2,7 +2,7 @@ import type {
 	JsqlDatabaseShape,
 	JsqlInsertStatementResult,
 	JsqlSelectStatementResult,
-	JsqlTableShape,
+	JsqlDataShape,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -27,7 +27,7 @@ type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed:
 
 type InsertTableContext = {
 	scope: ScopeMap
-	tbl: JsqlTableShape
+	tbl: JsqlDataShape
 	schema: string
 	table: string
 }
@@ -37,7 +37,7 @@ type ParseInsertAliasAfterTable<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	_Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
@@ -118,7 +118,7 @@ type ParseInsertFromTableRef<
 													SqlParserError<"Unknown schema or table in INSERT INTO">,
 													ParserRefErrorThirdSentinel,
 												]
-											: TblTry extends JsqlTableShape
+											: TblTry extends JsqlDataShape
 												? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
 												: [
 														R3,
@@ -137,7 +137,7 @@ type ParseInsertFromTableRef<
 					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [R1, SqlParserError<"Unknown table in INSERT INTO">, ParserRefErrorThirdSentinel]
-							: TblTry extends JsqlTableShape
+							: TblTry extends JsqlDataShape
 								? ParseInsertAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Params>
 								: [R1, SqlParserError<"Unknown table in INSERT INTO">, ParserRefErrorThirdSentinel]
 						: never
@@ -145,7 +145,7 @@ type ParseInsertFromTableRef<
 			: never
 		: never
 
-type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlTableShape, Acc extends readonly string[]> =
+type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
 			? [Tokens, SqlParserError<"INSERT column list must not be empty">]
@@ -168,7 +168,7 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlTableS
 				: never
 			: never
 
-type IsNotNullInsertColumn<Tbl extends JsqlTableShape, Col extends string> = Tbl extends {
+type IsNotNullInsertColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
 	column_facts: infer Facts extends Record<string, unknown>
 }
 	? Col extends keyof Facts
@@ -180,7 +180,7 @@ type IsNotNullInsertColumn<Tbl extends JsqlTableShape, Col extends string> = Tbl
 		: false
 	: false
 
-type MissingRequiredInsertColumn<Tbl extends JsqlTableShape, Cols extends readonly string[]> = {
+type MissingRequiredInsertColumn<Tbl extends JsqlDataShape, Cols extends readonly string[]> = {
 	[K in Extract<keyof Tbl["columns"], string>]: IsNotNullInsertColumn<Tbl, K> extends true
 		? K extends Cols[number]
 			? never
@@ -188,7 +188,7 @@ type MissingRequiredInsertColumn<Tbl extends JsqlTableShape, Cols extends readon
 		: never
 }[Extract<keyof Tbl["columns"], string>]
 
-type ValidateInsertRequiredColumns<Tbl extends JsqlTableShape, Cols extends readonly string[]> = [
+type ValidateInsertRequiredColumns<Tbl extends JsqlDataShape, Cols extends readonly string[]> = [
 	MissingRequiredInsertColumn<Tbl, Cols>,
 ] extends [never]
 	? true
@@ -199,7 +199,7 @@ type ParseInsertAfterOpenParenCols<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 > =
@@ -220,7 +220,7 @@ type ParseInsertAfterColumnNames<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -246,7 +246,7 @@ type ParseInsertWithSelect<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -277,7 +277,7 @@ type ParseInsertWithSelect<
 		: never
 
 type ValidateInsertSelectColumns<
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	InsertCols extends readonly string[],
 	SelectRes extends JsqlSelectStatementResult,
 > =
@@ -295,7 +295,7 @@ type ValidateInsertSelectColumnCount<
 	: SqlParserError<"INSERT...SELECT column count mismatch">
 
 type ValidateInsertSelectColumnTypes<
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	InsertCols extends readonly string[],
 	SelectRes extends JsqlSelectStatementResult,
 	AllCols extends readonly string[],
@@ -320,7 +320,7 @@ type ParseInsertAfterValuesCellsOutcome<
 	Db2 extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -339,7 +339,7 @@ type ParseInsertAfterValuesKeyword<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -373,7 +373,7 @@ type ParseInsertValuesCells<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -418,7 +418,7 @@ type ParseInsertValuesCommaThenRest<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	CR extends readonly string[],
@@ -433,7 +433,7 @@ type ParseInsertValuesCommaThenRest<
 type InsertExcludedScope<
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	BaseScope extends ScopeMap,
 > = MergeScope<
 	Record<
@@ -465,7 +465,7 @@ type ParseInsertAfterValuesRowClose<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -493,7 +493,7 @@ type ParseInsertOptionalTail<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -515,7 +515,7 @@ type ParseInsertOnConflictDoUpdate<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -533,7 +533,7 @@ type ParseInsertOnConflictAfterOpenParen<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -551,7 +551,7 @@ type ParseInsertOnConflictAfterConflictCloseParen<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -571,7 +571,7 @@ type ParseInsertOnConflictAfterDoKw<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -589,7 +589,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -614,7 +614,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 			: never
 		: never
 
-type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlTableShape, Acc extends readonly string[]> =
+type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
 			? [Tokens, SqlParserError<"ON CONFLICT column list must not be empty">]
@@ -646,7 +646,7 @@ type ParseInsertUpsertSetAssignments<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Acc extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer TokCol
@@ -700,7 +700,7 @@ type ParseInsertAfterUpsertSet<
 	Db extends JsqlDatabaseShape,
 	UpsertScope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
@@ -721,7 +721,7 @@ type ParseInsertMaybeReturning<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],

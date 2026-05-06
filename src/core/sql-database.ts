@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "./jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
@@ -106,7 +106,7 @@ export type FlattenedJsqlDatabase<Db> = Db extends JsqlDatabaseShape
 									sets: Schema["sets"] extends infer Sets
 										? {
 												[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends
-													JsqlTableShape
+													JsqlDataShape
 													? {
 															kind: Table["kind"]
 															columns: Table["columns"] extends infer Columns

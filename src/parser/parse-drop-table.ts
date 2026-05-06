@@ -1,5 +1,5 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../core/jsql-shapes.ts"
-import type { JsqlGetSchema, JsqlGetSet, JsqlGetTable, JsqlDbReplaceSet } from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbGetSchema, JsqlSchemaGetSet, JsqlSchemaGetTable, JsqlDbReplaceSet } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -14,13 +14,13 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
 
-type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlGetSet<
-	JsqlGetSchema<Db, Sch>,
+type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlSchemaGetSet<
+	JsqlDbGetSchema<Db, Sch>,
 	Tab
 >
 
 /** `DROP TABLE` may only remove a relation whose `kind` is `"table"`. */
-type IsDroppableTableEntry<E> = E extends JsqlTableShape ? (E["kind"] extends "table" ? true : false) : false
+type IsDroppableTableEntry<E> = E extends JsqlDataShape ? (E["kind"] extends "table" ? true : false) : false
 
 /** After `schema.` in qualified `DROP TABLE schema.table`. */
 type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
@@ -73,18 +73,18 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		infer Tab extends string,
 	]
 		? E extends null
-			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+			? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
-					? JsqlGetTable<Schema, Tab> extends JsqlTableShape<"table">
+					? JsqlSchemaGetTable<Schema, Tab> extends JsqlDataShape<"table">
 						? JsqlDbReplaceSet<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
 						: FinishDropStatement<R, Db>
-					: JsqlGetTable<Schema, Tab> extends JsqlTableShape<"table">
+					: JsqlSchemaGetTable<Schema, Tab> extends JsqlDataShape<"table">
 						? JsqlDbReplaceSet<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
-						: JsqlGetSet<Schema, Tab> extends null
+						: JsqlSchemaGetSet<Schema, Tab> extends null
 							? [R, Db, SqlParserError<"Table does not exist; use IF EXISTS">]
 							: [R, Db, SqlParserError<"DROP TABLE targets a view; use DROP VIEW">]
 				: [R, Db, SqlParserError<"Unknown schema for DROP TABLE">]

@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -1607,7 +1607,7 @@ type ParseFromTableAfterLeadingIdent<
 			? PeekToken<R2> extends infer TokB
 				? SkipToken<R2> extends infer R3 extends TokensList
 					? TokB extends TokenIdent<infer B extends string>
-						? JsqlDbGetSet<Db, A, B> extends infer Tbl extends JsqlTableShape
+						? JsqlDbGetSet<Db, A, B> extends infer Tbl extends JsqlDataShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
 							: [R3, SqlParserError<"Unknown schema or table in FROM">, ParserRefErrorThirdSentinel]
 						: [R3, SqlParserError<"Expected table name after `.` in FROM">, ParserRefErrorThirdSentinel]
@@ -1616,7 +1616,7 @@ type ParseFromTableAfterLeadingIdent<
 			: never
 		: A extends keyof Scope
 			? ParseAliasAfterCTE<R1, A, Scope[A], Scope>
-			: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlTableShape
+			: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlDataShape
 				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
 				: [R1, SqlParserError<"Unknown table in FROM">, ParserRefErrorThirdSentinel]
 
@@ -1667,7 +1667,7 @@ type ParseAliasAfterTable<
 	Tokens extends TokensList,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Scope extends ScopeMap,
 > =
 	PeekToken<Tokens> extends

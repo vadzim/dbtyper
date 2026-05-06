@@ -1,7 +1,6 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
 import type { I } from "../core/type-utils.ts"
-import type { JsqlGetSchema, JsqlGetSet, JsqlGetTable } from "../core/jsql-utils.ts"
-import type { ReplaceTableInDb } from "../core/jsql-utils-legacy.ts"
+import type { JsqlDbGetSchema, JsqlDbReplaceSet, JsqlSchemaGetSet, JsqlSchemaGetTable } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
@@ -9,8 +8,8 @@ import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-wo
 /** Helper to distribute over unions/intersections and extract the non-Record part */
 type ExtractConcreteTableType<T, Tab extends string> =
 	T extends Record<Tab, infer U>
-		? U extends JsqlTableShape
-			? [U] extends [JsqlTableShape]
+		? U extends JsqlDataShape
+			? [U] extends [JsqlDataShape]
 				? U
 				: never
 			: never
@@ -22,7 +21,7 @@ type ExtractTableType<Sets, Tab extends string> = ExtractConcreteTableType<Sets,
 /** `sets[Tab]` can widen with `& { [K: string]: JsqlTableShape }`; narrow to a concrete base table. */
 type AlterTableShapeAt<Sets extends object, Tab extends string> =
 	ExtractTableType<Sets, Tab> extends infer T
-		? T extends JsqlTableShape
+		? T extends JsqlDataShape
 			? T["kind"] extends "table"
 				? T
 				: never
@@ -75,16 +74,16 @@ type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlData
 			: never
 		: never
 
-type ApplyAddColumn<T extends JsqlTableShape, Col extends string, Sql extends string> = Col extends keyof T["columns"]
+type ApplyAddColumn<T extends JsqlDataShape, Col extends string, Sql extends string> = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">
 	: {
 			kind: T["kind"]
 			columns: MergeRecords<T["columns"], Record<Col, Sql>>
 			constraints?: T["constraints"]
 			column_facts?: T["column_facts"]
-		} & JsqlTableShape
+		} & JsqlDataShape
 
-type ApplyDropColumn<T extends JsqlTableShape, Col extends string> = Col extends keyof T["columns"]
+type ApplyDropColumn<T extends JsqlDataShape, Col extends string> = Col extends keyof T["columns"]
 	? {
 			kind: T["kind"]
 			columns: Omit<T["columns"], Col>
@@ -94,14 +93,10 @@ type ApplyDropColumn<T extends JsqlTableShape, Col extends string> = Col extends
 					? Omit<F, Col>
 					: F
 				: undefined
-		} & JsqlTableShape
+		} & JsqlDataShape
 	: SqlParserError<"Column does not exist">
 
-type ApplyRenameColumn<
-	T extends JsqlTableShape,
-	Old extends string,
-	New extends string,
-> = Old extends keyof T["columns"]
+type ApplyRenameColumn<T extends JsqlDataShape, Old extends string, New extends string> = Old extends keyof T["columns"]
 	? New extends keyof T["columns"]
 		? SqlParserError<"Column already exists">
 		: {
@@ -115,11 +110,11 @@ type ApplyRenameColumn<
 							: F
 						: F
 					: undefined
-			} & JsqlTableShape
+			} & JsqlDataShape
 	: SqlParserError<"Column does not exist">
 
 type ApplyAlterColumnType<
-	T extends JsqlTableShape,
+	T extends JsqlDataShape,
 	Col extends string,
 	Sql extends string,
 > = Col extends keyof T["columns"]
@@ -128,11 +123,11 @@ type ApplyAlterColumnType<
 			columns: MergeRecords<T["columns"], Record<Col, Sql>>
 			constraints?: T["constraints"]
 			column_facts?: T["column_facts"]
-		} & JsqlTableShape
+		} & JsqlDataShape
 	: SqlParserError<"Column does not exist">
 
 type MergeColFactPatch<
-	T extends JsqlTableShape,
+	T extends JsqlDataShape,
 	Col extends string,
 	Patch extends JsqlColumnFactsEntry,
 > = T["column_facts"] extends infer F
@@ -143,16 +138,16 @@ type MergeColFactPatch<
 		: Record<Col, Patch>
 	: Record<Col, Patch>
 
-type ApplySetNotNull<T extends JsqlTableShape, Col extends string> = Col extends keyof T["columns"]
+type ApplySetNotNull<T extends JsqlDataShape, Col extends string> = Col extends keyof T["columns"]
 	? Omit<T, "column_facts"> & {
 			column_facts: MergeColFactPatch<T, Col, { nullability: "not_null" }>
-		} & JsqlTableShape
+		} & JsqlDataShape
 	: SqlParserError<"Column does not exist">
 
-type ApplyDropNotNull<T extends JsqlTableShape, Col extends string> = Col extends keyof T["columns"]
+type ApplyDropNotNull<T extends JsqlDataShape, Col extends string> = Col extends keyof T["columns"]
 	? Omit<T, "column_facts"> & {
 			column_facts: MergeColFactPatch<T, Col, { nullability: "nullable" }>
-		} & JsqlTableShape
+		} & JsqlDataShape
 	: SqlParserError<"Column does not exist">
 
 type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends string> =
@@ -175,7 +170,7 @@ type ParseAlterAddColumnAfterColName<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	CollectSqlTypeWords<R2> extends [infer AfterType extends TokensList, infer Words extends readonly string[]]
@@ -189,8 +184,8 @@ type ParseAlterAddColumnAfterColName<
 					? ApplyAddColumn<Tbl, Col, J2> extends infer U
 						? U extends SqlParserError<string>
 							? [R3, Db, U]
-							: U extends JsqlTableShape
-								? ParseAlterActions<R3, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+							: U extends JsqlDataShape
+								? ParseAlterActions<R3, JsqlDbReplaceSet<Db, Sch, Tab, U>, Sch, Tab>
 								: never
 						: never
 					: never
@@ -230,7 +225,7 @@ type ParseAlterAddColumn<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"add">
 		? SkipToken<Tokens> extends infer R0 extends TokensList
@@ -259,7 +254,7 @@ type ParseAlterDropColumn<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"drop">
 		? SkipToken<Tokens> extends infer R0 extends TokensList
@@ -271,8 +266,8 @@ type ParseAlterDropColumn<
 								? ApplyDropColumn<Tbl, Col> extends infer U
 									? U extends SqlParserError<string>
 										? [R2, Db, U]
-										: U extends JsqlTableShape
-											? ParseAlterActions<R2, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+										: U extends JsqlDataShape
+											? ParseAlterActions<R2, JsqlDbReplaceSet<Db, Sch, Tab, U>, Sch, Tab>
 											: never
 									: never
 								: [R2, Db, SqlParserError<"Expected column name after DROP COLUMN">]
@@ -284,8 +279,8 @@ type ParseAlterDropColumn<
 						? ApplyDropColumn<Tbl, Col2> extends infer U2
 							? U2 extends SqlParserError<string>
 								? [R1b, Db, U2]
-								: U2 extends JsqlTableShape
-									? ParseAlterActions<R1b, ReplaceTableInDb<Db, Sch, Tab, U2>, Sch, Tab>
+								: U2 extends JsqlDataShape
+									? ParseAlterActions<R1b, JsqlDbReplaceSet<Db, Sch, Tab, U2>, Sch, Tab>
 									: never
 							: never
 						: never
@@ -298,7 +293,7 @@ type ParseAlterRenameAfterToKw<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Old extends string,
 > =
 	PeekToken<R2> extends infer Tto
@@ -310,8 +305,8 @@ type ParseAlterRenameAfterToKw<
 							? ApplyRenameColumn<Tbl, Old, New> extends infer U
 								? U extends SqlParserError<string>
 									? [R4, Db, U]
-									: U extends JsqlTableShape
-										? ParseAlterActions<R4, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+									: U extends JsqlDataShape
+										? ParseAlterActions<R4, JsqlDbReplaceSet<Db, Sch, Tab, U>, Sch, Tab>
 										: never
 								: never
 							: [R4, Db, SqlParserError<"Expected new column name after TO in RENAME COLUMN">]
@@ -327,7 +322,7 @@ type ParseAlterRenameAfterOldIdent<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	Told extends TokenIdent<infer Old extends string>
 		? PeekToken<R2> extends TokenKey<"to">
@@ -340,7 +335,7 @@ type ParseAlterRenameColumn<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"rename">
 		? SkipToken<Tokens> extends infer R0 extends TokensList
@@ -359,7 +354,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	CollectSqlTypeWords<R3> extends [infer AfterType extends TokensList, infer Words extends readonly string[]]
@@ -373,8 +368,8 @@ type ParseAlterColumnTypeAfterTypeKw<
 					? ApplyAlterColumnType<Tbl, Col, J2> extends infer U
 						? U extends SqlParserError<string>
 							? [R4, Db, U]
-							: U extends JsqlTableShape
-								? ParseAlterActions<R4, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+							: U extends JsqlDataShape
+								? ParseAlterActions<R4, JsqlDbReplaceSet<Db, Sch, Tab, U>, Sch, Tab>
 								: never
 						: never
 					: never
@@ -386,7 +381,7 @@ type ParseAlterColumnTypeBranch<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<R2> extends infer Tkw
@@ -402,7 +397,7 @@ type ParseAlterColumnSetBranch<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<R2> extends TokenKey<"set">
@@ -415,8 +410,8 @@ type ParseAlterColumnSetBranch<
 								? ApplySetNotNull<Tbl, Col> extends infer U
 									? U extends SqlParserError<string>
 										? [Rnn, Db, U]
-										: U extends JsqlTableShape
-											? ParseAlterActions<Rnn, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+										: U extends JsqlDataShape
+											? ParseAlterActions<Rnn, JsqlDbReplaceSet<Db, Sch, Tab, U>, Sch, Tab>
 											: never
 									: never
 								: [Rnn, Db, SqlParserError<"Expected NULL after SET NOT">]
@@ -438,7 +433,7 @@ type ParseAlterColumnDropNotNullChain<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<Rd0> extends TokenKey<"not">
@@ -449,8 +444,8 @@ type ParseAlterColumnDropNotNullChain<
 						? ApplyDropNotNull<Tbl, Col> extends infer U
 							? U extends SqlParserError<string>
 								? [Rd2, Db, U]
-								: U extends JsqlTableShape
-									? ParseAlterActions<Rd2, ReplaceTableInDb<Db, Sch, Tab, U>, Sch, Tab>
+								: U extends JsqlDataShape
+									? ParseAlterActions<Rd2, JsqlDbReplaceSet<Db, Sch, Tab, U>, Sch, Tab>
 									: never
 							: never
 						: [Rd2, Db, SqlParserError<"Expected NULL after DROP NOT">]
@@ -464,7 +459,7 @@ type ParseAlterColumnDropDefaultNoop<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<Rd0> extends infer Tdd
@@ -482,7 +477,7 @@ type ParseAlterColumnDropAfterRd0<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<Rd0> extends TokenKey<"not">
@@ -496,7 +491,7 @@ type ParseAlterColumnDropBranch<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<R2> extends TokenKey<"drop">
@@ -510,7 +505,7 @@ type ParseAlterColumnAfterIdent<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Col extends string,
 > =
 	PeekToken<R2> extends TokenKey<"type"> | TokenIdent<"type">
@@ -526,7 +521,7 @@ type ParseAlterColumnAfterAlterKw<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"alter">
 		? SkipToken<Tokens> extends infer R0 extends TokensList
@@ -548,7 +543,7 @@ type ParseAlterOneAction<
 	Sch extends string,
 	Tab extends string,
 > =
-	JsqlGetTable<JsqlGetSchema<Db, Sch>, Tab> extends infer Tbl extends JsqlTableShape<"table">
+	JsqlSchemaGetTable<JsqlDbGetSchema<Db, Sch>, Tab> extends infer Tbl extends JsqlDataShape<"table">
 		? PeekToken<Tokens> extends TokenKey<"add">
 			? ParseAlterAddColumn<Tokens, Db, Sch, Tab, Tbl>
 			: PeekToken<Tokens> extends TokenKey<"drop">
@@ -558,7 +553,7 @@ type ParseAlterOneAction<
 					: PeekToken<Tokens> extends TokenKey<"alter">
 						? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab, Tbl>
 						: [Tokens, Db, SqlParserError<"Unsupported ALTER TABLE action">]
-		: JsqlGetSet<JsqlGetSchema<Db, Sch>, Tab> extends null
+		: JsqlSchemaGetSet<JsqlDbGetSchema<Db, Sch>, Tab> extends null
 			? [Tokens, Db, SqlParserError<"Table key mismatch in ALTER TABLE">]
 			: [Tokens, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
 
@@ -569,8 +564,8 @@ type ParseAlterAfterQualified<
 	Sch extends string,
 	Tab extends string,
 > = Err extends null
-	? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-		? JsqlGetTable<Schema, Tab> extends object
+	? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+		? JsqlSchemaGetTable<Schema, Tab> extends object
 			? Sch extends keyof Db["schemas"]
 				? ParseAlterActions<R, Db, Sch & string, Tab & string>
 				: never

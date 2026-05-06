@@ -10,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlGetSchema, JsqlGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlSchemaGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -34,7 +34,7 @@ type ParseCreateTypeQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Typ extends string,
 > =
-	JsqlGetType<JsqlGetSchema<Db, Sch>, Typ> extends null
+	JsqlSchemaGetType<JsqlDbGetSchema<Db, Sch>, Typ> extends null
 		? ParseCreateTypeAsEnum<R, Db, Sch, Typ, IfNotExists>
 		: IfNotExists extends true
 			? ParseCreateTypeAsEnum<R, Db, Sch, Typ, true>
@@ -47,7 +47,7 @@ type ParseCreateTypeQualifiedWhenNameOk<
 	Sch extends string,
 	Typ extends string,
 > =
-	JsqlGetSchema<Db, Sch> extends JsqlSchemaShape
+	JsqlDbGetSchema<Db, Sch> extends JsqlSchemaShape
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTypeQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Typ>
 			: never
@@ -79,7 +79,7 @@ type ParseCreateTypeAsEnum<
 					? SkipToken<AfterAs> extends infer AfterEnum extends TokensList
 						? EnumTok extends TokenKey<"enum">
 							? IfNotExists extends true
-								? JsqlGetType<JsqlGetSchema<Db, Schema>, TypeName> extends null
+								? JsqlSchemaGetType<JsqlDbGetSchema<Db, Schema>, TypeName> extends null
 									? ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
 									: ParseCreateTypeSkipEnumBody<AfterEnum, Db>
 								: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>

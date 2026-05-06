@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { JsqlGetSchema, JsqlGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlSchemaGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -54,14 +54,14 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 		infer Typ extends string,
 	]
 		? E extends null
-			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+			? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
-					? JsqlGetType<Schema, Typ> extends JsqlTypeShape
+					? JsqlSchemaGetType<Schema, Typ> extends JsqlTypeShape
 						? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
 						: FinishDropStatement<R, Db>
-					: JsqlGetType<Schema, Typ> extends JsqlTypeShape
+					: JsqlSchemaGetType<Schema, Typ> extends JsqlTypeShape
 						? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never

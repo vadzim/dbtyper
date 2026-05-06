@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { JsqlDbGetSet } from "../core/jsql-utils.ts"
@@ -8,7 +8,7 @@ type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab ext
 	JsqlDbGetSet<Db, Sch, Tab>,
 ] extends [never]
 	? SqlParserError<"Unknown schema or table">
-	: JsqlDbGetSet<Db, Sch, Tab> extends infer Tbl extends JsqlTableShape
+	: JsqlDbGetSet<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
 		? Col extends keyof Tbl["columns"]
 			? {
 					ts: Tbl["columns"][Col]

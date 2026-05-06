@@ -15,7 +15,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
-import type { JsqlGetSchema, JsqlGetSet } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlSchemaGetSet } from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -41,7 +41,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 > =
-	JsqlGetSet<JsqlGetSchema<Db, Sch>, Tab> extends infer Entry
+	JsqlSchemaGetSet<JsqlDbGetSchema<Db, Sch>, Tab> extends infer Entry
 		? Entry extends null
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 			: IfNotExists extends true
@@ -58,7 +58,7 @@ type ParseCreateTableQualifiedWhenNameOk<
 	Sch extends string,
 	Tab extends string,
 > =
-	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+	JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never
@@ -87,7 +87,7 @@ type ParseCreateTableOpenParen<
 		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
 			? OpenTok extends TokenKey<"(">
 				? IfNotExists extends true
-					? JsqlGetSet<JsqlGetSchema<Db, Schema>, Table> extends null
+					? JsqlSchemaGetSet<JsqlDbGetSchema<Db, Schema>, Table> extends null
 						? ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>

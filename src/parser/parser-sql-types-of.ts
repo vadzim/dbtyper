@@ -1,3 +1,3 @@
-import type { JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlDataShape } from "../core/jsql-shapes.ts"
 
-export type SqlTypesOf<Tbl extends JsqlTableShape> = Tbl["columns"]
+export type SqlTypesOf<Tbl extends JsqlDataShape> = Tbl["columns"]

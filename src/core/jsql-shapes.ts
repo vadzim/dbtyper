@@ -18,7 +18,7 @@ export type JsqlTypeShape = {
 	values: readonly string[]
 }
 
-export type JsqlTableShape<Kind extends "table" | "view" = "table" | "view"> = {
+export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind
 	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
 	columns: Record<string, string>

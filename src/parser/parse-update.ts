@@ -1,6 +1,6 @@
 import type {
 	JsqlDatabaseShape,
-	JsqlTableShape,
+	JsqlDataShape,
 	JsqlUpdateStatementResult,
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
@@ -17,7 +17,7 @@ import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 
 type UpdateTableContext = {
 	scope: ScopeMap
-	tbl: JsqlTableShape
+	tbl: JsqlDataShape
 	schema: string
 	table: string
 }
@@ -27,7 +27,7 @@ type ParseUpdateAliasAfterTable<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"set">
 		? [
@@ -95,7 +95,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 													SqlParserError<"Unknown schema or table in UPDATE">,
 													ParserRefErrorThirdSentinel,
 												]
-											: TblTry extends JsqlTableShape
+											: TblTry extends JsqlDataShape
 												? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
 												: [
 														R3,
@@ -114,7 +114,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
-							: TblTry extends JsqlTableShape
+							: TblTry extends JsqlDataShape
 								? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
 								: [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
 						: never
@@ -127,7 +127,7 @@ type ParseUpdateSetAssignments<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Acc extends readonly string[],
@@ -196,7 +196,7 @@ type ParseUpdateAfterSetKeyword<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 > =
@@ -261,7 +261,7 @@ type ParseUpdateFromClauseTableRef<
 													SqlParserError<"Unknown schema or table in UPDATE FROM">,
 													ParserRefErrorThirdSentinel,
 												]
-											: TblTry extends JsqlTableShape
+											: TblTry extends JsqlDataShape
 												? ParseUpdateFromClauseTableAlias<R3, A, B, TblTry>
 												: [
 														R3,
@@ -280,7 +280,7 @@ type ParseUpdateFromClauseTableRef<
 					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry2
 						? [TblTry2] extends [never]
 							? [R1, SqlParserError<"Unknown table in UPDATE FROM">, ParserRefErrorThirdSentinel]
-							: TblTry2 extends JsqlTableShape
+							: TblTry2 extends JsqlDataShape
 								? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
 								: [R1, SqlParserError<"Invalid table in UPDATE FROM">, ParserRefErrorThirdSentinel]
 						: never
@@ -292,7 +292,7 @@ type ParseUpdateFromClauseTableAlias<
 	Tokens extends TokensList,
 	Sch extends string,
 	Tab extends string,
-	Tbl extends JsqlTableShape,
+	Tbl extends JsqlDataShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"where"> | TokenKey<"returning"> | TokenKey<";"> | TokenEot
 		? [
