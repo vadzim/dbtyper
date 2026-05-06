@@ -15,21 +15,25 @@ When a parser emits an error, it should skip to the end of the statement (semico
 **File:** `src/parser/skip-statement.ts`
 
 #### `SkipFailedExpression<Tokens, Error>`
+
 - Returns: `[Rest, Error]`
 - Use: Expression-level errors (2 parameters)
 
 #### `SkipFailedStatement<Tokens, Db, Error>`
+
 - Returns: `[Rest, Db, Error]`
 - Use: Statement-level errors (3 parameters)
 - **Most commonly used** — replaced 76 verbose patterns
 
 #### `SkipFailedQualifiedName<Tokens, Error>`
+
 - Returns: `[Rest, Error, never, never]`
 - Use: Qualified name parsing errors (4 parameters)
 
 ### 2. Refactored All Statement-Level Parsers
 
 **Before:**
+
 ```typescript
 : SkipFailedExpression<Tokens, SqlParserError<"...">> extends [
     infer Rest extends TokensList,
@@ -40,6 +44,7 @@ When a parser emits an error, it should skip to the end of the statement (semico
 ```
 
 **After:**
+
 ```typescript
 : SkipFailedStatement<Tokens, Db, SqlParserError<"...">>
 ```
@@ -49,6 +54,7 @@ When a parser emits an error, it should skip to the end of the statement (semico
 ### 3. Files Modified
 
 #### Statement-level parsers (13 files):
+
 - ✅ `parse-create-table.ts` — 12 errors → SkipFailedStatement
 - ✅ `parse-create-view.ts` — 5 errors → SkipFailedStatement
 - ✅ `parse-create-type.ts` — 12 errors → SkipFailedStatement
@@ -66,6 +72,7 @@ When a parser emits an error, it should skip to the end of the statement (semico
 **Total statement-level errors handled:** 101
 
 #### Expression-level parsers (7 files):
+
 - ✅ `parse-qualified-name.ts` — 3 errors → SkipFailedQualifiedName
 - ✅ `parse-qualified-table-name.ts` — 4 errors → SkipFailedQualifiedName
 - ✅ `parse-alter-type.ts` — 3 errors → SkipFailedQualifiedName
