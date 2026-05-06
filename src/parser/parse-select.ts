@@ -27,7 +27,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
-import type { ResolveTableShape } from "./resolve-table-shape.ts"
+import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 

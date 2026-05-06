@@ -3,9 +3,8 @@ import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList }
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
-import type { ResolveTableShape } from "./resolve-table-shape.ts"
+import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 

@@ -1,4 +1,5 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { RemoveTableFromDb } from "../core/jsql-utils-legacy.ts"
 import type { JsqlGetSchema, JsqlGetSet, JsqlGetTable } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -75,12 +76,12 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		? E extends null
 			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
-					? JsqlGetTable<Schema, Tab> extends infer Entry extends JsqlTableShape<"table">
+					? JsqlGetTable<Schema, Tab> extends JsqlTableShape<"table">
 						? RemoveTableFromDb<Db, Sch, Tab> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
 						: FinishDropStatement<R, Db>
-					: JsqlGetTable<Schema, Tab> extends infer Entry extends JsqlTableShape<"table">
+					: JsqlGetTable<Schema, Tab> extends JsqlTableShape<"table">
 						? RemoveTableFromDb<Db, Sch, Tab> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
@@ -97,24 +98,5 @@ type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape
 			? Tok extends TokenKey<";"> | TokenEot
 				? [R1, Db, null]
 				: [R1, Db, SqlParserError<"Expected `;` after DROP TABLE">]
-			: never
-		: never
-
-type RemoveTableFromDb<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> =
-	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-		? JsqlGetSet<Schema, Tab> extends object
-			? Sch extends keyof Db["schemas"]
-				? {
-						defaultSchema: Db["defaultSchema"]
-						schemas: {
-							[K in keyof Db["schemas"]]: K extends Sch
-								? { sets: Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> } & Omit<
-										I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>,
-										"sets"
-									>
-								: Db["schemas"][K]
-						}
-					}
-				: never
 			: never
 		: never

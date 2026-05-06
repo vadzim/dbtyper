@@ -1,8 +1,8 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
+import type { RemoveTypeFromDb } from "../core/jsql-utils-legacy.ts"
 import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 
 export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -14,14 +14,6 @@ export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShap
 				: [A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP TYPE">]
 			: never
 		: ParseDropTypeQualified<Tokens, Db, false>
-
-type TypeEntry<Db extends JsqlDatabaseShape, Sch extends string, Typ extends string> = JsqlGetType<
-	JsqlGetSchema<Db, Sch>,
-	Typ
->
-
-/** `DROP TYPE` may only remove a type entry. */
-type IsDroppableTypeEntry<E> = E extends JsqlTypeShape ? true : false
 
 /** After `schema.` in qualified `DROP TYPE schema.type`. */
 type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
@@ -65,12 +57,12 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 		? E extends null
 			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
-					? JsqlGetType<Schema, Typ> extends infer Entry extends JsqlTypeShape
+					? JsqlGetType<Schema, Typ> extends JsqlTypeShape
 						? RemoveTypeFromDb<Db, Sch, Typ> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
 						: FinishDropStatement<R, Db>
-					: JsqlGetType<Schema, Typ> extends infer Entry extends JsqlTypeShape
+					: JsqlGetType<Schema, Typ> extends JsqlTypeShape
 						? RemoveTypeFromDb<Db, Sch, Typ> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
@@ -85,24 +77,5 @@ type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape
 			? Tok extends TokenKey<";"> | TokenEot
 				? [R1, Db, null]
 				: [R1, Db, SqlParserError<"Expected `;` after DROP TYPE">]
-			: never
-		: never
-
-type RemoveTypeFromDb<Db extends JsqlDatabaseShape, Sch extends string, Typ extends string> =
-	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-		? JsqlGetType<Schema, Typ> extends object
-			? Sch extends keyof Db["schemas"]
-				? {
-						defaultSchema: Db["defaultSchema"]
-						schemas: {
-							[K in keyof Db["schemas"]]: K extends Sch
-								? { types: Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> } & Omit<
-										I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>,
-										"types"
-									>
-								: Db["schemas"][K]
-						}
-					}
-				: never
 			: never
 		: never

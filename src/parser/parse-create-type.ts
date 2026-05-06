@@ -1,5 +1,6 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
+import type { I } from "../core/type-utils.ts"
+import type { MergeTypeIntoDb } from "../core/jsql-utils-legacy.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -11,6 +12,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
+import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
 
 export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -47,7 +49,7 @@ type ParseCreateTypeQualifiedWhenNameOk<
 	Sch extends string,
 	Typ extends string,
 > =
-	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+	JsqlGetSchema<Db, Sch> extends JsqlSchemaShape
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTypeQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Typ>
 			: never
@@ -179,24 +181,3 @@ type ParseCreateTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatab
 				: [R, NewDb, SqlParserError<"Expected `;` after CREATE TYPE">]
 			: never
 		: never
-
-type MergeTypeIntoDb<
-	Db extends JsqlDatabaseShape,
-	Schema extends string,
-	TypeName extends string,
-	Values extends readonly string[],
-> = Schema extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Schema
-					? {
-							types: (I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
-								? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
-								: {}) &
-								Record<TypeName, { kind: "enum"; values: Values }>
-						} & Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>, "types">
-					: Db["schemas"][K]
-			}
-		}
-	: never

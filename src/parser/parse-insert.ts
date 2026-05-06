@@ -20,7 +20,7 @@ import type {
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause, ParseSelect } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { ResolveTableShape } from "./resolve-table-shape.ts"
+import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }

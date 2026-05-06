@@ -1,5 +1,6 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type { JsqlGetSchema, JsqlGetSet } from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
+import type { I } from "../core/type-utils.ts"
+import type { MergeTableIntoDb } from "../core/jsql-utils-legacy.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -14,6 +15,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
+import type { JsqlGetSchema, JsqlGetSet } from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -439,33 +441,6 @@ type ColumnsFromStack<S extends readonly ColumnTriple[]> = S extends readonly []
 								ColumnsFromStack<Rest>
 							>
 					: { cols: {}; facts: {} }
-
-type MergeTableIntoDb<
-	Db extends JsqlDatabaseShape,
-	Schema extends string,
-	Table extends string,
-	Cols extends Record<string, string>,
-	Facts extends Record<string, unknown>,
-> = Schema extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Schema
-					? {
-							sets: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"] &
-								Record<
-									Table,
-									{
-										kind: "table"
-										columns: Cols
-										column_facts: Facts
-									}
-								>
-						} & Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>, "sets">
-					: Db["schemas"][K]
-			}
-		}
-	: never
 
 type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
 	PeekToken<AfterKeyTok> extends infer T4

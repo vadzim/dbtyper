@@ -1,6 +1,3 @@
-/** Helper to index shape types safely without causing "too deep" recursion. */
-export type I<T, K extends string, R = {}> = K extends keyof T ? T[K] & R : R
-
 export type JsqlDatabaseShape = {
 	defaultSchema: string
 	schemas: {}
@@ -29,34 +26,6 @@ export type JsqlTableShape<Kind extends "table" | "view" = "table" | "view"> = {
 	column_facts?: {}
 }
 
-/** Type-level result of a parsed `SELECT` (DB state unchanged). */
-export type JsqlSelectStatementResult = {
-	kind: "select"
-	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
-	columns: {}
-}
-
-/** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */
-export type JsqlInsertStatementResult = {
-	kind: "insert"
-	table: string
-	schema: string
-	columns: readonly string[]
-	/** Set when `RETURNING …` is parsed (same shape as a `SELECT` projection). */
-	returning?: JsqlSelectStatementResult
-	/** Set when `ON CONFLICT … DO UPDATE SET …` is parsed (assigned column names only). */
-	on_conflict_update_set_columns?: readonly string[]
-}
-
-/** Type-level result of a parsed `UPDATE` (DB state unchanged in this model). */
-export type JsqlUpdateStatementResult = {
-	kind: "update"
-	table: string
-	schema: string
-	/** Column names that appeared in `SET` (each assignment is type-checked). */
-	set_columns: readonly string[]
-}
-
 export type JsqlConstraintEntry =
 	| { kind: "primary_key"; columns: string[] }
 	| { kind: "unique"; columns: string[] }
@@ -80,3 +49,31 @@ export type JsqlForeignKeyRef = {
 }
 
 export type JsqlFkColumnPair = [local: string, referenced: string]
+
+/** Type-level result of a parsed `SELECT` (DB state unchanged). */
+export type JsqlSelectStatementResult = {
+	kind: "select"
+	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
+	columns: Record<string, string>
+}
+
+/** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */
+export type JsqlInsertStatementResult = {
+	kind: "insert"
+	table: string
+	schema: string
+	columns: readonly string[]
+	/** Set when `RETURNING …` is parsed (same shape as a `SELECT` projection). */
+	returning?: JsqlSelectStatementResult
+	/** Set when `ON CONFLICT … DO UPDATE SET …` is parsed (assigned column names only). */
+	on_conflict_update_set_columns?: readonly string[]
+}
+
+/** Type-level result of a parsed `UPDATE` (DB state unchanged in this model). */
+export type JsqlUpdateStatementResult = {
+	kind: "update"
+	table: string
+	schema: string
+	/** Column names that appeared in `SET` (each assignment is type-checked). */
+	set_columns: readonly string[]
+}

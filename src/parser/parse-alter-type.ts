@@ -1,5 +1,6 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
+import type { I } from "../core/type-utils.ts"
+import type { UpdateTypeInDb } from "../core/jsql-utils-legacy.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -11,6 +12,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
+import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
 
 export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -133,43 +135,5 @@ type ParseAlterTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDataba
 			? Tok extends TokenKey<";"> | TokenEot
 				? [R, NewDb, null]
 				: [R, NewDb, SqlParserError<"Expected `;` after ALTER TYPE">]
-			: never
-		: never
-
-type UpdateTypeInDb<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Typ extends string,
-	NewValues extends readonly string[],
-> =
-	JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-		? JsqlGetType<Schema, Typ> extends object
-			? Sch extends keyof Db["schemas"]
-				? {
-						defaultSchema: Db["defaultSchema"]
-						schemas: {
-							[K in keyof Db["schemas"]]: K extends Sch
-								? {
-										types: {
-											[T in keyof I<
-												I<Db, "schemas", {}>,
-												Sch & keyof Db["schemas"],
-												JsqlSchemaShape
-											>["types"]]: T extends Typ
-												? { kind: "enum"; values: NewValues }
-												: I<
-														I<Db, "schemas", {}>,
-														Sch & keyof Db["schemas"],
-														JsqlSchemaShape
-													>["types"][T]
-										}
-									} & Omit<
-										I<I<Db, "schemas", {}>, Sch & keyof Db["schemas"], JsqlSchemaShape>,
-										"types"
-									>
-								: Db["schemas"][K]
-						}
-					}
-				: never
 			: never
 		: never

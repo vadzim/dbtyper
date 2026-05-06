@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { ResolveTableShape } from "./resolve-table-shape.ts"
+import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
 
 type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, Col extends string> = [

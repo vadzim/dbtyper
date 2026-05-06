@@ -10,7 +10,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExprAtom, ExpressionParamsShape, ParseAddValue } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { ResolveTableShape } from "./resolve-table-shape.ts"
+import type { ResolveTableShape } from "../core/jsql-utils-legacy.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"

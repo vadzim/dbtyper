@@ -1,4 +1,5 @@
-import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { MergeViewIntoDb } from "../core/jsql-utils-legacy.ts"
 import type { JsqlGetSchema, JsqlGetSet } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -18,7 +19,7 @@ type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDat
 	PeekToken<Rdot> extends infer TokB
 		? SkipToken<Rdot> extends infer AfterB extends TokensList
 			? TokB extends TokenIdent<infer B extends string>
-				? JsqlGetSchema<Db, A> extends infer Schema extends JsqlSchemaShape
+				? JsqlGetSchema<Db, A> extends JsqlSchemaShape
 					? PeekToken<AfterB> extends TokenKey<"as">
 						? A extends keyof Db["schemas"]
 							? [AfterB, null, A & keyof Db["schemas"] & string, B]
@@ -48,31 +49,6 @@ type ParseQualifiedViewName<Tokens extends TokensList, Db extends JsqlDatabaseSh
 				: [AfterFirst, SqlParserError<"Expected view name in CREATE VIEW">, never, never]
 			: never
 		: never
-
-type MergeViewIntoDb<
-	Db extends JsqlDatabaseShape,
-	Schema extends string,
-	Name extends string,
-	Sel extends JsqlSelectStatementResult,
-> = Schema extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Schema
-					? {
-							sets: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"] &
-								Record<
-									Name,
-									{
-										kind: "view"
-										columns: Sel["columns"]
-									}
-								>
-						}
-					: Db["schemas"][K]
-			}
-		}
-	: never
 
 type ParseCreateViewAfterSelect<
 	Tokens extends TokensList,
@@ -135,7 +111,7 @@ export type ParseCreateView<
 		infer Vname extends string,
 	]
 		? E extends null
-			? JsqlGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+			? JsqlGetSchema<Db, Sch> extends JsqlSchemaShape
 				? PeekToken<R0> extends TokenKey<"as">
 					? SkipToken<R0> extends infer R1 extends TokensList
 						? Sch extends keyof Db["schemas"]

@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { RemoveSchemaFromDb } from "../core/jsql-utils-legacy.ts"
 import type { JsqlGetSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -52,8 +53,3 @@ type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape
 				: [AfterName, Db, SqlParserError<"Expected schema name in DROP SCHEMA">]
 			: never
 		: never
-
-type RemoveSchemaFromDb<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"]> = {
-	defaultSchema: Db["defaultSchema"]
-	schemas: Omit<Db["schemas"], Sch>
-}

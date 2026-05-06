@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { MergeSchemaIntoDb } from "../core/jsql-utils-legacy.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -17,12 +18,6 @@ export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabase
 			: never
 		: ParseCreateSchemaName<Tokens, Db, false>
 
-/** New schema starts with empty `sets`; avoid `JsqlSchemaShape` here so `sets` does not pick up `{ [K: string]: JsqlTableShape }` (cleaner IDE types after migrations). */
-type MergeSchema<Db extends JsqlDatabaseShape, Name extends string> = {
-	defaultSchema: Db["defaultSchema"]
-	schemas: Db["schemas"] & Record<Name, { sets: {} }>
-}
-
 /** One token after schema name: must be `;` or end. */
 type ParseCreateSchemaAfterSchemaName<
 	AfterName extends TokensList,
@@ -36,10 +31,10 @@ type ParseCreateSchemaAfterSchemaName<
 				? IfNotExists extends true
 					? [SchemaName] extends [keyof Db["schemas"]]
 						? [R1, Db, null]
-						: [R1, MergeSchema<Db, SchemaName>, null]
+						: [R1, MergeSchemaIntoDb<Db, SchemaName>, null]
 					: [SchemaName] extends [keyof Db["schemas"]]
 						? [R1, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
-						: [R1, MergeSchema<Db, SchemaName>, null]
+						: [R1, MergeSchemaIntoDb<Db, SchemaName>, null]
 				: [R1, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
 			: never
 		: never

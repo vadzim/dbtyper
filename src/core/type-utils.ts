@@ -28,3 +28,9 @@ export type GT = Diag<Repeat<true, NN>, Repeat<false, NN>>
 export type GTE = [Repeat<false, NN>, ...GT]
 
 export type HasKey<T, K extends string> = K extends keyof T ? true : false
+
+export type I<T, K extends string, R = {}> = K extends keyof T ? T[K] & R : R
+
+export type ReplaceProp<T, K extends string, V> = Omit<T, K> & Record<K, V> extends infer R
+	? { [K in keyof R]: R[K] }
+	: never

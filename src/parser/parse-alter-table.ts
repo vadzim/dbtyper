@@ -1,11 +1,7 @@
-import type {
-	I,
-	JsqlDatabaseShape,
-	JsqlSchemaShape,
-	JsqlTableShape,
-	JsqlColumnFactsEntry,
-} from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
+import type { I } from "../core/type-utils.ts"
 import type { JsqlGetSchema, JsqlGetSet, JsqlGetTable } from "../core/jsql-utils.ts"
+import type { ReplaceTableInDb } from "../core/jsql-utils-legacy.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
@@ -78,31 +74,6 @@ type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlData
 				: [AfterFirst, SqlParserError<"Expected table name in ALTER TABLE">, never, never]
 			: never
 		: never
-
-type ReplaceTableInDb<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	NewShape extends JsqlTableShape,
-> = Sch extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Sch
-					? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
-						? {
-								sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> &
-									Record<Tab, NewShape>
-								types: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
-							}
-						: {
-								sets: Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"], Tab> &
-									Record<Tab, NewShape>
-							}
-					: Db["schemas"][K]
-			}
-		}
-	: never
 
 type ApplyAddColumn<T extends JsqlTableShape, Col extends string, Sql extends string> = Col extends keyof T["columns"]
 	? SqlParserError<"Column already exists">
