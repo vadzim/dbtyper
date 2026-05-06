@@ -36,10 +36,6 @@ type ParseCreateSchemaAfterSchemaName<
 		: [SkipToken<AfterName>, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
-	PeekToken<Tokens> extends infer NameTok
-		? SkipToken<Tokens> extends infer AfterName extends TokensList
-			? NameTok extends TokenIdent<infer SchemaName extends string>
-				? ParseCreateSchemaAfterSchemaName<AfterName, Db, SchemaName, IfNotExists>
-				: [AfterName, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenIdent<infer SchemaName extends string>
+		? ParseCreateSchemaAfterSchemaName<SkipToken<Tokens>, Db, SchemaName, IfNotExists>
+		: [Tokens, Db, SqlParserError<"Expected schema name in CREATE SCHEMA">]
