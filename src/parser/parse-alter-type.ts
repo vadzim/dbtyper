@@ -25,35 +25,23 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 
 /** After `schema.` in qualified `ALTER TYPE schema.type`. */
 type ParseAlterQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
-	PeekToken<AfterDot> extends infer T2
-		? SkipToken<AfterDot> extends infer R2 extends TokensList
-			? T2 extends TokenIdent<infer B extends string>
-				? [R2, null, A, B]
-				: [R2, SqlParserError<"Expected type name after `.` in ALTER TYPE">, never, never]
-			: never
-		: never
+	PeekToken<AfterDot> extends TokenIdent<infer B extends string>
+		? [SkipToken<AfterDot>, null, A, B]
+		: [AfterDot, SqlParserError<"Expected type name after `.` in ALTER TYPE">, never, never]
 
 /** After first identifier (type or schema). */
 type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<"add">
 		? [AfterFirst, null, Db["defaultSchema"], A]
-		: PeekToken<AfterFirst> extends infer T1
-			? SkipToken<AfterFirst> extends infer R1 extends TokensList
-				? T1 extends TokenKey<".">
-					? ParseAlterQualifiedSecondIdent<R1, A>
-					: [R1, SqlParserError<"Expected `.` or `ADD` in ALTER TYPE">, never, never]
-				: never
-			: never
+		: PeekToken<AfterFirst> extends TokenKey<".">
+			? ParseAlterQualifiedSecondIdent<SkipToken<AfterFirst>, A>
+			: [AfterFirst, SqlParserError<"Expected `.` or `ADD` in ALTER TYPE">, never, never]
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTypeNameForAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends infer NameTok
-		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
-			? NameTok extends TokenIdent<infer A extends string>
-				? ParseAlterAfterFirstIdent<AfterFirst, Db, A>
-				: [AfterFirst, SqlParserError<"Expected type name in ALTER TYPE">, never, never]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenIdent<infer A extends string>
+		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
+		: [Tokens, SqlParserError<"Expected type name in ALTER TYPE">, never, never]
 
 type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	ParseQualifiedTypeNameForAlter<Tokens, Db> extends [

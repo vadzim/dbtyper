@@ -7,9 +7,7 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 	PeekToken<Tokens> extends TokenKey<"if">
 		? SkipToken<Tokens> extends infer A0 extends TokensList
 			? PeekToken<A0> extends TokenKey<"exists">
-				? SkipToken<A0> extends infer A1 extends TokensList
-					? ParseDropTableQualified<A1, Db, true>
-					: never
+				? ParseDropTableQualified<SkipToken<A0>, Db, true>
 				: [A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP TABLE">]
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
