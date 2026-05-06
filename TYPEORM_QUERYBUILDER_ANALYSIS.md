@@ -16,28 +16,28 @@ Analyzed 100+ TypeORM QueryBuilder usages in `~/work/superdone.ai/repos/api/src/
 
 ### Query Construction Methods
 
-| Method | Occurrences | Description |
-|--------|-------------|-------------|
-| `.createQueryBuilder()` | 30+ | Initialize query builder |
-| `.where()` | 30+ | Add WHERE clause |
-| `.andWhere()` | 30+ | Add AND condition |
-| `.orWhere()` | 0 | Add OR condition (not found) |
-| `.leftJoin()` | 5+ | LEFT JOIN without select |
-| `.innerJoin()` | 5+ | INNER JOIN without select |
-| `.leftJoinAndSelect()` | 10+ | LEFT JOIN with select |
-| `.innerJoinAndSelect()` | 0 | INNER JOIN with select (not found) |
-| `.orderBy()` | 10+ | Add ORDER BY clause |
-| `.addOrderBy()` | 0 | Add additional ORDER BY (not found) |
-| `.groupBy()` | 3+ | Add GROUP BY clause |
-| `.addGroupBy()` | 0 | Add additional GROUP BY (not found) |
-| `.skip()` | 5+ | Add OFFSET (pagination) |
-| `.take()` | 10+ | Add LIMIT (pagination) |
-| `.limit()` | 2+ | Add LIMIT (alternative) |
-| `.offset()` | 2+ | Add OFFSET (alternative) |
-| `.getMany()` | Multiple | Execute and return array |
-| `.getOne()` | Multiple | Execute and return single row |
-| `.getCount()` | 3+ | Execute COUNT(*) |
-| `.getManyAndCount()` | 5+ | Execute query + COUNT in parallel |
+| Method                  | Occurrences | Description                         |
+| ----------------------- | ----------- | ----------------------------------- |
+| `.createQueryBuilder()` | 30+         | Initialize query builder            |
+| `.where()`              | 30+         | Add WHERE clause                    |
+| `.andWhere()`           | 30+         | Add AND condition                   |
+| `.orWhere()`            | 0           | Add OR condition (not found)        |
+| `.leftJoin()`           | 5+          | LEFT JOIN without select            |
+| `.innerJoin()`          | 5+          | INNER JOIN without select           |
+| `.leftJoinAndSelect()`  | 10+         | LEFT JOIN with select               |
+| `.innerJoinAndSelect()` | 0           | INNER JOIN with select (not found)  |
+| `.orderBy()`            | 10+         | Add ORDER BY clause                 |
+| `.addOrderBy()`         | 0           | Add additional ORDER BY (not found) |
+| `.groupBy()`            | 3+          | Add GROUP BY clause                 |
+| `.addGroupBy()`         | 0           | Add additional GROUP BY (not found) |
+| `.skip()`               | 5+          | Add OFFSET (pagination)             |
+| `.take()`               | 10+         | Add LIMIT (pagination)              |
+| `.limit()`              | 2+          | Add LIMIT (alternative)             |
+| `.offset()`             | 2+          | Add OFFSET (alternative)            |
+| `.getMany()`            | Multiple    | Execute and return array            |
+| `.getOne()`             | Multiple    | Execute and return single row       |
+| `.getCount()`           | 3+          | Execute COUNT(\*)                   |
+| `.getManyAndCount()`    | 5+          | Execute query + COUNT in parallel   |
 
 ---
 
@@ -46,12 +46,14 @@ Analyzed 100+ TypeORM QueryBuilder usages in `~/work/superdone.ai/repos/api/src/
 ### 1. Basic WHERE Clauses
 
 **TypeORM Code:**
+
 ```typescript
 .where("se.project_id = :projectId", { projectId })
 .andWhere("se.content_type = :contentType", { contentType })
 ```
 
 **Generated SQL:**
+
 ```sql
 WHERE se.project_id = $1 AND se.content_type = $2
 ```
@@ -63,12 +65,14 @@ WHERE se.project_id = $1 AND se.content_type = $2
 ### 2. IN Clauses with Arrays
 
 **TypeORM Code:**
+
 ```typescript
 .andWhere("e.jira_issue_id IN (:...issueIds)", { issueIds })
 .andWhere("meeting.status IN (:...statuses)", { statuses })
 ```
 
 **Generated SQL:**
+
 ```sql
 WHERE e.jira_issue_id IN ($1, $2, $3)
 WHERE meeting.status IN ($1, $2)
@@ -81,18 +85,21 @@ WHERE meeting.status IN ($1, $2)
 ### 3. LIKE Pattern Matching
 
 **TypeORM Code:**
+
 ```typescript
 .andWhere("(LOWER(note.title) LIKE :needle OR LOWER(note.note_raw) LIKE :needle)", { needle })
 .andWhere("pin.topic_path LIKE :prefix ESCAPE '\\\\'", { prefix })
 ```
 
 **Generated SQL:**
+
 ```sql
 WHERE (LOWER(note.title) LIKE $1 OR LOWER(note.note_raw) LIKE $1)
 WHERE pin.topic_path LIKE $1 ESCAPE '\\'
 ```
 
 **dbtyper Support:**
+
 - ✅ LIKE operator - supported
 - ✅ LOWER() function - needs implementation
 - ⚠️ ESCAPE clause - needs implementation
@@ -102,11 +109,13 @@ WHERE pin.topic_path LIKE $1 ESCAPE '\\'
 ### 4. LEFT JOIN with Conditions
 
 **TypeORM Code:**
+
 ```typescript
 .leftJoinAndSelect("meeting.notes", "notes", "notes.note_type = :noteType", { noteType: "agenda" })
 ```
 
 **Generated SQL:**
+
 ```sql
 LEFT JOIN notes ON notes.meeting_id = meeting.id AND notes.note_type = $1
 ```
@@ -118,12 +127,14 @@ LEFT JOIN notes ON notes.meeting_id = meeting.id AND notes.note_type = $1
 ### 5. INNER JOIN with Manual ON Clause
 
 **TypeORM Code:**
+
 ```typescript
 .innerJoin("config.projects", "project", "project.id = :projectId", { projectId })
 .innerJoin("projects", "project", "project.id = pm.project_id")
 ```
 
 **Generated SQL:**
+
 ```sql
 INNER JOIN projects project ON project.id = $1
 INNER JOIN projects project ON project.id = pm.project_id
@@ -136,6 +147,7 @@ INNER JOIN projects project ON project.id = pm.project_id
 ### 6. ORDER BY with Direction
 
 **TypeORM Code:**
+
 ```typescript
 .orderBy("meeting.meeting_date", "DESC")
 .orderBy("note.updated_at", "DESC")
@@ -143,6 +155,7 @@ INNER JOIN projects project ON project.id = pm.project_id
 ```
 
 **Generated SQL:**
+
 ```sql
 ORDER BY meeting.meeting_date DESC
 ORDER BY note.updated_at DESC
@@ -156,6 +169,7 @@ ORDER BY pin.date ASC
 ### 7. GROUP BY
 
 **TypeORM Code:**
+
 ```typescript
 .groupBy("se.content_type")
 .groupBy("project.id")
@@ -163,6 +177,7 @@ ORDER BY pin.date ASC
 ```
 
 **Generated SQL:**
+
 ```sql
 GROUP BY se.content_type
 GROUP BY project.id
@@ -176,6 +191,7 @@ GROUP BY participant.id
 ### 8. Pagination with LIMIT/OFFSET
 
 **TypeORM Code:**
+
 ```typescript
 .skip((pageNum - 1) * limitNum)
 .take(limitNum)
@@ -186,6 +202,7 @@ GROUP BY participant.id
 ```
 
 **Generated SQL:**
+
 ```sql
 LIMIT $1 OFFSET $2
 ```
@@ -197,29 +214,33 @@ LIMIT $1 OFFSET $2
 ### 9. COUNT Queries
 
 **TypeORM Code:**
+
 ```typescript
 await queryBuilder.getCount()
 const [data, total] = await queryBuilder.getManyAndCount()
 ```
 
 **Generated SQL:**
+
 ```sql
 SELECT COUNT(*) FROM ...
 -- getManyAndCount runs two queries in parallel
 ```
 
-**dbtyper Support:** ✅ Already supported (COUNT(*))
+**dbtyper Support:** ✅ Already supported (COUNT(\*))
 
 ---
 
 ### 10. JSONB Operators in WHERE
 
 **TypeORM Code:**
+
 ```typescript
 .andWhere("payload->>'meetingId' = :meetingId", { meetingId })
 ```
 
 **Generated SQL:**
+
 ```sql
 WHERE payload->>'meetingId' = $1
 ```
@@ -231,12 +252,14 @@ WHERE payload->>'meetingId' = $1
 ### 11. IS NULL / IS NOT NULL
 
 **TypeORM Code:**
+
 ```typescript
 .andWhere("meeting.meeting_start IS NOT NULL")
 .andWhere("meeting.meeting_end IS NOT NULL")
 ```
 
 **Generated SQL:**
+
 ```sql
 WHERE meeting.meeting_start IS NOT NULL
   AND meeting.meeting_end IS NOT NULL
@@ -249,6 +272,7 @@ WHERE meeting.meeting_start IS NOT NULL
 ### 12. Subqueries in WHERE
 
 **TypeORM Code:**
+
 ```typescript
 .where((qb) => {
   const subQuery = qb
@@ -262,6 +286,7 @@ WHERE meeting.meeting_start IS NOT NULL
 ```
 
 **Generated SQL:**
+
 ```sql
 WHERE project.id IN (
   SELECT project_user.project_id
@@ -300,27 +325,29 @@ Based on TypeORM QueryBuilder analysis, dbtyper needs:
 ### 🔴 CRITICAL (blocks TypeORM queries)
 
 1. **IS NULL / IS NOT NULL** - Used in 2+ queries
-   ```sql
-   WHERE column IS NOT NULL
-   WHERE column IS NULL
-   ```
+
+    ```sql
+    WHERE column IS NOT NULL
+    WHERE column IS NULL
+    ```
 
 2. **LOWER() / UPPER() functions** - Used in search queries
-   ```sql
-   WHERE LOWER(note.title) LIKE $1
-   ```
+
+    ```sql
+    WHERE LOWER(note.title) LIKE $1
+    ```
 
 3. **Subqueries in WHERE with IN** - Used in project filtering
-   ```sql
-   WHERE project.id IN (SELECT project_id FROM ...)
-   ```
+    ```sql
+    WHERE project.id IN (SELECT project_id FROM ...)
+    ```
 
 ### 🟡 MEDIUM (nice to have)
 
 4. **ESCAPE clause for LIKE** - Used in 1 query
-   ```sql
-   WHERE topic_path LIKE $1 ESCAPE '\\'
-   ```
+    ```sql
+    WHERE topic_path LIKE $1 ESCAPE '\\'
+    ```
 
 ---
 
@@ -329,14 +356,13 @@ Based on TypeORM QueryBuilder analysis, dbtyper needs:
 TypeORM has a `.upsert()` method that generates `INSERT...ON CONFLICT`:
 
 **TypeORM Code:**
+
 ```typescript
-await repository.upsert(
-  { id: '123', name: 'John' },
-  { conflictPaths: ['id'] }
-)
+await repository.upsert({ id: "123", name: "John" }, { conflictPaths: ["id"] })
 ```
 
 **Generated SQL:**
+
 ```sql
 INSERT INTO users (id, name)
 VALUES ($1, $2)
@@ -362,6 +388,7 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 ### Priority 2: Support Raw SQL Patterns
 
 All features from `SUPERDONE_MIGRATION_ANALYSIS.md` remain valid:
+
 - Type casts (::)
 - Array operations (ANY, unnest)
 - FULL OUTER JOIN
@@ -378,6 +405,7 @@ All features from `SUPERDONE_MIGRATION_ANALYSIS.md` remain valid:
 **TypeORM QueryBuilder generates simple SQL** - most complex queries in superdone.ai use raw SQL via `dataSource.query()`.
 
 **New findings from TypeORM analysis:**
+
 1. IS NULL / IS NOT NULL - CRITICAL (2+ usages)
 2. LOWER() / UPPER() - CRITICAL (search queries)
 3. Subqueries in WHERE with IN - CRITICAL (project filtering)
