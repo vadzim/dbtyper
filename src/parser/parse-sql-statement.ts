@@ -82,21 +82,6 @@ type ApplyParsedStatementsInner<
 				>
 			: never
 
-export type ParseSqlStatementFull<
-	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> =
-	ParseSqlStatement<Tokens, Db, Params> extends [
-		infer Rest extends TokensList,
-		infer NewDb extends JsqlDatabaseShape,
-		infer Result,
-	]
-		? Result extends SqlParserError<string>
-			? ParseSkipStatement<Rest, NewDb>
-			: [Rest, NewDb, Result]
-		: never
-
 export type ParseSqlStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,

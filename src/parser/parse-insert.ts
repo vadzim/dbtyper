@@ -21,6 +21,7 @@ import type {
 import type { ParseAndResolveReturningClause, ParseSelect } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
@@ -148,13 +149,13 @@ type ParseInsertFromTableRef<
 type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
-			? [Tokens, SqlParserError<"INSERT column list must not be empty">]
+			? SkipFailedExpression<Tokens, SqlParserError<"INSERT column list must not be empty">>
 			: [Tokens, Acc]
 		: PeekToken<Tokens> extends infer Tok
 			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? Tok extends TokenIdent<infer Col extends string>
 					? JsqlDataGetColumnType<Tbl, Col> extends null
-						? [R1, SqlParserError<"Unknown column in INSERT column list">]
+						? SkipFailedExpression<R1, SqlParserError<"Unknown column in INSERT column list">>
 						: PeekToken<R1> extends TokenKey<")">
 							? SkipToken<R1> extends infer R2 extends TokensList
 								? [R2, readonly [...Acc, Col]]
@@ -163,8 +164,8 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataSh
 								? SkipToken<R1> extends infer R3 extends TokensList
 									? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
 									: never
-								: [R1, SqlParserError<"Expected `,` or `)` in INSERT column list">]
-					: [R1, SqlParserError<"Expected column name in INSERT column list">]
+								: SkipFailedExpression<R1, SqlParserError<"Expected `,` or `)` in INSERT column list">>
+					: SkipFailedExpression<R1, SqlParserError<"Expected column name in INSERT column list">>
 				: never
 			: never
 
@@ -615,7 +616,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
-			? [Tokens, SqlParserError<"ON CONFLICT column list must not be empty">]
+			? SkipFailedExpression<Tokens, SqlParserError<"ON CONFLICT column list must not be empty">>
 			: PeekToken<Tokens> extends TokenKey<")">
 				? SkipToken<Tokens> extends infer R extends TokensList
 					? [R, Acc]
@@ -625,7 +626,7 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? Tok extends TokenIdent<infer C extends string>
 					? JsqlDataGetColumnType<Tbl, C> extends null
-						? [R1, SqlParserError<"Unknown column in ON CONFLICT">]
+						? SkipFailedExpression<R1, SqlParserError<"Unknown column in ON CONFLICT">>
 						: PeekToken<R1> extends TokenKey<")">
 							? SkipToken<R1> extends infer R2 extends TokensList
 								? [R2, readonly [...Acc, C]]
@@ -634,8 +635,11 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 								? SkipToken<R1> extends infer R3 extends TokensList
 									? ParseInsertConflictColList<R3, Tbl, readonly [...Acc, C]>
 									: never
-								: [R1, SqlParserError<"Expected `,` or `)` in ON CONFLICT column list">]
-					: [R1, SqlParserError<"Expected column name in ON CONFLICT">]
+								: SkipFailedExpression<
+										R1,
+										SqlParserError<"Expected `,` or `)` in ON CONFLICT column list">
+									>
+					: SkipFailedExpression<R1, SqlParserError<"Expected column name in ON CONFLICT">>
 				: never
 			: never
 

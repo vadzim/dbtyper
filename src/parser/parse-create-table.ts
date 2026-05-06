@@ -13,7 +13,7 @@ import type {
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
-import type { SkipBracketedUntil } from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -254,13 +254,19 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends string> =
 		? SkipToken<Tokens> extends infer R extends TokensList
 			? SqlTypeClass<ColumnType> extends "numeric"
 				? [R, null]
-				: [R, SqlParserError<"DEFAULT value type mismatch: expected numeric column for numeric literal">]
+				: SkipFailedExpression<
+						R,
+						SqlParserError<"DEFAULT value type mismatch: expected numeric column for numeric literal">
+					>
 			: never
 		: PeekToken<Tokens> extends TokenString<infer _Str>
 			? SkipToken<Tokens> extends infer R extends TokensList
 				? SqlTypeClass<ColumnType> extends "text" | "uuid" | "unknown"
 					? [R, null]
-					: [R, SqlParserError<"DEFAULT value type mismatch: expected text/uuid column for string literal">]
+					: SkipFailedExpression<
+							R,
+							SqlParserError<"DEFAULT value type mismatch: expected text/uuid column for string literal">
+						>
 				: never
 			: PeekToken<Tokens> extends TokenKey<"true"> | TokenKey<"false">
 				? SkipToken<Tokens> extends infer R extends TokensList
@@ -277,7 +283,7 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends string> =
 						: never
 					: PeekToken<Tokens> extends TokenIdent<infer FnName>
 						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
-						: [Tokens, SqlParserError<"Expected DEFAULT value">]
+						: SkipFailedExpression<Tokens, SqlParserError<"Expected DEFAULT value">>
 
 type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends string, ColumnType extends string> =
 	SkipToken<Tokens> extends infer R1 extends TokensList
@@ -288,7 +294,10 @@ type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends strin
 						? Lowercase<FnName> extends "now"
 							? SqlTypeClass<ColumnType> extends "datetime"
 								? [R3, null]
-								: [R3, SqlParserError<"DEFAULT value type mismatch: now() requires timestamp column">]
+								: SkipFailedExpression<
+										R3,
+										SqlParserError<"DEFAULT value type mismatch: now() requires timestamp column">
+									>
 							: Lowercase<FnName> extends "uuid_generate_v4" | "gen_random_uuid"
 								? SqlTypeClass<ColumnType> extends "uuid"
 									? [R3, null]
@@ -298,7 +307,7 @@ type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends strin
 										]
 								: [R3, null]
 						: never
-					: [R2, SqlParserError<"Expected `)` after function name in DEFAULT">]
+					: SkipFailedExpression<R2, SqlParserError<"Expected `)` after function name in DEFAULT">>
 				: never
 			: [R1, null]
 		: never
@@ -443,7 +452,7 @@ type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
 			? T4 extends TokenKey<"(">
 				? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends TokensList, infer Res]
 					? Res extends SqlParserError<string>
-						? [R, Res]
+						? SkipFailedExpression<R, Res>
 						: [R, null]
 					: never
 				: [AfterLp, null]

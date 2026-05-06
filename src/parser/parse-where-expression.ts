@@ -9,6 +9,7 @@ import type {
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 
 /** WHERE predicate: tuple `[rest, error | null]` (not monad-registered; use from statement parsers). */
 export type ParseWhereExpression<
@@ -22,14 +23,14 @@ export type ParseWhereExpression<
 		infer Ast,
 	]
 		? Ast extends SqlParserError<string>
-			? [Rw, Ast]
+			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
-					? [Rw, R]
+					? SkipFailedExpression<Rw, R>
 					: R extends ExprOk<infer Ts, infer _Sql>
 						? [Ts] extends [boolean]
 							? [Rw, null]
-							: [Rw, SqlParserError<"Expression must be boolean">]
-						: [Rw, SqlParserError<"Expression must be boolean">]
+							: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>
+						: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>
 				: never
 		: never

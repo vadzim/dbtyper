@@ -1,5 +1,6 @@
 import type { PeekToken, SkipToken, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SkipFailedExpression } from "./skip-statement.ts"
 
 export type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
@@ -23,6 +24,6 @@ export type ParseArraySuffix<Tokens extends TokensList, BaseType extends string>
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? [R2, `${BaseType}[]`]
 					: never
-				: [R1, SqlParserError<"Expected ] after [ in array type">]
+				: SkipFailedExpression<R1, SqlParserError<"Expected ] after [ in array type">>
 			: never
 		: [Tokens, BaseType]

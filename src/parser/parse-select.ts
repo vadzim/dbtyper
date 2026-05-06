@@ -28,7 +28,7 @@ import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
-import type { SkipBracketedUntil } from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
@@ -187,13 +187,13 @@ type ParseOrderByScalarExpr<
 		infer Ast,
 	]
 		? Ast extends SqlParserError<string>
-			? [Rw, Ast]
+			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
-					? [Rw, R]
+					? SkipFailedExpression<Rw, R>
 					: R extends ExprAtom
 						? [Rw, null]
-						: [Rw, SqlParserError<"Invalid ORDER BY expression">]
+						: SkipFailedExpression<Rw, SqlParserError<"Invalid ORDER BY expression">>
 				: never
 		: never
 
@@ -205,7 +205,7 @@ type ParseOrderByOneTerm<
 > =
 	ParseOrderByScalarExpr<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
 		? E1 extends SqlParserError<string>
-			? [R1, E1]
+			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<"asc">
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? [R2, null]
@@ -225,7 +225,7 @@ type ParseOrderByTerms<
 > =
 	ParseOrderByOneTerm<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
 		? E1 extends SqlParserError<string>
-			? [R1, E1]
+			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<",">
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? ParseOrderByTerms<R2, Db, Scope, Params>
@@ -243,7 +243,7 @@ type ParseOrderByAfterOrderKw<
 		? SkipToken<R1> extends infer R2 extends TokensList
 			? TBy extends TokenKey<"by">
 				? ParseOrderByTerms<R2, Db, Scope, Params>
-				: [R2, SqlParserError<"Expected BY after ORDER">]
+				: SkipFailedExpression<R2, SqlParserError<"Expected BY after ORDER">>
 			: never
 		: never
 
@@ -269,7 +269,7 @@ type LimitExprThenOptionalOffset<
 		? SkipToken<Rl1> extends infer Ro0 extends TokensList
 			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
 				? Oe extends SqlParserError<string>
-					? [Ro1, Oe]
+					? SkipFailedExpression<Ro1, Oe>
 					: [Ro1, null]
 				: never
 			: never
@@ -286,7 +286,7 @@ type OffsetExprThenOptionalLimit<
 		? SkipToken<Ro1> extends infer Rl0 extends TokensList
 			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
 				? Le extends SqlParserError<string>
-					? [Rl1, Le]
+					? SkipFailedExpression<Rl1, Le>
 					: [Rl1, null]
 				: never
 			: never
@@ -299,7 +299,7 @@ type ExpectRowOrRowsThenOnly<Tokens extends TokensList> =
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? [R2, null]
 					: never
-				: [R1, SqlParserError<"Expected ONLY after FETCH … ROWS">]
+				: SkipFailedExpression<R1, SqlParserError<"Expected ONLY after FETCH … ROWS">>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"row">
 			? SkipToken<Tokens> extends infer R1 extends TokensList
@@ -307,9 +307,9 @@ type ExpectRowOrRowsThenOnly<Tokens extends TokensList> =
 					? SkipToken<R1> extends infer R2 extends TokensList
 						? [R2, null]
 						: never
-					: [R1, SqlParserError<"Expected ONLY after FETCH … ROW">]
+					: SkipFailedExpression<R1, SqlParserError<"Expected ONLY after FETCH … ROW">>
 				: never
-			: [Tokens, SqlParserError<"Expected ROW or ROWS in FETCH">]
+			: SkipFailedExpression<Tokens, SqlParserError<"Expected ROW or ROWS in FETCH">>
 
 type ParseFetchFirstAfterFetchKw<
 	R1 extends TokensList,
@@ -321,7 +321,7 @@ type ParseFetchFirstAfterFetchKw<
 		? SkipToken<R1> extends infer R2 extends TokensList
 			? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
 				? E extends SqlParserError<string>
-					? [R3, E]
+					? SkipFailedExpression<R3, E>
 					: ExpectRowOrRowsThenOnly<R3>
 				: never
 			: never
@@ -329,11 +329,11 @@ type ParseFetchFirstAfterFetchKw<
 			? SkipToken<R1> extends infer R2 extends TokensList
 				? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
 					? E extends SqlParserError<string>
-						? [R3, E]
+						? SkipFailedExpression<R3, E>
 						: ExpectRowOrRowsThenOnly<R3>
 					: never
 				: never
-			: [R1, SqlParserError<"Expected FIRST or NEXT after FETCH">]
+			: SkipFailedExpression<R1, SqlParserError<"Expected FIRST or NEXT after FETCH">>
 
 /** Optional `LIMIT …` / `OFFSET …` / `FETCH FIRST|NEXT … ROW(S) ONLY` (single paging block). */
 type ParseOptionalPagingTokens<
@@ -346,7 +346,7 @@ type ParseOptionalPagingTokens<
 		? SkipToken<Tokens> extends infer Rl0 extends TokensList
 			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
 				? Le extends SqlParserError<string>
-					? [Rl1, Le]
+					? SkipFailedExpression<Rl1, Le>
 					: LimitExprThenOptionalOffset<Rl1, Db, Scope, Params>
 				: never
 			: never
@@ -354,7 +354,7 @@ type ParseOptionalPagingTokens<
 			? SkipToken<Tokens> extends infer Ro0 extends TokensList
 				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
 					? Oe extends SqlParserError<string>
-						? [Ro1, Oe]
+						? SkipFailedExpression<Ro1, Oe>
 						: OffsetExprThenOptionalLimit<Ro1, Db, Scope, Params>
 					: never
 				: never
@@ -1118,10 +1118,10 @@ type ParseSelectTrailingClauses<
 > =
 	ParseOptionalOrderByTokens<Tokens, Db, Scope, Params> extends [infer T1 extends TokensList, infer E1]
 		? E1 extends SqlParserError<string>
-			? [T1, E1]
+			? SkipFailedExpression<T1, E1>
 			: ParseOptionalPagingTokens<T1, Db, Scope, Params> extends [infer T2 extends TokensList, infer E2]
 				? E2 extends SqlParserError<string>
-					? [T2, E2]
+					? SkipFailedExpression<T2, E2>
 					: [T2, null]
 				: never
 		: never
@@ -1165,7 +1165,7 @@ type ParseRawSelectList<
 						infer It,
 				  ]
 				? It extends SqlParserError<string>
-					? [AfterItem, It]
+					? SkipFailedExpression<AfterItem, It>
 					: It extends RawSelectItem
 						? ParseRawSelectListAfterItem<AfterItem, Db, Params, OuterScope, [...Acc, It]>
 						: never
@@ -1313,7 +1313,7 @@ type ReadClosingParenScalarSubqueryOnly<Tokens extends TokensList, Res extends J
 		? SkipToken<Tokens> extends infer R2 extends TokensList
 			? TokCl extends TokenKey<")">
 				? [R2, Res]
-				: [R2, SqlParserError<"Expected `)` after subquery">]
+				: SkipFailedExpression<R2, SqlParserError<"Expected `)` after subquery">>
 			: never
 		: never
 
@@ -1328,20 +1328,20 @@ type ParseInnerParenSelectWhereClose<
 		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, InnerScope, Params> extends [infer Rw extends TokensList, infer We]
 				? We extends SqlParserError<string>
-					? [Rw, We]
+					? SkipFailedExpression<Rw, We>
 					: ParseSelectTrailingClauses<Rw, Db, InnerScope, Params> extends [
 								infer Rt extends TokensList,
 								infer Te,
 						  ]
 						? Te extends SqlParserError<string>
-							? [Rt, Te]
+							? SkipFailedExpression<Rt, Te>
 							: ReadClosingParenScalarSubqueryOnly<Rt, Res>
 						: never
 				: never
 			: never
 		: ParseSelectTrailingClauses<Tokens, Db, InnerScope, Params> extends [infer Rt extends TokensList, infer Te]
 			? Te extends SqlParserError<string>
-				? [Rt, Te]
+				? SkipFailedExpression<Rt, Te>
 				: ReadClosingParenScalarSubqueryOnly<Rt, Res>
 			: never
 
@@ -1368,14 +1368,17 @@ type ParseInnerParenSelectBody<
 > =
 	ParseRawSelectList<Tokens, Db, Params, OuterScope> extends [infer AfterList extends TokensList, infer Items]
 		? Items extends SqlParserError<string>
-			? [AfterList, Items]
+			? SkipFailedExpression<AfterList, Items>
 			: Items extends readonly RawSelectItem[]
 				? SelectListStarInvalid<Items> extends true
-					? [AfterList, SqlParserError<"SELECT * must be the only projection in the list">]
+					? SkipFailedExpression<
+							AfterList,
+							SqlParserError<"SELECT * must be the only projection in the list">
+						>
 					: Proj extends "scalar"
 						? ScalarSubqueryProjectionOk<Items> extends infer SOk
 							? SOk extends SqlParserError<string>
-								? [AfterList, SOk]
+								? SkipFailedExpression<AfterList, SOk>
 								: SOk extends true
 									? ParseInnerParenSelectFromAndResolve<AfterList, Items, Db, Params, OuterScope>
 									: never
@@ -1396,7 +1399,7 @@ type ParseInnerParenSelectFromAndResolve<
 		? SkipToken<AfterList> extends infer AfterFrom extends TokensList
 			? ParseFromJoinScope<AfterFrom, Db, {}, Params> extends [infer R extends TokensList, infer Mid, infer Tail]
 				? Mid extends SqlParserError<string>
-					? [R, Mid]
+					? SkipFailedExpression<R, Mid>
 					: Mid extends null
 						? [JoinScopeOnly<Tail>] extends [never]
 							? never
@@ -1414,7 +1417,7 @@ type ParseInnerParenSelectFromAndResolve<
 						: never
 				: never
 			: never
-		: [AfterList, SqlParserError<"Expected FROM in subquery">]
+		: SkipFailedExpression<AfterList, SqlParserError<"Expected FROM in subquery">>
 
 type ParseInnerParenSelectAfterSelectKw<
 	Tokens extends TokensList,
@@ -1436,7 +1439,7 @@ export type ParseParenEnclosedSelect<
 > =
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseInnerParenSelectAfterSelectKw<SkipToken<R1>, Db, Params, "any", OuterScope>
-		: [R1, SqlParserError<"Expected SELECT in subquery">]
+		: SkipFailedExpression<R1, SqlParserError<"Expected SELECT in subquery">>
 
 /** Scalar subquery: exactly one non-`*` projection. */
 export type ParseParenScalarSelect<
@@ -1447,7 +1450,7 @@ export type ParseParenScalarSelect<
 > =
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseInnerParenSelectAfterSelectKw<SkipToken<R1>, Db, Params, "scalar", OuterScope>
-		: [R1, SqlParserError<"Expected SELECT in subquery">]
+		: SkipFailedExpression<R1, SqlParserError<"Expected SELECT in subquery">>
 
 type ParseInnerDerivedWhereCloseAndAlias<
 	Tokens extends TokensList,
