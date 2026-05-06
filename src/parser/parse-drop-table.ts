@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetSchema, JsqlSchemaGetSet, JsqlSchemaGetTable, JsqlDbReplaceSet } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlSchemaGetData, JsqlSchemaGetTable, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -14,7 +14,7 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
 
-type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlSchemaGetSet<
+type SetEntry<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlSchemaGetData<
 	JsqlDbGetSchema<Db, Sch>,
 	Tab
 >
@@ -76,15 +76,15 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 			? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
 				? IfExists extends true
 					? JsqlSchemaGetTable<Schema, Tab> extends JsqlDataShape<"table">
-						? JsqlDbReplaceSet<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
+						? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
 						: FinishDropStatement<R, Db>
 					: JsqlSchemaGetTable<Schema, Tab> extends JsqlDataShape<"table">
-						? JsqlDbReplaceSet<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
+						? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
 							? FinishDropStatement<R, NewDb>
 							: never
-						: JsqlSchemaGetSet<Schema, Tab> extends null
+						: JsqlSchemaGetData<Schema, Tab> extends null
 							? [R, Db, SqlParserError<"Table does not exist; use IF EXISTS">]
 							: [R, Db, SqlParserError<"DROP TABLE targets a view; use DROP VIEW">]
 				: [R, Db, SqlParserError<"Unknown schema for DROP TABLE">]

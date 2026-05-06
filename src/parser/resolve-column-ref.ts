@@ -1,14 +1,14 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { JsqlDbGetSet } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
 
 type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, Col extends string> = [
-	JsqlDbGetSet<Db, Sch, Tab>,
+	JsqlDbGetData<Db, Sch, Tab>,
 ] extends [never]
 	? SqlParserError<"Unknown schema or table">
-	: JsqlDbGetSet<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+	: JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
 		? Col extends keyof Tbl["columns"]
 			? {
 					ts: Tbl["columns"][Col]

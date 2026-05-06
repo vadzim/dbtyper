@@ -10,7 +10,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExprAtom, ExpressionParamsShape, ParseAddValue } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetSet } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
@@ -88,7 +88,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-									? JsqlDbGetSet<Db, A, B> extends infer TblTry
+									? JsqlDbGetData<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
 											? [
 													R3,
@@ -111,7 +111,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 								: never
 							: never
 						: never
-					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry
+					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
 							: TblTry extends JsqlDataShape
@@ -254,7 +254,7 @@ type ParseUpdateFromClauseTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-									? JsqlDbGetSet<Db, A, B> extends infer TblTry
+									? JsqlDbGetData<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
 											? [
 													R3,
@@ -277,7 +277,7 @@ type ParseUpdateFromClauseTableRef<
 								: never
 							: never
 						: never
-					: JsqlDbGetSet<Db, Db["defaultSchema"], A> extends infer TblTry2
+					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
 						? [TblTry2] extends [never]
 							? [R1, SqlParserError<"Unknown table in UPDATE FROM">, ParserRefErrorThirdSentinel]
 							: TblTry2 extends JsqlDataShape
