@@ -36,7 +36,12 @@ type ParseDropSchemaAfterIdent<
 						: never
 					: never
 			: JsqlDbGetSchema<Db, SchemaName> extends null
-				? [SkipToken<AfterName>, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
+				? SkipFailedExpression<
+						SkipToken<AfterName>,
+						SqlParserError<"Schema does not exist; use IF EXISTS">
+					> extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 				: SchemaName extends keyof Db["schemas"]
 					? JsqlDbReplaceSchema<Db, SchemaName, null> extends infer NewDb extends JsqlDatabaseShape
 						? [SkipToken<AfterName>, NewDb, null]
