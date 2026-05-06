@@ -22,7 +22,7 @@ type _tTextArrayShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; labels: "text[]" }
-			column_facts: { id: { not_null: true }; labels: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; labels: { nullability: "not_null" } }
 		}
 	>
 >
@@ -40,7 +40,7 @@ type _tIntArrayShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; nums: "integer[]" }
-			column_facts: { id: { not_null: true }; nums: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; nums: { nullability: "not_null" } }
 		}
 	>
 >
@@ -58,7 +58,7 @@ type _tUuidArrayShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; uuids: "uuid[]" }
-			column_facts: { id: { not_null: true }; uuids: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; uuids: { nullability: "not_null" } }
 		}
 	>
 >
@@ -76,7 +76,7 @@ type _tNullableArrayShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; tags: "text[]" }
-			column_facts: { id: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
 >
@@ -95,10 +95,10 @@ type _tMultipleArraysShape = Expect<
 			kind: "table"
 			columns: { id: "integer"; tags: "text[]"; scores: "integer[]"; flags: "boolean[]" }
 			column_facts: {
-				id: { not_null: true }
-				tags: { not_null: true }
-				scores: { not_null: true }
-				flags: { not_null: true }
+				id: { nullability: "not_null" }
+				tags: { nullability: "not_null" }
+				scores: { nullability: "not_null" }
+				flags: { nullability: "not_null" }
 			}
 		}
 	>
@@ -117,7 +117,7 @@ type _tBigintArrayShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; nums: "bigint[]" }
-			column_facts: { id: { not_null: true }; nums: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; nums: { nullability: "not_null" } }
 		}
 	>
 >

@@ -14,7 +14,7 @@ type DbItems = {
 				items: {
 					kind: "table"
 					columns: { id: "uuid"; title: "text" }
-					column_facts: { id: { not_null: true } }
+					column_facts: { id: { nullability: "not_null" } }
 				}
 			}
 		}
@@ -29,7 +29,7 @@ type DbItemsWithDraft = {
 				items: {
 					kind: "table"
 					columns: { id: "uuid"; title: "text"; draft: "boolean" }
-					column_facts: { id: { not_null: true } }
+					column_facts: { id: { nullability: "not_null" } }
 				}
 			}
 		}
@@ -62,7 +62,7 @@ type TAlterSetNotNull = ParseSqlStatement<
 >
 type _alterSetNnOk = Expect<Extends<Tuple3At2<TAlterSetNotNull>, null>>
 type ItemsAfterSetNn = TAlterSetNotNull[1]["schemas"]["public"]["sets"]["items"]
-type _alterSetNnFact = Expect<Extends<ItemsAfterSetNn["column_facts"]["title"], { not_null: true }>>
+type _alterSetNnFact = Expect<Extends<ItemsAfterSetNn["column_facts"]["title"], { nullability: "not_null" }>>
 
 type TAlterDropNotNull = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column id drop not null;`>,
@@ -70,7 +70,7 @@ type TAlterDropNotNull = ParseSqlStatement<
 >
 type _alterDropNnOk = Expect<Extends<Tuple3At2<TAlterDropNotNull>, null>>
 type ItemsAfterDropNn = TAlterDropNotNull[1]["schemas"]["public"]["sets"]["items"]
-type _alterDropNnFact = Expect<Extends<ItemsAfterDropNn["column_facts"]["id"], { nullable: true }>>
+type _alterDropNnFact = Expect<Extends<ItemsAfterDropNn["column_facts"]["id"], { nullability: "nullable" }>>
 
 /** `ADD CONSTRAINT` is a no-op (skip to `,`), then a real clause applies. */
 type TAlterConstraintNoopThenAdd = ParseSqlStatement<

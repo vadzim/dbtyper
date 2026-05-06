@@ -6,7 +6,7 @@ type InsertColNotNull<Tbl extends JsqlTableShape, Col extends string> = Tbl exte
 	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
 }
 	? Col extends keyof F
-		? F[Col] extends { not_null: true }
+		? F[Col] extends { nullability: "not_null" }
 			? true
 			: false
 		: false

@@ -14,7 +14,7 @@ type DbUsers = {
 				users: {
 					kind: "table"
 					columns: { id: "text"; name: "text" }
-					column_facts: { id: { not_null: true } }
+					column_facts: { id: { nullability: "not_null" } }
 				}
 			}
 		}
@@ -60,7 +60,7 @@ type DbAppDefaultPublicUsers = {
 				users: {
 					kind: "table"
 					columns: { id: "text"; name: "text" }
-					column_facts: { id: { not_null: true } }
+					column_facts: { id: { nullability: "not_null" } }
 				}
 			}
 		}

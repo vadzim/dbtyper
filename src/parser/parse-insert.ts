@@ -172,7 +172,7 @@ type IsNotNullInsertColumn<Tbl extends JsqlTableShape, Col extends string> = Tbl
 	column_facts: infer Facts extends Record<string, unknown>
 }
 	? Col extends keyof Facts
-		? Facts[Col] extends { not_null: true }
+		? Facts[Col] extends { nullability: "not_null" }
 			? Facts[Col] extends { default: true }
 				? false
 				: true

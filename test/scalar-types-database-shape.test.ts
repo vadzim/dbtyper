@@ -20,7 +20,11 @@ type _oddColsFromScalarMap = Expect<
 		{
 			kind: "table"
 			columns: { id: "uuid"; body: "text"; flag: "int" }
-			column_facts: { id: { not_null: true }; body: { not_null: true }; flag: { not_null: true } }
+			column_facts: {
+				id: { nullability: "not_null" }
+				body: { nullability: "not_null" }
+				flag: { nullability: "not_null" }
+			}
 		}
 	>
 >

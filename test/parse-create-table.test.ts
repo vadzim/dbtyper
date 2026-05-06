@@ -36,7 +36,7 @@ type _t1shape = Expect<
 		{
 			kind: "table"
 			columns: { id: "uuid"; body: "text" }
-			column_facts: { id: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
 >
@@ -74,7 +74,7 @@ type _t4shape = Expect<
 		{
 			kind: "table"
 			columns: { at: "timestamp with time zone" }
-			column_facts: { at: { not_null: true } }
+			column_facts: { at: { nullability: "not_null" } }
 		}
 	>
 >
@@ -100,7 +100,7 @@ type _tExplicitShape = Expect<
 		{
 			kind: "table"
 			columns: { amount: "numeric"; note: "text" }
-			column_facts: { amount: { not_null: true }; note: { not_null: true } }
+			column_facts: { amount: { nullability: "not_null" }; note: { nullability: "not_null" } }
 		}
 	>
 >
@@ -117,7 +117,7 @@ type _tExplicitIfNotShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "int" }
-			column_facts: { id: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
 >
@@ -146,7 +146,7 @@ type _t5shape = Expect<
 		{
 			kind: "table"
 			columns: { id: "uuid"; title: "text" }
-			column_facts: { id: { not_null: true }; title: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; title: { nullability: "not_null" } }
 		}
 	>
 >
@@ -163,7 +163,7 @@ type _t6shape = Expect<
 		{
 			kind: "table"
 			columns: { id: "uuid"; title: "text" }
-			column_facts: { id: { not_null: true }; title: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; title: { nullability: "not_null" } }
 		}
 	>
 >
@@ -214,7 +214,7 @@ type _qualWhenDefaultMissingShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "uuid" }
-			column_facts: { id: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
 >

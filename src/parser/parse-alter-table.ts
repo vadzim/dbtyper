@@ -138,27 +138,21 @@ type MergeColFactPatch<
 > = T["column_facts"] extends infer F
 	? F extends Record<string, JsqlColumnFactsEntry>
 		? Col extends keyof F
-			? MergeRecords<F, Record<Col, F[Col] & Patch>>
+			? MergeRecords<F, Record<Col, Omit<F[Col], keyof Patch> & Patch>>
 			: MergeRecords<F, Record<Col, Patch>>
 		: Record<Col, Patch>
 	: Record<Col, Patch>
 
 type ApplySetNotNull<T extends JsqlTableShape, Col extends string> = Col extends keyof T["columns"]
-	? Omit<T, "column_facts"> & { column_facts: MergeColFactPatch<T, Col, { not_null: true }> } & JsqlTableShape
+	? Omit<T, "column_facts"> & {
+			column_facts: MergeColFactPatch<T, Col, { nullability: "not_null" }>
+		} & JsqlTableShape
 	: SqlParserError<"Column does not exist">
 
 type ApplyDropNotNull<T extends JsqlTableShape, Col extends string> = Col extends keyof T["columns"]
-	? T["column_facts"] extends infer F
-		? F extends Record<string, JsqlColumnFactsEntry>
-			? Col extends keyof F
-				? Omit<T, "column_facts"> & {
-						column_facts: MergeRecords<F, Record<Col, Omit<F[Col], "not_null"> & { nullable: true }>>
-					} & JsqlTableShape
-				: Omit<T, "column_facts"> & {
-						column_facts: MergeRecords<F, Record<Col, { nullable: true }>>
-					} & JsqlTableShape
-			: Omit<T, "column_facts"> & { column_facts: Record<Col, { nullable: true }> } & JsqlTableShape
-		: Omit<T, "column_facts"> & { column_facts: Record<Col, { nullable: true }> } & JsqlTableShape
+	? Omit<T, "column_facts"> & {
+			column_facts: MergeColFactPatch<T, Col, { nullability: "nullable" }>
+		} & JsqlTableShape
 	: SqlParserError<"Column does not exist">
 
 type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends string> =

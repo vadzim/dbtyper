@@ -22,7 +22,11 @@ type _tSerialShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "serial"; big: "bigserial"; small: "smallserial" }
-			column_facts: { id: { not_null: true }; big: { not_null: true }; small: { not_null: true } }
+			column_facts: {
+				id: { nullability: "not_null" }
+				big: { nullability: "not_null" }
+				small: { nullability: "not_null" }
+			}
 		}
 	>
 >
@@ -40,7 +44,7 @@ type _tTimestampAliasesShape = Expect<
 		{
 			kind: "table"
 			columns: { created: "timestamptz"; time: "timetz" }
-			column_facts: { created: { not_null: true }; time: { not_null: true } }
+			column_facts: { created: { nullability: "not_null" }; time: { nullability: "not_null" } }
 		}
 	>
 >
@@ -58,7 +62,7 @@ type _tByteaShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; data: "bytea" }
-			column_facts: { id: { not_null: true }; data: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; data: { nullability: "not_null" } }
 		}
 	>
 >
@@ -76,7 +80,7 @@ type _tIntervalShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; duration: "interval" }
-			column_facts: { id: { not_null: true }; duration: { not_null: true } }
+			column_facts: { id: { nullability: "not_null" }; duration: { nullability: "not_null" } }
 		}
 	>
 >
@@ -94,7 +98,11 @@ type _tNetworkShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; ip: "inet"; subnet: "cidr" }
-			column_facts: { id: { not_null: true }; ip: { not_null: true }; subnet: { not_null: true } }
+			column_facts: {
+				id: { nullability: "not_null" }
+				ip: { nullability: "not_null" }
+				subnet: { nullability: "not_null" }
+			}
 		}
 	>
 >
@@ -112,7 +120,11 @@ type _tFulltextShape = Expect<
 		{
 			kind: "table"
 			columns: { id: "integer"; vec: "tsvector"; query: "tsquery" }
-			column_facts: { id: { not_null: true }; vec: { not_null: true }; query: { not_null: true } }
+			column_facts: {
+				id: { nullability: "not_null" }
+				vec: { nullability: "not_null" }
+				query: { nullability: "not_null" }
+			}
 		}
 	>
 >
@@ -145,12 +157,12 @@ type _tMixedShape = Expect<
 				search: "tsvector"
 			}
 			column_facts: {
-				id: { not_null: true }
-				created: { not_null: true }
-				data: { not_null: true }
-				duration: { not_null: true }
-				ip: { not_null: true }
-				search: { not_null: true }
+				id: { nullability: "not_null" }
+				created: { nullability: "not_null" }
+				data: { nullability: "not_null" }
+				duration: { nullability: "not_null" }
+				ip: { nullability: "not_null" }
+				search: { nullability: "not_null" }
 			}
 		}
 	>

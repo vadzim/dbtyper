@@ -22,8 +22,8 @@ export type JsqlTableShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind
 	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
 	columns: Record<string, string>
-	constraints?: {}
 	column_facts?: {}
+	constraints?: {}
 }
 
 export type JsqlConstraintEntry =
@@ -35,10 +35,7 @@ export type JsqlColumnFactsEntry = {
 	default?: true
 	check?: true
 	generated?: true | { mode: "stored" | "virtual" }
-	/** Set by `ALTER COLUMN … SET NOT NULL` (type-level migration tracking). */
-	not_null?: true
-	/** Set by `ALTER COLUMN … DROP NOT NULL`. */
-	nullable?: true
+	nullability?: "not_null" | "nullable"
 }
 
 export type JsqlForeignKeyRef = {
@@ -53,7 +50,6 @@ export type JsqlFkColumnPair = [local: string, referenced: string]
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
 export type JsqlSelectStatementResult = {
 	kind: "select"
-	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
 	columns: Record<string, string>
 }
 

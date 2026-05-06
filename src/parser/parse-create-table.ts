@@ -394,8 +394,8 @@ type OneCol<C extends ColumnTriple> = C extends readonly [
 			cols: Record<N, Sql>
 			facts: NotNull extends true
 				? HasDefault extends true
-					? Record<N, { not_null: true; default: true }>
-					: Record<N, { not_null: true }>
+					? Record<N, { nullability: "not_null"; default: true }>
+					: Record<N, { nullability: "not_null" }>
 				: HasDefault extends true
 					? Record<N, { default: true }>
 					: {}
