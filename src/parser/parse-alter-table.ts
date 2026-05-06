@@ -6,8 +6,8 @@ import type {
 	JsqlDbGetData,
 	JsqlDbReplaceData,
 	JsqlDbReplaceColumn,
-	JsqlTableReplaceColumnType,
-	JsqlTableReplaceColumnNullability,
+	JsqlDbReplaceColumnType,
+	JsqlDbReplaceColumnNullability,
 	JsqlTableReplaceColumn,
 	JsqlCreateColumn,
 	JsqlTableGetColumn,
@@ -215,9 +215,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 							infer R4 extends TokensList,
 							infer J2 extends string,
 					  ]
-					? JsqlTableReplaceColumnType<Tbl, Col, J2> extends infer U extends JsqlDataShape<"table">
-						? ParseAlterActions<R4, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-						: [R4, Db, SqlParserError<"Column does not exist">]
+					? ParseAlterActions<R4, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, J2>, Sch, Tab>
 					: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
 		: never
@@ -253,10 +251,12 @@ type ParseAlterColumnSetBranch<
 					? PeekToken<Rn> extends infer TkNull
 						? SkipToken<Rn> extends infer Rnn extends TokensList
 							? TkNull extends TokenKey<"null">
-								? JsqlTableReplaceColumnNullability<Tbl, Col, "not_null"> extends infer U extends
-										JsqlDataShape<"table">
-									? ParseAlterActions<Rnn, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-									: [Rnn, Db, SqlParserError<"Column does not exist">]
+								? ParseAlterActions<
+										Rnn,
+										JsqlDbReplaceColumnNullability<Db, Sch, Tab, Col, "not_null">,
+										Sch,
+										Tab
+									>
 								: [Rnn, Db, SqlParserError<"Expected NULL after SET NOT">]
 							: never
 						: never
@@ -283,10 +283,12 @@ type ParseAlterColumnDropNotNullChain<
 		? SkipToken<Rd0> extends infer Rd1 extends TokensList
 			? PeekToken<Rd1> extends infer Tk2
 				? Tk2 extends TokenKey<"null">
-					? JsqlTableReplaceColumnNullability<Tbl, Col, "nullable"> extends infer U extends
-							JsqlDataShape<"table">
-						? ParseAlterActions<SkipToken<Rd1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-						: [SkipToken<Rd1>, Db, SqlParserError<"Column does not exist">]
+					? ParseAlterActions<
+							SkipToken<Rd1>,
+							JsqlDbReplaceColumnNullability<Db, Sch, Tab, Col, "nullable">,
+							Sch,
+							Tab
+						>
 					: [SkipToken<Rd1>, Db, SqlParserError<"Expected NULL after DROP NOT">]
 				: never
 			: never
