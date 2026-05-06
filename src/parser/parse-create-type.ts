@@ -174,4 +174,4 @@ type ParseAfterEnumValue<
 type ParseCreateTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: [SkipToken<Tokens>, NewDb, SqlParserError<"Expected `;` after CREATE TYPE">]
+		: [Tokens, NewDb, SqlParserError<"Expected `;` after CREATE TYPE">]

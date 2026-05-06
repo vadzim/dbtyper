@@ -72,7 +72,7 @@ type ParseAlterAddColumnAfterColName<
 type FinishAlterStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: [SkipToken<Tokens>, Db, SqlParserError<"Expected `;` after ALTER TABLE">]
+		: [Tokens, Db, SqlParserError<"Expected `;` after ALTER TABLE">]
 
 type ParseAlterActions<
 	Tokens extends TokensList,
@@ -112,7 +112,7 @@ type ParseAlterAddColumn<
 				: ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends TokensList, null]
 					? PeekToken<R1> extends TokenIdent<infer Col extends string>
 						? ParseAlterAddColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, Col>
-						: [SkipToken<R1>, Db, SqlParserError<"Expected column name after ADD in ALTER TABLE">]
+						: [R1, Db, SqlParserError<"Expected column name after ADD in ALTER TABLE">]
 					: never
 			: never
 		: never
@@ -130,7 +130,7 @@ type ParseAlterDropColumn<
 		? ParseOptionalColumnKeyword<SkipToken<Tokens>> extends [infer R1 extends TokensList, null]
 			? PeekToken<R1> extends TokenIdent<infer Col extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-					? [SkipToken<R1>, Db, SqlParserError<"Column does not exist">]
+					? [R1, Db, SqlParserError<"Column does not exist">]
 					: ParseAlterActions<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab>
 				: [R1, Db, SqlParserError<"Expected column name after DROP COLUMN">]
 			: never
@@ -147,7 +147,7 @@ type ParseAlterRenameAfterToKw<
 		? SkipToken<R2> extends infer R3 extends TokensList
 			? PeekToken<R3> extends TokenIdent<infer New extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Old> extends null
-					? [SkipToken<R3>, Db, SqlParserError<"Column does not exist">]
+					? [R3, Db, SqlParserError<"Column does not exist">]
 					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
 						? JsqlDbGetColumn<Db, Sch, Tab, Old> extends infer OldCol extends
 								| (JsqlColumnFactsEntry & { type: string })
@@ -160,12 +160,12 @@ type ParseAlterRenameAfterToKw<
 									OldCol
 								> extends infer NewDb extends JsqlDatabaseShape
 								? ParseAlterActions<SkipToken<R3>, NewDb, Sch, Tab>
-								: [SkipToken<R3>, Db, SqlParserError<"Column rename failed">]
+								: [R3, Db, SqlParserError<"Column rename failed">]
 							: never
-						: [SkipToken<R3>, Db, SqlParserError<"Column already exists">]
-				: [SkipToken<R3>, Db, SqlParserError<"Expected new column name after TO in RENAME COLUMN">]
+						: [R3, Db, SqlParserError<"Column already exists">]
+				: [R3, Db, SqlParserError<"Expected new column name after TO in RENAME COLUMN">]
 			: never
-		: [SkipToken<R2>, Db, SqlParserError<"Expected TO in RENAME COLUMN">]
+		: [R2, Db, SqlParserError<"Expected TO in RENAME COLUMN">]
 
 type ParseAlterRenameAfterOldName<
 	R2 extends TokensList,
@@ -284,7 +284,7 @@ type ParseAlterColumnDropNotNullChain<
 							Sch,
 							Tab
 						>
-					: [SkipToken<Rd1>, Db, SqlParserError<"Expected NULL after DROP NOT">]
+					: [Rd1, Db, SqlParserError<"Expected NULL after DROP NOT">]
 				: never
 			: never
 		: never

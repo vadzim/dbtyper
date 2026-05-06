@@ -67,4 +67,4 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: [SkipToken<Tokens>, Db, SqlParserError<"Expected `;` after DROP TABLE">]
+		: [Tokens, Db, SqlParserError<"Expected `;` after DROP TABLE">]

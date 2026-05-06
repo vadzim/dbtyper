@@ -31,9 +31,9 @@ type ParseCreateSchemaAfterSchemaName<
 				? [SkipToken<AfterName>, Db, null]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
 			: [SchemaName] extends [keyof Db["schemas"]]
-				? [SkipToken<AfterName>, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
+				? [AfterName, Db, SqlParserError<"Schema already exists; use IF NOT EXISTS">]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-		: [SkipToken<AfterName>, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
+		: [AfterName, Db, SqlParserError<"Expected `;` after schema name in CREATE SCHEMA">]
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends TokenIdent<infer SchemaName extends string>

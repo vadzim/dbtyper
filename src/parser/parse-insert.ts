@@ -749,7 +749,7 @@ type FinishInsertSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: [SkipToken<Tokens>, Db, SqlParserError<"Expected `;` after INSERT">]
+		: [Tokens, Db, SqlParserError<"Expected `;` after INSERT">]
 
 type ParseInsertAfterInto<
 	Tokens extends TokensList,

@@ -36,7 +36,7 @@ type ParseDropSchemaAfterIdent<
 						? [SkipToken<AfterName>, NewDb, null]
 						: never
 					: never
-		: [SkipToken<AfterName>, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
+		: [AfterName, Db, SqlParserError<"Expected `;` after DROP SCHEMA">]
 
 type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	PeekToken<Tokens> extends infer NameTok
