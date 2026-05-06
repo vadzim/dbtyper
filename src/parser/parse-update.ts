@@ -10,7 +10,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExprAtom, ExpressionParamsShape, ParseAddValue } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
@@ -135,8 +135,9 @@ type ParseUpdateSetAssignments<
 	PeekToken<Tokens> extends infer TokCol
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokCol extends TokenIdent<infer Col extends string>
-				? Col extends keyof Tbl["columns"]
-					? PeekToken<R1> extends TokenKey<"=">
+				? JsqlDataGetColumnType<Tbl, Col> extends null
+					? [R1, Db, SqlParserError<"Unknown column in UPDATE SET">]
+					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
 							? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
 								? Ev extends SqlParserError<string>
@@ -185,8 +186,7 @@ type ParseUpdateSetAssignments<
 										: [R3, Db, SqlParserError<"Invalid value expression in UPDATE">]
 								: never
 							: never
-						: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
-					: [R1, Db, SqlParserError<"Unknown column in UPDATE SET">]
+					: [R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">]
 				: [R1, Db, SqlParserError<"Expected column name in UPDATE SET">]
 			: never
 		: never
