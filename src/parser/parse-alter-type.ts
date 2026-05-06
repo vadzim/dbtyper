@@ -10,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlGetSchema, JsqlGetEnum, JsqlDbReplaceEnum, JsqlReplaceSchema } from "../core/jsql-utils.ts"
+import type { JsqlGetSchema, JsqlGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -108,11 +108,9 @@ type ParseAlterTypeAddValue<
 			? ValTok extends TokenString<infer NewValue extends string>
 				? NewValue extends Values[number]
 					? [AfterVal, Db, SqlParserError<"Enum value already exists">]
-					: JsqlDbReplaceEnum<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewSchema extends
-								JsqlSchemaShape
-						? JsqlReplaceSchema<Db, Sch, NewSchema> extends infer NewDb extends JsqlDatabaseShape
-							? ParseAlterTypeCloseSemi<AfterVal, NewDb>
-							: never
+					: JsqlDbReplaceEnum<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewDb extends
+								JsqlDatabaseShape
+						? ParseAlterTypeCloseSemi<AfterVal, NewDb>
 						: never
 				: [AfterVal, Db, SqlParserError<"Expected string literal for enum value in ALTER TYPE">]
 			: never

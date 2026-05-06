@@ -118,14 +118,17 @@ export type JsqlDbReplaceEnum<
 	Schema extends string,
 	Name extends string,
 	Values extends readonly string[],
-> = JsqlReplaceEnum<JsqlGetSchema<Db, Schema>, Name, Values>
+> =
+	JsqlReplaceEnum<JsqlGetSchema<Db, Schema>, Name, Values> extends infer UpdatedSchema extends JsqlSchemaShape
+		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
+		: null
 
 export type JsqlRemoveEnum<Schema extends JsqlSchemaShape | null, Name extends string> = JsqlRemoveType<Schema, Name>
 
-export type JsqlDbRemoveEnum<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlRemoveEnum<
-	JsqlGetSchema<Db, Schema>,
-	Name
->
+export type JsqlDbRemoveEnum<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> =
+	JsqlRemoveEnum<JsqlGetSchema<Db, Schema>, Name> extends infer UpdatedSchema extends JsqlSchemaShape
+		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
+		: null
 
 export type JsqlGetColumnType<Table extends JsqlTableShape<"table"> | null, Col extends string> =
 	Table extends JsqlTableShape<"table">

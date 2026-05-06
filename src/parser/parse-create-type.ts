@@ -10,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlGetSchema, JsqlGetType, JsqlDbReplaceEnum, JsqlReplaceSchema } from "../core/jsql-utils.ts"
+import type { JsqlGetSchema, JsqlGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -145,10 +145,8 @@ type ParseEnumValues<
 				: Tok extends TokenKey<")">
 					? Stack extends readonly []
 						? [R, Db, SqlParserError<"Empty enum values list in CREATE TYPE">]
-						: JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewSchema extends JsqlSchemaShape
-							? JsqlReplaceSchema<Db, Schema, NewSchema> extends infer NewDb extends JsqlDatabaseShape
-								? ParseCreateTypeCloseSemi<R, NewDb>
-								: never
+						: JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
+							? ParseCreateTypeCloseSemi<R, NewDb>
 							: never
 					: [R, Db, SqlParserError<"Expected string literal for enum value in CREATE TYPE">]
 			: never
@@ -166,10 +164,8 @@ type ParseAfterEnumValue<
 			? Tok extends TokenKey<",">
 				? ParseEnumValues<R, Db, Schema, TypeName, Stack>
 				: Tok extends TokenKey<")">
-					? JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewSchema extends JsqlSchemaShape
-						? JsqlReplaceSchema<Db, Schema, NewSchema> extends infer NewDb extends JsqlDatabaseShape
-							? ParseCreateTypeCloseSemi<R, NewDb>
-							: never
+					? JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
+						? ParseCreateTypeCloseSemi<R, NewDb>
 						: never
 					: [R, Db, SqlParserError<"Expected `,` or `)` after enum value in CREATE TYPE">]
 			: never
