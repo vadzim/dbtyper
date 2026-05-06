@@ -83,7 +83,7 @@ type _alterNoopChainMeta = Expect<Extends<ItemsAfterChain["columns"], { id: "uui
 
 /** Unknown schema in qualified table name. */
 type TAlterBadSchema = ParseSqlStatement<ParseSqlTokens<`alter table missing.items add column x int;`>, DbItems>
-type _alterBadSchema = Expect<Extends<Tuple3At2<TAlterBadSchema>, SqlParserError<"Unknown schema for ALTER TABLE">>>
+type _alterBadSchema = Expect<Extends<Tuple3At2<TAlterBadSchema>, SqlParserError<"Table does not exist">>>
 
 /** Unknown column in `DROP COLUMN`. */
 type TAlterDropUnknownCol = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column ghost;`>, DbItems>

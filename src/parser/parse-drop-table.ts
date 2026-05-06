@@ -1,5 +1,12 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetSchema, JsqlSchemaGetData, JsqlSchemaGetTable, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type {
+	JsqlDbGetSchema,
+	JsqlDbGetTable,
+	JsqlDbGetData,
+	JsqlSchemaGetData,
+	JsqlSchemaGetTable,
+	JsqlDbReplaceData,
+} from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -73,21 +80,19 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		infer Tab extends string,
 	]
 		? E extends null
-			? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-				? IfExists extends true
-					? JsqlSchemaGetTable<Schema, Tab> extends JsqlDataShape<"table">
-						? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
-							? FinishDropStatement<R, NewDb>
-							: never
-						: FinishDropStatement<R, Db>
-					: JsqlSchemaGetTable<Schema, Tab> extends JsqlDataShape<"table">
-						? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
-							? FinishDropStatement<R, NewDb>
-							: never
-						: JsqlSchemaGetData<Schema, Tab> extends null
-							? [R, Db, SqlParserError<"Table does not exist; use IF EXISTS">]
-							: [R, Db, SqlParserError<"DROP TABLE targets a view; use DROP VIEW">]
-				: [R, Db, SqlParserError<"Unknown schema for DROP TABLE">]
+			? IfExists extends true
+				? JsqlDbGetTable<Db, Sch, Tab> extends JsqlDataShape<"table">
+					? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
+						? FinishDropStatement<R, NewDb>
+						: never
+					: FinishDropStatement<R, Db>
+				: JsqlDbGetTable<Db, Sch, Tab> extends JsqlDataShape<"table">
+					? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
+						? FinishDropStatement<R, NewDb>
+						: never
+					: JsqlDbGetData<Db, Sch, Tab> extends null
+						? [R, Db, SqlParserError<"Table does not exist; use IF EXISTS">]
+						: [R, Db, SqlParserError<"DROP TABLE targets a view; use DROP VIEW">]
 			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid DROP TABLE parse">]
 		: never
 

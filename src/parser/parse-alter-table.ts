@@ -410,13 +410,11 @@ type ParseAlterAfterQualified<
 	Sch extends string,
 	Tab extends string,
 > = Err extends null
-	? JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
-		? JsqlSchemaGetTable<Schema, Tab> extends object
-			? Sch extends keyof Db["schemas"]
-				? ParseAlterActions<R, Db, Sch & string, Tab & string>
-				: never
-			: [R, Db, SqlParserError<"Table does not exist">]
-		: [R, Db, SqlParserError<"Unknown schema for ALTER TABLE">]
+	? JsqlDbGetTable<Db, Sch, Tab> extends object
+		? Sch extends keyof Db["schemas"]
+			? ParseAlterActions<R, Db, Sch & string, Tab & string>
+			: never
+		: [R, Db, SqlParserError<"Table does not exist">]
 	: [R, Db, Err extends SqlParserError<string> ? Err : SqlParserError<"Invalid ALTER TABLE name">]
 
 type ParseAlterAfterTableKeyword<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
