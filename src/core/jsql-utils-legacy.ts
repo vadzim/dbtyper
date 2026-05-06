@@ -1,57 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult, JsqlTableShape } from "./jsql-shapes.ts"
 import type { I } from "./type-utils.ts"
 
-/** Update an existing type (enum) with new values. */
-
-export type UpdateTypeInDb<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Typ extends string,
-	NewValues extends readonly string[],
-> = Sch extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Sch
-					? {
-							types: {
-								[T in keyof I<
-									I<Db, "schemas", {}>,
-									Sch & keyof Db["schemas"],
-									JsqlSchemaShape
-								>["types"]]: T extends Typ
-									? { kind: "enum"; values: NewValues }
-									: I<I<Db, "schemas", {}>, Sch & keyof Db["schemas"], JsqlSchemaShape>["types"][T]
-							}
-						} & Omit<I<I<Db, "schemas", {}>, Sch & keyof Db["schemas"], JsqlSchemaShape>, "types">
-					: Db["schemas"][K]
-			}
-		}
-	: never
-/** Add a type (enum) to the database. */
-
-export type MergeTypeIntoDb<
-	Db extends JsqlDatabaseShape,
-	Schema extends string,
-	TypeName extends string,
-	Values extends readonly string[],
-> = Schema extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Schema
-					? {
-							types: (I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
-								? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
-								: {}) &
-								Record<TypeName, { kind: "enum"; values: Values }>
-						} & Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>, "types">
-					: Db["schemas"][K]
-			}
-		}
-	: never
-/** Add a view to the database. */
-
 export type MergeViewIntoDb<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,

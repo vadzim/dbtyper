@@ -66,16 +66,19 @@ export type JsqlDbReplaceSet<
 	Schema extends string,
 	Name extends string,
 	Set extends JsqlTableShape,
-> = JsqlReplaceSet<JsqlGetSchema<Db, Schema>, Name, Set>
+> =
+	JsqlReplaceSet<JsqlGetSchema<Db, Schema>, Name, Set> extends infer UpdatedSchema extends JsqlSchemaShape
+		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
+		: null
 
 export type JsqlRemoveSet<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
 	? ReplaceProp<Schema, "sets", Omit<Schema["sets"], Name>>
 	: null
 
-export type JsqlDbRemoveSet<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlRemoveSet<
-	JsqlGetSchema<Db, Schema>,
-	Name
->
+export type JsqlDbRemoveSet<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> =
+	JsqlRemoveSet<JsqlGetSchema<Db, Schema>, Name> extends infer UpdatedSchema extends JsqlSchemaShape
+		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
+		: null
 
 export type JsqlReplaceType<
 	Schema extends JsqlSchemaShape | null,
@@ -88,16 +91,19 @@ export type JsqlDbReplaceType<
 	Schema extends string,
 	Name extends string,
 	Type extends JsqlTypeShape,
-> = JsqlReplaceType<JsqlGetSchema<Db, Schema>, Name, Type>
+> =
+	JsqlReplaceType<JsqlGetSchema<Db, Schema>, Name, Type> extends infer UpdatedSchema extends JsqlSchemaShape
+		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
+		: null
 
 export type JsqlRemoveType<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
 	? ReplaceProp<Schema, "types", Omit<Schema["types"], Name>>
 	: null
 
-export type JsqlDbRemoveType<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlRemoveType<
-	JsqlGetSchema<Db, Schema>,
-	Name
->
+export type JsqlDbRemoveType<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> =
+	JsqlRemoveType<JsqlGetSchema<Db, Schema>, Name> extends infer UpdatedSchema extends JsqlSchemaShape
+		? JsqlReplaceSchema<Db, Schema, UpdatedSchema>
+		: null
 
 export type JsqlGetEnum<Schema extends JsqlSchemaShape | null, Name extends string> =
 	JsqlGetType<Schema, Name> extends infer T ? (T extends { kind: "enum"; values: infer V } ? V : null) : null
