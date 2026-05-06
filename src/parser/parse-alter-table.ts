@@ -44,48 +44,6 @@ type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlData
 			: never
 		: never
 
-type ApplyAddColumn<T extends JsqlDataShape<"table">, Col extends string, Sql extends string> =
-	JsqlDataGetColumnType<T, Col> extends null
-		? JsqlTableReplaceColumn<T, Col, JsqlCreateColumn<Sql>> extends infer U extends JsqlDataShape<"table">
-			? U
-			: SqlParserError<"Column add failed">
-		: SqlParserError<"Column already exists">
-
-type ApplyDropColumn<T extends JsqlDataShape<"table">, Col extends string> =
-	JsqlDataGetColumnType<T, Col> extends null
-		? SqlParserError<"Column does not exist">
-		: JsqlTableReplaceColumn<T, Col, null> extends infer U extends JsqlDataShape<"table">
-			? U
-			: SqlParserError<"Column drop failed">
-
-type ApplyRenameColumn<T extends JsqlDataShape<"table">, Old extends string, New extends string> =
-	JsqlDataGetColumnType<T, Old> extends null
-		? SqlParserError<"Column does not exist">
-		: JsqlDataGetColumnType<T, New> extends null
-			? JsqlTableReplaceColumn<
-					JsqlTableReplaceColumn<T, Old, null>,
-					New,
-					JsqlTableGetColumn<T, Old>
-				> extends infer U extends JsqlDataShape<"table">
-				? U
-				: SqlParserError<"Column rename failed">
-			: SqlParserError<"Column already exists">
-
-type ApplyAlterColumnType<T extends JsqlDataShape<"table">, Col extends string, Sql extends string> =
-	JsqlTableReplaceColumnType<T, Col, Sql> extends infer U extends JsqlDataShape<"table">
-		? U
-		: SqlParserError<"Column does not exist">
-
-type ApplySetNotNull<T extends JsqlDataShape<"table">, Col extends string> =
-	JsqlTableReplaceColumnNullability<T, Col, "not_null"> extends infer U extends JsqlDataShape<"table">
-		? U
-		: SqlParserError<"Column does not exist">
-
-type ApplyDropNotNull<T extends JsqlDataShape<"table">, Col extends string> =
-	JsqlTableReplaceColumnNullability<T, Col, "nullable"> extends infer U extends JsqlDataShape<"table">
-		? U
-		: SqlParserError<"Column does not exist">
-
 type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends string> =
 	PeekToken<Tokens> extends TokenKey<"not">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
@@ -117,13 +75,12 @@ type ParseAlterAddColumnAfterColName<
 							infer R3 extends TokensList,
 							infer J2 extends string,
 					  ]
-					? ApplyAddColumn<Tbl, Col, J2> extends infer U
-						? U extends SqlParserError<string>
-							? [R3, Db, U]
-							: U extends JsqlDataShape
-								? ParseAlterActions<R3, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-								: never
-						: never
+					? JsqlDataGetColumnType<Tbl, Col> extends null
+						? JsqlTableReplaceColumn<Tbl, Col, JsqlCreateColumn<J2>> extends infer U extends
+								JsqlDataShape<"table">
+							? ParseAlterActions<R3, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+							: [R3, Db, SqlParserError<"Column add failed">]
+						: [R3, Db, SqlParserError<"Column already exists">]
 					: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
 		: never
@@ -203,13 +160,11 @@ type ParseAlterDropColumn<
 		? ParseOptionalColumnKeyword<SkipToken<Tokens>> extends [infer R1 extends TokensList, null]
 			? PeekToken<R1> extends infer Tcol
 				? Tcol extends TokenIdent<infer Col extends string>
-					? ApplyDropColumn<Tbl, Col> extends infer U
-						? U extends SqlParserError<string>
-							? [SkipToken<R1>, Db, U]
-							: U extends JsqlDataShape
-								? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-								: never
-						: never
+					? JsqlDataGetColumnType<Tbl, Col> extends null
+						? [SkipToken<R1>, Db, SqlParserError<"Column does not exist">]
+						: JsqlTableReplaceColumn<Tbl, Col, null> extends infer U extends JsqlDataShape<"table">
+							? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+							: [SkipToken<R1>, Db, SqlParserError<"Column drop failed">]
 					: [SkipToken<R1>, Db, SqlParserError<"Expected column name after DROP COLUMN">]
 				: never
 			: never
@@ -229,13 +184,17 @@ type ParseAlterRenameAfterToKw<
 				? PeekToken<R3> extends infer Tnew
 					? SkipToken<R3> extends infer R4 extends TokensList
 						? Tnew extends TokenIdent<infer New extends string>
-							? ApplyRenameColumn<Tbl, Old, New> extends infer U
-								? U extends SqlParserError<string>
-									? [R4, Db, U]
-									: U extends JsqlDataShape
+							? JsqlDataGetColumnType<Tbl, Old> extends null
+								? [R4, Db, SqlParserError<"Column does not exist">]
+								: JsqlDataGetColumnType<Tbl, New> extends null
+									? JsqlTableReplaceColumn<
+											JsqlTableReplaceColumn<Tbl, Old, null>,
+											New,
+											JsqlTableGetColumn<Tbl, Old>
+										> extends infer U extends JsqlDataShape<"table">
 										? ParseAlterActions<R4, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-										: never
-								: never
+										: [R4, Db, SqlParserError<"Column rename failed">]
+									: [R4, Db, SqlParserError<"Column already exists">]
 							: [R4, Db, SqlParserError<"Expected new column name after TO in RENAME COLUMN">]
 						: never
 					: never
@@ -292,13 +251,9 @@ type ParseAlterColumnTypeAfterTypeKw<
 							infer R4 extends TokensList,
 							infer J2 extends string,
 					  ]
-					? ApplyAlterColumnType<Tbl, Col, J2> extends infer U
-						? U extends SqlParserError<string>
-							? [R4, Db, U]
-							: U extends JsqlDataShape
-								? ParseAlterActions<R4, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-								: never
-						: never
+					? JsqlTableReplaceColumnType<Tbl, Col, J2> extends infer U extends JsqlDataShape<"table">
+						? ParseAlterActions<R4, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+						: [R4, Db, SqlParserError<"Column does not exist">]
 					: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
 		: never
@@ -334,13 +289,10 @@ type ParseAlterColumnSetBranch<
 					? PeekToken<Rn> extends infer TkNull
 						? SkipToken<Rn> extends infer Rnn extends TokensList
 							? TkNull extends TokenKey<"null">
-								? ApplySetNotNull<Tbl, Col> extends infer U
-									? U extends SqlParserError<string>
-										? [Rnn, Db, U]
-										: U extends JsqlDataShape
-											? ParseAlterActions<Rnn, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-											: never
-									: never
+								? JsqlTableReplaceColumnNullability<Tbl, Col, "not_null"> extends infer U extends
+										JsqlDataShape<"table">
+									? ParseAlterActions<Rnn, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+									: [Rnn, Db, SqlParserError<"Column does not exist">]
 								: [Rnn, Db, SqlParserError<"Expected NULL after SET NOT">]
 							: never
 						: never
@@ -367,13 +319,10 @@ type ParseAlterColumnDropNotNullChain<
 		? SkipToken<Rd0> extends infer Rd1 extends TokensList
 			? PeekToken<Rd1> extends infer Tk2
 				? Tk2 extends TokenKey<"null">
-					? ApplyDropNotNull<Tbl, Col> extends infer U
-						? U extends SqlParserError<string>
-							? [SkipToken<Rd1>, Db, U]
-							: U extends JsqlDataShape
-								? ParseAlterActions<SkipToken<Rd1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-								: never
-						: never
+					? JsqlTableReplaceColumnNullability<Tbl, Col, "nullable"> extends infer U extends
+							JsqlDataShape<"table">
+						? ParseAlterActions<SkipToken<Rd1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
+						: [SkipToken<Rd1>, Db, SqlParserError<"Column does not exist">]
 					: [SkipToken<Rd1>, Db, SqlParserError<"Expected NULL after DROP NOT">]
 				: never
 			: never
