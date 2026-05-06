@@ -1127,13 +1127,9 @@ type ParseSelectTrailingClauses<
 		: never
 
 type FinishSelectTerminator<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R2 extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? [R2, Db, Res]
-				: [R2, Db, SqlParserError<"Expected semicolon after SELECT">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? [SkipToken<Tokens>, Db, Res]
+		: [SkipToken<Tokens>, Db, SqlParserError<"Expected semicolon after SELECT">]
 
 type FinishSelectStatement<
 	Tokens extends TokensList,

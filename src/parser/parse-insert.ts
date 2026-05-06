@@ -747,13 +747,9 @@ type FinishInsertSemicolon<
 	Db extends JsqlDatabaseShape,
 	Res extends JsqlInsertStatementResult,
 > =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer AfterSemi extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? [AfterSemi, Db, Res]
-				: [AfterSemi, Db, SqlParserError<"Expected `;` after INSERT">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? [SkipToken<Tokens>, Db, Res]
+		: [SkipToken<Tokens>, Db, SqlParserError<"Expected `;` after INSERT">]
 
 type ParseInsertAfterInto<
 	Tokens extends TokensList,
