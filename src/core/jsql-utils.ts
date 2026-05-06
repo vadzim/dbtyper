@@ -99,6 +99,49 @@ export type JsqlDbRemoveType<Db extends JsqlDatabaseShape, Schema extends string
 	Name
 >
 
+export type JsqlGetEnum<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
+	? Schema["types"] extends infer Types
+		? Types extends Record<string, unknown>
+			? Name extends keyof Types
+				? Types[Name & keyof Types] extends infer T
+					? T extends { kind: "enum"; values: infer V }
+						? V
+						: null
+					: null
+				: null
+			: null
+		: null
+	: null
+
+export type JsqlDbGetEnum<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlGetEnum<
+	JsqlGetSchema<Db, Schema>,
+	Name
+>
+
+export type JsqlReplaceEnum<
+	Schema extends JsqlSchemaShape | null,
+	Name extends string,
+	Values extends readonly string[],
+> = Schema extends JsqlSchemaShape
+	? ReplaceProp<Schema, "types", ReplaceProp<Schema["types"], Name, { kind: "enum"; values: Values }>>
+	: null
+
+export type JsqlDbReplaceEnum<
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Name extends string,
+	Values extends readonly string[],
+> = JsqlReplaceEnum<JsqlGetSchema<Db, Schema>, Name, Values>
+
+export type JsqlRemoveEnum<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
+	? ReplaceProp<Schema, "types", Omit<Schema["types"], Name>>
+	: null
+
+export type JsqlDbRemoveEnum<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlRemoveEnum<
+	JsqlGetSchema<Db, Schema>,
+	Name
+>
+
 export type JsqlGetColumnType<Table extends JsqlTableShape<"table"> | null, Col extends string> =
 	Table extends JsqlTableShape<"table">
 		? Col extends keyof Table["columns"]
