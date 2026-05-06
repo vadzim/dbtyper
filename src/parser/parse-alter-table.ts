@@ -25,38 +25,26 @@ type SkipUntilCommaOrSemi<Tokens extends TokensList> = SkipBracketedUntil<
 type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<".">
 		? SkipToken<AfterFirst> extends infer Rd1 extends TokensList
-			? PeekToken<Rd1> extends infer T2
-				? SkipToken<Rd1> extends infer R2 extends TokensList
-					? T2 extends TokenIdent<infer B extends string>
-						? [R2, null, A, B]
-						: [R2, SqlParserError<"Expected table name after `.` in ALTER TABLE">, never, never]
-					: never
-				: never
+			? PeekToken<Rd1> extends TokenIdent<infer B extends string>
+				? [SkipToken<Rd1>, null, A, B]
+				: [SkipToken<Rd1>, SqlParserError<"Expected table name after `.` in ALTER TABLE">, never, never]
 			: never
 		: [AfterFirst, null, Db["defaultSchema"], A]
 
 type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends infer NameTok
-		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
-			? NameTok extends TokenIdent<infer A extends string>
-				? ParseAlterAfterFirstIdent<AfterFirst, Db, A>
-				: [AfterFirst, SqlParserError<"Expected table name in ALTER TABLE">, never, never]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenIdent<infer A extends string>
+		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
+		: [SkipToken<Tokens>, SqlParserError<"Expected table name in ALTER TABLE">, never, never]
 
 type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends string> =
 	PeekToken<Tokens> extends TokenKey<"not">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<"null">
-				? SkipToken<R1> extends infer R2 extends TokensList
-					? [R2, Joined]
-					: never
+				? [SkipToken<R1>, Joined]
 				: [R1, Joined]
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
-			? SkipToken<Tokens> extends infer Rn extends TokensList
-				? [Rn, Joined]
-				: never
+			? [SkipToken<Tokens>, Joined]
 			: [Tokens, Joined]
 
 type ParseAlterAddColumnAfterColName<
@@ -86,13 +74,9 @@ type ParseAlterAddColumnAfterColName<
 		: never
 
 type FinishAlterStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? [R1, Db, null]
-				: [R1, Db, SqlParserError<"Expected `;` after ALTER TABLE">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? [SkipToken<Tokens>, Db, null]
+		: [SkipToken<Tokens>, Db, SqlParserError<"Expected `;` after ALTER TABLE">]
 
 type ParseAlterActions<
 	Tokens extends TokensList,
