@@ -7,17 +7,11 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ❌ FAILURE: DROP type from unknown schema
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			// @ts-expect-error
-			`drop type ghost.status;`,
-		)
-		.database()
+// ❌ FAILURE: DROP type from unknown schema
 
-	return db
-}
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
 
-test()
+migrations.apply(
+	// @ts-expect-error
+	`drop type ghost.status;`,
+)

@@ -2,30 +2,29 @@
 // Integration Test: INSERT with DEFAULT columns
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import type { Expect, Extends, Matches } from "../../test-utils/type-test-utils.ts"
 
 const mockDriver = {
 	query: async () => [],
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			`create table users (
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(
+		`create table users (
 				id text not null,
 				name text not null,
 				age numeric not null default 18,
 				active boolean not null default true,
 				created_at timestamp default now()
 			);`,
-		)
-		.database()
+	)
+	.database()
+// ✅ SUCCESS: NOT NULL columns with DEFAULT can be omitted
 
-	// ✅ SUCCESS: NOT NULL columns with DEFAULT can be omitted
-	const result = await db.query(`insert into users (id, name) values ('1', 'Alice') returning *;`)
+const result = await db.query(`insert into users (id, name) values ('1', 'Alice') returning *;`)
 
-	return result
-}
-
-test()
+type _check = Expect<
+	Matches<typeof result, { name: string; id: string; active: boolean; created_at: Date; age: string }[]>
+>

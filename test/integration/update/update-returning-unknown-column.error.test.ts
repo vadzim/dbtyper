@@ -7,19 +7,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function testUpdateReturningUnknownColumn() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text);`)
+	.database()
 
-	// ❌ ERROR: RETURNING unknown column
-	const bad = await db.query(
-		// @ts-expect-error
-		`update users set name = 'Alice' where id = '1' returning invalid_column;`,
-	)
-
-	return bad
-}
-
-testUpdateReturningUnknownColumn()
+// ❌ ERROR: RETURNING unknown column
+await db.query(
+	// @ts-expect-error
+	`update users set name = 'Alice' where id = '1' returning invalid_column;`,
+)

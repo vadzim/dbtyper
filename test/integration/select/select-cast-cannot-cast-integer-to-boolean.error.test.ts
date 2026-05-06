@@ -8,19 +8,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table data (id integer not null, value text not null, num integer not null);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
+	.database()
 
-	// ❌ ERROR: Cannot cast integer to boolean
-	const result = await db.query(
-		// @ts-expect-error
-		`select id::boolean from data;`,
-	)
-
-	return result
-}
-
-test()
+// ❌ ERROR: Cannot cast integer to boolean
+const result = db.query(
+	// @ts-expect-error
+	`select id::boolean from data;`,
+)

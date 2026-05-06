@@ -7,14 +7,8 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ✅ SUCCESS: CREATE TYPE with enum values
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create type status as enum ('active', 'inactive', 'pending');`)
-		.database()
+// ✅ SUCCESS: CREATE TYPE with enum values
 
-	return db
-}
-
-test()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create type status as enum ('active', 'inactive', 'pending');`)

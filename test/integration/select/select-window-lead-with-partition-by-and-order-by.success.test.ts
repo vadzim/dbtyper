@@ -1,26 +1,34 @@
 // Integration Test: Window functions - LEAD() with PARTITION BY and ORDER BY
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import type { Expect, Extends, Matches } from "../../test-utils/type-test-utils.ts"
 
 const mockDriver = {
 	query: async () => [],
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			`create table sales (id integer not null, product text not null, amount integer not null, sale_date text not null);`,
-		)
-		.database()
-
-	// ✅ SUCCESS: LEAD() with PARTITION BY and ORDER BY
-	const result = await db.query(
-		`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`,
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(
+		`create table sales (id integer not null, product text not null, amount integer not null, sale_date text not null);`,
 	)
+	.database()
 
-	return result
-}
+// ✅ SUCCESS: LEAD() with PARTITION BY and ORDER BY
 
-test()
+const result = await db.query(
+	`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`,
+)
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			amount: number
+			product: string
+			next_amount: number
+		}[]
+	>
+>

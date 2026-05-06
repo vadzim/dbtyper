@@ -4,22 +4,28 @@
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 
 const mockDriver = {
 	query: async () => [],
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text, email text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text, email text);`)
+	.database()
+// ✅ SUCCESS: SELECT * should expand to all columns
 
-	// ✅ SUCCESS: SELECT * should expand to all columns
-	const result = await db.query(`select * from users;`)
+const result = await db.query(`select * from users;`)
 
-	return result
-}
-
-test()
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			email: string
+		}>
+	>
+>

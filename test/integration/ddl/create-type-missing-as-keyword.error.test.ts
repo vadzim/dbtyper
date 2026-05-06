@@ -7,17 +7,11 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ❌ FAILURE: Missing AS keyword
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			// @ts-expect-error
-			`create type status enum ('active');`,
-		)
-		.database()
+// ❌ FAILURE: Missing AS keyword
 
-	return db
-}
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
 
-test()
+migrations.apply(
+	// @ts-expect-error
+	`create type status enum ('active');`,
+)

@@ -2,7 +2,7 @@ export type JsqlDatabaseShape = {
 	defaultSchema: string
 	schemas: Record<string, JsqlSchemaShape>
 	/** Typed SQL function names → SQL return type strings (e.g., "integer", "text"). Keys as used in SQL after identifier normalization, typically lowercase. */
-	functions?: Record<string, string>
+	functions?: Record<string, string> | undefined
 }
 
 export type JsqlSchemaShape = {

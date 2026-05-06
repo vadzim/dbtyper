@@ -7,13 +7,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function testCreateTableWithDefaults() {
-	// ❌ ERROR: CREATE TABLE with wrong DEFAULT values should throw an error
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			// @ts-expect-error
-			`create table users (
+// ❌ ERROR: CREATE TABLE with wrong DEFAULT values should throw an error
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`create table users (
 				id text not null,
 				name text not null,
 				email text,
@@ -21,10 +21,4 @@ async function testCreateTableWithDefaults() {
 				active boolean default true,
 				created_at timestamp default now()
 			);`,
-		)
-		.database()
-
-	return db
-}
-
-testCreateTableWithDefaults()
+)

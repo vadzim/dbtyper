@@ -10,19 +10,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text, email text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text, email text);`)
+	.database()
 
-	// ❌ ERROR: RETURNING with invalid column
-	const result = await db.query(
-		// @ts-expect-error
-		`delete from users returning invalid_column;`,
-	)
-
-	return result
-}
-
-test()
+// ❌ ERROR: RETURNING with invalid column
+const result = db.query(
+	// @ts-expect-error
+	`delete from users returning invalid_column;`,
+)

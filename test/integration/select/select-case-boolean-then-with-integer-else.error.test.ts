@@ -8,26 +8,20 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			`create table users (
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(
+		`create table users (
 				id text not null,
 				name text not null,
 				age integer not null,
 				active boolean not null
 			);`,
-		)
-		.database()
-
-	// ❌ ERROR: Boolean THEN with integer ELSE
-	const result = await db.query(
-		// @ts-expect-error
-		`select case when active then true else 0 end from users;`,
 	)
+	.database()
 
-	return result
-}
-
-test()
+// ❌ ERROR: Boolean THEN with integer ELSE
+const result = db.query(
+	// @ts-expect-error
+	`select case when active then true else 0 end from users;`,
+)

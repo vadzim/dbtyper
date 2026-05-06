@@ -7,18 +7,13 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ❌ FAILURE: Add duplicate value
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create type status as enum ('active', 'inactive');`)
-		.apply(
-			// @ts-expect-error
-			`alter type status add value 'active';`,
-		)
-		.database()
+// ❌ FAILURE: Add duplicate value
 
-	return db
-}
+const migrations = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create type status as enum ('active', 'inactive');`)
 
-test()
+migrations.apply(
+	// @ts-expect-error
+	`alter type status add value 'active';`,
+)

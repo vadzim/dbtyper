@@ -7,16 +7,10 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ✅ SUCCESS: Add value with special characters
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create type status as enum ('active');`)
-		.apply(`alter type status add value 'in-progress';`)
-		.apply(`alter type status add value 'waiting_approval';`)
-		.database()
+// ✅ SUCCESS: Add value with special characters
 
-	return db
-}
-
-test()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create type status as enum ('active');`)
+	.apply(`alter type status add value 'in-progress';`)
+	.apply(`alter type status add value 'waiting_approval';`)

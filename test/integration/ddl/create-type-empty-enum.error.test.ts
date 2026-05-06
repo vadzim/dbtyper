@@ -7,17 +7,11 @@ const mockDriver = {
 	scalarTypes: {} as PostgresTypeMap,
 }
 
-async function test() {
-	// ❌ FAILURE: Empty enum values
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(
-			// @ts-expect-error
-			`create type empty as enum ();`,
-		)
-		.database()
+// ❌ FAILURE: Empty enum values
 
-	return db
-}
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
 
-test()
+migrations.apply(
+	// @ts-expect-error
+	`create type empty as enum ();`,
+)
