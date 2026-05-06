@@ -15,7 +15,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text);`)
 	.database()
 // ✅ SUCCESS: Table alias shadows table name
+
 const result = await db.query(`
 		select posts.id from users as posts;
 	`)
-type _check = Expect<Matches<typeof result, Array<{ id: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+		}>
+	>
+>

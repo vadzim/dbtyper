@@ -21,6 +21,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Multiple WHEN clauses
+
 const result = await db.query(`
 		select
 			name,
@@ -32,4 +33,13 @@ const result = await db.query(`
 			end as age_group
 		from users;
 	`)
-type _check = Expect<Matches<typeof result, { name: string; age_group: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			age_group: string
+		}[]
+	>
+>

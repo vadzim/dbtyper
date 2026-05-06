@@ -21,6 +21,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: CASE without ELSE (returns NULL)
+
 const result = await db.query(`
 		select
 			name,
@@ -29,4 +30,13 @@ const result = await db.query(`
 			end as is_active
 		from users;
 	`)
-type _check = Expect<Matches<typeof result, { name: string; is_active: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			is_active: string
+		}[]
+	>
+>

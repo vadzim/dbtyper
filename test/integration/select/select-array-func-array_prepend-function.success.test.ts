@@ -14,5 +14,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 	.database()
 // ✅ SUCCESS: array_prepend function
+
 const result = await db.query(`select array_prepend('first', tags) as prepended from items;`)
-type _check = Expect<Matches<typeof result, Array<{ prepended: unknown }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			prepended: unknown
+		}>
+	>
+>

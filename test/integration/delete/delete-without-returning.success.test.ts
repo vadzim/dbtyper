@@ -13,5 +13,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text);`)
 	.database()
 // ✅ SUCCESS: DELETE without RETURNING
+
 const result = await db.query(`delete from users where id = '1';`)
+
 type _check = Expect<Matches<typeof result, unknown>>

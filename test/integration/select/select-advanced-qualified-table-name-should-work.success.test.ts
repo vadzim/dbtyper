@@ -16,5 +16,15 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text, email text);`)
 	.database()
 // ✅ SUCCESS: qualified table name should work
+
 const result = await db.query(`select id, name from public.users;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

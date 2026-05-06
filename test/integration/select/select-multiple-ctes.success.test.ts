@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: multiple CTEs
+
 const result = await db.query(
 	`with 
        active_users as (select * from users where id is not null),
@@ -22,4 +23,12 @@ const result = await db.query(
      select * from active_users 
      inner join user_posts on active_users.id = user_posts.user_id;`,
 )
-type _check = Expect<Matches<typeof result, { id: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: string
+		}[]
+	>
+>

@@ -14,7 +14,9 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ INSERT without RETURNING should be accepted by query()
+
 const result = await db.query(`insert into users (id, name) values ('1', 'Alice');`)
 
 // Result type should be unknown
+
 type _check = Expect<Matches<typeof result, unknown>>

@@ -24,9 +24,19 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Enum in GROUP BY
+
 const result = await db.query(`
 		select task_status, count(*) as cnt
 		from tasks
 		group by task_status;
 	`)
-type _check = Expect<Matches<typeof result, { task_status: unknown; cnt: unknown }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			task_status: unknown
+			cnt: unknown
+		}[]
+	>
+>

@@ -14,5 +14,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 	.database()
 // Note: Cannot cast integer to uuid (uuid requires string) - runtime failure
+
 const result = await db.query(`select id::uuid from data;`)
-type _check = Expect<Matches<typeof result, { "?column?": string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			"?column?": string
+		}[]
+	>
+>

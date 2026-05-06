@@ -9,9 +9,9 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Multiple enum types in same schema
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive');`)
 	.apply(`create type priority as enum ('low', 'high');`)
 	.apply(`create type color as enum ('red', 'green', 'blue');`)
-	.database()

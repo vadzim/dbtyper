@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: DROP type from unknown schema
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`drop type ghost.status;`,
-	)
-	.database()
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`drop type ghost.status;`,
+)

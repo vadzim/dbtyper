@@ -14,5 +14,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 	.database()
 // ✅ SUCCESS: <@ (is contained by) operator
+
 const result = await db.query(`select tags <@ array['a','b','c'] as contained from items;`)
-type _check = Expect<Matches<typeof result, Array<{ contained: boolean }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			contained: boolean
+		}>
+	>
+>

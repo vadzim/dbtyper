@@ -13,7 +13,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text);`)
 	.database()
 // ✅ SUCCESS: INSERT multiple rows
+
 const result = await db.query(
 	`insert into users (id, name) values ('1', 'Alice'), ('2', 'Bob'), ('3', 'Charlie') returning *;`,
 )
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

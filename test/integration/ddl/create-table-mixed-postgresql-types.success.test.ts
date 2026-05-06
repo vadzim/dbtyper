@@ -9,6 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: mixed types in one table
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
@@ -21,7 +22,9 @@ const db = sqlMigrations({ driver: mockDriver })
 			);`,
 	)
 	.database()
+
 const result = await db.query(`select id, created, data, duration, ip from mixed_types;`)
+
 type _check = Expect<
 	Matches<typeof result, { id: unknown; created: unknown; data: unknown; duration: unknown; ip: unknown }[]>
 >

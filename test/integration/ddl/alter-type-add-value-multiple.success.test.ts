@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: ALTER TYPE ADD VALUE multiple times
-sqlMigrations({ driver: mockDriver })
+
+const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active');`)
 	.apply(`alter type status add value 'inactive';`)
 	.apply(`alter type status add value 'pending';`)
 	.apply(`alter type status add value 'archived';`)
-	.database()

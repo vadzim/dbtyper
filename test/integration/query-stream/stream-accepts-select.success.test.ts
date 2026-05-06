@@ -14,7 +14,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SELECT should be accepted by stream()
+
 const result = await Array.fromAsync(await db.stream(`select id, name from users;`))
 
 // Stream should yield typed objects
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

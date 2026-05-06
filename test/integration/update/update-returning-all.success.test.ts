@@ -14,5 +14,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: RETURNING *
+
 const result = await db.query(`update users set name = 'Alice' where id = '1' returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; email: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			email: string
+		}>
+	>
+>

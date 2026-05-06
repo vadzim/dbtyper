@@ -9,6 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: IF NOT EXISTS and IF EXISTS combinations
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type if not exists status as enum ('active', 'inactive');`)
@@ -17,4 +18,3 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`alter type if exists missing add value 'value';`)
 	.apply(`drop type if exists status;`)
 	.apply(`drop type if exists missing;`)
-	.database()

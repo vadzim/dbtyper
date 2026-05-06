@@ -15,10 +15,20 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text);`)
 	.database()
 // ✅ SUCCESS: Subquery FROM scope shadows outer FROM scope
+
 const result = await db.query(`
 		select 
 			(select posts.id from users as posts) as inner_id,
 			posts.user_id as outer_user_id
 		from posts;
 	`)
-type _check = Expect<Matches<typeof result, { inner_id: string; outer_user_id: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			inner_id: string
+			outer_user_id: string
+		}[]
+	>
+>

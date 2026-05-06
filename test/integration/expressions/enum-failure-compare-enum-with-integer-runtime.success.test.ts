@@ -26,9 +26,11 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // Comparing enum with wrong type (runtime failure)
+
 const result = await db.query(`
 		select * from tasks where task_status = 123;
 	`)
+
 type _check = Expect<
 	Matches<
 		typeof result,

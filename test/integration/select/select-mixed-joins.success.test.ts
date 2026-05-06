@@ -16,6 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: mixed INNER and LEFT JOINs
+
 const result = await db.query(
 	`select users.name, posts.title, comments.content 
      from users 
@@ -23,4 +24,13 @@ const result = await db.query(
      left join comments on posts.id = comments.post_id;`,
 )
 
-type _check = Expect<Matches<typeof result, { name: string; title: string; content: string }[]>>
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			title: string
+			content: string
+		}[]
+	>
+>

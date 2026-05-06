@@ -8,7 +8,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: CREATE TYPE IF NOT EXISTS (new type)
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type if not exists priority as enum ('low', 'medium', 'high');`)
-	.database()

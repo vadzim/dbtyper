@@ -9,6 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Enum types across multiple schemas
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create schema app;`)
@@ -19,4 +20,3 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`alter type public.status add value 'pending';`)
 	.apply(`alter type app.priority add value 'medium';`)
 	.apply(`alter type admin.role add value 'superadmin';`)
-	.database()

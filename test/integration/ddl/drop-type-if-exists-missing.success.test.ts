@@ -9,7 +9,5 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: DROP TYPE IF EXISTS (non-existing type, no-op)
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`drop type if exists missing;`)
-	.database()
+
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).apply(`drop type if exists missing;`)

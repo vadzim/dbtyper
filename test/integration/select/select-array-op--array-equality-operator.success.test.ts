@@ -14,5 +14,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 	.database()
 // ✅ SUCCESS: = (array equality) operator
+
 const result = await db.query(`select tags = array['a','b'] as equals from items;`)
-type _check = Expect<Matches<typeof result, Array<{ equals: boolean }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			equals: boolean
+		}>
+	>
+>

@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: Missing AS keyword
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`create type status enum ('active');`,
-	)
-	.database()
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`create type status enum ('active');`,
+)

@@ -15,5 +15,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 	.database()
 // ✅ SUCCESS: Basic FULL OUTER JOIN
+
 const result = await db.query(`select * from users full outer join orders on users.id = orders.user_id;`)
-type _check = Expect<Matches<typeof result, { id: number }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+		}[]
+	>
+>

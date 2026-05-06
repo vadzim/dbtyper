@@ -14,7 +14,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ DELETE with RETURNING should return typed array
+
 const result = await db.query(`delete from users where id = '1' returning id, name;`)
 
 // Result type should be Array<{ id: string; name: string }>
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

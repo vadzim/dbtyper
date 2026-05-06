@@ -85,9 +85,7 @@ describe("Integration test files correctness", async () => {
 				if (content.includes(".query(") || content.includes(".stream(")) {
 					await it(`the file ${file} must have a type check for the result because it tests success and uses .query() or .stream()`, async () => {
 						// Accept both single-line and multi-line formats (prettier may format differently)
-						const hasTypeCheck =
-							content.includes("type _check = Expect<Matches<typeof result,") ||
-							/type _check = Expect<\s*Matches<\s*typeof result,/.test(content)
+						const hasTypeCheck = /\btype _check = Expect<\s*Matches<\s*typeof result,/.test(content)
 						assert.ok(
 							hasTypeCheck,
 							"Success test files must have a type check in the form (`type _check = Expect<Matches<typeof result, ...`). For testing .stream(..) use `const result = await Array.fromAsync(await db.stream(`",

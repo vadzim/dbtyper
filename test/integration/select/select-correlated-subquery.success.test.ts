@@ -14,7 +14,18 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text, created_at text);`)
 	.database()
 // ✅ SUCCESS: correlated subquery
+
 const result = await db.query(
 	`select * from posts p1 where exists (select 1 from posts p2 where p2.user_id = p1.user_id);`,
 )
-type _check = Expect<Matches<typeof result, { id: string; user_id: string; created_at: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: string
+			user_id: string
+			created_at: string
+		}[]
+	>
+>

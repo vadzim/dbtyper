@@ -14,5 +14,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text);`)
 	.database()
 // ✅ SUCCESS: scalar subquery in SELECT (non-correlated)
+
 const result = await db.query(`select id, name, (select count(*) from posts) as post_count from users;`)
-type _check = Expect<Matches<typeof result, { name: string; id: string; post_count: bigint }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			id: string
+			post_count: bigint
+		}[]
+	>
+>

@@ -14,5 +14,15 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text);`)
 	.database()
 // ✅ SUCCESS: subquery in WHERE with IN
+
 const result = await db.query(`select * from users where id in (select user_id from posts);`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

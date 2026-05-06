@@ -9,7 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Single enum value
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type singleton as enum ('only');`)
-	.database()

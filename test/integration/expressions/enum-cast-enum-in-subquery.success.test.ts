@@ -24,12 +24,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Enum in subquery
+
 const result = await db.query(`
 		select * from tasks
 		where task_status in (
 			select task_status from tasks where id = 1
 		);
 	`)
+
 type _check = Expect<
 	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >

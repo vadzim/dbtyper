@@ -14,7 +14,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SELECT should return typed array
+
 const result = await db.query(`select id, name from users;`)
 
 // Result type should be Array<{ id: string; name: string }>
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

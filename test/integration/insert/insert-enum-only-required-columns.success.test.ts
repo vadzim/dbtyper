@@ -26,11 +26,13 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Insert with only required columns
 // ✅ SUCCESS: Insert with only required columns
+
 const result = await db.query(`
 		insert into tasks (id, name, task_status)
 		values (3, 'Task 3', 'inactive')
 		returning *;
 	`)
+
 type _check = Expect<
 	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >

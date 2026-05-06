@@ -9,6 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Multiple enum types with different lifecycles
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive');`)
@@ -17,4 +18,3 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`alter type priority add value 'medium';`)
 	.apply(`drop type status;`)
 	.apply(`create type status as enum ('new', 'old');`)
-	.database()

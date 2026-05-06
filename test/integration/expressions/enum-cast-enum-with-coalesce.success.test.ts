@@ -24,8 +24,18 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Enum with COALESCE
+
 const result = await db.query(`
 		select id, coalesce(task_priority, 'low'::priority) as effective_priority
 		from tasks;
 	`)
-type _check = Expect<Matches<typeof result, Array<{ id: number; effective_priority: unknown }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: number
+			effective_priority: unknown
+		}>
+	>
+>

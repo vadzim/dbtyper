@@ -14,5 +14,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: RETURNING *
+
 const result = await db.query(`delete from users returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; email: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			email: string
+		}>
+	>
+>

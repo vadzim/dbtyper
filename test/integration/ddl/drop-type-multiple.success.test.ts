@@ -9,10 +9,10 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: DROP multiple types
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive');`)
 	.apply(`create type priority as enum ('low', 'high');`)
 	.apply(`drop type status;`)
 	.apply(`drop type priority;`)
-	.database()

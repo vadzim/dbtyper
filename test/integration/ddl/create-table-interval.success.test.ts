@@ -9,9 +9,20 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: interval (time intervals)
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table durations (id integer not null, duration interval not null);`)
 	.database()
+
 const result = await db.query(`select id, duration from durations;`)
-type _check = Expect<Matches<typeof result, { id: number; duration: unknown }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			duration: unknown
+		}[]
+	>
+>

@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: Empty enum values
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`create type empty as enum ();`,
-	)
-	.database()
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`create type empty as enum ();`,
+)

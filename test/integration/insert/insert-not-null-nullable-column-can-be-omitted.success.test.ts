@@ -14,5 +14,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text not null, name text not null, email text);`)
 	.database()
 // ✅ SUCCESS: nullable column can be omitted
+
 const result = await db.query(`insert into users (id, name, email) values ('2', 'Bob', null) returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; email: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			email: string
+		}>
+	>
+>

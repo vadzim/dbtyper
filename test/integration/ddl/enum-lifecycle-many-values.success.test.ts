@@ -9,6 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Enum with many values
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type day_of_week as enum ('monday', 'tuesday', 'wednesday');`)
@@ -16,4 +17,3 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`alter type day_of_week add value 'friday';`)
 	.apply(`alter type day_of_week add value 'saturday';`)
 	.apply(`alter type day_of_week add value 'sunday';`)
-	.database()

@@ -15,5 +15,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table priorities (value integer not null);`)
 	.database()
 // ✅ SUCCESS: <> ANY with array
+
 const result = await db.query(`select * from items where id <> any(array[1,2,3]);`)
-type _check = Expect<Matches<typeof result, { id: number; tags: unknown; priority: number }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			tags: unknown
+			priority: number
+		}[]
+	>
+>

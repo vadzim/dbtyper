@@ -8,9 +8,9 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Add value with special characters
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active');`)
 	.apply(`alter type status add value 'in-progress';`)
 	.apply(`alter type status add value 'waiting_approval';`)
-	.database()

@@ -14,5 +14,15 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table banned (user_id text);`)
 	.database()
 // DELETE...USING clause (PostgreSQL extension)
+
 const result = await db.query(`delete from users using banned where users.id = banned.user_id returning users.*;`)
-type _check = Expect<Matches<typeof result, { name: string; id: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			id: string
+		}[]
+	>
+>

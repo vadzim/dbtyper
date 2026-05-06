@@ -15,7 +15,18 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: ROW_NUMBER() with multiple ORDER BY columns
+
 const result = await db.query(
 	`select id, product, row_number() over (order by product, amount desc) as row_num from sales;`,
 )
-type _check = Expect<Matches<typeof result, { id: number; product: string; row_num: bigint }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			product: string
+			row_num: bigint
+		}[]
+	>
+>

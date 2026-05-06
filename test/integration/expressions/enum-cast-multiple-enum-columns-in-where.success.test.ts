@@ -24,10 +24,12 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Multiple enum columns in WHERE with AND
+
 const result = await db.query(`
 		select * from tasks
 		where task_status = 'active' and task_priority = 'high';
 	`)
+
 type _check = Expect<
 	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >

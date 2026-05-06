@@ -14,8 +14,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: RETURNING specific columns
+
 const result = await db.query(
 	`insert into users (id, name, email) values ('1', 'Alice', 'alice@example.com') returning id, name;`,
 )
 
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

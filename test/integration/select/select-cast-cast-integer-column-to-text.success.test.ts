@@ -14,5 +14,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 	.database()
 // ✅ SUCCESS: Cast integer column to text
+
 const result = await db.query(`select id::text as id_text from data;`)
-type _check = Expect<Matches<typeof result, Array<{ id_text: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id_text: string
+		}>
+	>
+>

@@ -13,5 +13,15 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text);`)
 	.database()
 // ✅ SUCCESS: DELETE without WHERE (deletes all rows)
+
 const result = await db.query(`delete from users returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+		}>
+	>
+>

@@ -13,5 +13,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text, age integer);`)
 	.database()
 // ✅ SUCCESS: UPDATE with complex WHERE
+
 const result = await db.query(`update users set name = 'Adult' where age >= 18 returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; age: number }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			age: number
+		}>
+	>
+>

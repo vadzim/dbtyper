@@ -14,5 +14,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users_backup (id text, name text);`)
 	.database()
 // INSERT...SELECT statement
+
 const result = await db.query(`insert into users_backup (id, name) select id, name from users;`)
+
 type _check = Expect<Matches<typeof result, unknown>>

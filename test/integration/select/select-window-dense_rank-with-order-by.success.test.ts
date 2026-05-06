@@ -15,5 +15,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: DENSE_RANK() with ORDER BY
+
 const result = await db.query(`select id, product, dense_rank() over (order by amount) as dense_rank_num from sales;`)
-type _check = Expect<Matches<typeof result, { id: number; product: string; dense_rank_num: bigint }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			product: string
+			dense_rank_num: bigint
+		}[]
+	>
+>

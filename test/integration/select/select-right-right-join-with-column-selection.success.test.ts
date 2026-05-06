@@ -15,7 +15,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 	.database()
 // ✅ SUCCESS: RIGHT JOIN with column selection
+
 const result = await db.query(
 	`select users.name, orders.total from users right join orders on users.id = orders.user_id;`,
 )
-type _check = Expect<Matches<typeof result, { name: string; total: number }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			total: number
+		}[]
+	>
+>

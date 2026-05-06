@@ -21,6 +21,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Basic CASE WHEN with boolean condition
+
 const result = await db.query(`
 		select
 			name,
@@ -30,4 +31,13 @@ const result = await db.query(`
 			end as category
 		from users;
 	`)
-type _check = Expect<Matches<typeof result, { name: string; category: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			category: string
+		}[]
+	>
+>

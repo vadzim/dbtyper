@@ -8,7 +8,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: CREATE TYPE with enum values
-sqlMigrations({ driver: mockDriver })
+
+const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
-	.database()

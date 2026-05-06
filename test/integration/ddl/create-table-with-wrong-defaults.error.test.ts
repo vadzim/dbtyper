@@ -8,11 +8,12 @@ const mockDriver = {
 }
 
 // ❌ ERROR: CREATE TABLE with wrong DEFAULT values should throw an error
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`create table users (
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`create table users (
 				id text not null,
 				name text not null,
 				email text,
@@ -20,5 +21,4 @@ const db = sqlMigrations({ driver: mockDriver })
 				active boolean default true,
 				created_at timestamp default now()
 			);`,
-	)
-	.database()
+)

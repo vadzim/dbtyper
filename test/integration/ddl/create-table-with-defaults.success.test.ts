@@ -8,7 +8,8 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: CREATE TABLE with DEFAULT values should parse
-sqlMigrations({ driver: mockDriver })
+
+const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table users (
@@ -20,4 +21,3 @@ sqlMigrations({ driver: mockDriver })
 				created_at timestamp default now()
 			);`,
 	)
-	.database()

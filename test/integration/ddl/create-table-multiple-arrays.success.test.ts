@@ -9,11 +9,24 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: multiple array columns
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table multi (id integer not null, tags text[] not null, scores integer[] not null, flags boolean[] not null);`,
 	)
 	.database()
+
 const result = await db.query(`select id, tags, scores, flags from multi;`)
-type _check = Expect<Matches<typeof result, { id: number; tags: unknown; flags: unknown; scores: unknown }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			tags: unknown
+			flags: unknown
+			scores: unknown
+		}[]
+	>
+>

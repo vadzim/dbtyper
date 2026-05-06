@@ -16,7 +16,19 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: Multiple window functions in same query
+
 const result = await db.query(
 	`select id, product, row_number() over (order by amount) as row_num, rank() over (order by amount) as rank_num from sales;`,
 )
-type _check = Expect<Matches<typeof result, { id: number; product: string; row_num: bigint; rank_num: bigint }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			product: string
+			row_num: bigint
+			rank_num: bigint
+		}[]
+	>
+>

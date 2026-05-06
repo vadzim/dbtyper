@@ -13,7 +13,18 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text, email text);`)
 	.database()
 // ✅ SUCCESS: UPDATE multiple columns
+
 const result = await db.query(
 	`update users set name = 'Alice', email = 'alice@example.com' where id = '1' returning *;`,
 )
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; email: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			email: string
+		}>
+	>
+>

@@ -9,9 +9,21 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: inet and cidr (network addresses)
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table hosts (id integer not null, ip inet not null, subnet cidr not null);`)
 	.database()
+
 const result = await db.query(`select id, ip, subnet from hosts;`)
-type _check = Expect<Matches<typeof result, { id: number; ip: unknown; subnet: unknown }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			ip: unknown
+			subnet: unknown
+		}[]
+	>
+>

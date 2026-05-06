@@ -14,5 +14,15 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table roles (id text, role_name text);`)
 	.database()
 // ✅ SUCCESS: CROSS JOIN (Cartesian product)
+
 const result = await db.query(`select users.name, roles.role_name from users cross join roles;`)
-type _check = Expect<Matches<typeof result, { name: string; role_name: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			name: string
+			role_name: string
+		}[]
+	>
+>

@@ -15,8 +15,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text);`)
 	.database()
 // ✅ SUCCESS: CTE shadows table with same name
+
 const result = await db.query(`
 		with users as (select id from posts)
 		select id from users;
 	`)
-type _check = Expect<Matches<typeof result, Array<{ id: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+		}>
+	>
+>

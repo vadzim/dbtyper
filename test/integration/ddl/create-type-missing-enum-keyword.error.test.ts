@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: Missing ENUM keyword
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`create type status as ('active');`,
-	)
-	.database()
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`create type status as ('active');`,
+)

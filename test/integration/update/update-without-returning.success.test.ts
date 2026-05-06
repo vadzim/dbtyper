@@ -13,5 +13,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text);`)
 	.database()
 // ✅ SUCCESS: UPDATE without RETURNING
+
 const result = await db.query(`update users set name = 'Bob' where id = '1';`)
+
 type _check = Expect<Matches<typeof result, unknown>>

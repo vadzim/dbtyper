@@ -21,6 +21,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: CASE in WHERE clause
+
 const result = await db.query(`
 		select * from users
 		where case
@@ -28,4 +29,15 @@ const result = await db.query(`
 			else true
 		end;
 	`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; name: string; age: number; active: boolean }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			name: string
+			age: number
+			active: boolean
+		}>
+	>
+>

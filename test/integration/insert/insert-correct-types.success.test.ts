@@ -17,5 +17,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, age integer, active boolean);`)
 	.database()
 // ✅ SUCCESS: correct types
+
 const result = await db.query(`insert into users (id, age, active) values ('1', 25, true) returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; age: number; active: boolean }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			age: number
+			active: boolean
+		}>
+	>
+>

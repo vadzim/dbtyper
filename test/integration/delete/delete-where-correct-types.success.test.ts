@@ -13,5 +13,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, age integer, active boolean);`)
 	.database()
 // ✅ SUCCESS: correct types in WHERE
+
 const result = await db.query(`delete from users returning *;`)
-type _check = Expect<Matches<typeof result, Array<{ id: string; age: number; active: boolean }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: string
+			age: number
+			active: boolean
+		}>
+	>
+>

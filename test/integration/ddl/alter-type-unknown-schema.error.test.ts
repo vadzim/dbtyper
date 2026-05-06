@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: ALTER type from unknown schema
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`alter type ghost.status add value 'new';`,
-	)
-	.database()
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`alter type ghost.status add value 'new';`,
+)

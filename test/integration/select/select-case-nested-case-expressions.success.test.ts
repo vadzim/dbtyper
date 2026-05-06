@@ -21,6 +21,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Nested CASE expressions
+
 const result = await db.query(`
 		select
 			name,
@@ -33,4 +34,13 @@ const result = await db.query(`
 			end as status
 		from users;
 	`)
-type _check = Expect<Matches<typeof result, Array<{ name: string; status: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			name: string
+			status: string
+		}>
+	>
+>

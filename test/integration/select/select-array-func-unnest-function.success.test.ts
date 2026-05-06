@@ -14,5 +14,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 	.database()
 // ✅ SUCCESS: unnest function
+
 const result = await db.query(`select unnest(tags) as tag from items;`)
-type _check = Expect<Matches<typeof result, Array<{ tag: unknown }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			tag: unknown
+		}>
+	>
+>

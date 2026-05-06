@@ -15,8 +15,17 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id text, user_id text);`)
 	.database()
 // ✅ SUCCESS: Derived table alias shadows table name
+
 const result = await db.query(`
 		select posts.derived_col 
 		from (select 'test' as derived_col from users) as posts;
 	`)
-type _check = Expect<Matches<typeof result, { derived_col: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			derived_col: string
+		}[]
+	>
+>

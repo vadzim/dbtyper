@@ -9,6 +9,7 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: Complex migration scenario
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type old_status as enum ('active', 'inactive');`)
@@ -16,4 +17,3 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`alter type new_status add value 'pending';`)
 	.apply(`drop type old_status;`)
 	.apply(`create type status as enum ('live', 'archived');`)
-	.database()

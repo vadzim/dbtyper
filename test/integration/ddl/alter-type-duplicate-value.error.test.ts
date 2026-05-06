@@ -8,11 +8,12 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: Add duplicate value
-const db = sqlMigrations({ driver: mockDriver })
+
+const migrations = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive');`)
-	.apply(
-		// @ts-expect-error
-		`alter type status add value 'active';`,
-	)
-	.database()
+
+migrations.apply(
+	// @ts-expect-error
+	`alter type status add value 'active';`,
+)

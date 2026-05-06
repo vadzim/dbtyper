@@ -26,8 +26,10 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // Invalid enum value (runtime failure)
+
 const result = await db.query(`
 		insert into tasks (id, name, task_status)
 		values (3, 'Task', 'invalid_value');
 	`)
+
 type _check = Expect<Matches<typeof result, unknown>>

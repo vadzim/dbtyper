@@ -14,9 +14,19 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: self-join
+
 const result = await db.query(
 	`select u1.name as employee, u2.name as manager 
      from users u1 
      left join users u2 on u1.manager_id = u2.id;`,
 )
-type _check = Expect<Matches<typeof result, { employee: string; manager: string }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			employee: string
+			manager: string
+		}[]
+	>
+>

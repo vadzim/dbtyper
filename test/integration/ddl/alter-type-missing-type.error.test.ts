@@ -8,10 +8,10 @@ const mockDriver = {
 }
 
 // ❌ FAILURE: ALTER non-existing type
-sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		// @ts-expect-error
-		`alter type missing add value 'new';`,
-	)
-	.database()
+
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+
+migrations.apply(
+	// @ts-expect-error
+	`alter type missing add value 'new';`,
+)

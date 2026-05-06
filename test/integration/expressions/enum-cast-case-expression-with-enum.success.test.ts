@@ -24,6 +24,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: CASE expression with enum
+
 const result = await db.query(`
 		select
 			id,
@@ -34,4 +35,13 @@ const result = await db.query(`
 			end as status_label
 		from tasks;
 	`)
-type _check = Expect<Matches<typeof result, Array<{ id: number; status_label: string }>>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		Array<{
+			id: number
+			status_label: string
+		}>
+	>
+>

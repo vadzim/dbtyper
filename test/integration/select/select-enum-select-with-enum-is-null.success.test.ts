@@ -25,8 +25,10 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 // ✅ SUCCESS: Select with enum IS NULL
+
 const result = await db.query(`select * from tasks
 		where task_priority is null;`)
+
 type _check = Expect<
 	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >

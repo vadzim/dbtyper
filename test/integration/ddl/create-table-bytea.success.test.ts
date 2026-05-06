@@ -9,9 +9,20 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: bytea (binary data)
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table files (id integer not null, data bytea not null);`)
 	.database()
+
 const result = await db.query(`select id, data from files;`)
-type _check = Expect<Matches<typeof result, { id: number; data: unknown }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			data: unknown
+		}[]
+	>
+>

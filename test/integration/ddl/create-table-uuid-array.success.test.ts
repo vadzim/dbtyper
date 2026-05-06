@@ -9,9 +9,20 @@ const mockDriver = {
 }
 
 // ✅ SUCCESS: uuid array
+
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table refs (id integer not null, uuids uuid[] not null);`)
 	.database()
+
 const result = await db.query(`select id, uuids from refs;`)
-type _check = Expect<Matches<typeof result, { id: number; uuids: unknown }[]>>
+
+type _check = Expect<
+	Matches<
+		typeof result,
+		{
+			id: number
+			uuids: unknown
+		}[]
+	>
+>

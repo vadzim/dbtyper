@@ -26,11 +26,13 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Integer value for enum column (runtime failure, not compile-time)
 // Integer value for enum column (runtime failure, not compile-time)
+
 const result = await db.query(`
 		insert into tasks (id, name, task_status)
 		values (6, 'Task 6', 123)
 		returning *;
 	`)
+
 type _check = Expect<
 	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >
