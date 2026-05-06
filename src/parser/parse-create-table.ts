@@ -57,7 +57,7 @@ type ParseCreateTableQualifiedWhenNameOk<
 	Sch extends string,
 	Tab extends string,
 > =
-	JsqlDbGetSchema<Db, Sch> extends infer Schema extends JsqlSchemaShape
+	JsqlDbGetSchema<Db, Sch> extends JsqlSchemaShape
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never

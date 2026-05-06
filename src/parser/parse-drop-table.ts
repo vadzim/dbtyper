@@ -1,5 +1,5 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetSchema, JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -13,9 +13,6 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 				: [A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP TABLE">]
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
-
-/** `DROP TABLE` may only remove a relation whose `kind` is `"table"`. */
-type IsDroppableTableEntry<E> = E extends JsqlDataShape ? (E["kind"] extends "table" ? true : false) : false
 
 /** After `schema.` in qualified `DROP TABLE schema.table`. */
 type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
