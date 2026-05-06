@@ -396,13 +396,9 @@ type FinishUpdateSemicolon<
 	Res extends JsqlUpdateStatementResult,
 	Returning extends JsqlSelectStatementResult | null,
 > =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer AfterSemi extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? [AfterSemi, Db, Returning extends null ? Res : Returning]
-				: [AfterSemi, Db, SqlParserError<"Expected `;` after UPDATE">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? [SkipToken<Tokens>, Db, Returning extends null ? Res : Returning]
+		: [Tokens, Db, SqlParserError<"Expected `;` after UPDATE">]
 
 type ParseUpdateAfterTableRef<
 	Tokens extends TokensList,

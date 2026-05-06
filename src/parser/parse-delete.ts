@@ -215,13 +215,9 @@ type FinishDeleteSemicolon<
 	Db extends JsqlDatabaseShape,
 	Returning extends JsqlSelectStatementResult | null,
 > =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer AfterSemi extends TokensList
-			? Tok extends TokenKey<";"> | TokenEot
-				? [AfterSemi, Db, Returning]
-				: [AfterSemi, Db, SqlParserError<"Expected `;` after DELETE">]
-			: never
-		: never
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? [SkipToken<Tokens>, Db, Returning]
+		: [Tokens, Db, SqlParserError<"Expected `;` after DELETE">]
 
 type ParseDeleteFromTableRef<
 	Tokens extends TokensList,
