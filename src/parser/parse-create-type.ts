@@ -1,6 +1,4 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type { I } from "../core/type-utils.ts"
-import type { MergeTypeIntoDb } from "../core/jsql-utils-legacy.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -12,7 +10,7 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlGetSchema, JsqlGetType } from "../core/jsql-utils.ts"
+import type { JsqlGetSchema, JsqlGetType, JsqlDbReplaceEnum, JsqlReplaceSchema } from "../core/jsql-utils.ts"
 
 export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -147,8 +145,10 @@ type ParseEnumValues<
 				: Tok extends TokenKey<")">
 					? Stack extends readonly []
 						? [R, Db, SqlParserError<"Empty enum values list in CREATE TYPE">]
-						: MergeTypeIntoDb<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
-							? ParseCreateTypeCloseSemi<R, NewDb>
+						: JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewSchema extends JsqlSchemaShape
+							? JsqlReplaceSchema<Db, Schema, NewSchema> extends infer NewDb extends JsqlDatabaseShape
+								? ParseCreateTypeCloseSemi<R, NewDb>
+								: never
 							: never
 					: [R, Db, SqlParserError<"Expected string literal for enum value in CREATE TYPE">]
 			: never
@@ -166,8 +166,10 @@ type ParseAfterEnumValue<
 			? Tok extends TokenKey<",">
 				? ParseEnumValues<R, Db, Schema, TypeName, Stack>
 				: Tok extends TokenKey<")">
-					? MergeTypeIntoDb<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
-						? ParseCreateTypeCloseSemi<R, NewDb>
+					? JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewSchema extends JsqlSchemaShape
+						? JsqlReplaceSchema<Db, Schema, NewSchema> extends infer NewDb extends JsqlDatabaseShape
+							? ParseCreateTypeCloseSemi<R, NewDb>
+							: never
 						: never
 					: [R, Db, SqlParserError<"Expected `,` or `)` after enum value in CREATE TYPE">]
 			: never
