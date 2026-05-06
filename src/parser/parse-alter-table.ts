@@ -2,6 +2,8 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlColumnFacts
 import type { I } from "../core/type-utils.ts"
 import type {
 	JsqlDbGetSchema,
+	JsqlDbGetTable,
+	JsqlDbGetData,
 	JsqlDbReplaceData,
 	JsqlSchemaGetData,
 	JsqlSchemaGetTable,
@@ -387,7 +389,7 @@ type ParseAlterOneAction<
 	Sch extends string,
 	Tab extends string,
 > =
-	JsqlSchemaGetTable<JsqlDbGetSchema<Db, Sch>, Tab> extends infer Tbl extends JsqlDataShape<"table">
+	JsqlDbGetTable<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape<"table">
 		? PeekToken<Tokens> extends TokenKey<"add">
 			? ParseAlterAddColumn<Tokens, Db, Sch, Tab, Tbl>
 			: PeekToken<Tokens> extends TokenKey<"drop">
@@ -397,7 +399,7 @@ type ParseAlterOneAction<
 					: PeekToken<Tokens> extends TokenKey<"alter">
 						? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab, Tbl>
 						: [Tokens, Db, SqlParserError<"Unsupported ALTER TABLE action">]
-		: JsqlSchemaGetData<JsqlDbGetSchema<Db, Sch>, Tab> extends null
+		: JsqlDbGetData<Db, Sch, Tab> extends null
 			? [Tokens, Db, SqlParserError<"Table key mismatch in ALTER TABLE">]
 			: [Tokens, Db, SqlParserError<"ALTER TABLE applies only to base tables">]
 
