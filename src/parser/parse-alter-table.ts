@@ -10,7 +10,7 @@ import type {
 	JsqlTableReplaceColumn,
 	JsqlCreateColumn,
 	JsqlTableGetColumn,
-	JsqlDataGetColumnType,
+	JsqlDbGetColumnType,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
@@ -63,7 +63,7 @@ type ParseAlterAddColumnAfterColName<
 							infer R3 extends TokensList,
 							infer J2 extends string,
 					  ]
-					? JsqlDataGetColumnType<Tbl, Col> extends null
+					? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 						? ParseAlterActions<
 								R3,
 								JsqlDbReplaceData<Db, Sch, Tab, JsqlTableReplaceColumn<Tbl, Col, JsqlCreateColumn<J2>>>,
@@ -137,7 +137,7 @@ type ParseAlterDropColumn<
 	PeekToken<Tokens> extends TokenKey<"drop">
 		? ParseOptionalColumnKeyword<SkipToken<Tokens>> extends [infer R1 extends TokensList, null]
 			? PeekToken<R1> extends TokenIdent<infer Col extends string>
-				? JsqlDataGetColumnType<Tbl, Col> extends null
+				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 					? [SkipToken<R1>, Db, SqlParserError<"Column does not exist">]
 					: JsqlTableReplaceColumn<Tbl, Col, null> extends infer U extends JsqlDataShape<"table">
 						? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
@@ -157,9 +157,9 @@ type ParseAlterRenameAfterToKw<
 	PeekToken<R2> extends TokenKey<"to">
 		? SkipToken<R2> extends infer R3 extends TokensList
 			? PeekToken<R3> extends TokenIdent<infer New extends string>
-				? JsqlDataGetColumnType<Tbl, Old> extends null
+				? JsqlDbGetColumnType<Db, Sch, Tab, Old> extends null
 					? [SkipToken<R3>, Db, SqlParserError<"Column does not exist">]
-					: JsqlDataGetColumnType<Tbl, New> extends null
+					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
 						? JsqlTableReplaceColumn<
 								JsqlTableReplaceColumn<Tbl, Old, null>,
 								New,
