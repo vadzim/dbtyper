@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "./jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape, JsqlTypeShape } from "./jsql-shapes.ts"
 import type { ReplaceProp } from "./type-utils.ts"
 
 export type JsqlGetSchema<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"]
@@ -80,14 +80,14 @@ export type JsqlDbRemoveSet<Db extends JsqlDatabaseShape, Schema extends string,
 export type JsqlReplaceType<
 	Schema extends JsqlSchemaShape | null,
 	Name extends string,
-	Type extends JsqlTableShape,
+	Type extends JsqlTypeShape,
 > = Schema extends JsqlSchemaShape ? ReplaceProp<Schema, "types", ReplaceProp<Schema["types"], Name, Type>> : null
 
 export type JsqlDbReplaceType<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Name extends string,
-	Type extends JsqlTableShape,
+	Type extends JsqlTypeShape,
 > = JsqlReplaceType<JsqlGetSchema<Db, Schema>, Name, Type>
 
 export type JsqlRemoveType<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
@@ -99,19 +99,8 @@ export type JsqlDbRemoveType<Db extends JsqlDatabaseShape, Schema extends string
 	Name
 >
 
-export type JsqlGetEnum<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
-	? Schema["types"] extends infer Types
-		? Types extends Record<string, unknown>
-			? Name extends keyof Types
-				? Types[Name & keyof Types] extends infer T
-					? T extends { kind: "enum"; values: infer V }
-						? V
-						: null
-					: null
-				: null
-			: null
-		: null
-	: null
+export type JsqlGetEnum<Schema extends JsqlSchemaShape | null, Name extends string> =
+	JsqlGetType<Schema, Name> extends infer T ? (T extends { kind: "enum"; values: infer V } ? V : null) : null
 
 export type JsqlDbGetEnum<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlGetEnum<
 	JsqlGetSchema<Db, Schema>,
@@ -122,9 +111,7 @@ export type JsqlReplaceEnum<
 	Schema extends JsqlSchemaShape | null,
 	Name extends string,
 	Values extends readonly string[],
-> = Schema extends JsqlSchemaShape
-	? ReplaceProp<Schema, "types", ReplaceProp<Schema["types"], Name, { kind: "enum"; values: Values }>>
-	: null
+> = JsqlReplaceType<Schema, Name, { kind: "enum"; values: Values }>
 
 export type JsqlDbReplaceEnum<
 	Db extends JsqlDatabaseShape,
@@ -133,9 +120,7 @@ export type JsqlDbReplaceEnum<
 	Values extends readonly string[],
 > = JsqlReplaceEnum<JsqlGetSchema<Db, Schema>, Name, Values>
 
-export type JsqlRemoveEnum<Schema extends JsqlSchemaShape | null, Name extends string> = Schema extends JsqlSchemaShape
-	? ReplaceProp<Schema, "types", Omit<Schema["types"], Name>>
-	: null
+export type JsqlRemoveEnum<Schema extends JsqlSchemaShape | null, Name extends string> = JsqlRemoveType<Schema, Name>
 
 export type JsqlDbRemoveEnum<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> = JsqlRemoveEnum<
 	JsqlGetSchema<Db, Schema>,
