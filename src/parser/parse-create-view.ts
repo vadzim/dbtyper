@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -69,7 +69,7 @@ type MergeViewIntoDb<
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Schema
 					? {
-							sets: Db["schemas"][K]["sets"] &
+							sets: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"] &
 								Record<
 									Name,
 									{
@@ -109,7 +109,7 @@ type ParseCreateViewSelectAndSemi<
 	Vname extends string,
 	Params extends ExpressionParamsShape,
 > =
-	HasConcreteSet<Db["schemas"][Sch]["sets"], Vname> extends true
+	HasConcreteSet<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Vname> extends true
 		? [R2, Db, SqlParserError<"View or table already exists in schema">]
 		: ParseSelect<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
 			? Res extends SqlParserError<string>

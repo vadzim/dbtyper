@@ -1,15 +1,18 @@
+/** Helper to index shape types safely without causing "too deep" recursion. */
+export type I<T, K extends string, R = {}> = K extends keyof T ? T[K] & R : R
+
 export type JsqlDatabaseShape = {
 	defaultSchema: string
-	schemas: Record<string, JsqlSchemaShape>
+	schemas: {}
 	/** Typed SQL function names → SQL return type strings (e.g., "integer", "text"). Keys as used in SQL after identifier normalization, typically lowercase. */
-	functions?: Record<string, string> | undefined
+	functions?: {} | undefined
 }
 
 export type JsqlSchemaShape = {
 	/** Named relations in the schema (base tables and views). */
-	sets: Record<string, JsqlTableShape>
+	sets: {}
 	/** Named types in the schema (enums, etc.). */
-	types?: Record<string, JsqlTypeShape>
+	types?: {}
 }
 
 export type JsqlTypeShape = {
@@ -22,15 +25,15 @@ export type JsqlTableShape = {
 	kind: "table" | "view"
 	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
 	columns: Record<string, string>
-	constraints?: JsqlConstraintMap
-	column_facts?: JsqlColumnFactsMap
+	constraints?: {}
+	column_facts?: {}
 }
 
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
 export type JsqlSelectStatementResult = {
 	kind: "select"
 	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
-	columns: { [K: string]: string }
+	columns: {}
 }
 
 /** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */
@@ -59,8 +62,6 @@ export type JsqlConstraintEntry =
 	| { kind: "unique"; columns: string[] }
 	| { kind: "foreign_key"; refs: JsqlForeignKeyRef }
 
-export type JsqlConstraintMap = { [K: string]: JsqlConstraintEntry }
-
 export type JsqlColumnFactsEntry = {
 	default?: true
 	check?: true
@@ -70,8 +71,6 @@ export type JsqlColumnFactsEntry = {
 	/** Set by `ALTER COLUMN … DROP NOT NULL`. */
 	nullable?: true
 }
-
-export type JsqlColumnFactsMap = { [K: string]: JsqlColumnFactsEntry }
 
 export type JsqlForeignKeyRef = {
 	from: string

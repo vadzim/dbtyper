@@ -1857,14 +1857,18 @@ type ResolveInListItemsAgainstLeft<
 type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? ExprOk<S["columns"][K] | null, S["columns"][K]>
+			? S["columns"][K] extends infer ColType extends string
+				? ExprOk<ColType | null, ColType>
+				: SqlParserError<"Scalar subquery column inference failed">
 			: SqlParserError<"Scalar subquery column inference failed">
 		: SqlParserError<"Scalar subquery must project exactly one column">
 
 type SubSelectColumnAtom<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? ExprOk<S["columns"][K], S["columns"][K]>
+			? S["columns"][K] extends infer ColType extends string
+				? ExprOk<ColType, ColType>
+				: SqlParserError<"IN subquery column inference failed">
 			: SqlParserError<"IN subquery column inference failed">
 		: SqlParserError<"IN subquery must project exactly one column">
 

@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTableShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -20,13 +20,9 @@ type HasConcreteSet<Sets extends object, Tab extends string> = string extends ke
 		? true
 		: false
 
-type SetEntry<
-	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"],
-	Tab extends string,
-> = Sch extends keyof Db["schemas"]
-	? Tab extends keyof Db["schemas"][Sch]["sets"]
-		? Db["schemas"][Sch]["sets"][Tab]
+type SetEntry<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"], Tab extends string> = Sch extends string
+	? Tab extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"]
+		? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"][Tab]
 		: never
 	: never
 
@@ -86,7 +82,7 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		? E extends null
 			? Sch extends keyof Db["schemas"]
 				? IfExists extends true
-					? HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
+					? HasConcreteSet<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> extends true
 						? IsDroppableTableEntry<SetEntry<Db, Sch & keyof Db["schemas"], Tab>> extends true
 							? RemoveTableFromDb<Db, Sch & keyof Db["schemas"], Tab> extends infer NewDb extends
 									JsqlDatabaseShape
@@ -94,7 +90,7 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 								: never
 							: FinishDropStatement<R, Db>
 						: FinishDropStatement<R, Db>
-					: HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
+					: HasConcreteSet<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> extends true
 						? IsDroppableTableEntry<SetEntry<Db, Sch & keyof Db["schemas"], Tab>> extends true
 							? RemoveTableFromDb<Db, Sch & keyof Db["schemas"], Tab> extends infer NewDb extends
 									JsqlDatabaseShape
@@ -119,13 +115,18 @@ type RemoveTableFromDb<
 	Db extends JsqlDatabaseShape,
 	Sch extends keyof Db["schemas"],
 	Tab extends string,
-> = Tab extends keyof Db["schemas"][Sch]["sets"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Sch
-					? { sets: Omit<Db["schemas"][Sch]["sets"], Tab> } & Omit<Db["schemas"][Sch], "sets">
-					: Db["schemas"][K]
+> = Sch extends string
+	? Tab extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"]
+		? {
+				defaultSchema: Db["defaultSchema"]
+				schemas: {
+					[K in keyof Db["schemas"]]: K extends Sch
+						? { sets: Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> } & Omit<
+								I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>,
+								"sets"
+							>
+						: Db["schemas"][K]
+				}
 			}
-		}
+		: never
 	: never

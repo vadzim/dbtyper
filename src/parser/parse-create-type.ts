@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -49,7 +49,7 @@ type ParseCreateTypeQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Typ extends string,
 > =
-	HasConcreteType<Db["schemas"][Sch]["types"], Typ> extends true
+	HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
 		? IfNotExists extends true
 			? ParseCreateTypeAsEnum<R, Db, Sch, Typ, true>
 			: [R, Db, SqlParserError<"Type already exists; use IF NOT EXISTS">]
@@ -93,7 +93,7 @@ type ParseCreateTypeAsEnum<
 						? EnumTok extends TokenKey<"enum">
 							? IfNotExists extends true
 								? HasConcreteType<
-										Db["schemas"][Schema & keyof Db["schemas"]]["types"],
+										I<I<Db, "schemas", {}>, Schema & keyof Db["schemas"], JsqlSchemaShape>["types"],
 										TypeName
 									> extends true
 									? ParseCreateTypeSkipEnumBody<AfterEnum, Db>
@@ -207,9 +207,11 @@ type MergeTypeIntoDb<
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Schema
 					? {
-							types: (Db["schemas"][K]["types"] extends object ? Db["schemas"][K]["types"] : {}) &
+							types: (I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"] extends object
+								? I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["types"]
+								: {}) &
 								Record<TypeName, { kind: "enum"; values: Values }>
-						} & Omit<Db["schemas"][K], "types">
+						} & Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>, "types">
 					: Db["schemas"][K]
 			}
 		}

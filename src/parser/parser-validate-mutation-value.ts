@@ -1,9 +1,9 @@
-import type { JsqlColumnFactsMap, JsqlTableShape } from "../core/jsql-shapes.ts"
+import type { JsqlColumnFactsEntry, JsqlTableShape } from "../core/jsql-shapes.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ExprAtom, ExprOk, ExprSqlNull, SameComparisonClass } from "./parse-expression.ts"
 
 type InsertColNotNull<Tbl extends JsqlTableShape, Col extends string> = Tbl extends {
-	column_facts: infer F extends JsqlColumnFactsMap
+	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
 }
 	? Col extends keyof F
 		? F[Col] extends { not_null: true }

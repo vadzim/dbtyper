@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -29,14 +29,10 @@ type HasConcreteType<Types extends object | undefined, Typ extends string> = Typ
 		: false
 	: false
 
-type TypeEntry<
-	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"],
-	Typ extends string,
-> = Sch extends keyof Db["schemas"]
-	? Db["schemas"][Sch]["types"] extends object
-		? Typ extends keyof Db["schemas"][Sch]["types"]
-			? Db["schemas"][Sch]["types"][Typ]
+type TypeEntry<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"], Typ extends string> = Sch extends string
+	? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"] extends object
+		? Typ extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"]
+			? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"][Typ]
 			: never
 		: never
 	: never
@@ -83,14 +79,14 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 		? E extends null
 			? Sch extends keyof Db["schemas"]
 				? IfExists extends true
-					? HasConcreteType<Db["schemas"][Sch]["types"], Typ> extends true
+					? HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
 						? TypeEntry<Db, Sch & keyof Db["schemas"], Typ> extends infer Entry
 							? Entry extends JsqlTypeShape
 								? ParseAlterTypeAction<R, Db, Sch & keyof Db["schemas"], Typ, Entry>
 								: [R, Db, SqlParserError<"Type does not exist or is not alterable">]
 							: never
 						: [R, Db, null]
-					: HasConcreteType<Db["schemas"][Sch]["types"], Typ> extends true
+					: HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
 						? TypeEntry<Db, Sch & keyof Db["schemas"], Typ> extends infer Entry
 							? Entry extends JsqlTypeShape
 								? ParseAlterTypeAction<R, Db, Sch & keyof Db["schemas"], Typ, Entry>
@@ -158,21 +154,27 @@ type UpdateTypeInDb<
 	Sch extends keyof Db["schemas"],
 	Typ extends string,
 	NewValues extends readonly string[],
-> = Db["schemas"][Sch]["types"] extends object
-	? Typ extends keyof Db["schemas"][Sch]["types"]
-		? {
-				defaultSchema: Db["defaultSchema"]
-				schemas: {
-					[K in keyof Db["schemas"]]: K extends Sch
-						? {
-								types: {
-									[T in keyof Db["schemas"][Sch]["types"]]: T extends Typ
-										? { kind: "enum"; values: NewValues }
-										: Db["schemas"][Sch]["types"][T]
-								}
-							} & Omit<Db["schemas"][Sch], "types">
-						: Db["schemas"][K]
+> = Sch extends string
+	? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"] extends object
+		? Typ extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"]
+			? {
+					defaultSchema: Db["defaultSchema"]
+					schemas: {
+						[K in keyof Db["schemas"]]: K extends Sch
+							? {
+									types: {
+										[T in keyof I<
+											I<Db, "schemas", {}>,
+											Sch,
+											JsqlSchemaShape
+										>["types"]]: T extends Typ
+											? { kind: "enum"; values: NewValues }
+											: I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"][T]
+									}
+								} & Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>, "types">
+							: Db["schemas"][K]
+					}
 				}
-			}
+			: never
 		: never
 	: never

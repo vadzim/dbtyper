@@ -49,9 +49,7 @@ export type ApplyParsedStatements<
 		? [Tokens, Db, Errors]
 		: ParseSqlStatement<Tokens, Db, Params> extends [infer Rest extends TokensList, infer NewDB, infer Result]
 			? Result extends SqlParserError<string>
-				? ParseSkipStatement<Rest, Db> extends [infer Rest2 extends TokensList, unknown, unknown]
-					? [Rest2, Db, Result]
-					: never
+				? [Rest, Db, Result]
 				: NewDB extends JsqlDatabaseShape
 					? ApplyParsedStatements<Rest, NewDB, Params, Errors>
 					: never

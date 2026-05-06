@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
@@ -21,14 +21,10 @@ type HasConcreteType<Types extends object | undefined, Typ extends string> = Typ
 		: false
 	: false
 
-type TypeEntry<
-	Db extends JsqlDatabaseShape,
-	Sch extends keyof Db["schemas"],
-	Typ extends string,
-> = Sch extends keyof Db["schemas"]
-	? Db["schemas"][Sch]["types"] extends object
-		? Typ extends keyof Db["schemas"][Sch]["types"]
-			? Db["schemas"][Sch]["types"][Typ]
+type TypeEntry<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"], Typ extends string> = Sch extends string
+	? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"] extends object
+		? Typ extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"]
+			? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"][Typ]
 			: never
 		: never
 	: never
@@ -78,7 +74,7 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 		? E extends null
 			? Sch extends keyof Db["schemas"]
 				? IfExists extends true
-					? HasConcreteType<Db["schemas"][Sch]["types"], Typ> extends true
+					? HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
 						? IsDroppableTypeEntry<TypeEntry<Db, Sch & keyof Db["schemas"], Typ>> extends true
 							? RemoveTypeFromDb<Db, Sch & keyof Db["schemas"], Typ> extends infer NewDb extends
 									JsqlDatabaseShape
@@ -86,7 +82,7 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 								: never
 							: FinishDropStatement<R, Db>
 						: FinishDropStatement<R, Db>
-					: HasConcreteType<Db["schemas"][Sch]["types"], Typ> extends true
+					: HasConcreteType<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> extends true
 						? IsDroppableTypeEntry<TypeEntry<Db, Sch & keyof Db["schemas"], Typ>> extends true
 							? RemoveTypeFromDb<Db, Sch & keyof Db["schemas"], Typ> extends infer NewDb extends
 									JsqlDatabaseShape
@@ -111,15 +107,20 @@ type RemoveTypeFromDb<
 	Db extends JsqlDatabaseShape,
 	Sch extends keyof Db["schemas"],
 	Typ extends string,
-> = Db["schemas"][Sch]["types"] extends object
-	? Typ extends keyof Db["schemas"][Sch]["types"]
-		? {
-				defaultSchema: Db["defaultSchema"]
-				schemas: {
-					[K in keyof Db["schemas"]]: K extends Sch
-						? { types: Omit<Db["schemas"][Sch]["types"], Typ> } & Omit<Db["schemas"][Sch], "types">
-						: Db["schemas"][K]
+> = Sch extends string
+	? I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"] extends object
+		? Typ extends keyof I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"]
+			? {
+					defaultSchema: Db["defaultSchema"]
+					schemas: {
+						[K in keyof Db["schemas"]]: K extends Sch
+							? { types: Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> } & Omit<
+									I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>,
+									"types"
+								>
+							: Db["schemas"][K]
+					}
 				}
-			}
+			: never
 		: never
 	: never

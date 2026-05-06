@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { I, JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -55,7 +55,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 	Sch extends keyof Db["schemas"] & string,
 	Tab extends string,
 > =
-	HasConcreteSet<Db["schemas"][Sch]["sets"], Tab> extends true
+	HasConcreteSet<I<I<Db, "schemas">, Sch, JsqlSchemaShape>["sets"], Tab> extends true
 		? IfNotExists extends true
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, true>
 			: [R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">]
@@ -69,7 +69,11 @@ type ParseCreateTableQualifiedWhenNameOk<
 	Tab extends string,
 > =
 	HasConcreteSchemaKey<Db, Sch> extends true
-		? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
+		? Sch extends keyof Db["schemas"]
+			? Sch extends string
+				? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch, Tab>
+				: never
+			: never
 		: [R, Db, SqlParserError<"Unknown schema for CREATE TABLE">]
 
 type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
@@ -95,8 +99,10 @@ type ParseCreateTableOpenParen<
 		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
 			? OpenTok extends TokenKey<"(">
 				? IfNotExists extends true
-					? HasConcreteSet<Db["schemas"][Schema & keyof Db["schemas"]]["sets"], Table> extends true
-						? ParseCreateTableBodySkipOnly<AfterOpen, Db>
+					? Schema extends keyof Db["schemas"]
+						? HasConcreteSet<I<I<Db, "schemas", {}>, Schema, JsqlSchemaShape>["sets"], Table> extends true
+							? ParseCreateTableBodySkipOnly<AfterOpen, Db>
+							: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 						: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 				: [AfterOpen, Db, SqlParserError<"Expected `(` before column list in CREATE TABLE">]
@@ -462,7 +468,7 @@ type MergeTableIntoDb<
 			schemas: {
 				[K in keyof Db["schemas"]]: K extends Schema
 					? {
-							sets: Db["schemas"][K]["sets"] &
+							sets: I<I<Db, "schemas", {}>, K, JsqlSchemaShape>["sets"] &
 								Record<
 									Table,
 									{
@@ -471,7 +477,7 @@ type MergeTableIntoDb<
 										column_facts: Facts
 									}
 								>
-						} & Omit<Db["schemas"][K], "sets">
+						} & Omit<I<I<Db, "schemas", {}>, K, JsqlSchemaShape>, "sets">
 					: Db["schemas"][K]
 			}
 		}
