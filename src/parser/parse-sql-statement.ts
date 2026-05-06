@@ -31,7 +31,7 @@ export type ApplyStatements<
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Db extends JsqlDatabaseShape
-	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params> extends [
+	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params, null> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
 			infer Error extends SqlParserError<string> | null,
@@ -43,10 +43,10 @@ export type ApplyStatements<
 export type ApplyParsedStatements<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	Error extends SqlParserError<string> | null = null,
+	Params extends ExpressionParamsShape,
+	Error extends SqlParserError<string> | null,
 	BatchDepth extends number = 0,
-> = BatchDepth extends 50 // Вонкавы цыкл: 50 батчаў
+> = BatchDepth extends 50
 	? [Tokens, Db, Error]
 	: PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error]
@@ -55,43 +55,46 @@ export type ApplyParsedStatements<
 					infer NewDB extends JsqlDatabaseShape,
 					infer NewError extends SqlParserError<string> | null,
 			  ]
-			? PeekToken<Rest> extends TokenEot
-				? [Rest, NewDB, NewError]
-				: ApplyParsedStatements<Rest, NewDB, Params, NewError, Inc[BatchDepth]>
+			? ApplyParsedStatements<Rest, NewDB, Params, NewError, Inc[BatchDepth]>
 			: never
 
 type ApplyParsedStatementsInner<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	Error extends SqlParserError<string> | null = null,
+	Params extends ExpressionParamsShape,
+	Error extends SqlParserError<string> | null,
 	Depth extends number = 0,
-> = Depth extends 50 // Унутраны цыкл: 50 statements
+> = Depth extends 50
 	? [Tokens, Db, Error]
 	: PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error]
 		: ParseSqlStatement<Tokens, Db, Params> extends [
 					infer Rest extends TokensList,
-					infer NewDB extends JsqlDatabaseShape,
+					infer NewDb extends JsqlDatabaseShape,
 					infer Result,
 			  ]
-			? Result extends SqlParserError<string>
-				? ApplyParsedStatementsAfterError<Rest, Db, Params, Error, Result, Depth>
-				: ApplyParsedStatementsInner<Rest, NewDB, Params, Error, Inc[Depth]>
+			? ApplyParsedStatementsInner<
+					Rest,
+					NewDb,
+					Params,
+					Result extends SqlParserError<string> ? ConcatErrors<Error, Result> : Error,
+					Inc[Depth]
+				>
 			: never
 
-type ApplyParsedStatementsAfterError<
+export type ParseSqlStatementFull<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape,
-	Error extends SqlParserError<string> | null,
-	Result extends SqlParserError<string>,
-	Depth extends number,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseSkipStatement<Tokens, Db> extends [infer Rest2 extends TokensList, unknown, unknown]
-		? Error extends null
-			? ApplyParsedStatementsInner<Rest2, Db, Params, Result, Inc[Depth]>
-			: ApplyParsedStatementsInner<Rest2, Db, Params, Error, Inc[Depth]>
+	ParseSqlStatement<Tokens, Db, Params> extends [
+		infer Rest extends TokensList,
+		infer NewDb extends JsqlDatabaseShape,
+		infer Result,
+	]
+		? Result extends SqlParserError<string>
+			? ParseSkipStatement<Rest, NewDb>
+			: [Rest, NewDb, Result]
 		: never
 
 export type ParseSqlStatement<
@@ -119,12 +122,14 @@ export type ParseSqlStatement<
 										? ParseUpdate<SkipToken<Tokens>, Db, Params>
 										: ParseSkipStatement<Tokens, Db>
 
-type ConcatErrors<Errors extends SqlParserError<string> | null, Result extends SqlParserError<string> | null> =
-	Errors extends SqlParserError<infer ErrorsMsg>
-		? Result extends SqlParserError<infer ResultMsg>
-			? SqlParserError<`${ErrorsMsg}; ${ResultMsg}`>
-			: Errors
-		: Result
+type ConcatErrors<Errors extends SqlParserError<string> | null, Result extends SqlParserError<string>> =
+	Errors extends SqlParserError<string> ? Errors : Result
+
+// Errors extends SqlParserError<infer ErrorsMsg>
+// 		? Result extends SqlParserError<infer ResultMsg>
+// 			? SqlParserError<`${ErrorsMsg}; ${ResultMsg}`>
+// 			: Errors
+// 		: Result
 
 type ParseAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">

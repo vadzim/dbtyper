@@ -4,6 +4,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { EmptyExpressionParams } from "../src/parser/parse-expression.ts"
 
 /** `public` with one table so **`CREATE VIEW … AS SELECT`** can resolve `FROM`. */
 type DbDefaultPublic = {
@@ -30,8 +31,11 @@ type _applyMergedNoErr = Expect<Extends<ApplyCreateThenSelect[1], null>>
 /** First statement errors → **`ApplyParsedStatements`** returns **`[Rest, Db, SqlParserError<…>]`** and does not apply the second `CREATE`. */
 type ApplyStopOnFirstError = ApplyParsedStatements<
 	ParseSqlTokens<`create table ghost.m ( id int not null ); create table t ( id int not null );`>,
-	DbDefaultPublic
+	DbDefaultPublic,
+	EmptyExpressionParams,
+	null
 >
+// const  x: ApplyStopOnFirstError=1
 type _applyStopDb = Expect<Matches<ApplyStopOnFirstError[1], DbDefaultPublic>>
 type _applyStopErr = Expect<Extends<ApplyStopOnFirstError[2], SqlParserError<string>>>
 
