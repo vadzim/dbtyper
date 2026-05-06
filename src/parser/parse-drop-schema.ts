@@ -1,6 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { RemoveSchemaFromDb } from "../core/jsql-utils-legacy.ts"
-import type { JsqlGetSchema } from "../core/jsql-utils.ts"
+import type { JsqlGetSchema, JsqlRemoveSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 
@@ -28,16 +27,14 @@ type ParseDropSchemaAfterIdent<
 					? JsqlGetSchema<Db, SchemaName> extends null
 						? [R1, Db, null]
 						: SchemaName extends keyof Db["schemas"]
-							? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
-									JsqlDatabaseShape
+							? JsqlRemoveSchema<Db, SchemaName> extends infer NewDb extends JsqlDatabaseShape
 								? [R1, NewDb, null]
 								: never
 							: never
 					: JsqlGetSchema<Db, SchemaName> extends null
 						? [R1, Db, SqlParserError<"Schema does not exist; use IF EXISTS">]
 						: SchemaName extends keyof Db["schemas"]
-							? RemoveSchemaFromDb<Db, SchemaName & keyof Db["schemas"]> extends infer NewDb extends
-									JsqlDatabaseShape
+							? JsqlRemoveSchema<Db, SchemaName> extends infer NewDb extends JsqlDatabaseShape
 								? [R1, NewDb, null]
 								: never
 							: never
