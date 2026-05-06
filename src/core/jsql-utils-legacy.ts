@@ -1,26 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult, JsqlTableShape } from "./jsql-shapes.ts"
-import type { JsqlDbGetSet } from "./jsql-utils.ts"
 import type { I } from "./type-utils.ts"
 
-/** Remove a type from the database. */
-
-export type RemoveTypeFromDb<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Typ extends string,
-> = Sch extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Sch
-					? { types: Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["types"], Typ> } & Omit<
-							I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>,
-							"types"
-						>
-					: Db["schemas"][K]
-			}
-		}
-	: never /** Update an existing type (enum) with new values. */
+/** Update an existing type (enum) with new values. */
 
 export type UpdateTypeInDb<
 	Db extends JsqlDatabaseShape,
@@ -95,25 +76,6 @@ export type MergeViewIntoDb<
 			}
 		}
 	: never
-/** Remove a table from the database. */
-
-export type RemoveTableFromDb<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-> = Sch extends keyof Db["schemas"]
-	? {
-			defaultSchema: Db["defaultSchema"]
-			schemas: {
-				[K in keyof Db["schemas"]]: K extends Sch
-					? { sets: Omit<I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>["sets"], Tab> } & Omit<
-							I<I<Db, "schemas", {}>, Sch, JsqlSchemaShape>,
-							"sets"
-						>
-					: Db["schemas"][K]
-			}
-		}
-	: never
 /** Replace an existing table with a new shape (for ALTER TABLE operations). */
 
 export type ReplaceTableInDb<
@@ -168,18 +130,9 @@ export type MergeTableIntoDb<
 			}
 		}
 	: never
-/** Remove a schema from the database. */
-
-export type RemoveSchemaFromDb<Db extends JsqlDatabaseShape, Sch extends keyof Db["schemas"]> = {
-	defaultSchema: Db["defaultSchema"]
-	schemas: Omit<Db["schemas"], Sch>
-}
 /** Add a new schema to the database. */
 
 export type MergeSchemaIntoDb<Db extends JsqlDatabaseShape, Name extends string> = {
 	defaultSchema: Db["defaultSchema"]
 	schemas: Db["schemas"] & Record<Name, { sets: {} }>
 }
-
-export type ResolveTableShape<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> =
-	JsqlDbGetSet<Db, Sch, Tab> extends infer T extends object ? T : never
