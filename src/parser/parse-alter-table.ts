@@ -5,6 +5,7 @@ import type {
 	JsqlDbGetTable,
 	JsqlDbGetData,
 	JsqlDbReplaceData,
+	JsqlDbReplaceColumn,
 	JsqlTableReplaceColumnType,
 	JsqlTableReplaceColumnNullability,
 	JsqlTableReplaceColumn,
@@ -64,12 +65,7 @@ type ParseAlterAddColumnAfterColName<
 							infer J2 extends string,
 					  ]
 					? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-						? ParseAlterActions<
-								R3,
-								JsqlDbReplaceData<Db, Sch, Tab, JsqlTableReplaceColumn<Tbl, Col, JsqlCreateColumn<J2>>>,
-								Sch,
-								Tab
-							>
+						? ParseAlterActions<R3, JsqlDbReplaceColumn<Db, Sch, Tab, Col, JsqlCreateColumn<J2>>, Sch, Tab>
 						: [R3, Db, SqlParserError<"Column already exists">]
 					: never
 			: [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
@@ -139,9 +135,7 @@ type ParseAlterDropColumn<
 			? PeekToken<R1> extends TokenIdent<infer Col extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 					? [SkipToken<R1>, Db, SqlParserError<"Column does not exist">]
-					: JsqlTableReplaceColumn<Tbl, Col, null> extends infer U extends JsqlDataShape<"table">
-						? ParseAlterActions<SkipToken<R1>, JsqlDbReplaceData<Db, Sch, Tab, U>, Sch, Tab>
-						: [SkipToken<R1>, Db, SqlParserError<"Column drop failed">]
+					: ParseAlterActions<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab>
 				: [R1, Db, SqlParserError<"Expected column name after DROP COLUMN">]
 			: never
 		: never
