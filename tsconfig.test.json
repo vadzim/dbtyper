@@ -1,4 +1,5 @@
 {
 	"extends": "./tsconfig.json",
-	"files": ["test/sql-tokens-big.test.ts"]
+	"include": ["test/**/*.ts"],
+	"exclude": ["test/fail-to-compile.ts", "**/*.test.skip.ts"]
 }
