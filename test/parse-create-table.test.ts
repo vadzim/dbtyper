@@ -12,6 +12,7 @@ import type {
 	TUuid,
 	TTimestamp,
 	TDate,
+	TNull,
 } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
@@ -45,7 +46,7 @@ type _t1shape = Expect<
 		T1Table,
 		{
 			kind: "table"
-			columns: { id: TUuid; body: { type: "text"; arg: null; nullable: true } }
+			columns: { id: TUuid; body: TNull<"text"> }
 			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
@@ -126,7 +127,7 @@ type _tExplicitIfNotShape = Expect<
 		TExplicitIfNotTable,
 		{
 			kind: "table"
-			columns: { id: { type: "integer"; arg: null; nullable: false } }
+			columns: { id: TInteger }
 			column_facts: { id: { nullability: "not_null" } }
 		}
 	>

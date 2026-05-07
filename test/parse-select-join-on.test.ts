@@ -66,10 +66,10 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				email: { type: "text"; arg: null; nullable: false }
-				display_name: { type: "text"; arg: null; nullable: true }
-				created_at: { type: "timestamp with time zone"; arg: null; nullable: true }
-				agenda_id: { type: "uuid"; arg: null; nullable: false }
+				email: TText
+				display_name: TNull<"text">
+				created_at: TNull<"timestamp with time zone">
+				agenda_id: TUuid
 			}
 		}
 	>

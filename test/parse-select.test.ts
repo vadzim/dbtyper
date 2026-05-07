@@ -12,6 +12,7 @@ import type {
 	TUuid,
 	TTimestamp,
 	TDate,
+	TNull,
 } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
@@ -177,7 +178,7 @@ type TSelectCaseSimpleNoElse = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _selectCaseSimpleNoElse = Expect<
-	Extends<TSelectCaseSimpleNoElse[2], { kind: "select"; columns: { x: { type: "text"; arg: null; nullable: true } } }>
+	Extends<TSelectCaseSimpleNoElse[2], { kind: "select"; columns: { x: TNull<"text"> } }>
 >
 
 /** `WITH` CTE: inner `SELECT` merged into outer scope with base `FROM` tables. */
@@ -588,8 +589,8 @@ type _crossJoinColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				name: { type: "text"; arg: null; nullable: true }
-				role_name: { type: "text"; arg: null; nullable: true }
+				name: TNull<"text">
+				role_name: TNull<"text">
 			}
 		}
 	>
@@ -623,8 +624,8 @@ type _subqueryInWhereColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				id: { type: "text"; arg: null; nullable: true }
-				name: { type: "text"; arg: null; nullable: true }
+				id: TNull<"text">
+				name: TNull<"text">
 			}
 		}
 	>
@@ -642,8 +643,8 @@ type _existsSubqueryColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				id: { type: "text"; arg: null; nullable: true }
-				name: { type: "text"; arg: null; nullable: true }
+				id: TNull<"text">
+				name: TNull<"text">
 			}
 		}
 	>

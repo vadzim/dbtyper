@@ -12,6 +12,17 @@ import type {
 	TUuid,
 	TTimestamp,
 	TDate,
+	TSerial,
+	TBigserial,
+	TSmallserial,
+	TTimestamptz,
+	TTimetz,
+	TBytea,
+	TInterval,
+	TInet,
+	TCidr,
+	TTsvector,
+	TTsquery,
 } from "./test-utils/sql-type-helpers.ts"
 
 type DbPublic = {
@@ -20,21 +31,21 @@ type DbPublic = {
 }
 
 // Test serial types
-type TSerial = ParseSqlStatement<
+type TSerialStmt = ParseSqlStatement<
 	ParseSqlTokens<`create table counters (id serial not null, big bigserial not null, small smallserial not null);`>,
 	DbPublic
 >
-type TSerialTable = TSerial[1]["schemas"]["public"]["sets"]["counters"]
-type _tSerialNull = Expect<Matches<TSerial[2], null>>
+type TSerialTable = TSerialStmt[1]["schemas"]["public"]["sets"]["counters"]
+type _tSerialNull = Expect<Matches<TSerialStmt[2], null>>
 type _tSerialShape = Expect<
 	Extends<
 		TSerialTable,
 		{
 			kind: "table"
 			columns: {
-				id: { type: "serial"; arg: null; nullable: false }
-				big: { type: "bigserial"; arg: null; nullable: false }
-				small: { type: "smallserial"; arg: null; nullable: false }
+				id: TSerial
+				big: TBigserial
+				small: TSmallserial
 			}
 			column_facts: {
 				id: { nullability: "not_null" }
@@ -58,8 +69,8 @@ type _tTimestampAliasesShape = Expect<
 		{
 			kind: "table"
 			columns: {
-				created: { type: "timestamptz"; arg: null; nullable: false }
-				time: { type: "timetz"; arg: null; nullable: false }
+				created: TTimestamptz
+				time: TTimetz
 			}
 			column_facts: { created: { nullability: "not_null" }; time: { nullability: "not_null" } }
 		}
@@ -67,36 +78,36 @@ type _tTimestampAliasesShape = Expect<
 >
 
 // Test bytea
-type TBytea = ParseSqlStatement<
+type TByteaStmt = ParseSqlStatement<
 	ParseSqlTokens<`create table files (id integer not null, data bytea not null);`>,
 	DbPublic
 >
-type TByteaTable = TBytea[1]["schemas"]["public"]["sets"]["files"]
-type _tByteaNull = Expect<Matches<TBytea[2], null>>
+type TByteaTable = TByteaStmt[1]["schemas"]["public"]["sets"]["files"]
+type _tByteaNull = Expect<Matches<TByteaStmt[2], null>>
 type _tByteaShape = Expect<
 	Extends<
 		TByteaTable,
 		{
 			kind: "table"
-			columns: { id: TInteger; data: { type: "bytea"; arg: null; nullable: false } }
+			columns: { id: TInteger; data: TBytea }
 			column_facts: { id: { nullability: "not_null" }; data: { nullability: "not_null" } }
 		}
 	>
 >
 
 // Test interval
-type TInterval = ParseSqlStatement<
+type TIntervalStmt = ParseSqlStatement<
 	ParseSqlTokens<`create table durations (id integer not null, duration interval not null);`>,
 	DbPublic
 >
-type TIntervalTable = TInterval[1]["schemas"]["public"]["sets"]["durations"]
-type _tIntervalNull = Expect<Matches<TInterval[2], null>>
+type TIntervalTable = TIntervalStmt[1]["schemas"]["public"]["sets"]["durations"]
+type _tIntervalNull = Expect<Matches<TIntervalStmt[2], null>>
 type _tIntervalShape = Expect<
 	Extends<
 		TIntervalTable,
 		{
 			kind: "table"
-			columns: { id: TInteger; duration: { type: "interval"; arg: null; nullable: false } }
+			columns: { id: TInteger; duration: TInterval }
 			column_facts: { id: { nullability: "not_null" }; duration: { nullability: "not_null" } }
 		}
 	>
@@ -116,8 +127,8 @@ type _tNetworkShape = Expect<
 			kind: "table"
 			columns: {
 				id: TInteger
-				ip: { type: "inet"; arg: null; nullable: false }
-				subnet: { type: "cidr"; arg: null; nullable: false }
+				ip: TInet
+				subnet: TCidr
 			}
 			column_facts: {
 				id: { nullability: "not_null" }
@@ -142,8 +153,8 @@ type _tFulltextShape = Expect<
 			kind: "table"
 			columns: {
 				id: TInteger
-				vec: { type: "tsvector"; arg: null; nullable: false }
-				query: { type: "tsquery"; arg: null; nullable: false }
+				vec: TTsvector
+				query: TTsquery
 			}
 			column_facts: {
 				id: { nullability: "not_null" }
@@ -174,12 +185,12 @@ type _tMixedShape = Expect<
 		{
 			kind: "table"
 			columns: {
-				id: { type: "serial"; arg: null; nullable: false }
-				created: { type: "timestamptz"; arg: null; nullable: false }
-				data: { type: "bytea"; arg: null; nullable: false }
-				duration: { type: "interval"; arg: null; nullable: false }
-				ip: { type: "inet"; arg: null; nullable: false }
-				search: { type: "tsvector"; arg: null; nullable: false }
+				id: TSerial
+				created: TTimestamptz
+				data: TBytea
+				duration: TInterval
+				ip: TInet
+				search: TTsvector
 			}
 			column_facts: {
 				id: { nullability: "not_null" }

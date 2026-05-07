@@ -18,6 +18,7 @@ import type {
 	TBooleanArray,
 	TNumericArray,
 	TUuidArray,
+	TUnknown,
 } from "./test-utils/sql-type-helpers.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 
@@ -44,27 +45,18 @@ type TArrayAppend = ParseSqlStatement<
 	ParseSqlTokens<`select array_append(tags, 'new') as appended from items;`>,
 	DbArrays
 >
-type _tArrayAppend = Expect<
-	Extends<TArrayAppend[2], { kind: "select"; columns: { appended: { type: "unknown"; arg: null; nullable: false } } }>
->
+type _tArrayAppend = Expect<Extends<TArrayAppend[2], { kind: "select"; columns: { appended: TUnknown } }>>
 
 // Test array_prepend function
 type TArrayPrepend = ParseSqlStatement<
 	ParseSqlTokens<`select array_prepend('first', tags) as prepended from items;`>,
 	DbArrays
 >
-type _tArrayPrepend = Expect<
-	Extends<
-		TArrayPrepend[2],
-		{ kind: "select"; columns: { prepended: { type: "unknown"; arg: null; nullable: false } } }
-	>
->
+type _tArrayPrepend = Expect<Extends<TArrayPrepend[2], { kind: "select"; columns: { prepended: TUnknown } }>>
 
 // Test unnest function
 type TUnnest = ParseSqlStatement<ParseSqlTokens<`select unnest(tags) as tag from items;`>, DbArrays>
-type _tUnnest = Expect<
-	Extends<TUnnest[2], { kind: "select"; columns: { tag: { type: "unknown"; arg: null; nullable: false } } }>
->
+type _tUnnest = Expect<Extends<TUnnest[2], { kind: "select"; columns: { tag: TUnknown } }>>
 
 // Test array_length with integer array
 type TArrayLengthInt = ParseSqlStatement<
@@ -78,12 +70,7 @@ type TArrayAppendInt = ParseSqlStatement<
 	ParseSqlTokens<`select array_append(nums, 42) as nums_appended from items;`>,
 	DbArrays
 >
-type _tArrayAppendInt = Expect<
-	Extends<
-		TArrayAppendInt[2],
-		{ kind: "select"; columns: { nums_appended: { type: "unknown"; arg: null; nullable: false } } }
-	>
->
+type _tArrayAppendInt = Expect<Extends<TArrayAppendInt[2], { kind: "select"; columns: { nums_appended: TUnknown } }>>
 
 // Test array functions with ARRAY constructor
 type TArrayLengthLiteral = ParseSqlStatement<

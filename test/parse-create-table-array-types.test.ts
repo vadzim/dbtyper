@@ -18,6 +18,7 @@ import type {
 	TBooleanArray,
 	TNumericArray,
 	TUuidArray,
+	TNull,
 } from "./test-utils/sql-type-helpers.ts"
 
 type DbPublic = {
@@ -91,7 +92,7 @@ type _tNullableArrayShape = Expect<
 		TNullableArrayTable,
 		{
 			kind: "table"
-			columns: { id: TInteger; tags: { type: "array"; arg: TText; nullable: true } }
+			columns: { id: TInteger; tags: TNull<"array", TText> }
 			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
