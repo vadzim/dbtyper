@@ -899,10 +899,20 @@ type ResolveCustomOp<
 								? ExprOk<boolean, "boolean">
 								: Op extends "||"
 									? Lv extends ExprOk<infer _Lval, "text">
-										? Rv extends ExprOk<infer _Rval, "text">
+										? Rv extends ExprOk<
+												infer _Rval,
+												"text" | "integer" | "bigint" | "numeric" | "uuid" | "boolean"
+											>
 											? ExprOk<string, "text">
 											: ExprOk<readonly unknown[], "unknown">
-										: ExprOk<readonly unknown[], "unknown">
+										: Lv extends ExprOk<
+													infer _Lval,
+													"integer" | "bigint" | "numeric" | "uuid" | "boolean"
+											  >
+											? Rv extends ExprOk<infer _Rval, "text">
+												? ExprOk<string, "text">
+												: SqlParserError<"|| requires at least one text operand">
+											: ExprOk<readonly unknown[], "unknown">
 									: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
