@@ -19,9 +19,9 @@ type _check = Expect<
 		typeof result,
 		{
 			id: number
-			tags: unknown
-			flags: unknown
-			scores: unknown
+			tags: readonly string[]
+			flags: readonly boolean[]
+			scores: readonly number[]
 		}[]
 	>
 >

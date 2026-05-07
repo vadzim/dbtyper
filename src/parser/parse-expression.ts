@@ -898,66 +898,47 @@ type ResolveCustomOp<
 							? Op extends "@>" | "&&" | "<@"
 								? ExprOk<boolean, "boolean">
 								: Op extends "||"
-									? Lv extends ExprOk<infer _Lval, "text">
-										? Rv extends ExprOk<
-												infer _Rval,
-												"text" | "integer" | "bigint" | "numeric" | "uuid" | "boolean"
-											>
-					? ExprOk<string, "text">
-					: Rv extends ExprOk<infer _Rval, "unknown">
-						? _Rval extends readonly unknown[]
-							? SqlParserError<"Cannot concatenate text with array">
-							: ExprOk<readonly unknown[], "unknown">
-						: ExprOk<readonly unknown[], "unknown">
-				: Rv extends ExprOk<infer _Rval, "text">
-											? Lv extends ExprOk<
-													infer _Lval,
-													"integer" | "bigint" | "numeric" | "uuid" | "boolean"
-												>
-					? ExprOk<string, "text">
-					: Lv extends ExprOk<infer _Lval, "unknown">
-						? _Lval extends readonly unknown[]
-							? SqlParserError<"Cannot concatenate array with text">
-							: ExprOk<readonly unknown[], "unknown">
-						: ExprOk<readonly unknown[], "unknown">
-				: Lv extends ExprOk<infer _Lval, "integer" | "bigint" | "numeric">
-												? Rv extends ExprOk<infer _Rval, "integer" | "bigint" | "numeric">
-					? SqlParserError<"|| requires at least one text operand">
-					: Rv extends ExprOk<infer _Rval, "unknown">
-						? _Rval extends readonly unknown[]
-							? ExprOk<readonly unknown[], "unknown">
-							: ExprOk<readonly unknown[], "unknown">
-						: ExprOk<readonly unknown[], "unknown">
-				: Lv extends ExprOk<infer _Lval, "uuid">
-													? Rv extends ExprOk<
-															infer _Rval,
-															"uuid" | "integer" | "bigint" | "numeric" | "boolean"
-														>
-					? SqlParserError<"|| requires at least one text operand">
-					: Rv extends ExprOk<infer _Rval, "unknown">
-						? _Rval extends readonly unknown[]
-							? ExprOk<readonly unknown[], "unknown">
-							: ExprOk<readonly unknown[], "unknown">
-						: ExprOk<readonly unknown[], "unknown">
-				: Lv extends ExprOk<infer _Lval, "boolean">
-														? Rv extends ExprOk<
-																infer _Rval,
-																"uuid" | "integer" | "bigint" | "numeric" | "boolean"
-															>
-					? SqlParserError<"|| requires at least one text operand">
-					: Rv extends ExprOk<infer _Rval, "unknown">
-						? _Rval extends readonly unknown[]
-							? ExprOk<readonly unknown[], "unknown">
-							: ExprOk<readonly unknown[], "unknown">
-						: ExprOk<readonly unknown[], "unknown">
-				: Lv extends ExprOk<infer _Lval, "unknown">
-					? _Lval extends readonly unknown[]
-						? Rv extends ExprOk<infer _Rval, "text">
-							? SqlParserError<"Cannot concatenate array with text">
-							: ExprOk<readonly unknown[], "unknown">
-						: ExprOk<readonly unknown[], "unknown">
-					: ExprOk<readonly unknown[], "unknown">
-			: ExprOk<unknown, string>
+									? Lv extends ExprOk<infer _Lval, infer LvSql extends string>
+										? LvSql extends `${infer ElemType}[]`
+											? Rv extends ExprOk<infer _Rval, "text">
+												? SqlParserError<"Cannot concatenate array with text">
+												: Rv extends ExprOk<infer _Rval, infer RvSql extends string>
+													? RvSql extends ElemType
+														? ExprOk<readonly unknown[], LvSql>
+														: RvSql extends `${string}[]`
+															? ExprOk<readonly unknown[], LvSql>
+															: SqlParserError<`Cannot concatenate ${LvSql} with ${RvSql}`>
+													: never
+											: Rv extends ExprOk<infer _Rval, infer RvSql extends string>
+												? RvSql extends `${infer ElemType}[]`
+													? LvSql extends "text"
+														? SqlParserError<"Cannot concatenate text with array">
+														: LvSql extends ElemType
+															? ExprOk<readonly unknown[], RvSql>
+															: SqlParserError<`Cannot concatenate ${LvSql} with ${RvSql}`>
+													: LvSql extends "text"
+														? RvSql extends
+																| "text"
+																| "integer"
+																| "bigint"
+																| "numeric"
+																| "uuid"
+																| "boolean"
+															? ExprOk<string, "text">
+															: SqlParserError<`Cannot concatenate text with ${RvSql}`>
+														: RvSql extends "text"
+															? LvSql extends
+																	| "integer"
+																	| "bigint"
+																	| "numeric"
+																	| "uuid"
+																	| "boolean"
+																? ExprOk<string, "text">
+																: SqlParserError<`Cannot concatenate ${LvSql} with text`>
+															: SqlParserError<"|| requires at least one text operand">
+												: never
+										: never
+									: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
 				: never
@@ -978,6 +959,24 @@ type ResolveArrayCtorElements<
 				: SqlParserError<"Invalid ARRAY element">
 		: never
 	: InferArrayType<AccTypes>
+
+type InferArrayType<Types extends readonly string[]> = Types extends readonly []
+	? SqlParserError<"Cannot determine type of empty array">
+	: Types extends readonly [infer First extends string, ...infer Rest extends readonly string[]]
+		? UnifyArrayElementTypes<First, Rest> extends infer Unified extends string
+			? ExprOk<readonly unknown[], `${Unified}[]`>
+			: never
+		: never
+
+type UnifyArrayElementTypes<First extends string, Rest extends readonly string[]> = Rest extends readonly []
+	? First
+	: Rest extends readonly [infer Next extends string, ...infer Tail extends readonly string[]]
+		? First extends Next
+			? UnifyArrayElementTypes<First, Tail>
+			: Next extends First
+				? UnifyArrayElementTypes<Next, Tail>
+				: "unknown"
+		: never
 
 // Parse expression to AST to be resolved later when `FROM` scope is known (`OR` … `AND` … `NOT` … comparisons … arithmetic).
 

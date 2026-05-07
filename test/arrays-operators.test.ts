@@ -42,12 +42,12 @@ type _arrayChainedIndex = Expect<Extends<Tuple3At2<TArrayChainedIndex>, { kind: 
 /** Unary `ARRAY` constructor only (no `@>` / `&&`). */
 type TArrayCtorOnly = ParseSqlStatement<ParseSqlTokens<`select array[true,false] as flags from sales;`>, DbTiny>
 
-type _arrayCtorOnly = Expect<Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: "unknown" } }>>
+type _arrayCtorOnly = Expect<Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: "boolean[]" } }>>
 
 /** Empty `ARRAY[]` constructor (typed as empty readonly tuple). */
 type TArrayEmpty = ParseSqlStatement<ParseSqlTokens<`select array[] as e from sales;`>, DbTiny>
 
-type _arrayEmpty = Expect<Extends<Tuple3At2<TArrayEmpty>, { kind: "select"; columns: { e: "unknown" } }>>
+type _arrayEmpty = Expect<Extends<Tuple3At2<TArrayEmpty>, { kind: "select"; columns: { e: "__sql_parser_error__" } }>>
 
 describe("PostgreSQL ARRAY constructor + containment / overlap ops (type tests)", () => {
 	it("compile-time assertions above", () => {})

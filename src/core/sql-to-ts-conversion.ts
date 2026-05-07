@@ -16,7 +16,15 @@
  * SqlTypeToTs<"unknown_type", { text: string }> // => unknown
  */
 export type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string, unknown>> =
-	Lowercase<SqlType> extends infer K extends string ? (K extends keyof ScalarMap ? ScalarMap[K] : unknown) : unknown
+	Lowercase<SqlType> extends `${infer Base}[]`
+		? Base extends keyof ScalarMap
+			? readonly ScalarMap[Base][]
+			: readonly unknown[]
+		: Lowercase<SqlType> extends infer K extends string
+			? K extends keyof ScalarMap
+				? ScalarMap[K]
+				: unknown
+			: unknown
 
 /**
  * Converts a record of SQL type strings to a record of TypeScript types.

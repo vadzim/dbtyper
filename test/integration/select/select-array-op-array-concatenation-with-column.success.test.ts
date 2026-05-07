@@ -16,7 +16,7 @@ type _check = Expect<
 	Matches<
 		typeof result,
 		{
-			doubled: unknown
+			doubled: readonly string[]
 		}[]
 	>
 >

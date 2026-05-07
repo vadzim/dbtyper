@@ -16,7 +16,7 @@ type _check = Expect<
 	Matches<
 		typeof result,
 		Array<{
-			concatenated: unknown
+			concatenated: readonly string[]
 		}>
 	>
 >
