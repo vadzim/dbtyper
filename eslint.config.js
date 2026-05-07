@@ -3,13 +3,37 @@ import tsparser from "@typescript-eslint/parser"
 
 export default [
 	{
-		files: ["src/**/*.ts", "test/**/*.ts"],
+		files: ["src/**/*.ts"],
 		languageOptions: {
 			parser: tsparser,
 			parserOptions: {
 				ecmaVersion: 2022,
 				sourceType: "module",
 				project: "./tsconfig.json",
+			},
+		},
+		plugins: {
+			"@typescript-eslint": tseslint,
+		},
+		rules: {
+			"@typescript-eslint/no-unused-vars": [
+				"error",
+				{
+					argsIgnorePattern: "^_",
+					varsIgnorePattern: "^_",
+					caughtErrorsIgnorePattern: "^_",
+				},
+			],
+		},
+	},
+	{
+		files: ["test/**/*.ts"],
+		languageOptions: {
+			parser: tsparser,
+			parserOptions: {
+				ecmaVersion: 2022,
+				sourceType: "module",
+				project: "./tsconfig.test.json",
 			},
 		},
 		plugins: {
