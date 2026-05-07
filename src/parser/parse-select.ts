@@ -1288,41 +1288,6 @@ type SelectResultToDerivedScopeEntry<Res extends JsqlSelectStatementResult> = {
 	columns: Res["columns"]
 }
 
-type _ParseAliasAfterDerivedTable<
-	Tokens extends TokensList,
-	_Db extends JsqlDatabaseShape,
-	OuterScope extends ScopeMap,
-	Res extends JsqlSelectStatementResult,
-> =
-	SelectResultToDerivedScopeEntry<Res> extends infer Entry extends ScopeEntry
-		? PeekToken<Tokens> extends
-				| TokenKey<"inner">
-				| TokenKey<"left">
-				| TokenKey<"cross">
-				| TokenKey<"join">
-				| TokenKey<"where">
-				| TokenKey<";">
-				| TokenEot
-			? [Tokens, SqlParserError<"Expected AS or alias after derived table">, ParserRefErrorThirdSentinel]
-			: PeekToken<Tokens> extends TokenKey<"as">
-				? SkipToken<Tokens> extends infer Ras0 extends TokensList
-					? PeekToken<Ras0> extends infer TokName
-						? SkipToken<Ras0> extends infer Ra extends TokensList
-							? TokName extends TokenIdent<infer Alias extends string>
-								? [Ra, null, MergeScope<Record<Alias, Entry>, OuterScope>]
-								: [Ra, SqlParserError<"Expected alias name after AS">, ParserRefErrorThirdSentinel]
-							: never
-						: never
-					: never
-				: PeekToken<Tokens> extends infer TokAlias
-					? SkipToken<Tokens> extends infer Ra extends TokensList
-						? TokAlias extends TokenIdent<infer Alias extends string>
-							? [Ra, null, MergeScope<Record<Alias, Entry>, OuterScope>]
-							: [Ra, SqlParserError<"Expected alias after derived table">, ParserRefErrorThirdSentinel]
-						: never
-					: never
-		: never
-
 /** Helper: Consume closing `)` after subquery. Returns [Tokens, Result] or error. */
 type ConsumeClosingParen<Tokens extends TokensList, Result> =
 	PeekToken<Tokens> extends TokenKey<")">

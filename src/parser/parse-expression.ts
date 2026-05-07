@@ -2,7 +2,6 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type {
 	PeekToken,
 	SkipToken,
-	TokenEot,
 	TokenIdent,
 	TokenKey,
 	TokenNumber,
@@ -280,20 +279,6 @@ type ParseInListUntypedAccum<
 						: SkipFailedExpression<R1, SqlParserError<"Expected `,` or `)` in IN list">>
 				: never
 		: never
-
-type DecParenDepth<T extends readonly unknown[]> = T extends readonly [...infer Rest, infer _Last] ? Rest : readonly []
-
-/** Match the closing `)` of `( SELECT … )` when the subquery text starts at `Tokens` (leading `SELECT` token). */
-type _SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
-	PeekToken<Tokens> extends TokenEot
-		? SkipFailedExpression<Tokens, SqlParserError<"Unclosed subquery">>
-		: PeekToken<Tokens> extends TokenKey<"(">
-			? _SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
-			: PeekToken<Tokens> extends TokenKey<")">
-				? [ExtraOpens] extends [readonly []]
-					? [SkipToken<Tokens>, null]
-					: _SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
-				: _SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
 
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
@@ -1374,37 +1359,6 @@ type ResolveIdentChainValue<
 				: SqlParserError<"Invalid column reference">
 		: never
 
-type TryOperandIdentColumnRefBody<
-	Rm extends TokensList,
-	Parts extends readonly string[],
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-> = Parts extends readonly [infer S extends string, infer T extends string, infer C extends string]
-	? ResolveIdentChainValue<Db, Scope, readonly [S, T, C]> extends infer V
-		? V extends SqlParserError<string>
-			? SkipFailedExpression<Rm, V>
-			: V extends SqlTypeShape
-				? [Rm, V]
-				: never
-		: never
-	: Parts extends readonly [infer A extends string, infer C2 extends string]
-		? ResolveIdentChainValue<Db, Scope, readonly [A, C2]> extends infer V2
-			? V2 extends SqlParserError<string>
-				? SkipFailedExpression<Rm, V2>
-				: V2 extends SqlTypeShape
-					? [Rm, V2]
-					: never
-			: never
-		: Parts extends readonly [infer C1 extends string]
-			? ResolveIdentChainValue<Db, Scope, readonly [C1]> extends infer V1
-				? V1 extends SqlParserError<string>
-					? SkipFailedExpression<Rm, V1>
-					: V1 extends SqlTypeShape
-						? [Rm, V1]
-						: never
-				: never
-			: never
-
 type ParseFunctionArgsAccum<
 	Tokens extends TokensList,
 	Env extends ExprParseEnv,
@@ -1593,28 +1547,6 @@ type ParseWindowOrderByListTail<
 	Env extends ExprParseEnv,
 	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
 > = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc]
-
-type _TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
-	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts]
-		? Parts extends readonly ["__ats__", string] | readonly ["__qts__", string, string]
-			? SkipFailedExpression<Rm, SqlParserError<"Qualified table .* is only valid in SELECT lists">>
-			: PeekToken<Rm> extends TokenKey<"(">
-				? ParseFunctionArgs<SkipToken<Rm>, Env> extends [infer After extends TokensList, infer Args]
-					? Args extends SqlParserError<string>
-						? SkipFailedExpression<After, Args>
-						: Args extends readonly (ScalarExprAst | { kind: "star" })[]
-							? Parts extends readonly [infer FnName extends string]
-								? ParseOptionalOverClause<After, FnName, Args, Env>
-								: SkipFailedExpression<
-										After,
-										SqlParserError<"Qualified function names are not supported">
-									>
-							: never
-					: never
-				: Parts extends ScalarIdentParts
-					? TryOperandIdentColumnRefBody<Rm, Parts, Env["db"], Env["outerScope"]>
-					: never
-		: never
 
 type SqlComparisonClass<Sql extends string> = Sql extends `${infer Base}[]`
 	? `array_${SqlComparisonClass<Base>}`
