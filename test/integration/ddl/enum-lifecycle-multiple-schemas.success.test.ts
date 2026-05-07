@@ -4,7 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: Enum types across multiple schemas
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create schema app;`)
 	.apply(`create schema admin;`)

@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create schema app;`)
 	.apply(`create type public.status as enum ('active', 'inactive');`)
@@ -25,9 +25,9 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Use enum from app schema
 
-const result = await db.query(`
+const _result = await _db.query(`
 		insert into app.articles (id, article_status, article_priority)
 		values (1, 'draft', 'high');
 	`)
 
-type _check = Expect<Matches<typeof result, unknown>>
+type _check = Expect<Matches<typeof _result, unknown>>

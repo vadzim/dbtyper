@@ -3,7 +3,7 @@
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table users (
@@ -17,7 +17,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: still must provide NOT NULL columns without DEFAULT
-const result = db.query(
+const _result = _db.query(
 	// @ts-expect-error
 	`insert into users (age) values (20) returning *;`,
 )

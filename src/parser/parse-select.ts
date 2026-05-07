@@ -1,8 +1,4 @@
-import type {
-	JsqlDatabaseShape,
-	JsqlSelectStatementResult,
-	JsqlDataShape,
-} from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -25,17 +21,10 @@ import type {
 	ScalarIdentParts,
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type {
-	MergeScope,
-	ScopeEntry,
-	ScopeMap,
-} from "./parser-scope.ts"
+import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
-import type {
-	SkipFailedExpression,
-	SkipFailedStatement,
-} from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 

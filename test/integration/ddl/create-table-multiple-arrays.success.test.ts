@@ -5,18 +5,18 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: multiple array columns
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table multi (id integer not null, tags text[] not null, scores integer[] not null, flags boolean[] not null);`,
 	)
 	.database()
 
-const result = await db.query(`select id, tags, scores, flags from multi;`)
+const _result = await _db.query(`select id, tags, scores, flags from multi;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			tags: readonly string[]

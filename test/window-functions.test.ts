@@ -1,15 +1,8 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type {
-	Expect,
-	Extends,
-} from "./test-utils/type-test-utils.ts"
-import type {
-	TText,
-	TInteger,
-	TBigint,
-} from "./test-utils/sql-type-helpers.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
+import type { TText, TInteger, TBigint } from "./test-utils/sql-type-helpers.ts"
 
 type DbWindow = {
 	defaultSchema: "public"

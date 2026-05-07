@@ -5,16 +5,16 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: interval (time intervals)
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table durations (id integer not null, duration interval not null);`)
 	.database()
 
-const result = await db.query(`select id, duration from durations;`)
+const _result = await _db.query(`select id, duration from durations;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			duration: unknown

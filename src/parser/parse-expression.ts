@@ -1,7 +1,4 @@
-import type {
-	JsqlDatabaseShape,
-	JsqlSelectStatementResult,
-} from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -15,15 +12,9 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type {
-	ParseParenEnclosedSelect,
-	ParseParenScalarSelect,
-} from "./parse-select.ts"
+import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
-import type {
-	SkipBracketedUntil,
-	SkipFailedExpression,
-} from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 import type {
 	SqlTypeShape,
 	SqlType,
@@ -293,16 +284,16 @@ type ParseInListUntypedAccum<
 type DecParenDepth<T extends readonly unknown[]> = T extends readonly [...infer Rest, infer _Last] ? Rest : readonly []
 
 /** Match the closing `)` of `( SELECT … )` when the subquery text starts at `Tokens` (leading `SELECT` token). */
-type SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
+type _SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
 	PeekToken<Tokens> extends TokenEot
 		? SkipFailedExpression<Tokens, SqlParserError<"Unclosed subquery">>
 		: PeekToken<Tokens> extends TokenKey<"(">
-			? SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
+			? _SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
 			: PeekToken<Tokens> extends TokenKey<")">
 				? [ExtraOpens] extends [readonly []]
 					? [SkipToken<Tokens>, null]
-					: SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
-				: SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
+					: _SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
+				: _SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
 
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">

@@ -3,7 +3,7 @@ import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/j
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
-import type { SkipFailedStatement} from "./skip-statement.ts"
+import type { SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">

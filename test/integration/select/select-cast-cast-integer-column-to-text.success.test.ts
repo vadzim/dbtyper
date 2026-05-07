@@ -4,17 +4,17 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 	.database()
 // ✅ SUCCESS: Cast integer column to text
 
-const result = await db.query(`select id::text as id_text from data;`)
+const _result = await _db.query(`select id::text as id_text from data;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id_text: string
 		}>

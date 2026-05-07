@@ -4,6 +4,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: Single enum value
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type singleton as enum ('only');`)

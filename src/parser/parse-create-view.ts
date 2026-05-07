@@ -3,7 +3,7 @@ import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData 
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
-import type { SkipFailedStatement} from "./skip-statement.ts"
+import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 

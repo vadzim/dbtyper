@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 	.apply(`create type priority as enum ('low', 'medium', 'high');`)
@@ -19,12 +19,12 @@ const db = sqlMigrations({ driver: mockDriver })
 // Integer value for enum column (runtime failure, not compile-time)
 // Integer value for enum column (runtime failure, not compile-time)
 
-const result = await db.query(`
+const _result = await _db.query(`
 		insert into tasks (id, name, task_status)
 		values (6, 'Task 6', 123)
 		returning *;
 	`)
 
 type _check = Expect<
-	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
+	Matches<typeof _result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >

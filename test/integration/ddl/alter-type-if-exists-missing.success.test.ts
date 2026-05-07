@@ -4,6 +4,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: ALTER TYPE IF EXISTS (non-existing type, no-op)
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`alter type if exists missing add value 'new';`)

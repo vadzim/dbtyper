@@ -3,7 +3,7 @@
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table users (
@@ -16,7 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: WHEN condition must be boolean, not integer
-const result = db.query(
+const _result = _db.query(
 	// @ts-expect-error
 	`select case when age then 'yes' else 'no' end from users;`,
 )

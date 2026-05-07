@@ -5,16 +5,16 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: uuid array
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table refs (id integer not null, uuids uuid[] not null);`)
 	.database()
 
-const result = await db.query(`select id, uuids from refs;`)
+const _result = await _db.query(`select id, uuids from refs;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			uuids: readonly string[]

@@ -2,7 +2,7 @@
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 	.apply(`create type priority as enum ('low', 'medium', 'high');`)
@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: NULL for NOT NULL enum column (compile-time error)
-const result = db.query(
+const _result = _db.query(
 	// @ts-expect-error
 	`
 		insert into tasks (id, name, task_status)

@@ -20,11 +20,11 @@ describe("migration query type inference", () => {
 	            order by email;
 		` as const
 
-		const rows = await db.query(statement, {
+		const _rows = await db.query(statement, {
 			email_domain: "@example\\.com$",
 		})
 
-		type RowType = (typeof rows)[number]
+		type RowType = (typeof _rows)[number]
 		type _expected = Expect<
 			Matches<
 				RowType,

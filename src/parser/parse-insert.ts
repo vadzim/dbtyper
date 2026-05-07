@@ -4,20 +4,10 @@ import type {
 	JsqlSelectStatementResult,
 	JsqlDataShape,
 } from "../core/jsql-shapes.ts"
-import type {
-	PeekToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type {
-	MergeScope,
-	ScopeMap,
-} from "./parser-scope.ts"
+import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
@@ -27,19 +17,10 @@ import type {
 	ScalarExprAst,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
-import type {
-	ParseAndResolveReturningClause,
-	ParseSelectExpression,
-} from "./parse-select.ts"
+import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type {
-	JsqlDbGetData,
-	JsqlDataGetColumnType,
-} from "../core/jsql-utils.ts"
-import type {
-	SkipFailedExpression,
-	SkipFailedStatement,
-} from "./skip-statement.ts"
+import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
