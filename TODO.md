@@ -119,7 +119,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [x] Same file: **`( from users ) as x`** → **`SqlParserError`** message **`Expected SELECT in derived table`** (or actual message).
 - [x] Same file: **`(select users.id from users`** without closing **`)`** → expect parser error on **`)`**.
 - [x] Same file: **`(select users.id) as x`** (no inner **`FROM`**) → **`Expected FROM in derived table`** (or actual).
-- [x] Same file: inner list uses **`:rid`** with **`Params`** **`{ rid: { ts: string; sql: "uuid" } }`**; outer list trivial; assert success.
+- [x] Same file: inner list uses **`:rid`** with **`Params`** **`{ rid: { sql: "uuid" } }`**; outer list trivial; assert success.
 - [x] Same file: **`(select users.id from users) s`** where inner tries **`select outer_alias.id from users`** or **`select users.id from users where users.id = outer_alias.id`** — assert **`SqlParserError`** (**unknown** / **invalid** qualified column) proving **no outer correlation**.
 
 ## Tests — `INSERT` / `UPDATE` / `DELETE` wiring

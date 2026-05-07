@@ -18,8 +18,8 @@ export type TsTypeToSqlType<T> = T extends number
 
 /**
  * Infer ExpressionParamsShape from a runtime params object.
- * Converts { userId: 5, name: "Alice" } to { userId: { ts: number; sql: "numeric" }, name: { ts: string; sql: "text" } }
+ * Converts { userId: 5, name: "Alice" } to { userId: { sql: "numeric" }, name: { sql: "text" } }
  */
 export type InferParamsFromValues<T extends Record<string, unknown>> = {
-	[K in keyof T]: { ts: T[K]; sql: TsTypeToSqlType<T[K]> }
+	[K in keyof T]: { sql: TsTypeToSqlType<T[K]> }
 }

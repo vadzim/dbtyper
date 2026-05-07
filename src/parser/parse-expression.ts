@@ -809,10 +809,7 @@ type ResolveFunctionCall<
 												? ExprOk<"uuid">
 												: SqlParserError<"This function takes no arguments">
 											: L extends "array_length"
-												? ArgsRes extends readonly [
-														ExprOk<infer S1>,
-														ExprOk<infer S2>,
-													]
+												? ArgsRes extends readonly [ExprOk<infer S1>, ExprOk<infer S2>]
 													? S1 extends `${string}[]` | "unknown"
 														? ExprOk<"integer">
 														: SqlParserError<"array_length expects (array, integer)">
@@ -824,10 +821,7 @@ type ResolveFunctionCall<
 															: SqlParserError<"array_append expects (array, element)">
 														: SqlParserError<"array_append requires 2 arguments">
 													: L extends "array_prepend"
-														? ArgsRes extends readonly [
-																ExprAtom,
-																ExprOk<infer S2>,
-															]
+														? ArgsRes extends readonly [ExprAtom, ExprOk<infer S2>]
 															? S2 extends `${string}[]` | "unknown"
 																? ExprOk<"unknown">
 																: SqlParserError<"array_prepend expects (element, array)">
@@ -1371,7 +1365,7 @@ type ResolveIdentChainValue<
 	ResolveColumnRefValue<Db, Scope, Parts> extends infer V
 		? V extends SqlParserError<string>
 			? V
-			: V extends { ts: infer Ts; sql: infer Sql extends string }
+			: V extends { sql: infer Sql extends string }
 				? ExprOk<Sql>
 				: SqlParserError<"Invalid column reference">
 		: never
@@ -2042,14 +2036,14 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 							: N extends "bytea"
 								? ExprOk<"bytea">
 								: N extends
-										| "timestamp"
-										| "timestamp with time zone"
-										| "timestamptz"
-										| "date"
-										| "time"
-										| "time with time zone"
-										| "timetz"
-										| "interval"
+											| "timestamp"
+											| "timestamp with time zone"
+											| "timestamptz"
+											| "date"
+											| "time"
+											| "time with time zone"
+											| "timetz"
+											| "interval"
 									? ExprOk<N>
 									: N extends "inet" | "cidr"
 										? ExprOk<N>
