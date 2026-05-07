@@ -8,9 +8,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 	.database()
 
-// TODO: Type validation in CAST removed - now only SQL types are checked
-// ❌ ERROR: Cannot cast integer to boolean
-// const result = db.query(
-// 	// @ts-expect-error
-// 	`select id::boolean from data;`,
-// )
+// Now accepts integer::boolean (no TypeScript type validation in parsers)
+const result = db.query(`select id::boolean from data;`)

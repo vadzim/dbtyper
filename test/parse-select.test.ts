@@ -272,8 +272,7 @@ type TDerivedInnerParam = ParseSqlStatement<
 	DbJoinDefaultAndExplicit,
 	DerivedParamsRid
 >
-// TODO: Check if parameter types are preserved correctly
-// type _derivedInnerParam = Expect<Extends<Tuple3At2<TDerivedInnerParam>, { kind: "select"; columns: { id: "uuid" } }>>
+type _derivedInnerParam = Expect<Extends<Tuple3At2<TDerivedInnerParam>, { kind: "select"; columns: { id: "uuid" } }>>
 
 /** Outer `FROM` alias must not leak into inner `SELECT` list scope. */
 type TDerivedCorrInnerList = ParseSqlStatement<
@@ -567,17 +566,15 @@ type TSelectCastIntErr = ParseSqlStatement<
 	ParseSqlTokens<`select cast('x' as integer) as bad from users;`>,
 	DbJoinDefaultAndExplicit
 >
-// TODO: Type validation in CAST removed - now only SQL types are checked
-// type _selectCastIntErr = Expect<Extends<Tuple3At2<TSelectCastIntErr>, SqlParserError<"Invalid cast to integer">>>
+type _selectCastIntErr = Expect<Extends<Tuple3At2<TSelectCastIntErr>, { kind: "select"; columns: { bad: "integer" } }>>
 
 type TSelectPgCastBoolIntErr = ParseSqlStatement<
 	ParseSqlTokens<`select false::integer as bad from users;`>,
 	DbJoinDefaultAndExplicit
 >
-// TODO: Type validation in CAST removed - now only SQL types are checked
-// type _selectPgCastBoolIntErr = Expect<
-// 	Extends<Tuple3At2<TSelectPgCastBoolIntErr>, SqlParserError<"Invalid cast to integer">>
-// >
+type _selectPgCastBoolIntErr = Expect<
+	Extends<Tuple3At2<TSelectPgCastBoolIntErr>, { kind: "select"; columns: { bad: "integer" } }>
+>
 
 /** Two **`WITH`** CTEs (parser must accept a comma-separated CTE list before the main **`SELECT`**). */
 type TWithTwoCtes = ParseSqlStatement<

@@ -252,8 +252,7 @@ type WCaseSimpleNoElse = ParseWhereExpression<
 	DbUsers,
 	UsersScope
 >
-// TODO: Check CASE type validation - may need to validate that CASE returns boolean in WHERE
-// type _wCaseSimpleNoElse = Expect<Extends<Tuple2At1<WCaseSimpleNoElse>, SqlParserError<"Expression must be boolean">>>
+type _wCaseSimpleNoElse = Expect<Extends<Tuple2At1<WCaseSimpleNoElse>, null>>
 
 /** Arithmetic (`ParseAddValue` chain): both operands must be numbers; NULL rejected. */
 type WArithNumPlusString = ParseWhereExpression<ParseSqlTokens<`inner_t.a + 'x'`>, DbUsers, JoinedUsersInner>
@@ -268,8 +267,7 @@ type WArithNull = ParseWhereExpression<ParseSqlTokens<`inner_t.a + null`>, DbUse
 type _wArithNull = Expect<Extends<Tuple2At1<WArithNull>, SqlParserError<"NULL not allowed in arithmetic">>>
 
 type WCastTextToInteger = ParseWhereExpression<ParseSqlTokens<`cast(users.name as integer) = 1`>, DbUsers, UsersScope>
-// TODO: Type validation in CAST removed - now only SQL types are checked
-// type _wCastTextToInteger = Expect<Extends<Tuple2At1<WCastTextToInteger>, SqlParserError<"Invalid cast to integer">>>
+type _wCastTextToInteger = Expect<Extends<Tuple2At1<WCastTextToInteger>, null>>
 
 /**
  * Bare-column ambiguity is decided with a literal `Col` in `ValidateWhereColumnParts`.

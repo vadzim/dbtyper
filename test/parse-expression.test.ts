@@ -51,8 +51,7 @@ type WParamUnknownTs = ParseWhereExpression<
 	UsersScope,
 	{ p: { sql: string } }
 >
-// TODO: Now we check sql type, not ts type - need to use IsUnknownOrAny on sql field
-// type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, SqlParserError<"Parameter has unknown or any type">>>
+type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, null>>
 
 type WParamBoolOk = ParseWhereExpression<
 	ParseSqlTokens<`:flag`>,

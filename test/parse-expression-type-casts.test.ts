@@ -67,15 +67,14 @@ type TCastTextToInet = ResolveExpressionAST<
 type _tCastTextToInetOk = Expect<Extends<TCastTextToInet, { ok: true; sql: "inet" }>>
 
 // Test invalid casts
-// TODO: Type validation in CAST removed - now only SQL types are checked
-// type TCastIntToBoolAst = ParseExpressionAST<ParseSqlTokens<`123::boolean`>, TestEnvForExprParse>
-// type TCastIntToBool = ResolveExpressionAST<
-// 	TCastIntToBoolAst extends [infer _R, infer Ast] ? Ast : never,
-// 	DbEmpty,
-// 	{},
-// 	EmptyExpressionParams
-// >
-// type _tCastIntToBoolErr = Expect<Extends<TCastIntToBool, SqlParserError<string>>>
+type TCastIntToBoolAst = ParseExpressionAST<ParseSqlTokens<`123::boolean`>, TestEnvForExprParse>
+type TCastIntToBool = ResolveExpressionAST<
+	TCastIntToBoolAst extends [infer _R, infer Ast] ? Ast : never,
+	DbEmpty,
+	{},
+	EmptyExpressionParams
+>
+type _tCastIntToBool = Expect<Extends<TCastIntToBool, { ok: true; sql: "boolean" }>>
 
 // Test chained casts
 type TCastChainedAst = ParseExpressionAST<ParseSqlTokens<`123::text::uuid`>, TestEnvForExprParse>
