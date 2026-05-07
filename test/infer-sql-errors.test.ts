@@ -3,7 +3,7 @@ import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -34,7 +34,7 @@ type _i2 = Expect<Extends<I2, SqlParserError<string>>>
 type I3 = InferSqlErrors<DbFns, `select id, n from u group by id`>
 type _i3 = Expect<Extends<I3, SqlParserError<string>>>
 /** Statement parse rejects `functions` keys that miss the arity/call shape (cheap vs unregistered names). */
-type TripleBuiltinArity = Tuple3At2<ParseSqlStatement<ParseSqlTokens<`select now(1) from u`>, DbFns>>
+type TripleBuiltinArity = ParseSqlStatement<ParseSqlTokens<`select now(1) from u`>, DbFns>[2]
 type _tripleBuiltinArity = Expect<Extends<TripleBuiltinArity, SqlParserError<string>>>
 /** Empty `sum()` is an argument error InferSqlErrors should surface as non-null tooling hook. */
 type I4 = InferSqlErrors<DbFns, `select sum() from u`>

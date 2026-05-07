@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -31,45 +31,45 @@ type DbUsers = {
 
 /** Tokens after `delete` (i.e. start with `from`). */
 type T1 = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u';`>, DbUsers>
-type _t1null = Expect<Matches<Tuple3At2<T1>, null>>
+type _t1null = Expect<Matches<T1[2], null>>
 
 type T2 = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u';`>, DbUsers>
-type _t2null = Expect<Matches<Tuple3At2<T2>, null>>
+type _t2null = Expect<Matches<T2[2], null>>
 
 type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where public.users.id = 'u';`>, DbUsers>
-type _t3null = Expect<Matches<Tuple3At2<T3>, null>>
+type _t3null = Expect<Matches<T3[2], null>>
 
 type TBad = ParseSqlStatement<ParseSqlTokens<`delete from users where users.nope = 'u';`>, DbUsers>
-type _tBad = Expect<Extends<Tuple3At2<TBad>, SqlParserError<string>>>
+type _tBad = Expect<Extends<TBad[2], SqlParserError<string>>>
 
 type TBadUnq = ParseSqlStatement<ParseSqlTokens<`delete from users where ghost = 'u';`>, DbUsers>
-type _tBadUnq = Expect<Extends<Tuple3At2<TBadUnq>, SqlParserError<string>>>
+type _tBadUnq = Expect<Extends<TBadUnq[2], SqlParserError<string>>>
 
 type TNoFrom = ParseSqlStatement<ParseSqlTokens<`delete users where id = 'u';`>, DbUsers>
-type _tNoFrom = Expect<Extends<Tuple3At2<TNoFrom>, SqlParserError<string>>>
+type _tNoFrom = Expect<Extends<TNoFrom[2], SqlParserError<string>>>
 
 /** End-of-input without `;` is accepted (same as `TokenEot` terminator elsewhere). */
 type TNoSemi = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u'`>, DbUsers>
-type _tNoSemi = Expect<Matches<Tuple3At2<TNoSemi>, null>>
+type _tNoSemi = Expect<Matches<TNoSemi[2], null>>
 
 type TUnknownTable = ParseSqlStatement<ParseSqlTokens<`delete from ghosts where id = 'u';`>, DbUsers>
-type _tUnknownTable = Expect<Extends<Tuple3At2<TUnknownTable>, SqlParserError<string>>>
+type _tUnknownTable = Expect<Extends<TUnknownTable[2], SqlParserError<string>>>
 
 type TAnd = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u' and users.name = 'a';`>, DbUsers>
-type _tAnd = Expect<Matches<Tuple3At2<TAnd>, null>>
+type _tAnd = Expect<Matches<TAnd[2], null>>
 
 type TIsNull = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name is null;`>, DbUsers>
-type _tIsNull = Expect<Matches<Tuple3At2<TIsNull>, null>>
+type _tIsNull = Expect<Matches<TIsNull[2], null>>
 
 type TIsNotNull = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name is not null;`>, DbUsers>
-type _tIsNotNull = Expect<Matches<Tuple3At2<TIsNotNull>, null>>
+type _tIsNotNull = Expect<Matches<TIsNotNull[2], null>>
 
 /** End-to-end `ParseSqlStatement`: `BETWEEN` / `LIKE` (not only `ParseWhereExpression`). */
 type TDelBetween = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name between 'a' and 'z';`>, DbUsers>
-type _tDelBetween = Expect<Matches<Tuple3At2<TDelBetween>, null>>
+type _tDelBetween = Expect<Matches<TDelBetween[2], null>>
 
 type TDelLike = ParseSqlStatement<ParseSqlTokens<`delete from users where users.name like 'x%';`>, DbUsers>
-type _tDelLike = Expect<Matches<Tuple3At2<TDelLike>, null>>
+type _tDelLike = Expect<Matches<TDelLike[2], null>>
 
 describe("parse-delete (type tests)", () => {
 	it("compile-time assertions above", () => {})

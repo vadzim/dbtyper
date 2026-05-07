@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -37,7 +37,7 @@ type DbArrays = {
 
 // Test array_length function
 type TArrayLength = ParseSqlStatement<ParseSqlTokens<`select array_length(tags, 1) as len from items;`>, DbArrays>
-type _tArrayLength = Expect<Extends<Tuple3At2<TArrayLength>, { kind: "select"; columns: { len: TInteger } }>>
+type _tArrayLength = Expect<Extends<TArrayLength[2], { kind: "select"; columns: { len: TInteger } }>>
 
 // Test array_append function
 type TArrayAppend = ParseSqlStatement<
@@ -46,7 +46,7 @@ type TArrayAppend = ParseSqlStatement<
 >
 type _tArrayAppend = Expect<
 	Extends<
-		Tuple3At2<TArrayAppend>,
+		TArrayAppend[2],
 		{ kind: "select"; columns: { appended: { type: "unknown"; arg: null; nullable: false } } }
 	>
 >
@@ -58,7 +58,7 @@ type TArrayPrepend = ParseSqlStatement<
 >
 type _tArrayPrepend = Expect<
 	Extends<
-		Tuple3At2<TArrayPrepend>,
+		TArrayPrepend[2],
 		{ kind: "select"; columns: { prepended: { type: "unknown"; arg: null; nullable: false } } }
 	>
 >
@@ -66,7 +66,7 @@ type _tArrayPrepend = Expect<
 // Test unnest function
 type TUnnest = ParseSqlStatement<ParseSqlTokens<`select unnest(tags) as tag from items;`>, DbArrays>
 type _tUnnest = Expect<
-	Extends<Tuple3At2<TUnnest>, { kind: "select"; columns: { tag: { type: "unknown"; arg: null; nullable: false } } }>
+	Extends<TUnnest[2], { kind: "select"; columns: { tag: { type: "unknown"; arg: null; nullable: false } } }>
 >
 
 // Test array_length with integer array
@@ -74,7 +74,7 @@ type TArrayLengthInt = ParseSqlStatement<
 	ParseSqlTokens<`select array_length(nums, 1) as num_len from items;`>,
 	DbArrays
 >
-type _tArrayLengthInt = Expect<Extends<Tuple3At2<TArrayLengthInt>, { kind: "select"; columns: { num_len: TInteger } }>>
+type _tArrayLengthInt = Expect<Extends<TArrayLengthInt[2], { kind: "select"; columns: { num_len: TInteger } }>>
 
 // Test array_append with integer array
 type TArrayAppendInt = ParseSqlStatement<
@@ -83,7 +83,7 @@ type TArrayAppendInt = ParseSqlStatement<
 >
 type _tArrayAppendInt = Expect<
 	Extends<
-		Tuple3At2<TArrayAppendInt>,
+		TArrayAppendInt[2],
 		{ kind: "select"; columns: { nums_appended: { type: "unknown"; arg: null; nullable: false } } }
 	>
 >
@@ -94,7 +94,7 @@ type TArrayLengthLiteral = ParseSqlStatement<
 	DbArrays
 >
 type _tArrayLengthLiteral = Expect<
-	Extends<Tuple3At2<TArrayLengthLiteral>, { kind: "select"; columns: { literal_len: TInteger } }>
+	Extends<TArrayLengthLiteral[2], { kind: "select"; columns: { literal_len: TInteger } }>
 >
 
 // Test nested array functions
@@ -103,16 +103,16 @@ type TNestedArrayFns = ParseSqlStatement<
 	DbArrays
 >
 type _tNestedArrayFns = Expect<
-	Extends<Tuple3At2<TNestedArrayFns>, { kind: "select"; columns: { nested_len: TInteger } }>
+	Extends<TNestedArrayFns[2], { kind: "select"; columns: { nested_len: TInteger } }>
 >
 
 // Test error: array_length with non-array argument
 type TArrayLengthBadArgs = ParseSqlStatement<ParseSqlTokens<`select array_length(id, 1) as bad from items;`>, DbArrays>
-type _tArrayLengthBadArgs = Expect<Extends<Tuple3At2<TArrayLengthBadArgs>, SqlParserError<string>>>
+type _tArrayLengthBadArgs = Expect<Extends<TArrayLengthBadArgs[2], SqlParserError<string>>>
 
 // Test error: unnest with non-array argument
 type TUnnestBadArgs = ParseSqlStatement<ParseSqlTokens<`select unnest(id) as bad from items;`>, DbArrays>
-type _tUnnestBadArgs = Expect<Extends<Tuple3At2<TUnnestBadArgs>, SqlParserError<string>>>
+type _tUnnestBadArgs = Expect<Extends<TUnnestBadArgs[2], SqlParserError<string>>>
 
 describe("array-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})

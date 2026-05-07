@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -53,11 +53,11 @@ type _applyStopDb = Expect<Matches<ApplyStopOnFirstError[1], DbDefaultPublic>>
 type _applyStopErr = Expect<Extends<ApplyStopOnFirstError[2], SqlParserError<string>>>
 
 type TCreateView = ParseSqlStatement<ParseSqlTokens<`create view v as select t.id from t;`>, DbDefaultPublic>
-type _createViewMerged = Expect<Extends<Tuple3At2<TCreateView>, null>>
+type _createViewMerged = Expect<Extends<TCreateView[2], null>>
 type _createViewDb = Expect<Extends<TCreateView[1]["schemas"]["public"]["sets"]["v"], { kind: "view" }>>
 
 type TGrantSkip = ParseSqlStatement<ParseSqlTokens<`grant select on public.t to anon;`>, DbDefaultPublic>
-type _grantSkipped = Expect<Extends<Tuple3At2<TGrantSkip>, { kind: "skipped-statement" }>>
+type _grantSkipped = Expect<Extends<TGrantSkip[2], { kind: "skipped-statement" }>>
 type _grantDb = Expect<Matches<TGrantSkip[1], DbDefaultPublic>>
 
 describe("apply-statements (type tests)", () => {

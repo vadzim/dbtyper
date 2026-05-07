@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -34,7 +34,7 @@ type TRowNumber = ParseSqlStatement<
 	DbWindow
 >
 type _tRowNumber = Expect<
-	Extends<Tuple3At2<TRowNumber>, { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
+	Extends<TRowNumber[2], { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test ROW_NUMBER() with ORDER BY DESC
@@ -43,7 +43,7 @@ type TRowNumberDesc = ParseSqlStatement<
 	DbWindow
 >
 type _tRowNumberDesc = Expect<
-	Extends<Tuple3At2<TRowNumberDesc>, { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
+	Extends<TRowNumberDesc[2], { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test RANK() with ORDER BY
@@ -52,7 +52,7 @@ type TRank = ParseSqlStatement<
 	DbWindow
 >
 type _tRank = Expect<
-	Extends<Tuple3At2<TRank>, { kind: "select"; columns: { id: TInteger; product: TText; rank_num: TBigint } }>
+	Extends<TRank[2], { kind: "select"; columns: { id: TInteger; product: TText; rank_num: TBigint } }>
 >
 
 // Test DENSE_RANK() with ORDER BY
@@ -62,7 +62,7 @@ type TDenseRank = ParseSqlStatement<
 >
 type _tDenseRank = Expect<
 	Extends<
-		Tuple3At2<TDenseRank>,
+		TDenseRank[2],
 		{ kind: "select"; columns: { id: TInteger; product: TText; dense_rank_num: TBigint } }
 	>
 >
@@ -74,7 +74,7 @@ type TMultipleWindow = ParseSqlStatement<
 >
 type _tMultipleWindow = Expect<
 	Extends<
-		Tuple3At2<TMultipleWindow>,
+		TMultipleWindow[2],
 		{ kind: "select"; columns: { id: TInteger; row_num: TBigint; rank_num: TBigint } }
 	>
 >
@@ -85,7 +85,7 @@ type TPartitionBy = ParseSqlStatement<
 	DbWindow
 >
 type _tPartitionBy = Expect<
-	Extends<Tuple3At2<TPartitionBy>, { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
+	Extends<TPartitionBy[2], { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test RANK() with PARTITION BY and multiple ORDER BY
@@ -94,7 +94,7 @@ type TPartitionByMultiOrder = ParseSqlStatement<
 	DbWindow
 >
 type _tPartitionByMultiOrder = Expect<
-	Extends<Tuple3At2<TPartitionByMultiOrder>, { kind: "select"; columns: { id: TInteger; rank_num: TBigint } }>
+	Extends<TPartitionByMultiOrder[2], { kind: "select"; columns: { id: TInteger; rank_num: TBigint } }>
 >
 
 // Test multiple PARTITION BY columns
@@ -103,7 +103,7 @@ type TMultiPartition = ParseSqlStatement<
 	DbWindow
 >
 type _tMultiPartition = Expect<
-	Extends<Tuple3At2<TMultiPartition>, { kind: "select"; columns: { id: TInteger; row_num: TBigint } }>
+	Extends<TMultiPartition[2], { kind: "select"; columns: { id: TInteger; row_num: TBigint } }>
 >
 
 // Test LAG() with PARTITION BY and ORDER BY
@@ -111,28 +111,28 @@ type TLag = ParseSqlStatement<
 	ParseSqlTokens<`select id, product, amount, lag(amount) over (partition by product order by sale_date) as prev_amount from sales;`>,
 	DbWindow
 >
-type _tLag = Expect<Extends<Tuple3At2<TLag>, { kind: "select" }>>
+type _tLag = Expect<Extends<TLag[2], { kind: "select" }>>
 
 // Test LEAD() with PARTITION BY and ORDER BY
 type TLead = ParseSqlStatement<
 	ParseSqlTokens<`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`>,
 	DbWindow
 >
-type _tLead = Expect<Extends<Tuple3At2<TLead>, { kind: "select" }>>
+type _tLead = Expect<Extends<TLead[2], { kind: "select" }>>
 
 // Test LAG() with offset
 type TLagOffset = ParseSqlStatement<
 	ParseSqlTokens<`select id, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`>,
 	DbWindow
 >
-type _tLagOffset = Expect<Extends<Tuple3At2<TLagOffset>, { kind: "select" }>>
+type _tLagOffset = Expect<Extends<TLagOffset[2], { kind: "select" }>>
 
 // Test LEAD() with offset and default
 type TLeadDefault = ParseSqlStatement<
 	ParseSqlTokens<`select id, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`>,
 	DbWindow
 >
-type _tLeadDefault = Expect<Extends<Tuple3At2<TLeadDefault>, { kind: "select" }>>
+type _tLeadDefault = Expect<Extends<TLeadDefault[2], { kind: "select" }>>
 
 describe("window-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})

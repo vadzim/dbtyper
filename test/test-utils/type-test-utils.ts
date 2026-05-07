@@ -28,11 +28,9 @@ export type Extends<Actual, Expected> =
 				: false
 
 /**
- * Tuple index access without `| undefined` from `noUncheckedIndexedAccess` on `[n]`.
- * Use when asserting on `ParseSqlStatement` / `ParseWhereExpression` pairs/triples.
+ * Type testing utilities for compile-time assertions.
+ * Use direct tuple indexing [1] or [2] for ParseSqlStatement / ParseWhereExpression results.
  */
-export type Tuple2At1<T> = T extends readonly [infer _0, infer R] ? R : never
-export type Tuple3At2<T> = T extends readonly [infer _0, infer _1, infer R] ? R : never
 
 /** `unknown` must not count as `any` (`[0] extends [1 & unknown]` is wrongly true). */
 type IsAny<T> = 0 extends 1 & T ? (1 extends 0 & T ? true : false) : false

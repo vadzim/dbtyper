@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -42,25 +42,25 @@ type DbAnyAll = {
 // Test = ANY with array
 type TAnyArray = ParseSqlStatement<ParseSqlTokens<`select * from items where id = any(array[1,2,3]);`>, DbAnyAll>
 type _tAnyArray = Expect<
-	Extends<Tuple3At2<TAnyArray>, { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
+	Extends<TAnyArray[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test = ANY with column array
 type TAnyColumn = ParseSqlStatement<ParseSqlTokens<`select * from items where 'important' = any(tags);`>, DbAnyAll>
 type _tAnyColumn = Expect<
-	Extends<Tuple3At2<TAnyColumn>, { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
+	Extends<TAnyColumn[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test = ALL with array
 type TAllArray = ParseSqlStatement<ParseSqlTokens<`select * from items where priority = all(array[1,1,1]);`>, DbAnyAll>
 type _tAllArray = Expect<
-	Extends<Tuple3At2<TAllArray>, { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
+	Extends<TAllArray[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test = SOME with array (alias for ANY)
 type TSomeArray = ParseSqlStatement<ParseSqlTokens<`select * from items where id = some(array[5,6,7]);`>, DbAnyAll>
 type _tSomeArray = Expect<
-	Extends<Tuple3At2<TSomeArray>, { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
+	Extends<TSomeArray[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test < ANY with array
@@ -70,7 +70,7 @@ type TLessThanAny = ParseSqlStatement<
 >
 type _tLessThanAny = Expect<
 	Extends<
-		Tuple3At2<TLessThanAny>,
+		TLessThanAny[2],
 		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
 	>
 >
@@ -82,7 +82,7 @@ type TGreaterThanAll = ParseSqlStatement<
 >
 type _tGreaterThanAll = Expect<
 	Extends<
-		Tuple3At2<TGreaterThanAll>,
+		TGreaterThanAll[2],
 		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
 	>
 >
@@ -94,7 +94,7 @@ type TAnySubquery = ParseSqlStatement<
 >
 type _tAnySubquery = Expect<
 	Extends<
-		Tuple3At2<TAnySubquery>,
+		TAnySubquery[2],
 		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
 	>
 >
@@ -106,7 +106,7 @@ type TAllSubquery = ParseSqlStatement<
 >
 type _tAllSubquery = Expect<
 	Extends<
-		Tuple3At2<TAllSubquery>,
+		TAllSubquery[2],
 		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
 	>
 >
@@ -118,14 +118,14 @@ type TSomeSubquery = ParseSqlStatement<
 >
 type _tSomeSubquery = Expect<
 	Extends<
-		Tuple3At2<TSomeSubquery>,
+		TSomeSubquery[2],
 		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
 	>
 >
 
 // Test error: ANY with non-array
 type TAnyNonArray = ParseSqlStatement<ParseSqlTokens<`select * from items where id = any(priority);`>, DbAnyAll>
-type _tAnyNonArray = Expect<Extends<Tuple3At2<TAnyNonArray>, SqlParserError<string>>>
+type _tAnyNonArray = Expect<Extends<TAnyNonArray[2], SqlParserError<string>>>
 
 describe("any-all-some-operators (type tests)", () => {
 	it("compile-time assertions above", () => {})

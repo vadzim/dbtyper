@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
 import type { TText, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
@@ -35,13 +35,13 @@ type TJoinOnAliasPredicate = ParseSqlStatement<
 	ParseSqlTokens<`select email from auth.users u left join public.agenda a on u.id = a.user_id;`>,
 	DbJoinAuthAgenda
 >
-type _joinOnAliasPredicateOk = Expect<Extends<Tuple3At2<TJoinOnAliasPredicate>, JsqlSelectStatementResult>>
+type _joinOnAliasPredicateOk = Expect<Extends<TJoinOnAliasPredicate[2], JsqlSelectStatementResult>>
 
 type TJoinOnCatalogPredicate = ParseSqlStatement<
 	ParseSqlTokens<`select email from auth.users left join public.agenda on auth.users.id = public.agenda.user_id;`>,
 	DbJoinAuthAgenda
 >
-type _joinOnCatalogPredicateOk = Expect<Extends<Tuple3At2<TJoinOnCatalogPredicate>, JsqlSelectStatementResult>>
+type _joinOnCatalogPredicateOk = Expect<Extends<TJoinOnCatalogPredicate[2], JsqlSelectStatementResult>>
 
 type TJoinOnCatalogPredicateMultiLine = ParseSqlStatement<
 	ParseSqlTokens<`
@@ -58,11 +58,11 @@ order by email
 	DbJoinAuthAgenda
 >
 type _joinOnCatalogPredicateMultiLineOk = Expect<
-	Extends<Tuple3At2<TJoinOnCatalogPredicateMultiLine>, JsqlSelectStatementResult>
+	Extends<TJoinOnCatalogPredicateMultiLine[2], JsqlSelectStatementResult>
 >
 type _joinOnCatalogPredicateMultiLineColumns = Expect<
 	Extends<
-		Tuple3At2<TJoinOnCatalogPredicateMultiLine>,
+		TJoinOnCatalogPredicateMultiLine[2],
 		{
 			kind: "select"
 			columns: {
@@ -80,7 +80,7 @@ type TJoinOnAliasTypeMismatch = ParseSqlStatement<
 	DbJoinAuthAgenda
 >
 type _joinOnAliasTypeMismatchErr = Expect<
-	Extends<Tuple3At2<TJoinOnAliasTypeMismatch>, SqlParserError<"Incompatible types in JOIN ON">>
+	Extends<TJoinOnAliasTypeMismatch[2], SqlParserError<"Incompatible types in JOIN ON">>
 >
 
 type TJoinOnQualifiedTypeMismatch = ParseSqlStatement<
@@ -88,7 +88,7 @@ type TJoinOnQualifiedTypeMismatch = ParseSqlStatement<
 	DbJoinAuthAgenda
 >
 type _joinOnQualifiedTypeMismatchErr = Expect<
-	Extends<Tuple3At2<TJoinOnQualifiedTypeMismatch>, SqlParserError<"Incompatible types in JOIN ON">>
+	Extends<TJoinOnQualifiedTypeMismatch[2], SqlParserError<"Incompatible types in JOIN ON">>
 >
 
 /** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE` via `:emailPat`, `ORDER BY`. */
@@ -108,15 +108,15 @@ order by display_name asc
 	DbJoinAuthAgenda,
 	{ emailPat: TText }
 >
-type _nestPostgresAppCliSelectOk = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>, JsqlSelectStatementResult>>
+type _nestPostgresAppCliSelectOk = Expect<Extends<TNestPostgresAppCliSelect[2], JsqlSelectStatementResult>>
 // Check individual columns instead of the whole structure
-type _nestPostgresAppCliSelectId = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["id"], TUuid>>
+type _nestPostgresAppCliSelectId = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["id"], TUuid>>
 type _nestPostgresAppCliSelectUserId = Expect<
-	Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["user_id"], TUuid>
+	Extends<TNestPostgresAppCliSelect[2]["columns"]["user_id"], TUuid>
 >
-type _nestPostgresAppCliSelectEmail = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["email"], TText>>
+type _nestPostgresAppCliSelectEmail = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["email"], TText>>
 type _nestPostgresAppCliSelectDisplayName = Expect<
-	Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["display_name"], TNull<"text">>
+	Extends<TNestPostgresAppCliSelect[2]["columns"]["display_name"], TNull<"text">>
 >
 
 describe("parse-select JOIN … ON (type tests)", () => {

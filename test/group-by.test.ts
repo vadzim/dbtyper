@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -50,7 +50,7 @@ type TGroupProjViol = ParseSqlStatement<ParseSqlTokens<`select region, amount fr
 
 type _groupProjViol = Expect<
 	Matches<
-		Tuple3At2<TGroupProjViol>,
+		TGroupProjViol[2],
 		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
 >
@@ -61,7 +61,7 @@ type TGroupProjAggOk = ParseSqlStatement<
 >
 
 type _groupProjAggOk = Expect<
-	Matches<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { region: TText; s: TNumeric } }>
+	Matches<TGroupProjAggOk[2], { kind: "select"; columns: { region: TText; s: TNumeric } }>
 >
 
 /** `HAVING` without `GROUP BY` still enforces “aggregates or constants / grouped columns” on projections. */
@@ -69,7 +69,7 @@ type THavingNoGroupBareCol = ParseSqlStatement<ParseSqlTokens<`select region fro
 
 type _havingNoGroupBareCol = Expect<
 	Matches<
-		Tuple3At2<THavingNoGroupBareCol>,
+		THavingNoGroupBareCol[2],
 		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
 >
@@ -131,7 +131,7 @@ type TGroupOrderLimitBad = ParseSqlStatement<
 
 type _groupOrderLimitBad = Expect<
 	Matches<
-		Tuple3At2<TGroupOrderLimitBad>,
+		TGroupOrderLimitBad[2],
 		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
 >
