@@ -25,3 +25,5 @@ Thumbs.db
 
 debug/
 .local/
+
+session-*.md
