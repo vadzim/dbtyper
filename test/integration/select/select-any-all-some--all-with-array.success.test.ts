@@ -4,14 +4,14 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table items (id integer not null, tags text[] not null, priority integer not null);`)
 	.apply(`create table priorities (value integer not null);`)
 	.database()
 // ✅ SUCCESS: > ALL with array
 
-const _result = await db.query(`select * from items where priority > all(array[1,2,3]);`)
+const _result = await _db.query(`select * from items where priority > all(array[1,2,3]);`)
 
 type _check = Expect<
 	Matches<

@@ -4,7 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: Drop schema with types
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create schema temp;`)
 	.apply(`create type temp.status as enum ('active', 'inactive');`)

@@ -5,12 +5,12 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: bigint array
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table big_nums (id integer not null, nums bigint[] not null);`)
 	.database()
 
-const _result = await db.query(`select id, nums from big_nums;`)
+const _result = await _db.query(`select id, nums from big_nums;`)
 
 type _check = Expect<
 	Matches<

@@ -5,12 +5,12 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: bytea (binary data)
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table files (id integer not null, data bytea not null);`)
 	.database()
 
-const _result = await db.query(`select id, data from files;`)
+const _result = await _db.query(`select id, data from files;`)
 
 type _check = Expect<
 	Matches<

@@ -4,7 +4,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table users (
@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: can provide explicit values for DEFAULT columns
 
-const _result = await db.query(`insert into users (id, name, age, active) values ('2', 'Bob', 25, false) returning *;`)
+const _result = await _db.query(`insert into users (id, name, age, active) values ('2', 'Bob', 25, false) returning *;`)
 
 type _check = Expect<
 	Matches<typeof _result, { name: string; id: string; active: boolean; created_at: Date; age: string }[]>

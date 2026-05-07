@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(
 		`create table sales (id integer not null, product text not null, amount integer not null, sale_date text not null);`,
@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: LEAD() with offset and default value
 
-const _result = await db.query(
+const _result = await _db.query(
 	`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`,
 )
 

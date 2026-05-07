@@ -5,12 +5,12 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: serial types (auto-increment)
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table counters (id serial not null, count bigserial not null, small smallserial not null);`)
 	.database()
 
-const _result = await db.query(`select id, count, small from counters;`)
+const _result = await _db.query(`select id, count, small from counters;`)
 
 type _check = Expect<
 	Matches<
