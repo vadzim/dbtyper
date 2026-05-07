@@ -88,7 +88,7 @@ describe("Integration test files correctness", async () => {
 						const hasTypeCheck = /\btype _check = Expect<\s*Matches<\s*typeof _?result,/.test(content)
 						assert.ok(
 							hasTypeCheck,
-							"Success test files must have a type check in the form (`type _check = Expect<Matches<typeof result, ...`). For testing .stream(..) use `const result = await Array.fromAsync(await db.stream(`",
+							"Success test files must have a type check in the form (`type _check = Expect<Matches<typeof result, ...`). For testing .stream(..) use `const result /* or _result */ = await Array.fromAsync(await db.stream(`",
 						)
 					})
 				}
