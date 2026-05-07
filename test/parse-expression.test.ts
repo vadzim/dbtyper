@@ -135,7 +135,7 @@ type RCaseNoElse = ResolveExpressionAST<
 	UsersScope,
 	EmptyExpressionParams
 >
-type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "integer">>>
+type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<"integer">>>
 
 type WExistsOk = ParseWhereExpression<ParseSqlTokens<`exists (select users.id from users)`>, DbUsers, UsersScope>
 type _wExistsOk = Expect<Extends<Tuple2At1<WExistsOk>, null>>

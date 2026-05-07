@@ -17,7 +17,7 @@ import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
-export type ExpressionParamsShape = Record<string, { ts: unknown; sql: string }>
+export type ExpressionParamsShape = Record<string, { sql: string }>
 
 /** Default `Params` for parsers: `keyof` is `never` (plain `{}` widens against `Record<string, …>`). */
 export type EmptyExpressionParams = Record<never, never>
@@ -32,12 +32,12 @@ export type ExprParseEnv = {
 /** True when `T` is `unknown` or `any` (not other types). */
 export type IsUnknownOrAny<T> = 0 extends 1 & T ? true : unknown extends T ? (T extends unknown ? true : false) : false
 
-export type ExprOk<Ts, Sql extends string> = { ok: true; ts: Ts; sql: Sql }
+export type ExprOk<Sql extends string> = { ok: true; sql: Sql }
 
 /** SQL `NULL` literal — may only appear in `IS [NOT] NULL`, not in `=` / `<>`. */
-export type ExprSqlNull = { ok: true; ts: null; sql: "null"; exprKind: "sql_null" }
+export type ExprSqlNull = { ok: true; sql: "null"; exprKind: "sql_null" }
 
-export type ExprAtom = ExprOk<unknown, string> | ExprSqlNull
+export type ExprAtom = ExprOk<string> | ExprSqlNull
 
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
 export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
@@ -739,7 +739,7 @@ type ResolveFunctionArgsList<
 	Acc extends readonly ExprAtom[] = [],
 > = Args extends readonly [infer First, ...infer Rest extends readonly (ScalarExprAst | { kind: "star" })[]]
 	? First extends { kind: "star" }
-		? ResolveFunctionArgsList<Rest, Db, Scope, Params, readonly [...Acc, ExprOk<unknown, "unknown">]>
+		? ResolveFunctionArgsList<Rest, Db, Scope, Params, readonly [...Acc, ExprOk<"unknown">]>
 		: First extends ScalarExprAst
 			? ResolveExpressionAST<First, Db, Scope, Params> extends infer Res
 				? Res extends SqlParserError<string>
@@ -774,7 +774,7 @@ type ResolveFunctionCall<
 				? ArgsRes extends SqlParserError<string>
 					? ArgsRes
 					: ArgsRes extends readonly ExprAtom[]
-						? ExprOk<unknown, "bigint">
+						? ExprOk<"bigint">
 						: never
 				: never
 			: SqlParserError<"`*` is only allowed as COUNT(*) argument">
@@ -783,59 +783,59 @@ type ResolveFunctionCall<
 				? ArgsRes
 				: ArgsRes extends readonly ExprAtom[]
 					? L extends "count"
-						? ExprOk<unknown, "bigint">
+						? ExprOk<"bigint">
 						: L extends "lower" | "upper"
-							? ArgsRes extends readonly [ExprOk<unknown, infer _S>, ...infer _Rest]
-								? ExprOk<unknown, "text">
+							? ArgsRes extends readonly [ExprOk<infer S>, ...infer _Rest]
+								? ExprOk<"text">
 								: ArgsRes extends readonly []
 									? SqlParserError<"Function requires at least one argument">
 									: SqlParserError<"Function expects text argument">
 							: L extends "coalesce"
 								? ArgsRes extends readonly []
 									? SqlParserError<"coalesce() requires at least one argument">
-									: ArgsRes[0] extends ExprOk<infer T0, infer S0>
-										? ExprOk<T0, S0>
-										: ExprOk<unknown, "unknown">
+									: ArgsRes[0] extends ExprOk<infer S0>
+										? ExprOk<S0>
+										: ExprOk<"unknown">
 								: L extends "now"
 									? ArgsRes extends readonly []
-										? ExprOk<Date, "timestamp with time zone">
+										? ExprOk<"timestamp with time zone">
 										: SqlParserError<"now() takes no arguments">
 									: L extends "sum"
 										? ArgsRes extends readonly [ExprAtom, ...infer _R]
-											? ExprOk<unknown, "numeric">
+											? ExprOk<"numeric">
 											: SqlParserError<"sum() requires an argument">
 										: L extends "uuid_generate_v4" | "gen_random_uuid"
 											? ArgsRes extends readonly []
-												? ExprOk<unknown, "uuid">
+												? ExprOk<"uuid">
 												: SqlParserError<"This function takes no arguments">
 											: L extends "array_length"
 												? ArgsRes extends readonly [
-														ExprOk<infer _T1, infer S1>,
-														ExprOk<unknown, infer _S2>,
+														ExprOk<infer S1>,
+														ExprOk<infer S2>,
 													]
 													? S1 extends `${string}[]` | "unknown"
-														? ExprOk<unknown, "integer">
+														? ExprOk<"integer">
 														: SqlParserError<"array_length expects (array, integer)">
 													: SqlParserError<"array_length requires 2 arguments">
 												: L extends "array_append"
-													? ArgsRes extends readonly [ExprOk<infer _T1, infer S1>, ExprAtom]
+													? ArgsRes extends readonly [ExprOk<infer S1>, ExprAtom]
 														? S1 extends `${string}[]` | "unknown"
-															? ExprOk<readonly unknown[], "unknown">
+															? ExprOk<"unknown">
 															: SqlParserError<"array_append expects (array, element)">
 														: SqlParserError<"array_append requires 2 arguments">
 													: L extends "array_prepend"
 														? ArgsRes extends readonly [
 																ExprAtom,
-																ExprOk<infer _T2, infer S2>,
+																ExprOk<infer S2>,
 															]
 															? S2 extends `${string}[]` | "unknown"
-																? ExprOk<readonly unknown[], "unknown">
+																? ExprOk<"unknown">
 																: SqlParserError<"array_prepend expects (element, array)">
 															: SqlParserError<"array_prepend requires 2 arguments">
 														: L extends "unnest"
-															? ArgsRes extends readonly [ExprOk<infer _T1, infer S1>]
+															? ArgsRes extends readonly [ExprOk<infer S1>]
 																? S1 extends `${string}[]` | "unknown"
-																	? ExprOk<unknown, "unknown">
+																	? ExprOk<"unknown">
 																	: SqlParserError<"unnest expects an array">
 																: SqlParserError<"unnest requires 1 argument">
 															: "functions" extends keyof Db
@@ -844,8 +844,8 @@ type ResolveFunctionCall<
 																		? Db["functions"][L &
 																				keyof Db["functions"]] extends infer SqlType extends
 																				string
-																			? ExprOk<unknown, SqlType>
-																			: ExprOk<unknown, "unknown">
+																			? ExprOk<SqlType>
+																			: ExprOk<"unknown">
 																		: SqlParserError<`Unknown function: ${Name}`>
 																	: SqlParserError<`Unknown function: ${Name}`>
 																: SqlParserError<`Unknown function: ${Name}`>
@@ -861,18 +861,18 @@ type ResolveWindowFunction<
 	L extends string = Lowercase<Name>,
 > = L extends "row_number"
 	? Args extends readonly []
-		? ExprOk<unknown, "bigint">
+		? ExprOk<"bigint">
 		: SqlParserError<"ROW_NUMBER() takes no arguments">
 	: L extends "rank" | "dense_rank"
 		? Args extends readonly []
-			? ExprOk<unknown, "bigint">
+			? ExprOk<"bigint">
 			: SqlParserError<"RANK/DENSE_RANK takes no arguments">
 		: L extends "lag" | "lead"
 			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
 				? ArgsRes extends SqlParserError<string>
 					? ArgsRes
-					: ArgsRes extends readonly [ExprOk<infer T, infer S>, ...infer _Rest]
-						? ExprOk<T | null, S>
+					: ArgsRes extends readonly [ExprOk<infer S>, ...infer _Rest]
+						? ExprOk<S>
 						: ArgsRes extends readonly []
 							? SqlParserError<"LAG/LEAD requires at least 1 argument">
 							: SqlParserError<"Invalid LAG/LEAD arguments">
@@ -896,25 +896,25 @@ type ResolveCustomOp<
 					: Lv extends ExprAtom
 						? Rv extends ExprAtom
 							? Op extends "@>" | "&&" | "<@"
-								? ExprOk<unknown, "boolean">
+								? ExprOk<"boolean">
 								: Op extends "||"
-									? Lv extends ExprOk<infer _Lval, infer LvSql extends string>
+									? Lv extends ExprOk<infer LvSql extends string>
 										? LvSql extends `${infer ElemType}[]`
-											? Rv extends ExprOk<infer _Rval, "text">
+											? Rv extends ExprOk<"text">
 												? SqlParserError<"Cannot concatenate array with text">
-												: Rv extends ExprOk<infer _Rval, infer RvSql extends string>
+												: Rv extends ExprOk<infer RvSql extends string>
 													? RvSql extends ElemType
-														? ExprOk<readonly unknown[], LvSql>
+														? ExprOk<LvSql>
 														: RvSql extends `${string}[]`
-															? ExprOk<readonly unknown[], LvSql>
+															? ExprOk<LvSql>
 															: SqlParserError<`Cannot concatenate ${LvSql} with ${RvSql}`>
 													: never
-											: Rv extends ExprOk<infer _Rval, infer RvSql extends string>
+											: Rv extends ExprOk<infer RvSql extends string>
 												? RvSql extends `${infer ElemType}[]`
 													? LvSql extends "text"
 														? SqlParserError<"Cannot concatenate text with array">
 														: LvSql extends ElemType
-															? ExprOk<readonly unknown[], RvSql>
+															? ExprOk<RvSql>
 															: SqlParserError<`Cannot concatenate ${LvSql} with ${RvSql}`>
 													: LvSql extends "text"
 														? RvSql extends
@@ -924,7 +924,7 @@ type ResolveCustomOp<
 																| "numeric"
 																| "uuid"
 																| "boolean"
-															? ExprOk<unknown, "text">
+															? ExprOk<"text">
 															: SqlParserError<`Cannot concatenate text with ${RvSql}`>
 														: RvSql extends "text"
 															? LvSql extends
@@ -933,12 +933,12 @@ type ResolveCustomOp<
 																	| "numeric"
 																	| "uuid"
 																	| "boolean"
-																? ExprOk<unknown, "text">
+																? ExprOk<"text">
 																: SqlParserError<`Cannot concatenate ${LvSql} with text`>
 															: SqlParserError<"|| requires at least one text operand">
 												: never
 										: never
-									: ExprOk<unknown, string>
+									: ExprOk<string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
 				: never
@@ -954,7 +954,7 @@ type ResolveArrayCtorElements<
 	? ResolveExpressionAST<H, Db, Scope, Params> extends infer V
 		? V extends SqlParserError<string>
 			? V
-			: V extends ExprOk<infer _Val, infer SqlType extends string>
+			: V extends ExprOk<infer SqlType extends string>
 				? ResolveArrayCtorElements<R, Db, Scope, Params, readonly [...AccTypes, SqlType]>
 				: SqlParserError<"Invalid ARRAY element">
 		: never
@@ -964,7 +964,7 @@ type InferArrayType<Types extends readonly string[]> = Types extends readonly []
 	? SqlParserError<"Cannot determine type of empty array">
 	: Types extends readonly [infer First extends string, ...infer Rest extends readonly string[]]
 		? UnifyArrayElementTypes<First, Rest> extends infer Unified extends string
-			? ExprOk<readonly unknown[], `${Unified}[]`>
+			? ExprOk<`${Unified}[]`>
 			: never
 		: never
 
@@ -989,11 +989,11 @@ type ExpressionResolvers<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > = {
-	true: ExprOk<true, "boolean">
-	false: ExprOk<false, "boolean">
+	true: ExprOk<"boolean">
+	false: ExprOk<"boolean">
 	sql_null: ExprSqlNull
-	string: Ast extends { kind: "string"; value: string } ? ExprOk<unknown, "text"> : never
-	number: Ast extends { kind: "number"; raw: string } ? ExprOk<unknown, "integer"> : never
+	string: Ast extends { kind: "string"; value: string } ? ExprOk<"text"> : never
+	number: Ast extends { kind: "number"; raw: string } ? ExprOk<"integer"> : never
 	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
 	custom_op: Ast extends {
 		kind: "custom_op"
@@ -1045,7 +1045,7 @@ type ExpressionResolvers<
 						? Rv
 						: Lv extends ExprAtom
 							? Rv extends ExprAtom
-								? ExprOk<unknown, "unknown">
+								? ExprOk<"unknown">
 								: SqlParserError<"Invalid array subscript operand">
 							: SqlParserError<"Invalid array base operand">
 					: never
@@ -1122,9 +1122,9 @@ type ExpressionResolvers<
 			? V0 extends SqlParserError<string>
 				? V0
 				: V0 extends ExprSqlNull
-					? ExprOk<true, "boolean">
-					: V0 extends ExprOk<unknown, string>
-						? ExprOk<false, "boolean">
+					? ExprOk<"boolean">
+					: V0 extends ExprOk<string>
+						? ExprOk<"boolean">
 						: SqlParserError<"Invalid IS NULL operand">
 			: never
 		: never
@@ -1133,9 +1133,9 @@ type ExpressionResolvers<
 			? V1 extends SqlParserError<string>
 				? V1
 				: V1 extends ExprSqlNull
-					? ExprOk<false, "boolean">
-					: V1 extends ExprOk<unknown, string>
-						? ExprOk<true, "boolean">
+					? ExprOk<"boolean">
+					: V1 extends ExprOk<string>
+						? ExprOk<"boolean">
 						: SqlParserError<"Invalid IS NOT NULL operand">
 			: never
 		: never
@@ -1260,7 +1260,7 @@ type ExpressionResolvers<
 		kind: "exists_subquery"
 		sub: infer _Ex extends JsqlSelectStatementResult
 	}
-		? ExprOk<unknown, "boolean">
+		? ExprOk<"boolean">
 		: never
 	scalar_subquery: Ast extends {
 		kind: "scalar_subquery"
@@ -1358,9 +1358,9 @@ type MaximalIdentChain<Tokens extends TokensList> =
 		: never
 
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? IsUnknownOrAny<Params[Name]["ts"]> extends true
+	? IsUnknownOrAny<Params[Name]["sql"]> extends true
 		? SqlParserError<"Parameter has unknown or any type">
-		: ExprOk<Params[Name]["ts"], Params[Name]["sql"]>
+		: ExprOk<Params[Name]["sql"]>
 	: SqlParserError<"Unknown query parameter">
 
 type ResolveIdentChainValue<
@@ -1372,7 +1372,7 @@ type ResolveIdentChainValue<
 		? V extends SqlParserError<string>
 			? V
 			: V extends { ts: infer Ts; sql: infer Sql extends string }
-				? ExprOk<Ts, Sql>
+				? ExprOk<Sql>
 				: SqlParserError<"Invalid column reference">
 		: never
 
@@ -1385,7 +1385,7 @@ type TryOperandIdentColumnRefBody<
 	? ResolveIdentChainValue<Db, Scope, readonly [S, T, C]> extends infer V
 		? V extends SqlParserError<string>
 			? SkipFailedExpression<Rm, V>
-			: V extends ExprOk<infer Ts, infer Sql extends string>
+			: V extends ExprOk<infer Sql extends string>
 				? [Rm, V]
 				: never
 		: never
@@ -1393,7 +1393,7 @@ type TryOperandIdentColumnRefBody<
 		? ResolveIdentChainValue<Db, Scope, readonly [A, C2]> extends infer V2
 			? V2 extends SqlParserError<string>
 				? SkipFailedExpression<Rm, V2>
-				: V2 extends ExprOk<infer Ts2, infer Sql2 extends string>
+				: V2 extends ExprOk<infer Sql2 extends string>
 					? [Rm, V2]
 					: never
 			: never
@@ -1401,7 +1401,7 @@ type TryOperandIdentColumnRefBody<
 			? ResolveIdentChainValue<Db, Scope, readonly [C1]> extends infer V1
 				? V1 extends SqlParserError<string>
 					? SkipFailedExpression<Rm, V1>
-					: V1 extends ExprOk<infer Ts1, infer Sql1 extends string>
+					: V1 extends ExprOk<infer Sql1 extends string>
 						? [Rm, V1]
 						: never
 				: never
@@ -1668,10 +1668,10 @@ type MergeComparison<L extends ExprAtom, R extends ExprAtom> = L extends ExprSql
 	? SqlParserError<"Use IS NULL instead of = null">
 	: R extends ExprSqlNull
 		? SqlParserError<"Use IS NULL instead of = null">
-		: L extends ExprOk<infer _TsL, infer Sl extends string>
-			? R extends ExprOk<infer _TsR, infer Sr extends string>
+		: L extends ExprOk<infer Sl extends string>
+			? R extends ExprOk<infer Sr extends string>
 				? SameComparisonClass<Sl, Sr> extends true
-					? ExprOk<unknown, "boolean">
+					? ExprOk<"boolean">
 					: SqlParserError<"Incompatible types in comparison">
 				: never
 			: never
@@ -1686,12 +1686,12 @@ type MergeBetweenBounds<E extends ExprAtom, Lm extends ExprAtom, H extends ExprA
 		? SqlParserError<"NULL not allowed in BETWEEN">
 		: H extends ExprSqlNull
 			? SqlParserError<"NULL not allowed in BETWEEN">
-			: E extends ExprOk<infer _TsE, infer Se extends string>
-				? Lm extends ExprOk<infer _TsL, infer Sl extends string>
-					? H extends ExprOk<infer _TsH, infer Sh extends string>
+			: E extends ExprOk<infer Se extends string>
+				? Lm extends ExprOk<infer Sl extends string>
+					? H extends ExprOk<infer Sh extends string>
 						? SameComparisonClass<Se, Sl> extends true
 							? SameComparisonClass<Se, Sh> extends true
-								? ExprOk<unknown, "boolean">
+								? ExprOk<"boolean">
 								: SqlParserError<"Incompatible types in BETWEEN">
 							: SqlParserError<"Incompatible types in BETWEEN">
 						: SqlParserError<"Invalid BETWEEN bound">
@@ -1702,11 +1702,11 @@ type MergeLikeOperands<Expr extends ExprAtom, Pat extends ExprAtom> = Expr exten
 	? SqlParserError<"NULL not allowed in LIKE">
 	: Pat extends ExprSqlNull
 		? SqlParserError<"NULL not allowed in LIKE">
-		: Expr extends ExprOk<infer _TsE, infer Se extends string>
-			? Pat extends ExprOk<infer _TsP, infer Sp extends string>
+		: Expr extends ExprOk<infer Se extends string>
+			? Pat extends ExprOk<infer Sp extends string>
 				? IsSqlTextType<Se> extends true
 					? IsSqlTextType<Sp> extends true
-						? ExprOk<unknown, "boolean">
+						? ExprOk<"boolean">
 						: SqlParserError<"LIKE pattern must be text">
 					: SqlParserError<"LIKE left operand must be text">
 				: SqlParserError<"Invalid LIKE pattern">
@@ -1717,22 +1717,22 @@ type MergeCaseThenAccum<Acc extends ExprAtom | null, Tv extends ExprAtom> = Acc 
 	: Acc extends ExprSqlNull
 		? Tv extends ExprSqlNull
 			? ExprSqlNull
-			: Tv extends ExprOk<infer Tb, infer Sb>
-				? ExprOk<Tb | null, Sb>
+			: Tv extends ExprOk<infer Sb>
+				? ExprOk<Sb>
 				: SqlParserError<"Invalid CASE branch">
-		: Acc extends ExprOk<infer Ta, infer Sa extends string>
+		: Acc extends ExprOk<infer Sa extends string>
 			? Tv extends ExprSqlNull
-				? ExprOk<Ta | null, Sa>
-				: Tv extends ExprOk<infer Tb, infer Sb extends string>
+				? ExprOk<Sa>
+				: Tv extends ExprOk<infer Sb extends string>
 					? SameComparisonClass<Sa, Sb> extends true
-						? ExprOk<Ta, Sa>
+						? ExprOk<Sa>
 						: SqlParserError<"Incompatible types in CASE">
 					: SqlParserError<"Invalid CASE branch">
 			: SqlParserError<"Invalid CASE branch">
 
 type ApplyCaseMissingElseNullability<E extends ExprAtom, MissingElse extends boolean> = MissingElse extends true
-	? E extends ExprOk<infer Ts, infer Ss>
-		? ExprOk<Ts | null, Ss>
+	? E extends ExprOk<infer Ss>
+		? ExprOk<Ss>
 		: E extends ExprSqlNull
 			? ExprSqlNull
 			: SqlParserError<"Invalid CASE expression">
@@ -1752,7 +1752,7 @@ type ResolveCaseSearchedArms<
 	? ResolveExpressionAST<A["when"], Db, Scope, Params> extends infer Wv
 		? Wv extends SqlParserError<string>
 			? Wv
-			: Wv extends ExprOk<infer _Tw, infer Sw extends string>
+			: Wv extends ExprOk<infer Sw extends string>
 				? IsSqlBooleanType<Sw> extends true
 					? ResolveExpressionAST<A["then"], Db, Scope, Params> extends infer Tv
 						? Tv extends SqlParserError<string>
@@ -1880,8 +1880,8 @@ type ValidateInListElement<L extends ExprAtom, R extends ExprAtom> = L extends E
 	? SqlParserError<"Invalid IN left operand">
 	: R extends ExprSqlNull
 		? SqlParserError<"Incompatible types in IN list">
-		: L extends ExprOk<infer _TsL, infer Sl extends string>
-			? R extends ExprOk<infer _TsR, infer Sr extends string>
+		: L extends ExprOk<infer Sl extends string>
+			? R extends ExprOk<infer Sr extends string>
 				? SameComparisonClass<Sl, Sr> extends true
 					? true
 					: SqlParserError<"Incompatible types in IN list">
@@ -1904,7 +1904,7 @@ type ResolveInListItemsAgainstLeft<
 						? V
 						: V extends true
 							? Tail extends readonly []
-								? ExprOk<unknown, "boolean">
+								? ExprOk<"boolean">
 								: ResolveInListItemsAgainstLeft<Left, Tail, Db, Scope, Params>
 							: never
 					: never
@@ -1916,7 +1916,7 @@ type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
 			? S["columns"][K] extends infer ColType extends string
-				? ExprOk<ColType | null, ColType>
+				? ExprOk<ColType>
 				: SqlParserError<"Scalar subquery column inference failed">
 			: SqlParserError<"Scalar subquery column inference failed">
 		: SqlParserError<"Scalar subquery must project exactly one column">
@@ -1925,7 +1925,7 @@ type SubSelectColumnAtom<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["columns"]> extends true
 		? keyof S["columns"] extends infer K extends keyof S["columns"]
 			? S["columns"][K] extends infer ColType extends string
-				? ExprOk<ColType, ColType>
+				? ExprOk<ColType>
 				: SqlParserError<"IN subquery column inference failed">
 			: SqlParserError<"IN subquery column inference failed">
 		: SqlParserError<"IN subquery must project exactly one column">
@@ -1949,7 +1949,7 @@ type ResolveInSubqueryAst<
 								? V extends SqlParserError<string>
 									? V
 									: V extends true
-										? ExprOk<unknown, "boolean">
+										? ExprOk<"boolean">
 										: SqlParserError<"Incompatible types in IN subquery">
 								: SqlParserError<"Incompatible types in IN subquery">
 							: SqlParserError<"Invalid IN subquery column">
@@ -1977,7 +1977,7 @@ type ResolveAnyAllSomeOp<
 								? MergeComparison<Lv, Rv> extends infer V
 									? V extends SqlParserError<string>
 										? V
-										: ExprOk<unknown, "boolean">
+										: ExprOk<"boolean">
 									: SqlParserError<"Invalid ANY/ALL/SOME comparison">
 								: SqlParserError<"Invalid ANY/ALL/SOME subquery column">
 						: SqlParserError<"Invalid ANY/ALL/SOME subquery column">
@@ -1985,9 +1985,9 @@ type ResolveAnyAllSomeOp<
 						? ResolveExpressionAST<R, Db, Scope, Params> extends infer Rv
 							? Rv extends SqlParserError<string>
 								? Rv
-								: Rv extends ExprOk<infer _RTs, infer RSql>
+								: Rv extends ExprOk<infer RSql>
 									? RSql extends `${string}[]` | "unknown"
-										? ExprOk<unknown, "boolean">
+										? ExprOk<"boolean">
 										: SqlParserError<"ANY/ALL/SOME requires an array or subquery">
 									: SqlParserError<"Invalid ANY/ALL/SOME operand">
 							: never
@@ -2000,9 +2000,9 @@ type MergeBoolNot<V> =
 		? V
 		: V extends ExprSqlNull
 			? SqlParserError<"NOT argument must be boolean, not NULL">
-			: V extends ExprOk<infer _T, infer S extends string>
+			: V extends ExprOk<infer S extends string>
 				? IsSqlBooleanType<S> extends true
-					? ExprOk<unknown, "boolean">
+					? ExprOk<"boolean">
 					: SqlParserError<"NOT requires a boolean operand">
 				: SqlParserError<"NOT requires a boolean operand">
 
@@ -2015,11 +2015,11 @@ type MergeBoolBinary<L, R, Msg extends string> =
 				? SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">
 				: R extends ExprSqlNull
 					? SqlParserError<"NULL is not a valid boolean operand (use IS NULL)">
-					: L extends ExprOk<infer _Tl, infer Sl extends string>
-						? R extends ExprOk<infer _Tr, infer Sr extends string>
+					: L extends ExprOk<infer Sl extends string>
+						? R extends ExprOk<infer Sr extends string>
 							? IsSqlBooleanType<Sl> extends true
 								? IsSqlBooleanType<Sr> extends true
-									? ExprOk<unknown, "boolean">
+									? ExprOk<"boolean">
 									: SqlParserError<Msg>
 								: SqlParserError<Msg>
 							: SqlParserError<Msg>
@@ -2028,51 +2028,33 @@ type MergeBoolBinary<L, R, Msg extends string> =
 /** `CAST` / `::` result typing (PostgreSQL-oriented compatibility checks). */
 type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends ExprSqlNull
 	? ExprSqlNull
-	: Ev extends ExprOk<infer Ts, infer _SFrom>
+	: Ev extends ExprOk<infer _SFrom>
 		? N extends "text" | "varchar" | "character varying" | "char"
-			? Ts extends string | number | boolean
-				? ExprOk<unknown, "text">
-				: SqlParserError<"Invalid cast to text">
+			? ExprOk<"text">
 			: N extends "integer" | "int" | "int4" | "smallint" | "int2" | "serial" | "smallserial"
-				? Ts extends number
-					? ExprOk<unknown, "integer">
-					: SqlParserError<"Invalid cast to integer">
+				? ExprOk<"integer">
 				: N extends "bigint" | "int8" | "bigserial"
-					? Ts extends number
-						? ExprOk<unknown, "bigint">
-						: SqlParserError<"Invalid cast to bigint">
+					? ExprOk<"bigint">
 					: N extends "boolean" | "bool"
-						? Ts extends boolean
-							? ExprOk<unknown, "boolean">
-							: SqlParserError<"Invalid cast to boolean">
+						? ExprOk<"boolean">
 						: N extends "uuid"
-							? Ts extends string
-								? ExprOk<unknown, "uuid">
-								: SqlParserError<"Invalid cast to uuid">
+							? ExprOk<"uuid">
 							: N extends "bytea"
-								? Ts extends string
-									? ExprOk<unknown, "bytea">
-									: SqlParserError<"Invalid cast to bytea">
+								? ExprOk<"bytea">
 								: N extends
-											| "timestamp"
-											| "timestamp with time zone"
-											| "timestamptz"
-											| "date"
-											| "time"
-											| "time with time zone"
-											| "timetz"
-											| "interval"
-									? Ts extends string
-										? ExprOk<unknown, N>
-										: SqlParserError<"Invalid cast to datetime/interval type">
+										| "timestamp"
+										| "timestamp with time zone"
+										| "timestamptz"
+										| "date"
+										| "time"
+										| "time with time zone"
+										| "timetz"
+										| "interval"
+									? ExprOk<N>
 									: N extends "inet" | "cidr"
-										? Ts extends string
-											? ExprOk<unknown, N>
-											: SqlParserError<"Invalid cast to network address type">
+										? ExprOk<N>
 										: N extends "tsvector" | "tsquery"
-											? Ts extends string
-												? ExprOk<unknown, N>
-												: SqlParserError<"Invalid cast to full-text search type">
+											? ExprOk<N>
 											: N extends
 														| "real"
 														| "float4"
@@ -2080,21 +2062,19 @@ type ResolveCastFromAtom<Ev extends ExprAtom, N extends string> = Ev extends Exp
 														| "float8"
 														| "numeric"
 														| "decimal"
-												? Ts extends number
-													? ExprOk<unknown, "number">
-													: SqlParserError<"Invalid cast to floating-point or numeric type">
-												: ExprOk<unknown, N>
+												? ExprOk<"number">
+												: ExprOk<N>
 		: SqlParserError<"Invalid cast operand">
 
 type MergeNumericArithmetic<L extends ExprAtom, R extends ExprAtom> = L extends ExprSqlNull
 	? SqlParserError<"NULL not allowed in arithmetic">
 	: R extends ExprSqlNull
 		? SqlParserError<"NULL not allowed in arithmetic">
-		: L extends ExprOk<infer _TsL, infer Sl extends string>
-			? R extends ExprOk<infer _TsR, infer Sr extends string>
+		: L extends ExprOk<infer Sl extends string>
+			? R extends ExprOk<infer Sr extends string>
 				? IsSqlNumericType<Sl> extends true
 					? IsSqlNumericType<Sr> extends true
-						? ExprOk<unknown, Sl>
+						? ExprOk<Sl>
 						: SqlParserError<"Incompatible types in arithmetic">
 					: SqlParserError<"Incompatible types in arithmetic">
 				: never
@@ -2604,9 +2584,9 @@ type ResolveScalarExprAstNeg<
 	ResolveExpressionAST<I, Db, Scope, Params> extends infer U
 		? U extends SqlParserError<string>
 			? U
-			: U extends ExprOk<infer _Tu, infer Su extends string>
+			: U extends ExprOk<infer Su extends string>
 				? IsSqlNumericType<Su> extends true
-					? ExprOk<unknown, Su>
+					? ExprOk<Su>
 					: SqlParserError<"Unary minus requires a number">
 				: SqlParserError<"Unary minus requires a number">
 		: never
@@ -2636,11 +2616,11 @@ type TryValueOperand<
 			: never
 		: PeekToken<Tokens> extends TokenKey<"true">
 			? SkipToken<Tokens> extends infer R extends TokensList
-				? [R, ExprOk<true, "boolean">]
+				? [R, ExprOk<"boolean">]
 				: never
 			: PeekToken<Tokens> extends TokenKey<"false">
 				? SkipToken<Tokens> extends infer Rf extends TokensList
-					? [Rf, ExprOk<false, "boolean">]
+					? [Rf, ExprOk<"boolean">]
 					: never
 				: PeekToken<Tokens> extends TokenKey<"null">
 					? SkipToken<Tokens> extends infer Rn extends TokensList
@@ -2648,19 +2628,19 @@ type TryValueOperand<
 						: never
 					: PeekToken<Tokens> extends TokenString<string>
 						? SkipToken<Tokens> extends infer Rs extends TokensList
-							? [Rs, ExprOk<unknown, "text">]
+							? [Rs, ExprOk<"text">]
 							: never
 						: PeekToken<Tokens> extends TokenNumber<string>
 							? SkipToken<Tokens> extends infer Rnum extends TokensList
-								? [Rnum, ExprOk<unknown, "integer">]
+								? [Rnum, ExprOk<"integer">]
 								: never
 							: PeekToken<Tokens> extends TokenParam<infer P extends string>
 								? SkipToken<Tokens> extends infer Rp extends TokensList
 									? LookupParam<Params, P> extends infer PV
 										? PV extends SqlParserError<string>
 											? SkipFailedExpression<Rp, PV>
-											: PV extends ExprOk<infer Tsp, infer SqlP extends string>
-												? [Rp, ExprOk<Tsp, SqlP>]
+											: PV extends ExprOk<infer SqlP extends string>
+												? [Rp, ExprOk<SqlP>]
 												: never
 										: never
 									: never
@@ -2730,9 +2710,9 @@ type ParseUnaryValue<
 			? ParseUnaryValue<Rn, Db, Scope, Params> extends [infer Ru extends TokensList, infer U]
 				? U extends SqlParserError<string>
 					? SkipFailedExpression<Ru, U>
-					: U extends ExprOk<infer _Tu, infer Su extends string>
+					: U extends ExprOk<infer Su extends string>
 						? IsSqlNumericType<Su> extends true
-							? [Ru, ExprOk<unknown, Su>]
+							? [Ru, ExprOk<Su>]
 							: SkipFailedExpression<Ru, SqlParserError<"Unary minus requires a number">>
 						: never
 				: never
@@ -2743,7 +2723,7 @@ type ParseMulLoopAfterFirst<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
-	Acc extends ExprOk<unknown, string>,
+	Acc extends ExprOk<string>,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenKey<"*">
@@ -2755,7 +2735,7 @@ type ParseMulLoopAfterFirst<
 						? MergeNumericArithmetic<Acc, E1> extends infer M
 							? M extends SqlParserError<string>
 								? SkipFailedExpression<R2, M>
-								: M extends ExprOk<unknown, string>
+								: M extends ExprOk<string>
 									? ParseMulLoopAfterFirst<R2, Db, Scope, M, Params>
 									: never
 							: never
@@ -2773,9 +2753,9 @@ type ParseMulValue<
 	ParseUnaryValue<Tokens, Db, Scope, Params> extends [infer R0 extends TokensList, infer E0]
 		? E0 extends SqlParserError<string>
 			? SkipFailedExpression<R0, E0>
-			: E0 extends ExprOk<infer _T0, infer S0 extends string>
+			: E0 extends ExprOk<infer S0 extends string>
 				? IsSqlNumericType<S0> extends true
-					? ParseMulLoopAfterFirst<R0, Db, Scope, ExprOk<unknown, S0>, Params>
+					? ParseMulLoopAfterFirst<R0, Db, Scope, ExprOk<S0>, Params>
 					: PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
 							? SkipFailedExpression<R0, SqlParserError<"Incompatible types in arithmetic">>
@@ -2788,7 +2768,7 @@ type ParseAddLoopAfterFirst<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
-	Acc extends ExprOk<unknown, string>,
+	Acc extends ExprOk<string>,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenKey<"+">
@@ -2800,7 +2780,7 @@ type ParseAddLoopAfterFirst<
 						? MergeNumericArithmetic<Acc, E1> extends infer M
 							? M extends SqlParserError<string>
 								? SkipFailedExpression<R2, M>
-								: M extends ExprOk<unknown, string>
+								: M extends ExprOk<string>
 									? ParseAddLoopAfterFirst<R2, Db, Scope, M, Params>
 									: never
 							: never
@@ -2816,7 +2796,7 @@ type ParseAddLoopAfterFirst<
 							? MergeNumericArithmetic<Acc, E2> extends infer M2
 								? M2 extends SqlParserError<string>
 									? SkipFailedExpression<R4, M2>
-									: M2 extends ExprOk<unknown, string>
+									: M2 extends ExprOk<string>
 										? ParseAddLoopAfterFirst<R4, Db, Scope, M2, Params>
 										: never
 								: never
@@ -2835,9 +2815,9 @@ export type ParseAddValue<
 	ParseMulValue<Tokens, Db, Scope, Params> extends [infer R0 extends TokensList, infer E0]
 		? E0 extends SqlParserError<string>
 			? SkipFailedExpression<R0, E0>
-			: E0 extends ExprOk<infer _T0, infer S0 extends string>
+			: E0 extends ExprOk<infer S0 extends string>
 				? IsSqlNumericType<S0> extends true
-					? ParseAddLoopAfterFirst<R0, Db, Scope, ExprOk<unknown, S0>, Params>
+					? ParseAddLoopAfterFirst<R0, Db, Scope, ExprOk<S0>, Params>
 					: PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
 							? SkipFailedExpression<R0, SqlParserError<"Incompatible types in arithmetic">>

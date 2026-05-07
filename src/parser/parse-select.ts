@@ -2131,9 +2131,9 @@ type ResolveSelectList<
 > = ResolveSelectListAcc<Items, Db, Scope, Params, {}, {}, Items>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? IsUnknownOrAny<Params[Name]["ts"]> extends true
+	? IsUnknownOrAny<Params[Name]["sql"]> extends true
 		? SqlParserError<"Parameter has unknown or any type in SELECT">
-		: { ts: Params[Name]["ts"]; sql: Params[Name]["sql"] }
+		: { sql: Params[Name]["sql"] }
 	: SqlParserError<"Unknown query parameter in SELECT">
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */
@@ -2195,7 +2195,7 @@ type ResolveSelectListExprItem<
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
 			? Ev extends SqlParserError<string>
 				? Ev
-				: Ev extends ExprOk<infer Ts, infer Sql extends string>
+				: Ev extends ExprOk<infer Sql extends string>
 					? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
 							? SqlParserError<"Scalar expression in SELECT requires AS alias">
@@ -2204,7 +2204,7 @@ type ResolveSelectListExprItem<
 									Db,
 									Scope,
 									Params,
-									MergeRecords<Cols, Record<O, Ts>>,
+									MergeRecords<Cols, Record<O, unknown>>,
 									MergeStringRecords<Sqls, Record<O, Sql>>,
 									AllItems
 								>
