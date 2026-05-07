@@ -42,6 +42,7 @@
 		"docs"
 	],
 	"scripts": {
+		"wt": "bash scripts/wt.sh",
 		"deps:install:all": "npm install --workspaces --include-workspace-root",
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",

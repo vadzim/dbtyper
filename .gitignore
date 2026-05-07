@@ -25,5 +25,6 @@ Thumbs.db
 
 debug/
 .local/
+.worktrees/
 
 session-*.md
