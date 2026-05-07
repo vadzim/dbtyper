@@ -25,7 +25,7 @@ type _upOk = Expect<Extends<Tuple3At2<UpOk>, JsqlUpdateStatementResult>>
 type UpSetParam = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = :n where id = 'u';`>,
 	DbUsers,
-	{ n: { ts: string; sql: "text" } }
+	{ n: { sql: "text" } }
 >
 type _upSetParam = Expect<Extends<Tuple3At2<UpSetParam>, JsqlUpdateStatementResult>>
 
