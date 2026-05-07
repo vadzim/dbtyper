@@ -4,25 +4,42 @@ import type {
 	JsqlSelectStatementResult,
 	JsqlDataShape,
 } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokensList,
+} from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type { SqlTypesOf } from "./parser-sql-types-of.ts"
+import type {
+	MergeScope,
+	ScopeMap,
+} from "./parser-scope.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
 	SameComparisonClass,
 	ParseExpressionAST,
-	ExprParseEnv,
 	ScalarExprAst,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
-import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
+import type {
+	ParseAndResolveReturningClause,
+	ParseSelectExpression,
+} from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type {
+	JsqlDbGetData,
+	JsqlDataGetColumnType,
+} from "../core/jsql-utils.ts"
+import type {
+	SkipFailedExpression,
+	SkipFailedStatement,
+} from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
@@ -37,7 +54,7 @@ type InsertTableContext = {
 
 type ParseInsertAliasAfterTable<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
+	_Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -247,7 +264,7 @@ type ParseInsertAfterColumnNames<
 type ParseInsertWithSelect<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
+	_Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Tbl extends JsqlDataShape,
 	Sch extends string,
@@ -787,7 +804,7 @@ type ParseInsertMaybeReturning<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlDataShape,
+	_Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],

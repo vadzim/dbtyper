@@ -1,6 +1,5 @@
 // Integration Test: SELECT with enum types - Invalid enum value in IN clause (runtime failure, not compile-time)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 

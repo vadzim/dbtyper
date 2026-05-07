@@ -1,5 +1,4 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type { I } from "../core/type-utils.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -54,7 +53,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 				: SkipFailedStatement<R, Db, SqlParserError<"Table already exists; use IF NOT EXISTS">>
 		: never
 
-type NarrowSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"] ? Sch : never
+type _NarrowSchemaKey<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"] ? Sch : never
 
 type ParseCreateTableQualifiedWhenNameOk<
 	R extends TokensList,

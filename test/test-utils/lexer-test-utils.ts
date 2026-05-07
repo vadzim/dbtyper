@@ -15,9 +15,9 @@ export type TestTokensL<S extends TokensList, Acc extends unknown[] = []> = Acc[
 	: S extends EmptyTokenList
 		? [EmptyTokenList, Acc]
 		: PeekToken<S> extends infer P
-			? P extends TokenType<infer _kind, infer Value>
+			? P extends TokenType<infer _kind, infer _Value>
 				? TestTokensL<SkipToken<S>, [...Acc, P]>
-				: P extends SqlParserError<infer Msg extends string>
+				: P extends SqlParserError<infer _Msg extends string>
 					? TestTokensL<SkipToken<S>, [...Acc, P]>
 					: never
 			: never

@@ -1,4 +1,8 @@
-import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
+import type {
+	JsqlDatabaseShape,
+	JsqlSelectStatementResult,
+	JsqlDataShape,
+} from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -14,7 +18,6 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
-	IsUnknownOrAny,
 	ParseExpressionAST,
 	ResolveExpressionAST,
 	SameComparisonClass,
@@ -22,10 +25,17 @@ import type {
 	ScalarIdentParts,
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
+import type {
+	MergeScope,
+	ScopeEntry,
+	ScopeMap,
+} from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type {
+	SkipFailedExpression,
+	SkipFailedStatement,
+} from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
@@ -1289,9 +1299,9 @@ type SelectResultToDerivedScopeEntry<Res extends JsqlSelectStatementResult> = {
 	columns: Res["columns"]
 }
 
-type ParseAliasAfterDerivedTable<
+type _ParseAliasAfterDerivedTable<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
+	_Db extends JsqlDatabaseShape,
 	OuterScope extends ScopeMap,
 	Res extends JsqlSelectStatementResult,
 > =
@@ -1344,7 +1354,7 @@ type ValidateSingleColumn<Result extends JsqlSelectStatementResult> = Result["co
 /** Helper: Parse alias after derived table and merge into scope. Returns [Tokens, null, Scope] or error. */
 type ParseAliasAfterDerived<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
+	_Db extends JsqlDatabaseShape,
 	OuterScope extends ScopeMap,
 	Result extends JsqlSelectStatementResult,
 > =
@@ -1370,7 +1380,7 @@ export type ParseParenEnclosedSelect<
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseSelectExpression<SkipToken<R1>, Db, Params, OuterScope> extends [
 				infer R2 extends TokensList,
-				infer Db2 extends JsqlDatabaseShape,
+				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
 			]
 			? Result extends SqlParserError<string>
@@ -1391,7 +1401,7 @@ export type ParseParenScalarSelect<
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseSelectExpression<SkipToken<R1>, Db, Params, OuterScope> extends [
 				infer R2 extends TokensList,
-				infer Db2 extends JsqlDatabaseShape,
+				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
 			]
 			? Result extends SqlParserError<string>
@@ -1415,7 +1425,7 @@ type ParseParenDerivedSelect<
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseSelectExpression<SkipToken<R1>, Db, Params, {}> extends [
 				infer R2 extends TokensList,
-				infer Db2 extends JsqlDatabaseShape,
+				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
 			]
 			? Result extends SqlParserError<string>

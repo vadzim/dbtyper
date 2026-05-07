@@ -1,4 +1,7 @@
-import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type {
+	JsqlDatabaseShape,
+	JsqlSelectStatementResult,
+} from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -12,9 +15,15 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
+import type {
+	ParseParenEnclosedSelect,
+	ParseParenScalarSelect,
+} from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
-import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
+import type {
+	SkipBracketedUntil,
+	SkipFailedExpression,
+} from "./skip-statement.ts"
 import type {
 	SqlTypeShape,
 	SqlType,
@@ -817,7 +826,7 @@ type ResolveFunctionCall<
 											: L extends "array_length"
 												? ArgsRes extends readonly [
 														infer S1 extends SqlTypeShape,
-														infer S2 extends SqlTypeShape,
+														infer _S2 extends SqlTypeShape,
 													]
 													? S1["type"] extends "array" | "unknown"
 														? SqlInteger
@@ -1594,7 +1603,7 @@ type ParseWindowOrderByListTail<
 	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
 > = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc]
 
-type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
+type _TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts]
 		? Parts extends readonly ["__ats__", string] | readonly ["__qts__", string, string]
 			? SkipFailedExpression<Rm, SqlParserError<"Qualified table .* is only valid in SELECT lists">>
@@ -1978,7 +1987,7 @@ type ResolveInSubqueryAst<
 		: never
 
 type ResolveAnyAllSomeOp<
-	Op extends string,
+	_Op extends string,
 	L extends ScalarExprAst,
 	R extends ScalarExprAst | JsqlSelectStatementResult,
 	Db extends JsqlDatabaseShape,

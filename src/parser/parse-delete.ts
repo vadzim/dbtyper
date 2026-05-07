@@ -1,10 +1,27 @@
-import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type {
+	JsqlDatabaseShape,
+	JsqlDataShape,
+	JsqlSelectStatementResult,
+} from "../core/jsql-shapes.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokensList,
+} from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
+import type {
+	MergeScope,
+	ScopeMap,
+} from "./parser-scope.ts"
+import type {
+	EmptyExpressionParams,
+	ExpressionParamsShape,
+} from "./parse-expression.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
@@ -86,8 +103,8 @@ type ParseDeleteUsingClause<
 type ParseDeleteUsingTableRef<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
+	_Scope extends ScopeMap,
+	_Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends infer Tok
 		? SkipToken<Tokens> extends infer R1 extends TokensList
@@ -270,7 +287,7 @@ type ParseDeleteFromTableRef<
 
 type ParseDeleteAliasAfterTable<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
+	_Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,

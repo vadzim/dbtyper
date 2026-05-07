@@ -3,7 +3,6 @@ import type {
 	PeekToken,
 	SkipToken,
 	TokenEot,
-	TokenIdent,
 	TokenKey,
 	TokenString,
 	TokensList,
