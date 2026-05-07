@@ -3,6 +3,7 @@ import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../../src/sql-parser-error.ts"
 import type { DbPublicUsers } from "./test-databases.ts"
 import type { Matches } from "./type-test-utils.ts"
+import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
 
 export type ParseErrorneousText<S extends string> = ParseSqlStatement<ParseSqlTokens<`${S}; ${Rest}`>, DbPublicUsers>
 
@@ -13,3 +14,7 @@ export type CheckErrorneousResult<Result, S extends string> = Matches<
 	Result,
 	[TokensRest, DbPublicUsers, SqlParserError<S>]
 >
+
+// Helper to extract error from ParseSqlStatement result
+export type ExtractQueryError<DbShape extends JsqlDatabaseShape, Query extends string> = 
+	ParseSqlStatement<ParseSqlTokens<Query>, DbShape>[2]

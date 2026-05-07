@@ -1,16 +1,31 @@
-import { it } from "node:test"
+// Integration Test: SELECT without FROM - qualified columns
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
+import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import type { SqlParserError } from "../../../src/sql-parser-error.ts"
+import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
+import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-it("should reject qualified column references without FROM even if table exists", () => {
-	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text, name text);`)
-		.database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text, name text);`)
+	.database()
 
-	// Even though users table exists, we cannot reference users.id without FROM
-	const result = db.query(
-		// @ts-expect-error
-		`select users.id, users.name;`,
-	)
-})
+// Even though users table exists, we cannot reference users.id without FROM
+const query = `select users.id, users.name;` as const
+
+
+// @ts-expect-error
+await db.query(query)
+
+// Type-level database shape for error checking
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id text, name text);`
+>[0]
+
+type _errorCheck = Expect<Matches<
+	ExtractQueryError<DbShape, typeof query>,
+	SqlParserError<"Unknown qualified column">
+>>

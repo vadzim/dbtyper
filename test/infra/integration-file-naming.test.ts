@@ -107,14 +107,30 @@ describe("Integration test files correctness", async () => {
 					)
 				})
 
-				await it(`the file ${file} should have @ts-expect-error right before backtick`, async () => {
-					const pattern = /\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*`/
+			await it(`the file ${file} should have @ts-expect-error right before query call`, async () => {
+				const pattern = /\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*(await\s+db\.(query|stream)\(query\)|await\s+migrations\.apply\(query\))/
 
-					assert.ok(
-						pattern.test(content),
-						"@ts-expect-error should be immediately before a backtick. Hint: consider splitting this file into multiple smaller test files.",
-					)
-				})
+				assert.ok(
+					pattern.test(content),
+					"@ts-expect-error should be immediately before 'await db.query(query)' or 'await db.stream(query)' or 'await migrations.apply(query)'.",
+				)
+			})
+
+			await it(`the file ${file} must define query as const`, async () => {
+				const hasQueryConst = /\bconst\s+query\s*=\s*`[^`]*`\s+as\s+const/.test(content)
+				assert.ok(
+					hasQueryConst,
+					"Error test files must define: const query = `...` as const"
+				)
+			})
+
+			await it(`the file ${file} must have error message check`, async () => {
+				const hasErrorCheck = /\btype\s+\w+\s*=\s*Expect<\s*Matches<\s*(ExtractQueryError|SqlSelectRow)</.test(content)
+				assert.ok(
+					hasErrorCheck,
+					"Error test files must include: type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<\"...\">>> or SqlSelectRow for stream tests"
+				)
+			})
 
 				await it(`the file ${file} must not contain success markers`, async () => {
 					assert.ok(
