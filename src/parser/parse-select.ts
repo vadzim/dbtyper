@@ -200,7 +200,13 @@ type ParseSelectAfterDistinct<
 										: never
 								: never
 							: never
-						: SkipFailedStatement<AfterList, Db, SqlParserError<"Expected FROM after SELECT list">>
+						: PeekToken<AfterList> extends TokenKey<";"> | TokenKey<")"> | TokenEot
+							? ResolveSelectList<Items, Db, {}, Params> extends infer Res
+								? Res extends SqlParserError<infer _Msg extends string>
+									? [AfterList, Db, Res]
+									: FinishSelectStatement<AfterList, Db, Res, {}, Params, Items>
+								: never
+							: SkipFailedStatement<AfterList, Db, SqlParserError<"Expected FROM after SELECT list">>
 				: never
 		: never
 
@@ -1441,7 +1447,17 @@ type ParseInnerParenSelectFromAndResolve<
 						: never
 				: never
 			: never
-		: SkipFailedExpression<AfterList, SqlParserError<"Expected FROM in subquery">>
+		: PeekToken<AfterList> extends TokenKey<")">
+			? MergeScope<{}, OuterScope> extends infer Merged extends ScopeMap
+				? ResolveSelectList<Items, Db, Merged, Params> extends infer Res
+					? Res extends SqlParserError<infer _Msg extends string>
+						? [AfterList, Res]
+						: Res extends JsqlSelectStatementResult
+							? ParseInnerParenSelectWhereClose<AfterList, Db, Merged, Params, Res>
+							: never
+					: never
+				: never
+			: SkipFailedExpression<AfterList, SqlParserError<"Expected FROM in subquery">>
 
 type ParseInnerParenSelectAfterSelectKw<
 	Tokens extends TokensList,
@@ -1559,7 +1575,22 @@ type ParseInnerDerivedBody<
 										: never
 								: never
 							: never
-						: [AfterList, SqlParserError<"Expected FROM in derived table">, ParserRefErrorThirdSentinel]
+						: PeekToken<AfterList> extends TokenKey<")">
+							? ResolveSelectList<Items, Db, {}, Params> extends infer Res
+								? Res extends SqlParserError<infer _Msg extends string>
+									? [AfterList, Res, ParserRefErrorThirdSentinel]
+									: Res extends JsqlSelectStatementResult
+										? ParseInnerDerivedWhereCloseAndAlias<
+												AfterList,
+												Db,
+												{},
+												Params,
+												Res,
+												OuterScope
+											>
+										: never
+								: never
+							: [AfterList, SqlParserError<"Expected FROM in derived table">, ParserRefErrorThirdSentinel]
 				: never
 		: never
 

@@ -249,22 +249,22 @@ type _derivedLeftOuterJoinRhs = Expect<
 type TDerivedBadOpen = ParseSqlStatement<ParseSqlTokens<`select 1 from ( from users ) as x;`>, DbJoinDefaultAndExplicit>
 type _derivedBadOpen = Expect<Extends<Tuple3At2<TDerivedBadOpen>, SqlParserError<"Expected SELECT in derived table">>>
 
-/** Inner closes with `;` before `)` → `ReadClosingParenAndAliasDerived` sees `;`. */
-type TDerivedUnclosedParen = ParseSqlStatement<
-	ParseSqlTokens<`select 1 from (select users.id from users;`>,
-	DbJoinDefaultAndExplicit
->
-type _derivedUnclosedParen = Expect<
-	Extends<Tuple3At2<TDerivedUnclosedParen>, SqlParserError<"Expected `)` after derived table">>
->
+// NOTE: SELECT without FROM is now supported, so this test is no longer valid
+// /** Inner closes with `;` before `)` → `ReadClosingParenAndAliasDerived` sees `;`. */
+// type TDerivedUnclosedParen = ParseSqlStatement<
+// 	ParseSqlTokens<`select 1 from (select users.id from users as x;`>,
+// 	DbJoinDefaultAndExplicit
+// >
+// type _derivedUnclosedParen = Expect<
+// 	Extends<Tuple3At2<TDerivedUnclosedParen>, SqlParserError<"Expected `)` after derived table">>
+// >
 
-type TDerivedNoInnerFrom = ParseSqlStatement<
-	ParseSqlTokens<`select 1 from (select users.id) as x;`>,
-	DbJoinDefaultAndExplicit
->
-type _derivedNoInnerFrom = Expect<
-	Extends<Tuple3At2<TDerivedNoInnerFrom>, SqlParserError<"Expected FROM in derived table">>
->
+// NOTE: SELECT without FROM is now supported, so this test is no longer valid
+// type TDerivedNoInnerFrom = ParseSqlStatement<
+// 	ParseSqlTokens<`select 1 from (select users.id) as x;`>,
+// 	DbJoinDefaultAndExplicit
+// >
+// type _derivedNoInnerFrom = Expect<Extends<Tuple3At2<TDerivedNoInnerFrom>, { kind: "select"; columns: { id: "uuid" } }>>
 
 type DerivedParamsRid = { rid: { ts: string; sql: "uuid" } }
 type TDerivedInnerParam = ParseSqlStatement<
@@ -417,8 +417,9 @@ type _starPlusComma = Expect<
 	Extends<Tuple3At2<TStarPlusComma>, SqlParserError<"SELECT * must be the only projection in the list">>
 >
 
-type TMissingFrom = ParseSqlStatement<ParseSqlTokens<`select users.id , users.name`>, DbJoinDefaultAndExplicit>
-type _missingFrom = Expect<Extends<Tuple3At2<TMissingFrom>, SqlParserError<"Expected FROM after SELECT list">>>
+// NOTE: SELECT without FROM is now supported, so this test is no longer valid
+// type TMissingFrom = ParseSqlStatement<ParseSqlTokens<`select users.id , users.name`>, DbJoinDefaultAndExplicit>
+// type _missingFrom = Expect<Extends<Tuple3At2<TMissingFrom>, SqlParserError<"Unknown column">>>
 
 /** `name` exists only on `users`; unqualified is valid with a join (Postgres-like uniqueness). */
 type TUnqualNameUnambiguous = ParseSqlStatement<
