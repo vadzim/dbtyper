@@ -19,3 +19,4 @@
 1. Remove TypeScript types from parsers (use `ExprOk<unknown, "sql_type">` instead of `ExprOk<ts_type, "sql_type">`)
 2. Ensure all SQL → TS conversion happens only in `sql-to-ts-conversion.ts`
 3. Re-enable and fix the 2 commented array tests above
+4. Зрабіць SQL тыпы у выглядзе канструктара
