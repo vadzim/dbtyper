@@ -14,7 +14,7 @@ const _result = await db.query(`select tags || array['new'] as concatenated from
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			concatenated: readonly string[]
 		}>

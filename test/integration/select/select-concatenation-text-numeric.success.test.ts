@@ -10,4 +10,4 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ text || numeric → text
 const _result = await db.query(`select 'Score: ' || 123.456 as message from users;`)
-type _check = Expect<Matches<typeof result, Array<{ message: string }>>>
+type _check = Expect<Matches<typeof _result, Array<{ message: string }>>>

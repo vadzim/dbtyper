@@ -14,7 +14,7 @@ const _result = await db.query(`select 42::text as num_text from data;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			num_text: string
 		}>

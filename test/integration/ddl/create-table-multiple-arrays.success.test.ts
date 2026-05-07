@@ -16,7 +16,7 @@ const _result = await db.query(`select id, tags, scores, flags from multi;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			tags: readonly string[]

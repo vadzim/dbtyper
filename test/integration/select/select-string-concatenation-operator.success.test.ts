@@ -14,7 +14,7 @@ const _result = await db.query(`select first_name || ' ' || last_name as full_na
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			full_name: string
 		}>

@@ -25,7 +25,7 @@ const _result = await db.query(`
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{ name: string; id: number; task_status: unknown; task_priority: unknown; is_urgent: boolean }[]
 	>
 >

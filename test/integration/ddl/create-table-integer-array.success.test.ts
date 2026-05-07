@@ -14,7 +14,7 @@ const _result = await db.query(`select id, nums from scores;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			nums: readonly number[]

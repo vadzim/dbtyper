@@ -15,7 +15,7 @@ const _result = await db.query(`select * from items where id <> any(array[1,2,3]
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			tags: readonly string[]

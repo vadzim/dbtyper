@@ -10,5 +10,5 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ array || text → error
 const _result = await db.query(
 	// @ts-expect-error
-	`select array[2,3] || '4' as result from users;`,
+	`select array[2,3] || '4' as _result from users;`,
 )

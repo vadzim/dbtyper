@@ -14,7 +14,7 @@ const _result = await Array.fromAsync(await db.stream(`delete from users where i
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			name: string

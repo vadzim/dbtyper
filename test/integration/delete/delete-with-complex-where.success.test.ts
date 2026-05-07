@@ -13,7 +13,7 @@ const _result = await db.query(`delete from users where age < 18 or name is null
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			name: string

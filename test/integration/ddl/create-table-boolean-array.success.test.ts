@@ -14,7 +14,7 @@ const _result = await db.query(`select id, bits from flags;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			bits: readonly boolean[]

@@ -13,5 +13,5 @@ it("should support SELECT with expressions", async () => {
 		greeting: string
 	}[]
 
-	type _check = Expect<Matches<typeof result, Expected>>
+	type _check = Expect<Matches<typeof _result, Expected>>
 })

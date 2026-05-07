@@ -13,5 +13,5 @@ it("should support || concatenation of text and number as string", async () => {
 		b: string
 	}[]
 
-	type _check = Expect<Matches<typeof result, Expected>>
+	type _check = Expect<Matches<typeof _result, Expected>>
 })

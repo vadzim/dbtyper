@@ -14,7 +14,7 @@ const _result = await db.query(`select created_at, time_only from events;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			created_at: unknown
 			time_only: unknown

@@ -12,4 +12,4 @@ const db = sqlMigrations({ driver: mockDriver })
 
 const _result = await db.query(`insert into users_backup (id, name) select id, name from users;`)
 
-type _check = Expect<Matches<typeof result, unknown>>
+type _check = Expect<Matches<typeof _result, unknown>>

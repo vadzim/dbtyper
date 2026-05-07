@@ -16,7 +16,7 @@ const _result = await Array.fromAsync(await db.stream(`select id, name from user
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			name: string

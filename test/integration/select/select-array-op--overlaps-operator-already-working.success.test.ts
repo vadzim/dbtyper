@@ -14,7 +14,7 @@ const _result = await db.query(`select tags && array['a','b'] as overlaps from i
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			overlaps: boolean
 		}>

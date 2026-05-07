@@ -20,7 +20,7 @@ const _result = await db.query(`
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			inner_id: string
 			outer_user_id: string

@@ -14,7 +14,7 @@ const _result = await db.query(`select tags || tags as doubled from items;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			doubled: readonly string[]
 		}[]

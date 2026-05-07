@@ -15,7 +15,7 @@ const _result = await db.query(`select * from users full outer join orders on us
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 		}[]

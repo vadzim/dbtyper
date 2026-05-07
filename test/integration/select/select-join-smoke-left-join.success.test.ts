@@ -17,7 +17,7 @@ const _result = await db.query(`select users.name, posts.title from users left j
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			name: string
 			title: string

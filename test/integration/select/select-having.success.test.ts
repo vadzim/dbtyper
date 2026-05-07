@@ -13,7 +13,7 @@ const _result = await db.query(`select user_id, count(*) as count from posts gro
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			count: bigint
 			user_id: string

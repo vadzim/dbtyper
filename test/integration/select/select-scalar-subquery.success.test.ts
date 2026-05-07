@@ -14,7 +14,7 @@ const _result = await db.query(`select id, name, (select count(*) from posts) as
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			name: string
 			id: string

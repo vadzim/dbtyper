@@ -13,5 +13,5 @@ it("should support SELECT without FROM in derived table", async () => {
 		y: number
 	}[]
 
-	type _check = Expect<Matches<typeof result, Expected>>
+	type _check = Expect<Matches<typeof _result, Expected>>
 })

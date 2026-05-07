@@ -14,7 +14,7 @@ const _result = await db.query(`select array_append(tags, 'new') as appended fro
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			appended: unknown
 		}[]

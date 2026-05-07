@@ -14,7 +14,7 @@ const _result = await db.query(`select unnest(tags) as tag from items;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			tag: unknown
 		}>

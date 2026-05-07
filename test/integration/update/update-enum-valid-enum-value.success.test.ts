@@ -24,4 +24,4 @@ const _result = await db.query(`
 		where id = 1;
 	`)
 
-type _check = Expect<Matches<typeof result, unknown>>
+type _check = Expect<Matches<typeof _result, unknown>>

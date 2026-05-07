@@ -15,7 +15,7 @@ const _result = await db.query(`select id, product, dense_rank() over (order by 
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			product: string

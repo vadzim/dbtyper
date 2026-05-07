@@ -21,5 +21,5 @@ const db = sqlMigrations({ driver: mockDriver })
 const _result = await db.query(`select id, created, data, duration, ip from mixed_types;`)
 
 type _check = Expect<
-	Matches<typeof result, { id: unknown; created: unknown; data: unknown; duration: unknown; ip: unknown }[]>
+	Matches<typeof _result, { id: unknown; created: unknown; data: unknown; duration: unknown; ip: unknown }[]>
 >

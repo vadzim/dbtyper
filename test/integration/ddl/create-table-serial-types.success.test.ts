@@ -14,7 +14,7 @@ const _result = await db.query(`select id, count, small from counters;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			small: unknown
 			count: unknown

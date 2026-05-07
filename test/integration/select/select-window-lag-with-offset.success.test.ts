@@ -16,7 +16,7 @@ const _result = await db.query(`select id, product, lag(amount, 2) over (order b
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			product: string

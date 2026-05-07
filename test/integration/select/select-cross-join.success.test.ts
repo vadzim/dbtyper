@@ -14,7 +14,7 @@ const _result = await db.query(`select users.name, roles.role_name from users cr
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			name: string
 			role_name: string

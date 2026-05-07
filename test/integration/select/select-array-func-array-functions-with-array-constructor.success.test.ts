@@ -14,7 +14,7 @@ const _result = await db.query(`select array_length(array['a','b','c'], 1) as li
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			literal_len: number
 		}[]

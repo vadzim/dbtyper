@@ -12,5 +12,5 @@ it("should support SELECT with subquery", async () => {
 		nested: number
 	}[]
 
-	type _check = Expect<Matches<typeof result, Expected>>
+	type _check = Expect<Matches<typeof _result, Expected>>
 })

@@ -14,7 +14,7 @@ const _result = await db.query(`select value::uuid as value_uuid from data;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			value_uuid: string
 		}[]

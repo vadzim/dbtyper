@@ -14,7 +14,7 @@ const _result = await db.query(`select array_length(array_append(tags, 'extra'),
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			nested_len: number
 		}[]

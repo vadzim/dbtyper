@@ -13,7 +13,7 @@ const _result = await db.query(`update users set age = 30, active = false where 
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			age: number

@@ -30,4 +30,4 @@ const _result = await db.query(`
 		values (1, 'draft', 'high');
 	`)
 
-type _check = Expect<Matches<typeof result, unknown>>
+type _check = Expect<Matches<typeof _result, unknown>>

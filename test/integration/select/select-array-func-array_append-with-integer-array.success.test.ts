@@ -14,7 +14,7 @@ const _result = await db.query(`select array_append(nums, 42) as nums_appended f
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			nums_appended: unknown
 		}[]

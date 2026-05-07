@@ -14,4 +14,4 @@ const _result = await db.query(`insert into users (id, name) values ('1', 'Alice
 
 // Result type should be unknown
 
-type _check = Expect<Matches<typeof result, unknown>>
+type _check = Expect<Matches<typeof _result, unknown>>

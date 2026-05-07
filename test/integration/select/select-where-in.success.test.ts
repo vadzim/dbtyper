@@ -13,7 +13,7 @@ const _result = await db.query(`select * from users where id in ('1', '2', '3');
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			name: string

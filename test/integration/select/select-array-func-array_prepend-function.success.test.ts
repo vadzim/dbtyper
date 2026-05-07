@@ -14,7 +14,7 @@ const _result = await db.query(`select array_prepend('first', tags) as prepended
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			prepended: unknown
 		}>

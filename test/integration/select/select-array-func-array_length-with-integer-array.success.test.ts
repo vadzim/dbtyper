@@ -14,7 +14,7 @@ const _result = await db.query(`select array_length(nums, 1) as num_len from ite
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			num_len: number
 		}>

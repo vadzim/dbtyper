@@ -13,7 +13,7 @@ const _result = await db.query(`select * from users order by age desc, name;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			name: string

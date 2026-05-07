@@ -14,7 +14,7 @@ const _result = await db.query(`select tags <@ array['a','b','c'] as contained f
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			contained: boolean
 		}>

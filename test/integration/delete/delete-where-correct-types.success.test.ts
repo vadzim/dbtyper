@@ -13,7 +13,7 @@ const _result = await db.query(`delete from users returning *;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			age: number

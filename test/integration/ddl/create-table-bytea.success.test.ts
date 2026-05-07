@@ -14,7 +14,7 @@ const _result = await db.query(`select id, data from files;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			data: unknown

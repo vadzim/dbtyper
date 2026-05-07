@@ -32,7 +32,7 @@ const _result = await db.query(`
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			task_status: unknown

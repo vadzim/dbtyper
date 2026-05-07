@@ -13,7 +13,7 @@ const _result = await db.query(`insert into users (id, age, active) values ('1',
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		Array<{
 			id: string
 			age: number

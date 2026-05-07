@@ -22,5 +22,5 @@ const _result = await db.query(`select * from tasks
 		where task_priority is null;`)
 
 type _check = Expect<
-	Matches<typeof result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
+	Matches<typeof _result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
 >

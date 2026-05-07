@@ -21,5 +21,5 @@ const db = sqlMigrations({ driver: mockDriver })
 const _result = await db.query(`insert into users (id, name, age, active) values ('2', 'Bob', 25, false) returning *;`)
 
 type _check = Expect<
-	Matches<typeof result, { name: string; id: string; active: boolean; created_at: Date; age: string }[]>
+	Matches<typeof _result, { name: string; id: string; active: boolean; created_at: Date; age: string }[]>
 >

@@ -14,7 +14,7 @@ const _result = await db.query(`select id, duration from durations;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			duration: unknown
