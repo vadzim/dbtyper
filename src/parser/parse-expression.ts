@@ -905,14 +905,32 @@ type ResolveCustomOp<
 											>
 											? ExprOk<string, "text">
 											: ExprOk<readonly unknown[], "unknown">
-										: Lv extends ExprOk<
+										: Rv extends ExprOk<infer _Rval, "text">
+											? Lv extends ExprOk<
 													infer _Lval,
 													"integer" | "bigint" | "numeric" | "uuid" | "boolean"
-											  >
-											? Rv extends ExprOk<infer _Rval, "text">
+												>
 												? ExprOk<string, "text">
-												: SqlParserError<"|| requires at least one text operand">
-											: ExprOk<readonly unknown[], "unknown">
+												: ExprOk<readonly unknown[], "unknown">
+											: Lv extends ExprOk<infer _Lval, "integer" | "bigint" | "numeric">
+												? Rv extends ExprOk<infer _Rval, "integer" | "bigint" | "numeric">
+													? SqlParserError<"|| requires at least one text operand">
+													: ExprOk<readonly unknown[], "unknown">
+												: Lv extends ExprOk<infer _Lval, "uuid">
+													? Rv extends ExprOk<
+															infer _Rval,
+															"uuid" | "integer" | "bigint" | "numeric" | "boolean"
+														>
+														? SqlParserError<"|| requires at least one text operand">
+														: ExprOk<readonly unknown[], "unknown">
+													: Lv extends ExprOk<infer _Lval, "boolean">
+														? Rv extends ExprOk<
+																infer _Rval,
+																"uuid" | "integer" | "bigint" | "numeric" | "boolean"
+															>
+															? SqlParserError<"|| requires at least one text operand">
+															: ExprOk<readonly unknown[], "unknown">
+														: ExprOk<readonly unknown[], "unknown">
 									: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
