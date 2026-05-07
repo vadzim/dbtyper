@@ -8,20 +8,28 @@ export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenT
 }
 
 export type ParseSkipStatement<Tokens extends TokensList, DB extends JsqlDatabaseShape> =
-	SkipBracketedUntil<Tokens> extends [infer Rest extends TokensList, infer Result] ? [Rest, DB, Result] : never
+	SkipBracketedUntil<Tokens> extends [infer Rest extends TokensList, infer Result]
+		? [SkipToken<Rest>, DB, Result]
+		: never
 
 export type SkipFailedExpression<
 	Tokens extends TokensList,
 	Error extends SqlParserError<string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
-> = SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown] ? [Rest, Error] : never
+> =
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+		? [SkipToken<Rest>, Error]
+		: never
 
 export type SkipFailedStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Error extends SqlParserError<string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
-> = SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown] ? [Rest, Db, Error] : never
+> =
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+		? [SkipToken<Rest>, Db, Error]
+		: never
 
 export type SkipFailedQualifiedName<
 	Tokens extends TokensList,
@@ -29,7 +37,7 @@ export type SkipFailedQualifiedName<
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
-		? [Rest, Error, never, never]
+		? [SkipToken<Rest>, Error, never, never]
 		: never
 
 export type SkipBracketedUntil<
@@ -54,7 +62,7 @@ export type SkipBracketedUntil<
 							: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 				: PeekToken<Tokens> extends infer EndTok
 					? EndTok extends EndToken
-						? [SkipToken<Tokens>, SkippedStatement<EndTok>]
+						? [Tokens, SkippedStatement<EndTok>]
 						: PeekToken<Tokens> extends TokenEot
 							? [Tokens, SqlParserError<"Token not found">]
 							: PeekToken<Tokens> extends TokenKey<ClosingBrackets>

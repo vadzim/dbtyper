@@ -414,7 +414,7 @@ type ParseUpdateAfterTableRef<
 	ParseUpdateFromTableRef<Tokens, Db> extends [infer R extends TokensList, infer Mid, infer Third]
 		? Mid extends SqlParserError<string>
 			? Third extends ParserRefErrorThirdSentinel
-				? [R, Db, Mid]
+				? SkipFailedStatement<R, Db, Mid>
 				: never
 			: Mid extends null
 				? Third extends UpdateTableContext

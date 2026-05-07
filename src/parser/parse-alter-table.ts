@@ -108,7 +108,7 @@ type ParseAlterAddColumn<
 					| TokenKey<"unique">
 					| TokenKey<"foreign">
 				? SkipUntilCommaOrSemi<R0> extends [infer Rskip extends TokensList, unknown]
-					? ParseAlterActions<Rskip, Db, Sch, Tab>
+					? ParseAlterActions<SkipToken<Rskip>, Db, Sch, Tab>
 					: never
 				: ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends TokensList, null]
 					? PeekToken<R1> extends TokenIdent<infer Col extends string>
@@ -271,7 +271,7 @@ type ParseAlterColumnSetBranch<
 				: PeekToken<Rs> extends TokenKey<"default">
 					? SkipToken<Rs> extends infer Rd extends TokensList
 						? SkipUntilCommaOrSemi<Rd> extends [infer Rsd extends TokensList, unknown]
-							? ParseAlterActions<Rsd, Db, Sch, Tab>
+							? ParseAlterActions<SkipToken<Rsd>, Db, Sch, Tab>
 							: never
 						: never
 					: SkipFailedStatement<Rs, Db, SqlParserError<"Unsupported ALTER COLUMN SET clause">>
@@ -310,7 +310,7 @@ type ParseAlterColumnDropDefaultNoop<
 		? SkipToken<Rd0> extends infer Rdd extends TokensList
 			? Tdd extends TokenKey<"default">
 				? SkipUntilCommaOrSemi<Rdd> extends [infer Rsdd extends TokensList, unknown]
-					? ParseAlterActions<Rsdd, Db, Sch, Tab>
+					? ParseAlterActions<SkipToken<Rsdd>, Db, Sch, Tab>
 					: never
 				: SkipFailedStatement<Rdd, Db, SqlParserError<"Unsupported ALTER COLUMN DROP clause">>
 			: never

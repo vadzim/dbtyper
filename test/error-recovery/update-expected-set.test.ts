@@ -6,6 +6,6 @@ import type { CheckErrorneousResult, ParseErrorneousText } from "../test-utils/e
 
 type Result = ParseErrorneousText<"update users where id = 1">
 
-type _resultMatches = Expect<CheckErrorneousResult<Result, "Expected SET in UPDATE">>
+type _resultMatches = Expect<CheckErrorneousResult<Result, "Expected SET after table in UPDATE">>
 
 it("UPDATE: Expected SET in UPDATE", () => {})

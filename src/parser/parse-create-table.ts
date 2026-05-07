@@ -107,8 +107,8 @@ type ParseCreateTableOpenParen<
 type ParseCreateTableBodySkipOnly<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	SkipBracketedUntil<Tokens, TokenKey<";">> extends [infer AfterSemi extends TokensList, infer R]
 		? R extends SqlParserError<string>
-			? [AfterSemi, Db, R]
-			: [AfterSemi, Db, null]
+			? [SkipToken<AfterSemi>, Db, R]
+			: [SkipToken<AfterSemi>, Db, null]
 		: never
 
 /** After `)`, read `;` or end. */
@@ -468,7 +468,7 @@ type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
 				? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends TokensList, infer Res]
 					? Res extends SqlParserError<string>
 						? SkipFailedExpression<R, Res>
-						: [R, null]
+						: [SkipToken<R>, null]
 					: never
 				: [AfterLp, null]
 			: never

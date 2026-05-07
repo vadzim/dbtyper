@@ -142,7 +142,7 @@ type ParseSqlTypeName<Tokens extends TokensList, Acc extends readonly string[] =
 				? SkipBracketedUntil<SkipToken<R1>, TokenKey<")">> extends [infer R2 extends TokensList, infer Rs]
 					? Rs extends SqlParserError<string>
 						? SkipFailedExpression<R2, Rs>
-						: ParseSqlTypeName<R2, readonly [...Acc, W]>
+						: ParseSqlTypeName<SkipToken<R2>, readonly [...Acc, W]>
 					: never
 				: PeekToken<R1> extends TokenKey<".">
 					? SkipToken<R1> extends infer R2 extends TokensList
@@ -2453,7 +2453,7 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 				? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends TokensList, infer Rs]
 					? Rs extends SqlParserError<string>
 						? SkipFailedExpression<After, SqlParserError<"Unbalanced parentheses">>
-						: SkipFailedExpression<After, SqlParserError<"Unsupported parenthesized expression">>
+						: SkipFailedExpression<SkipToken<After>, SqlParserError<"Unsupported parenthesized expression">>
 					: never
 				: [Rm, { kind: "alias_table_star"; alias: Al }]
 			: Parts extends readonly ["__qts__", infer Sch extends string, infer Tab extends string]
@@ -2464,7 +2464,10 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 						]
 						? Rs extends SqlParserError<string>
 							? SkipFailedExpression<After, SqlParserError<"Unbalanced parentheses">>
-							: SkipFailedExpression<After, SqlParserError<"Unsupported parenthesized expression">>
+							: SkipFailedExpression<
+									SkipToken<After>,
+									SqlParserError<"Unsupported parenthesized expression">
+								>
 						: never
 					: [Rm, { kind: "qualified_table_star"; schema: Sch; table: Tab }]
 				: Parts extends ScalarIdentParts
