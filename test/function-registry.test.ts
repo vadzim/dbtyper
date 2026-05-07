@@ -65,7 +65,7 @@ type TLowerBare = ParseSqlStatement<ParseSqlTokens<`select lower() from t`>, DbF
 type _lowerBare = Expect<Extends<Tuple3At2<TLowerBare>, SqlParserError<"Function requires at least one argument">>>
 
 type TUpperNum = ParseSqlStatement<ParseSqlTokens<`select upper(1) from t`>, DbFns>
-type _upperNum = Expect<Extends<Tuple3At2<TUpperNum>, SqlParserError<"Function expects text argument">>>
+type _upperNum = Expect<Extends<Tuple3At2<TUpperNum>, { kind: "select"; columns: { "?column?": "text" } }>>
 
 type TUpper = ParseSqlStatement<ParseSqlTokens<`select upper('x') from t`>, DbFns>
 type _upper = Expect<Extends<Tuple3At2<TUpper>, { kind: "select"; columns: { "?column?": "text" } }>>

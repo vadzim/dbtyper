@@ -105,7 +105,7 @@ order by display_name asc
 ;
 `>,
 	DbJoinAuthAgenda,
-	{ emailPat: { ts: string; sql: "text" } }
+	{ emailPat: { sql: "text" } }
 >
 type _nestPostgresAppCliSelectOk = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>, JsqlSelectStatementResult>>
 type _nestPostgresAppCliSelectColumns = Expect<

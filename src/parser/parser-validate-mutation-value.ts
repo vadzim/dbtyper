@@ -27,7 +27,7 @@ type ValidateMutationValueBySql<
 	? InsertColNotNull<Tbl, Col> extends true
 		? SqlParserError<"NULL not allowed for NOT NULL column">
 		: true
-	: Val extends ExprOk<infer _TsV, infer Sv extends string>
+	: Val extends ExprOk<infer Sv extends string>
 		? SameComparisonClass<Sv, ColSql> extends true
 			? true
 			: SqlParserError<"Incompatible value type for column">

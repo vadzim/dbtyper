@@ -27,8 +27,8 @@ export type ParseWhereExpression<
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
 					? SkipFailedExpression<Rw, R>
-					: R extends ExprOk<infer Ts, infer _Sql>
-						? [Ts] extends [boolean]
+					: R extends ExprOk<infer Sql>
+						? Sql extends "boolean"
 							? [Rw, null]
 							: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>
 						: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>

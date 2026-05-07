@@ -27,7 +27,7 @@ type _insOk = Expect<Extends<Tuple3At2<InsOk>, JsqlInsertStatementResult>>
 type InsParam = ParseSqlStatement<
 	ParseSqlTokens<`insert into users (id, name) values (:id, :name);`>,
 	DbUsers,
-	{ id: { ts: string; sql: "text" }; name: { ts: string; sql: "text" } }
+	{ id: { sql: "text" }; name: { sql: "text" } }
 >
 type _insParam = Expect<Extends<Tuple3At2<InsParam>, JsqlInsertStatementResult>>
 

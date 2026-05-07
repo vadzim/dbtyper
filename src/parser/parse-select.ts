@@ -2131,15 +2131,15 @@ type ResolveSelectList<
 > = ResolveSelectListAcc<Items, Db, Scope, Params, {}, {}, Items>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? IsUnknownOrAny<Params[Name]["ts"]> extends true
+	? IsUnknownOrAny<Params[Name]["sql"]> extends true
 		? SqlParserError<"Parameter has unknown or any type in SELECT">
-		: { ts: Params[Name]["ts"]; sql: Params[Name]["sql"] }
+		: { sql: Params[Name]["sql"] }
 	: SqlParserError<"Unknown query parameter in SELECT">
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */
-type ParamSelectOut<As, P extends string, Ts, Sql extends string> = As extends string
-	? { out: As; ts: Ts; sql: Sql }
-	: { out: P; ts: Ts; sql: Sql }
+type ParamSelectOut<As, P extends string, Sql extends string> = As extends string
+	? { out: As; sql: Sql }
+	: { out: P; sql: Sql }
 
 type OutNameFromExprAst<Ast extends ScalarExprAst, As, AllItems extends readonly RawSelectItem[]> = As extends string
 	? As
@@ -2195,7 +2195,7 @@ type ResolveSelectListExprItem<
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
 			? Ev extends SqlParserError<string>
 				? Ev
-				: Ev extends ExprOk<infer Ts, infer Sql extends string>
+				: Ev extends ExprOk<infer Sql extends string>
 					? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
 							? SqlParserError<"Scalar expression in SELECT requires AS alias">
@@ -2204,7 +2204,7 @@ type ResolveSelectListExprItem<
 									Db,
 									Scope,
 									Params,
-									MergeRecords<Cols, Record<O, Ts>>,
+									MergeRecords<Cols, Record<O, unknown>>,
 									MergeStringRecords<Sqls, Record<O, Sql>>,
 									AllItems
 								>
@@ -2226,10 +2226,9 @@ type ResolveSelectListParamItem<
 	LookupSelectParam<Params, P> extends infer PV
 		? PV extends SqlParserError<string>
 			? PV
-			: PV extends { ts: infer TsP; sql: infer SqlP extends string }
-				? ParamSelectOut<As, P, TsP, SqlP> extends {
+			: PV extends { sql: infer SqlP extends string }
+				? ParamSelectOut<As, P, SqlP> extends {
 						out: infer O extends string
-						ts: infer Ts
 						sql: infer Sql extends string
 					}
 					? ResolveSelectListAcc<
@@ -2237,7 +2236,7 @@ type ResolveSelectListParamItem<
 							Db,
 							Scope,
 							Params,
-							MergeRecords<Cols, Record<O, Ts>>,
+							MergeRecords<Cols, Record<O, unknown>>,
 							MergeStringRecords<Sqls, Record<O, Sql>>,
 							AllItems
 						>

@@ -49,15 +49,15 @@ type WParamUnknownTs = ParseWhereExpression<
 	ParseSqlTokens<`:p = 'x'`>,
 	DbUsers,
 	UsersScope,
-	{ p: { ts: unknown; sql: "text" } }
+	{ p: { sql: string } }
 >
-type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, SqlParserError<"Parameter has unknown or any type">>>
+type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, null>>
 
 type WParamBoolOk = ParseWhereExpression<
 	ParseSqlTokens<`:flag`>,
 	DbUsers,
 	UsersScope,
-	{ flag: { ts: true; sql: "boolean" } }
+	{ flag: { sql: "boolean" } }
 >
 type _wParamBoolOk = Expect<Extends<Tuple2At1<WParamBoolOk>, null>>
 
@@ -135,7 +135,7 @@ type RCaseNoElse = ResolveExpressionAST<
 	UsersScope,
 	EmptyExpressionParams
 >
-type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<number | null, "integer">>>
+type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<"integer">>>
 
 type WExistsOk = ParseWhereExpression<ParseSqlTokens<`exists (select users.id from users)`>, DbUsers, UsersScope>
 type _wExistsOk = Expect<Extends<Tuple2At1<WExistsOk>, null>>
