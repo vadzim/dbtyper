@@ -903,35 +903,61 @@ type ResolveCustomOp<
 												infer _Rval,
 												"text" | "integer" | "bigint" | "numeric" | "uuid" | "boolean"
 											>
-											? ExprOk<string, "text">
-											: ExprOk<readonly unknown[], "unknown">
-										: Rv extends ExprOk<infer _Rval, "text">
+					? ExprOk<string, "text">
+					: Rv extends ExprOk<infer _Rval, "unknown">
+						? _Rval extends readonly unknown[]
+							? SqlParserError<"Cannot concatenate text with array">
+							: ExprOk<readonly unknown[], "unknown">
+						: ExprOk<readonly unknown[], "unknown">
+				: Rv extends ExprOk<infer _Rval, "text">
 											? Lv extends ExprOk<
 													infer _Lval,
 													"integer" | "bigint" | "numeric" | "uuid" | "boolean"
 												>
-												? ExprOk<string, "text">
-												: ExprOk<readonly unknown[], "unknown">
-											: Lv extends ExprOk<infer _Lval, "integer" | "bigint" | "numeric">
+					? ExprOk<string, "text">
+					: Lv extends ExprOk<infer _Lval, "unknown">
+						? _Lval extends readonly unknown[]
+							? SqlParserError<"Cannot concatenate array with text">
+							: ExprOk<readonly unknown[], "unknown">
+						: ExprOk<readonly unknown[], "unknown">
+				: Lv extends ExprOk<infer _Lval, "integer" | "bigint" | "numeric">
 												? Rv extends ExprOk<infer _Rval, "integer" | "bigint" | "numeric">
-													? SqlParserError<"|| requires at least one text operand">
-													: ExprOk<readonly unknown[], "unknown">
-												: Lv extends ExprOk<infer _Lval, "uuid">
+					? SqlParserError<"|| requires at least one text operand">
+					: Rv extends ExprOk<infer _Rval, "unknown">
+						? _Rval extends readonly unknown[]
+							? ExprOk<readonly unknown[], "unknown">
+							: ExprOk<readonly unknown[], "unknown">
+						: ExprOk<readonly unknown[], "unknown">
+				: Lv extends ExprOk<infer _Lval, "uuid">
 													? Rv extends ExprOk<
 															infer _Rval,
 															"uuid" | "integer" | "bigint" | "numeric" | "boolean"
 														>
-														? SqlParserError<"|| requires at least one text operand">
-														: ExprOk<readonly unknown[], "unknown">
-													: Lv extends ExprOk<infer _Lval, "boolean">
+					? SqlParserError<"|| requires at least one text operand">
+					: Rv extends ExprOk<infer _Rval, "unknown">
+						? _Rval extends readonly unknown[]
+							? ExprOk<readonly unknown[], "unknown">
+							: ExprOk<readonly unknown[], "unknown">
+						: ExprOk<readonly unknown[], "unknown">
+				: Lv extends ExprOk<infer _Lval, "boolean">
 														? Rv extends ExprOk<
 																infer _Rval,
 																"uuid" | "integer" | "bigint" | "numeric" | "boolean"
 															>
-															? SqlParserError<"|| requires at least one text operand">
-															: ExprOk<readonly unknown[], "unknown">
-														: ExprOk<readonly unknown[], "unknown">
-									: ExprOk<unknown, string>
+					? SqlParserError<"|| requires at least one text operand">
+					: Rv extends ExprOk<infer _Rval, "unknown">
+						? _Rval extends readonly unknown[]
+							? ExprOk<readonly unknown[], "unknown">
+							: ExprOk<readonly unknown[], "unknown">
+						: ExprOk<readonly unknown[], "unknown">
+				: Lv extends ExprOk<infer _Lval, "unknown">
+					? _Lval extends readonly unknown[]
+						? Rv extends ExprOk<infer _Rval, "text">
+							? SqlParserError<"Cannot concatenate array with text">
+							: ExprOk<readonly unknown[], "unknown">
+						: ExprOk<readonly unknown[], "unknown">
+					: ExprOk<readonly unknown[], "unknown">
+			: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
 				: never
@@ -942,15 +968,16 @@ type ResolveArrayCtorElements<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	AccTypes extends readonly string[] = readonly [],
 > = Els extends readonly [infer H extends ScalarExprAst, ...infer R extends readonly ScalarExprAst[]]
 	? ResolveExpressionAST<H, Db, Scope, Params> extends infer V
 		? V extends SqlParserError<string>
 			? V
-			: V extends ExprAtom
-				? ResolveArrayCtorElements<R, Db, Scope, Params>
+			: V extends ExprOk<infer _Val, infer SqlType extends string>
+				? ResolveArrayCtorElements<R, Db, Scope, Params, readonly [...AccTypes, SqlType]>
 				: SqlParserError<"Invalid ARRAY element">
 		: never
-	: ExprOk<readonly unknown[], "unknown">
+	: InferArrayType<AccTypes>
 
 // Parse expression to AST to be resolved later when `FROM` scope is known (`OR` … `AND` … `NOT` … comparisons … arithmetic).
 
