@@ -297,12 +297,12 @@ type _SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends r
 	PeekToken<Tokens> extends TokenEot
 		? SkipFailedExpression<Tokens, SqlParserError<"Unclosed subquery">>
 		: PeekToken<Tokens> extends TokenKey<"(">
-			? SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
+			? _SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
 			: PeekToken<Tokens> extends TokenKey<")">
 				? [ExtraOpens] extends [readonly []]
 					? [SkipToken<Tokens>, null]
-					: SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
-				: SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
+					: _SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
+				: _SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
 
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
