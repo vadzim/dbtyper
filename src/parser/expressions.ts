@@ -1,4 +1,4 @@
-type BinaryOperator = {
+type _BinaryOperator = {
 	"+": {
 		priority: 10
 		types: [

@@ -4,22 +4,36 @@ import type {
 	JsqlUpdateStatementResult,
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	TokenEot,
+	TokenIdent,
+	TokenKey,
+	TokensList,
+} from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type {
+	SkipFailedExpression,
+	SkipFailedStatement,
+} from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type {
+	MergeScope,
+	ScopeMap,
+} from "./parser-scope.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
 	ParseExpressionAST,
-	ExprParseEnv,
 	ScalarExprAst,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
-import type { SqlTypesOf } from "./parser-sql-types-of.ts"
+import type {
+	JsqlDbGetData,
+	JsqlDbGetColumnType,
+} from "../core/jsql-utils.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -33,7 +47,7 @@ type UpdateTableContext = {
 
 type ParseUpdateAliasAfterTable<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
+	_Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -275,8 +289,8 @@ type ParseUpdateFromClause<
 type ParseUpdateFromClauseTableRef<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
+	_Scope extends ScopeMap,
+	_Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends infer Tok
 		? SkipToken<Tokens> extends infer R1 extends TokensList

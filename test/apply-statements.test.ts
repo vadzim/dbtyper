@@ -2,18 +2,17 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type {
-	TText,
-	TInteger,
-	TBigint,
-	TBoolean,
-	TNumeric,
-	TUuid,
-	TTimestamp,
-	TDate,
-} from "./test-utils/sql-type-helpers.ts"
-import type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+	Expect,
+	Extends,
+	Matches,
+} from "./test-utils/type-test-utils.ts"
+import type { TInteger } from "./test-utils/sql-type-helpers.ts"
+import type {
+	ApplyParsedStatements,
+	ApplyStatements,
+	ParseSqlStatement,
+} from "../src/parser/parse-sql-statement.ts"
 import type { EmptyExpressionParams } from "../src/parser/parse-expression.ts"
 
 /** `public` with one table so **`CREATE VIEW … AS SELECT`** can resolve `FROM`. */

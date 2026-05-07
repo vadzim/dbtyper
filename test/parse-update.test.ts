@@ -2,17 +2,11 @@ import { describe, it } from "node:test"
 import type { JsqlUpdateStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type {
-	TText,
-	TInteger,
-	TBigint,
-	TBoolean,
-	TNumeric,
-	TUuid,
-	TTimestamp,
-	TDate,
-} from "./test-utils/sql-type-helpers.ts"
+	Expect,
+	Extends,
+} from "./test-utils/type-test-utils.ts"
+import type { TText } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbUsers = {

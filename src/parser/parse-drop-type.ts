@@ -1,9 +1,9 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlTypeShape} from "../core/jsql-shapes.ts"
+import type { JsqlDbGetType, JsqlDbReplaceType} from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedStatement} from "./skip-statement.ts"
 
 export type ParseDropType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">

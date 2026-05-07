@@ -2,21 +2,18 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type {
+	Expect,
+	Extends,
+	Matches,
+} from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
-	TBigint,
-	TBoolean,
-	TNumeric,
-	TUuid,
-	TTimestamp,
-	TDate,
 	TTextArray,
 	TIntegerArray,
 	TBigintArray,
 	TBooleanArray,
-	TNumericArray,
 	TUuidArray,
 	TNull,
 } from "./test-utils/sql-type-helpers.ts"

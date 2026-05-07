@@ -1,7 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { EmptyExpressionParams, ParseExpressionAST, ResolveExpressionAST } from "../src/parser/parse-expression.ts"
 import type { TText, TUuid, TTimestamptz, TBytea, TInet, TBoolean } from "./test-utils/sql-type-helpers.ts"

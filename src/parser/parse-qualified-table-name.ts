@@ -4,7 +4,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 
 /** After `schema.` — parse table name, then peek `(`. */
-type ParseQualifiedSecondIdent<AfterDot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
+type ParseQualifiedSecondIdent<AfterDot extends TokensList, _Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterDot> extends infer Tok2
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
 			? Tok2 extends TokenIdent<infer B extends string>
