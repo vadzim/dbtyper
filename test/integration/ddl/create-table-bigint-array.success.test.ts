@@ -17,7 +17,7 @@ type _check = Expect<
 		typeof result,
 		{
 			id: number
-			nums: unknown
+			nums: readonly bigint[]
 		}[]
 	>
 >

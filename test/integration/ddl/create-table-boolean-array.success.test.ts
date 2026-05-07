@@ -17,7 +17,7 @@ type _check = Expect<
 		typeof result,
 		{
 			id: number
-			bits: unknown
+			bits: readonly boolean[]
 		}[]
 	>
 >
