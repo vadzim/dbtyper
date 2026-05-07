@@ -898,7 +898,11 @@ type ResolveCustomOp<
 							? Op extends "@>" | "&&" | "<@"
 								? ExprOk<boolean, "boolean">
 								: Op extends "||"
-									? ExprOk<readonly unknown[], "unknown">
+									? Lv extends ExprOk<infer _Lval, "text">
+										? Rv extends ExprOk<infer _Rval, "text">
+											? ExprOk<string, "text">
+											: ExprOk<readonly unknown[], "unknown">
+										: ExprOk<readonly unknown[], "unknown">
 									: ExprOk<unknown, string>
 							: SqlParserError<"Invalid custom operator operand">
 						: SqlParserError<"Invalid custom operator operand">
