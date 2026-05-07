@@ -2,7 +2,6 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type {
 	PeekToken,
 	SkipToken,
-	TokenEot,
 	TokenIdent,
 	TokenKey,
 	TokenNumber,
@@ -282,18 +281,6 @@ type ParseInListUntypedAccum<
 		: never
 
 type DecParenDepth<T extends readonly unknown[]> = T extends readonly [...infer Rest, infer _Last] ? Rest : readonly []
-
-/** Match the closing `)` of `( SELECT … )` when the subquery text starts at `Tokens` (leading `SELECT` token). */
-type _SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
-	PeekToken<Tokens> extends TokenEot
-		? SkipFailedExpression<Tokens, SqlParserError<"Unclosed subquery">>
-		: PeekToken<Tokens> extends TokenKey<"(">
-			? _SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
-			: PeekToken<Tokens> extends TokenKey<")">
-				? [ExtraOpens] extends [readonly []]
-					? [SkipToken<Tokens>, null]
-					: _SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
-				: _SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
 
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
