@@ -3,6 +3,16 @@ import type { JsqlUpdateStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbUsers = {
@@ -12,7 +22,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "text"; name: "text" }
+					columns: { id: TText; name: TText }
 				}
 			}
 		}
@@ -22,11 +32,7 @@ type DbUsers = {
 type UpOk = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' where users.id = 'u';`>, DbUsers>
 type _upOk = Expect<Extends<Tuple3At2<UpOk>, JsqlUpdateStatementResult>>
 
-type UpSetParam = ParseSqlStatement<
-	ParseSqlTokens<`update users set name = :n where id = 'u';`>,
-	DbUsers,
-	{ n: { sql: "text" } }
->
+type UpSetParam = ParseSqlStatement<ParseSqlTokens<`update users set name = :n where id = 'u';`>, DbUsers, { n: TText }>
 type _upSetParam = Expect<Extends<Tuple3At2<UpSetParam>, JsqlUpdateStatementResult>>
 
 type UpBadSet = ParseSqlStatement<ParseSqlTokens<`update users set name = 1 where id = 'u';`>, DbUsers>
@@ -57,7 +63,7 @@ type DbAppDefaultPublicUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "text"; name: "text" }
+					columns: { id: TText; name: TText }
 				}
 			}
 		}
@@ -71,14 +77,14 @@ type UpMultiQualified = ParseSqlStatement<
 type _upMultiQualified = Expect<Extends<Tuple3At2<UpMultiQualified>, JsqlUpdateStatementResult>>
 
 type UpReturning = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' returning id;`>, DbUsers>
-type _upReturning = Expect<Extends<Tuple3At2<UpReturning>, { kind: "select"; columns: { id: "text" } }>>
+type _upReturning = Expect<Extends<Tuple3At2<UpReturning>, { kind: "select"; columns: { id: TText } }>>
 
 type UpWithoutWhereReturning = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'Everyone' returning *;`>,
 	DbUsers
 >
 type _upWithoutWhereReturning = Expect<
-	Extends<Tuple3At2<UpWithoutWhereReturning>, { kind: "select"; columns: { id: "text"; name: "text" } }>
+	Extends<Tuple3At2<UpWithoutWhereReturning>, { kind: "select"; columns: { id: TText; name: TText } }>
 >
 
 describe("parse-update (type tests)", () => {

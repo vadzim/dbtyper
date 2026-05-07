@@ -3,6 +3,16 @@ import type { JsqlSchemaShape, JsqlDataShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /** One base table used for single-clause `ALTER` success cases. */
@@ -13,7 +23,7 @@ type DbItems = {
 			sets: {
 				items: {
 					kind: "table"
-					columns: { id: "uuid"; title: "text" }
+					columns: { id: TUuid; title: TText }
 					column_facts: { id: { nullability: "not_null" } }
 				}
 			}
@@ -28,7 +38,7 @@ type DbItemsWithDraft = {
 			sets: {
 				items: {
 					kind: "table"
-					columns: { id: "uuid"; title: "text"; draft: "boolean" }
+					columns: { id: TUuid; title: TText; draft: TBoolean }
 					column_facts: { id: { nullability: "not_null" } }
 				}
 			}
@@ -39,22 +49,24 @@ type DbItemsWithDraft = {
 type TAlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.items add column body text;`>, DbItems>
 type _alterAddOk = Expect<Extends<Tuple3At2<TAlterAdd>, null>>
 type ItemsAfterAdd = TAlterAdd[1]["schemas"]["public"]["sets"]["items"]
-type _alterAddCols = Expect<Extends<ItemsAfterAdd["columns"], { id: "uuid"; title: "text"; body: "text" }>>
+type _alterAddCols = Expect<
+	Extends<ItemsAfterAdd["columns"], { id: TUuid; title: TText; body: { type: "text"; arg: null; nullable: true } }>
+>
 
 type TAlterDrop = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column draft;`>, DbItemsWithDraft>
 type _alterDropOk = Expect<Extends<Tuple3At2<TAlterDrop>, null>>
 type ItemsAfterDrop = TAlterDrop[1]["schemas"]["public"]["sets"]["items"]
-type _alterDropCols = Expect<Extends<ItemsAfterDrop["columns"], { id: "uuid"; title: "text" }>>
+type _alterDropCols = Expect<Extends<ItemsAfterDrop["columns"], { id: TUuid; title: TText }>>
 
 type TAlterRename = ParseSqlStatement<ParseSqlTokens<`alter table public.items rename column title to label;`>, DbItems>
 type _alterRenameOk = Expect<Extends<Tuple3At2<TAlterRename>, null>>
 type ItemsAfterRename = TAlterRename[1]["schemas"]["public"]["sets"]["items"]
-type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: "uuid"; label: "text" }>>
+type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: TUuid; label: TText }>>
 
 type TAlterType = ParseSqlStatement<ParseSqlTokens<`alter table public.items alter column id type bigint;`>, DbItems>
 type _alterTypeOk = Expect<Extends<Tuple3At2<TAlterType>, null>>
 type ItemsAfterType = TAlterType[1]["schemas"]["public"]["sets"]["items"]
-type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], "bigint">>
+type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], { type: "bigint"; arg: null; nullable: true }>>
 
 type TAlterSetNotNull = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set not null;`>,
@@ -79,7 +91,12 @@ type TAlterConstraintNoopThenAdd = ParseSqlStatement<
 >
 type _alterNoopChainOk = Expect<Extends<Tuple3At2<TAlterConstraintNoopThenAdd>, null>>
 type ItemsAfterChain = TAlterConstraintNoopThenAdd[1]["schemas"]["public"]["sets"]["items"]
-type _alterNoopChainMeta = Expect<Extends<ItemsAfterChain["columns"], { id: "uuid"; title: "text"; meta: "int" }>>
+type _alterNoopChainMeta = Expect<
+	Extends<
+		ItemsAfterChain["columns"],
+		{ id: TUuid; title: TText; meta: { type: "integer"; arg: null; nullable: true } }
+	>
+>
 
 /** Unknown schema in qualified table name. */
 type TAlterBadSchema = ParseSqlStatement<ParseSqlTokens<`alter table missing.items add column x int;`>, DbItems>

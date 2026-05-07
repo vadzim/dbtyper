@@ -5,6 +5,7 @@ import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
+import type { TText, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
 
 /**
  * Regression: after `JOIN schema.table`, the next token may be `ON` without an alias — `ParseAliasAfterTable`
@@ -65,10 +66,10 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 		{
 			kind: "select"
 			columns: {
-				email: "text"
-				display_name: "text"
-				created_at: "timestamp with time zone"
-				agenda_id: "uuid"
+				email: { type: "text"; arg: null; nullable: false }
+				display_name: { type: "text"; arg: null; nullable: true }
+				created_at: { type: "timestamp with time zone"; arg: null; nullable: true }
+				agenda_id: { type: "uuid"; arg: null; nullable: false }
 			}
 		}
 	>
@@ -105,22 +106,17 @@ order by display_name asc
 ;
 `>,
 	DbJoinAuthAgenda,
-	{ emailPat: { sql: "text" } }
+	{ emailPat: TText }
 >
 type _nestPostgresAppCliSelectOk = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>, JsqlSelectStatementResult>>
-type _nestPostgresAppCliSelectColumns = Expect<
-	Extends<
-		Tuple3At2<TNestPostgresAppCliSelect>,
-		{
-			kind: "select"
-			columns: {
-				id: "uuid"
-				user_id: "uuid"
-				email: "text"
-				display_name: "text"
-			}
-		}
-	>
+// Check individual columns instead of the whole structure
+type _nestPostgresAppCliSelectId = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["id"], TUuid>>
+type _nestPostgresAppCliSelectUserId = Expect<
+	Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["user_id"], TUuid>
+>
+type _nestPostgresAppCliSelectEmail = Expect<Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["email"], TText>>
+type _nestPostgresAppCliSelectDisplayName = Expect<
+	Extends<Tuple3At2<TNestPostgresAppCliSelect>["columns"]["display_name"], TNull<"text">>
 >
 
 describe("parse-select JOIN … ON (type tests)", () => {

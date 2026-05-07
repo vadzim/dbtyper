@@ -3,6 +3,16 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbAuth = {
@@ -17,7 +27,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "uuid" }
+					columns: { id: TUuid }
 				}
 			}
 		}
@@ -35,7 +45,7 @@ type _t1shape = Expect<
 		T1Table,
 		{
 			kind: "table"
-			columns: { id: "uuid"; body: "text" }
+			columns: { id: TUuid; body: { type: "text"; arg: null; nullable: true } }
 			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
@@ -73,7 +83,7 @@ type _t4shape = Expect<
 		T4Table,
 		{
 			kind: "table"
-			columns: { at: "timestamp with time zone" }
+			columns: { at: TTimestamp }
 			column_facts: { at: { nullability: "not_null" } }
 		}
 	>
@@ -99,7 +109,7 @@ type _tExplicitShape = Expect<
 		TExplicitTable,
 		{
 			kind: "table"
-			columns: { amount: "numeric"; note: "text" }
+			columns: { amount: TNumeric; note: TText }
 			column_facts: { amount: { nullability: "not_null" }; note: { nullability: "not_null" } }
 		}
 	>
@@ -116,7 +126,7 @@ type _tExplicitIfNotShape = Expect<
 		TExplicitIfNotTable,
 		{
 			kind: "table"
-			columns: { id: "int" }
+			columns: { id: { type: "integer"; arg: null; nullable: false } }
 			column_facts: { id: { nullability: "not_null" } }
 		}
 	>
@@ -145,7 +155,7 @@ type _t5shape = Expect<
 		T5Table,
 		{
 			kind: "table"
-			columns: { id: "uuid"; title: "text" }
+			columns: { id: TUuid; title: TText }
 			column_facts: { id: { nullability: "not_null" }; title: { nullability: "not_null" } }
 		}
 	>
@@ -162,7 +172,7 @@ type _t6shape = Expect<
 		T6Table,
 		{
 			kind: "table"
-			columns: { id: "uuid"; title: "text" }
+			columns: { id: TUuid; title: TText }
 			column_facts: { id: { nullability: "not_null" }; title: { nullability: "not_null" } }
 		}
 	>
@@ -213,7 +223,7 @@ type _qualWhenDefaultMissingShape = Expect<
 		TQualifiedWidgets,
 		{
 			kind: "table"
-			columns: { id: "uuid" }
+			columns: { id: TUuid }
 			column_facts: { id: { nullability: "not_null" } }
 		}
 	>

@@ -3,6 +3,16 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 
 type DbGroup = {
 	defaultSchema: "public"
@@ -11,7 +21,7 @@ type DbGroup = {
 			sets: {
 				sales: {
 					kind: "table"
-					columns: { region: "text"; amount: "numeric" }
+					columns: { region: TText; amount: TNumeric }
 				}
 			}
 		}
@@ -20,14 +30,14 @@ type DbGroup = {
 
 type TGroupBy = ParseSqlStatement<ParseSqlTokens<`select region from sales group by region;`>, DbGroup>
 
-type _groupByOk = Expect<Matches<TGroupBy[2], { kind: "select"; columns: { region: "text" } }>>
+type _groupByOk = Expect<Matches<TGroupBy[2], { kind: "select"; columns: { region: TText } }>>
 
 type THaving = ParseSqlStatement<
 	ParseSqlTokens<`select region from sales group by region having region = 'eu';`>,
 	DbGroup
 >
 
-type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: "text" } }>>
+type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: TText } }>>
 
 type THavingBad = ParseSqlStatement<
 	ParseSqlTokens<`select region from sales group by region having not_a_col = 'x';`>,
@@ -51,7 +61,7 @@ type TGroupProjAggOk = ParseSqlStatement<
 >
 
 type _groupProjAggOk = Expect<
-	Matches<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { region: "text"; s: "numeric" } }>
+	Matches<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { region: TText; s: TNumeric } }>
 >
 
 /** `HAVING` without `GROUP BY` still enforces “aggregates or constants / grouped columns” on projections. */
@@ -70,7 +80,7 @@ type THavingNoGroupAggOnly = ParseSqlStatement<
 	DbGroup
 >
 
-type _havingNoGroupAggOnly = Expect<Matches<THavingNoGroupAggOnly[2], { kind: "select"; columns: { c: "bigint" } }>>
+type _havingNoGroupAggOnly = Expect<Matches<THavingNoGroupAggOnly[2], { kind: "select"; columns: { c: TBigint } }>>
 
 /** Multi-expression `GROUP BY`: both projected non-aggregates must appear in the key set. */
 type TGroupByTwoKeysOk = ParseSqlStatement<
@@ -79,7 +89,7 @@ type TGroupByTwoKeysOk = ParseSqlStatement<
 >
 
 type _groupByTwoKeysOk = Expect<
-	Matches<TGroupByTwoKeysOk[2], { kind: "select"; columns: { region: "text"; amount: "numeric" } }>
+	Matches<TGroupByTwoKeysOk[2], { kind: "select"; columns: { region: TText; amount: TNumeric } }>
 >
 
 /** `GROUP BY region, amount` but `amount` omitted from projection list — ok (column appears in grouping). */
@@ -89,13 +99,13 @@ type TGroupByTwoKeysSubsetProj = ParseSqlStatement<
 >
 
 type _groupByTwoKeysSubsetProj = Expect<
-	Matches<TGroupByTwoKeysSubsetProj[2], { kind: "select"; columns: { region: "text" } }>
+	Matches<TGroupByTwoKeysSubsetProj[2], { kind: "select"; columns: { region: TText } }>
 >
 
 /** Literals are allowed in grouped contexts. */
 type TGroupLitOk = ParseSqlStatement<ParseSqlTokens<`select region, 1 as one from sales group by region;`>, DbGroup>
 
-type _groupLitOk = Expect<Matches<TGroupLitOk[2], { kind: "select"; columns: { region: "text"; one: "integer" } }>>
+type _groupLitOk = Expect<Matches<TGroupLitOk[2], { kind: "select"; columns: { region: TText; one: TInteger } }>>
 
 /** `COUNT(*)` counts as aggregate in projection rules. */
 type TGroupCountStar = ParseSqlStatement<
@@ -103,7 +113,7 @@ type TGroupCountStar = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupCountStar = Expect<Matches<TGroupCountStar[2], { kind: "select"; columns: { region: "text"; c: "bigint" } }>>
+type _groupCountStar = Expect<Matches<TGroupCountStar[2], { kind: "select"; columns: { region: TText; c: TBigint } }>>
 
 /** Trailing `ORDER BY` / `LIMIT` / `OFFSET` after `GROUP BY` must not drop grouped-projection validation. */
 type TGroupOrderLimit = ParseSqlStatement<
@@ -111,7 +121,7 @@ type TGroupOrderLimit = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: "text" } }>>
+type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: TText } }>>
 
 /** Same trail but projection violates grouped rules — still error. */
 type TGroupOrderLimitBad = ParseSqlStatement<

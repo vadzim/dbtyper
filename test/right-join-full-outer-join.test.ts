@@ -3,6 +3,16 @@ import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 
 type DbJoins = {
 	defaultSchema: "public"
@@ -11,11 +21,11 @@ type DbJoins = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "integer"; name: "text" }
+					columns: { id: TInteger; name: TText }
 				}
 				orders: {
 					kind: "table"
-					columns: { id: "integer"; user_id: "integer"; total: "integer" }
+					columns: { id: TInteger; user_id: TInteger; total: TInteger }
 				}
 			}
 		}

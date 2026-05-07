@@ -3,6 +3,16 @@ import type { JsqlSchemaShape, JsqlSelectStatementResult } from "../src/core/jsq
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
 
@@ -31,7 +41,7 @@ type _joinColumns = Expect<
 		Tuple3At2<TJoinDefaultAndExplicit>,
 		{
 			kind: "select"
-			columns: { id: "uuid"; plan_code: "text" }
+			columns: { id: TUuid; plan_code: TText }
 		}
 	>
 >
@@ -43,13 +53,13 @@ type TJoinBadColumn = ParseSqlStatement<
 type _joinBadCol = Expect<Extends<Tuple3At2<TJoinBadColumn>, SqlParserError<string>>>
 
 type TDistinct = ParseSqlStatement<ParseSqlTokens<`select distinct users.id from users;`>, DbJoinDefaultAndExplicit>
-type _distinct = Expect<Extends<Tuple3At2<TDistinct>, { kind: "select"; columns: { id: "uuid" } }>>
+type _distinct = Expect<Extends<Tuple3At2<TDistinct>, { kind: "select"; columns: { id: TUuid } }>>
 
 type TSelectWhereOk = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users where users.name = 'a';`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectWhereOk = Expect<Extends<Tuple3At2<TSelectWhereOk>, { kind: "select"; columns: { id: "uuid" } }>>
+type _selectWhereOk = Expect<Extends<Tuple3At2<TSelectWhereOk>, { kind: "select"; columns: { id: TUuid } }>>
 
 type TSelectWhereBad = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users where users.nope = 'a';`>,
@@ -149,14 +159,14 @@ type TSelectCaseKw = ParseSqlStatement<
 	ParseSqlTokens<`select case when true then users.id else users.id end as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectCaseKw = Expect<Extends<Tuple3At2<TSelectCaseKw>, { kind: "select"; columns: { x: string } }>>
+type _selectCaseKw = Expect<Extends<Tuple3At2<TSelectCaseKw>, { kind: "select"; columns: { x: TUuid } }>>
 
 /** Simple `CASE expr WHEN …` (distinct from searched `CASE WHEN boolean`). */
 type TSelectCaseSimple = ParseSqlStatement<
 	ParseSqlTokens<`select case users.id when '00000000-0000-0000-0000-000000000001'::uuid then users.name else users.name end as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectCaseSimple = Expect<Extends<Tuple3At2<TSelectCaseSimple>, { kind: "select"; columns: { x: "text" } }>>
+type _selectCaseSimple = Expect<Extends<Tuple3At2<TSelectCaseSimple>, { kind: "select"; columns: { x: TText } }>>
 type TSelectCaseSimpleWhenMismatch = ParseSqlStatement<
 	ParseSqlTokens<`select case users.id when 1 then users.name else users.name end as x from users;`>,
 	DbJoinDefaultAndExplicit
@@ -169,7 +179,10 @@ type TSelectCaseSimpleNoElse = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _selectCaseSimpleNoElse = Expect<
-	Extends<Tuple3At2<TSelectCaseSimpleNoElse>, { kind: "select"; columns: { x: string | null } }>
+	Extends<
+		Tuple3At2<TSelectCaseSimpleNoElse>,
+		{ kind: "select"; columns: { x: { type: "text"; arg: null; nullable: true } } }
+	>
 >
 
 /** `WITH` CTE: inner `SELECT` merged into outer scope with base `FROM` tables. */
@@ -177,7 +190,7 @@ type TWithCte = ParseSqlStatement<
 	ParseSqlTokens<`with c as (select users.id as uid from users) select c.uid from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _withCte = Expect<Extends<Tuple3At2<TWithCte>, { kind: "select"; columns: { uid: "uuid" } }>>
+type _withCte = Expect<Extends<Tuple3At2<TWithCte>, { kind: "select"; columns: { uid: TUuid } }>>
 type TWithDup = ParseSqlStatement<
 	ParseSqlTokens<`with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;`>,
 	DbJoinDefaultAndExplicit
@@ -189,13 +202,13 @@ type TDerivedTable = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select users.id from users) as s;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedTable = Expect<Extends<Tuple3At2<TDerivedTable>, { kind: "select"; columns: { id: "uuid" } }>>
+type _derivedTable = Expect<Extends<Tuple3At2<TDerivedTable>, { kind: "select"; columns: { id: TUuid } }>>
 
 type TDerivedJoin = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users join (select users.id as uid from users) t on users.id = t.uid;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedJoin = Expect<Extends<Tuple3At2<TDerivedJoin>, { kind: "select"; columns: { id: "uuid" } }>>
+type _derivedJoin = Expect<Extends<Tuple3At2<TDerivedJoin>, { kind: "select"; columns: { id: TUuid } }>>
 
 type TDerivedBadCol = ParseSqlStatement<
 	ParseSqlTokens<`select s.nope from (select users.id from users) as s;`>,
@@ -214,14 +227,14 @@ type TDerivedInnerWhere = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select users.id from users where users.name = 'a') as s;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedInnerWhere = Expect<Extends<Tuple3At2<TDerivedInnerWhere>, { kind: "select"; columns: { id: "uuid" } }>>
+type _derivedInnerWhere = Expect<Extends<Tuple3At2<TDerivedInnerWhere>, { kind: "select"; columns: { id: TUuid } }>>
 
 type TDerivedInnerDistinct = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select distinct users.id from users) as s;`>,
 	DbJoinDefaultAndExplicit
 >
 type _derivedInnerDistinct = Expect<
-	Extends<Tuple3At2<TDerivedInnerDistinct>, { kind: "select"; columns: { id: "uuid" } }>
+	Extends<Tuple3At2<TDerivedInnerDistinct>, { kind: "select"; columns: { id: TUuid } }>
 >
 
 /** Inner `JOIN` uses empty outer scope; only inner aliases/tables exist. */
@@ -229,7 +242,7 @@ type TDerivedInnerJoin = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select users.id from users join billing.subs as bs on users.id = bs.user_id) as s;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedInnerJoin = Expect<Extends<Tuple3At2<TDerivedInnerJoin>, { kind: "select"; columns: { id: "uuid" } }>>
+type _derivedInnerJoin = Expect<Extends<Tuple3At2<TDerivedInnerJoin>, { kind: "select"; columns: { id: TUuid } }>>
 
 /** Sole derived `FROM` item with bare table alias (no `AS`). */
 type TDerivedBareAs = ParseSqlStatement<
@@ -243,7 +256,7 @@ type TDerivedLeftOuterJoinRhs = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _derivedLeftOuterJoinRhs = Expect<
-	Extends<Tuple3At2<TDerivedLeftOuterJoinRhs>, { kind: "select"; columns: { id: "uuid" } }>
+	Extends<Tuple3At2<TDerivedLeftOuterJoinRhs>, { kind: "select"; columns: { id: TUuid } }>
 >
 
 type TDerivedBadOpen = ParseSqlStatement<ParseSqlTokens<`select 1 from ( from users ) as x;`>, DbJoinDefaultAndExplicit>
@@ -264,15 +277,16 @@ type _derivedBadOpen = Expect<Extends<Tuple3At2<TDerivedBadOpen>, SqlParserError
 // 	ParseSqlTokens<`select 1 from (select users.id) as x;`>,
 // 	DbJoinDefaultAndExplicit
 // >
-// type _derivedNoInnerFrom = Expect<Extends<Tuple3At2<TDerivedNoInnerFrom>, { kind: "select"; columns: { id: "uuid" } }>>
+// type _derivedNoInnerFrom = Expect<Extends<Tuple3At2<TDerivedNoInnerFrom>, { kind: "select"; columns: { id: TUuid } }>>
 
-type DerivedParamsRid = { rid: { sql: "uuid" } }
+type DerivedParamsRid = { rid: TUuid }
 type TDerivedInnerParam = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select :rid as id from users) as s;`>,
 	DbJoinDefaultAndExplicit,
 	DerivedParamsRid
 >
-type _derivedInnerParam = Expect<Extends<Tuple3At2<TDerivedInnerParam>, { kind: "select"; columns: { id: "uuid" } }>>
+type _derivedInnerParamActual = Tuple3At2<TDerivedInnerParam>
+type _derivedInnerParam = Expect<Extends<_derivedInnerParamActual, { kind: "select"; columns: { id: TUuid } }>>
 
 /** Outer `FROM` alias must not leak into inner `SELECT` list scope. */
 type TDerivedCorrInnerList = ParseSqlStatement<
@@ -311,21 +325,21 @@ type TChainedJoin = ParseSqlStatement<
 type _chainedJoin = Expect<Extends<Tuple3At2<TChainedJoin>, JsqlSelectStatementResult>>
 
 type TSelectStar = ParseSqlStatement<ParseSqlTokens<`select * from users;`>, DbJoinDefaultAndExplicit>
-type _selectStar = Expect<Extends<Tuple3At2<TSelectStar>, { kind: "select"; columns: { id: string; name: string } }>>
+type _selectStar = Expect<Extends<Tuple3At2<TSelectStar>, { kind: "select"; columns: { id: TUuid; name: TText } }>>
 
 type TCatalogQualColumnSelect = ParseSqlStatement<
 	ParseSqlTokens<`select public.users.id from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _catalogQualColumnSelect = Expect<
-	Extends<Tuple3At2<TCatalogQualColumnSelect>, { kind: "select"; columns: { id: string } }>
+	Extends<Tuple3At2<TCatalogQualColumnSelect>, { kind: "select"; columns: { id: TUuid } }>
 >
 
 type TAsAlias = ParseSqlStatement<ParseSqlTokens<`select users.id as uid from users;`>, DbJoinDefaultAndExplicit>
-type _asAlias = Expect<Extends<Tuple3At2<TAsAlias>, { kind: "select"; columns: { uid: string } }>>
+type _asAlias = Expect<Extends<Tuple3At2<TAsAlias>, { kind: "select"; columns: { uid: TUuid } }>>
 
 type TScalarAdd = ParseSqlStatement<ParseSqlTokens<`select 1 + 1 as a from users;`>, DbJoinDefaultAndExplicit>
-type _scalarAdd = Expect<Extends<Tuple3At2<TScalarAdd>, { kind: "select"; columns: { a: "integer" } }>>
+type _scalarAdd = Expect<Extends<Tuple3At2<TScalarAdd>, { kind: "select"; columns: { a: TInteger } }>>
 
 /** `users` row_count is numeric so `+ 1` is valid arithmetic after resolve. */
 type DbJoinWithRowCount = {
@@ -335,7 +349,7 @@ type DbJoinWithRowCount = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "uuid"; name: "text"; row_count: "integer" }
+					columns: { id: TUuid; name: TText; row_count: TInteger }
 				}
 			}
 		}
@@ -344,17 +358,17 @@ type DbJoinWithRowCount = {
 }
 
 type TColPlusOne = ParseSqlStatement<ParseSqlTokens<`select users.row_count + 1 as x from users;`>, DbJoinWithRowCount>
-type _colPlusOne = Expect<Extends<Tuple3At2<TColPlusOne>, { kind: "select"; columns: { x: "integer" } }>>
+type _colPlusOne = Expect<Extends<Tuple3At2<TColPlusOne>, { kind: "select"; columns: { x: TInteger } }>>
 
 /** Sole projection without `AS` uses PostgreSQL-style `?column?` (not bare `col` AST). */
 type TColPlusOneNoAs = ParseSqlStatement<ParseSqlTokens<`select users.row_count + 1 from users;`>, DbJoinWithRowCount>
 type _colPlusOneNoAs = Expect<
-	Extends<Tuple3At2<TColPlusOneNoAs>, { kind: "select"; columns: { "?column?": "integer" } }>
+	Extends<Tuple3At2<TColPlusOneNoAs>, { kind: "select"; columns: { "?column?": TInteger } }>
 >
 
 type TSelectLiteralOne = ParseSqlStatement<ParseSqlTokens<`select 1 from users;`>, DbJoinWithRowCount>
 type _selectLiteralOne = Expect<
-	Extends<Tuple3At2<TSelectLiteralOne>, { kind: "select"; columns: { "?column?": "integer" } }>
+	Extends<Tuple3At2<TSelectLiteralOne>, { kind: "select"; columns: { "?column?": TInteger } }>
 >
 
 type TSelectTwoUnnamed = ParseSqlStatement<ParseSqlTokens<`select 1, 2 from users;`>, DbJoinWithRowCount>
@@ -366,7 +380,7 @@ type TBadColInExpr = ParseSqlStatement<ParseSqlTokens<`select users.nope + 1 as 
 type _badColInExpr = Expect<Extends<Tuple3At2<TBadColInExpr>, SqlParserError<string>>>
 
 /** `:name` in the projection list must appear in the statement `Params` map (default empty params errors). */
-type SelectParamsLimit = { limit: { sql: "integer" } }
+type SelectParamsLimit = { limit: TInteger }
 type TSelectParam = ParseSqlStatement<
 	ParseSqlTokens<`select :limit, users.id from users;`>,
 	DbJoinDefaultAndExplicit,
@@ -377,7 +391,7 @@ type _selectParam = Expect<
 		Tuple3At2<TSelectParam>,
 		{
 			kind: "select"
-			columns: { limit: "integer"; id: "uuid" }
+			columns: { limit: TInteger; id: TUuid }
 		}
 	>
 >
@@ -385,14 +399,14 @@ type _selectParam = Expect<
 type TSelectParamAs = ParseSqlStatement<
 	ParseSqlTokens<`select :pagesize as page_size, users.name from users;`>,
 	DbJoinDefaultAndExplicit,
-	{ pagesize: { sql: "integer" } }
+	{ pagesize: TInteger }
 >
 type _selectParamAs = Expect<
 	Extends<
 		Tuple3At2<TSelectParamAs>,
 		{
 			kind: "select"
-			columns: { page_size: "integer"; name: "text" }
+			columns: { page_size: TInteger; name: TText }
 		}
 	>
 >
@@ -426,7 +440,7 @@ type TUnqualNameUnambiguous = ParseSqlStatement<
 	ParseSqlTokens<`select name from users join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
 	DbJoinDefaultAndExplicit
 >
-type _unqualNameOk = Expect<Extends<Tuple3At2<TUnqualNameUnambiguous>, { kind: "select"; columns: { name: "text" } }>>
+type _unqualNameOk = Expect<Extends<Tuple3At2<TUnqualNameUnambiguous>, { kind: "select"; columns: { name: TText } }>>
 
 /** `id` exists on both `users` and `subs` → ambiguous bare reference. */
 type TUnqualIdAmbiguous = ParseSqlStatement<
@@ -446,33 +460,33 @@ type TSelectBoolCmpAnd = ParseSqlStatement<
 	ParseSqlTokens<`select ((2 > 0) and (1 < 3)) as ok from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectBoolCmpAnd = Expect<Extends<Tuple3At2<TSelectBoolCmpAnd>, { kind: "select"; columns: { ok: "boolean" } }>>
+type _selectBoolCmpAnd = Expect<Extends<Tuple3At2<TSelectBoolCmpAnd>, { kind: "select"; columns: { ok: TBoolean } }>>
 
 type TSelectBoolOrAndPrec = ParseSqlStatement<
 	ParseSqlTokens<`select true or false and false as p from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectBoolOrAndPrec = Expect<
-	Extends<Tuple3At2<TSelectBoolOrAndPrec>, { kind: "select"; columns: { p: "boolean" } }>
+	Extends<Tuple3At2<TSelectBoolOrAndPrec>, { kind: "select"; columns: { p: TBoolean } }>
 >
 
 type TSelectNotFalse = ParseSqlStatement<ParseSqlTokens<`select not false as x from users;`>, DbJoinDefaultAndExplicit>
-type _selectNotFalse = Expect<Extends<Tuple3At2<TSelectNotFalse>, { kind: "select"; columns: { x: "boolean" } }>>
+type _selectNotFalse = Expect<Extends<Tuple3At2<TSelectNotFalse>, { kind: "select"; columns: { x: TBoolean } }>>
 
 type TSelectCmpAdd = ParseSqlStatement<ParseSqlTokens<`select 1 + 2 > 2 as gt from users;`>, DbJoinDefaultAndExplicit>
-type _selectCmpAdd = Expect<Extends<Tuple3At2<TSelectCmpAdd>, { kind: "select"; columns: { gt: "boolean" } }>>
+type _selectCmpAdd = Expect<Extends<Tuple3At2<TSelectCmpAdd>, { kind: "select"; columns: { gt: TBoolean } }>>
 
 type TSelectIsNull = ParseSqlStatement<
 	ParseSqlTokens<`select (users.name is null) as n from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectIsNull = Expect<Extends<Tuple3At2<TSelectIsNull>, { kind: "select"; columns: { n: "boolean" } }>>
+type _selectIsNull = Expect<Extends<Tuple3At2<TSelectIsNull>, { kind: "select"; columns: { n: TBoolean } }>>
 
 type TSelectInList = ParseSqlStatement<
 	ParseSqlTokens<`select (users.id in ('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000002'::uuid)) as inside from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectInList = Expect<Extends<Tuple3At2<TSelectInList>, { kind: "select"; columns: { inside: "boolean" } }>>
+type _selectInList = Expect<Extends<Tuple3At2<TSelectInList>, { kind: "select"; columns: { inside: TBoolean } }>>
 
 type TSelectInListTypeErr = ParseSqlStatement<
 	ParseSqlTokens<`select (users.id in (1, 2, 3)) as inside from users;`>,
@@ -554,26 +568,26 @@ type TSelectPgCast = ParseSqlStatement<
 	ParseSqlTokens<`select 42::text as t, (1 + 2)::bigint as b from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectPgCast = Expect<Extends<Tuple3At2<TSelectPgCast>, { kind: "select"; columns: { t: "text"; b: "bigint" } }>>
+type _selectPgCast = Expect<Extends<Tuple3At2<TSelectPgCast>, { kind: "select"; columns: { t: TText; b: TBigint } }>>
 
 type TSelectSqlCast = ParseSqlStatement<
 	ParseSqlTokens<`select cast(true as text) as flag_txt from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectSqlCast = Expect<Extends<Tuple3At2<TSelectSqlCast>, { kind: "select"; columns: { flag_txt: "text" } }>>
+type _selectSqlCast = Expect<Extends<Tuple3At2<TSelectSqlCast>, { kind: "select"; columns: { flag_txt: TText } }>>
 
 type TSelectCastIntErr = ParseSqlStatement<
 	ParseSqlTokens<`select cast('x' as integer) as bad from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectCastIntErr = Expect<Extends<Tuple3At2<TSelectCastIntErr>, { kind: "select"; columns: { bad: "integer" } }>>
+type _selectCastIntErr = Expect<Extends<Tuple3At2<TSelectCastIntErr>, { kind: "select"; columns: { bad: TInteger } }>>
 
 type TSelectPgCastBoolIntErr = ParseSqlStatement<
 	ParseSqlTokens<`select false::integer as bad from users;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectPgCastBoolIntErr = Expect<
-	Extends<Tuple3At2<TSelectPgCastBoolIntErr>, { kind: "select"; columns: { bad: "integer" } }>
+	Extends<Tuple3At2<TSelectPgCastBoolIntErr>, { kind: "select"; columns: { bad: TInteger } }>
 >
 
 /** Two **`WITH`** CTEs (parser must accept a comma-separated CTE list before the main **`SELECT`**). */
@@ -586,7 +600,7 @@ select users.id from users;
 `>,
 	DbJoinDefaultAndExplicit
 >
-type _withTwoCtes = Expect<Extends<Tuple3At2<TWithTwoCtes>, { kind: "select"; columns: { id: string } }>>
+type _withTwoCtes = Expect<Extends<Tuple3At2<TWithTwoCtes>, { kind: "select"; columns: { id: TUuid } }>>
 
 type DbCrossJoin = ApplyStatements<
 	SqlDatabase,
@@ -608,7 +622,10 @@ type _crossJoinColumns = Expect<
 		Tuple3At2<TCrossJoin>,
 		{
 			kind: "select"
-			columns: { name: "text"; role_name: "text" }
+			columns: {
+				name: { type: "text"; arg: null; nullable: true }
+				role_name: { type: "text"; arg: null; nullable: true }
+			}
 		}
 	>
 >
@@ -640,7 +657,10 @@ type _subqueryInWhereColumns = Expect<
 		Tuple3At2<TSubqueryInWhere>,
 		{
 			kind: "select"
-			columns: { id: "text"; name: "text" }
+			columns: {
+				id: { type: "text"; arg: null; nullable: true }
+				name: { type: "text"; arg: null; nullable: true }
+			}
 		}
 	>
 >
@@ -656,7 +676,10 @@ type _existsSubqueryColumns = Expect<
 		Tuple3At2<TExistsSubquery>,
 		{
 			kind: "select"
-			columns: { id: "text"; name: "text" }
+			columns: {
+				id: { type: "text"; arg: null; nullable: true }
+				name: { type: "text"; arg: null; nullable: true }
+			}
 		}
 	>
 >

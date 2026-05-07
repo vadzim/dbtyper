@@ -3,6 +3,16 @@ import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 
 type DbWindow = {
 	defaultSchema: "public"
@@ -11,7 +21,7 @@ type DbWindow = {
 			sets: {
 				sales: {
 					kind: "table"
-					columns: { id: "integer"; product: "text"; amount: "integer"; sale_date: "text" }
+					columns: { id: TInteger; product: TText; amount: TInteger; sale_date: TText }
 				}
 			}
 		}
@@ -24,7 +34,7 @@ type TRowNumber = ParseSqlStatement<
 	DbWindow
 >
 type _tRowNumber = Expect<
-	Extends<Tuple3At2<TRowNumber>, { kind: "select"; columns: { id: "integer"; product: "text"; row_num: "bigint" } }>
+	Extends<Tuple3At2<TRowNumber>, { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test ROW_NUMBER() with ORDER BY DESC
@@ -33,10 +43,7 @@ type TRowNumberDesc = ParseSqlStatement<
 	DbWindow
 >
 type _tRowNumberDesc = Expect<
-	Extends<
-		Tuple3At2<TRowNumberDesc>,
-		{ kind: "select"; columns: { id: "integer"; product: "text"; row_num: "bigint" } }
-	>
+	Extends<Tuple3At2<TRowNumberDesc>, { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test RANK() with ORDER BY
@@ -45,7 +52,7 @@ type TRank = ParseSqlStatement<
 	DbWindow
 >
 type _tRank = Expect<
-	Extends<Tuple3At2<TRank>, { kind: "select"; columns: { id: "integer"; product: "text"; rank_num: "bigint" } }>
+	Extends<Tuple3At2<TRank>, { kind: "select"; columns: { id: TInteger; product: TText; rank_num: TBigint } }>
 >
 
 // Test DENSE_RANK() with ORDER BY
@@ -56,7 +63,7 @@ type TDenseRank = ParseSqlStatement<
 type _tDenseRank = Expect<
 	Extends<
 		Tuple3At2<TDenseRank>,
-		{ kind: "select"; columns: { id: "integer"; product: "text"; dense_rank_num: "bigint" } }
+		{ kind: "select"; columns: { id: TInteger; product: TText; dense_rank_num: TBigint } }
 	>
 >
 
@@ -68,7 +75,7 @@ type TMultipleWindow = ParseSqlStatement<
 type _tMultipleWindow = Expect<
 	Extends<
 		Tuple3At2<TMultipleWindow>,
-		{ kind: "select"; columns: { id: "integer"; row_num: "bigint"; rank_num: "bigint" } }
+		{ kind: "select"; columns: { id: TInteger; row_num: TBigint; rank_num: TBigint } }
 	>
 >
 
@@ -78,7 +85,7 @@ type TPartitionBy = ParseSqlStatement<
 	DbWindow
 >
 type _tPartitionBy = Expect<
-	Extends<Tuple3At2<TPartitionBy>, { kind: "select"; columns: { id: "integer"; product: "text"; row_num: "bigint" } }>
+	Extends<Tuple3At2<TPartitionBy>, { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test RANK() with PARTITION BY and multiple ORDER BY
@@ -87,7 +94,7 @@ type TPartitionByMultiOrder = ParseSqlStatement<
 	DbWindow
 >
 type _tPartitionByMultiOrder = Expect<
-	Extends<Tuple3At2<TPartitionByMultiOrder>, { kind: "select"; columns: { id: "integer"; rank_num: "bigint" } }>
+	Extends<Tuple3At2<TPartitionByMultiOrder>, { kind: "select"; columns: { id: TInteger; rank_num: TBigint } }>
 >
 
 // Test multiple PARTITION BY columns
@@ -96,7 +103,7 @@ type TMultiPartition = ParseSqlStatement<
 	DbWindow
 >
 type _tMultiPartition = Expect<
-	Extends<Tuple3At2<TMultiPartition>, { kind: "select"; columns: { id: "integer"; row_num: "bigint" } }>
+	Extends<Tuple3At2<TMultiPartition>, { kind: "select"; columns: { id: TInteger; row_num: TBigint } }>
 >
 
 // Test LAG() with PARTITION BY and ORDER BY

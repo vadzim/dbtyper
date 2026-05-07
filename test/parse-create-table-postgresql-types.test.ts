@@ -3,6 +3,16 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 
 type DbPublic = {
 	defaultSchema: "public"
@@ -21,7 +31,11 @@ type _tSerialShape = Expect<
 		TSerialTable,
 		{
 			kind: "table"
-			columns: { id: "serial"; big: "bigserial"; small: "smallserial" }
+			columns: {
+				id: { type: "serial"; arg: null; nullable: false }
+				big: { type: "bigserial"; arg: null; nullable: false }
+				small: { type: "smallserial"; arg: null; nullable: false }
+			}
 			column_facts: {
 				id: { nullability: "not_null" }
 				big: { nullability: "not_null" }
@@ -43,7 +57,10 @@ type _tTimestampAliasesShape = Expect<
 		TTimestampAliasesTable,
 		{
 			kind: "table"
-			columns: { created: "timestamptz"; time: "timetz" }
+			columns: {
+				created: { type: "timestamptz"; arg: null; nullable: false }
+				time: { type: "timetz"; arg: null; nullable: false }
+			}
 			column_facts: { created: { nullability: "not_null" }; time: { nullability: "not_null" } }
 		}
 	>
@@ -61,7 +78,7 @@ type _tByteaShape = Expect<
 		TByteaTable,
 		{
 			kind: "table"
-			columns: { id: "integer"; data: "bytea" }
+			columns: { id: TInteger; data: { type: "bytea"; arg: null; nullable: false } }
 			column_facts: { id: { nullability: "not_null" }; data: { nullability: "not_null" } }
 		}
 	>
@@ -79,7 +96,7 @@ type _tIntervalShape = Expect<
 		TIntervalTable,
 		{
 			kind: "table"
-			columns: { id: "integer"; duration: "interval" }
+			columns: { id: TInteger; duration: { type: "interval"; arg: null; nullable: false } }
 			column_facts: { id: { nullability: "not_null" }; duration: { nullability: "not_null" } }
 		}
 	>
@@ -97,7 +114,11 @@ type _tNetworkShape = Expect<
 		TNetworkTable,
 		{
 			kind: "table"
-			columns: { id: "integer"; ip: "inet"; subnet: "cidr" }
+			columns: {
+				id: TInteger
+				ip: { type: "inet"; arg: null; nullable: false }
+				subnet: { type: "cidr"; arg: null; nullable: false }
+			}
 			column_facts: {
 				id: { nullability: "not_null" }
 				ip: { nullability: "not_null" }
@@ -119,7 +140,11 @@ type _tFulltextShape = Expect<
 		TFulltextTable,
 		{
 			kind: "table"
-			columns: { id: "integer"; vec: "tsvector"; query: "tsquery" }
+			columns: {
+				id: TInteger
+				vec: { type: "tsvector"; arg: null; nullable: false }
+				query: { type: "tsquery"; arg: null; nullable: false }
+			}
 			column_facts: {
 				id: { nullability: "not_null" }
 				vec: { nullability: "not_null" }
@@ -149,12 +174,12 @@ type _tMixedShape = Expect<
 		{
 			kind: "table"
 			columns: {
-				id: "serial"
-				created: "timestamptz"
-				data: "bytea"
-				duration: "interval"
-				ip: "inet"
-				search: "tsvector"
+				id: { type: "serial"; arg: null; nullable: false }
+				created: { type: "timestamptz"; arg: null; nullable: false }
+				data: { type: "bytea"; arg: null; nullable: false }
+				duration: { type: "interval"; arg: null; nullable: false }
+				ip: { type: "inet"; arg: null; nullable: false }
+				search: { type: "tsvector"; arg: null; nullable: false }
 			}
 			column_facts: {
 				id: { nullability: "not_null" }

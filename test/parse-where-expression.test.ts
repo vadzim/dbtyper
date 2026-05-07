@@ -3,6 +3,16 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type { Expect, Extends, Tuple2At1 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { HasAmbiguousUnqualifiedColumn } from "../src/parser/scope-unqualified-helpers.ts"
 
@@ -13,7 +23,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "text"; name: "text" }
+					columns: { id: TText; name: TText }
 				}
 			}
 		}
@@ -23,7 +33,7 @@ type DbUsers = {
 type UsersEntry = {
 	schema: "public"
 	table: "users"
-	columns: { id: "text"; name: "text" }
+	columns: { id: TText; name: TText }
 }
 
 type UsersScope = Record<"users", UsersEntry>
@@ -40,8 +50,8 @@ type _wBadBare = Expect<Extends<Tuple2At1<WBadBare>, SqlParserError<"Unknown col
 type W3part = ParseWhereExpression<ParseSqlTokens<`public.users.id = 'u'`>, DbUsers, UsersScope>
 type _w3part = Expect<Extends<Tuple2At1<W3part>, null>>
 
-type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: "integer" } }>
-type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: "text" } }>
+type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: TInteger } }>
+type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: TText } }>
 
 /** Caller merges scopes (e.g. enclosing + inner `FROM`) — `outer_t.b` resolves in the combined map. */
 type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
@@ -168,7 +178,7 @@ type DbUsersWithAmount = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "uuid"; name: "text"; amount: "numeric" }
+					columns: { id: TUuid; name: TText; amount: TNumeric }
 				}
 			}
 		}
@@ -179,7 +189,7 @@ type UsersScopeWithAmount = Record<
 	{
 		schema: "public"
 		table: "users"
-		columns: { id: "uuid"; name: "text"; amount: "numeric" }
+		columns: { id: TUuid; name: TText; amount: TNumeric }
 	}
 >
 type WBetweenNumColStringBounds = ParseWhereExpression<
@@ -276,8 +286,8 @@ type _wCastTextToInteger = Expect<Extends<Tuple2At1<WCastTextToInteger>, null>>
  */
 /** `MergeScope` keeps literal aliases (plain `{ t1, t2 }` can widen `keyof` under `Record` constraints). */
 type AmbigScope = MergeScope<
-	Record<"t1", { schema: "public"; table: "t1"; columns: { id: "uuid" } }>,
-	Record<"t2", { schema: "public"; table: "t2"; columns: { id: "uuid" } }>
+	Record<"t1", { schema: "public"; table: "t1"; columns: { id: TUuid } }>,
+	Record<"t2", { schema: "public"; table: "t2"; columns: { id: TUuid } }>
 >
 type _ambigHelper = Expect<Extends<HasAmbiguousUnqualifiedColumn<AmbigScope, "id">, true>>
 

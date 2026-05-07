@@ -1,4 +1,5 @@
 import type { PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
+import type { TText, TInteger } from "./sql-type-helpers.ts"
 
 export type DbPublicUsers = {
 	defaultSchema: "public"
@@ -8,8 +9,8 @@ export type DbPublicUsers = {
 				users: {
 					kind: "table"
 					columns: {
-						id: "number"
-						name: "text"
+						id: TInteger
+						name: TText
 					}
 				}
 			}

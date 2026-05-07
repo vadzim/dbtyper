@@ -2,6 +2,16 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape, JsqlDataShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbPublicEmpty = {
@@ -19,7 +29,7 @@ type _oddColsFromScalarMap = Expect<
 		OddTable,
 		{
 			kind: "table"
-			columns: { id: "uuid"; body: "text"; flag: "int" }
+			columns: { id: TUuid; body: TText; flag: { type: "integer"; arg: null; nullable: false } }
 			column_facts: {
 				id: { nullability: "not_null" }
 				body: { nullability: "not_null" }
@@ -47,7 +57,7 @@ type DbOneTable = {
 			sets: {
 				gone: {
 					kind: "table"
-					columns: { x: "int" }
+					columns: { x: { type: "integer"; arg: null; nullable: false } }
 				}
 			}
 		}
@@ -73,7 +83,7 @@ type DbOneColTable = {
 			sets: {
 				t: {
 					kind: "table"
-					columns: { id: "uuid" }
+					columns: { id: TUuid }
 				}
 			}
 		}
@@ -81,7 +91,9 @@ type DbOneColTable = {
 }
 type AlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.t add column body text;`>, DbOneColTable>
 type AfterAlterCols = AlterAdd[1] extends { schemas: { public: { sets: { t: { columns: infer C } } } } } ? C : never
-type _alterAddUsesDbScalars = Expect<Extends<AfterAlterCols extends { body: infer B } ? B : never, "text">>
+type _alterAddUsesDbScalars = Expect<
+	Extends<AfterAlterCols extends { body: infer B } ? B : never, { type: "text"; arg: null; nullable: true }>
+>
 
 type MultiStmtDb = ApplyStatements<
 	DbPublicEmpty,

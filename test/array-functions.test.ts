@@ -3,6 +3,22 @@ import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+	TTextArray,
+	TIntegerArray,
+	TBigintArray,
+	TBooleanArray,
+	TNumericArray,
+	TUuidArray,
+} from "./test-utils/sql-type-helpers.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 
 type DbArrays = {
@@ -12,7 +28,7 @@ type DbArrays = {
 			sets: {
 				items: {
 					kind: "table"
-					columns: { id: "integer"; tags: "text[]"; nums: "integer[]" }
+					columns: { id: TInteger; tags: TTextArray; nums: TIntegerArray }
 				}
 			}
 		}
@@ -21,32 +37,44 @@ type DbArrays = {
 
 // Test array_length function
 type TArrayLength = ParseSqlStatement<ParseSqlTokens<`select array_length(tags, 1) as len from items;`>, DbArrays>
-type _tArrayLength = Expect<Extends<Tuple3At2<TArrayLength>, { kind: "select"; columns: { len: "integer" } }>>
+type _tArrayLength = Expect<Extends<Tuple3At2<TArrayLength>, { kind: "select"; columns: { len: TInteger } }>>
 
 // Test array_append function
 type TArrayAppend = ParseSqlStatement<
 	ParseSqlTokens<`select array_append(tags, 'new') as appended from items;`>,
 	DbArrays
 >
-type _tArrayAppend = Expect<Extends<Tuple3At2<TArrayAppend>, { kind: "select"; columns: { appended: "unknown" } }>>
+type _tArrayAppend = Expect<
+	Extends<
+		Tuple3At2<TArrayAppend>,
+		{ kind: "select"; columns: { appended: { type: "unknown"; arg: null; nullable: false } } }
+	>
+>
 
 // Test array_prepend function
 type TArrayPrepend = ParseSqlStatement<
 	ParseSqlTokens<`select array_prepend('first', tags) as prepended from items;`>,
 	DbArrays
 >
-type _tArrayPrepend = Expect<Extends<Tuple3At2<TArrayPrepend>, { kind: "select"; columns: { prepended: "unknown" } }>>
+type _tArrayPrepend = Expect<
+	Extends<
+		Tuple3At2<TArrayPrepend>,
+		{ kind: "select"; columns: { prepended: { type: "unknown"; arg: null; nullable: false } } }
+	>
+>
 
 // Test unnest function
 type TUnnest = ParseSqlStatement<ParseSqlTokens<`select unnest(tags) as tag from items;`>, DbArrays>
-type _tUnnest = Expect<Extends<Tuple3At2<TUnnest>, { kind: "select"; columns: { tag: "unknown" } }>>
+type _tUnnest = Expect<
+	Extends<Tuple3At2<TUnnest>, { kind: "select"; columns: { tag: { type: "unknown"; arg: null; nullable: false } } }>
+>
 
 // Test array_length with integer array
 type TArrayLengthInt = ParseSqlStatement<
 	ParseSqlTokens<`select array_length(nums, 1) as num_len from items;`>,
 	DbArrays
 >
-type _tArrayLengthInt = Expect<Extends<Tuple3At2<TArrayLengthInt>, { kind: "select"; columns: { num_len: "integer" } }>>
+type _tArrayLengthInt = Expect<Extends<Tuple3At2<TArrayLengthInt>, { kind: "select"; columns: { num_len: TInteger } }>>
 
 // Test array_append with integer array
 type TArrayAppendInt = ParseSqlStatement<
@@ -54,7 +82,10 @@ type TArrayAppendInt = ParseSqlStatement<
 	DbArrays
 >
 type _tArrayAppendInt = Expect<
-	Extends<Tuple3At2<TArrayAppendInt>, { kind: "select"; columns: { nums_appended: "unknown" } }>
+	Extends<
+		Tuple3At2<TArrayAppendInt>,
+		{ kind: "select"; columns: { nums_appended: { type: "unknown"; arg: null; nullable: false } } }
+	>
 >
 
 // Test array functions with ARRAY constructor
@@ -63,7 +94,7 @@ type TArrayLengthLiteral = ParseSqlStatement<
 	DbArrays
 >
 type _tArrayLengthLiteral = Expect<
-	Extends<Tuple3At2<TArrayLengthLiteral>, { kind: "select"; columns: { literal_len: "integer" } }>
+	Extends<Tuple3At2<TArrayLengthLiteral>, { kind: "select"; columns: { literal_len: TInteger } }>
 >
 
 // Test nested array functions
@@ -72,7 +103,7 @@ type TNestedArrayFns = ParseSqlStatement<
 	DbArrays
 >
 type _tNestedArrayFns = Expect<
-	Extends<Tuple3At2<TNestedArrayFns>, { kind: "select"; columns: { nested_len: "integer" } }>
+	Extends<Tuple3At2<TNestedArrayFns>, { kind: "select"; columns: { nested_len: TInteger } }>
 >
 
 // Test error: array_length with non-array argument

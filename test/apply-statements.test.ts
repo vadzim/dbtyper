@@ -3,6 +3,16 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { EmptyExpressionParams } from "../src/parser/parse-expression.ts"
 
@@ -14,7 +24,7 @@ type DbDefaultPublic = {
 			sets: {
 				t: {
 					kind: "table"
-					columns: { id: "integer" }
+					columns: { id: TInteger }
 				}
 			}
 		}
@@ -24,7 +34,10 @@ type DbDefaultPublic = {
 type ApplyCreateThenSelect = ApplyStatements<DbDefaultPublic, `create table s ( id int not null ); select id from s;`>
 
 type _applyMergedTable = Expect<
-	Extends<ApplyCreateThenSelect[0]["schemas"]["public"]["sets"]["s"], { kind: "table"; columns: { id: "int" } }>
+	Extends<
+		ApplyCreateThenSelect[0]["schemas"]["public"]["sets"]["s"],
+		{ kind: "table"; columns: { id: { type: "integer"; arg: null; nullable: false } } }
+	>
 >
 type _applyMergedNoErr = Expect<Extends<ApplyCreateThenSelect[1], null>>
 

@@ -6,13 +6,14 @@ import type { Expect, Extends, Tuple2At1, Tuple3At2 } from "./test-utils/type-te
 import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type {
 	EmptyExpressionParams,
-	ExprOk,
 	ParseExpressionAST,
 	ResolveExpressionAST,
 	SqlCastTypeNorm,
 } from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
+import type { TBoolean, TInteger, TText, TUuid } from "./test-utils/sql-type-helpers.ts"
+import type { SqlTypeShape } from "../src/core/sql-type-shape.ts"
 
 type DbUsers = {
 	defaultSchema: "public"
@@ -21,7 +22,7 @@ type DbUsers = {
 			sets: {
 				users: {
 					kind: "table"
-					columns: { id: "uuid"; name: "text" }
+					columns: { id: TUuid; name: TText }
 				}
 			}
 		}
@@ -37,7 +38,7 @@ type TestEnvForExprParse = {
 type UsersEntry = {
 	schema: "public"
 	table: "users"
-	columns: { id: "uuid"; name: "text" }
+	columns: { id: TUuid; name: TText }
 }
 
 type UsersScope = Record<"users", UsersEntry>
@@ -45,10 +46,10 @@ type UsersScope = Record<"users", UsersEntry>
 type WUnknownParam = ParseWhereExpression<ParseSqlTokens<`:n = 'x'`>, DbUsers, UsersScope, EmptyExpressionParams>
 type _wUnknownParam = Expect<Extends<Tuple2At1<WUnknownParam>, SqlParserError<"Unknown query parameter">>>
 
-type WParamUnknownTs = ParseWhereExpression<ParseSqlTokens<`:p = 'x'`>, DbUsers, UsersScope, { p: { sql: string } }>
+type WParamUnknownTs = ParseWhereExpression<ParseSqlTokens<`:p = 'x'`>, DbUsers, UsersScope, { p: SqlTypeShape }>
 type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, null>>
 
-type WParamBoolOk = ParseWhereExpression<ParseSqlTokens<`:flag`>, DbUsers, UsersScope, { flag: { sql: "boolean" } }>
+type WParamBoolOk = ParseWhereExpression<ParseSqlTokens<`:flag`>, DbUsers, UsersScope, { flag: TBoolean }>
 type _wParamBoolOk = Expect<Extends<Tuple2At1<WParamBoolOk>, null>>
 
 type WNonBoolRoot = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
@@ -63,8 +64,8 @@ type _selectParamNoBind = Expect<
 	Extends<Tuple3At2<TSelectParamNoBind>, SqlParserError<"Unknown query parameter in SELECT">>
 >
 
-type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: "integer" } }>
-type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: "text" } }>
+type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: TInteger } }>
+type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: TText } }>
 type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
 
 type ExprCross = ParseWhereExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner>
@@ -125,7 +126,7 @@ type RCaseNoElse = ResolveExpressionAST<
 	UsersScope,
 	EmptyExpressionParams
 >
-type _rCaseNoElse = Expect<Extends<RCaseNoElse, ExprOk<"integer">>>
+type _rCaseNoElse = Expect<Extends<RCaseNoElse, { type: "integer"; arg: null; nullable: true }>>
 
 type WExistsOk = ParseWhereExpression<ParseSqlTokens<`exists (select users.id from users)`>, DbUsers, UsersScope>
 type _wExistsOk = Expect<Extends<Tuple2At1<WExistsOk>, null>>

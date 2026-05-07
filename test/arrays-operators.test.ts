@@ -3,6 +3,22 @@ import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+	TTextArray,
+	TIntegerArray,
+	TBigintArray,
+	TBooleanArray,
+	TNumericArray,
+	TUuidArray,
+} from "./test-utils/sql-type-helpers.ts"
 
 type DbTiny = {
 	defaultSchema: "public"
@@ -11,7 +27,7 @@ type DbTiny = {
 			sets: {
 				sales: {
 					kind: "table"
-					columns: { id: "integer" }
+					columns: { id: TInteger }
 				}
 			}
 		}
@@ -29,7 +45,7 @@ type _arrayOpsBool = Expect<
 		Tuple3At2<TArrayOps>,
 		{
 			kind: "select"
-			columns: { o1: "boolean"; o2: "boolean" }
+			columns: { o1: TBoolean; o2: TBoolean }
 		}
 	>
 >
@@ -42,7 +58,7 @@ type _arrayChainedIndex = Expect<Extends<Tuple3At2<TArrayChainedIndex>, { kind: 
 /** Unary `ARRAY` constructor only (no `@>` / `&&`). */
 type TArrayCtorOnly = ParseSqlStatement<ParseSqlTokens<`select array[true,false] as flags from sales;`>, DbTiny>
 
-type _arrayCtorOnly = Expect<Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: "boolean[]" } }>>
+type _arrayCtorOnly = Expect<Extends<Tuple3At2<TArrayCtorOnly>, { kind: "select"; columns: { flags: TBooleanArray } }>>
 
 /** Empty `ARRAY[]` constructor (typed as empty readonly tuple). */
 // TODO: Fix empty array error type after refactoring TS types out of parsers

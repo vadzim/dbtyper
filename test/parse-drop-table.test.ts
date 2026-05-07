@@ -3,6 +3,16 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type {
+	TText,
+	TInteger,
+	TBigint,
+	TBoolean,
+	TNumeric,
+	TUuid,
+	TTimestamp,
+	TDate,
+} from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbAuthItems = {
@@ -10,7 +20,7 @@ type DbAuthItems = {
 	schemas: {
 		auth: {
 			sets: {
-				items: { kind: "table"; columns: { id: "uuid" } }
+				items: { kind: "table"; columns: { id: TUuid } }
 			}
 		}
 	}
@@ -45,7 +55,7 @@ type DbDefaultPublicWithNotifications = {
 	schemas: {
 		public: {
 			sets: {
-				notifications: { kind: "table"; columns: { id: "uuid" } }
+				notifications: { kind: "table"; columns: { id: TUuid } }
 			}
 		}
 	}
@@ -75,7 +85,7 @@ type DbBillingWithInvoices = {
 		public: JsqlSchemaShape
 		billing: {
 			sets: {
-				invoices: { kind: "table"; columns: { amount: "numeric" } }
+				invoices: { kind: "table"; columns: { amount: TNumeric } }
 			}
 		}
 	}
@@ -98,7 +108,7 @@ type DbWithView = {
 	schemas: {
 		public: {
 			sets: {
-				v_reports: { kind: "view"; columns: { id: "uuid" } }
+				v_reports: { kind: "view"; columns: { id: TUuid } }
 			}
 		}
 	}
