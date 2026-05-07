@@ -28,6 +28,20 @@ export type TNumeric = T<"numeric">
 export type TUuid = T<"uuid">
 export type TTimestamp = T<"timestamp with time zone">
 export type TDate = T<"date">
+export type TUnknown = T<"unknown">
+
+/** PostgreSQL-specific types */
+export type TSerial = T<"serial">
+export type TBigserial = T<"bigserial">
+export type TSmallserial = T<"smallserial">
+export type TTimestamptz = T<"timestamptz">
+export type TTimetz = T<"timetz">
+export type TBytea = T<"bytea">
+export type TInterval = T<"interval">
+export type TInet = T<"inet">
+export type TCidr = T<"cidr">
+export type TTsvector = T<"tsvector">
+export type TTsquery = T<"tsquery">
 
 /** Array type constructor */
 export type TArray<Element extends SqlTypeShape> = T<"array", Element>

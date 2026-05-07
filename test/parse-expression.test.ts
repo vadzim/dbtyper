@@ -12,7 +12,7 @@ import type {
 } from "../src/parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
-import type { TBoolean, TInteger, TText, TUuid } from "./test-utils/sql-type-helpers.ts"
+import type { TBoolean, TInteger, TText, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { SqlTypeShape } from "../src/core/sql-type-shape.ts"
 
 type DbUsers = {
@@ -124,7 +124,7 @@ type RCaseNoElse = ResolveExpressionAST<
 	UsersScope,
 	EmptyExpressionParams
 >
-type _rCaseNoElse = Expect<Extends<RCaseNoElse, { type: "integer"; arg: null; nullable: true }>>
+type _rCaseNoElse = Expect<Extends<RCaseNoElse, TNull<"integer">>>
 
 type WExistsOk = ParseWhereExpression<ParseSqlTokens<`exists (select users.id from users)`>, DbUsers, UsersScope>
 type _wExistsOk = Expect<Extends<WExistsOk[1], null>>

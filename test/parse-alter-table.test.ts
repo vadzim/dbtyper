@@ -12,6 +12,7 @@ import type {
 	TUuid,
 	TTimestamp,
 	TDate,
+	TNull,
 } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
@@ -49,9 +50,7 @@ type DbItemsWithDraft = {
 type TAlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.items add column body text;`>, DbItems>
 type _alterAddOk = Expect<Extends<TAlterAdd[2], null>>
 type ItemsAfterAdd = TAlterAdd[1]["schemas"]["public"]["sets"]["items"]
-type _alterAddCols = Expect<
-	Extends<ItemsAfterAdd["columns"], { id: TUuid; title: TText; body: { type: "text"; arg: null; nullable: true } }>
->
+type _alterAddCols = Expect<Extends<ItemsAfterAdd["columns"], { id: TUuid; title: TText; body: TNull<"text"> }>>
 
 type TAlterDrop = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column draft;`>, DbItemsWithDraft>
 type _alterDropOk = Expect<Extends<TAlterDrop[2], null>>
@@ -66,7 +65,7 @@ type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: TUuid;
 type TAlterType = ParseSqlStatement<ParseSqlTokens<`alter table public.items alter column id type bigint;`>, DbItems>
 type _alterTypeOk = Expect<Extends<TAlterType[2], null>>
 type ItemsAfterType = TAlterType[1]["schemas"]["public"]["sets"]["items"]
-type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], { type: "bigint"; arg: null; nullable: true }>>
+type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], TNull<"bigint">>>
 
 type TAlterSetNotNull = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set not null;`>,
@@ -92,10 +91,7 @@ type TAlterConstraintNoopThenAdd = ParseSqlStatement<
 type _alterNoopChainOk = Expect<Extends<TAlterConstraintNoopThenAdd[2], null>>
 type ItemsAfterChain = TAlterConstraintNoopThenAdd[1]["schemas"]["public"]["sets"]["items"]
 type _alterNoopChainMeta = Expect<
-	Extends<
-		ItemsAfterChain["columns"],
-		{ id: TUuid; title: TText; meta: { type: "integer"; arg: null; nullable: true } }
-	>
+	Extends<ItemsAfterChain["columns"], { id: TUuid; title: TText; meta: TNull<"integer"> }>
 >
 
 /** Unknown schema in qualified table name. */
