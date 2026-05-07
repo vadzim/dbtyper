@@ -45,20 +45,10 @@ type UsersScope = Record<"users", UsersEntry>
 type WUnknownParam = ParseWhereExpression<ParseSqlTokens<`:n = 'x'`>, DbUsers, UsersScope, EmptyExpressionParams>
 type _wUnknownParam = Expect<Extends<Tuple2At1<WUnknownParam>, SqlParserError<"Unknown query parameter">>>
 
-type WParamUnknownTs = ParseWhereExpression<
-	ParseSqlTokens<`:p = 'x'`>,
-	DbUsers,
-	UsersScope,
-	{ p: { sql: string } }
->
+type WParamUnknownTs = ParseWhereExpression<ParseSqlTokens<`:p = 'x'`>, DbUsers, UsersScope, { p: { sql: string } }>
 type _wParamUnknownTs = Expect<Extends<Tuple2At1<WParamUnknownTs>, null>>
 
-type WParamBoolOk = ParseWhereExpression<
-	ParseSqlTokens<`:flag`>,
-	DbUsers,
-	UsersScope,
-	{ flag: { sql: "boolean" } }
->
+type WParamBoolOk = ParseWhereExpression<ParseSqlTokens<`:flag`>, DbUsers, UsersScope, { flag: { sql: "boolean" } }>
 type _wParamBoolOk = Expect<Extends<Tuple2At1<WParamBoolOk>, null>>
 
 type WNonBoolRoot = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
