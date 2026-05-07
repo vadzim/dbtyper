@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Wrong enum type in comparison (runtime failure, not compile-time)
 
-const result = await db.query(`select * from tasks
+const _result = await db.query(`select * from tasks
 		where task_status = 'high';`)
 
 type _check = Expect<

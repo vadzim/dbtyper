@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: nested array functions
 
-const result = await db.query(`select array_length(array_append(tags, 'extra'), 1) as nested_len from items;`)
+const _result = await db.query(`select array_length(array_append(tags, 'extra'), 1) as nested_len from items;`)
 
 type _check = Expect<
 	Matches<

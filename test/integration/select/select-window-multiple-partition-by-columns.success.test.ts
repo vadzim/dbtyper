@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: Multiple PARTITION BY columns
 
-const result = await db.query(
+const _result = await db.query(
 	`select id, product, row_number() over (partition by product, sale_date order by amount) as row_num from sales;`,
 )
 

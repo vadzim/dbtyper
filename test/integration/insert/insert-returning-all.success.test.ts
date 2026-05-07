@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: RETURNING *
 
-const result = await db.query(
+const _result = await db.query(
 	`insert into users (id, name, email) values ('1', 'Alice', 'alice@example.com') returning *;`,
 )
 

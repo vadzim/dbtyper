@@ -17,7 +17,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: NULL for NOT NULL enum column (caught at compile-time)
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`
 		update tasks

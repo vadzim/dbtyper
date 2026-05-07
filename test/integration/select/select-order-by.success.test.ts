@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: ORDER BY
 
-const result = await db.query(`select * from users order by age desc, name;`)
+const _result = await db.query(`select * from users order by age desc, name;`)
 
 type _check = Expect<
 	Matches<

@@ -19,7 +19,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: Insert with only required columns
 // ✅ SUCCESS: Insert with only required columns
 
-const result = await db.query(`
+const _result = await db.query(`
 		insert into tasks (id, name, task_status)
 		values (3, 'Task 3', 'inactive')
 		returning *;

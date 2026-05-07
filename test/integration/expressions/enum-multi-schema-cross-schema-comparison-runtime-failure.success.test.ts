@@ -25,7 +25,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Comparing enums from different schemas (runtime failure)
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from public.tasks t
 		join app.articles a on t.task_status = a.article_status;
 	`)

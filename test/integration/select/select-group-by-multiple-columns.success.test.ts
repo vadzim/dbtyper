@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: GROUP BY multiple columns
 
-const result = await db.query(`select user_id, category, count(*) as count from posts group by user_id, category;`)
+const _result = await db.query(`select user_id, category, count(*) as count from posts group by user_id, category;`)
 
 type _check = Expect<
 	Matches<

@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: || (string concatenation) operator
 
-const result = await db.query(`select first_name || ' ' || last_name as full_name from users;`)
+const _result = await db.query(`select first_name || ' ' || last_name as full_name from users;`)
 
 type _check = Expect<
 	Matches<

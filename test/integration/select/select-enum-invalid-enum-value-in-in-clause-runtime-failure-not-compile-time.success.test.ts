@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Invalid enum value in IN clause (runtime failure, not compile-time)
 
-const result = await db.query(`select * from tasks
+const _result = await db.query(`select * from tasks
 		where task_status in ('active', 'invalid');`)
 
 type _check = Expect<

@@ -25,7 +25,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Use enum from app schema
 
-const result = await db.query(`
+const _result = await db.query(`
 		insert into app.articles (id, article_status, article_priority)
 		values (1, 'draft', 'high');
 	`)

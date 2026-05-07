@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: LIMIT
 
-const result = await db.query(`select * from users limit 10;`)
+const _result = await db.query(`select * from users limit 10;`)
 
 type _check = Expect<
 	Matches<

@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: WHERE with AND/OR
 
-const result = await db.query(`select * from users where (age > 18 and active = true) or id = 'admin';`)
+const _result = await db.query(`select * from users where (age > 18 and active = true) or id = 'admin';`)
 
 type _check = Expect<
 	Matches<

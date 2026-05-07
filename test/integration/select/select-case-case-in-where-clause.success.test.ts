@@ -17,7 +17,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: CASE in WHERE clause
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from users
 		where case
 			when age < 18 then false

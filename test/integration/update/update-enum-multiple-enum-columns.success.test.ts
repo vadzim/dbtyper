@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Update multiple enum columns
 
-const result = await db.query(`
+const _result = await db.query(`
 		update tasks
 		set task_status = 'pending', task_priority = 'high'
 		where id = 2;

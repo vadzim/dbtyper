@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: CTE shadows table with same name
 
-const result = await db.query(`
+const _result = await db.query(`
 		with users as (select id from posts)
 		select id from users;
 	`)

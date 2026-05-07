@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Update with valid enum value
 
-const result = await db.query(`
+const _result = await db.query(`
 		update tasks
 		set task_status = 'active'
 		where id = 1;

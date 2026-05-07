@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Enum in ORDER BY
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from tasks
 		order by task_status, task_priority;
 	`)

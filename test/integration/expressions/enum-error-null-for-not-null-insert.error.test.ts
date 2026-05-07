@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: NULL for NOT NULL enum column (compile-time error)
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`
 		insert into tasks (id, name, task_status)

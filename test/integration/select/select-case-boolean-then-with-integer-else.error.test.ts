@@ -16,7 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Boolean THEN with integer ELSE
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select case when active then true else 0 end from users;`,
 )

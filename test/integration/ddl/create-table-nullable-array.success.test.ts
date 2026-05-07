@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table optional (id integer not null, tags text[]);`)
 	.database()
 
-const result = await db.query(`select id, tags from optional;`)
+const _result = await db.query(`select id, tags from optional;`)
 
 // TODO: Fix nullable array type matching after refactoring TS types out of parsers
 /*

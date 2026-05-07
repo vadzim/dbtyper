@@ -16,7 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Incompatible types across multiple WHEN branches
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select case when age < 18 then 'minor' when age >= 18 then 42 else 'unknown' end from users;`,
 )

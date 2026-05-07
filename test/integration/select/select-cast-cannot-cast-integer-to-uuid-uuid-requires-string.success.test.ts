@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Note: Cannot cast integer to uuid (uuid requires string) - runtime failure
 
-const result = await db.query(`select id::uuid from data;`)
+const _result = await db.query(`select id::uuid from data;`)
 
 type _check = Expect<
 	Matches<

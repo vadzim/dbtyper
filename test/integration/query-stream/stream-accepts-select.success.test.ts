@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SELECT should be accepted by stream()
 
-const result = await Array.fromAsync(await db.stream(`select id, name from users;`))
+const _result = await Array.fromAsync(await db.stream(`select id, name from users;`))
 
 // Stream should yield typed objects
 

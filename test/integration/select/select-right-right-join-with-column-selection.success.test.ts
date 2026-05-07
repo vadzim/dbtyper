@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: RIGHT JOIN with column selection
 
-const result = await db.query(
+const _result = await db.query(
 	`select users.name, orders.total from users right join orders on users.id = orders.user_id;`,
 )
 

@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: array_length with integer array
 
-const result = await db.query(`select array_length(nums, 1) as num_len from items;`)
+const _result = await db.query(`select array_length(nums, 1) as num_len from items;`)
 
 type _check = Expect<
 	Matches<

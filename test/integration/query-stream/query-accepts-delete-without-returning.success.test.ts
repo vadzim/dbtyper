@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ DELETE without RETURNING should be accepted by query()
 
-const result = await db.query(`delete from users where id = '1';`)
+const _result = await db.query(`delete from users where id = '1';`)
 
 // Result type should be unknown
 

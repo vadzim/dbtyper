@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: RANK() with PARTITION BY and multiple ORDER BY columns
 
-const result = await db.query(
+const _result = await db.query(
 	`select id, product, rank() over (partition by product order by amount desc, sale_date) as rank_num from sales;`,
 )
 

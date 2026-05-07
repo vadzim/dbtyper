@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: @> (contains) operator - already working
 
-const result = await db.query(`select tags @> array['a'] as contains from items;`)
+const _result = await db.query(`select tags @> array['a'] as contains from items;`)
 
 type _check = Expect<
 	Matches<

@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Update enum to NULL (for nullable column)
 
-const result = await db.query(`
+const _result = await db.query(`
 		update tasks
 		set task_priority = null
 		where id = 3;

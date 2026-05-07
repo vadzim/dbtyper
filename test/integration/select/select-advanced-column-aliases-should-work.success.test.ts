@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: column aliases should work
 
-const result = await db.query(`select id as user_id, name as user_name from users;`)
+const _result = await db.query(`select id as user_id, name as user_name from users;`)
 
 type _check = Expect<
 	Matches<

@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: qualified table name should work
 
-const result = await db.query(`select id, name from public.users;`)
+const _result = await db.query(`select id, name from public.users;`)
 
 type _check = Expect<
 	Matches<

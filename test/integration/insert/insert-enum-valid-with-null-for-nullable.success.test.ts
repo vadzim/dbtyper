@@ -19,7 +19,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: Insert with valid enum value and NULL for nullable enum column
 // ✅ SUCCESS: Insert with valid enum value and NULL for nullable enum column
 
-const result = await db.query(`
+const _result = await db.query(`
 		insert into tasks (id, name, task_status, task_priority)
 		values (2, 'Task 2', 'pending', null)
 		returning *;

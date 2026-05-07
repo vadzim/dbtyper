@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: UPDATE with complex WHERE
 
-const result = await db.query(`update users set name = 'Adult' where age >= 18 returning *;`)
+const _result = await db.query(`update users set name = 'Adult' where age >= 18 returning *;`)
 
 type _check = Expect<
 	Matches<

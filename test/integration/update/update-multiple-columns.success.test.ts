@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: UPDATE multiple columns
 
-const result = await db.query(
+const _result = await db.query(
 	`update users set name = 'Alice', email = 'alice@example.com' where id = '1' returning *;`,
 )
 

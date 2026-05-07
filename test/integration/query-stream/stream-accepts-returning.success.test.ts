@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ DELETE with RETURNING should be accepted by stream()
 
-const result = await Array.fromAsync(await db.stream(`delete from users where id = '1' returning id, name;`))
+const _result = await Array.fromAsync(await db.stream(`delete from users where id = '1' returning id, name;`))
 
 type _check = Expect<
 	Matches<

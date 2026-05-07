@@ -9,5 +9,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ array || element → array
-const result = await db.query(`select array[2,3] || 4 as result from users;`)
+const _result = await db.query(`select array[2,3] || 4 as result from users;`)
 type _check = Expect<Matches<typeof result, Array<{ result: readonly number[] }>>>

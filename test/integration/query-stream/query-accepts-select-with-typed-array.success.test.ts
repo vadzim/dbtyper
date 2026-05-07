@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SELECT should return typed array
 
-const result = await db.query(`select id, name from users;`)
+const _result = await db.query(`select id, name from users;`)
 
 // Result type should be Array<{ id: string; name: string }>
 

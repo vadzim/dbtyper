@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: SET NULL into nullable column
 
-const result = await db.query(`update users set name = null where id = '1' returning *;`)
+const _result = await db.query(`update users set name = null where id = '1' returning *;`)
 
 type _check = Expect<
 	Matches<

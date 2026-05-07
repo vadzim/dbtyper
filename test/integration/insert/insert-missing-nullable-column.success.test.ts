@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: missing nullable column (implicitly NULL)
 
-const result = await db.query(`insert into users (id) values ('1') returning *;`)
+const _result = await db.query(`insert into users (id) values ('1') returning *;`)
 
 type _check = Expect<
 	Matches<

@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: array functions with ARRAY constructor
 
-const result = await db.query(`select array_length(array['a','b','c'], 1) as literal_len from items;`)
+const _result = await db.query(`select array_length(array['a','b','c'], 1) as literal_len from items;`)
 
 type _check = Expect<
 	Matches<

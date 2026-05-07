@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: || (array concatenation) operator
 
-const result = await db.query(`select tags || array['new'] as concatenated from items;`)
+const _result = await db.query(`select tags || array['new'] as concatenated from items;`)
 
 type _check = Expect<
 	Matches<

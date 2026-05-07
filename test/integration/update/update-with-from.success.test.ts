@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // UPDATE...FROM clause (PostgreSQL extension)
 
-const result = await db.query(
+const _result = await db.query(
 	`update users set name = 'Author' from posts where users.id = posts.user_id returning users.*;`,
 )
 

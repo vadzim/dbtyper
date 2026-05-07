@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Cannot cast boolean to integer
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select flag::integer from data;`,
 )

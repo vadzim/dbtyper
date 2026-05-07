@@ -25,7 +25,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Use enum from public schema
 
-const result = await db.query(`
+const _result = await db.query(`
 		insert into public.tasks (id, task_status)
 		values (1, 'active');
 	`)

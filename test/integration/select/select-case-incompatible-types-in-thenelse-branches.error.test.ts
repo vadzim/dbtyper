@@ -16,7 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Incompatible types in THEN/ELSE branches
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select case when active then 'text' else 123 end from users;`,
 )

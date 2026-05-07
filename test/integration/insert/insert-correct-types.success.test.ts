@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: correct types
 
-const result = await db.query(`insert into users (id, age, active) values ('1', 25, true) returning *;`)
+const _result = await db.query(`insert into users (id, age, active) values ('1', 25, true) returning *;`)
 
 type _check = Expect<
 	Matches<

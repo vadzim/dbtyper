@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Enum with BETWEEN (works because enums have ordering)
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from tasks
 		where task_status between 'active' and 'pending';
 	`)

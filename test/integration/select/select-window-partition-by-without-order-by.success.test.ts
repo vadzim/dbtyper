@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: PARTITION BY without ORDER BY
 
-const result = await db.query(`select id, product, row_number() over (partition by product) as row_num from sales;`)
+const _result = await db.query(`select id, product, row_number() over (partition by product) as row_num from sales;`)
 
 type _check = Expect<
 	Matches<

@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // Now accepts integer::boolean (no TypeScript type validation in parsers)
 // TODO: fu=ix the code
 /*
-const result = db.query(
+const _result = db.query(
 	//@ts-expect-error
 	`select id::boolean from data;`,
 )

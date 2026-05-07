@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: Multiple window functions in same query
 
-const result = await db.query(
+const _result = await db.query(
 	`select id, product, row_number() over (order by amount) as row_num, rank() over (order by amount) as rank_num from sales;`,
 )
 

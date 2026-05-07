@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Cast text to uuid
 
-const result = await db.query(`select value::uuid as value_uuid from data;`)
+const _result = await db.query(`select value::uuid as value_uuid from data;`)
 
 type _check = Expect<
 	Matches<

@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: unnest function
 
-const result = await db.query(`select unnest(tags) as tag from items;`)
+const _result = await db.query(`select unnest(tags) as tag from items;`)
 
 type _check = Expect<
 	Matches<

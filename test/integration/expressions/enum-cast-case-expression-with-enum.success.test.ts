@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: CASE expression with enum
 
-const result = await db.query(`
+const _result = await db.query(`
 		select
 			id,
 			case task_status

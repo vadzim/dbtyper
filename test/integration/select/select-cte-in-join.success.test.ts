@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: CTE in JOIN with type checking
 
-const result = await db.query(
+const _result = await db.query(
 	`with active_users as (
        select id, name from users
      )

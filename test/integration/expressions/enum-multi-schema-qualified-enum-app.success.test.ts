@@ -25,7 +25,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Query with schema-qualified enum in app schema
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from app.articles
 		where article_status = 'published'::app.status;
 	`)

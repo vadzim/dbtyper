@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: SELECT * should expand to all columns
 
-const result = await db.query(`select * from users;`)
+const _result = await db.query(`select * from users;`)
 
 type _check = Expect<
 	Matches<

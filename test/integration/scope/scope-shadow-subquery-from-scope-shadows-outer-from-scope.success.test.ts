@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Subquery FROM scope shadows outer FROM scope
 
-const result = await db.query(`
+const _result = await db.query(`
 		select 
 			(select posts.id from users as posts) as inner_id,
 			posts.user_id as outer_user_id

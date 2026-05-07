@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: = (array equality) operator
 
-const result = await db.query(`select tags = array['a','b'] as equals from items;`)
+const _result = await db.query(`select tags = array['a','b'] as equals from items;`)
 
 type _check = Expect<
 	Matches<

@@ -8,7 +8,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ array || text → error
-const result = await db.query(
+const _result = await db.query(
 	// @ts-expect-error
 	`select array[2,3] || '4' as result from users;`,
 )

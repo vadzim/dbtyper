@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: invalid column
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select wrong_col from users;`,
 )

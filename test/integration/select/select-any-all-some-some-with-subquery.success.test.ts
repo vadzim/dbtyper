@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: SOME with subquery
 
-const result = await db.query(`select * from items where priority = some(select value from priorities);`)
+const _result = await db.query(`select * from items where priority = some(select value from priorities);`)
 
 type _check = Expect<
 	Matches<

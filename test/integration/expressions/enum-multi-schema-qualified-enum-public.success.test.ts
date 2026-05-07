@@ -25,7 +25,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Query with schema-qualified enum
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from public.tasks
 		where task_status = 'active'::public.status;
 	`)

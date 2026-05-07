@@ -19,7 +19,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // Wrong enum type (runtime failure, not compile-time)
 // Wrong enum type (runtime failure, not compile-time)
 
-const result = await db.query(`
+const _result = await db.query(`
 		insert into tasks (id, name, task_status)
 		values (5, 'Task 5', 'high')
 		returning *;

@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Table alias shadows table name
 
-const result = await db.query(`
+const _result = await db.query(`
 		select posts.id from users as posts;
 	`)
 

@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: RETURNING with invalid column
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`delete from users returning invalid_column;`,
 )

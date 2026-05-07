@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: self-join
 
-const result = await db.query(
+const _result = await db.query(
 	`select u1.name as employee, u2.name as manager 
      from users u1 
      left join users u2 on u1.manager_id = u2.id;`,

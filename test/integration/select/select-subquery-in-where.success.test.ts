@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: subquery in WHERE with IN
 
-const result = await db.query(`select * from users where id in (select user_id from posts);`)
+const _result = await db.query(`select * from users where id in (select user_id from posts);`)
 
 type _check = Expect<
 	Matches<

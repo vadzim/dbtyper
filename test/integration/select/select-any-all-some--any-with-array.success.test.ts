@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: <> ANY with array
 
-const result = await db.query(`select * from items where id <> any(array[1,2,3]);`)
+const _result = await db.query(`select * from items where id <> any(array[1,2,3]);`)
 
 type _check = Expect<
 	Matches<

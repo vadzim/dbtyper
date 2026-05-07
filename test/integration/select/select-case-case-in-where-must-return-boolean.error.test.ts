@@ -16,7 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: CASE in WHERE must return boolean
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select * from users where case when active then 'yes' else 'no' end;`,
 )

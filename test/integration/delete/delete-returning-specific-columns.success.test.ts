@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: RETURNING specific columns
 
-const result = await db.query(`delete from users returning id, name;`)
+const _result = await db.query(`delete from users returning id, name;`)
 
 type _check = Expect<
 	Matches<

@@ -19,7 +19,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Using non-existent enum value in IN clause (runtime failure)
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from tasks where task_status in ('active', 'nonexistent');
 	`)
 

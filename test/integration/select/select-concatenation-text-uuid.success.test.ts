@@ -9,5 +9,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ text || uuid → text
-const result = await db.query(`select 'User ID: ' || id as message from users;`)
+const _result = await db.query(`select 'User ID: ' || id as message from users;`)
 type _check = Expect<Matches<typeof result, Array<{ message: string }>>>

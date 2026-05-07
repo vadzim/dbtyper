@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Enum in subquery
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from tasks
 		where task_status in (
 			select task_status from tasks where id = 1

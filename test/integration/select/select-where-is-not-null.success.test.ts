@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: WHERE column IS NOT NULL
 
-const result = await db.query(`select * from users where name is not null;`)
+const _result = await db.query(`select * from users where name is not null;`)
 
 type _check = Expect<
 	Matches<

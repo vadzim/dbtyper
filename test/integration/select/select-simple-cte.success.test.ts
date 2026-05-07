@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: simple CTE
 
-const result = await db.query(
+const _result = await db.query(
 	`with active_users as (select * from users where id is not null) 
      select * from active_users;`,
 )

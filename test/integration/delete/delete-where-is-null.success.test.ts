@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: WHERE column IS NULL
 
-const result = await db.query(`delete from users where name is null returning *;`)
+const _result = await db.query(`delete from users where name is null returning *;`)
 
 type _check = Expect<
 	Matches<

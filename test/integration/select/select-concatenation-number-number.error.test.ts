@@ -6,7 +6,7 @@ it("should reject || concatenation of two numbers", () => {
 	const db = sqlMigrations({ driver: mockDriver }).database()
 
 	// PostgreSQL does not support concatenation of two numbers
-	const result = db.query(
+	const _result = db.query(
 		// @ts-expect-error
 		`select 1 || 2 as invalid;`,
 	)

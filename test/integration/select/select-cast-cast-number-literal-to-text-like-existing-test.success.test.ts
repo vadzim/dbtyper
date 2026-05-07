@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Cast number literal to text (like existing test)
 
-const result = await db.query(`select 42::text as num_text from data;`)
+const _result = await db.query(`select 42::text as num_text from data;`)
 
 type _check = Expect<
 	Matches<

@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: RIGHT JOIN with WHERE
 
-const result = await db.query(
+const _result = await db.query(
 	`select * from users right join orders on users.id = orders.user_id where orders.total > 100;`,
 )
 

@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Select enum columns
 
-const result = await db.query(`select id, task_status, task_priority from tasks;`)
+const _result = await db.query(`select id, task_status, task_priority from tasks;`)
 
 type _check = Expect<
 	Matches<

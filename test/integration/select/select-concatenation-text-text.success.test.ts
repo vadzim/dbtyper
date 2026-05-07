@@ -9,5 +9,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ text || text → text
-const result = await db.query(`select 'hello' || ' world' as greeting from users;`)
+const _result = await db.query(`select 'hello' || ' world' as greeting from users;`)
 type _check = Expect<Matches<typeof result, Array<{ greeting: string }>>>

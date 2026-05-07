@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Multiple enum columns in WHERE with AND
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from tasks
 		where task_status = 'active' and task_priority = 'high';
 	`)

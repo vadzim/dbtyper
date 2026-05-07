@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Multiple operators in WHERE
 
-const result = await db.query(`select * from items where tags @> array['important'];`)
+const _result = await db.query(`select * from items where tags @> array['important'];`)
 
 type _check = Expect<
 	Matches<

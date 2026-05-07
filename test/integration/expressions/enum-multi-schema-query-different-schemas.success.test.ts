@@ -25,7 +25,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Query tables from different schemas
 
-const result = await db.query(`
+const _result = await db.query(`
 		select t.id, a.id
 		from public.tasks t
 		join app.articles a on t.id = a.id;

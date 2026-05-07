@@ -16,7 +16,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: WHEN condition must be boolean, not integer
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`select case when age then 'yes' else 'no' end from users;`,
 )

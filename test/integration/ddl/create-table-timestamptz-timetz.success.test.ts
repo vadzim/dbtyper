@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table events (created_at timestamptz not null, time_only timetz not null);`)
 	.database()
 
-const result = await db.query(`select created_at, time_only from events;`)
+const _result = await db.query(`select created_at, time_only from events;`)
 
 type _check = Expect<
 	Matches<

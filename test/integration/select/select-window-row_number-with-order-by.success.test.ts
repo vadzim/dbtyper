@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: ROW_NUMBER() with ORDER BY
 
-const result = await db.query(`select id, product, row_number() over (order by amount) as row_num from sales;`)
+const _result = await db.query(`select id, product, row_number() over (order by amount) as row_num from sales;`)
 
 type _check = Expect<
 	Matches<

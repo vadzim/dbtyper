@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Invalid table name
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`insert into invalid_table (id) values (null);`,
 )

@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: UPDATE without WHERE (updates all rows)
 
-const result = await db.query(`update users set name = 'Everyone' returning *;`)
+const _result = await db.query(`update users set name = 'Everyone' returning *;`)
 
 type _check = Expect<
 	Matches<

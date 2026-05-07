@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: RETURNING *
 
-const result = await db.query(`update users set name = 'Alice' where id = '1' returning *;`)
+const _result = await db.query(`update users set name = 'Alice' where id = '1' returning *;`)
 
 type _check = Expect<
 	Matches<

@@ -8,7 +8,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ column(integer) || column(integer) → error
-const result = await db.query(
+const _result = await db.query(
 	// @ts-expect-error
 	`select age || age as invalid from users;`,
 )

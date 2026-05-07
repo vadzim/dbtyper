@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Enum comparison with <>
 
-const result = await db.query(`
+const _result = await db.query(`
 		select * from tasks
 		where task_status <> 'inactive';
 	`)

@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: SELECT named columns
 
-const result = await db.query(`select id, name from users;`)
+const _result = await db.query(`select id, name from users;`)
 
 type _check = Expect<
 	Matches<

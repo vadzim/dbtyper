@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: LIMIT with OFFSET (pagination)
 
-const result = await db.query(`select * from users limit 10 offset 20;`)
+const _result = await db.query(`select * from users limit 10 offset 20;`)
 
 type _check = Expect<
 	Matches<

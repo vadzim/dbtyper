@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: DELETE with complex WHERE
 
-const result = await db.query(`delete from users where age < 18 or name is null returning *;`)
+const _result = await db.query(`delete from users where age < 18 or name is null returning *;`)
 
 type _check = Expect<
 	Matches<

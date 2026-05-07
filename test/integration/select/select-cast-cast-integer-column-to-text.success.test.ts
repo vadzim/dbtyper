@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Cast integer column to text
 
-const result = await db.query(`select id::text as id_text from data;`)
+const _result = await db.query(`select id::text as id_text from data;`)
 
 type _check = Expect<
 	Matches<

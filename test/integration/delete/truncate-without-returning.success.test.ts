@@ -9,6 +9,6 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: TRUNCATE without RETURNING
 
-const result = await db.query(`truncate table users;`)
+const _result = await db.query(`truncate table users;`)
 
 type _check = Expect<Matches<typeof result, unknown>>

@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table refs (id integer not null, uuids uuid[] not null);`)
 	.database()
 
-const result = await db.query(`select id, uuids from refs;`)
+const _result = await db.query(`select id, uuids from refs;`)
 
 type _check = Expect<
 	Matches<

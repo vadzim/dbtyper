@@ -9,5 +9,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ text || boolean → text
-const result = await db.query(`select 'Active: ' || active as message from users;`)
+const _result = await db.query(`select 'Active: ' || active as message from users;`)
 type _check = Expect<Matches<typeof result, Array<{ message: string }>>>

@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: RETURNING *
 
-const result = await db.query(`delete from users returning *;`)
+const _result = await db.query(`delete from users returning *;`)
 
 type _check = Expect<
 	Matches<

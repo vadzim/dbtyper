@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Select with enum column in WHERE clause
 
-const result = await db.query(`select * from tasks
+const _result = await db.query(`select * from tasks
 		where task_status = 'active';`)
 
 type _check = Expect<

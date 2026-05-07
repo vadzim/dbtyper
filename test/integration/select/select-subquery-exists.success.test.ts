@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: subquery with EXISTS
 
-const result = await db.query(`select * from users where exists (select 1 from posts where posts.user_id = users.id);`)
+const _result = await db.query(`select * from users where exists (select 1 from posts where posts.user_id = users.id);`)
 
 type _check = Expect<
 	Matches<

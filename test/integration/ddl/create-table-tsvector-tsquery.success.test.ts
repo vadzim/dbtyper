@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 
-const result = await db.query(`select id, search_vector, search_query from documents;`)
+const _result = await db.query(`select id, search_vector, search_query from documents;`)
 
 type _check = Expect<
 	Matches<

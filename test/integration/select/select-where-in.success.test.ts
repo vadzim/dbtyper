@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: WHERE column IN (list)
 
-const result = await db.query(`select * from users where id in ('1', '2', '3');`)
+const _result = await db.query(`select * from users where id in ('1', '2', '3');`)
 
 type _check = Expect<
 	Matches<

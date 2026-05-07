@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: multiple INNER JOINs
 
-const result = await db.query(
+const _result = await db.query(
 	`select users.name, posts.title, comments.content 
      from users 
      inner join posts on users.id = posts.user_id 

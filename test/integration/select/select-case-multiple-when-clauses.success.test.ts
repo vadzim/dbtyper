@@ -17,7 +17,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Multiple WHEN clauses
 
-const result = await db.query(`
+const _result = await db.query(`
 		select
 			name,
 			case

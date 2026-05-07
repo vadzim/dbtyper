@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Cast in WHERE clause
 
-const result = await db.query(`select * from data where id::text = '123';`)
+const _result = await db.query(`select * from data where id::text = '123';`)
 
 type _check = Expect<
 	Matches<

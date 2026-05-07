@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: correlated subquery
 
-const result = await db.query(
+const _result = await db.query(
 	`select * from posts p1 where exists (select 1 from posts p2 where p2.user_id = p1.user_id);`,
 )
 

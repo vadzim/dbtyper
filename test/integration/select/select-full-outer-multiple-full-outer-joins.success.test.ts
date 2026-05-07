@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: Multiple FULL OUTER JOINs
 
-const result = await db.query(
+const _result = await db.query(
 	`select * from users full outer join orders on users.id = orders.user_id full outer join users as u2 on orders.user_id = u2.id;`,
 )
 

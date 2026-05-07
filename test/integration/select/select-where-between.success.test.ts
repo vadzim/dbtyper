@@ -9,7 +9,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: WHERE column BETWEEN
 
-const result = await db.query(`select * from users where age between 18 and 65;`)
+const _result = await db.query(`select * from users where age between 18 and 65;`)
 
 type _check = Expect<
 	Matches<

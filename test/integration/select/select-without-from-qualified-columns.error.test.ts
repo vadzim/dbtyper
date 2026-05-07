@@ -9,7 +9,7 @@ it("should reject qualified column references without FROM even if table exists"
 		.database()
 
 	// Even though users table exists, we cannot reference users.id without FROM
-	const result = db.query(
+	const _result = db.query(
 		// @ts-expect-error
 		`select users.id, users.name;`,
 	)

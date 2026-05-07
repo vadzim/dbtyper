@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: LEAD() with offset and default value
 
-const result = await db.query(
+const _result = await db.query(
 	`select id, product, lead(amount, 1, 0) over (order by sale_date) as next_amount from sales;`,
 )
 

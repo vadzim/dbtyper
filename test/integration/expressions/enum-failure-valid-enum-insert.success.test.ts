@@ -18,7 +18,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 
-const result = await db.query(`
+const _result = await db.query(`
 		insert into tasks (id, name, task_status, task_priority)
 		values (1, 'Task', 'active', 'high');
 	`)

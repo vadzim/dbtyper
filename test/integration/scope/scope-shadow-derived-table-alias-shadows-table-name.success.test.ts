@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Derived table alias shadows table name
 
-const result = await db.query(`
+const _result = await db.query(`
 		select posts.derived_col 
 		from (select 'test' as derived_col from users) as posts;
 	`)

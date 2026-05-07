@@ -11,7 +11,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: DELETE from invalid table
-const result = db.query(
+const _result = db.query(
 	// @ts-expect-error
 	`delete from invalid_table;`,
 )
