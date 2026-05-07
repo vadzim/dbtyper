@@ -2137,9 +2137,9 @@ type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string
 	: SqlParserError<"Unknown query parameter in SELECT">
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */
-type ParamSelectOut<As, P extends string, Ts, Sql extends string> = As extends string
-	? { out: As; ts: Ts; sql: Sql }
-	: { out: P; ts: Ts; sql: Sql }
+type ParamSelectOut<As, P extends string, Sql extends string> = As extends string
+	? { out: As; sql: Sql }
+	: { out: P; sql: Sql }
 
 type OutNameFromExprAst<Ast extends ScalarExprAst, As, AllItems extends readonly RawSelectItem[]> = As extends string
 	? As
@@ -2226,10 +2226,9 @@ type ResolveSelectListParamItem<
 	LookupSelectParam<Params, P> extends infer PV
 		? PV extends SqlParserError<string>
 			? PV
-			: PV extends { ts: infer TsP; sql: infer SqlP extends string }
-				? ParamSelectOut<As, P, TsP, SqlP> extends {
+			: PV extends { sql: infer SqlP extends string }
+				? ParamSelectOut<As, P, SqlP> extends {
 						out: infer O extends string
-						ts: infer Ts
 						sql: infer Sql extends string
 					}
 					? ResolveSelectListAcc<
@@ -2237,7 +2236,7 @@ type ResolveSelectListParamItem<
 							Db,
 							Scope,
 							Params,
-							MergeRecords<Cols, Record<O, Ts>>,
+							MergeRecords<Cols, Record<O, unknown>>,
 							MergeStringRecords<Sqls, Record<O, Sql>>,
 							AllItems
 						>

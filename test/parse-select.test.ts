@@ -373,32 +373,30 @@ type TSelectParam = ParseSqlStatement<
 	DbJoinDefaultAndExplicit,
 	SelectParamsLimit
 >
-// TODO: Check if parameter types are preserved correctly in SELECT list
-// type _selectParam = Expect<
-// 	Extends<
-// 		Tuple3At2<TSelectParam>,
-// 		{
-// 			kind: "select"
-// 			columns: { limit: "integer"; id: "uuid" }
-// 		}
-// 	>
-// >
+type _selectParam = Expect<
+	Extends<
+		Tuple3At2<TSelectParam>,
+		{
+			kind: "select"
+			columns: { limit: "integer"; id: "uuid" }
+		}
+	>
+>
 
 type TSelectParamAs = ParseSqlStatement<
 	ParseSqlTokens<`select :pagesize as page_size, users.name from users;`>,
 	DbJoinDefaultAndExplicit,
 	{ pagesize: { sql: "integer" } }
 >
-// TODO: Check if parameter types are preserved correctly in SELECT list with AS
-// type _selectParamAs = Expect<
-// 	Extends<
-// 		Tuple3At2<TSelectParamAs>,
-// 		{
-// 			kind: "select"
-// 			columns: { page_size: "integer"; name: "text" }
-// 		}
-// 	>
-// >
+type _selectParamAs = Expect<
+	Extends<
+		Tuple3At2<TSelectParamAs>,
+		{
+			kind: "select"
+			columns: { page_size: "integer"; name: "text" }
+		}
+	>
+>
 
 type TUnknownFrom = ParseSqlStatement<ParseSqlTokens<`select users.id from ghost_table;`>, DbJoinDefaultAndExplicit>
 type _unknownFrom = Expect<Extends<Tuple3At2<TUnknownFrom>, SqlParserError<string>>>
