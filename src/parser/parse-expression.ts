@@ -293,7 +293,7 @@ type ParseInListUntypedAccum<
 type DecParenDepth<T extends readonly unknown[]> = T extends readonly [...infer Rest, infer _Last] ? Rest : readonly []
 
 /** Match the closing `)` of `( SELECT … )` when the subquery text starts at `Tokens` (leading `SELECT` token). */
-type SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
+type _SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
 	PeekToken<Tokens> extends TokenEot
 		? SkipFailedExpression<Tokens, SqlParserError<"Unclosed subquery">>
 		: PeekToken<Tokens> extends TokenKey<"(">
