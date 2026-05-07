@@ -2,9 +2,28 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
+- [ ] add integration test for || operator
+- [ ] parse select inner expression shoild be just parse select expression and then consume ")", no bucnh of _ Inner _ types
+- [ ] mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
+- [ ] add integration test for "select 1;"
 - [ ] fix result for .query method - it should return smth reasonable for all the queries, not only row sets or unknown.
 - [ ] make better error messages - like column "..." has wrong value or table "..." does not exist
 - [ ] in every migration test wich has @ts-expect-error directive add a way to check the text of message.
+- [ ] add integration tests for constraints (including reference to the wrong column):
+      create table public.profiles (
+      id uuid not null,
+      created_at timestamp with time zone null default now(),
+      updated_at timestamp with time zone null,
+      username text null,
+      avatar_url text null,
+      onboarding_complete boolean null default false,
+      data jsonb null,
+      timezone text null,
+      constraint profiles_pkey primary key (id),
+      constraint profiles_username_key unique (username),
+      constraint profiles_id_fkey foreign key (id) references auth.users (id) on delete cascade,
+      constraint username_length check ((char_length(username) >= 3))
+      ) tablespace pg_default;
 
 ## Documentation
 
