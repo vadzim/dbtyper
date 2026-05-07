@@ -18,7 +18,7 @@ import type {
 	ExpressionParamsShape,
 	ParseAddValue,
 } from "./parse-expression.ts"
-import type { ParseAndResolveReturningClause, ParseSelect } from "./parse-select.ts"
+import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
@@ -252,7 +252,7 @@ type ParseInsertWithSelect<
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseSelect<Tokens, Db, Params> extends [infer RSelect extends TokensList, infer Db2, infer SelectRes]
+	ParseSelectExpression<Tokens, Db, Params> extends [infer RSelect extends TokensList, infer Db2, infer SelectRes]
 		? SelectRes extends SqlParserError<string>
 			? [RSelect, Db2, SelectRes]
 			: SelectRes extends JsqlSelectStatementResult

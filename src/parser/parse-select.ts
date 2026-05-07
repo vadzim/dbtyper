@@ -24,11 +24,10 @@ import type {
 	ScalarIdentParts,
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
-import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
@@ -40,7 +39,7 @@ type TokenKeyOn = TokenKey<"on">
  */
 type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | SqlParserError<string>>
 
-export type RawSelectItem =
+type RawSelectItem =
 	| { kind: "star" }
 	| { kind: "param"; param: string; as?: string }
 	| { kind: "expr"; ast: ScalarExprAst; as?: string }
@@ -50,7 +49,11 @@ type RawSelectParamItem<P extends string, As extends string | undefined> = [As] 
 	? { kind: "param"; param: P }
 	: { kind: "param"; param: P; as: As }
 
-export type ParseSelect<
+/**
+ * Parse SELECT expression (does NOT consume terminator `;`).
+ * Use this for SELECT in CREATE VIEW, subqueries, CTEs, etc.
+ */
+export type ParseSelectExpression<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
@@ -60,6 +63,27 @@ export type ParseSelect<
 		: PeekToken<Tokens> extends TokenKey<"distinct">
 			? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, {}>
 			: ParseSelectAfterDistinct<Tokens, Db, Params, {}>
+
+/**
+ * Parse SELECT statement (consumes terminator `;`).
+ * Use this for top-level SELECT statements.
+ */
+export type ParseSelectStatement<
+	Tokens extends TokensList,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> =
+	ParseSelectExpression<Tokens, Db, Params> extends [
+		infer R1 extends TokensList,
+		infer Db2 extends JsqlDatabaseShape,
+		infer Res,
+	]
+		? Res extends SqlParserError<string>
+			? [R1, Db2, Res]
+			: PeekToken<R1> extends TokenKey<";"> | TokenEot
+				? [SkipToken<R1>, Db2, Res]
+				: SkipFailedStatement<R1, Db2, SqlParserError<"Expected semicolon after SELECT">>
+		: never
 
 type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
 	{ kind: "star" },
@@ -1109,7 +1133,7 @@ type SelectAfterWhereAndGroupHaving<
 					: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
 						? Te extends SqlParserError<string>
 							? [Rt, Db, Te]
-							: FinishSelectTerminator<Rt, Db, Res>
+							: [Rt, Db, Res]
 						: never
 				: never
 		: never
@@ -1130,11 +1154,6 @@ type ParseSelectTrailingClauses<
 					: [T2, null]
 				: never
 		: never
-
-type FinishSelectTerminator<Tokens extends TokensList, Db extends JsqlDatabaseShape, Res> =
-	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
-		? [SkipToken<Tokens>, Db, Res]
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected semicolon after SELECT">>
 
 type FinishSelectStatement<
 	Tokens extends TokensList,

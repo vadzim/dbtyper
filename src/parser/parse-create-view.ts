@@ -5,7 +5,7 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
-import type { ParseSelect } from "./parse-select.ts"
+import type { ParseSelectExpression } from "./parse-select.ts"
 
 /**
  * `view_name AS` or `schema.view_name AS` (unlike {@link ParseQualifiedTableName}, not followed by `(`).
@@ -52,17 +52,13 @@ type ParseCreateViewAfterSelect<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 > =
-	PeekToken<Tokens> extends infer TokEnd
-		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? TokEnd extends TokenKey<";"> | TokenEot
-				? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["columns"]>> extends infer NewDb
-					? NewDb extends JsqlDatabaseShape
-						? [R1, NewDb, null]
-						: never
-					: never
-				: SkipFailedStatement<R1, Db, SqlParserError<"Expected semicolon after CREATE VIEW">>
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["columns"]>> extends infer NewDb
+			? NewDb extends JsqlDatabaseShape
+				? [SkipToken<Tokens>, NewDb, null]
+				: never
 			: never
-		: never
+		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected semicolon after CREATE VIEW">>
 
 type ParseCreateViewSelectAndSemi<
 	R2 extends TokensList,
@@ -72,7 +68,7 @@ type ParseCreateViewSelectAndSemi<
 	Params extends ExpressionParamsShape,
 > =
 	JsqlDbGetData<Db, Sch, Vname> extends null
-		? ParseSelect<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
+		? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
 			? Res extends SqlParserError<string>
 				? [R3, Db, Res]
 				: Res extends JsqlSelectStatementResult

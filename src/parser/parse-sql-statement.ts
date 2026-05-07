@@ -20,7 +20,7 @@ import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop-table.ts"
 import type { ParseDropType } from "./parse-drop-type.ts"
 import type { ParseInsert } from "./parse-insert.ts"
-import type { ParseSelect } from "./parse-select.ts"
+import type { ParseSelectStatement } from "./parse-select.ts"
 import type { ParseUpdate } from "./parse-update.ts"
 import type { ParseSkipStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -100,9 +100,9 @@ export type ParseSqlStatement<
 						: PeekToken<Tokens> extends TokenKey<"insert">
 							? ParseInsert<SkipToken<Tokens>, Db, Params>
 							: PeekToken<Tokens> extends TokenIdent<"with">
-								? ParseSelect<Tokens, Db, Params>
+								? ParseSelectStatement<Tokens, Db, Params>
 								: PeekToken<Tokens> extends TokenKey<"select">
-									? ParseSelect<SkipToken<Tokens>, Db, Params>
+									? ParseSelectStatement<SkipToken<Tokens>, Db, Params>
 									: PeekToken<Tokens> extends TokenKey<"update">
 										? ParseUpdate<SkipToken<Tokens>, Db, Params>
 										: ParseSkipStatement<Tokens, Db>
