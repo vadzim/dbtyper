@@ -16,9 +16,9 @@ type _check = Expect<
 	Matches<
 		typeof result,
 		{
-			id: number
-			tags: unknown
-			nums: unknown
+		id: number
+		tags: readonly string[]
+		nums: readonly number[]
 		}[]
 	>
 >

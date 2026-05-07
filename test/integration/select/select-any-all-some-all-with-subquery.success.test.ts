@@ -18,7 +18,7 @@ type _check = Expect<
 		typeof result,
 		{
 			id: number
-			tags: unknown
+			tags: readonly string[]
 			priority: number
 		}[]
 	>
