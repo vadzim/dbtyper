@@ -10,8 +10,14 @@ type DbEmpty = {
 	schemas: { public: JsqlSchemaShape }
 }
 
+type TestEnvForExprParse = {
+	db: DbEmpty
+	params: EmptyExpressionParams
+	outerScope: {}
+}
+
 // Test basic type casts
-type TCastIntToTextAst = ParseExpressionAST<ParseSqlTokens<`123::text`>>
+type TCastIntToTextAst = ParseExpressionAST<ParseSqlTokens<`123::text`>, TestEnvForExprParse>
 type TCastIntToText = ResolveExpressionAST<
 	TCastIntToTextAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,
@@ -20,7 +26,10 @@ type TCastIntToText = ResolveExpressionAST<
 >
 type _tCastIntToTextOk = Expect<Extends<TCastIntToText, { ok: true; ts: string; sql: "text" }>>
 
-type TCastTextToUuidAst = ParseExpressionAST<ParseSqlTokens<`'550e8400-e29b-41d4-a716-446655440000'::uuid`>>
+type TCastTextToUuidAst = ParseExpressionAST<
+	ParseSqlTokens<`'550e8400-e29b-41d4-a716-446655440000'::uuid`>,
+	TestEnvForExprParse
+>
 type TCastTextToUuid = ResolveExpressionAST<
 	TCastTextToUuidAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,
@@ -30,7 +39,7 @@ type TCastTextToUuid = ResolveExpressionAST<
 type _tCastTextToUuidOk = Expect<Extends<TCastTextToUuid, { ok: true; ts: string; sql: "uuid" }>>
 
 // Test PostgreSQL-specific type casts
-type TCastTextToTimestamptzAst = ParseExpressionAST<ParseSqlTokens<`'2024-01-01'::timestamptz`>>
+type TCastTextToTimestamptzAst = ParseExpressionAST<ParseSqlTokens<`'2024-01-01'::timestamptz`>, TestEnvForExprParse>
 type TCastTextToTimestamptz = ResolveExpressionAST<
 	TCastTextToTimestamptzAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,
@@ -39,7 +48,7 @@ type TCastTextToTimestamptz = ResolveExpressionAST<
 >
 type _tCastTextToTimestamptzOk = Expect<Extends<TCastTextToTimestamptz, { ok: true; ts: string; sql: "timestamptz" }>>
 
-type TCastTextToByteaAst = ParseExpressionAST<ParseSqlTokens<`'data'::bytea`>>
+type TCastTextToByteaAst = ParseExpressionAST<ParseSqlTokens<`'data'::bytea`>, TestEnvForExprParse>
 type TCastTextToBytea = ResolveExpressionAST<
 	TCastTextToByteaAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,
@@ -48,7 +57,7 @@ type TCastTextToBytea = ResolveExpressionAST<
 >
 type _tCastTextToByteaOk = Expect<Extends<TCastTextToBytea, { ok: true; ts: string; sql: "bytea" }>>
 
-type TCastTextToInetAst = ParseExpressionAST<ParseSqlTokens<`'192.168.1.1'::inet`>>
+type TCastTextToInetAst = ParseExpressionAST<ParseSqlTokens<`'192.168.1.1'::inet`>, TestEnvForExprParse>
 type TCastTextToInet = ResolveExpressionAST<
 	TCastTextToInetAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,
@@ -58,7 +67,7 @@ type TCastTextToInet = ResolveExpressionAST<
 type _tCastTextToInetOk = Expect<Extends<TCastTextToInet, { ok: true; ts: string; sql: "inet" }>>
 
 // Test invalid casts
-type TCastIntToBoolAst = ParseExpressionAST<ParseSqlTokens<`123::boolean`>>
+type TCastIntToBoolAst = ParseExpressionAST<ParseSqlTokens<`123::boolean`>, TestEnvForExprParse>
 type TCastIntToBool = ResolveExpressionAST<
 	TCastIntToBoolAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,
@@ -68,7 +77,7 @@ type TCastIntToBool = ResolveExpressionAST<
 type _tCastIntToBoolErr = Expect<Extends<TCastIntToBool, SqlParserError<string>>>
 
 // Test chained casts
-type TCastChainedAst = ParseExpressionAST<ParseSqlTokens<`123::text::uuid`>>
+type TCastChainedAst = ParseExpressionAST<ParseSqlTokens<`123::text::uuid`>, TestEnvForExprParse>
 type TCastChained = ResolveExpressionAST<
 	TCastChainedAst extends [infer _R, infer Ast] ? Ast : never,
 	DbEmpty,

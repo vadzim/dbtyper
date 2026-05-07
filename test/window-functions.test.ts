@@ -16,8 +16,7 @@ type DbWindow = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 // Test ROW_NUMBER() with ORDER BY
 type TRowNumber = ParseSqlStatement<

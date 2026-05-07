@@ -1,15 +1,7 @@
 // Integration Test: Enum failure cases and edge cases
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Extends, Matches } from "../../test-utils/type-test-utils.ts"
-
-const mockDriver = {
-	query: async () => [],
-	scalarTypes: {
-		text: "" as string,
-		integer: 0 as number,
-		boolean: true as boolean,
-	},
-}
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)

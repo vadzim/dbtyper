@@ -28,6 +28,12 @@ type DbUsers = {
 	}
 }
 
+type TestEnvForExprParse = {
+	db: DbUsers
+	params: EmptyExpressionParams
+	outerScope: {}
+}
+
 type UsersEntry = {
 	schema: "public"
 	table: "users"
@@ -74,23 +80,23 @@ type JoinedOuterInner = MergeScope<OuterScope, InnerScope>
 type ExprCross = ParseWhereExpression<ParseSqlTokens<`outer_t.b = 'x'`>, DbUsers, JoinedOuterInner>
 type _exprCross = Expect<Extends<Tuple2At1<ExprCross>, null>>
 
-type UAdd = ParseExpressionAST<ParseSqlTokens<`1 + 2`>>
+type UAdd = ParseExpressionAST<ParseSqlTokens<`1 + 2`>, TestEnvForExprParse>
 type _uAdd = Expect<Extends<Tuple2At1<UAdd>, { kind: "add" }>>
 
-type UCmp = ParseExpressionAST<ParseSqlTokens<`2 > 0`>>
+type UCmp = ParseExpressionAST<ParseSqlTokens<`2 > 0`>, TestEnvForExprParse>
 type _uCmp = Expect<Extends<Tuple2At1<UCmp>, { kind: "cmp"; op: "gt" }>>
 
-type UAndCmp = ParseExpressionAST<ParseSqlTokens<`(2 > 0) and (1 < 3)`>>
+type UAndCmp = ParseExpressionAST<ParseSqlTokens<`(2 > 0) and (1 < 3)`>, TestEnvForExprParse>
 type _uAndCmp = Expect<Extends<Tuple2At1<UAndCmp>, { kind: "and" }>>
 
-type UOrAndPrec = ParseExpressionAST<ParseSqlTokens<`true or false and false`>>
+type UOrAndPrec = ParseExpressionAST<ParseSqlTokens<`true or false and false`>, TestEnvForExprParse>
 type _uOrAndPrec = Expect<Extends<Tuple2At1<UOrAndPrec>, { kind: "or" }>>
 
-type UIsBad = ParseExpressionAST<ParseSqlTokens<`1 is 2`>>
+type UIsBad = ParseExpressionAST<ParseSqlTokens<`1 is 2`>, TestEnvForExprParse>
 type _uIsBad = Expect<Extends<Tuple2At1<UIsBad>, SqlParserError<"Expected NULL after IS">>>
 
 type RNotNum = ResolveExpressionAST<
-	ParseExpressionAST<ParseSqlTokens<`not 1`>> extends [infer _R, infer Ast] ? Ast : never,
+	ParseExpressionAST<ParseSqlTokens<`not 1`>, TestEnvForExprParse> extends [infer _R, infer Ast] ? Ast : never,
 	DbUsers,
 	UsersScope,
 	EmptyExpressionParams
@@ -98,29 +104,33 @@ type RNotNum = ResolveExpressionAST<
 type _rNotNum = Expect<Extends<RNotNum, SqlParserError<"NOT requires a boolean operand">>>
 
 type RUnaryMinusText = ResolveExpressionAST<
-	ParseExpressionAST<ParseSqlTokens<`-(users.name)`>> extends [infer _R, infer Ast] ? Ast : never,
+	ParseExpressionAST<ParseSqlTokens<`-(users.name)`>, TestEnvForExprParse> extends [infer _R, infer Ast]
+		? Ast
+		: never,
 	DbUsers,
 	UsersScope,
 	EmptyExpressionParams
 >
 type _rUnaryMinusText = Expect<Extends<RUnaryMinusText, SqlParserError<"Unary minus requires a number">>>
 
-type UCastPg = ParseExpressionAST<ParseSqlTokens<`1::text`>>
+type UCastPg = ParseExpressionAST<ParseSqlTokens<`1::text`>, TestEnvForExprParse>
 type _uCastPg = Expect<Extends<Tuple2At1<UCastPg>, { kind: "pg_cast" }>>
 
-type UCastSql = ParseExpressionAST<ParseSqlTokens<`cast(7 as bigint)`>>
+type UCastSql = ParseExpressionAST<ParseSqlTokens<`cast(7 as bigint)`>, TestEnvForExprParse>
 type _uCastSql = Expect<Extends<Tuple2At1<UCastSql>, { kind: "sql_cast" }>>
 
 type _normDouble = Expect<Extends<SqlCastTypeNorm<readonly ["double", "precision"]>, "double precision">>
 
-type UCaseSearched = ParseExpressionAST<ParseSqlTokens<`case when true then 1 else 2 end`>>
+type UCaseSearched = ParseExpressionAST<ParseSqlTokens<`case when true then 1 else 2 end`>, TestEnvForExprParse>
 type _uCaseSearched = Expect<Extends<Tuple2At1<UCaseSearched>, { kind: "case_searched" }>>
 
-type UCaseSimple = ParseExpressionAST<ParseSqlTokens<`case 1 when 1 then 2 else 3 end`>>
+type UCaseSimple = ParseExpressionAST<ParseSqlTokens<`case 1 when 1 then 2 else 3 end`>, TestEnvForExprParse>
 type _uCaseSimple = Expect<Extends<Tuple2At1<UCaseSimple>, { kind: "case_simple" }>>
 
 type RCaseNoElse = ResolveExpressionAST<
-	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>> extends [infer _R, infer Ast] ? Ast : never,
+	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>, TestEnvForExprParse> extends [infer _R, infer Ast]
+		? Ast
+		: never,
 	DbUsers,
 	UsersScope,
 	EmptyExpressionParams
@@ -137,19 +147,19 @@ type WInSubqueryOk = ParseWhereExpression<
 >
 type _wInSubqueryOk = Expect<Extends<Tuple2At1<WInSubqueryOk>, null>>
 
-type UMod = ParseExpressionAST<ParseSqlTokens<`5 % 2`>>
+type UMod = ParseExpressionAST<ParseSqlTokens<`5 % 2`>, TestEnvForExprParse>
 type _uMod = Expect<Extends<Tuple2At1<UMod>, { kind: "mod" }>>
 
-type UExp = ParseExpressionAST<ParseSqlTokens<`2 ^ 3`>>
+type UExp = ParseExpressionAST<ParseSqlTokens<`2 ^ 3`>, TestEnvForExprParse>
 type _uExp = Expect<Extends<Tuple2At1<UExp>, { kind: "exp" }>>
 
-type UCustomOp = ParseExpressionAST<ParseSqlTokens<`a || b`>>
+type UCustomOp = ParseExpressionAST<ParseSqlTokens<`a || b`>, TestEnvForExprParse>
 type _uCustomOp = Expect<Extends<Tuple2At1<UCustomOp>, { kind: "custom_op"; op: "||" }>>
 
-type UCustomOp2 = ParseExpressionAST<ParseSqlTokens<`a ->> b`>>
+type UCustomOp2 = ParseExpressionAST<ParseSqlTokens<`a ->> b`>, TestEnvForExprParse>
 type _uCustomOp2 = Expect<Extends<Tuple2At1<UCustomOp2>, { kind: "custom_op"; op: "->>" }>>
 
-type UOperatorSym = ParseExpressionAST<ParseSqlTokens<`a OPERATOR(+) b`>>
+type UOperatorSym = ParseExpressionAST<ParseSqlTokens<`a OPERATOR(+) b`>, TestEnvForExprParse>
 type _uOperatorSym = Expect<Extends<Tuple2At1<UOperatorSym>, { kind: "custom_op"; op: "+" }>>
 
 describe("parse-expression (type tests)", () => {

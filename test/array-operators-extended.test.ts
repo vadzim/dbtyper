@@ -16,8 +16,7 @@ type DbArrays = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 // Test <@ (is contained by) operator
 type TContainedBy = ParseSqlStatement<

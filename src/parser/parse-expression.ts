@@ -22,24 +22,11 @@ export type ExpressionParamsShape = Record<string, { ts: unknown; sql: string }>
 /** Default `Params` for parsers: `keyof` is `never` (plain `{}` widens against `Record<string, …>`). */
 export type EmptyExpressionParams = Record<never, never>
 
-/** Minimal DB shape for bare `ParseExpressionAST<…>` (no real tables; subqueries need a real `Env` from callers). */
-type DefaultExprParseDb = {
-	defaultSchema: "public"
-	schemas: { public: { sets: {} } }
-	scalarTypes: Record<string, unknown>
-}
-
 /** Threaded through scalar parse for subqueries: catalog, `:param` bindings, outer aliases visible inside `(SELECT …)`. */
 export type ExprParseEnv = {
 	db: JsqlDatabaseShape
 	params: ExpressionParamsShape
 	outerScope: ScopeMap
-}
-
-export type DefaultExprParseEnv = {
-	db: DefaultExprParseDb
-	params: EmptyExpressionParams
-	outerScope: {}
 }
 
 /** True when `T` is `unknown` or `any` (not other types). */
@@ -933,11 +920,9 @@ type ResolveArrayCtorElements<
 		: never
 	: ExprOk<readonly unknown[], "unknown">
 
-/** Parse expression to AST to be resolved later when `FROM` scope is known (`OR` … `AND` … `NOT` … comparisons … arithmetic). */
-export type ParseExpressionAST<
-	Tokens extends TokensList,
-	Env extends ExprParseEnv = DefaultExprParseEnv,
-> = ParseOrScalarUntyped<Tokens, Env>
+// Parse expression to AST to be resolved later when `FROM` scope is known (`OR` … `AND` … `NOT` … comparisons … arithmetic).
+
+export type ParseExpressionAST<Tokens extends TokensList, Env extends ExprParseEnv> = ParseOrScalarUntyped<Tokens, Env>
 
 /** Resolve after `FROM` scope is known */
 type ExpressionResolvers<

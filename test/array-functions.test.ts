@@ -17,8 +17,7 @@ type DbArrays = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 // Test array_length function
 type TArrayLength = ParseSqlStatement<ParseSqlTokens<`select array_length(tags, 1) as len from items;`>, DbArrays>

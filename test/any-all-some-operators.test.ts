@@ -21,8 +21,7 @@ type DbAnyAll = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 // Test = ANY with array
 type TAnyArray = ParseSqlStatement<ParseSqlTokens<`select * from items where id = any(array[1,2,3]);`>, DbAnyAll>

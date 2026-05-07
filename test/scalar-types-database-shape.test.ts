@@ -29,12 +29,9 @@ type _oddColsFromScalarMap = Expect<
 	>
 >
 
-/** SQL type spelling absent from `scalarTypes` → TS column type `unknown` (via {@link SqlJoinedToTs}). */
-type TinyScalars = { uuid: string }
 type DbTiny = {
 	defaultSchema: "public"
 	schemas: { public: JsqlSchemaShape }
-	scalarTypes: TinyScalars
 }
 type ExoticTable = ParseSqlStatement<
 	ParseSqlTokens<`create table exotic ( id uuid not null, payload citext not null );`>,
@@ -86,7 +83,6 @@ type AlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.t add colum
 type AfterAlterCols = AlterAdd[1] extends { schemas: { public: { sets: { t: { columns: infer C } } } } } ? C : never
 type _alterAddUsesDbScalars = Expect<Extends<AfterAlterCols extends { body: infer B } ? B : never, "text">>
 
-/** Multi-statement script: each merge preserves `scalarTypes` through {@link ApplyStatements}. */
 type MultiStmtDb = ApplyStatements<
 	DbPublicEmpty,
 	`

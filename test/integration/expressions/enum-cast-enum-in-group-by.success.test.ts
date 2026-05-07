@@ -1,14 +1,7 @@
 // Integration Test: Enum type casting and complex scenarios
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Extends, Matches } from "../../test-utils/type-test-utils.ts"
-
-const mockDriver = {
-	query: async () => [],
-	scalarTypes: {
-		text: "" as string,
-		integer: 0 as number,
-	},
-}
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
@@ -36,7 +29,7 @@ type _check = Expect<
 		typeof result,
 		{
 			task_status: unknown
-			cnt: unknown
+			cnt: bigint
 		}[]
 	>
 >

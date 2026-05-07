@@ -17,8 +17,7 @@ type DbGroup = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 type TGroupBy = ParseSqlStatement<ParseSqlTokens<`select region from sales group by region;`>, DbGroup>
 

@@ -32,12 +32,10 @@ export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
 
 export type SqlDatabase<
 	DefaultSchema extends string = "public",
-	ScalarTypes extends Record<string, unknown> = DefaultSqlScalarTypeMap,
 	Functions extends Record<string, string> = Record<string, never>,
 > = {
 	defaultSchema: DefaultSchema
 	schemas: {}
-	scalarTypes: ScalarTypes
 	functions?: Functions
 }
 
@@ -56,7 +54,7 @@ export function sqlMigrations<D extends SqlDriver<Record<string, unknown>>, cons
 	const defaultSchema = config.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
-		FlattenedJsqlDatabase<SqlDatabase<DS, InferScalarTypesFromDriver<D>, Record<string, never>>>,
+		FlattenedJsqlDatabase<SqlDatabase<DS, Record<string, never>>>,
 		InferScalarTypesFromDriver<D>
 	>
 	return result
@@ -327,9 +325,7 @@ export class DataBaseImpl {
 	dbInterface: SqlDriver<Record<string, unknown>>
 }
 
-/** Default `scalarTypes` for {@link SqlDatabase} / {@link sqlMigrations}; same keys as {@link PostgresTypeMap}. */
 type DefaultSqlScalarTypeMap = PostgresTypeMap
 
-/** Scalar map inferred from {@link SqlDriver}'s type parameter; used by {@link sqlMigrations}. */
 type InferScalarTypesFromDriver<D extends SqlDriver<Record<string, unknown>>> =
 	D extends SqlDriver<infer S> ? S : DefaultSqlScalarTypeMap

@@ -20,8 +20,7 @@ type DbJoins = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 // Test RIGHT JOIN parses successfully
 type TRightJoin = ParseSqlStatement<

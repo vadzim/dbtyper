@@ -43,12 +43,7 @@
  */
 
 import { sqlMigrations } from "../core/sql-database.ts"
-import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
-
-const mockDriver = {
-	query: async () => [],
-	scalarTypes: {} as PostgresTypeMap,
-}
+import { mockDriver } from "../../test/test-utils/test-databases.ts"
 
 async function testVariant3() {
 	const db = sqlMigrations({ driver: mockDriver })

@@ -16,9 +16,8 @@ type DbFns = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
 	functions: { custom_fn: "integer" }
-} & JsqlDatabaseShape
+}
 
 type InferOk = InferSqlErrors<DbFns, `select custom_fn(x) from t`>
 type _inferOk = Expect<Extends<InferOk, null>>

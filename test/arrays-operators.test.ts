@@ -16,8 +16,7 @@ type DbTiny = {
 			}
 		}
 	}
-	scalarTypes: Record<string, unknown>
-} & JsqlDatabaseShape
+}
 
 /** Minimal `ARRAY[…]` + `@>` / `&&` operator typing (`ResolveCustomOp`). */
 type TArrayOps = ParseSqlStatement<

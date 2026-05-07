@@ -1,11 +1,6 @@
 // Integration Test: CREATE TYPE ... AS ENUM
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
-
-const mockDriver = {
-	query: async () => [],
-	scalarTypes: {} as PostgresTypeMap,
-}
+import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: CREATE TYPE IF NOT EXISTS (existing type, no-op)
 

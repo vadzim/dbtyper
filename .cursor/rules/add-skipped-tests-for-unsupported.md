@@ -16,12 +16,7 @@ If you discover that `UPDATE ... FROM` is not supported:
 // Currently unsupported - requires implementing FROM clause in UPDATE parser
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
-
-const mockDriver = {
-	query: async () => [],
-	scalarTypes: {} as PostgresTypeMap,
-}
+import { mockDriver } from "../../test-utils/test-databases.ts"
 
 async function testUpdateWithFrom() {
 	const db = sqlMigrations({ driver: mockDriver })

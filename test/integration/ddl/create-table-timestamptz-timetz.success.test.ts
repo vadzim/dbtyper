@@ -1,12 +1,7 @@
 // Integration Test: CREATE TABLE with PostgreSQL-specific types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
-import type { Expect, Extends, Matches } from "../../test-utils/type-test-utils.ts"
-
-const mockDriver = {
-	query: async () => [],
-	scalarTypes: {} as PostgresTypeMap,
-}
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: timestamptz and timetz aliases
 

@@ -246,10 +246,7 @@ npm run typecheck
     ```typescript
     // Integration Test: <OPERATION>
     import { sqlMigrations } from "../../../src/core/sql-database.ts"
-
-    const mockDriver = {
-    	query: async () => ({ rows: [], rowCount: 0 }),
-    }
+    import { mockDriver } from "../../test-utils/test-databases.ts"
 
     async function testName() {
     	const db = sqlMigrations({ driver: mockDriver })
