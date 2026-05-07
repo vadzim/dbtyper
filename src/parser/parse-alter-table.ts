@@ -15,8 +15,9 @@ import type {
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
-import type { CollectSqlTypeWords, TypeWordsToString } from "./parse-sql-type-words.ts"
+import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 type SkipUntilCommaOrSemi<Tokens extends TokensList> = SkipBracketedUntil<
 	Tokens,
@@ -37,17 +38,6 @@ type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlData
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
 		: [SkipToken<Tokens>, SqlParserError<"Expected table name in ALTER TABLE">, never, never]
 
-type ParseAlterOptionalNullSuffix<Tokens extends TokensList, Joined extends string> =
-	PeekToken<Tokens> extends TokenKey<"not">
-		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? PeekToken<R1> extends TokenKey<"null">
-				? [SkipToken<R1>, Joined]
-				: [R1, Joined]
-			: never
-		: PeekToken<Tokens> extends TokenKey<"null">
-			? [SkipToken<Tokens>, Joined]
-			: [Tokens, Joined]
-
 type ParseAlterAddColumnAfterColName<
 	R2 extends TokensList,
 	Db extends JsqlDatabaseShape,
@@ -55,19 +45,14 @@ type ParseAlterAddColumnAfterColName<
 	Tab extends string,
 	Col extends string,
 > =
-	CollectSqlTypeWords<R2> extends [infer AfterType extends TokensList, infer Words extends readonly string[]]
-		? TypeWordsToString<Words> extends infer Joined extends string
-			? Joined extends ""
-				? [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: ParseAlterOptionalNullSuffix<AfterType, Joined> extends [
-							infer R3 extends TokensList,
-							infer J2 extends string,
-					  ]
-					? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-						? ParseAlterActions<R3, JsqlDbReplaceColumn<Db, Sch, Tab, Col, JsqlCreateColumn<J2>>, Sch, Tab>
-						: SkipFailedStatement<R3, Db, SqlParserError<"Column already exists">>
-					: never
-			: SkipFailedStatement<AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">>
+	ParseSqlType<R2> extends [infer AfterType extends TokensList, infer TypeShape]
+		? TypeShape extends SqlTypeShape
+			? TypeShape extends SqlParserError<string>
+				? [AfterType, Db, TypeShape]
+				: JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+					? ParseAlterActions<AfterType, JsqlDbReplaceColumn<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
+					: SkipFailedStatement<AfterType, Db, SqlParserError<"Column already exists">>
+			: [AfterType, Db, SqlParserError<"Expected column type in ALTER TABLE">]
 		: never
 
 type FinishAlterStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -156,7 +141,7 @@ type ParseAlterRenameAfterToKw<
 					? [R3, Db, SqlParserError<"Column does not exist">]
 					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
 						? JsqlDbGetColumn<Db, Sch, Tab, Old> extends infer OldCol extends
-								| (JsqlColumnFactsEntry & { type: string })
+								| (JsqlColumnFactsEntry & { type: SqlTypeShape })
 								| null
 							? JsqlDbReplaceColumn<
 									JsqlDbReplaceColumn<Db, Sch, Tab, Old, null>,
@@ -216,17 +201,12 @@ type ParseAlterColumnTypeAfterTypeKw<
 	Tab extends string,
 	Col extends string,
 > =
-	CollectSqlTypeWords<R3> extends [infer AfterType extends TokensList, infer Words extends readonly string[]]
-		? TypeWordsToString<Words> extends infer Joined extends string
-			? Joined extends ""
-				? [AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">]
-				: ParseAlterOptionalNullSuffix<AfterType, Joined> extends [
-							infer R4 extends TokensList,
-							infer J2 extends string,
-					  ]
-					? ParseAlterActions<R4, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, J2>, Sch, Tab>
-					: never
-			: SkipFailedStatement<AfterType, Db, SqlParserError<"Invalid column type in ALTER TABLE">>
+	ParseSqlType<R3> extends [infer AfterType extends TokensList, infer TypeShape]
+		? TypeShape extends SqlTypeShape
+			? TypeShape extends SqlParserError<string>
+				? [AfterType, Db, TypeShape]
+				: ParseAlterActions<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
+			: [AfterType, Db, SqlParserError<"Expected column type in ALTER TABLE">]
 		: never
 
 type ParseAlterColumnTypeBranch<

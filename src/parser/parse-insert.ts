@@ -12,16 +12,18 @@ import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
-	ExprAtom,
-	ExprOk,
-	ExprSqlNull,
 	ExpressionParamsShape,
-	ParseAddValue,
+	SameComparisonClass,
+	ParseExpressionAST,
+	ExprParseEnv,
+	ScalarExprAst,
+	ResolveExpressionAST,
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
@@ -303,9 +305,9 @@ type ValidateInsertSelectColumnTypes<
 	Idx extends readonly unknown[] = [],
 > = InsertCols extends readonly [infer Col extends string, ...infer RestCols extends readonly string[]]
 	? Idx["length"] extends keyof SelectRes["columns"] & number
-		? SelectRes["columns"][Idx["length"]] extends infer SelectType extends string
-			? JsqlDataGetColumnType<Tbl, Col> extends infer InsertType extends string
-				? Lowercase<SelectType> extends Lowercase<InsertType>
+		? SelectRes["columns"][Idx["length"]] extends infer SelectType extends SqlTypeShape
+			? JsqlDataGetColumnType<Tbl, Col> extends infer InsertType extends SqlTypeShape
+				? SameComparisonClass<SelectType, InsertType> extends true
 					? ValidateInsertSelectColumnTypes<Tbl, RestCols, SelectRes, AllCols, readonly [...Idx, 0]>
 					: SqlParserError<"INSERT...SELECT type mismatch for column">
 				: SqlParserError<"Unknown column in INSERT">
@@ -378,40 +380,59 @@ type ParseInsertValuesCells<
 	Cols extends readonly string[],
 	ColsFull extends readonly string[] = Cols,
 > = Cols extends readonly [infer C0 extends string, ...infer CR extends readonly string[]]
-	? ParseAddValue<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer Ev]
-		? Ev extends SqlParserError<string>
-			? [R1, Db, Ev]
-			: Ev extends ExprAtom
-				? ValidateMutationValueForColumn<Tbl, C0, Ev> extends infer V0
-					? V0 extends SqlParserError<string>
-						? [R1, Db, V0]
-						: V0 extends true
-							? CR extends readonly []
-								? PeekToken<R1> extends infer TokCl
-									? SkipToken<R1> extends infer R2 extends TokensList
-										? TokCl extends TokenKey<")">
-											? Cols["length"] extends ColsFull["length"]
-												? ParseInsertAfterValuesRowClose<
-														R2,
-														Db,
-														Scope,
-														Params,
-														Tbl,
-														Sch,
-														Tab,
-														ColsFull
-													>
-												: [R2, Db, InsertValuesRowCellsParsedMarker]
-											: SkipFailedExpression<
-														R2,
-														SqlParserError<"Expected `)` after INSERT values">
-												  > extends [infer Rest extends TokensList, infer Err]
-												? [Rest, Db, Err]
+	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+			infer R1 extends TokensList,
+			infer Ast,
+		]
+		? Ast extends SqlParserError<string>
+			? [R1, Db, Ast]
+			: Ast extends ScalarExprAst
+				? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
+					? Resolved extends SqlParserError<string>
+						? [R1, Db, Resolved]
+						: Resolved extends SqlTypeShape
+							? ValidateMutationValueForColumn<Tbl, C0, Resolved> extends infer V0
+								? V0 extends SqlParserError<string>
+									? [R1, Db, V0]
+									: V0 extends true
+										? CR extends readonly []
+											? PeekToken<R1> extends infer TokCl
+												? SkipToken<R1> extends infer R2 extends TokensList
+													? TokCl extends TokenKey<")">
+														? Cols["length"] extends ColsFull["length"]
+															? ParseInsertAfterValuesRowClose<
+																	R2,
+																	Db,
+																	Scope,
+																	Params,
+																	Tbl,
+																	Sch,
+																	Tab,
+																	ColsFull
+																>
+															: [R2, Db, InsertValuesRowCellsParsedMarker]
+														: SkipFailedExpression<
+																	R2,
+																	SqlParserError<"Expected `)` after INSERT values">
+															  > extends [infer Rest extends TokensList, infer Err]
+															? [Rest, Db, Err]
+															: never
+													: never
 												: never
+											: ParseInsertValuesCommaThenRest<
+													R1,
+													Db,
+													Scope,
+													Params,
+													Tbl,
+													Sch,
+													Tab,
+													CR,
+													ColsFull
+												>
 										: never
-									: never
-								: ParseInsertValuesCommaThenRest<R1, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
-							: never
+								: never
+							: SkipFailedStatement<R1, Db, SqlParserError<"Invalid value expression in INSERT">>
 					: never
 				: SkipFailedStatement<R1, Db, SqlParserError<"Invalid value expression in INSERT">>
 		: never
@@ -673,36 +694,54 @@ type ParseInsertUpsertSetAssignments<
 					? [R1, Db, SqlParserError<"Unknown column in ON CONFLICT DO UPDATE SET">]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
-							? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
-								? Ev extends SqlParserError<string>
-									? [R3, Db, Ev]
-									: Ev extends ExprAtom
-										? ValidateMutationValueForColumn<Tbl, Col, Ev> extends infer V0
-											? V0 extends SqlParserError<string>
-												? [R3, Db, V0]
-												: V0 extends true
-													? PeekToken<R3> extends TokenKey<",">
-														? SkipToken<R3> extends infer R4 extends TokensList
-															? ParseInsertUpsertSetAssignments<
-																	R4,
-																	Db,
-																	Scope,
-																	Params,
-																	Tbl,
-																	readonly [...Acc, Col]
-																>
-															: never
-														: PeekToken<R3> extends
-																	| TokenKey<"where">
-																	| TokenKey<";">
-																	| TokenEot
-															? [R3, Db, readonly [...Acc, Col]]
-															: [
-																	R3,
-																	Db,
-																	SqlParserError<"Expected `,`, WHERE, or end after ON CONFLICT SET">,
-																]
-													: never
+							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+									infer R3 extends TokensList,
+									infer Ast,
+								]
+								? Ast extends SqlParserError<string>
+									? [R3, Db, Ast]
+									: Ast extends ScalarExprAst
+										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
+											? Resolved extends SqlParserError<string>
+												? [R3, Db, Resolved]
+												: Resolved extends SqlTypeShape
+													? ValidateMutationValueForColumn<
+															Tbl,
+															Col,
+															Resolved
+														> extends infer V0
+														? V0 extends SqlParserError<string>
+															? [R3, Db, V0]
+															: V0 extends true
+																? PeekToken<R3> extends TokenKey<",">
+																	? SkipToken<R3> extends infer R4 extends TokensList
+																		? ParseInsertUpsertSetAssignments<
+																				R4,
+																				Db,
+																				Scope,
+																				Params,
+																				Tbl,
+																				readonly [...Acc, Col]
+																			>
+																		: never
+																	: PeekToken<R3> extends
+																				| TokenKey<"where">
+																				| TokenKey<";">
+																				| TokenEot
+																		? [R3, Db, readonly [...Acc, Col]]
+																		: [
+																				R3,
+																				Db,
+																				SqlParserError<"Expected `,`, WHERE, or end after ON CONFLICT SET">,
+																			]
+																: never
+														: never
+													: SkipFailedExpression<
+																R3,
+																SqlParserError<"Invalid value expression in ON CONFLICT UPDATE">
+														  > extends [infer Rest extends TokensList, infer Err]
+														? [Rest, Db, Err]
+														: never
 											: never
 										: SkipFailedExpression<
 													R3,

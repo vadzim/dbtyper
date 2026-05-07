@@ -1,3 +1,5 @@
+import type { SqlTypeShape } from "./sql-type-shape.ts"
+
 export type JsqlDatabaseShape = {
 	defaultSchema: string
 	schemas: unknown
@@ -20,8 +22,8 @@ export type JsqlTypeShape = {
 
 export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind
-	/** SQL type strings per column (e.g., "text", "integer", "uuid"). */
-	columns: Record<string, string>
+	/** SQL types per column as SqlTypeShape objects. */
+	columns: Record<string, SqlTypeShape>
 	column_facts?: unknown
 	constraints?: unknown
 }
@@ -50,7 +52,7 @@ export type JsqlFkColumnPair = [local: string, referenced: string]
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
 export type JsqlSelectStatementResult = {
 	kind: "select"
-	columns: Record<string, string>
+	columns: Record<string, SqlTypeShape>
 }
 
 /** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */

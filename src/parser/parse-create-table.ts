@@ -12,9 +12,10 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
-import type { CollectSqlTypeWords, ParseArraySuffix, TypeWordsToString } from "./parse-sql-type-words.ts"
+import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -36,7 +37,7 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
-type ColumnTriple = readonly [string, string, boolean, boolean]
+type ColumnTriple = readonly [string, SqlTypeShape, boolean, boolean]
 
 type ParseCreateTableQualifiedWhenSchKnown<
 	R extends TokensList,
@@ -136,7 +137,7 @@ type ParseCreateTableBody<
 > =
 	PeekToken<Tokens> extends TokenKey<")">
 		? ColumnsFromStack<Stack> extends infer M extends {
-				cols: Record<string, string>
+				cols: Record<string, SqlTypeShape>
 				facts: Record<string, unknown>
 			}
 			? JsqlDbReplaceData<Db, Schema, Table, JsqlCreateTable<M["cols"], M["facts"]>> extends infer NewDb
@@ -163,19 +164,12 @@ type ParseOneColumnAfterColName<
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
 > =
-	CollectSqlTypeWords<AfterColName> extends [
-		infer AfterType extends TokensList,
-		infer Words extends readonly string[],
-	]
-		? TypeWordsToString<Words> extends infer Joined extends string
-			? ParseArraySuffix<AfterType, Joined> extends [infer AfterArray extends TokensList, infer FinalType]
-				? FinalType extends SqlParserError<string>
-					? [AfterArray, Db, FinalType]
-					: FinalType extends string
-						? ResolveAfterNullability<AfterArray, Db, Schema, Table, Stack, ColName, FinalType>
-						: never
-				: never
-			: SkipFailedStatement<AfterType, Db, SqlParserError<"Invalid column type in CREATE TABLE">>
+	ParseSqlType<AfterColName> extends [infer AfterType extends TokensList, infer TypeShape]
+		? TypeShape extends SqlTypeShape
+			? TypeShape extends SqlParserError<string>
+				? [AfterType, Db, TypeShape]
+				: ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
+			: [AfterType, Db, SqlParserError<"Expected column type in CREATE TABLE">]
 		: never
 
 type ParseOneColumn<
@@ -189,34 +183,21 @@ type ParseOneColumn<
 		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
 		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected column name in CREATE TABLE">>
 
-type ResolveAfterNullability<
+type ContinueAfterColumnType<
 	AfterType extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
-	Joined extends string,
-> =
-	PeekToken<AfterType> extends TokenKey<"not">
-		? SkipToken<AfterType> extends infer R1 extends TokensList
-			? PeekToken<R1> extends infer T2
-				? SkipToken<R1> extends infer R2 extends TokensList
-					? T2 extends TokenKey<"null">
-						? ContinueAfterColumnDef<R2, Db, Schema, Table, Stack, ColName, Joined, true>
-						: SkipFailedStatement<R2, Db, SqlParserError<"Expected `null` after `NOT`">>
-					: never
-				: never
-			: never
-		: PeekToken<AfterType> extends TokenKey<"null">
-			? SkipToken<AfterType> extends infer AfterNull extends TokensList
-				? ContinueAfterColumnDef<AfterNull, Db, Schema, Table, Stack, ColName, Joined, false>
-				: never
-			: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, Joined, false>
+	TypeShape extends SqlTypeShape,
+> = TypeShape["nullable"] extends false
+	? ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, TypeShape, true>
+	: ContinueAfterColumnDef<AfterType, Db, Schema, Table, Stack, ColName, TypeShape, false>
 
-type SqlTypeClass<Sql extends string> = Sql extends `${infer Base}[]`
+type SqlTypeClass<T extends SqlTypeShape> = T["type"] extends "array"
 	? "array"
-	: Lowercase<Sql> extends
+	: T["type"] extends
 				| "integer"
 				| "int"
 				| "int2"
@@ -235,15 +216,15 @@ type SqlTypeClass<Sql extends string> = Sql extends `${infer Base}[]`
 				| "decimal"
 				| "number"
 		? "numeric"
-		: Lowercase<Sql> extends "boolean" | "bool"
+		: T["type"] extends "boolean" | "bool"
 			? "boolean"
-			: Lowercase<Sql> extends "text" | "varchar" | "character varying" | "char"
+			: T["type"] extends "text" | "varchar" | "character varying" | "char"
 				? "text"
-				: Lowercase<Sql> extends "uuid"
+				: T["type"] extends "uuid"
 					? "uuid"
-					: Lowercase<Sql> extends "bytea"
+					: T["type"] extends "bytea"
 						? "bytea"
-						: Lowercase<Sql> extends
+						: T["type"] extends
 									| "date"
 									| "time"
 									| "time with time zone"
@@ -253,13 +234,13 @@ type SqlTypeClass<Sql extends string> = Sql extends `${infer Base}[]`
 									| "timestamptz"
 									| "interval"
 							? "datetime"
-							: Lowercase<Sql> extends "inet" | "cidr"
+							: T["type"] extends "inet" | "cidr"
 								? "network"
-								: Lowercase<Sql> extends "tsvector" | "tsquery"
+								: T["type"] extends "tsvector" | "tsquery"
 									? "fulltext"
 									: "unknown"
 
-type ParseDefaultValue<Tokens extends TokensList, ColumnType extends string> =
+type ParseDefaultValue<Tokens extends TokensList, ColumnType extends SqlTypeShape> =
 	PeekToken<Tokens> extends TokenNumber<infer _Raw>
 		? SkipToken<Tokens> extends infer R extends TokensList
 			? SqlTypeClass<ColumnType> extends "numeric"
@@ -295,7 +276,7 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends string> =
 						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
 						: SkipFailedExpression<Tokens, SqlParserError<"Expected DEFAULT value">>
 
-type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends string, ColumnType extends string> =
+type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends string, ColumnType extends SqlTypeShape> =
 	SkipToken<Tokens> extends infer R1 extends TokensList
 		? PeekToken<R1> extends TokenKey<"(">
 			? SkipToken<R1> extends infer R2 extends TokensList
@@ -329,17 +310,17 @@ type ContinueAfterColumnDef<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
-	Joined extends string,
+	TypeShape extends SqlTypeShape,
 	NotNull extends boolean,
 > =
 	PeekToken<AfterNull> extends TokenKey<"default">
 		? SkipToken<AfterNull> extends infer AfterDefault extends TokensList
-			? ParseDefaultValue<AfterDefault, Joined> extends [
+			? ParseDefaultValue<AfterDefault, TypeShape> extends [
 					infer AfterDefaultVal extends TokensList,
 					infer DefaultErr,
 				]
 				? DefaultErr extends null
-					? ContinueAfterDefault<AfterDefaultVal, Db, Schema, Table, Stack, ColName, Joined, NotNull, true>
+					? ContinueAfterDefault<AfterDefaultVal, Db, Schema, Table, Stack, ColName, TypeShape, NotNull, true>
 					: DefaultErr extends SqlParserError<string>
 						? [AfterDefaultVal, Db, DefaultErr]
 						: never
@@ -352,7 +333,7 @@ type ContinueAfterColumnDef<
 						Db,
 						Schema,
 						Table,
-						readonly [...Stack, readonly [ColName, Joined, NotNull, false]]
+						readonly [...Stack, readonly [ColName, TypeShape, NotNull, false]]
 					>
 				: never
 			: PeekToken<AfterNull> extends TokenKey<")"> | TokenKey<"constraint">
@@ -361,7 +342,7 @@ type ContinueAfterColumnDef<
 						Db,
 						Schema,
 						Table,
-						readonly [...Stack, readonly [ColName, Joined, NotNull, false]]
+						readonly [...Stack, readonly [ColName, TypeShape, NotNull, false]]
 					>
 				: SkipFailedExpression<
 							AfterNull,
@@ -377,7 +358,7 @@ type ContinueAfterDefault<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
-	Joined extends string,
+	TypeShape extends SqlTypeShape,
 	NotNull extends boolean,
 	HasDefault extends boolean,
 > =
@@ -388,7 +369,7 @@ type ContinueAfterDefault<
 					Db,
 					Schema,
 					Table,
-					readonly [...Stack, readonly [ColName, Joined, NotNull, HasDefault]]
+					readonly [...Stack, readonly [ColName, TypeShape, NotNull, HasDefault]]
 				>
 			: never
 		: PeekToken<AfterDefaultVal> extends TokenKey<")"> | TokenKey<"constraint">
@@ -397,15 +378,15 @@ type ContinueAfterDefault<
 					Db,
 					Schema,
 					Table,
-					readonly [...Stack, readonly [ColName, Joined, NotNull, HasDefault]]
+					readonly [...Stack, readonly [ColName, TypeShape, NotNull, HasDefault]]
 				>
 			: SkipFailedStatement<AfterDefaultVal, Db, SqlParserError<"Expected `,` or `)` after DEFAULT value">>
 
-type ColPair = { cols: Record<string, string>; facts: Record<string, unknown> }
+type ColPair = { cols: Record<string, SqlTypeShape>; facts: Record<string, unknown> }
 
 type OneCol<C extends ColumnTriple> = C extends readonly [
 	infer N extends string,
-	infer Sql extends string,
+	infer Sql extends SqlTypeShape,
 	infer NotNull extends boolean,
 	infer HasDefault extends boolean,
 ]

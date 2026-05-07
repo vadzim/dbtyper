@@ -6,6 +6,7 @@ import type {
 	JsqlColumnFactsEntry,
 } from "./jsql-shapes.ts"
 import type { ReplaceProp } from "./type-utils.ts"
+import type { SqlTypeShape } from "./sql-type-shape.ts"
 
 export type JsqlCreateDatabase<DefaultSchema extends string> = {
 	defaultSchema: DefaultSchema
@@ -17,7 +18,7 @@ export type JsqlCreateSchema = {
 }
 
 export type JsqlCreateTable<
-	Columns extends Record<string, string>,
+	Columns extends Record<string, SqlTypeShape>,
 	Facts extends Record<string, unknown> | null = null,
 	Constraints extends Record<string, unknown> | null = null,
 > = {
@@ -32,7 +33,7 @@ export type JsqlCreateColumn<SqlType extends string, Nullability extends "not_nu
 	nullability: Nullability
 }
 
-export type JsqlCreateView<Columns extends Record<string, string>> = {
+export type JsqlCreateView<Columns extends Record<string, SqlTypeShape>> = {
 	kind: "view"
 	columns: Columns
 }
@@ -212,10 +213,10 @@ export type JsqlTableGetColumnDefault<Table extends JsqlDataShape<"table"> | nul
 export type JsqlTableReplaceColumn<
 	Table extends JsqlDataShape<"table"> | null,
 	Name extends string,
-	Column extends (JsqlColumnFactsEntry & { type: string }) | null,
+	Column extends (JsqlColumnFactsEntry & { type: SqlTypeShape }) | SqlTypeShape | null,
 > =
 	Table extends JsqlDataShape<"table">
-		? Column extends JsqlColumnFactsEntry & { type: string }
+		? Column extends JsqlColumnFactsEntry & { type: SqlTypeShape }
 			? ReplaceProp<
 					ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Name, Column["type"]>>,
 					"column_facts",
@@ -225,17 +226,19 @@ export type JsqlTableReplaceColumn<
 						Omit<Column, "type">
 					>
 				>
-			: ReplaceProp<
-					ReplaceProp<Table, "columns", Omit<Table["columns"], Name>>,
-					"column_facts",
-					Omit<Table["column_facts"], Name>
-				>
+			: Column extends SqlTypeShape
+				? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Name, Column>>
+				: ReplaceProp<
+						ReplaceProp<Table, "columns", Omit<Table["columns"], Name>>,
+						"column_facts",
+						Omit<Table["column_facts"], Name>
+					>
 		: null
 
 export type JsqlTableReplaceColumnType<
 	Table extends JsqlDataShape<"table"> | null,
 	Col extends string,
-	SqlType extends string,
+	SqlType extends SqlTypeShape,
 > =
 	Table extends JsqlDataShape<"table">
 		? Col extends keyof Table["columns"]
@@ -322,7 +325,7 @@ export type JsqlSchemaGetColumnFacts<
 > = JsqlTableGetColumnFacts<JsqlSchemaGetTable<Schema, Tab>, Name>
 
 export type JsqlTableGetColumn<Table extends JsqlDataShape<"table"> | null, Name extends string> =
-	JsqlDataGetColumnType<Table, Name> extends infer Type extends string
+	JsqlDataGetColumnType<Table, Name> extends infer Type extends SqlTypeShape
 		? { type: Type } & (JsqlTableGetColumnFacts<Table, Name> extends infer Facts extends {} ? Facts : {})
 		: null
 
@@ -348,7 +351,7 @@ export type JsqlSchemaReplaceColumn<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
 	Name extends string,
-	Column extends (JsqlColumnFactsEntry & { type: string }) | null,
+	Column extends (JsqlColumnFactsEntry & { type: SqlTypeShape }) | SqlTypeShape | null,
 > = Schema extends JsqlSchemaShape
 	? JsqlTableReplaceColumn<JsqlSchemaGetTable<Schema, Tab>, Name, Column> extends infer UpdatedTable extends
 			JsqlDataShape<"table">
@@ -360,7 +363,7 @@ export type JsqlSchemaReplaceColumnType<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
 	Col extends string,
-	SqlType extends string,
+	SqlType extends SqlTypeShape,
 > = Schema extends JsqlSchemaShape
 	? JsqlTableReplaceColumnType<JsqlSchemaGetTable<Schema, Tab>, Col, SqlType> extends infer UpdatedTable extends
 			JsqlDataShape<"table">
@@ -431,7 +434,7 @@ export type JsqlDbReplaceColumn<
 	Sch extends string,
 	Tab extends string,
 	Name extends string,
-	Column extends (JsqlColumnFactsEntry & { type: string }) | null,
+	Column extends (JsqlColumnFactsEntry & { type: SqlTypeShape }) | SqlTypeShape | null,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, Column>>
 
 export type JsqlDbReplaceColumnType<
@@ -439,7 +442,7 @@ export type JsqlDbReplaceColumnType<
 	Sch extends string,
 	Tab extends string,
 	Name extends string,
-	SqlType extends string,
+	SqlType extends SqlTypeShape,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumnType<JsqlDbGetSchema<Db, Sch>, Tab, Name, SqlType>>
 
 export type JsqlDbReplaceColumnNullability<

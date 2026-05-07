@@ -13,8 +13,6 @@ import type {
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
-	ExprAtom,
-	ExprOk,
 	ExpressionParamsShape,
 	IsUnknownOrAny,
 	ParseExpressionAST,
@@ -28,6 +26,7 @@ import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
@@ -227,7 +226,7 @@ type ParseOrderByScalarExpr<
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
 					? SkipFailedExpression<Rw, R>
-					: R extends ExprAtom
+					: R extends SqlTypeShape
 						? [Rw, null]
 						: SkipFailedExpression<Rw, SqlParserError<"Invalid ORDER BY expression">>
 				: never
@@ -417,7 +416,7 @@ type GroupByAstResolution<
 	ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Rv
 		? Rv extends SqlParserError<string>
 			? readonly [R1, { readonly error: Rv }]
-			: Rv extends ExprAtom
+			: Rv extends SqlTypeShape
 				? PeekToken<R1> extends TokenKey<",">
 					? SkipToken<R1> extends infer R2 extends TokensList
 						? ParseGroupByTermsAcc<R2, Db, Scope, Params, readonly [...Acc, Ast]>
@@ -1796,16 +1795,16 @@ type JoinOnQualifiedEqOk<
 	R extends readonly [string, string, string],
 > =
 	ResolveColumnRefValue<Db, Scope, L> extends SqlParserError<string>
-		? SqlParserError<"Unknown column in JOIN ON (left)">
+		? SqlParserError<`Unknown column in JOIN ON (left): ${L[0]}.${L[1]}.${L[2]}`>
 		: ResolveColumnRefValue<Db, Scope, R> extends SqlParserError<string>
-			? SqlParserError<"Unknown column in JOIN ON (right)">
-			: ResolveColumnRefValue<Db, Scope, L> extends { sql: infer Ls extends string }
-				? ResolveColumnRefValue<Db, Scope, R> extends { sql: infer Rs extends string }
+			? SqlParserError<`Unknown column in JOIN ON (right): ${R[0]}.${R[1]}.${R[2]}`>
+			: ResolveColumnRefValue<Db, Scope, L> extends { sql: infer Ls extends SqlTypeShape }
+				? ResolveColumnRefValue<Db, Scope, R> extends { sql: infer Rs extends SqlTypeShape }
 					? SameComparisonClass<Ls, Rs> extends true
 						? true
 						: SqlParserError<"Incompatible types in JOIN ON">
-					: SqlParserError<"Unknown column in JOIN ON (right)">
-				: SqlParserError<"Unknown column in JOIN ON (left)">
+					: SqlParserError<`Unknown column in JOIN ON (right): ${R[0]}.${R[1]}.${R[2]}`>
+				: SqlParserError<`Unknown column in JOIN ON (left): ${L[0]}.${L[1]}.${L[2]}`>
 
 type JoinOnAliasEqOk<
 	Db extends JsqlDatabaseShape,
@@ -1816,20 +1815,20 @@ type JoinOnAliasEqOk<
 	RightCol extends string,
 > =
 	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends SqlParserError<string>
-		? SqlParserError<"Unknown column in JOIN (left side)">
+		? SqlParserError<`Unknown column in JOIN (left side): ${LeftAlias}.${LeftCol}`>
 		: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends SqlParserError<string>
-			? SqlParserError<"Unknown column in JOIN (right side)">
+			? SqlParserError<`Unknown column in JOIN (right side): ${RightAlias}.${RightCol}`>
 			: ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends {
-						sql: infer Ls extends string
+						sql: infer Ls extends SqlTypeShape
 				  }
 				? ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends {
-						sql: infer Rs extends string
+						sql: infer Rs extends SqlTypeShape
 					}
 					? SameComparisonClass<Ls, Rs> extends true
 						? true
 						: SqlParserError<"Incompatible types in JOIN ON">
-					: SqlParserError<"Unknown column in JOIN (right side)">
-				: SqlParserError<"Unknown column in JOIN (left side)">
+					: SqlParserError<`Unknown column in JOIN (right side): ${RightAlias}.${RightCol}`>
+				: SqlParserError<`Unknown column in JOIN (left side): ${LeftAlias}.${LeftCol}`>
 
 /** After `=` when the join predicate uses `alias.col = alias.col`. */
 type ParseJoinEqPairAliasRightTail<
@@ -1950,13 +1949,13 @@ type ResolveSelectList<
 > = ResolveSelectListAcc<Items, Db, Scope, Params, {}, {}, Items>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? IsUnknownOrAny<Params[Name]["sql"]> extends true
-		? SqlParserError<"Parameter has unknown or any type in SELECT">
-		: { sql: Params[Name]["sql"] }
+	? Params[Name] extends SqlTypeShape
+		? { sql: Params[Name] }
+		: SqlParserError<"Invalid parameter type in SELECT">
 	: SqlParserError<"Unknown query parameter in SELECT">
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */
-type ParamSelectOut<As, P extends string, Sql extends string> = As extends string
+type ParamSelectOut<As, P extends string, Sql extends SqlTypeShape> = As extends string
 	? { out: As; sql: Sql }
 	: { out: P; sql: Sql }
 
@@ -1981,7 +1980,7 @@ type ResolveSelectListExprItem<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Cols extends Record<string, unknown>,
-	Sqls extends Record<string, string>,
+	Sqls extends Record<string, SqlTypeShape>,
 	AllItems extends readonly RawSelectItem[],
 > = Ast extends { kind: "qualified_table_star"; schema: infer Sch extends string; table: infer Tab extends string }
 	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
@@ -2014,7 +2013,7 @@ type ResolveSelectListExprItem<
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
 			? Ev extends SqlParserError<string>
 				? Ev
-				: Ev extends ExprOk<infer Sql extends string>
+				: Ev extends SqlTypeShape
 					? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
 							? SqlParserError<"Scalar expression in SELECT requires AS alias">
@@ -2024,7 +2023,7 @@ type ResolveSelectListExprItem<
 									Scope,
 									Params,
 									MergeRecords<Cols, Record<O, unknown>>,
-									MergeStringRecords<Sqls, Record<O, Sql>>,
+									MergeStringRecords<Sqls, Record<O, Ev>>,
 									AllItems
 								>
 						: never
@@ -2039,16 +2038,16 @@ type ResolveSelectListParamItem<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Cols extends Record<string, unknown>,
-	Sqls extends Record<string, string>,
+	Sqls extends Record<string, SqlTypeShape>,
 	AllItems extends readonly RawSelectItem[],
 > =
 	LookupSelectParam<Params, P> extends infer PV
 		? PV extends SqlParserError<string>
 			? PV
-			: PV extends { sql: infer SqlP extends string }
+			: PV extends { sql: infer SqlP extends SqlTypeShape }
 				? ParamSelectOut<As, P, SqlP> extends {
 						out: infer O extends string
-						sql: infer Sql extends string
+						sql: infer Sql extends SqlTypeShape
 					}
 					? ResolveSelectListAcc<
 							R,
@@ -2069,7 +2068,7 @@ type ResolveSelectListAcc<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Cols extends Record<string, unknown>,
-	Sqls extends Record<string, string>,
+	Sqls extends Record<string, SqlTypeShape>,
 	AllItems extends readonly RawSelectItem[] = Items,
 > = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
 	? H extends { kind: "star" }
@@ -2097,8 +2096,8 @@ type MergeRecords<A extends Record<string, unknown>, B extends Record<string, un
 	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : unknown
 }
 
-type MergeStringRecords<A extends Record<string, string>, B extends Record<string, string>> = {
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : string
+type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = {
+	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : SqlTypeShape
 }
 
 type SingleAliasScope<Scope extends ScopeMap> = keyof Scope extends infer K

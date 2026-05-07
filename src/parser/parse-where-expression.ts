@@ -3,13 +3,13 @@ import type { TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
-	ExprOk,
 	ExpressionParamsShape,
 	ParseExpressionAST,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** WHERE predicate: tuple `[rest, error | null]` (not monad-registered; use from statement parsers). */
 export type ParseWhereExpression<
@@ -27,8 +27,8 @@ export type ParseWhereExpression<
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends SqlParserError<string>
 					? SkipFailedExpression<Rw, R>
-					: R extends ExprOk<infer Sql>
-						? Sql extends "boolean"
+					: R extends SqlTypeShape
+						? R["type"] extends "boolean"
 							? [Rw, null]
 							: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>
 						: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>

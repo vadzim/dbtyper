@@ -9,12 +9,20 @@ import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type { EmptyExpressionParams, ExprAtom, ExpressionParamsShape, ParseAddValue } from "./parse-expression.ts"
+import type {
+	EmptyExpressionParams,
+	ExpressionParamsShape,
+	ParseExpressionAST,
+	ExprParseEnv,
+	ScalarExprAst,
+	ResolveExpressionAST,
+} from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 type UpdateTableContext = {
 	scope: ScopeMap
@@ -140,49 +148,67 @@ type ParseUpdateSetAssignments<
 					? [R1, Db, SqlParserError<"Unknown column in UPDATE SET">]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
-							? ParseAddValue<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer Ev]
-								? Ev extends SqlParserError<string>
-									? [R3, Db, Ev]
-									: Ev extends ExprAtom
-										? ValidateMutationValueForColumn<Tbl, Col, Ev> extends infer V0
-											? V0 extends SqlParserError<string>
-												? [R3, Db, V0]
-												: V0 extends true
-													? PeekToken<R3> extends TokenKey<",">
-														? SkipToken<R3> extends infer R4 extends TokensList
-															? ParseUpdateSetAssignments<
-																	R4,
-																	Db,
-																	Scope,
-																	Params,
-																	Tbl,
-																	Sch,
-																	Tab,
-																	readonly [...Acc, Col]
-																>
-															: never
-														: PeekToken<R3> extends
-																	| TokenKey<"from">
-																	| TokenKey<"where">
-																	| TokenKey<"returning">
-																	| TokenKey<";">
-																	| TokenEot
-															? [
-																	R3,
-																	Db,
-																	{
-																		kind: "update"
-																		table: Tab
-																		schema: Sch
-																		set_columns: readonly [...Acc, Col]
-																	},
-																]
-															: [
-																	R3,
-																	Db,
-																	SqlParserError<"Expected `,`, FROM, WHERE, or end after UPDATE assignment">,
-																]
-													: never
+							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+									infer R3 extends TokensList,
+									infer Ast,
+								]
+								? Ast extends SqlParserError<string>
+									? [R3, Db, Ast]
+									: Ast extends ScalarExprAst
+										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
+											? Resolved extends SqlParserError<string>
+												? [R3, Db, Resolved]
+												: Resolved extends SqlTypeShape
+													? ValidateMutationValueForColumn<
+															Tbl,
+															Col,
+															Resolved
+														> extends infer V0
+														? V0 extends SqlParserError<string>
+															? [R3, Db, V0]
+															: V0 extends true
+																? PeekToken<R3> extends TokenKey<",">
+																	? SkipToken<R3> extends infer R4 extends TokensList
+																		? ParseUpdateSetAssignments<
+																				R4,
+																				Db,
+																				Scope,
+																				Params,
+																				Tbl,
+																				Sch,
+																				Tab,
+																				readonly [...Acc, Col]
+																			>
+																		: never
+																	: PeekToken<R3> extends
+																				| TokenKey<"from">
+																				| TokenKey<"where">
+																				| TokenKey<"returning">
+																				| TokenKey<";">
+																				| TokenEot
+																		? [
+																				R3,
+																				Db,
+																				{
+																					kind: "update"
+																					table: Tab
+																					schema: Sch
+																					set_columns: readonly [...Acc, Col]
+																				},
+																			]
+																		: [
+																				R3,
+																				Db,
+																				SqlParserError<"Expected `,`, FROM, WHERE, or end after UPDATE assignment">,
+																			]
+																: never
+														: never
+													: SkipFailedExpression<
+																R3,
+																SqlParserError<"Invalid value expression in UPDATE">
+														  > extends [infer Rest extends TokensList, infer Err]
+														? [Rest, Db, Err]
+														: never
 											: never
 										: SkipFailedExpression<
 													R3,
