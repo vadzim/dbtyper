@@ -2,8 +2,8 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
-- [ ] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
-- [ ] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
+- [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
+- [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
 - [ ] add integration test for "select 1;"
 - [ ] fix result for .query method - it should return smth reasonable for all the queries, not only row sets or unknown.
 - [ ] make better error messages - like column "..." has wrong value or table "..." does not exist

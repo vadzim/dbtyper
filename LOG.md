@@ -1,5 +1,37 @@
 # dbtyper Implementation Log
 
+## 2026-05-07 — Expression Parser Refactoring
+
+**Completed refactoring of subquery parsing to eliminate duplicate code:**
+
+- **Added `OuterScope` parameter to `ParseSelectExpression`** to support correlated subqueries (previously hardcoded to `{}`).
+- **Created three helper types** in `parse-select.ts`:
+    - `ConsumeClosingParen` - consumes `)` after subquery
+    - `ValidateSingleColumn` - validates scalar subquery has exactly 1 column
+    - `ParseAliasAfterDerived` - parses alias after derived table
+- **Refactored three entry points** to use `ParseSelectExpression` + helpers:
+    - `ParseParenScalarSelect` - scalar subqueries (exactly one column)
+    - `ParseParenEnclosedSelect` - multi-column subqueries (`EXISTS`, `IN (SELECT)`, CTEs)
+    - `ParseParenDerivedSelect` - derived tables in `FROM` clause
+- **Removed 181 lines of duplicate code** (~7% reduction):
+    - Deleted 9 `ParseInner*` types that duplicated SELECT parsing logic
+    - Deleted 2 `ReadClosingParen*` helper types (replaced by new helpers)
+    - File reduced from 2333 to 2152 lines
+
+**Benefits:**
+
+- Single SELECT parsing path (`ParseSelectExpression`) for all contexts
+- Clearer separation of concerns (parse → validate → consume `)` → parse alias)
+- Easier to maintain and extend
+- All 2238 tests passing, including correlated subqueries
+
+**Completed TODO items:**
+
+- ✅ "fix a mess in parse select - parse select inner expression should be just parse select expression and then consume ')', no bunch of _Inner_ types"
+- ✅ "fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1"
+
+---
+
 ## 2026-05-03 — Implementation checkpoint
 
 - Landed **`functions?:`** on **`JsqlDatabaseShape`**, **`function_call`** parse + **`ResolveFunctionCall`** (built-ins + **`Db.functions`** lookup). Removed lexer **`now`** keyword so **`now()`** parses as an identifier/function.
