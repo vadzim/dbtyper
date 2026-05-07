@@ -12,7 +12,9 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: LAG() with offset
 
-const _result = await _db.query(`select id, product, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`)
+const _result = await _db.query(
+	`select id, product, lag(amount, 2) over (order by sale_date) as prev_amount from sales;`,
+)
 
 type _check = Expect<
 	Matches<

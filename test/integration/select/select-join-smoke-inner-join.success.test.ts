@@ -13,7 +13,9 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: INNER JOIN
 
-const _result = await _db.query(`select users.name, posts.title from users inner join posts on users.id = posts.user_id;`)
+const _result = await _db.query(
+	`select users.name, posts.title from users inner join posts on users.id = posts.user_id;`,
+)
 
 type _check = Expect<
 	Matches<

@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape} from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -11,7 +11,7 @@ import type {
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
-import type { JsqlDbGetEnum, JsqlDbReplaceEnum} from "../core/jsql-utils.ts"
+import type { JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">

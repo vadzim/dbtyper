@@ -1,27 +1,10 @@
-import type {
-	JsqlDatabaseShape,
-	JsqlDataShape,
-	JsqlSelectStatementResult,
-} from "../core/jsql-shapes.ts"
-import type {
-	PeekToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type {
-	MergeScope,
-	ScopeMap,
-} from "./parser-scope.ts"
-import type {
-	EmptyExpressionParams,
-	ExpressionParamsShape,
-} from "./parse-expression.ts"
+import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"

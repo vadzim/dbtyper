@@ -1,7 +1,4 @@
-import type {
-	JsqlDatabaseShape,
-	JsqlSelectStatementResult,
-} from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type {
 	PeekToken,
 	SkipToken,
@@ -15,15 +12,9 @@ import type {
 } from "../lexer/sql-tokens.ts"
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type {
-	ParseParenEnclosedSelect,
-	ParseParenScalarSelect,
-} from "./parse-select.ts"
+import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
-import type {
-	SkipBracketedUntil,
-	SkipFailedExpression,
-} from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 import type {
 	SqlTypeShape,
 	SqlType,

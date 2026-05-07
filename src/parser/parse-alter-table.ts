@@ -1,4 +1,4 @@
-import type { JsqlDatabaseShape, JsqlDataShape, JsqlColumnFactsEntry} from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlDataShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
 import type {
 	JsqlDbGetTable,
 	JsqlDbGetData,
