@@ -46,9 +46,7 @@ type _lower = Expect<Extends<TLower[2], { kind: "select"; columns: { "?column?":
 type TCoalesce = ParseSqlStatement<ParseSqlTokens<`select coalesce(x, x) from t`>, DbFns>
 type _coalesce = Expect<Extends<TCoalesce[2], { kind: "select"; columns: { "?column?": TInteger } }>>
 type TCoalesceEmpty = ParseSqlStatement<ParseSqlTokens<`select coalesce() from t`>, DbFns>
-type _coalesceEmpty = Expect<
-	Extends<TCoalesceEmpty[2], SqlParserError<"coalesce() requires at least one argument">>
->
+type _coalesceEmpty = Expect<Extends<TCoalesceEmpty[2], SqlParserError<"coalesce() requires at least one argument">>>
 type TSum = ParseSqlStatement<ParseSqlTokens<`select sum(x) from t`>, DbFns>
 type _sum = Expect<Extends<TSum[2], { kind: "select"; columns: { "?column?": TNumeric } }>>
 type TSumEmpty = ParseSqlStatement<ParseSqlTokens<`select sum() from t`>, DbFns>

@@ -221,9 +221,7 @@ type WLikeNullPattern = ParseWhereExpression<ParseSqlTokens<`users.name like nul
 type _wLikeNullPattern = Expect<Extends<WLikeNullPattern[1], SqlParserError<"NULL not allowed in LIKE">>>
 
 type WILikePatternNonText = ParseWhereExpression<ParseSqlTokens<`users.name ilike 1`>, DbUsers, UsersScope>
-type _wILikePatternNonText = Expect<
-	Extends<WILikePatternNonText[1], SqlParserError<"LIKE pattern must be text">>
->
+type _wILikePatternNonText = Expect<Extends<WILikePatternNonText[1], SqlParserError<"LIKE pattern must be text">>>
 
 /** Searched `CASE WHEN … THEN … [ELSE …] END`. */
 type WCase = ParseWhereExpression<
@@ -266,13 +264,9 @@ type _wCaseSimpleNoElse = Expect<Extends<WCaseSimpleNoElse[1], null>>
 
 /** Arithmetic (`ParseAddValue` chain): both operands must be numbers; NULL rejected. */
 type WArithNumPlusString = ParseWhereExpression<ParseSqlTokens<`inner_t.a + 'x'`>, DbUsers, JoinedUsersInner>
-type _wArithNumPlusString = Expect<
-	Extends<WArithNumPlusString[1], SqlParserError<"Incompatible types in arithmetic">>
->
+type _wArithNumPlusString = Expect<Extends<WArithNumPlusString[1], SqlParserError<"Incompatible types in arithmetic">>>
 type WArithStringPlusNum = ParseWhereExpression<ParseSqlTokens<`'x' + inner_t.a`>, DbUsers, JoinedUsersInner>
-type _wArithStringPlusNum = Expect<
-	Extends<WArithStringPlusNum[1], SqlParserError<"Incompatible types in arithmetic">>
->
+type _wArithStringPlusNum = Expect<Extends<WArithStringPlusNum[1], SqlParserError<"Incompatible types in arithmetic">>>
 type WArithNull = ParseWhereExpression<ParseSqlTokens<`inner_t.a + null`>, DbUsers, JoinedUsersInner>
 type _wArithNull = Expect<Extends<WArithNull[1], SqlParserError<"NULL not allowed in arithmetic">>>
 

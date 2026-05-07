@@ -45,10 +45,7 @@ type TArrayAppend = ParseSqlStatement<
 	DbArrays
 >
 type _tArrayAppend = Expect<
-	Extends<
-		TArrayAppend[2],
-		{ kind: "select"; columns: { appended: { type: "unknown"; arg: null; nullable: false } } }
-	>
+	Extends<TArrayAppend[2], { kind: "select"; columns: { appended: { type: "unknown"; arg: null; nullable: false } } }>
 >
 
 // Test array_prepend function
@@ -102,9 +99,7 @@ type TNestedArrayFns = ParseSqlStatement<
 	ParseSqlTokens<`select array_length(array_append(tags, 'extra'), 1) as nested_len from items;`>,
 	DbArrays
 >
-type _tNestedArrayFns = Expect<
-	Extends<TNestedArrayFns[2], { kind: "select"; columns: { nested_len: TInteger } }>
->
+type _tNestedArrayFns = Expect<Extends<TNestedArrayFns[2], { kind: "select"; columns: { nested_len: TInteger } }>>
 
 // Test error: array_length with non-array argument
 type TArrayLengthBadArgs = ParseSqlStatement<ParseSqlTokens<`select array_length(id, 1) as bad from items;`>, DbArrays>

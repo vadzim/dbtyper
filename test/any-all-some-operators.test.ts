@@ -69,10 +69,7 @@ type TLessThanAny = ParseSqlStatement<
 	DbAnyAll
 >
 type _tLessThanAny = Expect<
-	Extends<
-		TLessThanAny[2],
-		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
-	>
+	Extends<TLessThanAny[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test > ALL with array
@@ -81,10 +78,7 @@ type TGreaterThanAll = ParseSqlStatement<
 	DbAnyAll
 >
 type _tGreaterThanAll = Expect<
-	Extends<
-		TGreaterThanAll[2],
-		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
-	>
+	Extends<TGreaterThanAll[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test ANY with subquery
@@ -93,10 +87,7 @@ type TAnySubquery = ParseSqlStatement<
 	DbAnyAll
 >
 type _tAnySubquery = Expect<
-	Extends<
-		TAnySubquery[2],
-		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
-	>
+	Extends<TAnySubquery[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test ALL with subquery
@@ -105,10 +96,7 @@ type TAllSubquery = ParseSqlStatement<
 	DbAnyAll
 >
 type _tAllSubquery = Expect<
-	Extends<
-		TAllSubquery[2],
-		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
-	>
+	Extends<TAllSubquery[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test SOME with subquery
@@ -117,10 +105,7 @@ type TSomeSubquery = ParseSqlStatement<
 	DbAnyAll
 >
 type _tSomeSubquery = Expect<
-	Extends<
-		TSomeSubquery[2],
-		{ kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }
-	>
+	Extends<TSomeSubquery[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
 // Test error: ANY with non-array

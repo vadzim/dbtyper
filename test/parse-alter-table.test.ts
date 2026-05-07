@@ -111,9 +111,7 @@ type TAlterRenameUnknownCol = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items rename column ghost to x;`>,
 	DbItems
 >
-type _alterRenameUnknownCol = Expect<
-	Extends<TAlterRenameUnknownCol[2], SqlParserError<"Column does not exist">>
->
+type _alterRenameUnknownCol = Expect<Extends<TAlterRenameUnknownCol[2], SqlParserError<"Column does not exist">>>
 
 /** Unsupported action keyword after table name. */
 type TAlterUnsupported = ParseSqlStatement<ParseSqlTokens<`alter table public.items freeze;`>, DbItems>
@@ -124,9 +122,7 @@ type TAlterColBadSet = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set xyzzy;`>,
 	DbItems
 >
-type _alterColBadSet = Expect<
-	Extends<TAlterColBadSet[2], SqlParserError<"Unsupported ALTER COLUMN SET clause">>
->
+type _alterColBadSet = Expect<Extends<TAlterColBadSet[2], SqlParserError<"Unsupported ALTER COLUMN SET clause">>>
 
 describe("parse-alter-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

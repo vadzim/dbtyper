@@ -51,9 +51,7 @@ type UpMultiBadSecond = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'x', id = 1 where users.id = 'u';`>,
 	DbUsers
 >
-type _upMultiBadSecond = Expect<
-	Extends<UpMultiBadSecond[2], SqlParserError<"Incompatible value type for column">>
->
+type _upMultiBadSecond = Expect<Extends<UpMultiBadSecond[2], SqlParserError<"Incompatible value type for column">>>
 
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"

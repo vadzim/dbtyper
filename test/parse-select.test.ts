@@ -99,9 +99,7 @@ type TSelectOrderMissingBy = ParseSqlStatement<
 	ParseSqlTokens<`select users.name from users order users.name;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectOrderMissingBy = Expect<
-	Extends<TSelectOrderMissingBy[2], SqlParserError<"Expected BY after ORDER">>
->
+type _selectOrderMissingBy = Expect<Extends<TSelectOrderMissingBy[2], SqlParserError<"Expected BY after ORDER">>>
 
 /** `OFFSET` without `LIMIT` (PostgreSQL); `OFFSET … LIMIT …`; `FETCH FIRST|NEXT … ROW(S) ONLY`. */
 type TSelectOffsetOnly = ParseSqlStatement<
@@ -179,10 +177,7 @@ type TSelectCaseSimpleNoElse = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _selectCaseSimpleNoElse = Expect<
-	Extends<
-		TSelectCaseSimpleNoElse[2],
-		{ kind: "select"; columns: { x: { type: "text"; arg: null; nullable: true } } }
-	>
+	Extends<TSelectCaseSimpleNoElse[2], { kind: "select"; columns: { x: { type: "text"; arg: null; nullable: true } } }>
 >
 
 /** `WITH` CTE: inner `SELECT` merged into outer scope with base `FROM` tables. */
@@ -233,9 +228,7 @@ type TDerivedInnerDistinct = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select distinct users.id from users) as s;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedInnerDistinct = Expect<
-	Extends<TDerivedInnerDistinct[2], { kind: "select"; columns: { id: TUuid } }>
->
+type _derivedInnerDistinct = Expect<Extends<TDerivedInnerDistinct[2], { kind: "select"; columns: { id: TUuid } }>>
 
 /** Inner `JOIN` uses empty outer scope; only inner aliases/tables exist. */
 type TDerivedInnerJoin = ParseSqlStatement<
@@ -255,9 +248,7 @@ type TDerivedLeftOuterJoinRhs = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users left outer join (select users.id as uid from users) q on users.id = q.uid;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedLeftOuterJoinRhs = Expect<
-	Extends<TDerivedLeftOuterJoinRhs[2], { kind: "select"; columns: { id: TUuid } }>
->
+type _derivedLeftOuterJoinRhs = Expect<Extends<TDerivedLeftOuterJoinRhs[2], { kind: "select"; columns: { id: TUuid } }>>
 
 type TDerivedBadOpen = ParseSqlStatement<ParseSqlTokens<`select 1 from ( from users ) as x;`>, DbJoinDefaultAndExplicit>
 type _derivedBadOpen = Expect<Extends<TDerivedBadOpen[2], SqlParserError<"Expected SELECT in derived table">>>
@@ -293,18 +284,14 @@ type TDerivedCorrInnerList = ParseSqlStatement<
 	ParseSqlTokens<`select u.id from users as u join (select u.id from users) t on u.id = t.id;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedCorrInnerList = Expect<
-	Extends<TDerivedCorrInnerList[2], SqlParserError<"Unknown qualified column">>
->
+type _derivedCorrInnerList = Expect<Extends<TDerivedCorrInnerList[2], SqlParserError<"Unknown qualified column">>>
 
 /** Outer `FROM` alias must not appear in inner `WHERE` scope. */
 type TDerivedCorrInnerWhere = ParseSqlStatement<
 	ParseSqlTokens<`select u.id from users as u join (select users.id from users where users.id = u.id) t on u.id = t.id;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedCorrInnerWhere = Expect<
-	Extends<TDerivedCorrInnerWhere[2], SqlParserError<"Unknown qualified column">>
->
+type _derivedCorrInnerWhere = Expect<Extends<TDerivedCorrInnerWhere[2], SqlParserError<"Unknown qualified column">>>
 
 type TInnerJoin = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users inner join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
@@ -331,9 +318,7 @@ type TCatalogQualColumnSelect = ParseSqlStatement<
 	ParseSqlTokens<`select public.users.id from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _catalogQualColumnSelect = Expect<
-	Extends<TCatalogQualColumnSelect[2], { kind: "select"; columns: { id: TUuid } }>
->
+type _catalogQualColumnSelect = Expect<Extends<TCatalogQualColumnSelect[2], { kind: "select"; columns: { id: TUuid } }>>
 
 type TAsAlias = ParseSqlStatement<ParseSqlTokens<`select users.id as uid from users;`>, DbJoinDefaultAndExplicit>
 type _asAlias = Expect<Extends<TAsAlias[2], { kind: "select"; columns: { uid: TUuid } }>>
@@ -362,14 +347,10 @@ type _colPlusOne = Expect<Extends<TColPlusOne[2], { kind: "select"; columns: { x
 
 /** Sole projection without `AS` uses PostgreSQL-style `?column?` (not bare `col` AST). */
 type TColPlusOneNoAs = ParseSqlStatement<ParseSqlTokens<`select users.row_count + 1 from users;`>, DbJoinWithRowCount>
-type _colPlusOneNoAs = Expect<
-	Extends<TColPlusOneNoAs[2], { kind: "select"; columns: { "?column?": TInteger } }>
->
+type _colPlusOneNoAs = Expect<Extends<TColPlusOneNoAs[2], { kind: "select"; columns: { "?column?": TInteger } }>>
 
 type TSelectLiteralOne = ParseSqlStatement<ParseSqlTokens<`select 1 from users;`>, DbJoinWithRowCount>
-type _selectLiteralOne = Expect<
-	Extends<TSelectLiteralOne[2], { kind: "select"; columns: { "?column?": TInteger } }>
->
+type _selectLiteralOne = Expect<Extends<TSelectLiteralOne[2], { kind: "select"; columns: { "?column?": TInteger } }>>
 
 type TSelectTwoUnnamed = ParseSqlStatement<ParseSqlTokens<`select 1, 2 from users;`>, DbJoinWithRowCount>
 type _selectTwoUnnamed = Expect<
@@ -466,9 +447,7 @@ type TSelectBoolOrAndPrec = ParseSqlStatement<
 	ParseSqlTokens<`select true or false and false as p from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectBoolOrAndPrec = Expect<
-	Extends<TSelectBoolOrAndPrec[2], { kind: "select"; columns: { p: TBoolean } }>
->
+type _selectBoolOrAndPrec = Expect<Extends<TSelectBoolOrAndPrec[2], { kind: "select"; columns: { p: TBoolean } }>>
 
 type TSelectNotFalse = ParseSqlStatement<ParseSqlTokens<`select not false as x from users;`>, DbJoinDefaultAndExplicit>
 type _selectNotFalse = Expect<Extends<TSelectNotFalse[2], { kind: "select"; columns: { x: TBoolean } }>>
@@ -492,38 +471,28 @@ type TSelectInListTypeErr = ParseSqlStatement<
 	ParseSqlTokens<`select (users.id in (1, 2, 3)) as inside from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectInListTypeErr = Expect<
-	Extends<TSelectInListTypeErr[2], SqlParserError<"Incompatible types in IN list">>
->
+type _selectInListTypeErr = Expect<Extends<TSelectInListTypeErr[2], SqlParserError<"Incompatible types in IN list">>>
 
 type TSelectNotNumberErr = ParseSqlStatement<ParseSqlTokens<`select not 1 as x from users;`>, DbJoinDefaultAndExplicit>
-type _selectNotNumberErr = Expect<
-	Extends<TSelectNotNumberErr[2], SqlParserError<"NOT requires a boolean operand">>
->
+type _selectNotNumberErr = Expect<Extends<TSelectNotNumberErr[2], SqlParserError<"NOT requires a boolean operand">>>
 
 type TSelectAndNonBoolErr = ParseSqlStatement<
 	ParseSqlTokens<`select (5 and true) as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectAndNonBoolErr = Expect<
-	Extends<TSelectAndNonBoolErr[2], SqlParserError<"AND operands must be boolean">>
->
+type _selectAndNonBoolErr = Expect<Extends<TSelectAndNonBoolErr[2], SqlParserError<"AND operands must be boolean">>>
 
 type TSelectCmpTypeErr = ParseSqlStatement<
 	ParseSqlTokens<`select (1 = true) as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectCmpTypeErr = Expect<
-	Extends<TSelectCmpTypeErr[2], SqlParserError<"Incompatible types in comparison">>
->
+type _selectCmpTypeErr = Expect<Extends<TSelectCmpTypeErr[2], SqlParserError<"Incompatible types in comparison">>>
 
 type TSelectCmpStrNumErr = ParseSqlStatement<
 	ParseSqlTokens<`select (1 > 'a') as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectCmpStrNumErr = Expect<
-	Extends<TSelectCmpStrNumErr[2], SqlParserError<"Incompatible types in comparison">>
->
+type _selectCmpStrNumErr = Expect<Extends<TSelectCmpStrNumErr[2], SqlParserError<"Incompatible types in comparison">>>
 
 type TSelectEqNullErr = ParseSqlStatement<
 	ParseSqlTokens<`select (null = null) as x from users;`>,
@@ -547,9 +516,7 @@ type TSelectOrNonBoolErr = ParseSqlStatement<
 	ParseSqlTokens<`select (true or 1) as x from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectOrNonBoolErr = Expect<
-	Extends<TSelectOrNonBoolErr[2], SqlParserError<"OR operands must be boolean">>
->
+type _selectOrNonBoolErr = Expect<Extends<TSelectOrNonBoolErr[2], SqlParserError<"OR operands must be boolean">>>
 
 type TSelectNullAndErr = ParseSqlStatement<
 	ParseSqlTokens<`select (true and null) as x from users;`>,
@@ -560,9 +527,7 @@ type _selectNullAndErr = Expect<
 >
 
 type TSelectNotNullErr = ParseSqlStatement<ParseSqlTokens<`select not null as x from users;`>, DbJoinDefaultAndExplicit>
-type _selectNotNullErr = Expect<
-	Extends<TSelectNotNullErr[2], SqlParserError<"NOT argument must be boolean, not NULL">>
->
+type _selectNotNullErr = Expect<Extends<TSelectNotNullErr[2], SqlParserError<"NOT argument must be boolean, not NULL">>>
 
 type TSelectPgCast = ParseSqlStatement<
 	ParseSqlTokens<`select 42::text as t, (1 + 2)::bigint as b from users;`>,

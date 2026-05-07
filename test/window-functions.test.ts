@@ -61,10 +61,7 @@ type TDenseRank = ParseSqlStatement<
 	DbWindow
 >
 type _tDenseRank = Expect<
-	Extends<
-		TDenseRank[2],
-		{ kind: "select"; columns: { id: TInteger; product: TText; dense_rank_num: TBigint } }
-	>
+	Extends<TDenseRank[2], { kind: "select"; columns: { id: TInteger; product: TText; dense_rank_num: TBigint } }>
 >
 
 // Test multiple window functions
@@ -73,10 +70,7 @@ type TMultipleWindow = ParseSqlStatement<
 	DbWindow
 >
 type _tMultipleWindow = Expect<
-	Extends<
-		TMultipleWindow[2],
-		{ kind: "select"; columns: { id: TInteger; row_num: TBigint; rank_num: TBigint } }
-	>
+	Extends<TMultipleWindow[2], { kind: "select"; columns: { id: TInteger; row_num: TBigint; rank_num: TBigint } }>
 >
 
 // Test ROW_NUMBER() with PARTITION BY

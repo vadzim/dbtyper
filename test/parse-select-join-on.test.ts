@@ -111,9 +111,7 @@ order by display_name asc
 type _nestPostgresAppCliSelectOk = Expect<Extends<TNestPostgresAppCliSelect[2], JsqlSelectStatementResult>>
 // Check individual columns instead of the whole structure
 type _nestPostgresAppCliSelectId = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["id"], TUuid>>
-type _nestPostgresAppCliSelectUserId = Expect<
-	Extends<TNestPostgresAppCliSelect[2]["columns"]["user_id"], TUuid>
->
+type _nestPostgresAppCliSelectUserId = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["user_id"], TUuid>>
 type _nestPostgresAppCliSelectEmail = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["email"], TText>>
 type _nestPostgresAppCliSelectDisplayName = Expect<
 	Extends<TNestPostgresAppCliSelect[2]["columns"]["display_name"], TNull<"text">>

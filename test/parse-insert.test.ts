@@ -48,17 +48,13 @@ type InsBadType = ParseSqlStatement<ParseSqlTokens<`insert into users (id, name)
 type _insBadType = Expect<Extends<InsBadType[2], SqlParserError<"Incompatible value type for column">>>
 
 type InsNullNotNull = ParseSqlStatement<ParseSqlTokens<`insert into users (id, name) values (null, 'n');`>, DbUsers>
-type _insNullNotNull = Expect<
-	Extends<InsNullNotNull[2], SqlParserError<"NULL not allowed for NOT NULL column">>
->
+type _insNullNotNull = Expect<Extends<InsNullNotNull[2], SqlParserError<"NULL not allowed for NOT NULL column">>>
 
 type InsUnknownCol = ParseSqlStatement<ParseSqlTokens<`insert into users (id, nope) values ('u', 'x');`>, DbUsers>
 type _insUnknownCol = Expect<Extends<InsUnknownCol[2], SqlParserError<"Unknown column in INSERT column list">>>
 
 type InsMissingNotNull = ParseSqlStatement<ParseSqlTokens<`insert into users (name) values ('n1');`>, DbUsers>
-type _insMissingNotNull = Expect<
-	Extends<InsMissingNotNull[2], SqlParserError<"Missing NOT NULL column in INSERT">>
->
+type _insMissingNotNull = Expect<Extends<InsMissingNotNull[2], SqlParserError<"Missing NOT NULL column in INSERT">>>
 
 /** Qualified `public.users` while `defaultSchema` is `app` (must not resolve via default only). */
 type DbAppDefaultPublicUsers = {
@@ -105,9 +101,7 @@ type InsMultiRowArity = ParseSqlStatement<
 	ParseSqlTokens<`insert into users (id, name) values ('u1','n1'), ('u2');`>,
 	DbUsers
 >
-type _insMultiRowArity = Expect<
-	Extends<InsMultiRowArity[2], SqlParserError<"Expected `,` between INSERT values">>
->
+type _insMultiRowArity = Expect<Extends<InsMultiRowArity[2], SqlParserError<"Expected `,` between INSERT values">>>
 
 type InsReturning = ParseSqlStatement<
 	ParseSqlTokens<`insert into users (id, name) values ('u1','n1') returning id, name;`>,

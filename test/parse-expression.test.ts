@@ -60,9 +60,7 @@ type SelBareCol = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, User
 type _selBareCol = Expect<Extends<SelBareCol[1], SqlParserError<"Expression must be boolean">>>
 
 type TSelectParamNoBind = ParseSqlStatement<ParseSqlTokens<`select :limit, users.id from users;`>, DbUsers>
-type _selectParamNoBind = Expect<
-	Extends<TSelectParamNoBind[2], SqlParserError<"Unknown query parameter in SELECT">>
->
+type _selectParamNoBind = Expect<Extends<TSelectParamNoBind[2], SqlParserError<"Unknown query parameter in SELECT">>>
 
 type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: TInteger } }>
 type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: TText } }>
