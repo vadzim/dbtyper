@@ -17,7 +17,7 @@ type _check = Expect<
 		typeof result,
 		{
 			id: number
-			labels: unknown
+			labels: readonly string[]
 		}[]
 	>
 >

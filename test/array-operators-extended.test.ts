@@ -39,11 +39,11 @@ type _tEquals = Expect<Extends<Tuple3At2<TEquals>, { kind: "select"; columns: { 
 
 // Test || (array concatenation) operator
 type TConcat = ParseSqlStatement<ParseSqlTokens<`select tags || array['new'] as concatenated from items;`>, DbArrays>
-type _tConcat = Expect<Extends<Tuple3At2<TConcat>, { kind: "select"; columns: { concatenated: "unknown" } }>>
+type _tConcat = Expect<Extends<Tuple3At2<TConcat>, { kind: "select"; columns: { concatenated: "text[]" } }>>
 
 // Test array concatenation with column
 type TConcatColumn = ParseSqlStatement<ParseSqlTokens<`select tags || tags as doubled from items;`>, DbArrays>
-type _tConcatColumn = Expect<Extends<Tuple3At2<TConcatColumn>, { kind: "select"; columns: { doubled: "unknown" } }>>
+type _tConcatColumn = Expect<Extends<Tuple3At2<TConcatColumn>, { kind: "select"; columns: { doubled: "text[]" } }>>
 
 // Test integer arrays with operators
 type TIntArrayOps = ParseSqlStatement<
