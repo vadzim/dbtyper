@@ -1,9 +1,8 @@
 import { describe, it } from "node:test"
-import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Tuple3At2 } from "./test-utils/type-test-utils.ts"
+import type { Expect, Matches, Tuple3At2 } from "./test-utils/type-test-utils.ts"
 
 type DbGroup = {
 	defaultSchema: "public"
@@ -21,45 +20,45 @@ type DbGroup = {
 
 type TGroupBy = ParseSqlStatement<ParseSqlTokens<`select region from sales group by region;`>, DbGroup>
 
-type _groupByOk = Expect<Extends<Tuple3At2<TGroupBy>, JsqlSelectStatementResult>>
+type _groupByOk = Expect<Matches<TGroupBy[2], { kind: "select"; columns: { region: "text" } }>>
 
 type THaving = ParseSqlStatement<
 	ParseSqlTokens<`select region from sales group by region having region = 'eu';`>,
 	DbGroup
 >
 
-type _havingOk = Expect<Extends<Tuple3At2<THaving>, JsqlSelectStatementResult>>
+type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: "text" } }>>
 
 type THavingBad = ParseSqlStatement<
 	ParseSqlTokens<`select region from sales group by region having not_a_col = 'x';`>,
 	DbGroup
 >
 
-type _havingBad = Expect<Extends<Tuple3At2<THavingBad>, SqlParserError<string>>>
+type _havingBad = Expect<Matches<THavingBad[2], SqlParserError<"Unknown column">>>
 
 type TGroupProjViol = ParseSqlStatement<ParseSqlTokens<`select region, amount from sales group by region;`>, DbGroup>
 
 type _groupProjViol = Expect<
-	Extends<
+	Matches<
 		Tuple3At2<TGroupProjViol>,
 		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
 >
 
 type TGroupProjAggOk = ParseSqlStatement<
-	ParseSqlTokens<`select region, sum(amount) as ts from sales group by region;`>,
+	ParseSqlTokens<`select region, sum(amount) as s from sales group by region;`>,
 	DbGroup
 >
 
 type _groupProjAggOk = Expect<
-	Extends<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { ts: "numeric"; region: "text" } }>
+	Matches<Tuple3At2<TGroupProjAggOk>, { kind: "select"; columns: { region: "text"; s: "numeric" } }>
 >
 
 /** `HAVING` without `GROUP BY` still enforces “aggregates or constants / grouped columns” on projections. */
 type THavingNoGroupBareCol = ParseSqlStatement<ParseSqlTokens<`select region from sales having count(*) > 0;`>, DbGroup>
 
 type _havingNoGroupBareCol = Expect<
-	Extends<
+	Matches<
 		Tuple3At2<THavingNoGroupBareCol>,
 		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
@@ -71,7 +70,7 @@ type THavingNoGroupAggOnly = ParseSqlStatement<
 	DbGroup
 >
 
-type _havingNoGroupAggOnly = Expect<Extends<Tuple3At2<THavingNoGroupAggOnly>, JsqlSelectStatementResult>>
+type _havingNoGroupAggOnly = Expect<Matches<THavingNoGroupAggOnly[2], { kind: "select"; columns: { c: "bigint" } }>>
 
 /** Multi-expression `GROUP BY`: both projected non-aggregates must appear in the key set. */
 type TGroupByTwoKeysOk = ParseSqlStatement<
@@ -79,7 +78,9 @@ type TGroupByTwoKeysOk = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupByTwoKeysOk = Expect<Extends<Tuple3At2<TGroupByTwoKeysOk>, JsqlSelectStatementResult>>
+type _groupByTwoKeysOk = Expect<
+	Matches<TGroupByTwoKeysOk[2], { kind: "select"; columns: { region: "text"; amount: "numeric" } }>
+>
 
 /** `GROUP BY region, amount` but `amount` omitted from projection list — ok (column appears in grouping). */
 type TGroupByTwoKeysSubsetProj = ParseSqlStatement<
@@ -87,12 +88,14 @@ type TGroupByTwoKeysSubsetProj = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupByTwoKeysSubsetProj = Expect<Extends<Tuple3At2<TGroupByTwoKeysSubsetProj>, JsqlSelectStatementResult>>
+type _groupByTwoKeysSubsetProj = Expect<
+	Matches<TGroupByTwoKeysSubsetProj[2], { kind: "select"; columns: { region: "text" } }>
+>
 
 /** Literals are allowed in grouped contexts. */
 type TGroupLitOk = ParseSqlStatement<ParseSqlTokens<`select region, 1 as one from sales group by region;`>, DbGroup>
 
-type _groupLitOk = Expect<Extends<Tuple3At2<TGroupLitOk>, JsqlSelectStatementResult>>
+type _groupLitOk = Expect<Matches<TGroupLitOk[2], { kind: "select"; columns: { region: "text"; one: "integer" } }>>
 
 /** `COUNT(*)` counts as aggregate in projection rules. */
 type TGroupCountStar = ParseSqlStatement<
@@ -100,7 +103,7 @@ type TGroupCountStar = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupCountStar = Expect<Extends<Tuple3At2<TGroupCountStar>, JsqlSelectStatementResult>>
+type _groupCountStar = Expect<Matches<TGroupCountStar[2], { kind: "select"; columns: { region: "text"; c: "bigint" } }>>
 
 /** Trailing `ORDER BY` / `LIMIT` / `OFFSET` after `GROUP BY` must not drop grouped-projection validation. */
 type TGroupOrderLimit = ParseSqlStatement<
@@ -108,7 +111,7 @@ type TGroupOrderLimit = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupOrderLimit = Expect<Extends<Tuple3At2<TGroupOrderLimit>, JsqlSelectStatementResult>>
+type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: "text" } }>>
 
 /** Same trail but projection violates grouped rules — still error. */
 type TGroupOrderLimitBad = ParseSqlStatement<
@@ -117,7 +120,7 @@ type TGroupOrderLimitBad = ParseSqlStatement<
 >
 
 type _groupOrderLimitBad = Expect<
-	Extends<
+	Matches<
 		Tuple3At2<TGroupOrderLimitBad>,
 		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>

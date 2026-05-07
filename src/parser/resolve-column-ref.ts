@@ -11,7 +11,6 @@ type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab ext
 	: JsqlDbGetData<Db, Sch, Tab> extends JsqlDataShape
 		? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends infer ColType extends string
 			? {
-					ts: ColType
 					sql: ColType
 				}
 			: SqlParserError<"Unknown column (schema.table.column)">
@@ -27,7 +26,6 @@ type ValidateColumnPartsShared<
 		? A extends keyof Scope
 			? C extends keyof Scope[A]["columns"]
 				? {
-						ts: Scope[A]["columns"][C]
 						sql: Scope[A]["columns"][C]
 					}
 				: SqlParserError<"Unknown qualified column">
@@ -41,7 +39,6 @@ type ValidateColumnPartsShared<
 						: U extends keyof Scope
 							? C0 extends keyof Scope[U]["columns"]
 								? {
-										ts: Scope[U]["columns"][C0]
 										sql: Scope[U]["columns"][C0]
 									}
 								: never
