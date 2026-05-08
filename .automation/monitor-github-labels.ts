@@ -197,7 +197,15 @@ async function startPoller(
 		}
 
 		// Wait for next poll
-		await setTimeout(pollInterval * 1000, null, { signal })
+		try {
+			await setTimeout(pollInterval * 1000, null, { signal })
+		} catch (error) {
+			// AbortError when signal is aborted - this is expected
+			if ((error as Error).name === "AbortError") {
+				break
+			}
+			throw error
+		}
 	}
 
 	console.log("[Poller] Stopped")
