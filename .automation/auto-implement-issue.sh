@@ -111,6 +111,9 @@ cd "$WORKTREE_PATH"
 log "Installing dependencies..."
 npm ci 2>&1 | tee -a "$LOG_FILE"
 
+log "Building..."
+npm run build 2>&1 | tee -a "$LOG_FILE"
+
 log "✅ Worktree setup complete"
 
 # Save issue details for AI agent
@@ -227,11 +230,35 @@ fi
 # Run final test suite
 log ""
 log "Running final test suite..."
+
+# Try test:ci first, fall back to test if it doesn't exist
 if npm run test:ci 2>&1 | tee -a "$LOG_FILE"; then
   log "✅ All tests passed"
+elif [ ${PIPESTATUS[0]} -eq 1 ] && grep -q "Missing script" "$LOG_FILE"; then
+  log "⚠️  test:ci script not found, trying 'npm test'..."
+  if npm test 2>&1 | tee -a "$LOG_FILE"; then
+    log "✅ All tests passed"
+  else
+    log "❌ Tests failed"
+    log "Implementation has test failures and cannot be merged"
+    log ""
+    log "To fix and create PR:"
+    log "   cd $WORKTREE_PATH"
+    log "   Fix test failures"
+    log "   npm test"
+    log "   bash $SCRIPT_DIR/create-issue-pr.sh $ISSUE_NUMBER \"$ISSUE_TITLE\""
+    log ""
+    
+    # Remove "in-progress" label on test failure
+    log "Removing 'in-progress' label..."
+    gh issue edit "$ISSUE_NUMBER" --remove-label "in-progress" 2>&1 | tee -a "$LOG_FILE"
+    
+    rm "$LOCK_FILE"
+    exit 1
+  fi
 else
-  log "⚠️  Tests failed"
-  log "Implementation may need manual fixes"
+  log "❌ Tests failed"
+  log "Implementation has test failures and cannot be merged"
   log ""
   log "To fix and create PR:"
   log "   cd $WORKTREE_PATH"
