@@ -76,17 +76,42 @@ DbtyperError<2200, "[dbt:UNKNOWN_TABLE_FROM] Unknown table users in FROM">
 
 ### ✅ Completed (Working)
 
-None yet.
+1. **skip-statement.ts** - Updated constraints to accept `DbtyperError` instead of `SqlParserError`
+2. **parse-create-schema.ts** - Migrated to FormatError with error codes 3700-3703
+3. **parse-drop-schema.ts** - Migrated to FormatError with error codes 3800-3802, 3201
+4. **parse-qualified-name.ts** - Migrated to FormatError with error codes 4101-4103
+5. **parse-create-type.ts** - Migrated to FormatError, added error codes 1815-1816
+6. **parse-sql-type-words.ts** - Migrated to FormatError with error codes for type parsing
+7. **parse-qualified-table-name.ts** - Migrated to FormatError with error codes 4107, 4102, 1506
+
+**Files migrated:** 7
+**SqlParserError usages remaining:** ~653 (down from ~690)
 
 ### 🔄 In Progress
 
-1. **Setup** - Creating feature branch and plan
+1. **parse-create-table.ts** - Next file to migrate (tests are waiting for this)
 
 ### ❌ Incomplete (To Do)
 
-1. **Find all SqlParserError usages** - Search source code and tests
-2. **Migrate each usage** - One-by-one transformation
-3. **Remove SqlParserError** - Delete type after all migrations
+Remaining files with SqlParserError:
+- parse-alter-table.ts
+- parse-alter-type.ts
+- parse-create-view.ts
+- parse-delete.ts
+- parse-drop-table.ts
+- parse-drop-type.ts
+- parse-expression.ts
+- parse-insert.ts
+- parse-select.ts
+- parse-update.ts
+- parse-where-expression.ts
+- parser-validate-mutation-value.ts
+- resolve-column-ref.ts
+- parse-sql-statement.ts
+- parser-ref-error-third-sentinel.ts
+- lexer/sql-tokens.ts
+- core/sql-database.ts
+- core/sql-query.ts
 
 ---
 
