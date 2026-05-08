@@ -1,7 +1,7 @@
-# Feature/Refactoring Planning & Knowledge Template
+# Feature/Refactoring Planning & Knowledge Workflow
 
 **This document serves two purposes:**
-1. **Feature Planning Template** - Structure for planning specific features/refactorings
+1. **Feature Planning Workflow** - Structure for planning specific features/refactorings
 2. **Project Knowledge Base** - Accumulated learnings that apply to all work
 
 ---
@@ -19,7 +19,7 @@ When you discover something during feature work that belongs to:
 - **Tools domain** (build tools, test runners, CLI commands)
 - **General knowledge** (not specific to the current feature)
 
-→ **Update this template immediately**, not just the feature-specific sections below.
+→ **Update this workflow document immediately**, not just the feature-specific sections below.
 
 ### Why Update During Development?
 
@@ -361,7 +361,7 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 
 ---
 
-# Part 2: Feature Planning Template
+# Part 2: Feature Planning Workflow
 
 Use this section for planning specific features/refactorings. Copy and fill in the sections below.
 
