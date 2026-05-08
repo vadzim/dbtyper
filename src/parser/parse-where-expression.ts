@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError, SqlParserError, DbtyperError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -22,15 +22,15 @@ export type ParseWhereExpression<
 		infer Rw extends TokensList,
 		infer Ast,
 	]
-		? Ast extends SqlParserError<string>
+		? Ast extends SqlParserError<string> | DbtyperError<any, any>
 			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
-				? R extends SqlParserError<string>
+				? R extends SqlParserError<string> | DbtyperError<any, any>
 					? SkipFailedExpression<Rw, R>
 					: R extends SqlTypeShape
 						? R["type"] extends "boolean"
 							? [Rw, null]
-							: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>
-						: SkipFailedExpression<Rw, SqlParserError<"Expression must be boolean">>
+							: SkipFailedExpression<Rw, FormatError<"EXPRESSION_MUST_BE_BOOLEAN", [R["type"]]>>
+						: SkipFailedExpression<Rw, FormatError<"EXPRESSION_MUST_BE_BOOLEAN", ["unknown"]>>
 				: never
 		: never
