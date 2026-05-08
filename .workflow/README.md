@@ -92,6 +92,17 @@
 **Create at start:** Use timestamp format `YYYY-MM-DD-HHMM-feature-name.md`
 - Example: `.features/2026-05-08-0430-error-message-checking.md`
 
+**CRITICAL: Create this BEFORE any implementation work!**
+
+**Must include at top:**
+```markdown
+**IMPORTANT: If resuming this feature, READ .workflow/ folder first:**
+- .workflow/README.md - Workflow instructions
+- .workflow/findings.md - General development patterns
+- .workflow/project_knowledge.md - Project-specific knowledge
+- .workflow/feature_template.md - Template structure
+```
+
 **Update continuously with:**
 - ✅ Mark checkboxes as tasks complete
 - 📝 Track what you've done in this session
@@ -100,6 +111,8 @@
 - 🎯 Feature-specific decisions and temporary workarounds
 
 **Update frequency:** After completing each significant step or task
+
+**Purpose:** This document allows you (or another agent) to resume work at any time by reading it
 
 ---
 
@@ -389,13 +402,21 @@ Main Agent:
 
 ## 📋 Complete Workflow
 
-### At Start of Feature:
+### At Start of Feature (CRITICAL - DO THIS FIRST):
 
-1. **Launch planning subagent** - Research codebase and create initial feature plan
-2. **Review and refine plan** (main agent) - Provide feedback, make decisions
-3. Copy **.workflow/feature_template.md** to **.features/YYYY-MM-DD-HHMM-feature-name.md**
-4. Fill in the plan based on subagent's research
-5. **Plan subagent usage** - Identify which tasks can be delegated to subagents
+**BEFORE doing ANY implementation work:**
+
+1. **Read ALL 4 workflow documents** (`.workflow/*.md`) - Understand the system
+2. **Create feature plan IMMEDIATELY:**
+   - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-feature-name.md`
+   - Fill in Overview section with what you understand so far
+   - **Add directive at top:** "IMPORTANT: If resuming this feature, READ .workflow/ folder first"
+3. **Launch planning subagent** - Research codebase and create detailed plan
+4. **Review and refine plan** (main agent) - Provide feedback, make decisions
+5. **Update feature plan** with detailed breakdown from subagent research
+6. **Plan subagent usage** - Identify which tasks can be delegated to subagents
+
+**The feature plan is your working document - update it continuously as you work!**
 
 ### During Feature Work:
 
@@ -439,9 +460,12 @@ Main Agent:
    - Did I collect workflow feedback from subagents?
 
 2. **Did I follow the 5-document system?**
+   - **CRITICAL:** Did I create the feature plan BEFORE starting ANY implementation?
+   - **CRITICAL:** Did I add the "READ .workflow/ first" directive at the top of the feature plan?
    - Did I update all 5 documents continuously, or batch updates at the end?
    - Did I categorize learnings correctly (general vs project-specific)?
    - Did I update the feature plan after each significant step?
+   - If I deviated from creating feature plan first, what in the workflow docs was unclear?
 
 3. **What could I have done better?**
    - Where did I deviate from the workflow?
@@ -470,11 +494,16 @@ After completing work, add a retrospective section to your feature plan:
 - [Where you deviated from workflow]
 - [Why the deviation happened]
 - [What was unclear in workflow docs]
+- **CRITICAL checks:**
+  - Did I create feature plan BEFORE implementation? [Yes/No]
+  - Did I add "READ .workflow/ first" directive? [Yes/No]
+  - If No to either: What would have prevented this deviation?
 
 **Workflow doc improvements needed:**
 - [Specific improvements to prevent future deviations]
 - [Clarifications needed]
 - [New examples or thresholds to add]
+- [What would have prevented this deviation?]
 ```
 
 ### Acting on Retrospective Findings

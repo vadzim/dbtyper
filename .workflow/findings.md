@@ -297,11 +297,14 @@ This sometimes works but TypeScript may not always show the full resolved type. 
 ### Workflow Retrospection
 
 - After completing work, analyze your own workflow adherence
+- **CRITICAL:** Ask: "Did I create feature plan BEFORE starting implementation?"
+- **CRITICAL:** Ask: "Did I add 'READ .workflow/ first' directive to feature plan?"
 - Ask: "Did I use subagents appropriately?"
 - Ask: "Did I act as orchestrator or executor?"
 - Ask: "Did I collect workflow feedback from subagents?"
 - Ask: "Did I follow the 5-document system correctly?"
 - Ask: "What was unclear in the workflow docs that caused deviation?"
+- If you deviated from creating feature plan first, what would have prevented it?
 - Immediately update workflow docs based on retrospective findings
 - Each feature should improve the workflow for the next one
 - Self-reflection creates a self-improving system

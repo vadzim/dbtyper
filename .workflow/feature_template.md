@@ -1,16 +1,30 @@
 # [Feature/Refactoring Name] Status
 
 **Date:** YYYY-MM-DD HH:MM  
-**Current State:** [Brief description of current state]
+**Current State:** [Brief description - e.g., "In Progress", "Blocked on X", "✅ Complete", "⏸️ Paused"]
+
+**If this feature is marked as COMPLETE:**
+- An agent resuming this feature should tell you it's complete
+- Agent should ask: "This feature is complete. What would you like me to do?"
+- Agent should NOT start working without your instruction
+- You might want to: review it, test it, add something, or start a new feature
 
 **This is a feature plan document. Save it in `.features/` folder as `YYYY-MM-DD-HHMM-feature-name.md`**
+
+**CRITICAL: Before working on this feature, you MUST read .workflow/ folder:**
+1. **FIRST:** Read `.workflow/README.md` - Workflow instructions and guidelines
+2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques  
+3. **THIRD:** Read `.workflow/project_knowledge.md` - Project-specific conventions and knowledge
+4. **FOURTH:** Read `.workflow/feature_template.md` - Template structure
+
+**This applies whether you are starting, resuming, or reviewing this feature.**
 
 **Part of the 5-document system:**
 1. .workflow/README.md - Workflow instructions
 2. .workflow/findings.md - General development findings
 3. .workflow/project_knowledge.md - Project-specific knowledge
 4. .workflow/feature_template.md - Template for new features (THIS IS THE TEMPLATE)
-5. .features/YYYY-MM-DD-HHMM-name.md - Current feature plan (copy this template there and update line 12 to say "THIS FILE")
+5. .features/YYYY-MM-DD-HHMM-name.md - Current feature plan (copy this template there and update line 19 to say "THIS FILE")
 
 ---
 
@@ -486,6 +500,10 @@ If you haven't yet, add learnings now:
 - [Why the deviation happened - unclear rules? habit? oversight?]
 - [What was unclear in workflow docs]
 - [Where you should have used subagents but didn't]
+- **CRITICAL checks:**
+  - Did I create this feature plan BEFORE starting implementation? [Yes/No]
+  - Did I add "READ .workflow/ first" directive at the top? [Yes/No]
+  - If No to either: What would have prevented this deviation?
 
 ### CRITICAL: What in the workflow could be done better keeping in mind this feature?
 - [What was unclear during this feature that should be clarified?]
