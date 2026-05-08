@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -170,7 +170,7 @@ type _t6shape = Expect<
 >
 
 type TExpectedTableName = ParseSqlStatement<ParseSqlTokens<`create table( id int not null );`>, DbDefaultPublic>
-type _expectedTableName = Expect<Extends<TExpectedTableName[2], SqlParserError<"Expected table name in CREATE TABLE">>>
+type _expectedTableName = Expect<Matches<TExpectedTableName[2], DbtyperError<1506, "Expected table name in CREATE TABLE">>>
 
 type TDupWithoutIfNot = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( x int not null );`>, DbWithDup>
 type _dupNoIfNot = Expect<Matches<TDupWithoutIfNot[2], SqlParserError<"Table already exists; use IF NOT EXISTS">>>
@@ -221,7 +221,7 @@ type _qualWhenDefaultMissingShape = Expect<
 >
 
 type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>
-type _missingOpenParen = Expect<Extends<TMissingOpenParen[2], SqlParserError<"Expected `.` or `(` after table name">>>
+type _missingOpenParen = Expect<Matches<TMissingOpenParen[2], DbtyperError<4107, "Expected `.` or `(` after table name">>>
 
 describe("parse-create-table (type tests)", () => {
 	it("compile-time assertions above", () => {})
