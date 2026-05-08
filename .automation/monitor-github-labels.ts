@@ -459,27 +459,11 @@ async function parseArgs(): Promise<MonitorOptions> {
 		}
 	}
 
-	// Try to load smee URL from config if webhook mode
+	// Validate webhook mode requires smee URL
 	if (options.mode === "webhook" && !options.smeeUrl) {
-		try {
-			const configPath = join(__dirname, "smee-config.json")
-			if (existsSync(configPath)) {
-				const configContent = await readFile(configPath, "utf-8")
-				const config = JSON.parse(configContent)
-				if (config.smeeUrl) {
-					options.smeeUrl = config.smeeUrl
-					console.log(`Using smee URL from config: ${options.smeeUrl}`)
-				}
-			}
-		} catch (error) {
-			// Ignore
-		}
-
-		if (!options.smeeUrl) {
-			console.error("Error: --smee-url is required for webhook mode")
-			console.error("Either provide --smee-url or use polling mode (default)")
-			process.exit(1)
-		}
+		console.error("Error: --smee-url is required for webhook mode")
+		console.error("Either provide --smee-url or use polling mode (default)")
+		process.exit(1)
 	}
 
 	return options
