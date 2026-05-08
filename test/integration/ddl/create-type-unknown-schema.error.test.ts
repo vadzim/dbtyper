@@ -1,12 +1,27 @@
 // Integration Test: CREATE TYPE ... AS ENUM
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
-
-// ❌ FAILURE: Unknown schema
+import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
+import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import type { SqlParserError } from "../../../src/sql-parser-error.ts"
+import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
+import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
 
-migrations.apply(
-	// @ts-expect-error
-	`create type ghost.status as enum ('active');`,
-)
+// ❌ FAILURE: Unknown schema
+const query = `create type ghost.status as enum ('active');` as const
+
+// @ts-expect-error
+await migrations.apply(query)
+
+// Type-level database shape for error checking
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public;`
+>[0]
+
+type _errorCheck = Expect<Matches<
+	ExtractQueryError<DbShape, typeof query>,
+	SqlParserError<"Unknown schema for CREATE TYPE">
+>>
