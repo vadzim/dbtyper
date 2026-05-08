@@ -1,10 +1,10 @@
 # Development Workflow Guide
 
-**When working on ANY feature, you MUST update ALL documents continuously:**
-- **Feature plan** (`docs/features/YYYY-MM-DD-HHMM-feature-name.md`)
-- **All documents in `docs/workflow/` folder** according to their intent
+**When working on ANY feature, you MUST continuously update:**
+- Your **feature plan** (`docs/features/YYYY-MM-DD-HHMM-feature-name.md`)
+- **All relevant documents** in the `docs/workflow/` folder
 
-This ensures knowledge is captured, organized, and reusable.
+Each document has a specific purpose. Update them as you discover new information.
 
 ---
 
