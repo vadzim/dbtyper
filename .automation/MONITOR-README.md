@@ -1,20 +1,27 @@
-# GitHub Label Monitor - TypeScript Implementation
+# GitHub Label Monitor - Stream-Based Architecture
 
 This directory contains a TypeScript-based GitHub label monitoring system that automatically triggers issue implementations when labels are added.
 
 ## Overview
 
-The monitoring script watches GitHub issues for label changes and automatically starts the implementation process when the "approved" label is detected.
+The monitoring script uses a simple stream-based architecture with async iterators:
+- **Message stream**: Async iterable queue for all events
+- **Main loop**: Async iterates over messages and processes them
+- **Workers**: Async functions that send completion messages to stream
+- **Poller**: Async function that sends poll events to stream
+- **Smee**: Async function that sends webhook events to stream
 
 ## Features
 
+- **Stream-based architecture**: All events flow through a single async iterable stream
+- **Startup scanning**: Finds approved-but-not-in-progress issues on startup
 - **Two monitoring modes:**
   - **Polling mode** (default): Checks GitHub API every N seconds (default: 30s)
   - **Webhook mode**: Real-time updates via smee.io
 - **Concurrency control**: Limit simultaneous implementations (default: 1)
-- **Lock file management**: Prevents duplicate processing
+- **Worker IPC**: Workers send completion messages via stdout JSON
 - **Queue system**: Processes pending issues when slots become available
-- **Integration**: Works with existing `auto-implement-issue.sh` automation
+- **Clean shutdown**: Graceful cleanup on SIGINT/SIGTERM
 
 ## Installation
 
@@ -121,23 +128,50 @@ Create `.automation/config.json` (see `config.example.json`):
 
 ## How It Works
 
-1. **Monitor detects approved issue:**
-   - Polling mode: Checks GitHub API every N seconds
-   - Webhook mode: Receives real-time events from smee.io
+### Architecture
 
-2. **Queue management:**
-   - Issue added to queue if not already processing
-   - Checks if capacity available (max concurrent limit)
-   - Starts implementation if slot available
+```
+Message Stream (async iterable)
+    ↑
+    ├─ Startup Scanner → messages (approved but not in-progress)
+    ├─ Poller → messages (new approved issues)
+    ├─ Smee Webhook → messages (real-time label events)
+    └─ Workers → completion messages (via stdout JSON)
 
-3. **Implementation process:**
-   - Calls `auto-implement-issue.sh` with issue number
-   - Bash script creates worktree, launches AI agent, runs tests
-   - Lock file created by bash script (not TypeScript)
+Main Loop (async iterator)
+    ↓
+    Processes messages sequentially
+    ↓
+    Starts workers or queues issues
+```
 
-4. **Completion:**
-   - When implementation completes, slot freed
-   - Next queued issue starts automatically
+### Flow
+
+1. **Startup:**
+   - Scans for issues with "approved" label but NOT "in-progress"
+   - Adds these to message stream
+   - Ensures no issues are missed during downtime
+
+2. **Monitoring:**
+   - **Polling mode:** Checks GitHub API every N seconds, sends messages for new approved issues
+   - **Webhook mode:** Receives real-time events from GitHub via smee.io, sends messages
+
+3. **Main Loop:**
+   - Async iterates over message stream
+   - For each message:
+     - If worker completion: remove lock, start next queued issue
+     - If issue approved: start worker if under limit, otherwise queue
+
+4. **Workers:**
+   - Spawned as detached bash processes
+   - Send JSON completion message to stdout: `{"type":"complete","issueNumber":N,"success":true}`
+   - Monitor receives message and processes next issue
+
+5. **Shutdown:**
+   - SIGINT/SIGTERM triggers AbortController
+   - Stops poller/webhook
+   - Closes message stream
+   - Main loop finishes processing remaining messages
 
 ## CLI Options
 
