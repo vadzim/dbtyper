@@ -440,7 +440,7 @@ class WebhookMonitor {
 // CLI
 // ============================================================================
 
-function parseArgs(): MonitorOptions {
+async function parseArgs(): Promise<MonitorOptions> {
 	const args = process.argv.slice(2)
 	const options: MonitorOptions = {
 		mode: "polling",
@@ -484,8 +484,26 @@ function parseArgs(): MonitorOptions {
 
 	// Validate webhook mode
 	if (options.mode === "webhook" && !options.smeeUrl) {
-		console.error("Error: --smee-url is required for webhook mode")
-		process.exit(1)
+		// Try to load smee URL from config file
+		try {
+			const configPath = join(__dirname, "smee-config.json")
+			if (existsSync(configPath)) {
+				const configContent = await readFile(configPath, "utf-8")
+				const config = JSON.parse(configContent)
+				if (config.smeeUrl) {
+					options.smeeUrl = config.smeeUrl
+					console.log(`Using smee URL from config: ${options.smeeUrl}`)
+				}
+			}
+		} catch (error) {
+			// Ignore errors, will show error below
+		}
+
+		if (!options.smeeUrl) {
+			console.error("Error: --smee-url is required for webhook mode")
+			console.error("Run 'npm run monitor:setup' to configure webhook")
+			process.exit(1)
+		}
 	}
 
 	return options
@@ -518,6 +536,12 @@ Examples:
   # Webhook mode
   npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL
 
+  # Webhook mode (reads URL from smee-config.json)
+  npm run monitor -- --mode webhook
+
+Setup:
+  npm run monitor:setup    Configure GitHub webhook with smee.io
+
 Environment Variables:
   GITHUB_TOKEN    GitHub personal access token (required)
   GITHUB_OWNER    Repository owner (optional, from config.json)
@@ -530,7 +554,7 @@ Environment Variables:
 // ============================================================================
 
 async function main(): Promise<void> {
-	const options = parseArgs()
+	const options = await parseArgs()
 	const config = await loadConfig()
 
 	// Override max concurrent from CLI

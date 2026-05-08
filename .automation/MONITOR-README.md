@@ -18,15 +18,35 @@ The monitoring script watches GitHub issues for label changes and automatically 
 
 ## Installation
 
-The monitoring script requires `tsx` to run TypeScript directly:
+The monitoring script requires `tsx` and `smee-client`:
 
 ```bash
 npm install
 ```
 
+## Quick Setup (Webhook Mode)
+
+The easiest way to set up webhook monitoring:
+
+```bash
+# 1. Run setup script (creates smee.io channel and configures GitHub webhook)
+npm run monitor:setup
+
+# 2. Start smee client (Terminal 1)
+npx smee-client --url <YOUR_SMEE_URL> --port 3000
+
+# 3. Start monitor (Terminal 2)
+npm run monitor -- --mode webhook
+```
+
+The setup script will:
+- Create a new smee.io channel
+- Save the URL to `.automation/smee-config.json`
+- Configure GitHub webhook automatically (or provide manual instructions)
+
 ## Usage
 
-### Polling Mode (Default)
+### Polling Mode (Default - Simplest)
 
 ```bash
 # Basic usage (polls every 30 seconds, max 1 concurrent)
@@ -42,7 +62,19 @@ npm run monitor -- --max-concurrent 3
 npm run monitor -- --poll-interval 60 --max-concurrent 3
 ```
 
-### Webhook Mode (via smee.io)
+### Webhook Mode (Real-time)
+
+**Option 1: Using setup script (recommended)**
+
+```bash
+# Run setup once
+npm run monitor:setup
+
+# Then start monitoring (reads URL from smee-config.json)
+npm run monitor -- --mode webhook
+```
+
+**Option 2: Manual smee URL**
 
 ```bash
 # Basic webhook mode
@@ -50,6 +82,12 @@ npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL
 
 # With concurrency control
 npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL --max-concurrent 2
+```
+
+**Don't forget to start smee-client in another terminal:**
+
+```bash
+npx smee-client --url https://smee.io/YOUR_CHANNEL --port 3000
 ```
 
 ## Configuration
@@ -105,9 +143,20 @@ Create `.automation/config.json` (see `config.example.json`):
 --mode <polling|webhook>     Monitoring mode (default: polling)
 --max-concurrent <number>    Max parallel implementations (default: 1)
 --poll-interval <seconds>    Polling interval in seconds (default: 30)
---smee-url <url>            Smee.io URL for webhook mode
+--smee-url <url>            Smee.io URL for webhook mode (optional if using smee-config.json)
 --help, -h                  Show help message
 ```
+
+## Setup Scripts
+
+### `npm run monitor:setup`
+
+Automated setup for webhook mode:
+- Creates a new smee.io channel
+- Saves configuration to `.automation/smee-config.json`
+- Configures GitHub webhook (or provides manual instructions)
+
+After running this once, you can use `npm run monitor -- --mode webhook` without specifying the smee URL.
 
 ## Testing
 
