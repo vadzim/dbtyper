@@ -325,14 +325,21 @@ log ""
 log "Running final test suite..."
 
 # Try test:ci first, fall back to test if it doesn't exist
-if npm run test:ci 2>&1 | tee -a "$LOG_FILE"; then
+# Use PIPESTATUS to capture npm exit code, not tee exit code
+npm run test:ci 2>&1 | tee -a "$LOG_FILE"
+TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+if [ $TEST_EXIT_CODE -eq 0 ]; then
   log "✅ All tests passed"
-elif [ ${PIPESTATUS[0]} -eq 1 ] && grep -q "Missing script" "$LOG_FILE"; then
+elif grep -q "Missing script.*test:ci" "$LOG_FILE"; then
   log "⚠️  test:ci script not found, trying 'npm test'..."
-  if npm test 2>&1 | tee -a "$LOG_FILE"; then
+  npm test 2>&1 | tee -a "$LOG_FILE"
+  TEST_EXIT_CODE=${PIPESTATUS[0]}
+  
+  if [ $TEST_EXIT_CODE -eq 0 ]; then
     log "✅ All tests passed"
   else
-    log "❌ Tests failed"
+    log "❌ Tests failed (exit code: $TEST_EXIT_CODE)"
     log "Implementation has test failures and cannot be merged"
     log ""
     log "To fix and create PR:"
@@ -350,7 +357,7 @@ elif [ ${PIPESTATUS[0]} -eq 1 ] && grep -q "Missing script" "$LOG_FILE"; then
     exit 1
   fi
 else
-  log "❌ Tests failed"
+  log "❌ Tests failed (exit code: $TEST_EXIT_CODE)"
   log "Implementation has test failures and cannot be merged"
   log ""
   log "To fix and create PR:"
