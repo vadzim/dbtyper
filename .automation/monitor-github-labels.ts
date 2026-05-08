@@ -12,7 +12,7 @@
 
 import { spawn, execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { readFile, mkdir, writeFile, unlink, } from "node:fs/promises"
+import { mkdir, writeFile, unlink } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -67,14 +67,9 @@ function createMessageStream() {
 // GitHub CLI Integration
 // ============================================================================
 
-async function execGh(args: string[]): Promise<string> {
-	const { stdout } = await execFileAsync('gh', args)
-	return stdout
-}
-
 async function fetchApprovedIssues(approvalLabel: string): Promise<Issue[]> {
 	try {
-		const output = await execGh([
+		const { stdout: output } = await execFileAsync("gh", [
 			"issue",
 			"list",
 			"--label",
@@ -141,7 +136,7 @@ async function removeLock(issueNumber: number): Promise<void> {
 async function startupScan(
 	stream: ReturnType<typeof createMessageStream>,
 	approvalLabel: string,
-	inProgressLabel: string
+	inProgressLabel: string,
 ): Promise<void> {
 	console.log("[Startup] Scanning for approved issues...")
 
@@ -563,7 +558,9 @@ async function main(): Promise<void> {
 	await mainLoopPromise
 }
 
-main().catch(error => {
+try {
+	await main()
+} catch (error) {
 	console.error("Fatal error:", error)
 	process.exit(1)
-})
+}

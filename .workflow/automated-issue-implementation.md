@@ -482,7 +482,7 @@ Implement this feature following the project's 5-document workflow system.
 
 - npm run typecheck:test - Fast type checking
 - npm run test:ci - Full test suite
-- TEST_MIGRATIONS=1 node --test "test/\*_/_.test.ts" - Integration tests only
+- TEST\*MIGRATIONS=1 node --test "test/\*\*/\_.test.ts" - Integration tests only
 - npm run lint - Linting
 - npm run format - Auto-format code
 
