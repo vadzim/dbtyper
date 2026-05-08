@@ -111,16 +111,19 @@ Type 'SomeComplexType<Args>' is not assignable to type 'never'.
   Type 'SqlParserError<"Unknown table in DELETE FROM">' is not assignable to type 'never'.
 ```
 
-This is invaluable for:
-- Understanding what `ExtractQueryError` actually returns
-- Seeing the resolved error message from the parser
-- Debugging type-level operations
-- Verifying type transformations work as expected
+**If TypeScript hides the implementation** (shows type alias instead of expanded type), use this:
 
-**Why this works:**
+```typescript
+const _n: never = 1 as unknown as {[K in keyof T]: T[K]}
+```
+
+This forces TypeScript to expand and show the full structure of the type, not just its name.
+
+**Why these work:**
 - `never` type accepts no values
 - TypeScript shows what type you're trying to assign to it
 - Forces TypeScript to fully resolve and display the type
+- Mapped type `{[K in keyof T]: T[K]}` forces expansion of type aliases
 
 **Example from this work:**
 ```typescript
@@ -130,6 +133,9 @@ const _n: never = 1 as unknown as ExtractQueryError<DbShape, typeof query>
 // TypeScript error shows:
 // Type 'SqlParserError<"Unknown table in DELETE FROM">' is not assignable to type 'never'
 // Now you know the exact error message to use in your test
+
+// If you need to see the full structure of SqlParserError:
+const _n2: never = 1 as unknown as {[K in keyof SqlParserError<"Unknown table">]: SqlParserError<"Unknown table">[K]}
 ```
 
 After you get the information, remove the debug line.
