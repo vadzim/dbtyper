@@ -10,38 +10,54 @@
 
 **Writing down findings during feature development improves your experience and capabilities in developing next features.**
 
-## 🔄 Continuous Update Workflow
+## 🔄 Continuous Update Workflow - CRITICAL FOR AGENTS
 
-**IMPORTANT: Update this section throughout feature development, not just at the end!**
+**When working on ANY feature, you MUST update TWO documents continuously:**
 
-When you discover something during feature work that belongs to:
-- **Project domain** (architecture, conventions, patterns)
-- **Tools domain** (build tools, test runners, CLI commands)
-- **General knowledge** (not specific to the current feature)
+### 1. Feature-Specific Plan (e.g., `docs/refactoring/feature-name.md`)
 
-→ **Update this workflow document immediately**, not just the feature-specific sections below.
+Update this for feature-specific progress:
+- ✅ Mark checkboxes as tasks complete
+- 📝 Track what you've done in this session
+- ⚠️ Document blockers or issues specific to this feature
+- 📊 Update progress tracking and next steps
+- 🎯 Feature-specific decisions and temporary workarounds
 
-### Why Update During Development?
+**Update frequency:** After completing each significant step or task
 
-1. **Capture insights while fresh** - Don't wait until the end when details fade
-2. **Build knowledge incrementally** - Each discovery adds to the collective understanding
-3. **Help future work immediately** - Next feature can benefit from today's learning
-4. **Avoid duplication** - Don't rediscover the same things repeatedly
+### 2. This Workflow Document (`docs/refactoring/workflow.md`)
 
-### What Goes Where?
+Update this when you discover GENERAL knowledge:
+- 🏗️ **Project conventions** - Patterns that apply to all features
+- 🔧 **Tool usage** - Commands, build tools, how things work
+- 🧠 **Architecture insights** - How the system is structured
+- 💡 **Solutions to common problems** - Pitfalls and how to avoid them
+- ⚡ **Workflow patterns** - What works well (like using subagents)
+- 🐛 **Debugging techniques** - TypeScript tricks, investigation methods
 
-**Part 1 (Project Knowledge Base)** - This section:
-- Project conventions and patterns (applies to ALL features)
-- Tool usage and commands (reusable knowledge)
-- Architecture insights (helps understand the system)
-- Common pitfalls and solutions (avoid repeating mistakes)
-- Workflow patterns that worked well (process improvements)
+**Update frequency:** Immediately when you discover something reusable
 
-**Part 2 (Feature Planning)** - Sections below:
-- Implementation steps for THIS specific feature
-- Progress tracking and checkboxes
-- Feature-specific decisions and blockers
-- Temporary workarounds for this feature
+### Decision Tree: Which Document to Update?
+
+Ask yourself: **"Will this help with OTHER features, or just THIS one?"**
+
+- **Helps other features** → Update `workflow.md`
+  - Example: "TypeScript type debugging technique"
+  - Example: "Subagents work well for batch migrations"
+  - Example: "Infrastructure tests catch issues early"
+
+- **Only for this feature** → Update feature plan
+  - Example: "Completed migration of 10 INSERT test files"
+  - Example: "Blocked on understanding error message format"
+  - Example: "Next: migrate UPDATE test files"
+
+### Why This Matters
+
+- **For you:** Build knowledge that makes future work faster
+- **For others:** Share learnings so they don't repeat your work
+- **For the project:** Create a living knowledge base that grows over time
+
+**Remember: Update BOTH documents throughout development, not just at the end!**
 
 ---
 
