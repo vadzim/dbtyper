@@ -12,7 +12,7 @@
 
 import { spawn, execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { readFile, mkdir, writeFile, unlink, readdir } from "node:fs/promises"
+import { readFile, mkdir, writeFile, unlink, } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -45,6 +45,7 @@ interface MonitorOptions {
 	maxConcurrent: number
 	pollInterval: number
 	smeeUrl?: string
+	smeePort: number
 	approvedLabel: string
 	inProgressLabel: string
 }
@@ -218,13 +219,15 @@ async function startPoller(
 async function startWebhook(
 	stream: ReturnType<typeof createMessageStream>,
 	smeeUrl: string,
+	smeePort: number,
 	approvalLabel: string,
 	signal: AbortSignal,
 ): Promise<void> {
 	console.log(`[Webhook] Starting smee client: ${smeeUrl}`)
+	console.log(`[Webhook] Listening on port: ${smeePort}`)
 
 	// Start smee-client
-	const smeeProc = spawn("npx", ["smee-client", "--url", smeeUrl, "--port", "3000"], {
+	const smeeProc = spawn("npx", ["smee-client", "--url", smeeUrl, "--port", smeePort.toString()], {
 		stdio: "inherit",
 	})
 
@@ -273,8 +276,8 @@ async function startWebhook(
 		}
 	})
 
-	server.listen(3000, () => {
-		console.log("[Webhook] Server listening on port 3000")
+	server.listen(smeePort, () => {
+		console.log(`[Webhook] Server listening on port ${smeePort}`)
 	})
 
 	signal.addEventListener("abort", () => {
@@ -402,6 +405,7 @@ async function parseArgs(): Promise<MonitorOptions> {
 		mode: "polling",
 		maxConcurrent: 1,
 		pollInterval: 30,
+		smeePort: 7149,
 		approvedLabel: "approved",
 		inProgressLabel: "in-progress",
 	}
@@ -438,6 +442,15 @@ async function parseArgs(): Promise<MonitorOptions> {
 			const value = args[++i]
 			if (value) {
 				options.smeeUrl = value
+			}
+		} else if (arg === "--smee-port" && i + 1 < args.length) {
+			const value = args[++i]
+			if (value) {
+				options.smeePort = parseInt(value, 10)
+				if (isNaN(options.smeePort) || options.smeePort < 1 || options.smeePort > 65535) {
+					console.error("Error: --smee-port must be a valid port number (1-65535)")
+					process.exit(1)
+				}
 			}
 		} else if (arg === "--approved" && i + 1 < args.length) {
 			const value = args[++i]
@@ -481,6 +494,7 @@ Options:
   --max-concurrent <number>    Max parallel implementations (default: 1)
   --poll-interval <seconds>    Polling interval in seconds (default: 30)
   --smee-url <url>            Smee.io URL for webhook mode
+  --smee-port <port>          Port for webhook server (default: 7149)
   --approved <label>          Approval label name (default: approved)
   --in-progress <label>       In-progress label name (default: in-progress)
   --help, -h                  Show this help message
@@ -494,6 +508,9 @@ Examples:
 
   # Webhook mode (provide smee URL)
   npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL
+
+  # Webhook mode with custom port
+  npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL --smee-port 8080
 
   # Custom labels
   npm run monitor -- --approved "auto-implement" --in-progress "implementing"
@@ -539,7 +556,7 @@ async function main(): Promise<void> {
 	if (options.mode === "polling") {
 		startPoller(stream, options.approvedLabel, options.pollInterval, abortController.signal)
 	} else {
-		startWebhook(stream, options.smeeUrl!, options.approvedLabel, abortController.signal)
+		startWebhook(stream, options.smeeUrl!, options.smeePort, options.approvedLabel, abortController.signal)
 	}
 
 	// Wait for main loop to finish
