@@ -28,6 +28,7 @@ export default [
 	},
 	{
 		files: ["test/**/*.ts"],
+		ignores: ["**/*.test.skip.ts"],
 		languageOptions: {
 			parser: tsparser,
 			parserOptions: {
