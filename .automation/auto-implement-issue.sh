@@ -166,26 +166,119 @@ fi
 
 log "Launching OpenCode in autonomous mode..."
 log "Working directory: $WORKTREE_PATH"
+log "Timeout: 15 minutes"
 log ""
 
 # Launch OpenCode with the prompt in autonomous mode
 # --dangerously-skip-permissions: auto-approve permissions for fully autonomous operation
 # --title: set session title
-# --format json: get structured output for parsing
+# Timeout: 15 minutes (900 seconds)
+TIMEOUT_SECONDS=900
+TIMEOUT_TRIGGERED=0
+
+# Start OpenCode in background
 opencode run \
   --dir "$WORKTREE_PATH" \
   --title "Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}" \
   --dangerously-skip-permissions \
-  "$AGENT_PROMPT" 2>&1 | tee -a "$LOG_FILE"
+  "$AGENT_PROMPT" 2>&1 | tee -a "$LOG_FILE" &
 
-OPENCODE_EXIT_CODE=${PIPESTATUS[0]}
+OPENCODE_PID=$!
+START_TIME=$(date +%s)
+
+# Monitor the process with timeout
+while kill -0 $OPENCODE_PID 2>/dev/null; do
+  CURRENT_TIME=$(date +%s)
+  ELAPSED=$((CURRENT_TIME - START_TIME))
+  
+  if [ $ELAPSED -ge $TIMEOUT_SECONDS ]; then
+    log ""
+    log "⚠️  TIMEOUT: OpenCode has been running for more than 15 minutes"
+    log "Terminating OpenCode process..."
+    kill -TERM $OPENCODE_PID 2>/dev/null
+    sleep 2
+    kill -KILL $OPENCODE_PID 2>/dev/null
+    TIMEOUT_TRIGGERED=1
+    break
+  fi
+  
+  sleep 5
+done
+
+wait $OPENCODE_PID 2>/dev/null
+OPENCODE_EXIT_CODE=$?
 
 log ""
 log "=========================================="
 log "OpenCode execution completed"
 log "Exit code: $OPENCODE_EXIT_CODE"
+log "Timeout triggered: $TIMEOUT_TRIGGERED"
 log "=========================================="
 log ""
+
+# If timeout was triggered, run diagnostic agent
+if [ $TIMEOUT_TRIGGERED -eq 1 ]; then
+  log ""
+  log "=========================================="
+  log "RUNNING DIAGNOSTIC AGENT"
+  log "=========================================="
+  log ""
+  
+  DIAGNOSTIC_PROMPT="The automated implementation for issue #${ISSUE_NUMBER} timed out after 15 minutes.
+
+**Your task:**
+1. Analyze what was accomplished in the worktree at: $WORKTREE_PATH
+2. Review git log to see what commits were made
+3. Check git status to see what's uncommitted
+4. Review the feature plan if it exists in .features/
+5. Determine why it took so long (complexity, stuck in loop, etc.)
+6. Write a summary comment to issue #${ISSUE_NUMBER} explaining:
+   - What was accomplished
+   - What remains to be done
+   - Why the timeout occurred
+   - Recommendations for completing the work
+
+Use this format for the issue comment:
+
+## 🕐 Implementation Timeout (15 minutes exceeded)
+
+### What Was Accomplished
+[List what was done]
+
+### What Remains
+[List what still needs to be done]
+
+### Why Timeout Occurred
+[Explain the root cause]
+
+### Recommendations
+[How to complete this work]
+
+### Files Modified
+[List key files that were changed]
+
+After posting the comment, output a summary of your findings."
+
+  log "Launching diagnostic agent..."
+  cd "$WORKTREE_PATH"
+  
+  opencode run \
+    --dir "$WORKTREE_PATH" \
+    --title "Diagnostic: Issue #${ISSUE_NUMBER} Timeout" \
+    --dangerously-skip-permissions \
+    "$DIAGNOSTIC_PROMPT" 2>&1 | tee -a "$LOG_FILE"
+  
+  log ""
+  log "Diagnostic agent completed"
+  log ""
+  
+  # Remove "in-progress" label
+  log "Removing 'in-progress' label..."
+  gh issue edit "$ISSUE_NUMBER" --remove-label "in-progress" 2>&1 | tee -a "$LOG_FILE"
+  
+  rm "$LOCK_FILE"
+  exit 1
+fi
 
 if [ $OPENCODE_EXIT_CODE -ne 0 ]; then
   log "Error: OpenCode execution failed with exit code $OPENCODE_EXIT_CODE"
