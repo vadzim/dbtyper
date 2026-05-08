@@ -18,11 +18,13 @@ The monitoring script watches GitHub issues for label changes and automatically 
 
 ## Installation
 
-The monitoring script requires `tsx` and `smee-client`:
+The monitoring script uses Node.js native TypeScript support (Node.js v20.6+):
 
 ```bash
 npm install
 ```
+
+No additional TypeScript runtime needed - Node.js runs `.ts` files directly with `--experimental-strip-types`.
 
 ## Quick Setup (Webhook Mode)
 
