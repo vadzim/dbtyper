@@ -7,7 +7,7 @@ import type {
 	TokenKey,
 	ParseSqlTokens,
 } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../sql-parser-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
@@ -34,7 +34,7 @@ export type ApplyStatements<
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params, null> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
-			infer Error extends SqlParserError<string> | null,
+			infer Error extends SqlParserError<string> | DbtyperError<any, any> | null,
 		]
 		? [NewDB, Error]
 		: never
@@ -44,7 +44,7 @@ export type ApplyParsedStatements<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
-	Error extends SqlParserError<string> | null,
+	Error extends SqlParserError<string> | DbtyperError<any, any> | null,
 	BatchDepth extends number = 0,
 > = BatchDepth extends 50
 	? [Tokens, Db, Error]
@@ -53,7 +53,7 @@ export type ApplyParsedStatements<
 		: ApplyParsedStatementsInner<Tokens, Db, Params, Error> extends [
 					infer Rest extends TokensList,
 					infer NewDB extends JsqlDatabaseShape,
-					infer NewError extends SqlParserError<string> | null,
+					infer NewError extends SqlParserError<string> | DbtyperError<any, any> | null,
 			  ]
 			? ApplyParsedStatements<Rest, NewDB, Params, NewError, Inc[BatchDepth]>
 			: never
@@ -62,7 +62,7 @@ type ApplyParsedStatementsInner<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
-	Error extends SqlParserError<string> | null,
+	Error extends SqlParserError<string> | DbtyperError<any, any> | null,
 	Depth extends number = 0,
 > = Depth extends 50
 	? [Tokens, Db, Error]
@@ -77,7 +77,11 @@ type ApplyParsedStatementsInner<
 					Rest,
 					NewDb,
 					Params,
-					Result extends SqlParserError<string> ? ConcatErrors<Error, Result> : Error,
+					Result extends SqlParserError<string>
+						? ConcatErrors<Error, Result>
+						: Result extends DbtyperError<any, any>
+							? ConcatErrors<Error, Result>
+							: Error,
 					Inc[Depth]
 				>
 			: never
@@ -107,8 +111,10 @@ export type ParseSqlStatement<
 										? ParseUpdate<SkipToken<Tokens>, Db, Params>
 										: ParseSkipStatement<Tokens, Db>
 
-type ConcatErrors<Errors extends SqlParserError<string> | null, Result extends SqlParserError<string>> =
-	Errors extends SqlParserError<string> ? Errors : Result
+type ConcatErrors<
+	Errors extends SqlParserError<string> | DbtyperError<any, any> | null,
+	Result extends SqlParserError<string> | DbtyperError<any, any>
+> = Errors extends SqlParserError<string> | DbtyperError<any, any> ? Errors : Result
 
 // Errors extends SqlParserError<infer ErrorsMsg>
 // 		? Result extends SqlParserError<infer ResultMsg>

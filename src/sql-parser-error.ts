@@ -751,11 +751,11 @@ export const errors = {
 	},
 	2204: {
 		id: "UNKNOWN_TABLE_DELETE_FROM",
-		msg: ["Unknown table in DELETE FROM"],
+		msg: ["Unknown table ", " in DELETE FROM"],
 	},
 	2205: {
 		id: "UNKNOWN_TABLE_IN_DELETE_USING",
-		msg: ["Unknown table in DELETE USING"],
+		msg: ["Unknown table ", " in DELETE USING"],
 	},
 	2206: {
 		id: "UNKNOWN_TABLE_IN_SELECT_STAR",
@@ -783,11 +783,11 @@ export const errors = {
 	},
 	2212: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM",
-		msg: ["Unknown schema or table in DELETE FROM"],
+		msg: ["Unknown schema ", " or table ", " in DELETE FROM"],
 	},
 	2213: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING",
-		msg: ["Unknown schema or table in DELETE USING"],
+		msg: ["Unknown schema ", " or table ", " in DELETE USING"],
 	},
 	2214: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_TABLE",

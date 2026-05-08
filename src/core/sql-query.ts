@@ -5,7 +5,7 @@ import type {
 	JsqlUpdateStatementResult,
 } from "./jsql-shapes.ts"
 import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
 
@@ -17,7 +17,9 @@ type SqlSelectRowForDb<
 	ParseSqlStatement<ParseSqlTokens<Text>, Db, Params> extends [infer _Rest extends TokensList, infer _Db, infer Res]
 		? Res extends SqlParserError<string>
 			? Res
-			: RowShapeFromStatementResult<Res>
+			: Res extends DbtyperError<any, any>
+				? Res
+				: RowShapeFromStatementResult<Res>
 		: never
 
 type ExpectedRowSetResult = SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">
@@ -43,7 +45,13 @@ type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
  * For the public API with TypeScript types, import SqlSelectRow from sql-database.ts or index.ts.
  */
 export type SqlSelectRowSqlTypes<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape | SqlParserError<string> | DbtyperError<any, any>,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends SqlParserError<string> ? Db : Db extends JsqlDatabaseShape ? SqlSelectRowForDb<Db, Text, Params> : never
+> = Db extends SqlParserError<string>
+	? Db
+	: Db extends DbtyperError<any, any>
+		? Db
+		: Db extends JsqlDatabaseShape
+			? SqlSelectRowForDb<Db, Text, Params>
+			: never
