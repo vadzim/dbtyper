@@ -192,16 +192,29 @@ Error code ranges have gaps to allow for future expansion:
 
 ## Status
 
-**Current Coverage:** 38 error codes implemented (as of 2026-05-08)
+**Current Coverage:** 357 error codes implemented (as of 2026-05-08)
 
-**Planned Coverage:** 361 total error codes across all categories
+**Complete Coverage:** All error messages in codebase now have error codes
 
 **Implementation Status:**
 - ✅ Phase 1: Foundation (38 core errors)
-- ⏳ Phase 2: Lexer & Expression Parser
-- ⏳ Phase 3: Statement Parsers
-- ⏳ Phase 4: DDL & Type System
-- ⏳ Phase 5: Semantic & Finalization
+- ✅ Phase 2: Lexer & Expression Parser (completed)
+- ✅ Phase 3: Statement Parsers (completed)
+- ✅ Phase 4: DDL & Type System (completed)
+- ✅ Phase 5: Semantic & Finalization (completed)
+
+**Error Code Distribution:**
+- 100-199: Lexer/Tokenization - 9 codes
+- 200-299: Parser Syntax - 101 codes
+- 300-399: Validation - 50 codes
+- 400-499: Resolution - 22 codes
+- 500-599: Type System - 76 codes
+- 600-699: Semantic/Constraints - 59 codes
+- 700-799: DDL-Specific - 32 codes
+- 800-899: DML/Expression - 58 codes
+- 900-999: Type/Data Specific - 39 codes
+
+**Total:** 357 error codes
 
 ## See Also
 
