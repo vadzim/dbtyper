@@ -99,28 +99,46 @@ Update template.md when you:
 
 **Debugging TypeScript Types:**
 
-When you need to see what a complex type actually resolves to, use a debug type:
+When you need to see what a complex type actually resolves to, use this technique:
 
 ```typescript
-type _debug = SomeComplexType<Args>
+const _n: never = 1 as unknown as SomeComplexType<Args>
 ```
 
-Then run `npm run typecheck:test` and look at the error message. TypeScript will show you the actual resolved type in the error output. This is invaluable for:
+Then run `npm run typecheck:test` and TypeScript will show you the actual resolved type in the error message:
+```
+Type 'SomeComplexType<Args>' is not assignable to type 'never'.
+  Type 'SqlParserError<"Unknown table in DELETE FROM">' is not assignable to type 'never'.
+```
+
+This is invaluable for:
 - Understanding what `ExtractQueryError` actually returns
 - Seeing the resolved error message from the parser
 - Debugging type-level operations
 - Verifying type transformations work as expected
 
+**Why this works:**
+- `never` type accepts no values
+- TypeScript shows what type you're trying to assign to it
+- Forces TypeScript to fully resolve and display the type
+
 **Example from this work:**
 ```typescript
 // To see what error ExtractQueryError returns:
-type _debug = ExtractQueryError<DbShape, typeof query>
+const _n: never = 1 as unknown as ExtractQueryError<DbShape, typeof query>
 
-// TypeScript error shows: SqlParserError<"Unknown table in DELETE FROM">
+// TypeScript error shows:
+// Type 'SqlParserError<"Unknown table in DELETE FROM">' is not assignable to type 'never'
 // Now you know the exact error message to use in your test
 ```
 
-After you get the information, remove the `_debug` type (or prefix with `_` to satisfy linting rules).
+After you get the information, remove the debug line.
+
+**Alternative (less reliable):**
+```typescript
+type _debug = SomeComplexType<Args>
+```
+This sometimes works but TypeScript may not always show the full resolved type. The `const _n: never` technique is more reliable.
 
 **Key Lesson:** When working with complex type-level operations, avoid deeply nested runtime types. Create clean type-level representations instead.
 
