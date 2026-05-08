@@ -1,0 +1,18 @@
+# Automation System - Ignore Patterns
+
+# Logs
+logs/*.log
+
+# Lock files
+.processing/*.lock
+
+# Temporary files
+*.tmp
+*.temp
+
+# OpenCode session data (if any)
+.opencode/
+
+# Issue data files (stored in worktrees)
+.issue-*.json
+.agent-prompt-*.md
