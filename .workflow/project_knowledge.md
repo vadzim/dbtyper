@@ -33,6 +33,26 @@ Update this when you discover patterns, conventions, or insights specific to THI
 - Database shapes flow through migrations using `ApplyStatements`
 - `FlattenedJsqlDatabase` wrappers create deeply nested types from chained `.apply()` calls
 
+**Error Code System:**
+
+- Comprehensive error code registry with 357 unique codes
+- Error codes are type-level (visible in IDE tooltips, not runtime)
+- Registry location: `src/sql-parser-error.ts`
+- Documentation: `docs/ERROR_CODES.md`
+- Error code ranges:
+  - 100-199: Lexer/Tokenization (9 codes)
+  - 200-299: Parser Syntax (101 codes)
+  - 300-399: Validation (50 codes)
+  - 400-499: Resolution (22 codes)
+  - 500-599: Type System (76 codes)
+  - 600-699: Semantic/Constraints (59 codes)
+  - 700-799: DDL-Specific (32 codes)
+  - 800-899: DML/Expression (58 codes)
+  - 900-999: Type/Data Specific (39 codes)
+- Compile-time duplicate detection for both IDs and messages
+- Format: `{ id: "SCREAMING_SNAKE_CASE", msg: ["message", "parts"] }`
+- Adding new codes: Choose appropriate range, create unique ID, add to registry
+
 ---
 
 ## Build & Test Tools

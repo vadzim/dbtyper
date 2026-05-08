@@ -70,6 +70,47 @@ type _debug = SomeComplexType<Args>
 
 This sometimes works but TypeScript may not always show the full resolved type. The `const _n: never` technique is more reliable.
 
+### TypeScript Compile-Time Validation
+
+**Pattern: Use mapped types for compile-time duplicate detection**
+
+When building registries or collections where uniqueness is critical, use TypeScript's type system to enforce it at compile time:
+
+```typescript
+// Registry with duplicate detection
+export const errors = {
+  101: { id: "ERROR_ONE", msg: ["message 1"] },
+  102: { id: "ERROR_TWO", msg: ["message 2"] },
+} as const
+
+type ErrorsConst = typeof errors
+
+// Detect duplicate IDs
+type ErrorIds = { [K in keyof ErrorsConst as ErrorsConst[K]["id"]]: K }
+
+type FoundDuplicateIds = /* complex type checking logic */
+
+type _AssertNoDuplicateIds = ShouldBeFalse<FoundDuplicateIds>
+```
+
+**Benefits:**
+- Catches duplicates at compile time, not runtime
+- No performance overhead
+- Impossible to merge code with duplicates
+- Self-documenting constraints
+
+**Use cases:**
+- Error code registries
+- Configuration objects with unique keys
+- Enum-like structures
+- Any collection requiring uniqueness
+
+**Example from error code implementation:**
+- 357 error codes with duplicate ID detection
+- Duplicate message detection
+- TypeScript compilation fails if duplicates exist
+- Zero runtime cost
+
 ---
 
 ## Workflow Patterns
@@ -103,6 +144,27 @@ This sometimes works but TypeScript may not always show the full resolved type. 
 3. Each subagent gets clear instructions with the reference example
 4. Run tests after each batch to catch issues early
 5. Fix any issues found and iterate
+
+**Pattern for Large-Scale Registry Additions:**
+
+When adding many items to a registry (e.g., 300+ error codes):
+
+1. **Research phase:** Launch subagent to catalog all items and propose structure
+2. **Foundation phase:** Manually implement 10-20% as foundation and pattern
+3. **Bulk phase:** Launch subagent to add remaining items following the pattern
+4. **Validation phase:** Run full test suite and type checking
+
+**Benefits:**
+- Foundation establishes clear pattern for subagent to follow
+- Bulk addition via subagent is much faster than manual
+- Pattern consistency across all items
+- Main context preserved for orchestration
+
+**Example results:**
+- Error code implementation: 38 foundation codes (manual), 321 remaining codes (subagent)
+- Total time: 19 minutes for 357 codes
+- Pattern consistency: 100%
+- Tests passing: 2384/2384
 
 **Benefits:**
 
