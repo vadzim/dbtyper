@@ -141,11 +141,20 @@ This sometimes works but TypeScript may not always show the full resolved type. 
 
 **Workflow feedback collection:**
 - Main agent launches subagents with instruction to return workflow feedback
-- Subagents MUST provide notes (not well-formed) on what worked, what was unclear
+- Subagents MUST provide detailed notes on what worked, what was unclear
+- Subagents do NOT update workflow docs directly (avoids conflicts)
+- Subagents MAY update feature plan with their progress
 - Main agent collects feedback from all subagents as they complete
-- Main agent consolidates all feedback and updates all 5 documents
-- Consolidated feedback used to improve workflow docs continuously
+- Main agent consolidates all feedback and updates all 4 workflow documents
+- Consolidated feedback ensures consistency and avoids duplicates
 - Creates continuous improvement loop
+
+**Why subagents don't update workflow docs directly:**
+- Avoids conflicts when multiple subagents work in parallel
+- Ensures consistent voice and organization
+- Allows main agent to deduplicate and categorize properly
+- Main agent can consolidate similar feedback from multiple subagents
+- Easier to review all changes in one place
 
 **End-of-feature review with subagent:**
 - Always use a dedicated subagent for final review

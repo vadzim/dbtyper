@@ -192,26 +192,28 @@ You are working on [feature name]. This project uses a 5-document system:
 4. .workflow/feature_template.md - Template for new features
 5. .features/[current-feature].md - Current feature plan
 
-Update ALL FIVE documents as you discover new information:
-- Feature-specific progress → .features/[current-feature].md
-- Project-specific patterns → .workflow/project_knowledge.md
-- General techniques → .workflow/findings.md
-- Template improvements → .workflow/feature_template.md
-- Workflow improvements → .workflow/README.md
+IMPORTANT: Do NOT update the 4 workflow documents (.workflow/*) yourself.
+Your job is to provide detailed feedback so the main agent can update them.
+
+You MAY update the feature plan (.features/[current-feature].md) with your progress.
 
 CRITICAL: At the end of your work, you MUST provide workflow feedback.
 This is not optional - it's a required part of your task.
 
-Provide workflow feedback covering:
+Provide detailed workflow feedback covering:
 - What worked well in the workflow
 - What was unclear or confusing in workflow docs
 - What could be improved in workflow docs
 - Any deviations you made and why
 - Suggestions for workflow doc improvements
 - Any threshold rules that should be added or clarified
+- Project-specific patterns discovered → for .workflow/project_knowledge.md
+- General techniques discovered → for .workflow/findings.md
+- Template improvements needed → for .workflow/feature_template.md
+- Workflow process improvements → for .workflow/README.md
 
-This feedback doesn't need to be well-formed - just notes and observations.
-The main agent will use a dedicated subagent to consolidate all feedback.
+Be specific and detailed in your feedback. The main agent will use it to update
+all 4 workflow documents, so provide enough context and examples.
 ```
 
 ### Avoiding Subagent Conflicts
