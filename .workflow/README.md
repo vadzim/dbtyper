@@ -411,12 +411,16 @@ Main Agent:
    - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-feature-name.md`
    - Fill in Overview section with what you understand so far
    - **Add directive at top:** "IMPORTANT: If resuming this feature, READ .workflow/ folder first"
-3. **Launch planning subagent** - Research codebase and create detailed plan
+3. **MANDATORY: Launch planning subagent** - Research codebase and create detailed plan
+   - **Main agent should NEVER do initial research - always delegate**
+   - Only skip for trivial changes (typo fixes, single-line edits)
 4. **Review and refine plan** (main agent) - Provide feedback, make decisions
 5. **Update feature plan** with detailed breakdown from subagent research
 6. **Plan subagent usage** - Identify which tasks can be delegated to subagents
 
 **The feature plan is your working document - update it continuously as you work!**
+
+**CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task - don't batch updates!**
 
 ### During Feature Work:
 
@@ -462,6 +466,8 @@ Main Agent:
 2. **Did I follow the 5-document system?**
    - **CRITICAL:** Did I create the feature plan BEFORE starting ANY implementation?
    - **CRITICAL:** Did I add the "READ .workflow/ first" directive at the top of the feature plan?
+   - **CRITICAL:** Did I update checkboxes during work, not just at end?
+   - **CRITICAL:** Did I complete the retrospective section?
    - Did I update all 5 documents continuously, or batch updates at the end?
    - Did I categorize learnings correctly (general vs project-specific)?
    - Did I update the feature plan after each significant step?
@@ -497,7 +503,9 @@ After completing work, add a retrospective section to your feature plan:
 - **CRITICAL checks:**
   - Did I create feature plan BEFORE implementation? [Yes/No]
   - Did I add "READ .workflow/ first" directive? [Yes/No]
-  - If No to either: What would have prevented this deviation?
+  - Did I update checkboxes during work? [Yes/No]
+  - Did I complete retrospective section? [Yes/No]
+  - If No to any: What would have prevented this deviation?
 
 **Workflow doc improvements needed:**
 - [Specific improvements to prevent future deviations]
@@ -512,6 +520,8 @@ After completing work, add a retrospective section to your feature plan:
 1. Immediately update `.workflow/README.md` with clarifications
 2. Add examples to `.workflow/findings.md` if generally applicable
 3. Update `.workflow/feature_template.md` if template needs changes
+
+**MANDATORY: Retrospective must be completed before marking feature as done.**
 
 **This creates a self-improving system** - each feature makes the workflow clearer for the next one.
 

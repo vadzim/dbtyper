@@ -262,6 +262,97 @@ This sometimes works but TypeScript may not always show the full resolved type. 
 
 ---
 
+## TypeScript for Automation
+
+### Long-Running Monitoring Processes
+
+**Pattern: Use TypeScript for complex monitoring and automation**
+
+- **Classes for state management:** `ImplementationQueue`, `PollingMonitor`, `WebhookMonitor`
+- **setInterval for polling loops:** Clean, readable polling logic
+- **spawn() with detached: true:** Background processes that survive parent exit
+- **Graceful shutdown:** Handle SIGINT/SIGTERM for clean termination
+- **Better than bash for:** Complex state, error handling, type safety
+
+**Example use case:**
+- GitHub label monitoring with queue and concurrency control
+- TypeScript provides better structure than bash for this complexity
+
+### Queue Pattern with Concurrency Control
+
+**Pattern: Manage concurrent operations with a queue**
+
+```typescript
+class Queue {
+  private queue: Item[] = [];
+  private processing = new Set<number>();
+  private maxConcurrent: number;
+
+  async canStart(): Promise<boolean> {
+    return this.processing.size < this.maxConcurrent;
+  }
+
+  enqueue(item: Item): void {
+    if (!this.queue.find(i => i.id === item.id)) {
+      this.queue.push(item);
+    }
+  }
+
+  async processQueue(): Promise<void> {
+    while (this.queue.length > 0 && await this.canStart()) {
+      const item = this.dequeue();
+      if (item) await this.startProcessing(item);
+    }
+  }
+}
+```
+
+**Benefits:**
+- Prevents overwhelming system resources
+- Tracks in-progress items with Set
+- Automatically processes next item when slot available
+- Clean separation of queue logic from business logic
+
+### GitHub CLI Integration from TypeScript
+
+**Pattern: Wrap `gh` commands with spawn()**
+
+```typescript
+async function execGh(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('gh', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.on('close', (code) => {
+      if (code === 0) resolve(stdout);
+      else reject(new Error(`gh command failed (exit ${code})`));
+    });
+  });
+}
+```
+
+**Benefits:**
+- Better error handling than bash
+- Type-safe result handling with JSON.parse()
+- Easier to test and maintain
+- Can leverage existing `gh` CLI without API libraries
+
+### Dual-Mode Architecture
+
+**Pattern: Support multiple modes with shared core logic**
+
+- Share common queue and lock file logic
+- Different monitors for different modes (polling vs webhook)
+- CLI flag to switch modes
+- Allows flexibility for different deployment scenarios
+
+**Example:**
+- Polling mode: Simple, no infrastructure needed
+- Webhook mode: Real-time, requires smee.io or webhook server
+- Both use same queue and implementation logic
+
+---
+
 ## General Best Practices
 
 ### Incremental Development
@@ -304,6 +395,8 @@ This sometimes works but TypeScript may not always show the full resolved type. 
 - Ask: "Did I collect workflow feedback from subagents?"
 - Ask: "Did I follow the 5-document system correctly?"
 - Ask: "What was unclear in the workflow docs that caused deviation?"
+- Ask: "Did I update checkboxes during work, not just at end?"
+- Ask: "Did I complete the retrospective section?"
 - If you deviated from creating feature plan first, what would have prevented it?
 - Immediately update workflow docs based on retrospective findings
 - Each feature should improve the workflow for the next one
