@@ -219,6 +219,58 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 
 ---
 
+## Workflow Efficiency
+
+### ✅ What Worked Well
+
+1. **Using subagents for parallel batch processing**
+   - Saved significant time (2 hours vs estimated 6-7 hours)
+   - Each subagent worked independently on different file groups
+   - Clear instructions with reference examples led to consistent results
+
+2. **Infrastructure tests caught inconsistencies immediately**
+   - Validation rules enforced the pattern
+   - Failed fast when files didn't match expected format
+
+3. **Type system provided instant feedback**
+   - Wrong error messages caught at compile time
+   - No need to run tests to verify error message correctness
+
+4. **Incremental approach**
+   - Started with one example file
+   - Validated the approach before scaling
+   - Fixed issues early before they multiplied
+
+### ⚠️ Challenges Encountered
+
+1. **Type instantiation depth required fundamental approach change**
+   - Initial approach failed completely
+   - Needed to investigate and understand the root cause
+   - Solution required different mental model (inline shapes vs runtime types)
+
+2. **Error messages weren't always what was expected**
+   - Had to investigate actual error strings in parser source
+   - Context-specific messages (DELETE vs UPDATE vs INSERT)
+   - Required iteration and fixes after initial migration
+
+3. **Infrastructure validation regex needed multiple iterations**
+   - Pattern matching for `@ts-expect-error` placement was tricky
+   - Had to account for different query call patterns (query/stream/apply)
+   - Blank lines and comments caused validation failures
+
+4. **Some files had subtle formatting differences**
+   - Blank lines between `@ts-expect-error` and query call
+   - Comments in unexpected places
+   - Required cleanup pass after initial migration
+
+### 📊 Time Estimate vs Reality
+
+- **Plan estimated:** 6-7 hours
+- **Actual:** ~2 hours with heavy subagent usage
+- **Key factor:** Subagents handled the tedious repetitive work efficiently
+
+---
+
 ## Key Takeaways for Future Work
 
 1. **Always investigate before scaling**
@@ -276,6 +328,26 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 5. **Stream tests are different**
    - Use `SqlSelectRow` for validation
    - Different error checking layer than query tests
+
+---
+
+## Questions for Future Investigation
+
+1. Could the type instantiation depth issue be solved at the source?
+   - Maybe flatten database types earlier in the chain?
+   - Would it be worth the complexity?
+
+2. Could error message extraction be simplified?
+   - Is there a way to avoid recreating database shapes?
+   - Could we cache or memoize type-level operations?
+
+3. Should we add more infrastructure tests?
+   - Validate error message format consistency?
+   - Check for common error message typos?
+
+4. Could subagent usage be further optimized?
+   - More granular batching?
+   - Better error recovery?
 
 ---
 
