@@ -521,6 +521,10 @@ export const errors = {
 		id: "EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE",
 		msg: ["Expected `exists` after `IF NOT` in CREATE TYPE"],
 	},
+	1817: {
+		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE",
+		msg: ["Expected `exists` after `IF` in DROP TYPE"],
+	},
 
 	// Validation Errors - Invalid X
 	// Expression Validation
