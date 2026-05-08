@@ -1,8 +1,7 @@
-// Integration Test: db․stream() rejects non-RETURNING statements
+// Integration Test: _db․stream() rejects non-RETURNING statements
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { SqlSelectRow } from "../../test-utils/parser-test-utils.ts"
-import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import type { SqlParserError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"

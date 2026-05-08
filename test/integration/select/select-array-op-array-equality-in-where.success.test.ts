@@ -4,17 +4,17 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table items (id integer not null, tags text[] not null, nums integer[] not null);`)
 	.database()
 // ✅ SUCCESS: Array equality in WHERE
 
-const result = await db.query(`select * from items where tags = array['a','b'];`)
+const _result = await _db.query(`select * from items where tags = array['a','b'];`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			tags: readonly string[]

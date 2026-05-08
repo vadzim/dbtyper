@@ -2,7 +2,6 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type {
 	PeekToken,
 	SkipToken,
-	TokenEot,
 	TokenIdent,
 	TokenKey,
 	TokenNumber,
@@ -282,18 +281,6 @@ type ParseInListUntypedAccum<
 		: never
 
 type DecParenDepth<T extends readonly unknown[]> = T extends readonly [...infer Rest, infer _Last] ? Rest : readonly []
-
-/** Match the closing `)` of `( SELECT … )` when the subquery text starts at `Tokens` (leading `SELECT` token). */
-type SkipParenWrappedSelectTail<Tokens extends TokensList, ExtraOpens extends readonly unknown[] = readonly []> =
-	PeekToken<Tokens> extends TokenEot
-		? SkipFailedExpression<Tokens, SqlParserError<"Unclosed subquery">>
-		: PeekToken<Tokens> extends TokenKey<"(">
-			? SkipParenWrappedSelectTail<SkipToken<Tokens>, readonly [...ExtraOpens, 0]>
-			: PeekToken<Tokens> extends TokenKey<")">
-				? [ExtraOpens] extends [readonly []]
-					? [SkipToken<Tokens>, null]
-					: SkipParenWrappedSelectTail<SkipToken<Tokens>, DecParenDepth<ExtraOpens>>
-				: SkipParenWrappedSelectTail<SkipToken<Tokens>, ExtraOpens>
 
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
@@ -817,7 +804,7 @@ type ResolveFunctionCall<
 											: L extends "array_length"
 												? ArgsRes extends readonly [
 														infer S1 extends SqlTypeShape,
-														infer S2 extends SqlTypeShape,
+														infer _S2 extends SqlTypeShape,
 													]
 													? S1["type"] extends "array" | "unknown"
 														? SqlInteger
@@ -1594,7 +1581,7 @@ type ParseWindowOrderByListTail<
 	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
 > = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc]
 
-type TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
+type _TryOperandIdentOrCall<Tokens extends TokensList, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends TokensList, infer Parts]
 		? Parts extends readonly ["__ats__", string] | readonly ["__qts__", string, string]
 			? SkipFailedExpression<Rm, SqlParserError<"Qualified table .* is only valid in SELECT lists">>
@@ -1978,7 +1965,7 @@ type ResolveInSubqueryAst<
 		: never
 
 type ResolveAnyAllSomeOp<
-	Op extends string,
+	_Op extends string,
 	L extends ScalarExprAst,
 	R extends ScalarExprAst | JsqlSelectStatementResult,
 	Db extends JsqlDatabaseShape,

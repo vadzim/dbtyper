@@ -8,14 +8,12 @@ import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList }
 import type { SqlParserError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type { SqlTypesOf } from "./parser-sql-types-of.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
 	SameComparisonClass,
 	ParseExpressionAST,
-	ExprParseEnv,
 	ScalarExprAst,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
@@ -37,7 +35,7 @@ type InsertTableContext = {
 
 type ParseInsertAliasAfterTable<
 	Tokens extends TokensList,
-	Db extends JsqlDatabaseShape,
+	_Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -247,7 +245,7 @@ type ParseInsertAfterColumnNames<
 type ParseInsertWithSelect<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
+	_Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Tbl extends JsqlDataShape,
 	Sch extends string,
@@ -787,7 +785,7 @@ type ParseInsertMaybeReturning<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Tbl extends JsqlDataShape,
+	_Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],

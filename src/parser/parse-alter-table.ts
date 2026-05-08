@@ -1,15 +1,11 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
-import type { I } from "../core/type-utils.ts"
+import type { JsqlDatabaseShape, JsqlDataShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
 import type {
-	JsqlDbGetSchema,
 	JsqlDbGetTable,
 	JsqlDbGetData,
-	JsqlDbReplaceData,
 	JsqlDbReplaceColumn,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
 	JsqlDbGetColumn,
-	JsqlCreateColumn,
 	JsqlDbGetColumnType,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"

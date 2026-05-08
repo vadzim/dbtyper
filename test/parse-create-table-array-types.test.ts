@@ -6,17 +6,10 @@ import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
-	TBigint,
-	TBoolean,
-	TNumeric,
-	TUuid,
-	TTimestamp,
-	TDate,
 	TTextArray,
 	TIntegerArray,
 	TBigintArray,
 	TBooleanArray,
-	TNumericArray,
 	TUuidArray,
 	TNull,
 } from "./test-utils/sql-type-helpers.ts"

@@ -5,16 +5,16 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: timestamptz and timetz aliases
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table events (created_at timestamptz not null, time_only timetz not null);`)
 	.database()
 
-const result = await db.query(`select created_at, time_only from events;`)
+const _result = await _db.query(`select created_at, time_only from events;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			created_at: unknown
 			time_only: unknown

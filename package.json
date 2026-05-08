@@ -47,6 +47,7 @@
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",
 		"prepack": "npm run build",
+		"pr": "bash scripts/create-pr.sh",
 		"typecheck": "time tsgo --noEmit -p tsconfig.json",
 		"typecheck:full": "npm run --silent typecheck && time npm run --silent monadcheck-log && npm run --silent typecheck:test",
 		"example:docker:up": "npm run docker:up -w @dbtyper/example-postgres",
@@ -64,14 +65,15 @@
 		"example:nest:test:integration": "npm run test:integration -w @dbtyper/example-nest-postgres",
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
-		"test": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w dbtyper-nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent test -w @dbtyper/example-postgres && npm run --silent test -w @dbtyper/example-nest-postgres && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
+		"test": "npm run --silent test:ci && npm run --silent test -w @dbtyper/example-postgres && npm run --silent test -w @dbtyper/example-nest-postgres",
+		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w dbtyper-nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
 		"lint:unused": "npm run lint",
 		"find-unused": "ts-prune --project tsconfig.json --ignore 'src/index.ts|dist/'",
 		"monadcheck": "check-monad './src/**/*.ts' --monad ./src/lexer/sql-tokens.ts TokensList:ParseSqlTokens:PeekToken:SkipToken --snippet-lines 6:4",
-		"monadcheck-log": "mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'node:fs/promises';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC"
+		"monadcheck-log": "bash -c 'mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'\"'\"'node:fs/promises'\"'\"';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||process.env.CI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC'"
 	},
 	"peerDependencies": {
 		"postgres": "^3.4.0"

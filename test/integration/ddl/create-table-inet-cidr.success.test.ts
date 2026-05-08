@@ -5,16 +5,16 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: inet and cidr (network addresses)
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table hosts (id integer not null, ip inet not null, subnet cidr not null);`)
 	.database()
 
-const result = await db.query(`select id, ip, subnet from hosts;`)
+const _result = await _db.query(`select id, ip, subnet from hosts;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			ip: unknown

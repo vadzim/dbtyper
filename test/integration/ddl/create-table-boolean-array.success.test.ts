@@ -5,16 +5,16 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: boolean array
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table flags (id integer not null, bits boolean[] not null);`)
 	.database()
 
-const result = await db.query(`select id, bits from flags;`)
+const _result = await _db.query(`select id, bits from flags;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			bits: readonly boolean[]

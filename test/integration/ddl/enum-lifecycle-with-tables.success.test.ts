@@ -1,11 +1,10 @@
 // Integration Test: Full enum type lifecycle (CREATE, ALTER, DROP)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: Schema with both tables and types
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive');`)
 	.apply(`create table users (id integer not null, name text not null);`)

@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table users (id text, name text);`)
 	.apply(`create table posts (id text, user_id text, title text);`)
@@ -12,7 +12,7 @@ const db = sqlMigrations({ driver: mockDriver })
 
 // ✅ SUCCESS: multiple INNER JOINs
 
-const result = await db.query(
+const _result = await _db.query(
 	`select users.name, posts.title, comments.content 
      from users 
      inner join posts on users.id = posts.user_id 
@@ -21,7 +21,7 @@ const result = await db.query(
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			name: string
 			title: string

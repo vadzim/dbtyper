@@ -5,7 +5,7 @@ import type { SqlParserError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
-import type { TText, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
+import type { TText, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 
 /**
  * Regression: after `JOIN schema.table`, the next token may be `ON` without an alias — `ParseAliasAfterTable`

@@ -5,16 +5,16 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: integer array
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create table scores (id integer not null, nums integer[] not null);`)
 	.database()
 
-const result = await db.query(`select id, nums from scores;`)
+const _result = await _db.query(`select id, nums from scores;`)
 
 type _check = Expect<
 	Matches<
-		typeof result,
+		typeof _result,
 		{
 			id: number
 			nums: readonly number[]

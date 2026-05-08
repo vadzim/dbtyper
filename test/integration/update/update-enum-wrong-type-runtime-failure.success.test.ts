@@ -1,10 +1,9 @@
 // Integration Test: UPDATE with enum types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { PostgresTypeMap } from "../../../src/postgres/postgres-type-map.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
+const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 	.apply(`create type priority as enum ('low', 'medium', 'high');`)
@@ -19,10 +18,10 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 // Wrong enum type (runtime failure, not compile-time)
 
-const result = await db.query(`
+const _result = await _db.query(`
 		update tasks
 		set task_status = 'high'
 		where id = 5;
 	`)
 
-type _check = Expect<Matches<typeof result, unknown>>
+type _check = Expect<Matches<typeof _result, unknown>>
