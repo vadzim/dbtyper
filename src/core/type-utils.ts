@@ -29,8 +29,16 @@ export type GTE = [Repeat<false, NN>, ...GT]
 
 export type HasKey<T, K extends string> = K extends keyof T ? true : false
 
-export type I<T, K extends string, R = {}> = K extends keyof T ? T[K] & R : R
+export type I<T, K extends string | number, R = {}> = K extends keyof T ? T[K] & R : R
 
 export type ReplaceProp<T, K extends string, V> = Omit<T, K> & Record<K, V> extends infer R
 	? { [K in keyof R]: R[K] }
 	: never
+
+export type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never
+
+export type LastOf<T> = UnionToIntersection<T extends any ? () => T : never> extends () => infer R ? R : never
+
+type TupleSize = Counting<21>[number]
+
+export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec[N]>]
