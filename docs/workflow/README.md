@@ -1,6 +1,8 @@
 # Development Workflow Guide
 
-**When working on ANY feature, you MUST update THREE documents continuously.**
+**When working on ANY feature, you MUST update ALL documents continuously:**
+- **Feature plan** (`docs/features/YYYY-MM-DD-HHMM-feature-name.md`)
+- **All documents in `docs/workflow/` folder** according to their intent
 
 This ensures knowledge is captured, organized, and reusable.
 
