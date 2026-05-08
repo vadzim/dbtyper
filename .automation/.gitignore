@@ -16,3 +16,6 @@ logs/*.log
 # Issue data files (stored in worktrees)
 .issue-*.json
 .agent-prompt-*.md
+
+# Smee.io configuration (contains webhook URL)
+smee-config.json
