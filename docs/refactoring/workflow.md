@@ -12,9 +12,13 @@
 
 ## 🔄 Continuous Update Workflow - CRITICAL FOR AGENTS
 
-**When working on ANY feature, you MUST update TWO documents continuously:**
+**When starting ANY feature, FIRST create a feature plan document.**
+
+**Then, while working on the feature, you MUST update TWO documents continuously:**
 
 ### 1. Feature-Specific Plan (e.g., `docs/refactoring/feature-name.md`)
+
+**Create this at the start of feature work** using the template at the end of this document.
 
 Update this for feature-specific progress:
 - ✅ Mark checkboxes as tasks complete
@@ -400,7 +404,9 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 
 ## Feature Planning Template
 
-When planning a specific feature/refactoring, create a new document (e.g., `docs/refactoring/feature-name.md`) with:
+**IMPORTANT: Create a feature plan document BEFORE starting implementation work.**
+
+When starting a new feature/refactoring, create a new document (e.g., `docs/refactoring/feature-name.md`) with these sections:
 
 - **Overview** - What and why
 - **Migration Status** - What's done, what's not
@@ -415,6 +421,11 @@ When planning a specific feature/refactoring, create a new document (e.g., `docs
 - **Migration Completion Summary** - Final results
 
 **See `docs/refactoring/error-message-checking.md` for a complete example.**
+
+**Workflow:**
+1. **Start of feature:** Create feature plan document using template above
+2. **During feature work:** Update feature plan (progress) AND workflow.md (general knowledge)
+3. **End of feature:** Review workflow.md for consistency before creating PR
 
 **Remember:** Update the general knowledge sections above in this workflow.md when you discover something that applies beyond your specific feature!
 
