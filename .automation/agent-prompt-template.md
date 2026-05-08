@@ -129,7 +129,13 @@ Implement the feature described in the GitHub issue above, following the project
 
 ### Phase 3: Validation
 
-1. **Run full test suite:**
+1. **Fix formatting FIRST (CRITICAL):**
+   ```bash
+   npm run format
+   ```
+   This auto-fixes all formatting issues. Run this BEFORE running tests.
+
+2. **Run full test suite:**
    ```bash
    npm run test:ci
    ```
@@ -139,18 +145,30 @@ Implement the feature described in the GitHub issue above, following the project
    - Linting: `npm run lint`
    - Unused exports: `npm run find-unused`
    - Formatting: `npm run format:check`
+   
+   **CRITICAL: If this fails, you MUST fix the issues before creating a PR.**
+   - If formatting fails: run `npm run format` and commit the changes
+   - If linting fails: fix the linting errors
+   - If tests fail: fix the test failures
+   - **DO NOT create a PR with failing tests**
 
-2. **Verify acceptance criteria:**
+3. **Verify acceptance criteria:**
    - Check off all criteria from the issue
    - Ensure all are met
 
-3. **Launch review subagent:**
+4. **Launch review subagent:**
    - Review all 4 workflow documents for quality
    - Check code quality and consistency
    - Verify test coverage
    - Report findings back to you
 
-4. **Fix any issues found**
+5. **Fix any issues found**
+
+6. **Run tests again after fixes:**
+   ```bash
+   npm run test:ci
+   ```
+   Ensure everything passes before proceeding to Phase 4.
 
 ### Phase 4: Documentation
 
@@ -201,17 +219,21 @@ Your implementation is complete when:
 - [ ] Created feature plan BEFORE any implementation
 - [ ] Added "READ .workflow/ first" directive to feature plan
 - [ ] All acceptance criteria from issue are met
-- [ ] All tests pass: `npm run test:ci` (0 failures)
+- [ ] **CRITICAL:** Ran `npm run format` to fix all formatting issues
+- [ ] **CRITICAL:** All tests pass: `npm run test:ci` exits with code 0
 - [ ] 0 TypeScript compilation errors
 - [ ] 0 linting errors
-- [ ] 0 formatting issues
+- [ ] 0 formatting issues (verified by `npm run format:check`)
 - [ ] Feature plan document complete with:
   - [ ] All checkboxes marked
   - [ ] Completion summary filled in
   - [ ] Workflow retrospective completed
 - [ ] All 5 workflow documents updated with learnings
 - [ ] Review subagent completed final quality check
+- [ ] All changes committed (including formatting fixes)
 - [ ] Pull request created and linked to issue
+
+**IMPORTANT:** If `npm run test:ci` fails at any point, you MUST fix the issues before creating a PR. A PR with failing tests will be rejected.
 
 ---
 
