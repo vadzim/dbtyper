@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
@@ -10,7 +10,7 @@ export type ParseDropTable<Tokens extends TokensList, Db extends JsqlDatabaseSha
 		? SkipToken<Tokens> extends infer A0 extends TokensList
 			? PeekToken<A0> extends TokenKey<"exists">
 				? ParseDropTableQualified<SkipToken<A0>, Db, true>
-				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP TABLE">>
+				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_EXISTS_AFTER_IF_IN_DROP_TABLE", []>>
 			: never
 		: ParseDropTableQualified<Tokens, Db, false>
 
@@ -20,7 +20,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
 			? PeekToken<R2> extends TokenKey<";"> | TokenEot
 				? [SkipToken<R2>, null, A, B]
-				: SkipFailedQualifiedName<R2, SqlParserError<"Expected `;` after qualified table name in DROP TABLE">>
+				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE", []>>
 			: never
 		: never
 
@@ -30,7 +30,7 @@ type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlData
 		? [SkipToken<AfterFirst>, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends TokenKey<".">
 			? ParseDropQualifiedSecondIdent<SkipToken<AfterFirst>, A>
-			: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected `.` or end of table name in DROP TABLE">>
+			: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_DOT_OR_END_OF_TABLE_NAME_IN_DROP_TABLE", []>>
 
 /** `[rest, null, schema, table]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -38,7 +38,7 @@ type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDa
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected table name in DROP TABLE">>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME_IN_DROP_TABLE", []>>
 			: never
 		: never
 
@@ -60,13 +60,13 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 					? JsqlDbReplaceData<Db, Sch, Tab, null> extends infer NewDb extends JsqlDatabaseShape
 						? FinishDropStatement<R, NewDb>
 						: never
-					: JsqlDbGetData<Db, Sch, Tab> extends null
-						? SkipFailedStatement<R, Db, SqlParserError<"Table does not exist; use IF EXISTS">>
-						: SkipFailedStatement<R, Db, SqlParserError<"DROP TABLE targets a view; use DROP VIEW">>
-			: [R, Db, E extends SqlParserError<string> ? E : SqlParserError<"Invalid DROP TABLE parse">]
+				: JsqlDbGetData<Db, Sch, Tab> extends null
+					? SkipFailedStatement<R, Db, FormatError<"TABLE_DOES_NOT_EXIST_USE_IF_EXISTS", []>>
+					: SkipFailedStatement<R, Db, FormatError<"DROP_TABLE_TARGETS_A_VIEW_USE_DROP_VIEW", []>>
+			: [R, Db, E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string> ? E : FormatError<"INVALID_DROP_TABLE_PARSE", []>]
 		: never
 
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `;` after DROP TABLE">>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_DROP_TABLE", []>>
