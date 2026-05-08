@@ -20,6 +20,9 @@ Update this when you discover patterns, conventions, or insights specific to THI
 - Clear naming convention: `{operation}-{scenario}.{success|error}.test.ts`
 - 74 error test files across INSERT, UPDATE, DELETE, SELECT, DDL, query-stream, and expressions
 - Infrastructure tests enforce consistency across all test files
+- Skipped tests use `.test.skip.ts` extension (e.g., `.error.test.skip.ts`)
+- Skipped tests are excluded from TypeScript compilation but still validated by infrastructure tests
+- Skipped tests must follow the same pattern as active tests (proper form required)
 
 **Codebase Architecture:**
 - Type-level SQL parser that validates queries at compile time
@@ -128,6 +131,8 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
    - Must have `const query = \`...\` as const`
    - Must have `@ts-expect-error` immediately before query call
    - Must have `ExtractQueryError` type check
+   - Applies to both active tests (`.test.ts`) and skipped tests (`.test.skip.ts`)
+   - Infrastructure tests validate all test files, including skipped ones
 
 4. **Type-level database shapes**
    - Use `ApplyStatements<SqlDatabase, \`...\`>[0]` for clean shapes
@@ -180,3 +185,30 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 3. Should we add more infrastructure tests?
    - Validate error message format consistency?
    - Check for common error message typos?
+
+4. How should incomplete/TODO tests be handled?
+   - Current approach: Use `.test.skip.ts` extension
+   - Tests are excluded from TypeScript compilation (not in tsconfig)
+   - Infrastructure still validates them for proper form
+   - Allows documenting incomplete features without breaking CI
+   - Question: Should there be a way to track which features are incomplete?
+
+---
+
+## Skipped Tests and Incomplete Features
+
+**Pattern for documenting incomplete features:**
+- Use `.test.skip.ts` extension for tests that document unimplemented features
+- Tests must still follow proper error test pattern (enforced by infrastructure)
+- Tests are excluded from TypeScript compilation via tsconfig
+- ESLint errors are expected for skipped tests (not in project config)
+- Allows keeping TODO tests in proper form without breaking CI
+
+**Example use cases:**
+- Type cast validations not yet implemented (e.g., boolean ↔ integer casts)
+- Features that need parser updates
+- Tests that document desired behavior for future implementation
+
+**Files:**
+- `test/integration/select/select-cast-cannot-cast-boolean-to-integer.error.test.skip.ts`
+- `test/integration/select/select-cast-cannot-cast-integer-to-boolean.error.test.skip.ts`
