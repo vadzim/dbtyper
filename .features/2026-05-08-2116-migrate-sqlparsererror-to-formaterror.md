@@ -83,27 +83,29 @@ DbtyperError<2200, "[dbt:UNKNOWN_TABLE_FROM] Unknown table users in FROM">
 5. **parse-create-type.ts** - Migrated to FormatError, added error codes 1815-1816
 6. **parse-sql-type-words.ts** - Migrated to FormatError with error codes for type parsing
 7. **parse-qualified-table-name.ts** - Migrated to FormatError with error codes 4107, 4102, 1506
+8. **parse-create-table.ts** - Migrated to FormatError (24 usages)
+9. **parse-drop-table.ts** - Migrated to FormatError with error codes 1702, 1704, 3204, 3502
+10. **parse-drop-type.ts** - Migrated to FormatError, added error code 1817
+11. **parse-alter-type.ts** - Migrated to FormatError with error codes 4000, 3207, 3305
 
-**Files migrated:** 7
-**SqlParserError usages remaining:** ~653 (down from ~690)
+**Files migrated:** 11
+**SqlParserError usages remaining:** ~603 (down from ~690, 87 migrated, ~13% complete)
+**New error codes added:** 1815, 1816, 1817
 
 ### 🔄 In Progress
 
-1. **parse-create-table.ts** - Next file to migrate (tests are waiting for this)
+Continuing with medium-sized parser files
 
 ### ❌ Incomplete (To Do)
 
-Remaining files with SqlParserError:
-- parse-alter-table.ts
-- parse-alter-type.ts
+Remaining files with SqlParserError (~15 files):
 - parse-create-view.ts
 - parse-delete.ts
-- parse-drop-table.ts
-- parse-drop-type.ts
-- parse-expression.ts
 - parse-insert.ts
-- parse-select.ts
 - parse-update.ts
+- parse-alter-table.ts
+- parse-select.ts (large)
+- parse-expression.ts (large)
 - parse-where-expression.ts
 - parser-validate-mutation-value.ts
 - resolve-column-ref.ts
