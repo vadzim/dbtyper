@@ -253,6 +253,9 @@ These are temporary bridges that should be removed once migration is complete:
 **IMPORTANT:** When working on this migration, follow these rules:
 
 1. **Update checkboxes immediately** - Mark `[x]` as soon as a task is completed
+   - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
+   - **Don't batch updates - update as you go**
+   - This makes the plan resumable at any point
 2. **Update the plan as you learn** - If you discover new requirements or issues, add them to the plan
 3. **Document blockers** - If stuck, add a note explaining what's blocking progress
 4. **Keep progress tracking current** - Update the "Last Updated" timestamp and current phase
@@ -488,7 +491,9 @@ If you haven't yet, add learnings now:
 
 ## Workflow Retrospective
 
-**IMPORTANT:** After completing this feature, perform a retrospective on your workflow adherence.
+**MANDATORY:** After completing this feature, perform a retrospective on your workflow adherence.
+
+**This section must be completed before marking the feature as done.**
 
 ### What went well:
 - [What you did correctly according to workflow]
@@ -503,7 +508,9 @@ If you haven't yet, add learnings now:
 - **CRITICAL checks:**
   - Did I create this feature plan BEFORE starting implementation? [Yes/No]
   - Did I add "READ .workflow/ first" directive at the top? [Yes/No]
-  - If No to either: What would have prevented this deviation?
+  - Did I update checkboxes during work, not just at end? [Yes/No]
+  - Did I complete this retrospective section? [Yes/No]
+  - If No to any: What would have prevented this deviation?
 
 ### CRITICAL: What in the workflow could be done better keeping in mind this feature?
 - [What was unclear during this feature that should be clarified?]

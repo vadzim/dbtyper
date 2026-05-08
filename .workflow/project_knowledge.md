@@ -162,6 +162,54 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 
 ---
 
+## Automation System
+
+**Location:** `.automation/` directory
+
+**Architecture:**
+- Complete automation system for implementing GitHub issues
+- Uses git worktrees for isolation
+- Polling-based monitoring (bash and TypeScript versions)
+- Lock files in `.processing/` prevent duplicates
+- Logs in `.automation/logs/`
+- Configuration in `config.json` (example provided)
+
+**Scripts:**
+- `monitor-approved-issues.sh` - Bash monitoring script (original)
+- `monitor-github-labels.ts` - TypeScript monitoring script (new)
+- `auto-implement-issue.sh` - Main orchestrator (422 lines)
+- `create-issue-worktree.sh` - Worktree management
+- `cleanup-issue-worktree.sh` - Cleanup
+- `create-issue-pr.sh` - PR creation
+
+**TypeScript Automation Scripts:**
+- First TypeScript automation script: `monitor-github-labels.ts`
+- Pattern: Use `tsx` for direct TypeScript execution
+- npm script pattern: `"monitor": "tsx .automation/monitor-github-labels.ts"`
+- Can coexist with bash scripts
+- Better for complex state management and error handling
+
+**Documentation Pattern:**
+- Each automation feature gets its own README
+- Pattern: `.automation/FEATURE-README.md`
+- Example: `MONITOR-README.md` for monitoring feature
+- Comprehensive: usage, configuration, troubleshooting, architecture
+
+**Integration Pattern:**
+- TypeScript scripts can call bash scripts via spawn()
+- Lock file management delegated to bash script (not duplicated)
+- Pattern: TypeScript orchestrates, bash executes
+- Clean separation of concerns
+
+**Testing Automation Features:**
+- Create real GitHub issue for testing
+- Add label to trigger automation
+- Verify behavior end-to-end
+- Clean up test artifacts (issue, worktree, branch)
+- Document testing in commit message
+
+---
+
 ## Resources & References
 
 - **Test utilities:** `test/test-utils/error-test-utils.ts`
@@ -169,6 +217,8 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 - **Parser source:** `src/parser/parse-sql-statement.ts`
 - **Error types:** `src/sql-parser-error.ts`
 - **Database types:** `src/core/sql-database.ts`
+- **Automation system:** `.automation/` directory
+- **Automation docs:** `.automation/README.md`, `.automation/MONITOR-README.md`
 
 ---
 
