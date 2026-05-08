@@ -487,6 +487,13 @@ If you haven't yet, add learnings now:
 - [What was unclear in workflow docs]
 - [Where you should have used subagents but didn't]
 
+### CRITICAL: What in the workflow could be done better keeping in mind this feature?
+- [What was unclear during this feature that should be clarified?]
+- [What thresholds or rules would have helped?]
+- [What examples would have made the workflow clearer?]
+- [What caused any deviations from the workflow?]
+- [What would make the workflow easier to follow for similar features?]
+
 ### Workflow doc improvements needed:
 - [Specific improvements to `.workflow/README.md`]
 - [Clarifications needed in `.workflow/findings.md`]

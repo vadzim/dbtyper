@@ -306,9 +306,17 @@ For each document, check:
 Also review:
 5. .features/[current-feature].md - Verify completion summary is accurate
 
+CRITICAL QUESTION: What in the workflow could be done better keeping in mind the current feature development?
+- Consider what was unclear during this feature
+- Consider what thresholds or rules would have helped
+- Consider what examples would have made the workflow clearer
+- Consider what caused any deviations from the workflow
+- Consider what would make the workflow easier to follow
+
 Report back:
 - Issues found (with specific line references)
 - Suggestions for improvements
+- Answer to the critical question about workflow improvements
 - Confirmation when all checks pass
 
 Do NOT make changes yourself - report findings so the main agent can decide.
@@ -438,6 +446,13 @@ Main Agent:
    - What caused the deviation? (unclear rules, habit, oversight?)
    - How can the workflow docs be improved to prevent this?
    - Did I act as orchestrator or executor?
+
+4. **CRITICAL: What in the workflow could be done better keeping in mind the current feature development?**
+   - What was unclear during this feature that should be clarified?
+   - What thresholds or rules would have helped?
+   - What examples would have made the workflow clearer?
+   - What caused any deviations from the workflow?
+   - What would make the workflow easier to follow for similar features?
 
 ### Retrospective Template
 
