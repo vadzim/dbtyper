@@ -813,7 +813,7 @@ export const errors = {
 	},
 	2302: {
 		id: "UNKNOWN_COLUMN_INSERT",
-		msg: ["Unknown column in INSERT"],
+		msg: ["Unknown column ", " in INSERT"],
 	},
 	2303: {
 		id: "UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
@@ -886,7 +886,7 @@ export const errors = {
 	},
 	2507: {
 		id: "INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN",
-		msg: ["Incompatible value type for column"],
+		msg: ["Incompatible value type for column ", ""],
 	},
 	2508: {
 		id: "INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN",
@@ -926,7 +926,7 @@ export const errors = {
 	// NULL Handling
 	2700: {
 		id: "NULL_NOT_ALLOWED_NOT_NULL_COLUMN",
-		msg: ["NULL not allowed for NOT NULL column"],
+		msg: ["NULL not allowed for NOT NULL column ", ""],
 	},
 	2701: {
 		id: "NULL_NOT_ALLOWED_ARITHMETIC",
