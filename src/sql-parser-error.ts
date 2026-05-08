@@ -513,6 +513,14 @@ export const errors = {
 		id: "EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE",
 		msg: ["Expected `value` after `ADD` in ALTER TYPE"],
 	},
+	1815: {
+		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE",
+		msg: ["Expected `not` after `IF` in CREATE TYPE"],
+	},
+	1816: {
+		id: "EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE",
+		msg: ["Expected `exists` after `IF NOT` in CREATE TYPE"],
+	},
 
 	// Validation Errors - Invalid X
 	// Expression Validation
