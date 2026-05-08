@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken, TokensList, TokenEot, TokenKey, TokenKind, TokenType } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 
 export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenType<TokenKind, string>> = {
@@ -14,7 +14,7 @@ export type ParseSkipStatement<Tokens extends TokensList, DB extends JsqlDatabas
 
 export type SkipFailedExpression<
 	Tokens extends TokensList,
-	Error extends SqlParserError<string>,
+	Error extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
@@ -24,7 +24,7 @@ export type SkipFailedExpression<
 export type SkipFailedStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Error extends SqlParserError<string>,
+	Error extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
@@ -33,7 +33,7 @@ export type SkipFailedStatement<
 
 export type SkipFailedQualifiedName<
 	Tokens extends TokensList,
-	Error extends SqlParserError<string>,
+	Error extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
@@ -53,21 +53,21 @@ export type SkipBracketedUntil<
 						infer CurrentClosingBracket extends ClosingBrackets,
 						...infer Tail extends ClosingBrackets[],
 				  ]
-				? PeekToken<Tokens> extends TokenEot
-					? [Tokens, SqlParserError<`Closing bracket not found: ${CurrentClosingBracket}`>]
-					: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
-						? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
+			? PeekToken<Tokens> extends TokenEot
+				? [Tokens, FormatError<"CLOSING_BRACKET_NOT_FOUND", [CurrentClosingBracket]>]
+				: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
+					? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
+					: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
+						? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
+						: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+			: PeekToken<Tokens> extends infer EndTok
+				? EndTok extends EndToken
+					? [Tokens, SkippedStatement<EndTok>]
+					: PeekToken<Tokens> extends TokenEot
+						? [Tokens, FormatError<"TOKEN_NOT_FOUND", []>]
 						: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
-							? [Tokens, SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>["value"]}`>]
+							? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
 							: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
-				: PeekToken<Tokens> extends infer EndTok
-					? EndTok extends EndToken
-						? [Tokens, SkippedStatement<EndTok>]
-						: PeekToken<Tokens> extends TokenEot
-							? [Tokens, SqlParserError<"Token not found">]
-							: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
-								? [Tokens, SqlParserError<`Unmatched closing bracket: ${PeekToken<Tokens>["value"]}`>]
-								: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
-					: never
+				: never
 
 type ClosingBrackets = ")" | "]"
