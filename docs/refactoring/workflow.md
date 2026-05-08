@@ -59,6 +59,21 @@ Ask yourself: **"Will this help with OTHER features, or just THIS one?"**
 
 **Remember: Update BOTH documents throughout development, not just at the end!**
 
+### 📋 End-of-Feature Review
+
+**At the end of feature work, review this workflow.md for consistency:**
+
+New content added during feature work can affect document quality. Check:
+- ✅ **Consistency** - Do new sections fit with existing content?
+- ✅ **Clarity** - Is new content understandable to others?
+- ✅ **Completeness** - Are there missing explanations or examples?
+- ✅ **Organization** - Is content in the right section?
+- ✅ **Duplicates** - Did you accidentally add duplicate information?
+
+**Why:** Incremental updates during feature work are great, but a final review ensures the document remains high-quality and useful for future work.
+
+**When to review:** After completing a feature, before creating the PR.
+
 ---
 
 ## Project Structure & Organization
