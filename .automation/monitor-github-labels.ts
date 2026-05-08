@@ -10,7 +10,8 @@
  * - Smee: async function that sends messages to stream
  */
 
-import { spawn } from "node:child_process"
+import { spawn, execFile } from "node:child_process"
+import { promisify } from "node:util"
 import { readFile, mkdir, writeFile, unlink, readdir } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join, dirname } from "node:path"
@@ -18,24 +19,14 @@ import { fileURLToPath } from "node:url"
 import { PassThrough } from "node:stream"
 import { setTimeout } from "node:timers/promises"
 
+const execFileAsync = promisify(execFile)
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface Config {
-	automation: {
-		enabled: boolean
-		approvalLabel: string
-		maxParallelImplementations: number
-	}
-	github: {
-		owner: string
-		repo: string
-	}
-}
 
 interface Issue {
 	number: number
@@ -54,6 +45,8 @@ interface MonitorOptions {
 	maxConcurrent: number
 	pollInterval: number
 	smeeUrl?: string
+	approvedLabel: string
+	inProgressLabel: string
 }
 
 // ============================================================================
@@ -70,59 +63,12 @@ function createMessageStream() {
 }
 
 // ============================================================================
-// Configuration
-// ============================================================================
-
-async function loadConfig(): Promise<Config> {
-	const configPath = join(__dirname, "config.json")
-
-	if (!existsSync(configPath)) {
-		return {
-			automation: {
-				enabled: true,
-				approvalLabel: "approved",
-				maxParallelImplementations: 1,
-			},
-			github: {
-				owner: process.env.GITHUB_OWNER || "",
-				repo: process.env.GITHUB_REPO || "",
-			},
-		}
-	}
-
-	const content = await readFile(configPath, "utf-8")
-	return JSON.parse(content)
-}
-
-// ============================================================================
 // GitHub CLI Integration
 // ============================================================================
 
 async function execGh(args: string[]): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const proc = spawn("gh", args, {
-			stdio: ["ignore", "pipe", "pipe"],
-		})
-
-		let stdout = ""
-		let stderr = ""
-
-		proc.stdout.on("data", data => {
-			stdout += data.toString()
-		})
-
-		proc.stderr.on("data", data => {
-			stderr += data.toString()
-		})
-
-		proc.on("close", code => {
-			if (code === 0) {
-				resolve(stdout)
-			} else {
-				reject(new Error(`gh command failed (exit ${code}): ${stderr}`))
-			}
-		})
-	})
+	const { stdout } = await execFileAsync('gh', args)
+	return stdout
 }
 
 async function fetchApprovedIssues(approvalLabel: string): Promise<Issue[]> {
@@ -191,11 +137,15 @@ async function removeLock(issueNumber: number): Promise<void> {
 // Startup Scanner
 // ============================================================================
 
-async function startupScan(stream: ReturnType<typeof createMessageStream>, approvalLabel: string): Promise<void> {
+async function startupScan(
+	stream: ReturnType<typeof createMessageStream>,
+	approvalLabel: string,
+	inProgressLabel: string
+): Promise<void> {
 	console.log("[Startup] Scanning for approved issues...")
 
 	const issues = await fetchApprovedIssues(approvalLabel)
-	const pending = issues.filter(issue => !issue.labels.includes("in-progress"))
+	const pending = issues.filter(issue => !issue.labels.includes(inProgressLabel))
 
 	console.log(`[Startup] Found ${pending.length} pending issue(s)`)
 
@@ -444,6 +394,8 @@ async function parseArgs(): Promise<MonitorOptions> {
 		mode: "polling",
 		maxConcurrent: 1,
 		pollInterval: 30,
+		approvedLabel: "approved",
+		inProgressLabel: "in-progress",
 	}
 
 	for (let i = 0; i < args.length; i++) {
@@ -478,6 +430,16 @@ async function parseArgs(): Promise<MonitorOptions> {
 			const value = args[++i]
 			if (value) {
 				options.smeeUrl = value
+			}
+		} else if (arg === "--approved" && i + 1 < args.length) {
+			const value = args[++i]
+			if (value) {
+				options.approvedLabel = value
+			}
+		} else if (arg === "--in-progress" && i + 1 < args.length) {
+			const value = args[++i]
+			if (value) {
+				options.inProgressLabel = value
 			}
 		} else if (arg === "--help" || arg === "-h") {
 			printHelp()
@@ -527,6 +489,8 @@ Options:
   --max-concurrent <number>    Max parallel implementations (default: 1)
   --poll-interval <seconds>    Polling interval in seconds (default: 30)
   --smee-url <url>            Smee.io URL for webhook mode
+  --approved <label>          Approval label name (default: approved)
+  --in-progress <label>       In-progress label name (default: in-progress)
   --help, -h                  Show this help message
 
 Examples:
@@ -539,6 +503,9 @@ Examples:
   # Webhook mode (provide smee URL)
   npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL
 
+  # Custom labels
+  npm run monitor -- --approved "auto-implement" --in-progress "implementing"
+
 Environment Variables:
   GITHUB_TOKEN    GitHub personal access token (required)
 `)
@@ -550,12 +517,6 @@ Environment Variables:
 
 async function main(): Promise<void> {
 	const options = await parseArgs()
-	const config = await loadConfig()
-
-	// Override max concurrent from CLI
-	if (options.maxConcurrent) {
-		config.automation.maxParallelImplementations = options.maxConcurrent
-	}
 
 	// Create message stream
 	const stream = createMessageStream()
@@ -577,25 +538,23 @@ async function main(): Promise<void> {
 	})
 
 	// Start main loop
-	const mainLoopPromise = mainLoop(stream, config.automation.maxParallelImplementations)
+	const mainLoopPromise = mainLoop(stream, options.maxConcurrent)
 
 	// Start startup scan
-	await startupScan(stream, config.automation.approvalLabel)
+	await startupScan(stream, options.approvedLabel, options.inProgressLabel)
 
 	// Start appropriate monitor
 	if (options.mode === "polling") {
-		startPoller(stream, config.automation.approvalLabel, options.pollInterval, abortController.signal)
+		startPoller(stream, options.approvedLabel, options.pollInterval, abortController.signal)
 	} else {
-		startWebhook(stream, options.smeeUrl!, config.automation.approvalLabel, abortController.signal)
+		startWebhook(stream, options.smeeUrl!, options.approvedLabel, abortController.signal)
 	}
 
 	// Wait for main loop to finish
 	await mainLoopPromise
 }
 
-try {
-	await main()
-} catch (error) {
+main().catch(error => {
 	console.error("Fatal error:", error)
 	process.exit(1)
-}
+})
