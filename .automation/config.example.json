@@ -1,36 +1,31 @@
 {
-  "automation": {
-    "enabled": true,
-    "approvalLabel": "approved",
-    "autoMerge": false,
-    "maxParallelImplementations": 3,
-    "checkInterval": 300
-  },
-  "worktree": {
-    "basePath": ".worktrees",
-    "branchPrefix": "feature/issue-",
-    "cleanupAfterMerge": true
-  },
-  "testing": {
-    "runAfterEachChange": true,
-    "requiredChecks": [
-      "typecheck:full",
-      "test:ci",
-      "lint",
-      "format:check"
-    ]
-  },
-  "documentation": {
-    "updateWorkflowDocs": true,
-    "requireRetrospective": true,
-    "updateProjectDocs": true
-  },
-  "github": {
-    "owner": "vadzim",
-    "repo": "dbtyper"
-  },
-  "agent": {
-    "model": "kr/claude-sonnet-4.5",
-    "maxContext": 200000
-  }
+	"automation": {
+		"enabled": true,
+		"approvalLabel": "approved",
+		"autoMerge": false,
+		"maxParallelImplementations": 3,
+		"checkInterval": 300
+	},
+	"worktree": {
+		"basePath": ".worktrees",
+		"branchPrefix": "feature/issue-",
+		"cleanupAfterMerge": true
+	},
+	"testing": {
+		"runAfterEachChange": true,
+		"requiredChecks": ["typecheck:full", "test:ci", "lint", "format:check"]
+	},
+	"documentation": {
+		"updateWorkflowDocs": true,
+		"requireRetrospective": true,
+		"updateProjectDocs": true
+	},
+	"github": {
+		"owner": "vadzim",
+		"repo": "dbtyper"
+	},
+	"agent": {
+		"model": "kr/claude-sonnet-4.5",
+		"maxContext": 200000
+	}
 }

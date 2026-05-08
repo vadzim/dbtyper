@@ -17,7 +17,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // because users is not in the FROM clause (only other_table is)
 const query = `select users.id, users.name from other_table;` as const
 
-
 // @ts-expect-error
 await db.query(query)
 
@@ -27,7 +26,4 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text, name text); create table other_table (value text);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Unknown qualified column">
->>
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown qualified column">>>

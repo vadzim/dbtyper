@@ -21,11 +21,13 @@
 **Purpose:** Workflow instructions and guidelines
 
 **Update when:**
+
 - Workflow process changes
 - New best practices for using these documents
 - Instructions need clarification
 
 **Contains:**
+
 - How to use the 5-document system
 - Decision tree for which document to update
 - Workflow guidelines
@@ -37,13 +39,15 @@
 **Purpose:** General development findings (applicable to ANY project)
 
 **Update when you discover:**
+
 - 🐛 **Debugging techniques** - TypeScript tricks, investigation methods
 - ⚡ **Workflow patterns** - What works well (like using subagents)
 - 📊 **Efficiency insights** - What worked well, what didn't
 - 🎯 **General best practices** - Applicable to any project
 
 **Examples:**
-- "TypeScript type debugging: const _n: never = 1 as unknown as T"
+
+- "TypeScript type debugging: const \_n: never = 1 as unknown as T"
 - "Subagents work well for batch migrations (saved 4-5 hours)"
 - "Infrastructure tests catch issues early"
 
@@ -54,6 +58,7 @@
 **Purpose:** Project-specific knowledge (specific to THIS project)
 
 **Update when you discover:**
+
 - 🏗️ **Project conventions** - Patterns that apply to all features
 - 🔧 **Tool usage** - Commands, build tools, how things work
 - 🧠 **Architecture insights** - How the system is structured
@@ -61,6 +66,7 @@
 - 📋 **Project-specific conventions** - Naming, structure, rules
 
 **Examples:**
+
 - "Test files must follow {operation}-{scenario}.{success|error}.test.ts naming"
 - "This project uses tsgo for faster type checking"
 - "SQL parser returns tuples: [NewDbShape, Tokens, Error]"
@@ -72,11 +78,13 @@
 **Purpose:** Template for creating new feature plans
 
 **Update when:**
+
 - Template structure needs improvement
 - New sections should be added to feature plans
 - Better examples are discovered
 
 **Use this:**
+
 - Copy this template when starting a new feature
 - Save it in `.features/` folder
 - Name it: `YYYY-MM-DD-HHMM-feature-name.md`
@@ -90,13 +98,16 @@
 **Location:** `.features/` folder
 
 **Create at start:** Use timestamp format `YYYY-MM-DD-HHMM-feature-name.md`
+
 - Example: `.features/2026-05-08-0430-error-message-checking.md`
 
 **CRITICAL: Create this BEFORE any implementation work!**
 
 **Must include at top:**
+
 ```markdown
 **IMPORTANT: If resuming this feature, READ .workflow/ folder first:**
+
 - .workflow/README.md - Workflow instructions
 - .workflow/findings.md - General development patterns
 - .workflow/project_knowledge.md - Project-specific knowledge
@@ -104,6 +115,7 @@
 ```
 
 **Update continuously with:**
+
 - ✅ Mark checkboxes as tasks complete
 - 📝 Track what you've done in this session
 - ⚠️ Document blockers or issues specific to this feature
@@ -121,6 +133,7 @@
 ### Question 1: Is this about the workflow process itself?
 
 **YES** → Update **.workflow/README.md**
+
 - Example: "Add new step to workflow"
 - Example: "Clarify when to update documents"
 
@@ -129,6 +142,7 @@
 ### Question 2: Is this about THIS feature only?
 
 **YES** → Update **your feature plan** (.features/YYYY-MM-DD-HHMM-name.md)
+
 - Example: "Completed migration of 10 INSERT test files"
 - Example: "Blocked on understanding error message format"
 - Example: "Next: migrate UPDATE test files"
@@ -138,18 +152,21 @@
 ### Question 3: Is this specific to THIS project?
 
 **YES** → Update **.workflow/project_knowledge.md**
+
 - Example: "Test files must follow {operation}-{scenario}.{success|error}.test.ts naming"
 - Example: "This project uses tsgo for faster type checking"
 - Example: "SQL parser returns tuples: [NewDbShape, Tokens, Error]"
 
 **NO** → Update **.workflow/findings.md**
-- Example: "TypeScript type debugging: const _n: never = 1 as unknown as T"
+
+- Example: "TypeScript type debugging: const \_n: never = 1 as unknown as T"
 - Example: "Subagents work well for batch migrations"
 - Example: "Infrastructure tests catch issues early"
 
 ### Question 4: Is this about the feature template?
 
 **YES** → Update **.workflow/feature_template.md**
+
 - Example: "Add new section for performance considerations"
 - Example: "Improve TODO checklist structure"
 
@@ -169,6 +186,7 @@
 ### When to Use Subagents
 
 **Always use subagents for:**
+
 - **Initial planning and strategy** - Delegate research and plan creation
 - Batch migrations (multiple files with same pattern)
 - Large-scale refactoring across many files
@@ -181,6 +199,7 @@
 **Threshold rule: If you're about to do the same type of edit more than 3 times, use a subagent.**
 
 **Use main context for:**
+
 - Orchestrating subagent work
 - Reviewing and refining plans created by subagents
 - Making final decisions based on subagent feedback
@@ -268,29 +287,29 @@ Phase 3: Subagent 5 does end-of-feature review
 This is the safest and most efficient:
 
 1. **Planning Phase:**
-   - Launch planning subagent to research and create plan
-   - Main agent reviews and refines
+    - Launch planning subagent to research and create plan
+    - Main agent reviews and refines
 
 2. **Implementation Phase:**
-   - Launch multiple subagents in parallel for file work
-   - Each subagent works on separate file groups
-   - Subagents report findings and MUST provide workflow feedback
-   - Main agent collects all feedback as subagents complete
+    - Launch multiple subagents in parallel for file work
+    - Each subagent works on separate file groups
+    - Subagents report findings and MUST provide workflow feedback
+    - Main agent collects all feedback as subagents complete
 
 3. **Documentation Phase:**
-   - Main agent consolidates all feedback from implementation subagents
-   - Main agent updates all 5 documents based on consolidated feedback:
-     - .features/[current-feature].md - progress and learnings
-     - .workflow/project_knowledge.md - project-specific patterns
-     - .workflow/findings.md - general techniques
-     - .workflow/feature_template.md - template improvements
-     - .workflow/README.md - workflow improvements
-   - Main agent reviews workflow docs for consistency
+    - Main agent consolidates all feedback from implementation subagents
+    - Main agent updates all 5 documents based on consolidated feedback:
+        - .features/[current-feature].md - progress and learnings
+        - .workflow/project_knowledge.md - project-specific patterns
+        - .workflow/findings.md - general techniques
+        - .workflow/feature_template.md - template improvements
+        - .workflow/README.md - workflow improvements
+    - Main agent reviews workflow docs for consistency
 
 4. **Final Review Phase:**
-   - Launch final review subagent to verify all documents
-   - Main agent makes any final corrections
-   - Create PR
+    - Launch final review subagent to verify all documents
+    - Main agent makes any final corrections
+    - Create PR
 
 ### End-of-Feature Review with Subagent
 
@@ -380,6 +399,7 @@ Main Agent:
 ```
 
 **Key principles:**
+
 - Main agent orchestrates, subagents execute
 - All subagents MUST provide workflow feedback
 - Main agent consolidates feedback and updates all 5 documents
@@ -408,12 +428,12 @@ Main Agent:
 
 1. **Read ALL 4 workflow documents** (`.workflow/*.md`) - Understand the system
 2. **Create feature plan IMMEDIATELY:**
-   - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-feature-name.md`
-   - Fill in Overview section with what you understand so far
-   - **Add directive at top:** "IMPORTANT: If resuming this feature, READ .workflow/ folder first"
+    - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-feature-name.md`
+    - Fill in Overview section with what you understand so far
+    - **Add directive at top:** "IMPORTANT: If resuming this feature, READ .workflow/ folder first"
 3. **MANDATORY: Launch planning subagent** - Research codebase and create detailed plan
-   - **Main agent should NEVER do initial research - always delegate**
-   - Only skip for trivial changes (typo fixes, single-line edits)
+    - **Main agent should NEVER do initial research - always delegate**
+    - Only skip for trivial changes (typo fixes, single-line edits)
 4. **Review and refine plan** (main agent) - Provide feedback, make decisions
 5. **Update feature plan** with detailed breakdown from subagent research
 6. **Plan subagent usage** - Identify which tasks can be delegated to subagents
@@ -432,11 +452,11 @@ Main Agent:
 4. **Collect workflow feedback** - Each subagent MUST return workflow feedback
 5. **Consolidate feedback** (main agent) - Process all workflow feedback from subagents
 6. **Update all 5 documents** (main agent) - Based on consolidated feedback:
-   - .features/[feature].md - progress and learnings
-   - .workflow/project_knowledge.md - project-specific patterns
-   - .workflow/findings.md - general techniques
-   - .workflow/feature_template.md - template improvements
-   - .workflow/README.md - workflow improvements
+    - .features/[feature].md - progress and learnings
+    - .workflow/project_knowledge.md - project-specific patterns
+    - .workflow/findings.md - general techniques
+    - .workflow/feature_template.md - template improvements
+    - .workflow/README.md - workflow improvements
 7. **Review workflow docs** (main agent) - Check for consistency
 8. **Repeat** - Continue delegating to subagents as needed
 
@@ -457,34 +477,34 @@ Main Agent:
 ### Questions to Ask Yourself
 
 1. **Did I use subagents appropriately?**
-   - Did I do repetitive work manually that should have been delegated?
-   - Did I consume main context on tasks that could have been subagent work?
-   - Did I delegate early enough, or wait until context was already full?
-   - Did I delegate planning and research, or do it myself?
-   - Did I collect workflow feedback from subagents?
+    - Did I do repetitive work manually that should have been delegated?
+    - Did I consume main context on tasks that could have been subagent work?
+    - Did I delegate early enough, or wait until context was already full?
+    - Did I delegate planning and research, or do it myself?
+    - Did I collect workflow feedback from subagents?
 
 2. **Did I follow the 5-document system?**
-   - **CRITICAL:** Did I create the feature plan BEFORE starting ANY implementation?
-   - **CRITICAL:** Did I add the "READ .workflow/ first" directive at the top of the feature plan?
-   - **CRITICAL:** Did I update checkboxes during work, not just at end?
-   - **CRITICAL:** Did I complete the retrospective section?
-   - Did I update all 5 documents continuously, or batch updates at the end?
-   - Did I categorize learnings correctly (general vs project-specific)?
-   - Did I update the feature plan after each significant step?
-   - If I deviated from creating feature plan first, what in the workflow docs was unclear?
+    - **CRITICAL:** Did I create the feature plan BEFORE starting ANY implementation?
+    - **CRITICAL:** Did I add the "READ .workflow/ first" directive at the top of the feature plan?
+    - **CRITICAL:** Did I update checkboxes during work, not just at end?
+    - **CRITICAL:** Did I complete the retrospective section?
+    - Did I update all 5 documents continuously, or batch updates at the end?
+    - Did I categorize learnings correctly (general vs project-specific)?
+    - Did I update the feature plan after each significant step?
+    - If I deviated from creating feature plan first, what in the workflow docs was unclear?
 
 3. **What could I have done better?**
-   - Where did I deviate from the workflow?
-   - What caused the deviation? (unclear rules, habit, oversight?)
-   - How can the workflow docs be improved to prevent this?
-   - Did I act as orchestrator or executor?
+    - Where did I deviate from the workflow?
+    - What caused the deviation? (unclear rules, habit, oversight?)
+    - How can the workflow docs be improved to prevent this?
+    - Did I act as orchestrator or executor?
 
 4. **CRITICAL: What in the workflow could be done better keeping in mind the current feature development?**
-   - What was unclear during this feature that should be clarified?
-   - What thresholds or rules would have helped?
-   - What examples would have made the workflow clearer?
-   - What caused any deviations from the workflow?
-   - What would make the workflow easier to follow for similar features?
+    - What was unclear during this feature that should be clarified?
+    - What thresholds or rules would have helped?
+    - What examples would have made the workflow clearer?
+    - What caused any deviations from the workflow?
+    - What would make the workflow easier to follow for similar features?
 
 ### Retrospective Template
 
@@ -494,20 +514,23 @@ After completing work, add a retrospective section to your feature plan:
 ## Workflow Retrospective
 
 **What went well:**
+
 - [What you did correctly according to workflow]
 
 **What could be improved:**
+
 - [Where you deviated from workflow]
 - [Why the deviation happened]
 - [What was unclear in workflow docs]
 - **CRITICAL checks:**
-  - Did I create feature plan BEFORE implementation? [Yes/No]
-  - Did I add "READ .workflow/ first" directive? [Yes/No]
-  - Did I update checkboxes during work? [Yes/No]
-  - Did I complete retrospective section? [Yes/No]
-  - If No to any: What would have prevented this deviation?
+    - Did I create feature plan BEFORE implementation? [Yes/No]
+    - Did I add "READ .workflow/ first" directive? [Yes/No]
+    - Did I update checkboxes during work? [Yes/No]
+    - Did I complete retrospective section? [Yes/No]
+    - If No to any: What would have prevented this deviation?
 
 **Workflow doc improvements needed:**
+
 - [Specific improvements to prevent future deviations]
 - [Clarifications needed]
 - [New examples or thresholds to add]
@@ -517,6 +540,7 @@ After completing work, add a retrospective section to your feature plan:
 ### Acting on Retrospective Findings
 
 **If you identify workflow doc improvements:**
+
 1. Immediately update `.workflow/README.md` with clarifications
 2. Add examples to `.workflow/findings.md` if generally applicable
 3. Update `.workflow/feature_template.md` if template needs changes
@@ -544,12 +568,14 @@ After completing work, add a retrospective section to your feature plan:
 ### Review Each Workflow Document
 
 **.workflow/README.md:**
+
 - ✅ **Accuracy** - Are workflow instructions still accurate?
 - ✅ **Completeness** - Do any guidelines need updating based on what you learned?
 - ✅ **Clarity** - Are instructions clear and unambiguous?
 - ✅ **Consistency** - Does it align with how you actually worked?
 
 **.workflow/findings.md:**
+
 - ✅ **Consistency** - Do new sections fit with existing content? No contradictions?
 - ✅ **Clarity** - Is new content understandable to others? No ambiguities?
 - ✅ **Completeness** - Are there missing explanations or examples?
@@ -559,6 +585,7 @@ After completing work, add a retrospective section to your feature plan:
 - ✅ **Generalizability** - Are findings truly applicable to ANY project, not just this one?
 
 **.workflow/project_knowledge.md:**
+
 - ✅ **Consistency** - Do new sections fit with existing content? No contradictions?
 - ✅ **Clarity** - Is new content understandable to others? No ambiguities?
 - ✅ **Completeness** - Are there missing explanations or examples?
@@ -569,12 +596,14 @@ After completing work, add a retrospective section to your feature plan:
 - ✅ **Accuracy** - Are commands, paths, and technical details correct?
 
 **.workflow/feature_template.md:**
+
 - ✅ **Improvements** - Does it need any improvements based on this feature?
 - ✅ **Completeness** - Are there sections that should be added?
 - ✅ **Clarity** - Are instructions and examples clear?
 - ✅ **Consistency** - Does it align with the actual workflow?
 
 **Your feature plan (.features/YYYY-MM-DD-HHMM-name.md):**
+
 - ✅ **Completion** - All checkboxes marked
 - ✅ **Summary** - Completion summary filled in
 - ✅ **Learnings** - Learnings documented (and already added to workflow docs!)
@@ -583,6 +612,7 @@ After completing work, add a retrospective section to your feature plan:
 ### Why This Matters
 
 **Incremental updates during feature work are essential**, but a final review ensures:
+
 1. **Consistency** - All documents align with each other
 2. **Clarity** - No ambiguities or unclear instructions
 3. **Actualized Knowledge** - Documents reflect reality, not just plans
@@ -599,6 +629,7 @@ After completing work, add a retrospective section to your feature plan:
 ## 📚 Summary
 
 **The Five Documents:**
+
 1. **.workflow/README.md** - How to use this system
 2. **.workflow/findings.md** - General development patterns
 3. **.workflow/project_knowledge.md** - Project-specific knowledge
@@ -606,6 +637,7 @@ After completing work, add a retrospective section to your feature plan:
 5. **.features/YYYY-MM-DD-HHMM-name.md** - Current feature plan
 
 **Key Rules:**
+
 1. **Update ALL FIVE documents continuously as you work!**
 2. **Use subagents heavily to manage context** - Your LLM context fills up fast
 3. **Always use a review subagent at the end** - Mandatory for quality assurance

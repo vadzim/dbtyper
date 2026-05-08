@@ -23,12 +23,11 @@ const query = `create table users (
 await migrations.apply(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public;`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"DEFAULT value type mismatch: expected text/uuid column for string literal">
->>
+type _errorCheck = Expect<
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		SqlParserError<"DEFAULT value type mismatch: expected text/uuid column for string literal">
+	>
+>

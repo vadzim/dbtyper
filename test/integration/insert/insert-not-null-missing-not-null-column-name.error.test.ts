@@ -25,7 +25,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text not null, name text not null, email text);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Missing NOT NULL column in INSERT">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Missing NOT NULL column in INSERT">>
+>

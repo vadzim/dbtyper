@@ -23,7 +23,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create type status as enum ('active', 'inactive');`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Enum value already exists">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Enum value already exists">>
+>

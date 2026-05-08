@@ -16,12 +16,11 @@ const query = `alter type missing add value 'new';` as const
 await migrations.apply(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public;`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">
->>
+type _errorCheck = Expect<
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		SqlParserError<"Type does not exist or is not an enum; use IF EXISTS">
+	>
+>

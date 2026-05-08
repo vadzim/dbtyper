@@ -4,6 +4,7 @@
 **Current State:** [Brief description - e.g., "In Progress", "Blocked on X", "✅ Complete", "⏸️ Paused"]
 
 **If this feature is marked as COMPLETE:**
+
 - An agent resuming this feature should tell you it's complete
 - Agent should ask: "This feature is complete. What would you like me to do?"
 - Agent should NOT start working without your instruction
@@ -12,14 +13,16 @@
 **This is a feature plan document. Save it in `.features/` folder as `YYYY-MM-DD-HHMM-feature-name.md`**
 
 **CRITICAL: Before working on this feature, you MUST read .workflow/ folder:**
+
 1. **FIRST:** Read `.workflow/README.md` - Workflow instructions and guidelines
-2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques  
+2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques
 3. **THIRD:** Read `.workflow/project_knowledge.md` - Project-specific conventions and knowledge
 4. **FOURTH:** Read `.workflow/feature_template.md` - Template structure
 
 **This applies whether you are starting, resuming, or reviewing this feature.**
 
 **Part of the 5-document system:**
+
 1. .workflow/README.md - Workflow instructions
 2. .workflow/findings.md - General development findings
 3. .workflow/project_knowledge.md - Project-specific knowledge
@@ -253,9 +256,9 @@ These are temporary bridges that should be removed once migration is complete:
 **IMPORTANT:** When working on this migration, follow these rules:
 
 1. **Update checkboxes immediately** - Mark `[x]` as soon as a task is completed
-   - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
-   - **Don't batch updates - update as you go**
-   - This makes the plan resumable at any point
+    - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
+    - **Don't batch updates - update as you go**
+    - This makes the plan resumable at any point
 2. **Update the plan as you learn** - If you discover new requirements or issues, add them to the plan
 3. **Document blockers** - If stuck, add a note explaining what's blocking progress
 4. **Keep progress tracking current** - Update the "Last Updated" timestamp and current phase
@@ -263,8 +266,8 @@ These are temporary bridges that should be removed once migration is complete:
 6. **Commit frequently** - Commit the updated plan document after completing each major step
 7. **Run `npm test` frequently** - Run tests after completing each significant change or step to catch issues early
 8. **Update knowledge documents** - When you discover something that applies beyond this feature:
-   - Project-specific → Update `.workflow/project_knowledge.md`
-   - General patterns → Update `.workflow/findings.md`
+    - Project-specific → Update `.workflow/project_knowledge.md`
+    - General patterns → Update `.workflow/findings.md`
 
 This ensures the plan is always up-to-date and can be resumed at any time.
 
@@ -484,6 +487,7 @@ All success criteria met:
 **Remember: You should have already updated the knowledge documents during feature work!**
 
 If you haven't yet, add learnings now:
+
 - Project-specific learnings → `.workflow/project_knowledge.md`
 - General patterns/techniques → `.workflow/findings.md`
 
@@ -496,23 +500,26 @@ If you haven't yet, add learnings now:
 **This section must be completed before marking the feature as done.**
 
 ### What went well:
+
 - [What you did correctly according to workflow]
 - [Where you successfully used subagents]
 - [Where you updated documents continuously]
 
 ### What could be improved:
+
 - [Where you deviated from workflow]
 - [Why the deviation happened - unclear rules? habit? oversight?]
 - [What was unclear in workflow docs]
 - [Where you should have used subagents but didn't]
 - **CRITICAL checks:**
-  - Did I create this feature plan BEFORE starting implementation? [Yes/No]
-  - Did I add "READ .workflow/ first" directive at the top? [Yes/No]
-  - Did I update checkboxes during work, not just at end? [Yes/No]
-  - Did I complete this retrospective section? [Yes/No]
-  - If No to any: What would have prevented this deviation?
+    - Did I create this feature plan BEFORE starting implementation? [Yes/No]
+    - Did I add "READ .workflow/ first" directive at the top? [Yes/No]
+    - Did I update checkboxes during work, not just at end? [Yes/No]
+    - Did I complete this retrospective section? [Yes/No]
+    - If No to any: What would have prevented this deviation?
 
 ### CRITICAL: What in the workflow could be done better keeping in mind this feature?
+
 - [What was unclear during this feature that should be clarified?]
 - [What thresholds or rules would have helped?]
 - [What examples would have made the workflow clearer?]
@@ -520,11 +527,13 @@ If you haven't yet, add learnings now:
 - [What would make the workflow easier to follow for similar features?]
 
 ### Workflow doc improvements needed:
+
 - [Specific improvements to `.workflow/README.md`]
 - [Clarifications needed in `.workflow/findings.md`]
 - [New examples or thresholds to add]
 
 ### Actions taken:
+
 - [ ] Updated `.workflow/README.md` with clarifications
 - [ ] Updated `.workflow/findings.md` with new patterns
 - [ ] Updated `.workflow/feature_template.md` if needed

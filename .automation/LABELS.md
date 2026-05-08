@@ -7,10 +7,10 @@
 
 ## Labels Overview
 
-| Label | Color | Description | Who Can Add | Purpose |
-|-------|-------|-------------|-------------|---------|
-| `approved` | 🟢 Green (#0e8a16) | Approved by maintainer for automated implementation | Maintainers only | Triggers automation |
-| `in-progress` | 🟡 Yellow (#fbca04) | Currently being implemented | Anyone | Prevents duplicate work |
+| Label         | Color               | Description                                         | Who Can Add      | Purpose                 |
+| ------------- | ------------------- | --------------------------------------------------- | ---------------- | ----------------------- |
+| `approved`    | 🟢 Green (#0e8a16)  | Approved by maintainer for automated implementation | Maintainers only | Triggers automation     |
+| `in-progress` | 🟡 Yellow (#fbca04) | Currently being implemented                         | Anyone           | Prevents duplicate work |
 
 ---
 
@@ -67,6 +67,7 @@ Issue closed
 **Meaning:** This issue has been reviewed and approved for implementation by a maintainer.
 
 **Effect:**
+
 - Automation system will detect this label
 - Implementation will start automatically (if monitoring is running)
 - Or can be manually triggered with: `.automation/auto-implement-issue.sh <number>`
@@ -74,11 +75,13 @@ Issue closed
 **Who can add:** Only repository collaborators with Triage role or higher (currently only @vadzim)
 
 **When to add:**
+
 - Issue is well-defined with clear acceptance criteria
 - Feature aligns with project goals
 - Ready for implementation
 
 **When NOT to add:**
+
 - Issue needs more discussion
 - Requirements are unclear
 - Duplicate of another issue
@@ -89,6 +92,7 @@ Issue closed
 **Meaning:** Someone is currently working on implementing this issue.
 
 **Effect:**
+
 - Signals to others that work is in progress
 - Prevents duplicate effort
 - Helps track active work
@@ -96,20 +100,24 @@ Issue closed
 **Who can add:** Anyone (maintainers or contributors)
 
 **Automatically managed by automation:**
+
 - ✅ Added when automation starts implementation
 - ✅ Removed when PR is created
 - ✅ Removed if implementation fails
 
 **Manual usage:**
+
 - Add when you start working on an issue yourself
 - Remove when you create a PR or stop working on it
 
 **When to add manually:**
+
 - You're implementing the feature yourself
 - You want to prevent others from working on it
 - You're actively working on it (not just planning)
 
 **When NOT to add:**
+
 - You're just thinking about it
 - You might work on it later
 - You're waiting for feedback
@@ -139,6 +147,7 @@ gh issue view <number> --json labels --jq '.labels[].name'
 Go to: https://github.com/vadzim/dbtyper/issues
 
 Filter by labels:
+
 - Click "Labels" dropdown
 - Select `approved` or `in-progress`
 
@@ -259,12 +268,14 @@ gh issue edit 42 --remove-label in-progress
 ### For Maintainers
 
 ✅ **Do:**
+
 - Review issues thoroughly before adding `approved`
 - Add `in-progress` yourself when implementing manually
 - Remove `in-progress` if you stop working on something
 - Monitor issues with both labels (automation is working)
 
 ❌ **Don't:**
+
 - Add `approved` to unclear issues
 - Leave `in-progress` on abandoned work
 - Add `approved` to duplicates
@@ -272,12 +283,14 @@ gh issue edit 42 --remove-label in-progress
 ### For Contributors
 
 ✅ **Do:**
+
 - Add `in-progress` when you start working
 - Remove `in-progress` when you create PR
 - Check for `in-progress` before starting work
 - Ask maintainer to add `approved` if needed
 
 ❌ **Don't:**
+
 - Try to add `approved` yourself (won't work)
 - Add `in-progress` if not actually working on it
 - Leave `in-progress` on abandoned work
@@ -289,11 +302,13 @@ gh issue edit 42 --remove-label in-progress
 ### Issue has `approved` but automation didn't start
 
 **Possible reasons:**
+
 1. Monitoring script is not running
 2. Issue already has `in-progress` label
 3. Lock file exists (already processing)
 
 **Solutions:**
+
 ```bash
 # Check if monitoring is running
 ps aux | grep monitor-approved-issues
@@ -308,10 +323,12 @@ ls .automation/.processing/issue-<number>.lock
 ### Issue stuck with `in-progress` label
 
 **Possible reasons:**
+
 1. Automation crashed before removing it
 2. Someone added it manually and forgot to remove it
 
 **Solutions:**
+
 ```bash
 # Check if actually in progress
 ls .automation/.processing/issue-<number>.lock
@@ -335,7 +352,7 @@ gh issue edit <number> --remove-label in-progress
 ✅ **`approved`** triggers automation (maintainers only)  
 ✅ **`in-progress`** prevents duplicate work (anyone can add)  
 ✅ **Automation manages `in-progress` automatically**  
-✅ **Can be used for manual implementations too**  
+✅ **Can be used for manual implementations too**
 
 **Next:** Add `approved` label to an issue and watch the automation work!
 

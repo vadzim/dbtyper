@@ -24,7 +24,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text not null, name text);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"NULL not allowed for NOT NULL column">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"NULL not allowed for NOT NULL column">>
+>

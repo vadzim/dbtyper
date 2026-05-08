@@ -7,24 +7,17 @@ import type { SqlParserError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
 // ❌ number || number → error
 const query = `select 1 || 2 as invalid;` as const
-
 
 // @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public;`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"|| requires at least one text operand">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"|| requires at least one text operand">>
+>

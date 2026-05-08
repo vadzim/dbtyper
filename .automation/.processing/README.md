@@ -15,6 +15,7 @@ Contents: Unix timestamp of when processing started
 ## Cleanup
 
 Lock files are automatically removed when:
+
 - Implementation completes successfully
 - Implementation fails
 - Script is interrupted (manual cleanup may be needed)

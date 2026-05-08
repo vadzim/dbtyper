@@ -19,12 +19,11 @@ const query = `update users set name = 'Bob' where id = '1';` as const
 await db.stream(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text, name text);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
 
-type _errorCheck = Expect<Matches<
-	SqlSelectRow<DbShape, typeof query>,
-	SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">
->>
+type _errorCheck = Expect<
+	Matches<
+		SqlSelectRow<DbShape, typeof query>,
+		SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">
+	>
+>

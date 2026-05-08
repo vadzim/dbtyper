@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ integer || numeric → error
 const query = `select 42 || 123.456 as invalid from users;` as const
 
-
 // @ts-expect-error
 await db.query(query)
 
@@ -25,7 +24,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id uuid, name text, age integer, score numeric, active boolean);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"|| requires at least one text operand">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"|| requires at least one text operand">>
+>

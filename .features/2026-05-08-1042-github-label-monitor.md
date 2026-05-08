@@ -4,14 +4,16 @@
 **Current State:** Research Complete - Ready for Implementation
 
 **CRITICAL: Before working on this feature, you MUST read .workflow/ folder:**
+
 1. **FIRST:** Read `.workflow/README.md` - Workflow instructions and guidelines
-2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques  
+2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques
 3. **THIRD:** Read `.workflow/project_knowledge.md` - Project-specific conventions and knowledge
 4. **FOURTH:** Read `.workflow/feature_template.md` - Template structure
 
 **This applies whether you are starting, resuming, or reviewing this feature.**
 
 **Part of the 5-document system:**
+
 1. .workflow/README.md - Workflow instructions
 2. .workflow/findings.md - General development findings
 3. .workflow/project_knowledge.md - Project-specific knowledge
@@ -25,6 +27,7 @@
 Create a TypeScript-based monitoring script that watches GitHub issues for label changes and triggers automated issue implementation when the "approved" label is added.
 
 This will replace or enhance the existing bash-based `monitor-approved-issues.sh` with a more robust, maintainable TypeScript solution that can:
+
 - Monitor GitHub issues in real-time using webhooks or polling
 - Detect when "approved" label is added
 - Trigger the existing automation pipeline
@@ -40,11 +43,13 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 **Location:** `/home/vadzim/work/jsql/scripts/`
 
 **Current scripts:**
+
 1. `create-pr.sh` - Bash script for creating PRs with auto-merge
 2. `split-test-file.py` - Python script for splitting test files
 3. `split-sql-token-statements.ts` - TypeScript utility for SQL tokenization
 
 **Key observations:**
+
 - Only ONE TypeScript script exists in `scripts/`
 - It's a utility module, not an executable script
 - No existing pattern for executable TypeScript scripts in `scripts/`
@@ -55,6 +60,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 **Location:** `/home/vadzim/work/jsql/.automation/`
 
 **Complete automation system already exists:**
+
 - `monitor-approved-issues.sh` - Bash-based continuous monitoring (polling every 5 minutes)
 - `auto-implement-issue.sh` - Main orchestrator (422 lines)
 - `create-issue-worktree.sh` - Worktree creation
@@ -66,6 +72,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - `logs/` - Implementation logs
 
 **Current monitoring approach:**
+
 - Polling-based: checks every 5 minutes (configurable)
 - Uses `gh issue list --label approved` to find issues
 - Creates lock files to prevent duplicate processing
@@ -73,6 +80,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - Respects `maxParallelImplementations` limit (default: 3)
 
 **Integration with workflow:**
+
 - Fully integrated with 5-document workflow system
 - Uses git worktrees for isolation
 - Comprehensive error handling and logging
@@ -83,6 +91,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### Package.json Analysis
 
 **Root package.json:**
+
 - No TypeScript execution tools (`tsx`, `ts-node`, `esno`) installed at root
 - Uses `tsgo` for type checking (custom fast TypeScript compiler)
 - Build script: `tsc -p tsconfig.build.json`
@@ -90,11 +99,13 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - No npm scripts for running TypeScript files directly
 
 **Example packages:**
+
 - `examples/nest-postgres/package.json` - Has `tsx` installed
 - `examples/typed-postgres/package.json` - Has `tsx` installed
 - Examples use `tsx` for running migration and app scripts
 
 **Dependencies:**
+
 - GitHub CLI (`gh`) - Already installed at `/usr/bin/gh`
 - No GitHub API libraries (Octokit, etc.) currently installed
 - No webhook server libraries
@@ -102,6 +113,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### TypeScript Configuration
 
 **Root tsconfig.json:**
+
 - Module: `nodenext`
 - Target: `esnext`
 - `allowImportingTsExtensions: true`
@@ -109,6 +121,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - Excludes: `test/**/*.ts`, `examples`, `packages`
 
 **tsconfig.build.json:**
+
 - Extends root config
 - `noEmit: false`
 - `outDir: ./dist`
@@ -121,12 +134,14 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### GitHub Integration
 
 **Current usage:**
+
 - GitHub CLI (`gh`) used extensively in bash scripts
 - No direct GitHub API usage in TypeScript
 - No Octokit or other GitHub libraries installed
 - Workflow file: `.github/workflows/test.yml` (CI only, no automation triggers)
 
 **GitHub CLI capabilities used:**
+
 - `gh issue view` - Fetch issue details
 - `gh issue list` - List issues by label
 - `gh issue edit` - Add/remove labels
@@ -140,31 +155,35 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### 1. Where to Place New Monitoring Script
 
 **Option A: Keep in `.automation/` (RECOMMENDED)**
+
 - Location: `.automation/monitor-github-labels.ts`
-- Rationale: 
-  - All automation scripts are already in `.automation/`
-  - Keeps related functionality together
-  - Clear separation from project source code
-  - Consistent with existing structure
+- Rationale:
+    - All automation scripts are already in `.automation/`
+    - Keeps related functionality together
+    - Clear separation from project source code
+    - Consistent with existing structure
 
 **Option B: Add to `scripts/`**
+
 - Location: `scripts/monitor-github-labels.ts`
 - Rationale:
-  - Traditional location for utility scripts
-  - But: Only one TS file exists there currently
-  - But: Scripts are excluded from build
+    - Traditional location for utility scripts
+    - But: Only one TS file exists there currently
+    - But: Scripts are excluded from build
 
 **Recommendation: Option A** - Keep automation scripts together in `.automation/`
 
 ### 2. Script Execution Strategy
 
 **Option A: Use `tsx` (RECOMMENDED)**
+
 - Install `tsx` as dev dependency at root
 - Run with: `tsx .automation/monitor-github-labels.ts`
 - Pros: Simple, no build step, used in examples
 - Cons: Adds new dependency
 
 **Option B: Compile and run with Node**
+
 - Create separate tsconfig for scripts
 - Compile to `.automation/dist/`
 - Run with: `node .automation/dist/monitor-github-labels.js`
@@ -172,6 +191,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - Cons: Extra build step, more complex
 
 **Option C: Use bash wrapper**
+
 - Keep bash script as entry point
 - Call TypeScript via `npx tsx` or compiled version
 - Pros: Backward compatible
@@ -182,14 +202,17 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### 3. Dependencies to Add
 
 **Required:**
+
 - `tsx` - TypeScript execution (already in examples, add to root)
 
 **Optional (for enhanced functionality):**
+
 - `@octokit/rest` - GitHub API client (if moving away from `gh` CLI)
 - `@octokit/webhooks` - Webhook handling (for real-time monitoring)
 - `express` or `fastify` - Web server (if implementing webhooks)
 
-**Recommendation for MVP:** 
+**Recommendation for MVP:**
+
 - Add only `tsx` to root package.json
 - Continue using `gh` CLI for GitHub operations (already working)
 - Consider Octokit for future enhancements
@@ -197,23 +220,27 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### 4. Architecture Approach
 
 **Option A: Enhance existing bash script (MINIMAL)**
+
 - Keep `monitor-approved-issues.sh` as-is
 - Add TypeScript utilities if needed
 - Minimal changes, low risk
 
 **Option B: TypeScript polling replacement (RECOMMENDED)**
+
 - Create `.automation/monitor-github-labels.ts`
 - Implement polling logic in TypeScript
 - Better error handling, logging, testability
 - Can coexist with bash version initially
 
 **Option C: Webhook-based monitoring (FUTURE)**
+
 - Set up webhook server
 - Real-time label change detection
 - More complex, requires server infrastructure
 - Better for production at scale
 
 **Recommendation: Option B** - TypeScript polling replacement
+
 - Provides immediate value
 - More maintainable than bash
 - Can be enhanced to webhooks later
@@ -222,6 +249,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### 5. Existing Code to Leverage
 
 **Can reuse:**
+
 - `.automation/auto-implement-issue.sh` - Keep as-is, call from TypeScript
 - `.automation/config.example.json` - Configuration structure
 - Lock file mechanism in `.processing/`
@@ -229,6 +257,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - GitHub CLI commands (wrap in TypeScript functions)
 
 **Should NOT modify:**
+
 - Core automation scripts (worktree, PR creation, etc.)
 - Agent prompt template
 - Workflow documents
@@ -248,46 +277,46 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 
 - [ ] Implement configuration loading from `config.json`
 - [ ] Implement GitHub CLI wrapper functions:
-  - [ ] `listApprovedIssues()` - Get issues with "approved" label
-  - [ ] `getIssueDetails(number)` - Fetch issue details
-  - [ ] `addLabel(number, label)` - Add label to issue
-  - [ ] `removeLabel(number, label)` - Remove label from issue
+    - [ ] `listApprovedIssues()` - Get issues with "approved" label
+    - [ ] `getIssueDetails(number)` - Fetch issue details
+    - [ ] `addLabel(number, label)` - Add label to issue
+    - [ ] `removeLabel(number, label)` - Remove label from issue
 - [ ] Implement lock file management:
-  - [ ] `createLock(issueNumber)` - Create lock file
-  - [ ] `checkLock(issueNumber)` - Check if locked
-  - [ ] `removeLock(issueNumber)` - Remove lock file
+    - [ ] `createLock(issueNumber)` - Create lock file
+    - [ ] `checkLock(issueNumber)` - Check if locked
+    - [ ] `removeLock(issueNumber)` - Remove lock file
 - [ ] Implement polling loop:
-  - [ ] Check for approved issues
-  - [ ] Filter out already processing issues
-  - [ ] Respect max parallel limit
-  - [ ] Trigger implementation for new issues
+    - [ ] Check for approved issues
+    - [ ] Filter out already processing issues
+    - [ ] Respect max parallel limit
+    - [ ] Trigger implementation for new issues
 
 ### Phase 3: Integration with Existing Automation
 
 - [ ] Implement issue implementation trigger:
-  - [ ] Spawn `auto-implement-issue.sh` as child process
-  - [ ] Capture stdout/stderr
-  - [ ] Handle exit codes
-  - [ ] Log to `.automation/logs/`
+    - [ ] Spawn `auto-implement-issue.sh` as child process
+    - [ ] Capture stdout/stderr
+    - [ ] Handle exit codes
+    - [ ] Log to `.automation/logs/`
 - [ ] Implement error handling:
-  - [ ] Retry logic for transient failures
-  - [ ] Graceful degradation
-  - [ ] Error notifications
+    - [ ] Retry logic for transient failures
+    - [ ] Graceful degradation
+    - [ ] Error notifications
 - [ ] Implement graceful shutdown:
-  - [ ] Handle SIGINT/SIGTERM
-  - [ ] Wait for in-progress implementations
-  - [ ] Clean up resources
+    - [ ] Handle SIGINT/SIGTERM
+    - [ ] Wait for in-progress implementations
+    - [ ] Clean up resources
 
 ### Phase 4: Logging and Monitoring
 
 - [ ] Implement structured logging:
-  - [ ] Log to console with timestamps
-  - [ ] Log to file in `.automation/logs/`
-  - [ ] Different log levels (info, warn, error)
+    - [ ] Log to console with timestamps
+    - [ ] Log to file in `.automation/logs/`
+    - [ ] Different log levels (info, warn, error)
 - [ ] Implement metrics tracking:
-  - [ ] Issues processed
-  - [ ] Success/failure rates
-  - [ ] Processing times
+    - [ ] Issues processed
+    - [ ] Success/failure rates
+    - [ ] Processing times
 - [ ] Add health check endpoint (optional)
 
 ### Phase 5: Testing and Documentation
@@ -331,6 +360,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 **Problem:** Need to run TypeScript without compilation step
 
 **Solution:** Use `tsx` which is already used in examples
+
 - Add to root devDependencies
 - Simple execution: `tsx script.ts`
 - No build step needed
@@ -340,6 +370,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 **Problem:** Need to call existing bash scripts from TypeScript
 
 **Solution:** Use Node.js `child_process.spawn()`
+
 - Capture stdout/stderr
 - Handle exit codes
 - Pass environment variables
@@ -349,6 +380,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 **Problem:** Multiple processes might try to process same issue
 
 **Solution:** Atomic lock file creation
+
 - Use `fs.open()` with `wx` flag (exclusive write)
 - Check lock before processing
 - Clean up locks on exit
@@ -375,6 +407,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 **Status:** ✅ COMPLETE - Implementation Finished and Tested
 
 **Research Completed:**
+
 - ✅ Analyzed existing scripts structure
 - ✅ Reviewed automation system
 - ✅ Examined package.json and dependencies
@@ -383,6 +416,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - ✅ Identified existing code to leverage
 
 **Implementation Completed:**
+
 - ✅ Added tsx dependency to package.json
 - ✅ Created monitor-github-labels.ts (568 lines)
 - ✅ Implemented polling mode with configurable interval
@@ -395,6 +429,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - ✅ Tested end-to-end with real GitHub issue #15
 
 **Testing Performed:**
+
 - ✅ Created test issue #15
 - ✅ Added 'approved' label
 - ✅ Verified monitor detected label change
@@ -421,6 +456,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 ### Implementation Quality: ✅ EXCELLENT
 
 **Code Structure:**
+
 - Well-organized with clear separation of concerns
 - Proper TypeScript types defined for all interfaces
 - Clean class-based architecture (ImplementationQueue, PollingMonitor, WebhookMonitor)
@@ -428,6 +464,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - Proper error handling throughout
 
 **Functionality:**
+
 - ✅ Implements all required features (polling, webhook, concurrency)
 - ✅ CLI arguments properly parsed with validation
 - ✅ Help message is clear and comprehensive
@@ -436,6 +473,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - ✅ Queue system with concurrency control works as designed
 
 **Documentation:**
+
 - ✅ MONITOR-README.md is comprehensive (217 lines)
 - ✅ Usage examples are clear and practical
 - ✅ Troubleshooting section is helpful
@@ -444,6 +482,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - ✅ Comparison with bash version provided
 
 **Testing:**
+
 - ✅ Feature was tested end-to-end with real GitHub issue #15
 - ✅ Test verified correct behavior (label detection, implementation trigger)
 - ✅ Test artifacts cleaned up properly
@@ -451,6 +490,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - ✅ Help output verified working
 
 **Workflow Adherence:**
+
 - ✅ Feature plan created BEFORE implementation (2026-05-08-1042)
 - ✅ Has "READ .workflow/ first" directive at top
 - ✅ Feature plan is complete and well-structured
@@ -458,6 +498,7 @@ This will replace or enhance the existing bash-based `monitor-approved-issues.sh
 - ✅ Implementation matches the plan
 
 **Integration:**
+
 - ✅ Works with existing auto-implement-issue.sh
 - ✅ Lock file management correct (delegated to bash)
 - ✅ Respects existing configuration structure
@@ -471,41 +512,42 @@ No bugs, issues, or problems found in the implementation.
 ### Minor Observations:
 
 1. **Feature plan filename mismatch:**
-   - Plan in main repo: `.features/2026-05-08-1042-github-label-monitor.md`
-   - Plan in worktree: `.features/2026-05-08-1040-github-label-monitor.md`
-   - Timestamps differ by 2 minutes (1040 vs 1042)
-   - Not a problem, just an observation
+    - Plan in main repo: `.features/2026-05-08-1042-github-label-monitor.md`
+    - Plan in worktree: `.features/2026-05-08-1040-github-label-monitor.md`
+    - Timestamps differ by 2 minutes (1040 vs 1042)
+    - Not a problem, just an observation
 
 2. **ESLint errors on skipped tests:**
-   - Two `.test.skip.ts` files show ESLint errors
-   - This is expected behavior (documented in project_knowledge.md)
-   - Not related to this feature
+    - Two `.test.skip.ts` files show ESLint errors
+    - This is expected behavior (documented in project_knowledge.md)
+    - Not related to this feature
 
 3. **Feature plan not fully updated:**
-   - Checkboxes in implementation plan not marked complete
-   - Progress tracking section was minimal
-   - This is acceptable - plan served its purpose
+    - Checkboxes in implementation plan not marked complete
+    - Progress tracking section was minimal
+    - This is acceptable - plan served its purpose
 
 ### Recommendations:
 
 1. **Consider adding unit tests** (future enhancement):
-   - Test queue logic independently
-   - Test CLI argument parsing
-   - Mock GitHub CLI calls for testing
+    - Test queue logic independently
+    - Test CLI argument parsing
+    - Mock GitHub CLI calls for testing
 
 2. **Consider adding retry logic** (future enhancement):
-   - Retry failed GitHub API calls
-   - Exponential backoff for transient failures
+    - Retry failed GitHub API calls
+    - Exponential backoff for transient failures
 
 3. **Consider persistent queue** (future enhancement):
-   - Save queue state to disk
-   - Resume queue after restart
+    - Save queue state to disk
+    - Resume queue after restart
 
 These are all future enhancements, not blockers.
 
 ### Overall Assessment: ✅ EXCELLENT
 
 This is a high-quality implementation that:
+
 - Follows best practices
 - Is well-documented
 - Was properly tested
@@ -514,4 +556,3 @@ This is a high-quality implementation that:
 - Is production-ready
 
 **Ready for merge.**
-

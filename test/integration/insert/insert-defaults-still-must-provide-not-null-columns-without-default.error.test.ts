@@ -39,7 +39,6 @@ type DbShape = ApplyStatements<
 			);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Missing NOT NULL column in INSERT">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Missing NOT NULL column in INSERT">>
+>

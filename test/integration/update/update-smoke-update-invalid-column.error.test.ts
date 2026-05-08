@@ -27,7 +27,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text, name text, email text);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Unknown column in UPDATE SET">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown column in UPDATE SET">>
+>

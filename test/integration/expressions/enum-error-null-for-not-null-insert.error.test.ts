@@ -34,7 +34,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create type status as enum ('active', 'inactive', 'pending'); create type priority as enum ('low', 'medium', 'high'); create table tasks (id integer not null, name text not null, task_status status not null, task_priority priority, is_urgent boolean);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"NULL not allowed for NOT NULL column">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"NULL not allowed for NOT NULL column">>
+>

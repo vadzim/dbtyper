@@ -16,12 +16,8 @@ const query = `create type status enum ('active');` as const
 await migrations.apply(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public;`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Expected `.` or keyword after name">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Expected `.` or keyword after name">>
+>

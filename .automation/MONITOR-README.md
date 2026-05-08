@@ -5,6 +5,7 @@ This directory contains a TypeScript-based GitHub label monitoring system that a
 ## Overview
 
 The monitoring script uses a simple stream-based architecture with async iterators:
+
 - **Message stream**: Async iterable queue for all events
 - **Main loop**: Async iterates over messages and processes them
 - **Workers**: Async functions that send completion messages to stream
@@ -16,8 +17,8 @@ The monitoring script uses a simple stream-based architecture with async iterato
 - **Stream-based architecture**: All events flow through a single async iterable stream
 - **Startup scanning**: Finds approved-but-not-in-progress issues on startup
 - **Two monitoring modes:**
-  - **Polling mode** (default): Checks GitHub API every N seconds (default: 30s)
-  - **Webhook mode**: Real-time updates via smee.io
+    - **Polling mode** (default): Checks GitHub API every N seconds (default: 30s)
+    - **Webhook mode**: Real-time updates via smee.io
 - **Concurrency control**: Limit simultaneous implementations (default: 1)
 - **Worker IPC**: Workers send completion messages via stdout JSON
 - **Queue system**: Processes pending issues when slots become available
@@ -33,25 +34,17 @@ npm install
 
 No additional TypeScript runtime needed - Node.js runs `.ts` files directly with `--experimental-strip-types`.
 
-## Quick Setup (Webhook Mode)
+## Quick Start
 
-The easiest way to set up webhook monitoring:
+The monitor runs autonomously in polling mode by default - no setup required:
 
 ```bash
-# 1. Run setup script (creates smee.io channel and configures GitHub webhook)
-npm run monitor:setup
+# Start monitoring (polls every 30 seconds)
+npm run monitor
 
-# 2. Start smee client (Terminal 1)
-npx smee-client --url <YOUR_SMEE_URL> --port 3000
-
-# 3. Start monitor (Terminal 2)
-npm run monitor -- --mode webhook
+# Custom settings
+npm run monitor -- --poll-interval 60 --max-concurrent 3
 ```
-
-The setup script will:
-- Create a new smee.io channel
-- Save the URL to `.automation/smee-config.json`
-- Configure GitHub webhook automatically (or provide manual instructions)
 
 ## Usage
 
@@ -73,31 +66,36 @@ npm run monitor -- --poll-interval 60 --max-concurrent 3
 
 ### Webhook Mode (Real-time)
 
-**Option 1: Using setup script (recommended)**
+For real-time monitoring, you'll need to set up smee.io manually:
 
-```bash
-# Run setup once
-npm run monitor:setup
+**Step 1: Create a smee.io channel**
 
-# Then start monitoring (reads URL from smee-config.json)
-npm run monitor -- --mode webhook
-```
+Visit https://smee.io and create a new channel. You'll get a URL like `https://smee.io/YOUR_CHANNEL`.
 
-**Option 2: Manual smee URL**
-
-```bash
-# Basic webhook mode
-npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL
-
-# With concurrency control
-npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL --max-concurrent 2
-```
-
-**Don't forget to start smee-client in another terminal:**
+**Step 2: Start smee client (Terminal 1)**
 
 ```bash
 npx smee-client --url https://smee.io/YOUR_CHANNEL --port 3000
 ```
+
+**Step 3: Start monitor (Terminal 2)**
+
+```bash
+# Using smee URL directly
+npm run monitor -- --mode webhook --smee-url https://smee.io/YOUR_CHANNEL
+
+# Or save to .automation/smee-config.json:
+# {"smeeUrl": "https://smee.io/YOUR_CHANNEL"}
+npm run monitor -- --mode webhook
+```
+
+**Step 4: Configure GitHub webhook**
+
+Go to your repository settings → Webhooks → Add webhook:
+
+- Payload URL: Your smee.io URL
+- Content type: application/json
+- Events: Issues (specifically "labeled" events)
 
 ## Configuration
 
@@ -113,16 +111,16 @@ Create `.automation/config.json` (see `config.example.json`):
 
 ```json
 {
-  "automation": {
-    "enabled": true,
-    "approvalLabel": "approved",
-    "maxParallelImplementations": 1,
-    "checkInterval": 30
-  },
-  "github": {
-    "owner": "your-username",
-    "repo": "your-repo"
-  }
+	"automation": {
+		"enabled": true,
+		"approvalLabel": "approved",
+		"maxParallelImplementations": 1,
+		"checkInterval": 30
+	},
+	"github": {
+		"owner": "your-username",
+		"repo": "your-repo"
+	}
 }
 ```
 
@@ -148,30 +146,30 @@ Main Loop (async iterator)
 ### Flow
 
 1. **Startup:**
-   - Scans for issues with "approved" label but NOT "in-progress"
-   - Adds these to message stream
-   - Ensures no issues are missed during downtime
+    - Scans for issues with "approved" label but NOT "in-progress"
+    - Adds these to message stream
+    - Ensures no issues are missed during downtime
 
 2. **Monitoring:**
-   - **Polling mode:** Checks GitHub API every N seconds, sends messages for new approved issues
-   - **Webhook mode:** Receives real-time events from GitHub via smee.io, sends messages
+    - **Polling mode:** Checks GitHub API every N seconds, sends messages for new approved issues
+    - **Webhook mode:** Receives real-time events from GitHub via smee.io, sends messages
 
 3. **Main Loop:**
-   - Async iterates over message stream
-   - For each message:
-     - If worker completion: remove lock, start next queued issue
-     - If issue approved: start worker if under limit, otherwise queue
+    - Async iterates over message stream
+    - For each message:
+        - If worker completion: remove lock, start next queued issue
+        - If issue approved: start worker if under limit, otherwise queue
 
 4. **Workers:**
-   - Spawned as detached bash processes
-   - Send JSON completion message to stdout: `{"type":"complete","issueNumber":N,"success":true}`
-   - Monitor receives message and processes next issue
+    - Spawned as detached bash processes
+    - Send JSON completion message to stdout: `{"type":"complete","issueNumber":N,"success":true}`
+    - Monitor receives message and processes next issue
 
 5. **Shutdown:**
-   - SIGINT/SIGTERM triggers AbortController
-   - Stops poller/webhook
-   - Closes message stream
-   - Main loop finishes processing remaining messages
+    - SIGINT/SIGTERM triggers AbortController
+    - Stops poller/webhook
+    - Closes message stream
+    - Main loop finishes processing remaining messages
 
 ## CLI Options
 
@@ -188,6 +186,7 @@ Main Loop (async iterator)
 ### `npm run monitor:setup`
 
 Automated setup for webhook mode:
+
 - Creates a new smee.io channel
 - Saves configuration to `.automation/smee-config.json`
 - Configures GitHub webhook (or provides manual instructions)
@@ -199,32 +198,36 @@ After running this once, you can use `npm run monitor -- --mode webhook` without
 To test the monitoring script:
 
 1. Start the monitor:
-   ```bash
-   npm run monitor -- --poll-interval 10
-   ```
+
+    ```bash
+    npm run monitor -- --poll-interval 10
+    ```
 
 2. Create a test issue:
-   ```bash
-   gh issue create --title "Test issue" --body "Test description"
-   ```
+
+    ```bash
+    gh issue create --title "Test issue" --body "Test description"
+    ```
 
 3. Add the "approved" label:
-   ```bash
-   gh issue edit <number> --add-label "approved"
-   ```
+
+    ```bash
+    gh issue edit <number> --add-label "approved"
+    ```
 
 4. Watch the monitor output - it should detect the label and start implementation
 
 5. Clean up:
-   ```bash
-   gh issue close <number>
-   git worktree remove .worktrees/issue-<number>-* --force
-   git branch -D feature/issue-<number>-*
-   ```
+    ```bash
+    gh issue close <number>
+    git worktree remove .worktrees/issue-<number>-* --force
+    git branch -D feature/issue-<number>-*
+    ```
 
 ## Comparison with Bash Version
 
 ### TypeScript Version (New)
+
 - ✅ Better error handling and logging
 - ✅ More maintainable and testable
 - ✅ Type safety
@@ -233,6 +236,7 @@ To test the monitoring script:
 - ✅ Can run alongside bash version
 
 ### Bash Version (Existing)
+
 - ✅ Simple and proven
 - ✅ No dependencies beyond `gh` and `jq`
 - ✅ Works well for basic polling

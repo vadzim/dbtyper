@@ -25,7 +25,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table data (id integer not null, value text not null, num integer not null, flag boolean not null);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Cannot cast boolean to integer">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Cannot cast boolean to integer">>
+>

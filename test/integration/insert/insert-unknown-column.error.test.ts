@@ -19,12 +19,8 @@ const query = `insert into users (id, invalid_column) values ('1', 'value') retu
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text, name text);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Unknown column in INSERT column list">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown column in INSERT column list">>
+>

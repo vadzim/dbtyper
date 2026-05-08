@@ -19,12 +19,8 @@ const query = `insert into users (id, age) values ('1', 'not a number') returnin
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text, age integer);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, age integer);`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Incompatible value type for column">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Incompatible value type for column">>
+>

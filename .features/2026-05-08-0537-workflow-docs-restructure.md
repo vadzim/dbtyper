@@ -6,6 +6,7 @@
 **This is a feature plan document. Save it in `.features/` folder as `YYYY-MM-DD-HHMM-feature-name.md`**
 
 **Part of the 5-document system:**
+
 1. .workflow/README.md - Workflow instructions
 2. .workflow/findings.md - General development findings
 3. .workflow/project_knowledge.md - Project-specific knowledge
@@ -25,22 +26,22 @@ Restructured workflow documentation to move from `docs/workflow/` and `docs/feat
 1. Moved `docs/workflow/` → `.workflow/`
 2. Moved `docs/features/` → `.features/`
 3. Updated all path references in 5 documents:
-   - .workflow/README.md
-   - .workflow/findings.md
-   - .workflow/project_knowledge.md
-   - .workflow/feature_template.md
-   - .features/2026-05-08-0430-error-message-checking.md
+    - .workflow/README.md
+    - .workflow/findings.md
+    - .workflow/project_knowledge.md
+    - .workflow/feature_template.md
+    - .features/2026-05-08-0430-error-message-checking.md
 
 4. Added comprehensive subagent usage guidelines:
-   - Clear threshold rules (3+ similar edits = use subagent)
-   - Examples of when to use subagents
-   - Conflict avoidance strategies
-   - End-of-feature review subagent template
+    - Clear threshold rules (3+ similar edits = use subagent)
+    - Examples of when to use subagents
+    - Conflict avoidance strategies
+    - End-of-feature review subagent template
 
 5. Added workflow retrospective section:
-   - Self-reflection questions
-   - Retrospective template
-   - Process for improving workflow docs
+    - Self-reflection questions
+    - Retrospective template
+    - Process for improving workflow docs
 
 ---
 
@@ -49,12 +50,14 @@ Restructured workflow documentation to move from `docs/workflow/` and `docs/feat
 **IMPORTANT:** After completing this feature, perform a retrospective on your workflow adherence.
 
 ### What went well:
+
 - Updated all 5 documents with consistent references
 - Added comprehensive subagent usage guidelines
 - Created self-reflection mechanism for future work
 - Identified the problem (not using subagent for repetitive work)
 
 ### What could be improved:
+
 - **I should have used a subagent for the path renaming work**
 - Did 15+ similar edits manually across 5 files
 - Consumed main context on mechanical work
@@ -63,6 +66,7 @@ Restructured workflow documentation to move from `docs/workflow/` and `docs/feat
 - Acting as executor instead of orchestrator
 
 ### Why the deviation happened:
+
 - Workflow docs focused on "batch migrations" and "large-scale refactoring"
 - No clear threshold for "when is it worth using a subagent?"
 - Simple repetitive edits weren't explicitly called out as subagent work
@@ -71,6 +75,7 @@ Restructured workflow documentation to move from `docs/workflow/` and `docs/feat
 - **No mention of collecting workflow feedback from subagents**
 
 ### Workflow doc improvements needed:
+
 - ✅ Added clear threshold rule: "3+ similar edits = use subagent"
 - ✅ Added examples including "simple repetitive edits across 3+ files"
 - ✅ Added "Common mistake: Doing repetitive edits manually" to findings.md
@@ -83,6 +88,7 @@ Restructured workflow documentation to move from `docs/workflow/` and `docs/feat
 - ✅ **Updated all examples to show planning delegation**
 
 ### Actions taken:
+
 - [x] Updated `.workflow/README.md` with clarifications
 - [x] Updated `.workflow/findings.md` with new patterns
 - [x] Updated `.workflow/feature_template.md` with retrospective section

@@ -16,7 +16,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: subquery type mismatch
 const query = `select * from users where id in (select user_id from posts);` as const
 
-
 // @ts-expect-error
 await db.query(query)
 
@@ -26,7 +25,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text, name text); create table posts (id text, user_id integer);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Incompatible types in IN list">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Incompatible types in IN list">>
+>

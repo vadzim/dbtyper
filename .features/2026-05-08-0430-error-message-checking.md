@@ -211,14 +211,12 @@ import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
 import type { ApplyStatements } from "../../src/parser/parse-sql-statement.ts"
 import type { EmptyExpressionParams } from "../../src/parser/parse-expression.ts"
 
-export type ExtractQueryError<
-	Db extends DataBase<any, any>,
-	Query extends string,
-> = Db extends DataBase<infer DbShape extends JsqlDatabaseShape, infer _ScalarTypes>
-	? ApplyStatements<DbShape, Query, EmptyExpressionParams>[1] extends SqlParserError<infer Msg>
-		? SqlParserError<Msg>
-		: null
-	: never
+export type ExtractQueryError<Db extends DataBase<any, any>, Query extends string> =
+	Db extends DataBase<infer DbShape extends JsqlDatabaseShape, infer _ScalarTypes>
+		? ApplyStatements<DbShape, Query, EmptyExpressionParams>[1] extends SqlParserError<infer Msg>
+			? SqlParserError<Msg>
+			: null
+		: never
 ```
 
 #### Step 1.2: Test with Example File
@@ -248,7 +246,7 @@ await it(`the file ${file} should have @ts-expect-error right before query call`
 	const pattern = /\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*await\s+db\.(query|stream)\(query\)/
 	assert.ok(
 		pattern.test(content),
-		"@ts-expect-error should be immediately before 'await db.query(query)' or 'await db.stream(query)'."
+		"@ts-expect-error should be immediately before 'await db.query(query)' or 'await db.stream(query)'.",
 	)
 })
 ```
@@ -263,10 +261,7 @@ await it(`the file ${file} should have @ts-expect-error right before query call`
 ```typescript
 await it(`the file ${file} must define query as const`, async () => {
 	const hasQueryConst = /\bconst\s+query\s*=\s*`[^`]*`\s+as\s+const/.test(content)
-	assert.ok(
-		hasQueryConst,
-		"Error test files must define: const query = `...` as const"
-	)
+	assert.ok(hasQueryConst, "Error test files must define: const query = `...` as const")
 })
 ```
 
@@ -282,7 +277,7 @@ await it(`the file ${file} must have error message check`, async () => {
 	const hasErrorCheck = /\btype\s+\w+\s*=\s*Expect<\s*Matches<\s*ExtractQueryError</.test(content)
 	assert.ok(
 		hasErrorCheck,
-		"Error test files must include: type _errorCheck = Expect<Matches<ExtractQueryError<typeof db, typeof query>, SqlParserError<\"...\">>>"
+		'Error test files must include: type _errorCheck = Expect<Matches<ExtractQueryError<typeof db, typeof query>, SqlParserError<"...">>>',
 	)
 })
 ```
@@ -386,6 +381,7 @@ await it(`the file ${file} must have error message check`, async () => {
 **Current Phase:** Phase 1 - Infrastructure Setup
 
 **Next Steps:**
+
 1. Add ExtractQueryError helper to test/test-utils/error-test-utils.ts
 2. Test with one example file
 3. Update infrastructure tests
@@ -395,6 +391,7 @@ await it(`the file ${file} must have error message check`, async () => {
 ## Quick Reference
 
 **Current pattern (bad):**
+
 ```typescript
 await db.query(
 	// @ts-expect-error
@@ -403,19 +400,23 @@ await db.query(
 ```
 
 **New pattern (good):**
+
 ```typescript
 const query = `insert into users (id, age) values ('1', 'not a number') returning *;` as const
 
 // @ts-expect-error
 await db.query(query)
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<typeof db, typeof query>,
-	SqlParserError<"Column 'age' expects type 'integer' but got 'text'">
->>
+type _errorCheck = Expect<
+	Matches<
+		ExtractQueryError<typeof db, typeof query>,
+		SqlParserError<"Column 'age' expects type 'integer' but got 'text'">
+	>
+>
 ```
 
 **Files to modify:**
+
 1. `test/test-utils/error-test-utils.ts` - Add ExtractQueryError helper
 2. `test/infra/integration-file-naming.test.ts` - Update validation rules
 3. All 74 `test/integration/**/*.error.test.ts` files - Migrate to new pattern

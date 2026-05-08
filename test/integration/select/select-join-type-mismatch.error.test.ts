@@ -25,7 +25,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text, name text); create table posts (id integer, user_id text, title text);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Incompatible types in JOIN ON">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Incompatible types in JOIN ON">>
+>

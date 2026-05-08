@@ -32,7 +32,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text not null, name text not null, age integer not null, active boolean not null);`
 >[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"CASE WHEN must be boolean">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"CASE WHEN must be boolean">>
+>

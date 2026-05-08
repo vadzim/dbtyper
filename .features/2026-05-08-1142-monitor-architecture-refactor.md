@@ -4,6 +4,7 @@
 **Current State:** Not Started
 
 **If this feature is marked as COMPLETE:**
+
 - An agent resuming this feature should tell you it's complete
 - Agent should ask: "This feature is complete. What would you like me to do?"
 - Agent should NOT start working without your instruction
@@ -12,14 +13,16 @@
 **This is a feature plan document. Saved in `.features/` folder as `2026-05-08-1142-monitor-architecture-refactor.md`**
 
 **CRITICAL: Before working on this feature, you MUST read .workflow/ folder:**
+
 1. **FIRST:** Read `.workflow/README.md` - Workflow instructions and guidelines
-2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques  
+2. **SECOND:** Read `.workflow/findings.md` - General development patterns and techniques
 3. **THIRD:** Read `.workflow/project_knowledge.md` - Project-specific conventions and knowledge
 4. **FOURTH:** Read `.workflow/feature_template.md` - Template structure
 
 **This applies whether you are starting, resuming, or reviewing this feature.**
 
 **Part of the 5-document system:**
+
 1. .workflow/README.md - Workflow instructions
 2. .workflow/findings.md - General development findings
 3. .workflow/project_knowledge.md - Project-specific knowledge
@@ -33,6 +36,7 @@
 Refactor the GitHub label monitor (`.automation/monitor-github-labels.ts`) to implement a robust, production-ready architecture with automatic setup, startup scanning, and a single event loop pattern.
 
 **Current Problems:**
+
 - Manual setup required (`npm run monitor:setup` to create smee URL and configure webhook)
 - No startup scan - misses issues approved while monitor was down
 - Webhook not cleaned up on shutdown - leaves orphaned webhooks in GitHub
@@ -42,6 +46,7 @@ Refactor the GitHub label monitor (`.automation/monitor-github-labels.ts`) to im
 - Potential race conditions between different event sources
 
 **Goals:**
+
 1. **Zero-config startup** - Automatically create smee URL and configure GitHub webhook
 2. **Restartable** - Scan for missed issues on startup (approved but not in-progress)
 3. **Clean shutdown** - Remove GitHub webhook on SIGINT/SIGTERM
@@ -56,6 +61,7 @@ Refactor the GitHub label monitor (`.automation/monitor-github-labels.ts`) to im
 ### Current Architecture (`.automation/monitor-github-labels.ts:1-592`)
 
 **Structure:**
+
 - Two separate monitor classes: `PollingMonitor` and `WebhookMonitor`
 - `ImplementationQueue` manages queue and worker spawning
 - Lock files in `.processing/` directory track active workers
@@ -63,6 +69,7 @@ Refactor the GitHub label monitor (`.automation/monitor-github-labels.ts`) to im
 - Worker completion detected via `proc.on("exit")` event
 
 **Issues:**
+
 1. **Manual setup:** User must run `npm run monitor:setup` separately
 2. **No startup scan:** Doesn't check for issues approved while monitor was down
 3. **No cleanup:** Webhook left in GitHub after shutdown
@@ -95,42 +102,43 @@ Refactor the GitHub label monitor (`.automation/monitor-github-labels.ts`) to im
 **Components:**
 
 1. **EventLoop** - Central message queue
-   - Processes events one at a time (no race conditions)
-   - Decides: start worker or queue issue
-   - Tracks active workers and queue state
-   - Single source of truth
+    - Processes events one at a time (no race conditions)
+    - Decides: start worker or queue issue
+    - Tracks active workers and queue state
+    - Single source of truth
 
 2. **StartupScanner** - Scans on startup
-   - Fetches issues with "approved" label
-   - Filters out issues with "in-progress" label
-   - Sends messages to event loop for each issue
+    - Fetches issues with "approved" label
+    - Filters out issues with "in-progress" label
+    - Sends messages to event loop for each issue
 
 3. **WebhookReceiver** - Receives GitHub webhooks
-   - Listens on HTTP port
-   - Parses webhook payload
-   - Sends messages to event loop
+    - Listens on HTTP port
+    - Parses webhook payload
+    - Sends messages to event loop
 
 4. **WorkerManager** - Manages worker processes
-   - Spawns workers with IPC channel
-   - Receives completion messages from workers
-   - Sends completion messages to event loop
+    - Spawns workers with IPC channel
+    - Receives completion messages from workers
+    - Sends completion messages to event loop
 
 5. **SetupManager** - Automatic setup/cleanup
-   - Creates smee.io URL on startup
-   - Configures GitHub webhook on startup
-   - Cleans up old smee webhooks on startup
-   - Removes GitHub webhook on shutdown
+    - Creates smee.io URL on startup
+    - Configures GitHub webhook on startup
+    - Cleans up old smee webhooks on startup
+    - Removes GitHub webhook on shutdown
 
 **Message Types:**
 
 ```typescript
 type EventMessage =
-  | { type: "issue_approved"; issue: Issue }
-  | { type: "worker_completed"; issueNumber: number; success: boolean }
-  | { type: "worker_failed"; issueNumber: number; error: string }
+	| { type: "issue_approved"; issue: Issue }
+	| { type: "worker_completed"; issueNumber: number; success: boolean }
+	| { type: "worker_failed"; issueNumber: number; error: string }
 ```
 
 **Benefits:**
+
 - Single point of control (event loop)
 - No race conditions (sequential processing)
 - Easy to test (inject messages)
@@ -148,24 +156,24 @@ None yet - feature not started.
 ### ❌ Incomplete (Needs Implementation)
 
 1. **Automatic Setup** (`.automation/monitor-github-labels.ts`)
-   - **Problem:** Manual setup required, no cleanup
-   - **Impact:** User must run separate command, webhooks left orphaned
-   - **Proper fix needed:** Implement `SetupManager` class
+    - **Problem:** Manual setup required, no cleanup
+    - **Impact:** User must run separate command, webhooks left orphaned
+    - **Proper fix needed:** Implement `SetupManager` class
 
 2. **Startup Scan** (`.automation/monitor-github-labels.ts`)
-   - **Problem:** No scan on startup
-   - **Impact:** Misses issues approved while monitor was down
-   - **Proper fix needed:** Implement `StartupScanner` class
+    - **Problem:** No scan on startup
+    - **Impact:** Misses issues approved while monitor was down
+    - **Proper fix needed:** Implement `StartupScanner` class
 
 3. **Event Loop Architecture** (`.automation/monitor-github-labels.ts`)
-   - **Problem:** Multiple event sources, potential race conditions
-   - **Impact:** Hard to reason about, potential bugs
-   - **Proper fix needed:** Implement `EventLoop` class
+    - **Problem:** Multiple event sources, potential race conditions
+    - **Impact:** Hard to reason about, potential bugs
+    - **Proper fix needed:** Implement `EventLoop` class
 
 4. **Worker Communication** (`.automation/monitor-github-labels.ts`)
-   - **Problem:** Worker completion uses `proc.on("exit")` with detached process
-   - **Impact:** May not receive completion events reliably
-   - **Proper fix needed:** Implement IPC-based communication
+    - **Problem:** Worker completion uses `proc.on("exit")` with detached process
+    - **Impact:** May not receive completion events reliably
+    - **Proper fix needed:** Implement IPC-based communication
 
 ---
 
@@ -176,15 +184,17 @@ None yet - feature not started.
 **Goal:** Implement the central event loop that processes all events sequentially
 
 **Files to update:**
+
 - `.automation/monitor-github-labels.ts` (main refactoring)
-  - Add `EventMessage` type union
-  - Add `EventLoop` class with message queue
-  - Implement `processMessage()` method
-  - Implement `canStartWorker()` check
-  - Implement `startWorker()` method
-  - Implement `enqueueIssue()` method
+    - Add `EventMessage` type union
+    - Add `EventLoop` class with message queue
+    - Implement `processMessage()` method
+    - Implement `canStartWorker()` check
+    - Implement `startWorker()` method
+    - Implement `enqueueIssue()` method
 
 **Approach:**
+
 1. Define message types (TypeScript union type)
 2. Create `EventLoop` class with message queue (array)
 3. Implement `enqueue(message: EventMessage)` method
@@ -199,21 +209,24 @@ None yet - feature not started.
 **Goal:** Implement reliable worker completion messages using IPC
 
 **Why this is important:**
+
 - Current approach uses `proc.on("exit")` with detached process
 - Detached processes may not fire exit events reliably
 - Need explicit message passing from worker to parent
 - Allows worker to send structured completion data
 
 **Files to update:**
+
 - `.automation/monitor-github-labels.ts`
-  - Modify `startWorker()` to use IPC channel
-  - Add message handler for worker completion
-  - Remove `detached: true` option
+    - Modify `startWorker()` to use IPC channel
+    - Add message handler for worker completion
+    - Remove `detached: true` option
 - `.automation/auto-implement-issue.sh`
-  - Add completion message at end of script
-  - Send JSON message to parent process via stdout
+    - Add completion message at end of script
+    - Send JSON message to parent process via stdout
 
 **Approach:**
+
 1. Change worker spawn to use `stdio: ['ignore', 'pipe', 'inherit']`
 2. Parse JSON messages from worker stdout
 3. Worker sends: `{"type": "completion", "success": true, "issueNumber": 123}`
@@ -227,15 +240,17 @@ None yet - feature not started.
 **Goal:** Automatically create smee URL, configure webhook, and cleanup on shutdown
 
 **Files to update:**
+
 - `.automation/monitor-github-labels.ts`
-  - Add `SetupManager` class
-  - Implement `createSmeeUrl()` method
-  - Implement `configureGitHubWebhook()` method
-  - Implement `cleanupOldWebhooks()` method
-  - Implement `removeWebhook()` method
-  - Call setup on startup, cleanup on shutdown
+    - Add `SetupManager` class
+    - Implement `createSmeeUrl()` method
+    - Implement `configureGitHubWebhook()` method
+    - Implement `cleanupOldWebhooks()` method
+    - Implement `removeWebhook()` method
+    - Call setup on startup, cleanup on shutdown
 
 **Approach:**
+
 1. Use `smee-client` API to create channel programmatically
 2. Use `gh api` to create GitHub webhook
 3. Store smee URL in `smee-config.json` for reference
@@ -250,13 +265,15 @@ None yet - feature not started.
 **Goal:** Scan for approved issues on startup and add to queue
 
 **Files to update:**
+
 - `.automation/monitor-github-labels.ts`
-  - Add `StartupScanner` class
-  - Implement `scanApprovedIssues()` method
-  - Filter out issues with "in-progress" label
-  - Send messages to event loop for each issue
+    - Add `StartupScanner` class
+    - Implement `scanApprovedIssues()` method
+    - Filter out issues with "in-progress" label
+    - Send messages to event loop for each issue
 
 **Approach:**
+
 1. Fetch all issues with "approved" label
 2. Filter out issues that also have "in-progress" label
 3. For each remaining issue, send `issue_approved` message to event loop
@@ -272,41 +289,41 @@ None yet - feature not started.
 ### Recommended Approach: Incremental Refactoring
 
 1. **Phase 1: Event Loop Core (Priority 1)**
-   - Implement `EventLoop` class with message queue
-   - Keep existing monitors but route events through loop
-   - Test that basic queueing works
-   - Verify no regression in existing functionality
+    - Implement `EventLoop` class with message queue
+    - Keep existing monitors but route events through loop
+    - Test that basic queueing works
+    - Verify no regression in existing functionality
 
 2. **Phase 2: Worker Communication (Priority 2)**
-   - Implement IPC-based worker communication
-   - Modify bash script to send completion messages
-   - Test worker completion messages
-   - Verify workers complete and send messages correctly
+    - Implement IPC-based worker communication
+    - Modify bash script to send completion messages
+    - Test worker completion messages
+    - Verify workers complete and send messages correctly
 
 3. **Phase 3: Startup Scanner (Priority 4)**
-   - Implement startup scan (easier than setup)
-   - Test that approved issues are found and queued
-   - Verify "in-progress" filter works correctly
+    - Implement startup scan (easier than setup)
+    - Test that approved issues are found and queued
+    - Verify "in-progress" filter works correctly
 
 4. **Phase 4: Automatic Setup (Priority 3)**
-   - Implement automatic webhook setup/cleanup
-   - Test webhook creation and removal
-   - Test cleanup of old webhooks
-   - Verify graceful shutdown
+    - Implement automatic webhook setup/cleanup
+    - Test webhook creation and removal
+    - Test cleanup of old webhooks
+    - Verify graceful shutdown
 
 5. **Phase 5: Integration and Testing**
-   - Test full end-to-end flow
-   - Test edge cases (network failures, API errors)
-   - Test concurrent workers
-   - Test restart scenarios
+    - Test full end-to-end flow
+    - Test edge cases (network failures, API errors)
+    - Test concurrent workers
+    - Test restart scenarios
 
 ### Alternative Approach: Big Bang Rewrite
 
 1. **Rewrite entire monitor from scratch**
-   - Higher risk of introducing bugs
-   - Faster if successful
-   - Harder to debug if issues arise
-   - No incremental testing
+    - Higher risk of introducing bugs
+    - Faster if successful
+    - Harder to debug if issues arise
+    - No incremental testing
 
 **Recommendation:** Use incremental approach. Safer, easier to test, easier to debug.
 
@@ -319,6 +336,7 @@ None yet - feature not started.
 **Problem:** Need to create smee.io channels programmatically, but smee.io doesn't have an official API
 
 **Solution:**
+
 - Option A: Use `smee-client` library directly (check if it exposes channel creation)
 - Option B: Make HTTP request to smee.io to create channel
 - Option C: Use GitHub's built-in webhook forwarding (if available)
@@ -333,6 +351,7 @@ None yet - feature not started.
 **Future state:** Worker spawned with `stdio: ['ignore', 'pipe', 'inherit']` and sends JSON to stdout
 
 **Implementation:**
+
 ```bash
 # At end of auto-implement-issue.sh
 echo '{"type":"completion","success":true,"issueNumber":'$ISSUE_NUMBER'}'
@@ -345,6 +364,7 @@ Parent process parses JSON from stdout and sends to event loop.
 **Problem:** Multiple event sources (webhook, polling, worker completion) could trigger queue processing simultaneously
 
 **Solution:** Event loop processes messages sequentially
+
 - All events go into message queue
 - Loop processes one message at a time
 - No concurrent access to queue state
@@ -355,21 +375,23 @@ Parent process parses JSON from stdout and sends to event loop.
 **Problem:** Need to cleanup webhook on shutdown, but workers may still be running
 
 **Solution:**
+
 - On SIGINT/SIGTERM: stop accepting new events
 - Wait for active workers to complete (with timeout)
 - Remove GitHub webhook
 - Exit cleanly
 
 **Implementation:**
+
 ```typescript
 let shuttingDown = false
 
 process.on("SIGINT", async () => {
-  shuttingDown = true
-  console.log("Shutting down gracefully...")
-  await waitForWorkers(30000) // 30s timeout
-  await setupManager.removeWebhook()
-  process.exit(0)
+	shuttingDown = true
+	console.log("Shutting down gracefully...")
+	await waitForWorkers(30000) // 30s timeout
+	await setupManager.removeWebhook()
+	process.exit(0)
 })
 ```
 
@@ -378,28 +400,28 @@ process.on("SIGINT", async () => {
 ## Testing Strategy
 
 1. **Unit tests:**
-   - `EventLoop.enqueue()` adds messages to queue
-   - `EventLoop.processMessage()` handles each message type correctly
-   - `StartupScanner.scanApprovedIssues()` filters correctly
-   - `SetupManager.createSmeeUrl()` creates valid URL
+    - `EventLoop.enqueue()` adds messages to queue
+    - `EventLoop.processMessage()` handles each message type correctly
+    - `StartupScanner.scanApprovedIssues()` filters correctly
+    - `SetupManager.createSmeeUrl()` creates valid URL
 
 2. **Integration tests:**
-   - End-to-end: startup → scan → webhook → worker → completion
-   - Test with real GitHub issue (create test issue, add label, verify processing)
-   - Test restart scenario (stop monitor, approve issue, restart, verify issue processed)
-   - Test concurrent workers (approve multiple issues, verify max concurrent respected)
+    - End-to-end: startup → scan → webhook → worker → completion
+    - Test with real GitHub issue (create test issue, add label, verify processing)
+    - Test restart scenario (stop monitor, approve issue, restart, verify issue processed)
+    - Test concurrent workers (approve multiple issues, verify max concurrent respected)
 
 3. **Regression tests:**
-   - Existing polling mode still works
-   - Existing webhook mode still works
-   - Lock files still prevent duplicate processing
-   - Queue respects max concurrent limit
+    - Existing polling mode still works
+    - Existing webhook mode still works
+    - Lock files still prevent duplicate processing
+    - Queue respects max concurrent limit
 
 4. **Manual tests:**
-   - Test graceful shutdown (Ctrl+C removes webhook)
-   - Test startup cleanup (old webhooks removed)
-   - Test network failures (GitHub API down, smee.io down)
-   - Test worker failures (worker crashes, verify completion message sent)
+    - Test graceful shutdown (Ctrl+C removes webhook)
+    - Test startup cleanup (old webhooks removed)
+    - Test network failures (GitHub API down, smee.io down)
+    - Test worker failures (worker crashes, verify completion message sent)
 
 ---
 
@@ -471,9 +493,9 @@ None yet - feature not started.
 **IMPORTANT:** When working on this migration, follow these rules:
 
 1. **Update checkboxes immediately** - Mark `[x]` as soon as a task is completed
-   - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
-   - **Don't batch updates - update as you go**
-   - This makes the plan resumable at any point
+    - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
+    - **Don't batch updates - update as you go**
+    - This makes the plan resumable at any point
 2. **Update the plan as you learn** - If you discover new requirements or issues, add them to the plan
 3. **Document blockers** - If stuck, add a note explaining what's blocking progress
 4. **Keep progress tracking current** - Update the "Last Updated" timestamp and current phase
@@ -481,8 +503,8 @@ None yet - feature not started.
 6. **Commit frequently** - Commit the updated plan document after completing each major step
 7. **Run tests frequently** - Run `npm test` after completing each significant change to catch issues early
 8. **Update knowledge documents** - When you discover something that applies beyond this feature:
-   - Project-specific → Update `.workflow/project_knowledge.md`
-   - General patterns → Update `.workflow/findings.md`
+    - Project-specific → Update `.workflow/project_knowledge.md`
+    - General patterns → Update `.workflow/findings.md`
 
 This ensures the plan is always up-to-date and can be resumed at any time.
 
@@ -755,6 +777,7 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 **Summary:**
 
 Comprehensive feature plan created for monitor architecture refactor. Plan includes:
+
 - Detailed current vs new architecture comparison
 - Event loop pattern design with single message queue
 - 6 implementation phases with detailed checklists
@@ -773,24 +796,29 @@ Ready to begin implementation.
 **This section must be completed before marking the feature as done.**
 
 ### What went well:
+
 - [To be filled after feature completion]
 
 ### What could be improved:
+
 - [To be filled after feature completion]
 - **CRITICAL checks:**
-  - Did I create this feature plan BEFORE starting implementation? [Yes - plan created first]
-  - Did I add "READ .workflow/ first" directive at the top? [Yes - added at top]
-  - Did I update checkboxes during work, not just at end? [To be verified during implementation]
-  - Did I complete this retrospective section? [To be completed at end]
-  - If No to any: What would have prevented this deviation?
+    - Did I create this feature plan BEFORE starting implementation? [Yes - plan created first]
+    - Did I add "READ .workflow/ first" directive at the top? [Yes - added at top]
+    - Did I update checkboxes during work, not just at end? [To be verified during implementation]
+    - Did I complete this retrospective section? [To be completed at end]
+    - If No to any: What would have prevented this deviation?
 
 ### CRITICAL: What in the workflow could be done better keeping in mind this feature?
+
 - [To be filled after feature completion]
 
 ### Workflow doc improvements needed:
+
 - [To be filled after feature completion]
 
 ### Actions taken:
+
 - [ ] Updated `.workflow/README.md` with clarifications
 - [ ] Updated `.workflow/findings.md` with new patterns
 - [ ] Updated `.workflow/feature_template.md` if needed

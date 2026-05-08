@@ -18,12 +18,8 @@ const query = `create type status as enum ('new');` as const
 await migrations.apply(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create type status as enum ('active');`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create type status as enum ('active');`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Type already exists; use IF NOT EXISTS">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Type already exists; use IF NOT EXISTS">>
+>

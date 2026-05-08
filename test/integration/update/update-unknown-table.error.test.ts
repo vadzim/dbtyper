@@ -19,12 +19,6 @@ const query = `update nonexistent set name = 'Alice' where id = '1' returning *;
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text, name text);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Unknown table in UPDATE">
->>
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown table in UPDATE">>>

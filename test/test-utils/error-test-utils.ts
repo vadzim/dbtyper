@@ -16,5 +16,7 @@ export type CheckErrorneousResult<Result, S extends string> = Matches<
 >
 
 // Helper to extract error from ParseSqlStatement result
-export type ExtractQueryError<DbShape extends JsqlDatabaseShape, Query extends string> = 
-	ParseSqlStatement<ParseSqlTokens<Query>, DbShape>[2]
+export type ExtractQueryError<DbShape extends JsqlDatabaseShape, Query extends string> = ParseSqlStatement<
+	ParseSqlTokens<Query>,
+	DbShape
+>[2]

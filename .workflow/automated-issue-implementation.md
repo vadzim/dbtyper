@@ -4,8 +4,9 @@
 **Purpose:** Define the automated workflow for implementing features from approved GitHub issues
 
 **Part of the workflow system:**
+
 - This document describes the automated process for implementing features from GitHub issues
-- Integrates with the 5-document system (.workflow/README.md, findings.md, project_knowledge.md, feature_template.md, .features/*)
+- Integrates with the 5-document system (.workflow/README.md, findings.md, project_knowledge.md, feature_template.md, .features/\*)
 - Uses git worktrees for isolated feature development
 - Follows the project's established workflow patterns
 
@@ -14,6 +15,7 @@
 ## Overview
 
 This document describes an automated system for:
+
 1. Monitoring GitHub issues for maintainer approval
 2. Automatically creating feature branches in separate worktrees
 3. Implementing features using AI agents following the 5-document workflow
@@ -76,6 +78,7 @@ Merge Controller merges approved PR
 **Required label for automation:** `approved`
 
 **Optional labels for categorization:**
+
 - `feature` - New feature implementation
 - `bug` - Bug fix
 - `refactor` - Code refactoring
@@ -89,21 +92,26 @@ Issues should contain:
 
 ```markdown
 ## Description
+
 [Clear description of what needs to be implemented]
 
 ## Acceptance Criteria
+
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Criterion 3
 
 ## Technical Details (optional)
+
 [Any technical constraints, patterns to follow, or implementation hints]
 
 ## Related Files (optional)
+
 - `path/to/file1.ts` - [Description]
 - `path/to/file2.ts` - [Description]
 
 ## Test Requirements
+
 [What tests should be added or updated]
 ```
 
@@ -182,6 +190,7 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 **Agent Task:** Research and create feature plan
 
 **Steps:**
+
 1. Read GitHub issue content
 2. Extract requirements and acceptance criteria
 3. Research relevant codebase areas using explore agent
@@ -190,6 +199,7 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 6. Include issue link and acceptance criteria
 
 **Deliverables:**
+
 - Feature plan document
 - Initial task breakdown
 - Identified files to modify
@@ -199,28 +209,31 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 **Agent Task:** Implement feature following 5-document workflow
 
 **Steps:**
+
 1. Launch planning subagent to refine implementation strategy
 2. Create first example/pattern (if applicable)
 3. Launch implementation subagents in parallel for different components
 4. Each subagent:
-   - Works on separate file groups (no conflicts)
-   - Updates feature plan with progress
-   - Collects workflow feedback
-   - Runs tests after changes
+    - Works on separate file groups (no conflicts)
+    - Updates feature plan with progress
+    - Collects workflow feedback
+    - Runs tests after changes
 5. Main agent consolidates feedback
 6. Main agent updates all 5 workflow documents:
-   - `.features/YYYY-MM-DD-HHMM-issue-{number}-{slug}.md` - progress
-   - `.workflow/project_knowledge.md` - project-specific patterns
-   - `.workflow/findings.md` - general techniques
-   - `.workflow/feature_template.md` - template improvements (if needed)
-   - `.workflow/README.md` - workflow improvements (if needed)
+    - `.features/YYYY-MM-DD-HHMM-issue-{number}-{slug}.md` - progress
+    - `.workflow/project_knowledge.md` - project-specific patterns
+    - `.workflow/findings.md` - general techniques
+    - `.workflow/feature_template.md` - template improvements (if needed)
+    - `.workflow/README.md` - workflow improvements (if needed)
 
 **Testing Strategy:**
+
 - Run `npm run typecheck:test` after each significant change
 - Run `TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"` for integration tests
 - Fix issues immediately before proceeding
 
 **Deliverables:**
+
 - Implemented feature code
 - Updated tests
 - Updated feature plan with progress
@@ -230,23 +243,25 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 **Agent Task:** Comprehensive testing and validation
 
 **Steps:**
+
 1. Run full test suite: `npm run test:ci`
-   - Type checking: `npm run typecheck:full`
-   - Unit tests: `TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"`
-   - Linting: `npm run lint`
-   - Unused exports: `npm run find-unused`
-   - Formatting: `npm run format:check`
+    - Type checking: `npm run typecheck:full`
+    - Unit tests: `TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"`
+    - Linting: `npm run lint`
+    - Unused exports: `npm run find-unused`
+    - Formatting: `npm run format:check`
 2. Verify all acceptance criteria met
 3. Launch review subagent for final quality check
 4. Review subagent checks:
-   - Code quality and consistency
-   - Test coverage
-   - Documentation completeness
-   - Workflow document quality
+    - Code quality and consistency
+    - Test coverage
+    - Documentation completeness
+    - Workflow document quality
 5. Fix any issues found
 6. Re-run tests until all pass
 
 **Success Criteria:**
+
 - All tests pass (0 failures)
 - 0 TypeScript compilation errors
 - 0 linting errors
@@ -254,6 +269,7 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 - All acceptance criteria checked off
 
 **Deliverables:**
+
 - Passing test suite
 - Validated implementation
 - Quality-checked workflow documents
@@ -263,16 +279,18 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 **Agent Task:** Finalize documentation and workflow updates
 
 **Steps:**
+
 1. Ensure all 5 workflow documents are updated
 2. Verify feature plan completion summary
 3. Perform workflow retrospective
 4. Update project documentation if needed:
-   - `README.md` - if public API changed
-   - `docs/` - if new features need documentation
-   - `LOG.md` - add entry for this feature
+    - `README.md` - if public API changed
+    - `docs/` - if new features need documentation
+    - `LOG.md` - add entry for this feature
 5. Commit all changes with clear message
 
 **Deliverables:**
+
 - Complete feature plan with retrospective
 - Updated workflow documents
 - Updated project documentation
@@ -283,46 +301,50 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 **Agent Task:** Create pull request for maintainer review
 
 **Steps:**
+
 1. Ensure all changes committed
 2. Push branch to remote: `git push -u origin feature/issue-{number}-{slug}`
 3. Create PR using GitHub CLI:
-   ```bash
-   gh pr create \
-     --title "Implement #${ISSUE_NUMBER}: ${ISSUE_TITLE}" \
-     --body "$(cat <<'EOF'
-   ## Summary
-   Implements #${ISSUE_NUMBER}
-   
-   [Brief description of changes]
-   
-   ## Changes Made
-   - Change 1
-   - Change 2
-   - Change 3
-   
-   ## Acceptance Criteria
-   - [x] Criterion 1
-   - [x] Criterion 2
-   - [x] Criterion 3
-   
-   ## Test Results
-   - ✅ Type checking: passed
-   - ✅ Unit tests: passed (X tests)
-   - ✅ Linting: passed
-   - ✅ Formatting: passed
-   
-   ## Files Modified
-   - `path/to/file1.ts` - [Description]
-   - `path/to/file2.ts` - [Description]
-   
-   Closes #${ISSUE_NUMBER}
-   EOF
-   )" \
-     --base main
-   ```
+
+    ```bash
+    gh pr create \
+      --title "Implement #${ISSUE_NUMBER}: ${ISSUE_TITLE}" \
+      --body "$(cat <<'EOF'
+    ## Summary
+    Implements #${ISSUE_NUMBER}
+
+    [Brief description of changes]
+
+    ## Changes Made
+    - Change 1
+    - Change 2
+    - Change 3
+
+    ## Acceptance Criteria
+    - [x] Criterion 1
+    - [x] Criterion 2
+    - [x] Criterion 3
+
+    ## Test Results
+    - ✅ Type checking: passed
+    - ✅ Unit tests: passed (X tests)
+    - ✅ Linting: passed
+    - ✅ Formatting: passed
+
+    ## Files Modified
+    - `path/to/file1.ts` - [Description]
+    - `path/to/file2.ts` - [Description]
+
+    Closes #${ISSUE_NUMBER}
+    EOF
+    )" \
+      --base main
+    ```
+
 4. Link PR to issue (using "Closes #X" in description)
 
 **Deliverables:**
+
 - Created pull request
 - Linked to original issue
 - Ready for maintainer review
@@ -393,21 +415,21 @@ echo "Implementation complete. PR created for issue #$ISSUE_NUMBER"
 while true; do
   # Get all open issues with "approved" label
   APPROVED_ISSUES=$(gh issue list --label approved --json number --jq '.[].number')
-  
+
   for ISSUE_NUMBER in $APPROVED_ISSUES; do
     # Check if already being processed
     if [ -f ".processing/issue-${ISSUE_NUMBER}.lock" ]; then
       continue
     fi
-    
+
     # Create lock file
     mkdir -p .processing
     touch ".processing/issue-${ISSUE_NUMBER}.lock"
-    
+
     # Start implementation in background
     bash scripts/auto-implement-issue.sh "$ISSUE_NUMBER" &
   done
-  
+
   # Wait before next check (e.g., 5 minutes)
   sleep 300
 done
@@ -431,6 +453,7 @@ You are implementing a feature from GitHub issue #{ISSUE_NUMBER}.
 Implement this feature following the project's 5-document workflow system.
 
 **Workflow Documents:**
+
 1. .workflow/README.md - Workflow instructions
 2. .workflow/findings.md - General development findings
 3. .workflow/project_knowledge.md - Project-specific knowledge
@@ -438,6 +461,7 @@ Implement this feature following the project's 5-document workflow system.
 5. .features/YYYY-MM-DD-HHMM-issue-{ISSUE_NUMBER}-{SLUG}.md - Your feature plan
 
 **Critical Instructions:**
+
 1. Read all 4 workflow documents before starting
 2. Create feature plan using template
 3. Use subagents heavily for parallel work
@@ -448,20 +472,23 @@ Implement this feature following the project's 5-document workflow system.
 8. Perform workflow retrospective
 
 **Success Criteria:**
+
 - All acceptance criteria from issue met
 - All tests pass (npm run test:ci)
 - All 5 workflow documents updated
 - Feature plan includes completion summary and retrospective
 
 **Commands Available:**
+
 - npm run typecheck:test - Fast type checking
 - npm run test:ci - Full test suite
-- TEST_MIGRATIONS=1 node --test "test/**/*.test.ts" - Integration tests only
+- TEST_MIGRATIONS=1 node --test "test/\*_/_.test.ts" - Integration tests only
 - npm run lint - Linting
 - npm run format - Auto-format code
 
 **When Complete:**
 Report back with:
+
 1. Summary of changes made
 2. Test results
 3. Files modified
@@ -472,17 +499,20 @@ Report back with:
 ### Agent Configuration
 
 **Context Management:**
+
 - Use subagents heavily to preserve main context
 - Main agent orchestrates, subagents execute
 - Collect workflow feedback from all subagents
 - Main agent consolidates and updates workflow docs
 
 **Testing Strategy:**
+
 - Run tests after each significant change
 - Fix issues immediately before proceeding
 - Full test suite must pass before PR creation
 
 **Documentation:**
+
 - Update all 5 workflow documents continuously
 - Feature plan tracks progress in real-time
 - Workflow retrospective at end
@@ -494,6 +524,7 @@ Report back with:
 ### Implementation Failures
 
 **If tests fail:**
+
 1. Agent analyzes failure
 2. Agent fixes issues
 3. Agent re-runs tests
@@ -501,12 +532,14 @@ Report back with:
 5. If stuck after 3 attempts, escalate to maintainer
 
 **If implementation blocked:**
+
 1. Agent documents blocker in feature plan
 2. Agent creates draft PR with current progress
 3. Agent adds comment explaining blocker
 4. Maintainer reviews and provides guidance
 
 **If acceptance criteria unclear:**
+
 1. Agent documents ambiguity in feature plan
 2. Agent makes reasonable assumptions
 3. Agent documents assumptions in PR description
@@ -515,11 +548,13 @@ Report back with:
 ### Worktree Conflicts
 
 **If worktree already exists:**
+
 1. Check if previous implementation is complete
 2. If complete, clean up old worktree
 3. If incomplete, resume previous implementation
 
 **If branch already exists:**
+
 1. Check if branch is merged
 2. If merged, delete branch and create new one
 3. If not merged, resume work on existing branch
@@ -546,18 +581,21 @@ Automated checks before PR creation:
 ### Code Quality Standards
 
 **Follow project conventions:**
+
 - Test file naming: `{operation}-{scenario}.{success|error}.test.ts`
 - Unused variables start with `_`
 - Error tests use `ExtractQueryError` pattern
 - Type-level operations use clean shapes, not runtime types
 
 **Testing requirements:**
+
 - Add tests for new features
 - Update tests for changed behavior
 - Maintain or improve test coverage
 - All tests must pass
 
 **Documentation requirements:**
+
 - Update README if public API changed
 - Update docs/ if new features added
 - Add entry to LOG.md
@@ -570,6 +608,7 @@ Automated checks before PR creation:
 ### Automated Merge (Optional)
 
 **If enabled:**
+
 1. Maintainer approves PR
 2. Automation detects approval
 3. Automation merges PR using merge strategy (not squash)
@@ -577,6 +616,7 @@ Automated checks before PR creation:
 5. Automation closes issue
 
 **Command:**
+
 ```bash
 gh pr merge {PR_NUMBER} --auto --merge
 ```
@@ -596,6 +636,7 @@ gh pr merge {PR_NUMBER} --auto --merge
 **Location:** `.logs/issue-{number}-implementation.log`
 
 **Contents:**
+
 - Timestamp of each phase
 - Agent decisions and reasoning
 - Test results
@@ -638,32 +679,27 @@ AGENT_MAX_CONTEXT=200000
 
 ```json
 {
-  "automation": {
-    "enabled": true,
-    "approvalLabel": "approved",
-    "autoMerge": false,
-    "maxParallelImplementations": 3,
-    "checkInterval": 300
-  },
-  "worktree": {
-    "basePath": ".worktrees",
-    "branchPrefix": "feature/issue-",
-    "cleanupAfterMerge": true
-  },
-  "testing": {
-    "runAfterEachChange": true,
-    "requiredChecks": [
-      "typecheck:full",
-      "test:ci",
-      "lint",
-      "format:check"
-    ]
-  },
-  "documentation": {
-    "updateWorkflowDocs": true,
-    "requireRetrospective": true,
-    "updateProjectDocs": true
-  }
+	"automation": {
+		"enabled": true,
+		"approvalLabel": "approved",
+		"autoMerge": false,
+		"maxParallelImplementations": 3,
+		"checkInterval": 300
+	},
+	"worktree": {
+		"basePath": ".worktrees",
+		"branchPrefix": "feature/issue-",
+		"cleanupAfterMerge": true
+	},
+	"testing": {
+		"runAfterEachChange": true,
+		"requiredChecks": ["typecheck:full", "test:ci", "lint", "format:check"]
+	},
+	"documentation": {
+		"updateWorkflowDocs": true,
+		"requireRetrospective": true,
+		"updateProjectDocs": true
+	}
 }
 ```
 
@@ -674,6 +710,7 @@ AGENT_MAX_CONTEXT=200000
 ### Code Review
 
 **Automated implementation does NOT bypass code review:**
+
 - All PRs require maintainer approval
 - Maintainer reviews code quality
 - Maintainer verifies acceptance criteria
@@ -682,6 +719,7 @@ AGENT_MAX_CONTEXT=200000
 ### Access Control
 
 **GitHub token permissions:**
+
 - Read issues
 - Create branches
 - Create PRs
@@ -689,6 +727,7 @@ AGENT_MAX_CONTEXT=200000
 - Read repository contents
 
 **NOT allowed:**
+
 - Merge PRs (unless explicitly enabled)
 - Modify main branch directly
 - Change repository settings
@@ -697,6 +736,7 @@ AGENT_MAX_CONTEXT=200000
 ### Validation
 
 **Before merging:**
+
 - All tests must pass
 - Code review approved
 - No security vulnerabilities detected
@@ -730,24 +770,24 @@ AGENT_MAX_CONTEXT=200000
 ### Potential Improvements
 
 1. **Multi-issue dependencies**
-   - Handle issues that depend on other issues
-   - Implement in correct order
+    - Handle issues that depend on other issues
+    - Implement in correct order
 
 2. **Partial implementation**
-   - Break large issues into smaller PRs
-   - Implement incrementally
+    - Break large issues into smaller PRs
+    - Implement incrementally
 
 3. **Learning from feedback**
-   - Analyze maintainer feedback on PRs
-   - Improve implementation patterns over time
+    - Analyze maintainer feedback on PRs
+    - Improve implementation patterns over time
 
 4. **Performance optimization**
-   - Parallel implementation of independent issues
-   - Caching of common patterns
+    - Parallel implementation of independent issues
+    - Caching of common patterns
 
 5. **Integration with CI/CD**
-   - Automatic deployment to staging
-   - Integration tests in staging environment
+    - Automatic deployment to staging
+    - Integration tests in staging environment
 
 ---
 
@@ -758,17 +798,21 @@ AGENT_MAX_CONTEXT=200000
 **Issue Title:** "Add support for UNION queries"
 
 **Issue Body:**
+
 ```markdown
 ## Description
+
 Add support for SQL UNION queries with type checking
 
 ## Acceptance Criteria
+
 - [ ] Parse UNION and UNION ALL syntax
 - [ ] Type check that both queries have compatible schemas
 - [ ] Return combined result type
 - [ ] Add integration tests
 
 ## Technical Details
+
 - Extend parser in src/parser/parse-sql-statement.ts
 - Add UNION token to lexer
 - Update type inference for combined results
@@ -777,59 +821,59 @@ Add support for SQL UNION queries with type checking
 **Automation Flow:**
 
 1. **Detection (t=0)**
-   - Maintainer adds "approved" label
-   - Monitor detects approval within 5 minutes
+    - Maintainer adds "approved" label
+    - Monitor detects approval within 5 minutes
 
 2. **Worktree Creation (t=5m)**
-   - Creates `.worktrees/issue-42-add-support-for-union-queries/`
-   - Creates branch `feature/issue-42-add-support-for-union-queries`
-   - Runs `npm ci`
+    - Creates `.worktrees/issue-42-add-support-for-union-queries/`
+    - Creates branch `feature/issue-42-add-support-for-union-queries`
+    - Runs `npm ci`
 
 3. **Planning Phase (t=10m)**
-   - AI agent reads issue
-   - Launches planning subagent
-   - Creates `.features/2026-05-08-0745-issue-42-add-support-for-union-queries.md`
-   - Identifies files to modify:
-     - `src/lexer/sql-tokens.ts` - Add UNION token
-     - `src/parser/parse-sql-statement.ts` - Parse UNION syntax
-     - `src/types/query-result.ts` - Type inference for UNION
-     - `test/integration/select/select-union.success.test.ts` - New test
+    - AI agent reads issue
+    - Launches planning subagent
+    - Creates `.features/2026-05-08-0745-issue-42-add-support-for-union-queries.md`
+    - Identifies files to modify:
+        - `src/lexer/sql-tokens.ts` - Add UNION token
+        - `src/parser/parse-sql-statement.ts` - Parse UNION syntax
+        - `src/types/query-result.ts` - Type inference for UNION
+        - `test/integration/select/select-union.success.test.ts` - New test
 
 4. **Implementation Phase (t=20m - t=60m)**
-   - Subagent 1: Lexer changes
-   - Subagent 2: Parser changes
-   - Subagent 3: Type inference
-   - Subagent 4: Tests
-   - Each runs tests after changes
-   - Main agent consolidates feedback
-   - Main agent updates all 5 workflow documents
+    - Subagent 1: Lexer changes
+    - Subagent 2: Parser changes
+    - Subagent 3: Type inference
+    - Subagent 4: Tests
+    - Each runs tests after changes
+    - Main agent consolidates feedback
+    - Main agent updates all 5 workflow documents
 
 5. **Validation Phase (t=65m)**
-   - Runs `npm run test:ci`
-   - All tests pass
-   - Launch review subagent
-   - Review subagent verifies quality
-   - All acceptance criteria met
+    - Runs `npm run test:ci`
+    - All tests pass
+    - Launch review subagent
+    - Review subagent verifies quality
+    - All acceptance criteria met
 
 6. **Documentation Phase (t=70m)**
-   - Updates feature plan with completion summary
-   - Performs workflow retrospective
-   - Updates README with UNION support
-   - Adds entry to LOG.md
-   - Commits all changes
+    - Updates feature plan with completion summary
+    - Performs workflow retrospective
+    - Updates README with UNION support
+    - Adds entry to LOG.md
+    - Commits all changes
 
 7. **PR Creation (t=75m)**
-   - Pushes branch to remote
-   - Creates PR with summary
-   - Links to issue #42
-   - Includes test results
+    - Pushes branch to remote
+    - Creates PR with summary
+    - Links to issue #42
+    - Includes test results
 
 8. **Review and Merge (t=24h)**
-   - Maintainer reviews PR
-   - Maintainer approves
-   - Maintainer merges
-   - Worktree cleaned up
-   - Issue #42 closed automatically
+    - Maintainer reviews PR
+    - Maintainer approves
+    - Maintainer merges
+    - Worktree cleaned up
+    - Issue #42 closed automatically
 
 **Total Time:** ~75 minutes automated + maintainer review time
 
@@ -838,6 +882,7 @@ Add support for SQL UNION queries with type checking
 ## Summary
 
 This automated system:
+
 - Monitors GitHub issues for maintainer approval
 - Implements features in isolated worktrees
 - Follows the project's 5-document workflow
@@ -847,6 +892,7 @@ This automated system:
 - Maintains code quality and documentation standards
 
 **Key Benefits:**
+
 - Faster feature implementation
 - Consistent code quality
 - Comprehensive documentation
@@ -854,6 +900,7 @@ This automated system:
 - Continuous workflow improvement
 
 **Maintainer Control:**
+
 - Approves issues before implementation
 - Reviews all PRs before merging
 - Can reject or request changes

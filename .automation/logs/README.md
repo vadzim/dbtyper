@@ -11,6 +11,7 @@ Example: `issue-42-20260508-143022.log`
 ## Contents
 
 Each log contains:
+
 - Timestamp of each phase
 - Issue details fetched from GitHub
 - Worktree creation output

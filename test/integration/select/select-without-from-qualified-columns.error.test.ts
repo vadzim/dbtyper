@@ -15,17 +15,10 @@ const db = sqlMigrations({ driver: mockDriver })
 // Even though users table exists, we cannot reference users.id without FROM
 const query = `select users.id, users.name;` as const
 
-
 // @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text, name text);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Unknown qualified column">
->>
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown qualified column">>>

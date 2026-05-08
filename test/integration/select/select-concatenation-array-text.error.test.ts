@@ -15,17 +15,12 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ array || text → error
 const query = `select array[2,3] || '4' as result from users;` as const
 
-
 // @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id integer, tags integer[]);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id integer, tags integer[]);`>[0]
 
-type _errorCheck = Expect<Matches<
-	ExtractQueryError<DbShape, typeof query>,
-	SqlParserError<"Cannot concatenate array with text">
->>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Cannot concatenate array with text">>
+>

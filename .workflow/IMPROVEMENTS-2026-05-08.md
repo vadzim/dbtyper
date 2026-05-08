@@ -12,7 +12,7 @@ During the implementation of the automated GitHub issue implementation system, I
 ❌ **Did NOT create feature plan BEFORE implementation**  
 ❌ **Started implementing immediately without planning**  
 ❌ **Created feature plan at the END instead of at the START**  
-❌ **Did not add "READ .workflow/ first" directive**  
+❌ **Did not add "READ .workflow/ first" directive**
 
 This violated the workflow's core principle and demonstrated that the workflow instructions were not emphatic enough.
 
@@ -48,9 +48,10 @@ This violated the workflow's core principle and demonstrated that the workflow i
 ✅ Reordered steps to put feature plan creation FIRST  
 ✅ Added instruction to include **"READ .workflow/ first" directive**  
 ✅ Added explanation that feature plan enables resuming work  
-✅ Updated retrospective questions to check for feature plan creation  
+✅ Updated retrospective questions to check for feature plan creation
 
 **New section:**
+
 ```markdown
 ### At Start of Feature (CRITICAL - DO THIS FIRST):
 
@@ -58,11 +59,11 @@ This violated the workflow's core principle and demonstrated that the workflow i
 
 1. **Read ALL 4 workflow documents** (`.workflow/*.md`) - Understand the system
 2. **Create feature plan IMMEDIATELY:**
-   - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-feature-name.md`
-   - Fill in Overview section with what you understand so far
-   - **Add directive at top:** "IMPORTANT: If resuming this feature, READ .workflow/ folder first"
+    - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-feature-name.md`
+    - Fill in Overview section with what you understand so far
+    - **Add directive at top:** "IMPORTANT: If resuming this feature, READ .workflow/ folder first"
 3. **Launch planning subagent** - Research codebase and create detailed plan
-...
+   ...
 ```
 
 ### 2. Updated `.workflow/feature_template.md`
@@ -71,11 +72,13 @@ This violated the workflow's core principle and demonstrated that the workflow i
 
 ✅ Added **"READ .workflow/ first" directive** at the top by default  
 ✅ Made it part of the template so it's always included  
-✅ Added clear instructions about the directive  
+✅ Added clear instructions about the directive
 
 **New section at top:**
+
 ```markdown
 **IMPORTANT: If resuming this feature, READ .workflow/ folder first:**
+
 - `.workflow/README.md` - Workflow instructions and guidelines
 - `.workflow/findings.md` - General development patterns and techniques
 - `.workflow/project_knowledge.md` - Project-specific conventions and knowledge
@@ -90,9 +93,10 @@ This violated the workflow's core principle and demonstrated that the workflow i
 ✅ Reordered Phase 1 to create feature plan FIRST  
 ✅ Added explicit instruction to add the directive  
 ✅ Added checklist items for feature plan creation  
-✅ Updated "What NOT to Do" section  
+✅ Updated "What NOT to Do" section
 
 **New Phase 1:**
+
 ```markdown
 ### Phase 1: Planning (REQUIRED)
 
@@ -100,11 +104,11 @@ This violated the workflow's core principle and demonstrated that the workflow i
 
 1. **Read all 4 workflow documents** (`.workflow/*.md`) - MANDATORY
 2. **Create feature plan IMMEDIATELY:**
-   - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-issue-{ISSUE_NUMBER}-{SLUG}.md`
-   - **Add this directive at the top:** [directive text]
-   - Fill in Overview section with what you understand from the issue
+    - Copy `.workflow/feature_template.md` to `.features/YYYY-MM-DD-HHMM-issue-{ISSUE_NUMBER}-{SLUG}.md`
+    - **Add this directive at the top:** [directive text]
+    - Fill in Overview section with what you understand from the issue
 3. **Launch a planning subagent** to research and plan
-...
+   ...
 ```
 
 ### 4. Updated Feature Plan
@@ -112,7 +116,7 @@ This violated the workflow's core principle and demonstrated that the workflow i
 ✅ Added "READ .workflow/ first" directive to the completed feature plan  
 ✅ Documented the mistake in workflow retrospective  
 ✅ Explained what went wrong and why  
-✅ Listed all improvements made  
+✅ Listed all improvements made
 
 ---
 
@@ -165,7 +169,7 @@ To verify these improvements work, the next feature should:
 **Root Cause:** Workflow instructions not emphatic enough  
 **Solution:** Made instructions bold, emphatic, and impossible to miss  
 **Files Updated:** 3 workflow files + 1 agent prompt template  
-**Status:** ✅ Fixed and documented  
+**Status:** ✅ Fixed and documented
 
 **This mistake led to significant workflow improvements that will benefit all future features.**
 
