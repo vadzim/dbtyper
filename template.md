@@ -21,6 +21,53 @@ Review this before starting similar work to avoid repeating mistakes and leverag
 
 ---
 
+## 🔄 Continuous Update Workflow
+
+**IMPORTANT: Update this template.md throughout feature development, not just at the end!**
+
+When you discover something during feature work that belongs to:
+- **Project domain** (architecture, conventions, patterns)
+- **Tools domain** (build tools, test runners, CLI commands)
+- **General knowledge** (not specific to the current feature)
+
+→ **Update template.md immediately**, not just the feature-specific plan document.
+
+### Why Update During Development?
+
+1. **Capture insights while fresh** - Don't wait until the end when details fade
+2. **Build knowledge incrementally** - Each discovery adds to the collective understanding
+3. **Help future work immediately** - Next feature can benefit from today's learning
+4. **Avoid duplication** - Don't rediscover the same things repeatedly
+
+### What Goes Where?
+
+**Feature-specific plan document** (e.g., `docs/refactoring/error-message-checking.md`):
+- Implementation steps for THIS feature
+- Progress tracking and checkboxes
+- Feature-specific decisions and blockers
+- Temporary workarounds
+
+**template.md** (this file):
+- Project conventions and patterns (applies to ALL features)
+- Tool usage and commands (reusable knowledge)
+- Architecture insights (helps understand the system)
+- Common pitfalls and solutions (avoid repeating mistakes)
+- Workflow patterns that worked well (process improvements)
+
+### Update Triggers
+
+Update template.md when you:
+- ✅ Discover a project convention or pattern
+- ✅ Learn how a tool works or find a useful command
+- ✅ Solve a technical challenge that others might face
+- ✅ Find a workflow pattern that works well
+- ✅ Hit a common pitfall and find the solution
+- ✅ Understand an architectural decision or constraint
+
+**Remember: This statement itself should be in template.md because it's about the development process, not about any specific feature!**
+
+---
+
 ## Project Structure & Organization
 
 **Test Organization:**
