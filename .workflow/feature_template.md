@@ -3,6 +3,15 @@
 **Date:** YYYY-MM-DD HH:MM  
 **Current State:** [Brief description of current state]
 
+**This is a feature plan document. Save it in `.features/` folder as `YYYY-MM-DD-HHMM-feature-name.md`**
+
+**Part of the 5-document system:**
+1. .workflow/README.md - Workflow instructions
+2. .workflow/findings.md - General development findings
+3. .workflow/project_knowledge.md - Project-specific knowledge
+4. .workflow/feature_template.md - Template for new features (THIS IS THE TEMPLATE)
+5. .features/YYYY-MM-DD-HHMM-name.md - Current feature plan (copy this template there and update line 12 to say "THIS FILE")
+
 ---
 
 ## Overview
@@ -237,8 +246,8 @@ These are temporary bridges that should be removed once migration is complete:
 6. **Commit frequently** - Commit the updated plan document after completing each major step
 7. **Run `npm test` frequently** - Run tests after completing each significant change or step to catch issues early
 8. **Update knowledge documents** - When you discover something that applies beyond this feature:
-   - Project-specific → Update `docs/workflow/knowledge.md`
-   - General patterns → Update `docs/workflow/findings.md`
+   - Project-specific → Update `.workflow/project_knowledge.md`
+   - General patterns → Update `.workflow/findings.md`
 
 This ensures the plan is always up-to-date and can be resumed at any time.
 
@@ -458,5 +467,34 @@ All success criteria met:
 **Remember: You should have already updated the knowledge documents during feature work!**
 
 If you haven't yet, add learnings now:
-- Project-specific learnings → `docs/workflow/knowledge.md`
-- General patterns/techniques → `docs/workflow/findings.md`
+- Project-specific learnings → `.workflow/project_knowledge.md`
+- General patterns/techniques → `.workflow/findings.md`
+
+---
+
+## Workflow Retrospective
+
+**IMPORTANT:** After completing this feature, perform a retrospective on your workflow adherence.
+
+### What went well:
+- [What you did correctly according to workflow]
+- [Where you successfully used subagents]
+- [Where you updated documents continuously]
+
+### What could be improved:
+- [Where you deviated from workflow]
+- [Why the deviation happened - unclear rules? habit? oversight?]
+- [What was unclear in workflow docs]
+- [Where you should have used subagents but didn't]
+
+### Workflow doc improvements needed:
+- [Specific improvements to `.workflow/README.md`]
+- [Clarifications needed in `.workflow/findings.md`]
+- [New examples or thresholds to add]
+
+### Actions taken:
+- [ ] Updated `.workflow/README.md` with clarifications
+- [ ] Updated `.workflow/findings.md` with new patterns
+- [ ] Updated `.workflow/feature_template.md` if needed
+
+**This retrospective makes the workflow clearer for future work!**

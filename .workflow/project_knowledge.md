@@ -4,6 +4,13 @@
 
 Update this when you discover patterns, conventions, or insights specific to THIS project.
 
+**Part of the 5-document system:**
+1. .workflow/README.md - Workflow instructions
+2. .workflow/findings.md - General development findings
+3. .workflow/project_knowledge.md - Project-specific knowledge (THIS FILE)
+4. .workflow/feature_template.md - Template for new features
+5. .features/YYYY-MM-DD-HHMM-name.md - Current feature plan
+
 ---
 
 ## Project Structure & Organization
