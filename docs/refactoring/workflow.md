@@ -1,12 +1,12 @@
-# Feature/Refactoring Planning & Knowledge Workflow
+# Project Knowledge Base & Feature Planning Workflow
 
 **This document serves two purposes:**
-1. **Feature Planning Workflow** - Structure for planning specific features/refactorings
-2. **Project Knowledge Base** - Accumulated learnings that apply to all work
+1. **Project Knowledge Base** - Accumulated learnings that apply to all work (continuously updated)
+2. **Feature Planning Reference** - Structure for planning specific features (see template at end)
 
 ---
 
-# Part 1: Project Knowledge Base
+## 📚 Project Knowledge Base
 
 **Writing down findings during feature development improves your experience and capabilities in developing next features.**
 
@@ -132,6 +132,12 @@ const _n2: never = 1 as unknown as {[K in keyof SqlParserError<"Unknown table">]
 ```
 
 After you get the information, remove the debug line.
+
+**Alternative (less reliable):**
+```typescript
+type _debug = SomeComplexType<Args>
+```
+This sometimes works but TypeScript may not always show the full resolved type. The `const _n: never` technique is more reliable.
 
 **Key Lesson:** When working with complex type-level operations, avoid deeply nested runtime types. Create clean type-level representations instead.
 
@@ -374,11 +380,6 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 - **Parser source:** `src/parser/parse-sql-statement.ts`
 - **Error types:** `src/sql-parser-error.ts`
 - **Database types:** `src/core/sql-database.ts`
-
----
-
-## Feature Planning Template
-
 
 ---
 
