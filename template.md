@@ -97,6 +97,31 @@ Update template.md when you:
 - Must recreate database shape at type level for error checking
 - `ParseSqlStatement` works on clean shapes, not nested runtime types
 
+**Debugging TypeScript Types:**
+
+When you need to see what a complex type actually resolves to, use a debug type:
+
+```typescript
+type _debug = SomeComplexType<Args>
+```
+
+Then run `npm run typecheck:test` and look at the error message. TypeScript will show you the actual resolved type in the error output. This is invaluable for:
+- Understanding what `ExtractQueryError` actually returns
+- Seeing the resolved error message from the parser
+- Debugging type-level operations
+- Verifying type transformations work as expected
+
+**Example from this work:**
+```typescript
+// To see what error ExtractQueryError returns:
+type _debug = ExtractQueryError<DbShape, typeof query>
+
+// TypeScript error shows: SqlParserError<"Unknown table in DELETE FROM">
+// Now you know the exact error message to use in your test
+```
+
+After you get the information, remove the `_debug` type (or prefix with `_` to satisfy linting rules).
+
 **Key Lesson:** When working with complex type-level operations, avoid deeply nested runtime types. Create clean type-level representations instead.
 
 ---
