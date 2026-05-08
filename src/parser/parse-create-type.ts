@@ -49,7 +49,7 @@ type ParseCreateTypeQualifiedWhenNameOk<
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTypeQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Typ>
 			: never
-		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA_FOR_CREATE_TYPE", []>>
+		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA_FOR_CREATE_TYPE", [Sch]>>
 
 type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedName<Tokens, Db> extends [

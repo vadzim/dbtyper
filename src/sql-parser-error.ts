@@ -791,15 +791,15 @@ export const errors = {
 	},
 	2214: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_TABLE",
-		msg: ["Unknown schema for CREATE TABLE"],
+		msg: ["Unknown schema ", " for CREATE TABLE"],
 	},
 	2215: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_TYPE",
-		msg: ["Unknown schema for CREATE TYPE"],
+		msg: ["Unknown schema ", " for CREATE TYPE"],
 	},
 	2216: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_VIEW",
-		msg: ["Unknown schema for CREATE VIEW"],
+		msg: ["Unknown schema ", " for CREATE VIEW"],
 	},
 
 	// Column Resolution

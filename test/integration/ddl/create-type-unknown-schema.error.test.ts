@@ -18,5 +18,5 @@ await migrations.apply(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2215, "Unknown schema for CREATE TYPE">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2215, "Unknown schema ghost for CREATE TYPE">>
 >

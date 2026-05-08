@@ -64,7 +64,7 @@ type ParseCreateTableQualifiedWhenNameOk<
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never
-		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA_FOR_CREATE_TABLE", []>>
+		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA_FOR_CREATE_TABLE", [Sch]>>
 
 type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedTableName<Tokens, Db> extends [

@@ -186,7 +186,7 @@ type TUnknownQualifiedSchema = ParseSqlStatement<
 	DbDefaultPublic
 >
 type _unknownQualifiedSchema = Expect<
-	Extends<TUnknownQualifiedSchema[2], DbtyperError<2214, "Unknown schema for CREATE TABLE">>
+	Extends<TUnknownQualifiedSchema[2], DbtyperError<2214, "Unknown schema zzz for CREATE TABLE">>
 >
 
 /** `defaultSchema` names where to create unqualified tables; that schema must exist (it is never implied). */
@@ -200,7 +200,7 @@ type TUnqualifiedRequiresDefaultSchemaRow = ParseSqlStatement<
 	DbDefaultPublicButOnlyAuth
 >
 type _unqMissingDefaultSchema = Expect<
-	Extends<TUnqualifiedRequiresDefaultSchemaRow[2], DbtyperError<2214, "Unknown schema for CREATE TABLE">>
+	Extends<TUnqualifiedRequiresDefaultSchemaRow[2], DbtyperError<2214, "Unknown schema public for CREATE TABLE">>
 >
 
 type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
