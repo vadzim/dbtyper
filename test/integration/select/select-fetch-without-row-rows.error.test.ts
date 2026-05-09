@@ -1,6 +1,6 @@
-// Integration Test: SELECT - ORDER missing BY keyword
+// Integration Test: SELECT - FETCH without ROW/ROWS keyword
 // Integration Test: SELECT syntax validation
-// Tests that ORDER clause requires BY keyword
+// Tests that FETCH clause requires ROW or ROWS keyword
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
@@ -15,8 +15,8 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text);`)
 	.database()
 
-// ❌ ERROR: missing BY keyword after ORDER
-const query = `select users.name from users order users.name;` as const
+// ❌ ERROR: missing ROW/ROWS keyword in FETCH
+const query = `select users.id from users fetch first 5 only;` as const
 
 // @ts-expect-error
 await db.query(query)
@@ -28,5 +28,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1108, "Expected BY after ORDER">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<5301, "Expected ROW or ROWS in FETCH">>
 >

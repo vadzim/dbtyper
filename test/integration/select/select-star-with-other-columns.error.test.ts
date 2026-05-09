@@ -1,6 +1,6 @@
-// Integration Test: SELECT - ORDER missing BY keyword
+// Integration Test: SELECT - star with other columns
 // Integration Test: SELECT syntax validation
-// Tests that ORDER clause requires BY keyword
+// Tests that SELECT * must be the only projection
 
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
@@ -15,8 +15,8 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id text, name text);`)
 	.database()
 
-// ❌ ERROR: missing BY keyword after ORDER
-const query = `select users.name from users order users.name;` as const
+// ❌ ERROR: SELECT * must be only projection
+const query = `select *, users.id from users;` as const
 
 // @ts-expect-error
 await db.query(query)
@@ -28,5 +28,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1108, "Expected BY after ORDER">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3400, "SELECT * must be the only projection in the list">>
 >
