@@ -55,6 +55,14 @@ Update this when you discover patterns, conventions, or insights specific to THI
 - Adding new codes: Choose appropriate range, create unique ID, add to registry
 - FormatError type formats errors as: `[dbt:CODE] message`
 
+**Error Type Migration (Completed 2026-05-09):**
+
+- ✅ All source code migrated from SqlParserError to FormatError
+- **FormatError<ID, Args>** - Primary error constructor (use this for new code)
+- **DbtyperError<Code, Message>** - Formatted error result type
+- **SqlParserError<Message>** - Legacy alias (deprecated, kept for backward compatibility)
+- Migration details: `.features/2026-05-08-2116-migrate-sqlparsererror-to-formaterror.md`
+
 ---
 
 ## Build & Test Tools

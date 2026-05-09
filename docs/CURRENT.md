@@ -7,7 +7,7 @@
 - **Catalog + scope**: `SELECT` / `DELETE` / `UPDATE` resolve columns against `JsqlDatabaseShape` and `ScopeMap` (including joins).
 - **Expressions**: `ParseExpressionAST` + `ResolveExpressionAST` for scalars and booleans; `WHERE` on `DELETE` / `UPDATE` uses `ParseWhereExpression`.
 - **DML checks**: `INSERT` / `UPDATE` value expressions checked against column types; `SELECT` projections and `:param` bindings.
-- **Parser rules**: token-driven parsers, errors as `SqlParserError<…>` (see `README.md` parser section).
+- **Parser rules**: token-driven parsers, errors as `DbtyperError<Code, Message>` using FormatError constructor (see `README.md` parser section).
 
 ## Implemented in this review (gap closed)
 

@@ -17,12 +17,12 @@ Lexing, token types, and monad mechanics are out of scope here.
 | `ALTER` + `TABLE`                        | Parsed; may **mutate** table shape (see **`ALTER TABLE`** below). **`ALTER`** without **`TABLE`** → error **`Expected TABLE after ALTER`**. |
 | `DROP` + `TABLE` / `SCHEMA`              | Parsed; may **remove** from `JsqlDatabaseShape`                                                                                             |
 | `DELETE`                                 | Parsed; **checked** against the DB (`WHERE` is type-checked); does **not** mutate the schema object                                         |
-| `WITH` … (CTE) + `SELECT`                | Parsed as one statement: CTEs bind in **`ScopeMap`** for the following **`SELECT`**; duplicate CTE name → **`SqlParserError`**.             |
+| `WITH` … (CTE) + `SELECT`                | Parsed as one statement: CTEs bind in **`ScopeMap`** for the following **`SELECT`**; duplicate CTE name → **`DbtyperError`**.             |
 | `SELECT`                                 | Parsed; projection/joins and list **`:name`** params checked; does **not** mutate the DB                                                    |
 | `INSERT` / `UPDATE`                      | Parsed; checked; schema unchanged in this model.                                                                                            |
 | Anything else (e.g. `GRANT`, `TRUNCATE`) | **Skipped** to the next `;` (or end): same bracket-aware scan as **`CREATE VIEW`**, no structured parse.                                    |
 
-Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Params`** defaults to **`{}`** ) walks statements until end-of-input. If **`ParseSqlStatement`** returns **`SqlParserError<…>`** in the third tuple slot, the walk **stops** and returns **`[RestTokens, Db, SqlParserError<…>]`** without applying later statements; on full success through end-of-input it returns **`[RestTokens, Db, null]`**. **`ApplyStatements<Db, Text, Params>`** folds that to **`[FinalDb, SqlParserError<…> | null]`** ( **`[Db, null]`** when **`Db`** is already **`SqlParserError<…>`** — no script walk). **`DBMigrations.apply`** threads only **`ApplyStatements<…>[0]`** (the DB) as the chained **`Database`** type.
+Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Params`** defaults to **`{}`** ) walks statements until end-of-input. If **`ParseSqlStatement`** returns **`DbtyperError<…>`** in the third tuple slot, the walk **stops** and returns **`[RestTokens, Db, DbtyperError<…>]`** without applying later statements; on full success through end-of-input it returns **`[RestTokens, Db, null]`**. **`ApplyStatements<Db, Text, Params>`** folds that to **`[FinalDb, DbtyperError<…> | null]`** ( **`[Db, null]`** when **`Db`** is already **`DbtyperError<…>`** — no script walk). **`DBMigrations.apply`** threads only **`ApplyStatements<…>[0]`** (the DB) as the chained **`Database`** type.
 
 ### Schema shape (`JsqlDatabaseShape`)
 
@@ -130,7 +130,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 ## Typed expressions (`ParseExpressionAST` / `ResolveExpressionAST` / `EvalWhereClause`)
 
 - [`src/parser/parse-expression.ts`](../src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`** (value lists and **`IN (SELECT …)`**), **`BETWEEN`**, **`LIKE` / `ILIKE`**, simple and searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts, **`EXISTS (SELECT …)`**, parenthesized scalar **`(SELECT …)`**). **`ResolveExpressionAST<Ast, Db, Scope, Params>`** checks types once **`ScopeMap`** and **`:name`** bindings (**`Params`**, default **`{}`**) are known; column references use **`ResolveColumnRefValue`** (unqualified / **`alias.col`** / **`schema.table.column`** against **`JsqlDatabaseShape`**).
-- **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, SqlParserError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
+- **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, DbtyperError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
 
 ---
 

@@ -4,7 +4,13 @@ This document provides a comprehensive reference for all error codes in jsql.
 
 ## Overview
 
-jsql uses a type-level error system where errors are TypeScript types (`SqlParserError<"message">`). Error codes help identify and categorize errors for better debugging and documentation.
+jsql uses a type-level error system where errors are TypeScript types. Error codes help identify and categorize errors for better debugging and documentation.
+
+**Error Type System:**
+
+- **FormatError<ID, Args>** - Primary error constructor with error codes (use this for new code)
+- **DbtyperError<Code, Message>** - Formatted error result type
+- **SqlParserError<Message>** - Legacy alias for `DbtyperError<-1, Message>` (deprecated)
 
 **Error codes appear in:**
 
@@ -88,7 +94,7 @@ Each category has 100 slots, providing room for future expansion.
 
 ```typescript
 const query = `SELECT "unclosed FROM users` as const
-// Error: SqlParserError<"[dbt:1000] Unclosed quoted identifier literal">
+// Error: DbtyperError<1000, "[dbt:1000] Unclosed quoted identifier literal">
 ```
 
 ### 1100-1199: Parser Syntax - SELECT Statement
@@ -111,7 +117,7 @@ const query = `SELECT "unclosed FROM users` as const
 
 ```typescript
 const query = `SELECT * FROM users GROUP` as const
-// Error: SqlParserError<"[dbt:1107] Expected BY after GROUP">
+// Error: DbtyperError<1107, "[dbt:1107] Expected BY after GROUP">
 ```
 
 ### 2200-2299: Resolution - Table/Schema Errors
@@ -127,7 +133,7 @@ const query = `SELECT * FROM users GROUP` as const
 
 ```typescript
 const query = `SELECT * FROM nonexistent_table` as const
-// Error: SqlParserError<"[dbt:2200] Unknown table in FROM">
+// Error: DbtyperError<2200, "[dbt:2200] Unknown table nonexistent_table in FROM">
 ```
 
 ### 2300-2399: Resolution - Column Errors
@@ -142,7 +148,7 @@ const query = `SELECT * FROM nonexistent_table` as const
 
 ```typescript
 const query = `SELECT nonexistent_column FROM users` as const
-// Error: SqlParserError<"[dbt:2300] Unknown column">
+// Error: DbtyperError<2300, "[dbt:2300] Unknown column nonexistent_column">
 ```
 
 ### 2600-2699: Type System - Boolean Type Errors
@@ -161,7 +167,7 @@ const query = `SELECT nonexistent_column FROM users` as const
 
 ```typescript
 const query = `SELECT * FROM users WHERE 'text'` as const
-// Error: SqlParserError<"[dbt:2600] Expression must be boolean, but has a type text">
+// Error: DbtyperError<2600, "[dbt:2600] Expression must be boolean, but has a type text">
 ```
 
 ### 2700-2799: Type System - NULL Handling
@@ -176,7 +182,7 @@ const query = `SELECT * FROM users WHERE 'text'` as const
 
 ```typescript
 const query = `SELECT * FROM users WHERE name = null` as const
-// Error: SqlParserError<"[dbt:2704] Use IS NULL instead of = null">
+// Error: DbtyperError<2704, "[dbt:2704] Use IS NULL instead of = null">
 ```
 
 ### 200-299: Parser Syntax Errors
@@ -201,7 +207,7 @@ const query = `SELECT * FROM users WHERE name = null` as const
 
 ```typescript
 const query = `SELECT * FROM users GROUP` as const
-// Error: SqlParserError<"Expected BY after GROUP">
+// Error: DbtyperError<1107, "[dbt:1107] Expected BY after GROUP">
 ```
 
 ### 400-499: Resolution Errors
@@ -219,7 +225,7 @@ const query = `SELECT * FROM users GROUP` as const
 
 ```typescript
 const query = `SELECT * FROM nonexistent_table` as const
-// Error: SqlParserError<"Unknown table in FROM">
+// Error: DbtyperError<2200, "[dbt:2200] Unknown table nonexistent_table in FROM">
 ```
 
 #### Column Resolution
@@ -234,7 +240,7 @@ const query = `SELECT * FROM nonexistent_table` as const
 
 ```typescript
 const query = `SELECT nonexistent_column FROM users` as const
-// Error: SqlParserError<"Unknown column">
+// Error: DbtyperError<2300, "[dbt:2300] Unknown column nonexistent_column">
 ```
 
 ### 500-599: Type System Errors
@@ -255,7 +261,7 @@ const query = `SELECT nonexistent_column FROM users` as const
 
 ```typescript
 const query = `SELECT * FROM users WHERE 'text'` as const
-// Error: SqlParserError<"Expression must be boolean, but has a type text">
+// Error: DbtyperError<2600, "[dbt:2600] Expression must be boolean, but has a type text">
 ```
 
 #### 530-539: NULL Handling
@@ -270,7 +276,7 @@ const query = `SELECT * FROM users WHERE 'text'` as const
 
 ```typescript
 const query = `SELECT * FROM users WHERE name = null` as const
-// Error: SqlParserError<"Use IS NULL instead of = null">
+// Error: DbtyperError<2704, "[dbt:2704] Use IS NULL instead of = null">
 ```
 
 ## How to Add New Error Codes

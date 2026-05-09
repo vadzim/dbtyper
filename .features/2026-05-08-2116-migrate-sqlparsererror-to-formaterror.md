@@ -247,6 +247,30 @@ The "Incomplete" section is no longer applicable - all work is complete.
 
 ---
 
+## Final Status
+
+**Migration completed:** 2026-05-09 11:42
+
+**Summary:**
+- ✅ All source files migrated from SqlParserError to FormatError
+- ✅ All 137 test errors fixed
+- ✅ Full typecheck passes with zero errors
+- ✅ SqlParserError kept as legacy type alias for backward compatibility
+- ✅ Error system now uses FormatError with 357 unique error codes
+
+**Error System:**
+- **FormatError<ID, Args>** - Primary error constructor with error codes
+- **DbtyperError<Code, Message>** - Formatted error type
+- **SqlParserError<Message>** - Legacy alias: `DbtyperError<-1, Message>` (deprecated)
+
+**Key Achievements:**
+- Rich error messages with context (table names, column names, etc.)
+- Comprehensive error code registry (1000-5499 range)
+- Type-safe error formatting at compile time
+- All parsers now use FormatError exclusively
+
+---
+
 ## Notes
 
 - Migration complete! All source code now uses FormatError with error codes
