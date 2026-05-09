@@ -33,5 +33,8 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2600, "Expression must be boolean, but has a type text.">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<2600, "Expression must be boolean, but has a type text.">
+	>
 >

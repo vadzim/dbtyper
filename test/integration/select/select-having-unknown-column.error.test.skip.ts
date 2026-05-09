@@ -19,8 +19,9 @@ const query = `select region from sales group by region having not_a_col = 'x';`
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table sales (region text, amount integer);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table sales (region text, amount integer);`
+>[0]
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown column">>
->
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown column">>>

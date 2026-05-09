@@ -30,17 +30,9 @@ type _t2null = Expect<Matches<T2[2], null>>
 type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where public.users.id = 'u';`>, DbUsers>
 type _t3null = Expect<Matches<T3[2], null>>
 
-
-
-
-
-
-
 /** End-of-input without `;` is accepted (same as `TokenEot` terminator elsewhere). */
 type TNoSemi = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u'`>, DbUsers>
 type _tNoSemi = Expect<Matches<TNoSemi[2], null>>
-
-
 
 type TAnd = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u' and users.name = 'a';`>, DbUsers>
 type _tAnd = Expect<Matches<TAnd[2], null>>

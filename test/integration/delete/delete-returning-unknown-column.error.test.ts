@@ -21,4 +21,6 @@ await db.query(query)
 // Type-level database shape for error checking
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column invalid_column">>>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column invalid_column">>
+>

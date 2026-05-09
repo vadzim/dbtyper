@@ -43,19 +43,11 @@ type UsersEntry = {
 
 type UsersScope = Record<"users", UsersEntry>
 
-
-
 type WParamUnknownTs = ParseWhereExpression<ParseSqlTokens<`:p = 'x'`>, DbUsers, UsersScope, { p: SqlTypeShape }>
 type _wParamUnknownTs = Expect<Extends<WParamUnknownTs[1], null>>
 
 type WParamBoolOk = ParseWhereExpression<ParseSqlTokens<`:flag`>, DbUsers, UsersScope, { flag: TBoolean }>
 type _wParamBoolOk = Expect<Extends<WParamBoolOk[1], null>>
-
-
-
-
-
-
 
 type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: TInteger } }>
 type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: TText } }>
@@ -75,12 +67,6 @@ type _uAndCmp = Expect<Extends<UAndCmp[1], { kind: "and" }>>
 
 type UOrAndPrec = ParseExpressionAST<ParseSqlTokens<`true or false and false`>, TestEnvForExprParse>
 type _uOrAndPrec = Expect<Extends<UOrAndPrec[1], { kind: "or" }>>
-
-
-
-
-
-
 
 type UCastPg = ParseExpressionAST<ParseSqlTokens<`1::text`>, TestEnvForExprParse>
 type _uCastPg = Expect<Extends<UCastPg[1], { kind: "pg_cast" }>>

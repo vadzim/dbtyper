@@ -13,12 +13,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Duplicate WITH clause name
-const query = `with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;` as const
+const query =
+	`with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;` as const
 
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id text not null, name text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3210, "Duplicate WITH clause name">>

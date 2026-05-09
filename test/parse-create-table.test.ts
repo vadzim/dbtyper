@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError as _SqlParserError, DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -180,10 +180,6 @@ type TExpectedTableName = ParseSqlStatement<ParseSqlTokens<`create table( id int
 type _expectedTableName = Expect<
 	Matches<TExpectedTableName[2], DbtyperError<1506, "Expected table name in CREATE TABLE">>
 >
-
-
-
-
 
 type TUnknownQualifiedSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table zzz.ghost ( id int not null );`>,

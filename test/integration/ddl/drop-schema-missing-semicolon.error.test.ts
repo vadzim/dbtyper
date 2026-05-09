@@ -7,10 +7,7 @@ import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create schema auth;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).apply(`create schema auth;`).database()
 
 // ❌ ERROR: DROP SCHEMA missing semicolon
 const query = `drop schema auth trailing` as const

@@ -26,17 +26,11 @@ type _upOk = Expect<Extends<UpOk[2], JsqlUpdateStatementResult>>
 type UpSetParam = ParseSqlStatement<ParseSqlTokens<`update users set name = :n where id = 'u';`>, DbUsers, { n: TText }>
 type _upSetParam = Expect<Extends<UpSetParam[2], JsqlUpdateStatementResult>>
 
-
-
-
-
 type UpMultiOk = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'x', id = 'y' where users.id = 'u';`>,
 	DbUsers
 >
 type _upMultiOk = Expect<Extends<UpMultiOk[2], JsqlUpdateStatementResult>>
-
-
 
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"

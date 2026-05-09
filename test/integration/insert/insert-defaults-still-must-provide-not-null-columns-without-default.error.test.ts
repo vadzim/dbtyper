@@ -42,6 +42,7 @@ type DbShape = ApplyStatements<
 type _errorCheck = Expect<
 	Extends<
 		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<3300, "Missing NOT NULL column id in INSERT"> | DbtyperError<3300, "Missing NOT NULL column name in INSERT">
+		| DbtyperError<3300, "Missing NOT NULL column id in INSERT">
+		| DbtyperError<3300, "Missing NOT NULL column name in INSERT">
 	>
 >

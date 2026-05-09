@@ -18,7 +18,10 @@ const query = `update users set name = 'x', id = 1 where users.id = 'u';` as con
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id text not null, name text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2507, "Incompatible value type for column id">>

@@ -7,9 +7,7 @@ import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
 // ❌ ERROR: CREATE TABLE with garbage after closing paren
 const query = `create table n ( id int not null) extra ;` as const

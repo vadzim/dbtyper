@@ -75,10 +75,6 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 	>
 >
 
-
-
-
-
 /** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE` via `:emailPat`, `ORDER BY`. */
 type TNestPostgresAppCliSelect = ParseSqlStatement<
 	ParseSqlTokens<`

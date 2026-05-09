@@ -37,8 +37,6 @@ type _joinColumns = Expect<
 	>
 >
 
-
-
 type TDistinct = ParseSqlStatement<ParseSqlTokens<`select distinct users.id from users;`>, DbJoinDefaultAndExplicit>
 type _distinct = Expect<Extends<TDistinct[2], { kind: "select"; columns: { id: TUuid } }>>
 
@@ -48,15 +46,11 @@ type TSelectWhereOk = ParseSqlStatement<
 >
 type _selectWhereOk = Expect<Extends<TSelectWhereOk[2], { kind: "select"; columns: { id: TUuid } }>>
 
-
-
 type TSelectOrderByOk = ParseSqlStatement<
 	ParseSqlTokens<`select users.name from users order by users.name;`>,
 	DbJoinDefaultAndExplicit
 >
 type _selectOrderByOk = Expect<Extends<TSelectOrderByOk[2], JsqlSelectStatementResult>>
-
-
 
 type TSelectLimitOk = ParseSqlStatement<ParseSqlTokens<`select users.id from users limit 5;`>, DbJoinDefaultAndExplicit>
 type _selectLimitOk = Expect<Extends<TSelectLimitOk[2], JsqlSelectStatementResult>>
@@ -73,8 +67,6 @@ type TSelectOrderByTwoCols = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _selectOrderByTwoCols = Expect<Extends<TSelectOrderByTwoCols[2], JsqlSelectStatementResult>>
-
-
 
 /** `OFFSET` without `LIMIT` (PostgreSQL); `OFFSET … LIMIT …`; `FETCH FIRST|NEXT … ROW(S) ONLY`. */
 type TSelectOffsetOnly = ParseSqlStatement<
@@ -107,12 +99,6 @@ type TSelectOrderByFetchFirst = ParseSqlStatement<
 >
 type _selectOrderByFetchFirst = Expect<Extends<TSelectOrderByFetchFirst[2], JsqlSelectStatementResult>>
 
-
-
-
-
-
-
 /** `CASE` at list start (non-ident head) is accepted like other literals. */
 type TSelectCaseKw = ParseSqlStatement<
 	ParseSqlTokens<`select case when true then users.id else users.id end as x from users;`>,
@@ -142,7 +128,6 @@ type TWithCte = ParseSqlStatement<
 >
 type _withCte = Expect<Extends<TWithCte[2], { kind: "select"; columns: { uid: TUuid } }>>
 
-
 /** Derived table: inner `SELECT` exposes columns under outer alias (`__subquery__` scope entry). */
 type TDerivedTable = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select users.id from users) as s;`>,
@@ -155,10 +140,6 @@ type TDerivedJoin = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _derivedJoin = Expect<Extends<TDerivedJoin[2], { kind: "select"; columns: { id: TUuid } }>>
-
-
-
-
 
 /** Inner `WHERE` uses only inner `FROM` scope. */
 type TDerivedInnerWhere = ParseSqlStatement<
@@ -193,8 +174,6 @@ type TDerivedLeftOuterJoinRhs = ParseSqlStatement<
 >
 type _derivedLeftOuterJoinRhs = Expect<Extends<TDerivedLeftOuterJoinRhs[2], { kind: "select"; columns: { id: TUuid } }>>
 
-
-
 // NOTE: SELECT without FROM is now supported, so this test is no longer valid
 // /** Inner closes with `;` before `)` → `ReadClosingParenAndAliasDerived` sees `;`. */
 // type TDerivedUnclosedParen = ParseSqlStatement<
@@ -220,10 +199,6 @@ type TDerivedInnerParam = ParseSqlStatement<
 >
 type _derivedInnerParamActual = TDerivedInnerParam[2]
 type _derivedInnerParam = Expect<Extends<_derivedInnerParamActual, { kind: "select"; columns: { id: TUuid } }>>
-
-
-
-
 
 type TInnerJoin = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users inner join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
@@ -284,10 +259,6 @@ type _colPlusOneNoAs = Expect<Extends<TColPlusOneNoAs[2], { kind: "select"; colu
 type TSelectLiteralOne = ParseSqlStatement<ParseSqlTokens<`select 1 from users;`>, DbJoinWithRowCount>
 type _selectLiteralOne = Expect<Extends<TSelectLiteralOne[2], { kind: "select"; columns: { "?column?": TInteger } }>>
 
-
-
-
-
 /** `:name` in the projection list must appear in the statement `Params` map (default empty params errors). */
 type SelectParamsLimit = { limit: TInteger }
 type TSelectParam = ParseSqlStatement<
@@ -320,14 +291,6 @@ type _selectParamAs = Expect<
 	>
 >
 
-
-
-
-
-
-
-
-
 // NOTE: SELECT without FROM is now supported, so this test is no longer valid
 // type TMissingFrom = ParseSqlStatement<ParseSqlTokens<`select users.id , users.name`>, DbJoinDefaultAndExplicit>
 // type _missingFrom = Expect<Extends<TMissingFrom[2], SqlParserError<"Unknown column">>>
@@ -338,10 +301,6 @@ type TUnqualNameUnambiguous = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _unqualNameOk = Expect<Extends<TUnqualNameUnambiguous[2], { kind: "select"; columns: { name: TText } }>>
-
-
-
-
 
 /** Boolean expression in the projection (extends {@link ScalarExprAst} parse/resolve, not `ParseBooleanExpression`). */
 type TSelectBoolCmpAnd = ParseSqlStatement<
@@ -373,28 +332,6 @@ type TSelectInList = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _selectInList = Expect<Extends<TSelectInList[2], { kind: "select"; columns: { inside: TBoolean } }>>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 type TSelectPgCast = ParseSqlStatement<
 	ParseSqlTokens<`select 42::text as t, (1 + 2)::bigint as b from users;`>,

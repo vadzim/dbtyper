@@ -19,8 +19,14 @@ const query = `select array_length(id, 1) as bad from items;` as const
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table items (id integer, priority integer);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table items (id integer, priority integer);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3614, "[dbt:ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER] array_length expects (array, integer)">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<3614, "[dbt:ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER] array_length expects (array, integer)">
+	>
 >

@@ -18,8 +18,14 @@ const query = `select *, users.id from users;` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id text not null, name text not null);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3400, "SELECT * must be the only projection in the list">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<3400, "SELECT * must be the only projection in the list">
+	>
 >

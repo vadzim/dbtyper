@@ -21,10 +21,6 @@ type DbFns = DbU & { functions: { custom_fn: TInteger } }
 type I1 = InferSqlErrors<DbFns, `select u.id as x from u`>
 type _i1 = Expect<Extends<I1, null>>
 
-
-
-
-
 type I6 = InferSqlErrors<DbFns, `with c as (select u.id as cid from u) select c.cid from u`>
 type _i6 = Expect<Extends<I6, null>>
 

@@ -15,12 +15,12 @@ This means error scenarios that were previously tested at the unit level are no 
 
 ## Summary Statistics
 
-| Metric | Count | Percentage |
-|--------|-------|------------|
-| Total Deleted Error Checks | 110 | 100% |
-| ✅ Exact Matches | 0 | 0% |
-| ⚠️ Partial Matches | 2 | 1.8% |
-| ❌ Missing Integration Tests | 108 | 98.2% |
+| Metric                       | Count | Percentage |
+| ---------------------------- | ----- | ---------- |
+| Total Deleted Error Checks   | 110   | 100%       |
+| ✅ Exact Matches             | 0     | 0%         |
+| ⚠️ Partial Matches           | 2     | 1.8%       |
+| ❌ Missing Integration Tests | 108   | 98.2%      |
 
 **Test Coverage: 1.8%**
 
@@ -28,25 +28,26 @@ This means error scenarios that were previously tested at the unit level are no 
 
 ## Missing Tests by Category
 
-| Category | Count | Priority |
-|----------|-------|----------|
-| WHERE Expressions | 44 | 🔴 HIGH |
-| Expressions/Operators | 37 | 🔴 HIGH |
-| SELECT | 29 | 🔴 HIGH |
-| INSERT | 6 | 🟡 MEDIUM |
-| CREATE TABLE | 6 | 🟡 MEDIUM |
-| ALTER TABLE | 5 | 🟡 MEDIUM |
-| DROP SCHEMA | 4 | 🟢 LOW |
-| DROP TABLE | 4 | 🟢 LOW |
-| UPDATE | 3 | 🟡 MEDIUM |
-| DELETE | 2 | 🟡 MEDIUM |
-| **TOTAL** | **108** | |
+| Category              | Count   | Priority  |
+| --------------------- | ------- | --------- |
+| WHERE Expressions     | 44      | 🔴 HIGH   |
+| Expressions/Operators | 37      | 🔴 HIGH   |
+| SELECT                | 29      | 🔴 HIGH   |
+| INSERT                | 6       | 🟡 MEDIUM |
+| CREATE TABLE          | 6       | 🟡 MEDIUM |
+| ALTER TABLE           | 5       | 🟡 MEDIUM |
+| DROP SCHEMA           | 4       | 🟢 LOW    |
+| DROP TABLE            | 4       | 🟢 LOW    |
+| UPDATE                | 3       | 🟡 MEDIUM |
+| DELETE                | 2       | 🟡 MEDIUM |
+| **TOTAL**             | **108** |           |
 
 ---
 
 ## Examples of Missing Tests
 
 ### DELETE - Unknown Column in WHERE
+
 ```sql
 -- Deleted test: TBad
 delete from users where users.nope = 'u';
@@ -54,6 +55,7 @@ delete from users where users.nope = 'u';
 ```
 
 ### INSERT - Type Mismatch
+
 ```sql
 -- Deleted test: InsBadType
 insert into users (id, name) values (1, 'n');
@@ -61,6 +63,7 @@ insert into users (id, name) values (1, 'n');
 ```
 
 ### UPDATE - Type Mismatch in WHERE
+
 ```sql
 -- Deleted test: UpBadWhere
 update users set name = 'x' where id = 1;
@@ -68,6 +71,7 @@ update users set name = 'x' where id = 1;
 ```
 
 ### WHERE - Unknown Qualified Column
+
 ```sql
 -- Deleted test: WBadQual
 users.nope = 'x'
@@ -75,6 +79,7 @@ users.nope = 'x'
 ```
 
 ### ALTER TABLE - Unknown Column
+
 ```sql
 -- Deleted test: TAlterDropUnknownCol
 alter table public.items drop column ghost;
@@ -88,6 +93,7 @@ alter table public.items drop column ghost;
 ### 🔴 HIGH PRIORITY: WHERE Expressions (44 missing)
 
 **Categories of missing tests:**
+
 - Unknown columns (qualified, bare, 3-part, 2-part): 6 tests
 - Unbalanced parentheses: 3 tests
 - IN list errors (empty, no paren, type mismatch): 4 tests
@@ -102,6 +108,7 @@ alter table public.items drop column ghost;
 ### 🔴 HIGH PRIORITY: SELECT Errors (29 missing)
 
 **Categories of missing tests:**
+
 - Unknown columns in JOIN: 3 tests
 - Unknown columns in WHERE: 2 tests
 - Unknown columns in ORDER BY: 2 tests
@@ -114,6 +121,7 @@ alter table public.items drop column ghost;
 ### 🔴 HIGH PRIORITY: Expressions/Operators (37 missing)
 
 **Categories of missing tests:**
+
 - Type checking in expressions: 15 tests
 - Operator validation: 10 tests
 - Query parameter errors: 2 tests
@@ -137,17 +145,17 @@ alter table public.items drop column ghost;
 ## Verification Methodology
 
 1. **Extracted deleted error checks** from recent commits (HEAD~5 to HEAD)
-   - Searched for `type _.*Expect.*SqlParserError` and `type _.*Expect.*DbtyperError`
-   - Found 110 deleted error test assertions
+    - Searched for `type _.*Expect.*SqlParserError` and `type _.*Expect.*DbtyperError`
+    - Found 110 deleted error test assertions
 
 2. **Indexed integration tests** from `test/integration/**/*.error.test.ts`
-   - Found 65 integration error test files
-   - Extracted queries using pattern: `const query = \`...\` as const`
+    - Found 65 integration error test files
+    - Extracted queries using pattern: `const query = \`...\` as const`
 
 3. **Matched deleted tests to integration tests**
-   - Exact match: Query strings match exactly
-   - Partial match: Query strings contain each other (normalized)
-   - Missing: No match found
+    - Exact match: Query strings match exactly
+    - Partial match: Query strings contain each other (normalized)
+    - Missing: No match found
 
 ---
 
@@ -168,36 +176,34 @@ All verification artifacts are available in `/tmp/opencode/`:
 ### Immediate Actions
 
 1. **Create 108 missing integration tests** using the standard pattern:
-   ```typescript
-   // Integration Test: [STATEMENT TYPE]
-   import { sqlMigrations } from "../../../src/core/sql-database.ts"
-   import { mockDriver } from "../../test-utils/test-databases.ts"
-   import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-   import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
-   import type { DbtyperError } from "../../../src/sql-parser-error.ts"
-   import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
-   import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-   const db = sqlMigrations({ driver: mockDriver })
-     .apply(`create schema public;`)
-     .apply(`[setup DDL]`)
-     .database()
+    ```typescript
+    // Integration Test: [STATEMENT TYPE]
+    import { sqlMigrations } from "../../../src/core/sql-database.ts"
+    import { mockDriver } from "../../test-utils/test-databases.ts"
+    import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
+    import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+    import type { DbtyperError } from "../../../src/sql-parser-error.ts"
+    import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
+    import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-   // ❌ ERROR: [description]
-   const query = `[exact query from deleted test]` as const
+    const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).apply(`[setup DDL]`).database()
 
-   // @ts-expect-error
-   await db.query(query)
+    // ❌ ERROR: [description]
+    const query = `[exact query from deleted test]` as const
 
-   type DbShape = ApplyStatements<SqlDatabase, `[setup DDL]`>[0]
-   type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<[code], "[message]">>>
-   ```
+    // @ts-expect-error
+    await db.query(query)
+
+    type DbShape = ApplyStatements<SqlDatabase, `[setup DDL]`>[0]
+    type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<[code], "[message]">>>
+    ```
 
 2. **Prioritize test creation:**
-   - Start with WHERE expressions (44 tests) - core functionality
-   - Then SELECT errors (29 tests) - most common statement
-   - Then expression/operator errors (37 tests)
-   - Finally DDL and other DML errors (19 tests)
+    - Start with WHERE expressions (44 tests) - core functionality
+    - Then SELECT errors (29 tests) - most common statement
+    - Then expression/operator errors (37 tests)
+    - Finally DDL and other DML errors (19 tests)
 
 3. **Verify error codes** - Some deleted tests have clear error codes, others may need investigation
 
@@ -217,4 +223,4 @@ The verification reveals a significant gap in test coverage. While the root test
 
 ---
 
-*Report generated: 2026-05-09T09:17:47.253Z*
+_Report generated: 2026-05-09T09:17:47.253Z_

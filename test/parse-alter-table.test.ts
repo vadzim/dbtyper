@@ -83,14 +83,6 @@ type _alterNoopChainMeta = Expect<
 	Extends<ItemsAfterChain["columns"], { id: TUuid; title: TText; meta: TNull<"integer"> }>
 >
 
-
-
-
-
-
-
-
-
 /** Malformed `ALTER COLUMN` tail. */
 type TAlterColBadSet = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set xyzzy;`>,

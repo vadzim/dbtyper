@@ -18,7 +18,10 @@ const query = `alter table public.items alter column title set xyzzy;` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table items (id text not null, title text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table items (id text not null, title text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<5403, "Unsupported ALTER COLUMN SET clause">>

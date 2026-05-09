@@ -92,8 +92,6 @@ type _tSomeSubquery = Expect<
 	Extends<TSomeSubquery[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
-
-
 describe("any-all-some-operators (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

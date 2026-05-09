@@ -43,5 +43,8 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2700, "NULL not allowed for NOT NULL column task_status">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<2700, "NULL not allowed for NOT NULL column task_status">
+	>
 >

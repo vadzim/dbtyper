@@ -18,7 +18,10 @@ const query = `delete from users where users.nope = 'u';` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id text not null, name text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2307, "Unknown qualified column users.nope">>

@@ -30,15 +30,10 @@ type THaving = ParseSqlStatement<
 
 type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: TText } }>>
 
-
-
-
-
 type _TGroupProjAggOk = ParseSqlStatement<
 	ParseSqlTokens<`select region, sum(amount) as s from sales group by region;`>,
 	DbGroup
 >
-
 
 type THavingNoGroupAggOnly = ParseSqlStatement<
 	ParseSqlTokens<`select count(*) as c from sales having count(*) > 0;`>,
@@ -87,8 +82,6 @@ type TGroupOrderLimit = ParseSqlStatement<
 >
 
 type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: TText } }>>
-
-
 
 describe("GROUP BY / HAVING (type tests)", () => {
 	it("compile-time assertions above", () => {})

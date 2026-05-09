@@ -78,10 +78,10 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 
 - Session 1: Migrated 16 files, 137 usages (30.3%)
 - Session 2: Completed test migration
-  - Main codebase: 0 typecheck errors ✅
-  - Integration tests: All migrated to DbtyperError format (62 files)
-  - Unit tests: Partially migrated, 131 type-level assertion errors remain
-  - These are tests checking exact error message formats
-  - Need investigation to match actual FormatError output
+    - Main codebase: 0 typecheck errors ✅
+    - Integration tests: All migrated to DbtyperError format (62 files)
+    - Unit tests: Partially migrated, 131 type-level assertion errors remain
+    - These are tests checking exact error message formats
+    - Need investigation to match actual FormatError output
 - All commits have clear, descriptive messages
 - Branch: feature/migrate-to-format-error

@@ -7,9 +7,7 @@ import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
 // ❌ ERROR: CREATE TABLE missing table name
 const query = `create table( id int not null );` as const

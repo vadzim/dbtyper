@@ -37,16 +37,8 @@ type D2 = ParseSqlStatement<ParseSqlTokens<`drop schema if exists ghost;`>, DbWi
 type _d2null = Expect<Matches<D2[2], null>>
 type _d2db = Expect<Matches<D2[1], DbWithAuth>>
 
-
-
 type D4 = ParseSqlStatement<ParseSqlTokens<`drop schema auth;`>, DbMulti>
 type _d4shape = Expect<Matches<D4[1], DbMultiDroppedAuth>>
-
-
-
-
-
-
 
 describe("parse-drop-schema (type tests)", () => {
 	it("compile-time assertions above", () => {})

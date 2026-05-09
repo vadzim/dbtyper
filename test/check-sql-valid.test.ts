@@ -34,10 +34,6 @@ create table billing.subs ( id uuid not null, user_id uuid not null, plan_code t
 type ChkGood = CheckSqlValid<DbJoinUsersBilling, `select users.id from users;`>
 type _chkGood = Expect<Matches<ChkGood, `select users.id from users;`>>
 
-
-
-
-
 type _DbDefaultPublic = {
 	defaultSchema: "public"
 	schemas: {
@@ -51,10 +47,6 @@ type _DbDefaultPublic = {
 		}
 	}
 }
-
-
-
-
 
 describe("CheckSqlValid + migration apply errors (type tests)", () => {
 	it("compile-time assertions above", () => {})

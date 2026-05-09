@@ -20,6 +20,4 @@ await db.query(query)
 
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table t (id integer);`>[0]
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown column">>
->
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown column">>>

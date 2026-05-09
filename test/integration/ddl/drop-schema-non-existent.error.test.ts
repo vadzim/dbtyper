@@ -7,9 +7,7 @@ import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
 // ❌ ERROR: DROP SCHEMA for non-existent schema
 const query = `drop schema ghost;` as const

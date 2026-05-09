@@ -71,10 +71,6 @@ type TNestedArrayFns = ParseSqlStatement<
 >
 type _tNestedArrayFns = Expect<Extends<TNestedArrayFns[2], { kind: "select"; columns: { nested_len: TInteger } }>>
 
-
-
-
-
 describe("array-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

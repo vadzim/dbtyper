@@ -18,7 +18,10 @@ const query = `alter table public.items drop column ghost;` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table items (id text not null, title text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table items (id text not null, title text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3209, "Column ghost does not exist">>

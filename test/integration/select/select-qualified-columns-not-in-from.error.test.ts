@@ -26,4 +26,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text, name text); create table other_table (value text);`
 >[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2307, "Unknown qualified column users.id">>>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2307, "Unknown qualified column users.id">>
+>

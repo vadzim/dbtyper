@@ -19,7 +19,10 @@ const query = `drop table v_reports;` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null); create view v_reports as select users.id from users;`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id text not null); create view v_reports as select users.id from users;`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3502, "DROP TABLE targets a view; use DROP VIEW">>

@@ -14,13 +14,15 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: UUID literal without cast
-const query = `insert into auth.users (id, email, display_name, login_count) values ('11111111-1111-1111-1111-111111111111', 'alice@example.com', 'Alice', 0);` as const
+const query =
+	`insert into auth.users (id, email, display_name, login_count) values ('11111111-1111-1111-1111-111111111111', 'alice@example.com', 'Alice', 0);` as const
 
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create schema auth; create table auth.users (id uuid not null, email text not null, display_name text, login_count integer);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create schema auth; create table auth.users (id uuid not null, email text not null, display_name text, login_count integer);`
+>[0]
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError>
->
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError>>

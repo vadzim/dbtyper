@@ -20,6 +20,4 @@ await db.query(query)
 // Type-level database shape for error checking
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text);`>[0]
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, { __sql_parser_error__: true }>
->
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, { __sql_parser_error__: true }>>

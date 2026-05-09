@@ -19,8 +19,14 @@ const query = `select unnest(id) as bad from items;` as const
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table items (id integer, priority integer);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table items (id integer, priority integer);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3616, "[dbt:UNNEST_EXPECTS_AN_ARRAY] unnest expects an array">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<3616, "[dbt:UNNEST_EXPECTS_AN_ARRAY] unnest expects an array">
+	>
 >

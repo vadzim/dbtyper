@@ -20,7 +20,10 @@ const query = `select id from users join billing.subs as billing_sub on users.id
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3404, "Ambiguous unqualified column id">>

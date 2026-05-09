@@ -60,14 +60,11 @@ type _wLe = Expect<Extends<WLe[1], null>>
 type WStr = ParseWhereExpression<ParseSqlTokens<`users.name = 'a'`>, DbUsers, UsersScope>
 type _wStr = Expect<Extends<WStr[1], null>>
 
-
-
 /** Success: `IS NOT NULL`, `IN (...)`, nested parens, `OR` inside parens. */
 type WIsNotNull = ParseWhereExpression<ParseSqlTokens<`users.name is not null`>, DbUsers, UsersScope>
 type _wIsNotNull = Expect<Extends<WIsNotNull[1], null>>
 type WInList = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'a' , 'b' )`>, DbUsers, UsersScope>
 type _wInList = Expect<Extends<WInList[1], null>>
-
 
 type WNested = ParseWhereExpression<ParseSqlTokens<`( ( users.id = 'u' ) )`>, DbUsers, UsersScope>
 type _wNested = Expect<Extends<WNested[1], null>>
@@ -84,7 +81,6 @@ type _wNotNot = Expect<Extends<WNotNot[1], null>>
 /** `BETWEEN`: bounds same comparison class as subject. */
 type WBetween = ParseWhereExpression<ParseSqlTokens<`users.name between 'a' and 'z'`>, DbUsers, UsersScope>
 type _wBetween = Expect<Extends<WBetween[1], null>>
-
 
 /** `BETWEEN`: numeric column vs string bounds (same as SQL type mismatch at resolve). */
 type _DbUsersWithAmount = {
@@ -109,9 +105,6 @@ type _UsersScopeWithAmount = Record<
 	}
 >
 
-
-
-
 /** `LIKE` / `ILIKE`: both sides text. */
 type WLike = ParseWhereExpression<ParseSqlTokens<`users.name like '%x%'`>, DbUsers, UsersScope>
 type _wLike = Expect<Extends<WLike[1], null>>
@@ -120,13 +113,6 @@ type _wILike = Expect<Extends<WILike[1], null>>
 
 type _JoinedUsersInner = MergeScope<UsersScope, InnerScope>
 
-
-
-
-
-
-
-
 /** Searched `CASE WHEN … THEN … [ELSE …] END`. */
 type WCase = ParseWhereExpression<
 	ParseSqlTokens<`case when users.name = 'a' then true else false end`>,
@@ -134,8 +120,6 @@ type WCase = ParseWhereExpression<
 	UsersScope
 >
 type _wCase = Expect<Extends<WCase[1], null>>
-
-
 
 /** Simple `CASE expr WHEN value …` — `WHEN` values use `=` comparison-class rules against `expr`. */
 type WCaseSimple = ParseWhereExpression<
@@ -152,9 +136,6 @@ type WCaseSimpleNoElse = ParseWhereExpression<
 	UsersScope
 >
 type _wCaseSimpleNoElse = Expect<Extends<WCaseSimpleNoElse[1], null>>
-
-
-
 
 type WCastTextToInteger = ParseWhereExpression<ParseSqlTokens<`cast(users.name as integer) = 1`>, DbUsers, UsersScope>
 type _wCastTextToInteger = Expect<Extends<WCastTextToInteger[1], null>>

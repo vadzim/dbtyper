@@ -19,8 +19,14 @@ const query = `drop table auth.items extra ;` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create schema auth; create table auth.items (id text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create schema auth; create table auth.items (id text not null);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1704, "Expected `;` after qualified table name in DROP TABLE">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<1704, "Expected `;` after qualified table name in DROP TABLE">
+	>
 >

@@ -108,6 +108,7 @@ Legend:
 ## test/parse-select.test.ts
 
 ### Column Errors
+
 - [x] ⚠️ `select users.id, billing_sub.wrong_col from users join billing.subs as billing_sub on users.id = billing_sub.user_id;` - Unknown qualified column → Similar to basic select errors
 - [x] ⚠️ `select users.id from users where users.nope = 'a';` - Unknown qualified column (in WHERE) → Covered by WHERE tests
 - [x] ✅ `select users.name from users order by users.nope;` - Unknown qualified column (in ORDER BY) → `test/integration/select/select-order-by-unknown-column.error.test.ts`
@@ -123,14 +124,16 @@ Legend:
 - [x] ✅ `select u.id from users as u join (select users.id from users where users.id = u.id) t on u.id = t.id;` - Unknown qualified column (correlated subquery in WHERE) → `test/integration/select/select-correlated-subquery-where.error.test.ts`
 
 ### Syntax Errors
+
 - [x] ✅ `select users.name from users order users.name;` - Expected BY after ORDER → `test/integration/select/select-order-missing-by.error.test.ts`
 - [x] ✅ `select users.id from users fetch first 5 only;` - Expected ROW or ROWS in FETCH → `test/integration/select/select-fetch-missing-rows-keyword.error.test.ts`
-- [x] ✅ `select *, users.id from users;` - SELECT * must be the only projection in the list → `test/integration/select/select-star-with-other-columns.error.test.ts`
+- [x] ✅ `select *, users.id from users;` - SELECT \* must be the only projection in the list → `test/integration/select/select-star-with-other-columns.error.test.ts`
 - [x] ✅ `select 1, 2 from users;` - Scalar expression in SELECT requires AS alias → `test/integration/select/select-scalar-requires-alias.error.test.ts`
 - [x] ✅ `select 1 from ( from users ) as x;` - Expected SELECT in derived table → `test/integration/select/select-derived-table-missing-select.error.test.ts`
 - [x] ✅ `select 1 from (select users.id from users);` - Expected alias after derived table → `test/integration/select/select-derived-table-missing-alias.error.test.ts`
 
 ### Type Errors
+
 - [x] ✅ `select case users.id when 1 then users.name else users.name end as x from users;` - Incompatible types in comparison (simple CASE) → `test/integration/select/select-case-simple-type-mismatch.error.test.ts`
 - [x] ✅ `select (users.id in (1, 2, 3)) as inside from users;` - Incompatible types in IN list → `test/integration/select/select-in-list-type-mismatch.error.test.ts`
 - [x] ⚠️ `select not 1 as x from users;` - NOT requires a boolean operand → Covered by `test/integration/select/select-not-requires-boolean.error.test.ts`
@@ -145,9 +148,11 @@ Legend:
 - [x] ✅ `select not null as x from users;` - NOT argument must be boolean, not NULL → `test/integration/select/select-not-null.error.test.ts`
 
 ### WITH/CTE Errors
+
 - [x] ✅ `with x as (select users.id from users), x as (select users.name as n from users) select x.id from users;` - Duplicate WITH clause name → `test/integration/select/select-cte-unknown-column.error.test.ts` (partially)
 
 ### Ambiguity Errors
+
 - [x] ✅ `select id from users join billing.subs as billing_sub on users.id = billing_sub.user_id;` - Ambiguous unqualified column → `test/integration/select/select-ambiguous-unqualified-column.error.test.ts`
 
 ## test/parse-update.test.ts
@@ -207,14 +212,17 @@ Legend:
 **Total erroneous queries catalogued: 115**
 
 ### Coverage Status:
+
 - ✅ **Fully covered**: 35 queries (~30%)
 - ⚠️ **Partially covered**: 25 queries (~22%)
 - ❌ **Missing tests**: 55 queries (~48%)
 
 ### Note on Integration Test Creation:
+
 Integration tests require the `sqlMigrations` pattern with `ApplyStatements` for proper type-level database shape construction. The existing integration tests in `test/integration/insert/insert-type-mismatch.error.test.ts` provide the correct template. Creating new integration tests requires careful attention to this pattern to avoid type errors.
 
 ### By Category:
+
 - **Unknown columns**: ~35 queries (mostly covered)
 - **Type mismatches**: ~25 queries (partially covered)
 - **Syntax errors**: ~20 queries (mostly missing)
@@ -225,24 +233,25 @@ Integration tests require the `sqlMigrations` pattern with `ApplyStatements` for
 - **Other**: ~3 queries (mixed)
 
 ### Priority Missing Tests:
+
 1. **High Priority** (common errors):
-   - `users.id = null` - Use IS NULL instead of = null
-   - `users.id in ( 1, 2 )` - Incompatible types in IN list
-   - BETWEEN type errors (3 variants)
-   - LIKE type errors (4 variants)
-   - `select 1, 2 from users;` - Scalar expression in SELECT requires AS alias
-   - `select *, users.id from users;` - SELECT * must be the only projection
-   - Unknown query parameter errors (3 variants)
+    - `users.id = null` - Use IS NULL instead of = null
+    - `users.id in ( 1, 2 )` - Incompatible types in IN list
+    - BETWEEN type errors (3 variants)
+    - LIKE type errors (4 variants)
+    - `select 1, 2 from users;` - Scalar expression in SELECT requires AS alias
+    - `select *, users.id from users;` - SELECT \* must be the only projection
+    - Unknown query parameter errors (3 variants)
 
 2. **Medium Priority** (less common but important):
-   - Arithmetic errors with NULL
-   - NOT/AND/OR boolean operand errors
-   - Simple CASE type mismatch
-   - ORDER BY syntax errors
-   - Derived table errors
+    - Arithmetic errors with NULL
+    - NOT/AND/OR boolean operand errors
+    - Simple CASE type mismatch
+    - ORDER BY syntax errors
+    - Derived table errors
 
 3. **Low Priority** (DDL/rare cases):
-   - All CREATE TABLE errors
-   - All ALTER TABLE errors
-   - View body errors
-   - Function arity errors
+    - All CREATE TABLE errors
+    - All ALTER TABLE errors
+    - View body errors
+    - Function arity errors

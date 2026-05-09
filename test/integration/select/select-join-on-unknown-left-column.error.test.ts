@@ -15,12 +15,16 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Unknown column in JOIN ON left side
-const query = `select users.id from users join billing.subs as billing_sub on users.not_a_column = billing_sub.user_id;` as const
+const query =
+	`select users.id from users join billing.subs as billing_sub on users.not_a_column = billing_sub.user_id;` as const
 
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`
+>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2307, "Unknown qualified column users.not_a_column">>

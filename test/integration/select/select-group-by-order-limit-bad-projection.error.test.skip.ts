@@ -19,8 +19,14 @@ const query = `select region, amount from sales group by region order by region 
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table sales (region text, amount integer);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table sales (region text, amount integer);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
+	>
 >

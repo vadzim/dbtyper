@@ -32,16 +32,6 @@ type InsParam = ParseSqlStatement<
 >
 type _insParam = Expect<Extends<InsParam[2], JsqlInsertStatementResult>>
 
-
-
-
-
-
-
-
-
-
-
 /** Qualified `public.users` while `defaultSchema` is `app` (must not resolve via default only). */
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"
@@ -81,8 +71,6 @@ type InsMultiRow = ParseSqlStatement<
 	DbUsers
 >
 type _insMultiRow = Expect<Extends<InsMultiRow[2], JsqlInsertStatementResult>>
-
-
 
 type InsReturning = ParseSqlStatement<
 	ParseSqlTokens<`insert into users (id, name) values ('u1','n1') returning id, name;`>,
@@ -161,8 +149,6 @@ type SeedUsers = ApplyStatements<
 >
 type _seedUsersDbStillOk = Expect<Extends<SeedUsers[0], JsqlDatabaseShape>>
 type _seedUsersNoError = Expect<Matches<SeedUsers[1], null>>
-
-
 
 type SeedUsersOneRowCast = ApplyStatements<
 	SeedDb3,

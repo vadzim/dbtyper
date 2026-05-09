@@ -19,8 +19,14 @@ const query = `select * from items where id = any(priority);` as const
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table items (id integer, priority integer);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table items (id integer, priority integer);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3001, "[dbt:ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY] ANY/ALL/SOME requires an array or subquery">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<3001, "[dbt:ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY] ANY/ALL/SOME requires an array or subquery">
+	>
 >
