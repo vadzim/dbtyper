@@ -31,11 +31,14 @@ type ParseDropAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlData
 	PeekToken<AfterFirst> extends TokenKey<";"> | TokenEot
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends infer T1
-		? SkipToken<AfterFirst> extends infer R1 extends TokensList
-			? T1 extends TokenKey<".">
-				? ParseDropQualifiedSecondIdent<R1, A>
-				: SkipFailedQualifiedName<R1, FormatError<"EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE", []>>
-			: never
+			? SkipToken<AfterFirst> extends infer R1 extends TokensList
+				? T1 extends TokenKey<".">
+					? ParseDropQualifiedSecondIdent<R1, A>
+					: SkipFailedQualifiedName<
+							R1,
+							FormatError<"EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE", []>
+						>
+				: never
 			: never
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
@@ -67,7 +70,13 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 						? FinishDropStatement<R, NewDb>
 						: never
 					: SkipFailedStatement<R, Db, FormatError<"TYPE_DOES_NOT_EXIST_USE_IF_EXISTS", []>>
-			: [R, Db, E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string> ? E : FormatError<"INVALID_DROP_TYPE_PARSE", []>]
+			: [
+					R,
+					Db,
+					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+						? E
+						: FormatError<"INVALID_DROP_TYPE_PARSE", []>,
+				]
 		: never
 
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =

@@ -96,7 +96,9 @@ type TAlterRenameUnknownCol = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items rename column ghost to x;`>,
 	DbItems
 >
-type _alterRenameUnknownCol = Expect<Extends<TAlterRenameUnknownCol[2], DbtyperError<3209, "Column ghost does not exist">>>
+type _alterRenameUnknownCol = Expect<
+	Extends<TAlterRenameUnknownCol[2], DbtyperError<3209, "Column ghost does not exist">>
+>
 
 /** Unsupported action keyword after table name. */
 type TAlterUnsupported = ParseSqlStatement<ParseSqlTokens<`alter table public.items freeze;`>, DbItems>

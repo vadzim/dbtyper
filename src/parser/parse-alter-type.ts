@@ -56,15 +56,21 @@ type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 				? JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
 					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
 					: [R, Db, null]
-			: JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
-				? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
-				: SkipFailedExpression<
-							R,
-							FormatError<"TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS", []>
-					  > extends [infer Rest extends TokensList, infer Err]
-					? [Rest, Db, Err]
-					: never
-			: [R, Db, E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string> ? E : FormatError<"INVALID_ALTER_TYPE_PARSE", []>]
+				: JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
+					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
+					: SkipFailedExpression<
+								R,
+								FormatError<"TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS", []>
+						  > extends [infer Rest extends TokensList, infer Err]
+						? [Rest, Db, Err]
+						: never
+			: [
+					R,
+					Db,
+					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+						? E
+						: FormatError<"INVALID_ALTER_TYPE_PARSE", []>,
+				]
 		: never
 
 type ParseAlterTypeAction<
@@ -106,15 +112,15 @@ type ParseAlterTypeAddValue<
 				? NewValue extends Values[number]
 					? [AfterVal, Db, FormatError<"ENUM_VALUE_ALREADY_EXISTS", []>]
 					: JsqlDbReplaceEnum<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewDb extends
-							JsqlDatabaseShape
+								JsqlDatabaseShape
 						? ParseAlterTypeCloseSemi<AfterVal, NewDb>
 						: never
 				: SkipFailedExpression<
-						AfterVal,
-						FormatError<"EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE", []>
-				  > extends [infer Rest extends TokensList, infer Err]
-				? [Rest, Db, Err]
-				: never
+							AfterVal,
+							FormatError<"EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE", []>
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 

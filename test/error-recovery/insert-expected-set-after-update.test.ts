@@ -6,6 +6,8 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"insert into users (id) values (1) on conflict (id) do update id = 2">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1217, "Expected SET after UPDATE in INSERT ON CONFLICT">>
+type _resultMatches = Expect<
+	CheckErrorneousResultWithCode<Result, 1217, "Expected SET after UPDATE in INSERT ON CONFLICT">
+>
 
 it("INSERT: Expected SET after UPDATE in INSERT ON CONFLICT", () => {})

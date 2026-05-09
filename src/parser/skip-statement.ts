@@ -53,21 +53,21 @@ export type SkipBracketedUntil<
 						infer CurrentClosingBracket extends ClosingBrackets,
 						...infer Tail extends ClosingBrackets[],
 				  ]
-			? PeekToken<Tokens> extends TokenEot
-				? [Tokens, FormatError<"CLOSING_BRACKET_NOT_FOUND", [CurrentClosingBracket]>]
-				: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
-					? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
-					: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
-						? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
-						: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
-			: PeekToken<Tokens> extends infer EndTok
-				? EndTok extends EndToken
-					? [Tokens, SkippedStatement<EndTok>]
-					: PeekToken<Tokens> extends TokenEot
-						? [Tokens, FormatError<"TOKEN_NOT_FOUND", []>]
+				? PeekToken<Tokens> extends TokenEot
+					? [Tokens, FormatError<"CLOSING_BRACKET_NOT_FOUND", [CurrentClosingBracket]>]
+					: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
+						? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
 						: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
 							? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
 							: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
-				: never
+				: PeekToken<Tokens> extends infer EndTok
+					? EndTok extends EndToken
+						? [Tokens, SkippedStatement<EndTok>]
+						: PeekToken<Tokens> extends TokenEot
+							? [Tokens, FormatError<"TOKEN_NOT_FOUND", []>]
+							: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
+								? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
+								: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+					: never
 
 type ClosingBrackets = ")" | "]"

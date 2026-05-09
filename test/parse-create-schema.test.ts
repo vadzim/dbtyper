@@ -32,7 +32,9 @@ type _ifNotNewAdds = Expect<Matches<IfNotNew[2], null>>
 type _ifNotNewHasOther = Expect<Extends<IfNotNew[1], { schemas: Record<"other", JsqlSchemaShape> }>>
 
 type TIfExistsWrong = ParseSqlStatement<ParseSqlTokens<"create schema if exists should_fail;">, EmptyDb>
-type _ifExistsWrong = Expect<Extends<TIfExistsWrong[2], DbtyperError<3702, "Expected `not` after `IF` in CREATE SCHEMA">>>
+type _ifExistsWrong = Expect<
+	Extends<TIfExistsWrong[2], DbtyperError<3702, "Expected `not` after `IF` in CREATE SCHEMA">>
+>
 
 type TSchemaMissingSemi = ParseSqlStatement<ParseSqlTokens<"create schema almost_schema trailing;">, EmptyDb>
 type _schemaMissingSemi = Expect<

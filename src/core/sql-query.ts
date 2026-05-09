@@ -48,10 +48,11 @@ export type SqlSelectRowSqlTypes<
 	Db extends JsqlDatabaseShape | SqlParserError<string> | DbtyperError<any, any>,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends SqlParserError<string>
-	? Db
-	: Db extends DbtyperError<any, any>
+> =
+	Db extends SqlParserError<string>
 		? Db
-		: Db extends JsqlDatabaseShape
-			? SqlSelectRowForDb<Db, Text, Params>
-			: never
+		: Db extends DbtyperError<any, any>
+			? Db
+			: Db extends JsqlDatabaseShape
+				? SqlSelectRowForDb<Db, Text, Params>
+				: never

@@ -87,14 +87,20 @@ type ParseNumericPrecisionScale<Tokens extends TokensList> =
 								? SkipToken<R2> extends infer R3 extends TokensList
 									? PeekToken<R3> extends TokenKey<")">
 										? [SkipToken<R3>, { precision: Precision; scale: Scale }]
-										: SkipFailedExpression<R3, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE", []>>
+										: SkipFailedExpression<
+												R3,
+												FormatError<"EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE", []>
+											>
 									: never
 								: SkipFailedExpression<R2, FormatError<"INVALID_SCALE_NUMBER", []>>
 							: SkipFailedExpression<R2, FormatError<"EXPECTED_SCALE_NUMBER", []>>
 						: never
 					: PeekToken<R1> extends TokenKey<")">
 						? [SkipToken<R1>, { precision: Precision; scale: 0 }]
-						: SkipFailedExpression<R1, FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION", []>>
+						: SkipFailedExpression<
+								R1,
+								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION", []>
+							>
 				: never
 			: SkipFailedExpression<Tokens, FormatError<"INVALID_PRECISION_NUMBER", []>>
 		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_PRECISION_NUMBER", []>>

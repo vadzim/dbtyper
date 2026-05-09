@@ -19,12 +19,14 @@
 Migrate all `SqlParserError<...>` usages to `FormatError<...>` with richer, more informative error messages.
 
 **Key changes:**
+
 - Replace `SqlParserError<"message">` with `FormatError<ERROR_ID, [args]>` in source code
 - Replace `SqlParserError<"message">` with `DbtyperError<CODE, "formatted message">` in tests
 - Make error messages more informative (include table names, column names, schema names, etc.)
 - Remove `SqlParserError` type after all migrations complete
 
 **Migration strategy:**
+
 - One-by-one: change one SqlParserError usage, run typecheck, fix broken test, repeat
 - Thread context through parsers to provide rich error information
 - Use existing error codes from registry or create new ones as needed
@@ -34,28 +36,35 @@ Migrate all `SqlParserError<...>` usages to `FormatError<...>` with richer, more
 ## Current Understanding
 
 **FormatError structure:**
+
 ```typescript
 FormatError<ID extends ErrorIds, Args extends Tuple<string | number, Dec[Errors[ID]["msg"]["length"]]>>
 ```
+
 - First arg: error ID (e.g., "UNKNOWN_TABLE_FROM")
 - Second arg: tuple of formatting arguments (length = msg parts - 1)
 - Returns: `DbtyperError<Code, FormattedMessage>`
 
 **DbtyperError structure:**
+
 ```typescript
 DbtyperError<Code extends -1 | keyof ErrorsConst, Message extends string>
 ```
+
 - Contains error code and formatted message
 - Format: `[dbt:CODE] message`
 
 **SqlParserError (to be removed):**
+
 ```typescript
 SqlParserError<Message extends string> = DbtyperError<-1, Message>
 ```
+
 - Legacy constructor with code -1
 - Parameterless messages
 
 **Example transformation:**
+
 ```typescript
 // Before (source):
 SqlParserError<"Unknown table in FROM">
@@ -99,6 +108,7 @@ Continuing with medium-sized parser files
 ### ❌ Incomplete (To Do)
 
 Remaining files with SqlParserError (~15 files):
+
 - parse-create-view.ts
 - parse-delete.ts
 - parse-insert.ts
@@ -124,6 +134,7 @@ Remaining files with SqlParserError (~15 files):
 **Goal:** Set up feature branch and find all SqlParserError usages
 
 **Steps:**
+
 1. Create feature branch `feature/migrate-to-format-error` from dev
 2. Search for all `SqlParserError` usages in source code
 3. Search for all `SqlParserError` usages in tests
@@ -136,6 +147,7 @@ Remaining files with SqlParserError (~15 files):
 **Goal:** Replace each SqlParserError with FormatError in source code
 
 **Approach:**
+
 1. Pick one SqlParserError usage
 2. Identify what context is available (table name, column name, etc.)
 3. Find or create appropriate error code in registry
@@ -153,6 +165,7 @@ Remaining files with SqlParserError (~15 files):
 **Goal:** Remove SqlParserError type
 
 **Steps:**
+
 1. Verify no more SqlParserError usages exist
 2. Remove SqlParserError type definition
 3. Run full test suite
@@ -169,6 +182,7 @@ Remaining files with SqlParserError (~15 files):
 **Problem:** Some parsers may not have table/column names readily available
 
 **Solution:**
+
 - Most parsers should already have context
 - If not, thread it through function parameters
 - Make reasonable decisions based on parser structure
@@ -178,6 +192,7 @@ Remaining files with SqlParserError (~15 files):
 **Problem:** Need to match SqlParserError messages to error codes in registry
 
 **Solution:**
+
 - Search registry for matching messages
 - Use existing codes where possible
 - Create new codes if needed (following numbering scheme)
@@ -187,6 +202,7 @@ Remaining files with SqlParserError (~15 files):
 **Problem:** Tests expect exact error messages
 
 **Solution:**
+
 - Update test to use DbtyperError with code and formatted message
 - Include actual values in formatted message (e.g., table name)
 
@@ -212,6 +228,7 @@ Remaining files with SqlParserError (~15 files):
 **Current Phase:** Setup and Discovery
 
 **Next Steps:**
+
 1. Create feature branch from dev
 2. Search for SqlParserError usages
 3. Begin one-by-one migration

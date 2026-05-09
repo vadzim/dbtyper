@@ -113,7 +113,7 @@ export type ParseSqlStatement<
 
 type ConcatErrors<
 	Errors extends SqlParserError<string> | DbtyperError<any, any> | null,
-	Result extends SqlParserError<string> | DbtyperError<any, any>
+	Result extends SqlParserError<string> | DbtyperError<any, any>,
 > = Errors extends SqlParserError<string> | DbtyperError<any, any> ? Errors : Result
 
 // Errors extends SqlParserError<infer ErrorsMsg>

@@ -1,13 +1,15 @@
 # Feature: Migrate SqlParserError to FormatError with Rich Error Messages
 
 ## Goal
+
 Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_ID", [params]>` to provide rich, informative error messages that include actual names (tables, columns, schemas) instead of generic messages.
 
 ## Progress: 30.3% Complete (137/452 usages migrated)
 
 ### ✅ Completed Files (16/24)
+
 1. ✓ parse-create-schema.ts - Schema creation errors
-2. ✓ parse-drop-schema.ts - Schema drop errors  
+2. ✓ parse-drop-schema.ts - Schema drop errors
 3. ✓ parse-create-view.ts - View creation with schema names
 4. ✓ parse-create-table.ts - Table creation with schema names
 5. ✓ parse-create-type.ts - Type creation with schema names
@@ -24,6 +26,7 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 16. ✓ sql-tokens.ts - Lexer errors (17 usages)
 
 ### 🔄 Remaining Files (8 files, 315 usages)
+
 - sql-query.ts: 1 usage
 - parse-update.ts: 22 usages
 - parse-alter-table.ts: 29 usages
@@ -32,6 +35,7 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 - parse-expression.ts: 162 usages (largest file)
 
 ### Infrastructure Updates ✅
+
 - ✓ sql-database.ts - CheckSqlValidForQuery/Stream handle DbtyperError
 - ✓ sql-query.ts - SqlSelectRowForDb propagates DbtyperError
 - ✓ parse-sql-statement.ts - ApplyStatements handles DbtyperError
@@ -40,6 +44,7 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 ## Example Improvements
 
 ### Before → After
+
 - "Unknown table in DELETE FROM" → "Unknown table users in DELETE FROM"
 - "Unknown column" → "Unknown column email"
 - "Unknown schema or table" → "Unknown schema myschema or table users"
@@ -47,6 +52,7 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 - "Expression must be boolean" → "Expression must be boolean, but has a type text"
 
 ## Next Steps
+
 1. Migrate sql-query.ts (1 usage) - trivial
 2. Migrate parse-update.ts (22 usages) - similar to parse-delete.ts
 3. Migrate parse-alter-table.ts (29 usages)
@@ -57,6 +63,7 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 8. Update all remaining tests
 
 ## Quality Checklist
+
 - ✅ All migrated files pass typecheck
 - ✅ Main codebase compiles successfully
 - ✅ DELETE tests fully passing with informative errors
@@ -66,6 +73,7 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 - ⏳ Expression tests need migration (blocked on parse-expression)
 
 ## Session Notes
+
 - Session 1: Migrated 16 files, 137 usages (30.3%)
 - Estimated 2-3 more sessions needed for completion
 - All commits have clear, descriptive messages

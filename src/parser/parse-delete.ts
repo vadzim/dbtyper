@@ -311,6 +311,10 @@ type ParseDeleteAliasAfterTable<
 								Scope
 							>,
 						]
-					: [Ra, FormatError<"EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM", []>, ParserRefErrorThirdSentinel]
+					: [
+							Ra,
+							FormatError<"EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM", []>,
+							ParserRefErrorThirdSentinel,
+						]
 				: never
 			: never

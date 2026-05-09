@@ -20,10 +20,10 @@ type ParseQualifiedAfterFirstIdent<AfterFirst extends TokensList, Db extends Jsq
 	PeekToken<AfterFirst> extends TokenKey<"(">
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends infer Tdot
-		? SkipToken<AfterFirst> extends infer AfterDot extends TokensList
-			? Tdot extends TokenKey<".">
-				? ParseQualifiedSecondIdent<AfterDot, Db, A>
-				: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME", []>>
+			? SkipToken<AfterFirst> extends infer AfterDot extends TokensList
+				? Tdot extends TokenKey<".">
+					? ParseQualifiedSecondIdent<AfterDot, Db, A>
+					: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME", []>>
 				: never
 			: never
 

@@ -27,10 +27,20 @@ type UpSetParam = ParseSqlStatement<ParseSqlTokens<`update users set name = :n w
 type _upSetParam = Expect<Extends<UpSetParam[2], JsqlUpdateStatementResult>>
 
 type UpBadSet = ParseSqlStatement<ParseSqlTokens<`update users set name = 1 where id = 'u';`>, DbUsers>
-type _upBadSet = Expect<Extends<UpBadSet[2], DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>>>
+type _upBadSet = Expect<
+	Extends<
+		UpBadSet[2],
+		DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>
+	>
+>
 
 type UpBadWhere = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' where id = 1;`>, DbUsers>
-type _upBadWhere = Expect<Extends<UpBadWhere[2], DbtyperError<2500, "[dbt:INCOMPATIBLE_TYPES_IN_COMPARISON] Incompatible types in comparison">>>
+type _upBadWhere = Expect<
+	Extends<
+		UpBadWhere[2],
+		DbtyperError<2500, "[dbt:INCOMPATIBLE_TYPES_IN_COMPARISON] Incompatible types in comparison">
+	>
+>
 
 type UpMultiOk = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'x', id = 'y' where users.id = 'u';`>,
@@ -42,7 +52,12 @@ type UpMultiBadSecond = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'x', id = 1 where users.id = 'u';`>,
 	DbUsers
 >
-type _upMultiBadSecond = Expect<Extends<UpMultiBadSecond[2], DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>>>
+type _upMultiBadSecond = Expect<
+	Extends<
+		UpMultiBadSecond[2],
+		DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>
+	>
+>
 
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"

@@ -25,14 +25,14 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 						? SkipToken<A1> extends infer A2 extends TokensList
 							? ParseCreateTableQualified<A2, Db, true>
 							: never
-					: SkipFailedExpression<
-								A1,
-								FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE", []>
-						  > extends [infer Rest extends TokensList, infer Err]
-						? [Rest, Db, Err]
-						: never
-				: never
-			: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE", []>>
+						: SkipFailedExpression<
+									A1,
+									FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE", []>
+							  > extends [infer Rest extends TokensList, infer Err]
+							? [Rest, Db, Err]
+							: never
+					: never
+				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE", []>>
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
@@ -73,9 +73,15 @@ type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabas
 		infer Sch extends string,
 		infer Tab extends string,
 	]
-	? E extends null
-		? ParseCreateTableQualifiedWhenNameOk<R, Db, IfNotExists, Sch, Tab>
-		: [R, Db, E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string> ? E : FormatError<"INVALID_CREATE_TABLE_NAME_PARSE", []>]
+		? E extends null
+			? ParseCreateTableQualifiedWhenNameOk<R, Db, IfNotExists, Sch, Tab>
+			: [
+					R,
+					Db,
+					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+						? E
+						: FormatError<"INVALID_CREATE_TABLE_NAME_PARSE", []>,
+				]
 		: never
 
 type ParseCreateTableOpenParen<
@@ -94,11 +100,11 @@ type ParseCreateTableOpenParen<
 						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 				: SkipFailedExpression<
-						AfterOpen,
-						FormatError<"EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE", []>
-				  > extends [infer Rest extends TokensList, infer Err]
-				? [Rest, Db, Err]
-				: never
+							AfterOpen,
+							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE", []>
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -262,16 +268,19 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends SqlTypeShap
 						? [R, null]
 						: [
 								R,
-								FormatError<"DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL", []>,
+								FormatError<
+									"DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL",
+									[]
+								>,
 							]
 					: never
 				: PeekToken<Tokens> extends TokenKey<"null">
 					? SkipToken<Tokens> extends infer R extends TokensList
 						? [R, null]
 						: never
-				: PeekToken<Tokens> extends TokenIdent<infer FnName>
-					? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
-					: SkipFailedExpression<Tokens, FormatError<"EXPECTED_DEFAULT_VALUE", []>>
+					: PeekToken<Tokens> extends TokenIdent<infer FnName>
+						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
+						: SkipFailedExpression<Tokens, FormatError<"EXPECTED_DEFAULT_VALUE", []>>
 
 type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends string, ColumnType extends SqlTypeShape> =
 	SkipToken<Tokens> extends infer R1 extends TokensList
@@ -291,7 +300,10 @@ type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends strin
 									? [R3, null]
 									: [
 											R3,
-											FormatError<"DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN", []>,
+											FormatError<
+												"DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN",
+												[]
+											>,
 										]
 								: [R3, null]
 						: never
@@ -342,11 +354,11 @@ type ContinueAfterColumnDef<
 						readonly [...Stack, readonly [ColName, TypeShape, NotNull, false]]
 					>
 				: SkipFailedExpression<
-						AfterNull,
-						FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION", []>
-				  > extends [infer Rest extends TokensList, infer Err]
-				? [Rest, Db, Err]
-				: never
+							AfterNull,
+							FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION", []>
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 
 type ContinueAfterDefault<
 	AfterDefaultVal extends TokensList,
@@ -377,7 +389,11 @@ type ContinueAfterDefault<
 					Table,
 					readonly [...Stack, readonly [ColName, TypeShape, NotNull, HasDefault]]
 				>
-			: SkipFailedStatement<AfterDefaultVal, Db, FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE", []>>
+			: SkipFailedStatement<
+					AfterDefaultVal,
+					Db,
+					FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE", []>
+				>
 
 type ColPair = { cols: Record<string, SqlTypeShape>; facts: Record<string, unknown> }
 

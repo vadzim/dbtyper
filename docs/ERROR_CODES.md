@@ -18,53 +18,53 @@ jsql uses a type-level error system where errors are TypeScript types (`SqlParse
 
 Each category has 100 slots, providing room for future expansion.
 
-| Range      | Category                      | Description                          | Used | Free |
-| ---------- | ----------------------------- | ------------------------------------ | ---- | ---- |
-| 1000-1099  | Lexer/Tokenization            | Errors during SQL tokenization       | 9    | 91   |
-| 1100-1199  | Parser Syntax - SELECT        | SELECT statement parsing             | 11   | 89   |
-| 1200-1299  | Parser Syntax - INSERT        | INSERT statement parsing             | 20   | 80   |
-| 1300-1399  | Parser Syntax - UPDATE        | UPDATE statement parsing             | 9    | 91   |
-| 1400-1499  | Parser Syntax - DELETE        | DELETE statement parsing             | 6    | 94   |
-| 1500-1599  | Parser Syntax - CREATE TABLE  | CREATE TABLE parsing                 | 10   | 90   |
-| 1600-1699  | Parser Syntax - ALTER TABLE   | ALTER TABLE parsing                  | 10   | 90   |
-| 1700-1799  | Parser Syntax - DROP TABLE    | DROP TABLE parsing                   | 5    | 95   |
-| 1800-1899  | Parser Syntax - Type DDL      | CREATE/ALTER/DROP TYPE               | 15   | 85   |
-| 1900-1999  | Parser Syntax - Other DDL     | Other DDL statements                 | 15   | 85   |
-| 2000-2099  | Validation - Expression       | Invalid expressions                  | 30   | 70   |
-| 2100-2199  | Validation - Statement        | Invalid statements                   | 20   | 80   |
-| 2200-2299  | Resolution - Table/Schema     | Unknown tables or schemas            | 17   | 83   |
-| 2300-2399  | Resolution - Column           | Unknown columns                      | 9    | 91   |
-| 2400-2499  | Resolution - Other            | Other resolution errors              | 3    | 97   |
-| 2500-2599  | Type System - Compatibility   | Type compatibility errors            | 9    | 91   |
-| 2600-2699  | Type System - Boolean         | Boolean type errors                  | 7    | 93   |
-| 2700-2799  | Type System - NULL            | NULL handling errors                 | 5    | 95   |
-| 2800-2899  | Type System - Text/String     | Text operation errors                | 6    | 94   |
-| 2900-2999  | Type System - Numeric         | Numeric operation errors             | 1    | 99   |
-| 3000-3099  | Type System - Array           | Array operation errors               | 2    | 98   |
-| 3100-3199  | Type System - Subquery        | Subquery type errors                 | 4    | 96   |
-| 3200-3299  | Semantic - Duplicate/Exist    | Duplicate or existence checks        | 12   | 88   |
-| 3300-3399  | Semantic - Constraints        | Constraint violations                | 14   | 86   |
-| 3400-3499  | Semantic - SELECT             | SELECT-specific constraints          | 7    | 93   |
-| 3500-3599  | Semantic - Statement          | Statement constraints                | 6    | 94   |
-| 3600-3699  | Semantic - Function           | Function constraints                 | 20   | 80   |
-| 3700-3799  | DDL - CREATE SCHEMA           | CREATE SCHEMA errors                 | 4    | 96   |
-| 3800-3899  | DDL - DROP SCHEMA             | DROP SCHEMA errors                   | 3    | 97   |
-| 3900-3999  | DDL - CREATE VIEW             | CREATE VIEW errors                   | 6    | 94   |
-| 4000-4099  | DDL - ALTER TYPE              | ALTER TYPE errors                    | 3    | 97   |
-| 4100-4199  | DDL - Misc                    | Miscellaneous DDL errors             | 16   | 84   |
-| 4200-4299  | DML - JOIN                    | JOIN operation errors                | 11   | 89   |
-| 4300-4399  | DML - CASE                    | CASE expression errors               | 2    | 98   |
-| 4400-4499  | DML - BETWEEN/IN              | BETWEEN/IN operation errors          | 3    | 97   |
-| 4500-4599  | DML - CAST                    | CAST operation errors                | 3    | 97   |
-| 4600-4699  | DML - Window Functions        | Window function errors               | 4    | 96   |
-| 4700-4799  | DML - Array Operations        | Array operation errors               | 3    | 97   |
-| 4800-4899  | DML - Operators               | Operator errors                      | 5    | 95   |
-| 4900-4999  | DML - EXISTS/Subquery         | EXISTS/subquery errors               | 2    | 98   |
-| 5000-5099  | DML - Misc Expression         | Miscellaneous expression errors      | 25   | 75   |
-| 5100-5199  | Type/Data - VARCHAR/NUMERIC   | VARCHAR/NUMERIC errors               | 6    | 94   |
-| 5200-5299  | Type/Data - DEFAULT           | DEFAULT value errors                 | 5    | 95   |
-| 5300-5399  | Type/Data - FETCH/LIMIT       | FETCH/LIMIT errors                   | 4    | 96   |
-| 5400-5499  | Type/Data - Misc              | Miscellaneous type/data errors       | 24   | 76   |
+| Range     | Category                     | Description                     | Used | Free |
+| --------- | ---------------------------- | ------------------------------- | ---- | ---- |
+| 1000-1099 | Lexer/Tokenization           | Errors during SQL tokenization  | 9    | 91   |
+| 1100-1199 | Parser Syntax - SELECT       | SELECT statement parsing        | 11   | 89   |
+| 1200-1299 | Parser Syntax - INSERT       | INSERT statement parsing        | 20   | 80   |
+| 1300-1399 | Parser Syntax - UPDATE       | UPDATE statement parsing        | 9    | 91   |
+| 1400-1499 | Parser Syntax - DELETE       | DELETE statement parsing        | 6    | 94   |
+| 1500-1599 | Parser Syntax - CREATE TABLE | CREATE TABLE parsing            | 10   | 90   |
+| 1600-1699 | Parser Syntax - ALTER TABLE  | ALTER TABLE parsing             | 10   | 90   |
+| 1700-1799 | Parser Syntax - DROP TABLE   | DROP TABLE parsing              | 5    | 95   |
+| 1800-1899 | Parser Syntax - Type DDL     | CREATE/ALTER/DROP TYPE          | 15   | 85   |
+| 1900-1999 | Parser Syntax - Other DDL    | Other DDL statements            | 15   | 85   |
+| 2000-2099 | Validation - Expression      | Invalid expressions             | 30   | 70   |
+| 2100-2199 | Validation - Statement       | Invalid statements              | 20   | 80   |
+| 2200-2299 | Resolution - Table/Schema    | Unknown tables or schemas       | 17   | 83   |
+| 2300-2399 | Resolution - Column          | Unknown columns                 | 9    | 91   |
+| 2400-2499 | Resolution - Other           | Other resolution errors         | 3    | 97   |
+| 2500-2599 | Type System - Compatibility  | Type compatibility errors       | 9    | 91   |
+| 2600-2699 | Type System - Boolean        | Boolean type errors             | 7    | 93   |
+| 2700-2799 | Type System - NULL           | NULL handling errors            | 5    | 95   |
+| 2800-2899 | Type System - Text/String    | Text operation errors           | 6    | 94   |
+| 2900-2999 | Type System - Numeric        | Numeric operation errors        | 1    | 99   |
+| 3000-3099 | Type System - Array          | Array operation errors          | 2    | 98   |
+| 3100-3199 | Type System - Subquery       | Subquery type errors            | 4    | 96   |
+| 3200-3299 | Semantic - Duplicate/Exist   | Duplicate or existence checks   | 12   | 88   |
+| 3300-3399 | Semantic - Constraints       | Constraint violations           | 14   | 86   |
+| 3400-3499 | Semantic - SELECT            | SELECT-specific constraints     | 7    | 93   |
+| 3500-3599 | Semantic - Statement         | Statement constraints           | 6    | 94   |
+| 3600-3699 | Semantic - Function          | Function constraints            | 20   | 80   |
+| 3700-3799 | DDL - CREATE SCHEMA          | CREATE SCHEMA errors            | 4    | 96   |
+| 3800-3899 | DDL - DROP SCHEMA            | DROP SCHEMA errors              | 3    | 97   |
+| 3900-3999 | DDL - CREATE VIEW            | CREATE VIEW errors              | 6    | 94   |
+| 4000-4099 | DDL - ALTER TYPE             | ALTER TYPE errors               | 3    | 97   |
+| 4100-4199 | DDL - Misc                   | Miscellaneous DDL errors        | 16   | 84   |
+| 4200-4299 | DML - JOIN                   | JOIN operation errors           | 11   | 89   |
+| 4300-4399 | DML - CASE                   | CASE expression errors          | 2    | 98   |
+| 4400-4499 | DML - BETWEEN/IN             | BETWEEN/IN operation errors     | 3    | 97   |
+| 4500-4599 | DML - CAST                   | CAST operation errors           | 3    | 97   |
+| 4600-4699 | DML - Window Functions       | Window function errors          | 4    | 96   |
+| 4700-4799 | DML - Array Operations       | Array operation errors          | 3    | 97   |
+| 4800-4899 | DML - Operators              | Operator errors                 | 5    | 95   |
+| 4900-4999 | DML - EXISTS/Subquery        | EXISTS/subquery errors          | 2    | 98   |
+| 5000-5099 | DML - Misc Expression        | Miscellaneous expression errors | 25   | 75   |
+| 5100-5199 | Type/Data - VARCHAR/NUMERIC  | VARCHAR/NUMERIC errors          | 6    | 94   |
+| 5200-5299 | Type/Data - DEFAULT          | DEFAULT value errors            | 5    | 95   |
+| 5300-5399 | Type/Data - FETCH/LIMIT      | FETCH/LIMIT errors              | 4    | 96   |
+| 5400-5499 | Type/Data - Misc             | Miscellaneous type/data errors  | 24   | 76   |
 
 **Total:** 357 codes used, ~3,400 slots available for future expansion
 
@@ -93,19 +93,19 @@ const query = `SELECT "unclosed FROM users` as const
 
 ### 1100-1199: Parser Syntax - SELECT Statement
 
-| Code | ID                                             | Message                                      |
-| ---- | ---------------------------------------------- | -------------------------------------------- |
-| 1100 | EXPECTED_SELECT_AFTER_WITH                     | Expected SELECT after WITH clause            |
-| 1101 | EXPECTED_SELECT_IN_SUBQUERY                    | Expected SELECT in subquery                  |
-| 1102 | EXPECTED_SELECT_IN_DERIVED_TABLE               | Expected SELECT in derived table             |
-| 1103 | EXPECTED_SELECT_IN_EXISTS_SUBQUERY             | Expected SELECT in EXISTS subquery           |
-| 1104 | EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW| Expected SELECT or WITH after AS in CREATE VIEW |
-| 1105 | EXPECTED_SEMICOLON_AFTER_SELECT                | Expected semicolon after SELECT              |
-| 1106 | EXPECTED_FROM_AFTER_SELECT_LIST                | Expected FROM after SELECT list              |
-| 1107 | EXPECTED_BY_AFTER_GROUP                        | Expected BY after GROUP                      |
-| 1108 | EXPECTED_BY_AFTER_ORDER                        | Expected BY after ORDER                      |
-| 1109 | EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE         | Expected BY after ORDER in OVER clause       |
-| 1110 | EXPECTED_BY_AFTER_PARTITION                    | Expected BY after PARTITION                  |
+| Code | ID                                              | Message                                         |
+| ---- | ----------------------------------------------- | ----------------------------------------------- |
+| 1100 | EXPECTED_SELECT_AFTER_WITH                      | Expected SELECT after WITH clause               |
+| 1101 | EXPECTED_SELECT_IN_SUBQUERY                     | Expected SELECT in subquery                     |
+| 1102 | EXPECTED_SELECT_IN_DERIVED_TABLE                | Expected SELECT in derived table                |
+| 1103 | EXPECTED_SELECT_IN_EXISTS_SUBQUERY              | Expected SELECT in EXISTS subquery              |
+| 1104 | EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW | Expected SELECT or WITH after AS in CREATE VIEW |
+| 1105 | EXPECTED_SEMICOLON_AFTER_SELECT                 | Expected semicolon after SELECT                 |
+| 1106 | EXPECTED_FROM_AFTER_SELECT_LIST                 | Expected FROM after SELECT list                 |
+| 1107 | EXPECTED_BY_AFTER_GROUP                         | Expected BY after GROUP                         |
+| 1108 | EXPECTED_BY_AFTER_ORDER                         | Expected BY after ORDER                         |
+| 1109 | EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE          | Expected BY after ORDER in OVER clause          |
+| 1110 | EXPECTED_BY_AFTER_PARTITION                     | Expected BY after PARTITION                     |
 
 **Example:**
 
@@ -116,12 +116,12 @@ const query = `SELECT * FROM users GROUP` as const
 
 ### 2200-2299: Resolution - Table/Schema Errors
 
-| Code | ID                         | Message                    |
-| ---- | -------------------------- | -------------------------- |
-| 2200 | UNKNOWN_TABLE_FROM         | Unknown table in FROM      |
-| 2201 | UNKNOWN_TABLE_UPDATE       | Unknown table in UPDATE    |
-| 2203 | UNKNOWN_TABLE_INSERT_INTO  | Unknown table in INSERT INTO |
-| 2204 | UNKNOWN_TABLE_DELETE_FROM  | Unknown table in DELETE FROM |
+| Code | ID                        | Message                      |
+| ---- | ------------------------- | ---------------------------- |
+| 2200 | UNKNOWN_TABLE_FROM        | Unknown table in FROM        |
+| 2201 | UNKNOWN_TABLE_UPDATE      | Unknown table in UPDATE      |
+| 2203 | UNKNOWN_TABLE_INSERT_INTO | Unknown table in INSERT INTO |
+| 2204 | UNKNOWN_TABLE_DELETE_FROM | Unknown table in DELETE FROM |
 
 **Example:**
 
@@ -132,11 +132,11 @@ const query = `SELECT * FROM nonexistent_table` as const
 
 ### 2300-2399: Resolution - Column Errors
 
-| Code | ID                      | Message                      |
-| ---- | ----------------------- | ---------------------------- |
-| 2300 | UNKNOWN_COLUMN          | Unknown column               |
+| Code | ID                        | Message                      |
+| ---- | ------------------------- | ---------------------------- |
+| 2300 | UNKNOWN_COLUMN            | Unknown column               |
 | 2301 | UNKNOWN_COLUMN_UPDATE_SET | Unknown column in UPDATE SET |
-| 2302 | UNKNOWN_COLUMN_INSERT   | Unknown column in INSERT     |
+| 2302 | UNKNOWN_COLUMN_INSERT     | Unknown column in INSERT     |
 
 **Example:**
 
@@ -147,15 +147,15 @@ const query = `SELECT nonexistent_column FROM users` as const
 
 ### 2600-2699: Type System - Boolean Type Errors
 
-| Code | ID                                | Message                                          |
-| ---- | --------------------------------- | ------------------------------------------------ |
-| 2600 | EXPRESSION_MUST_BE_BOOLEAN        | Expression must be boolean, but has a type X     |
-| 2601 | CASE_WHEN_MUST_BE_BOOLEAN         | CASE WHEN must be boolean                        |
-| 2602 | NOT_REQUIRES_BOOLEAN_OPERAND      | NOT requires a boolean operand                   |
-| 2603 | NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL | NOT argument must be boolean, not NULL       |
-| 2604 | AND_OPERANDS_MUST_BE_BOOLEAN      | AND operands must be boolean                     |
-| 2605 | OR_OPERANDS_MUST_BE_BOOLEAN       | OR operands must be boolean                      |
-| 2606 | NULL_NOT_VALID_BOOLEAN_OPERAND    | NULL is not a valid boolean operand (use IS NULL)|
+| Code | ID                                    | Message                                           |
+| ---- | ------------------------------------- | ------------------------------------------------- |
+| 2600 | EXPRESSION_MUST_BE_BOOLEAN            | Expression must be boolean, but has a type X      |
+| 2601 | CASE_WHEN_MUST_BE_BOOLEAN             | CASE WHEN must be boolean                         |
+| 2602 | NOT_REQUIRES_BOOLEAN_OPERAND          | NOT requires a boolean operand                    |
+| 2603 | NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL | NOT argument must be boolean, not NULL            |
+| 2604 | AND_OPERANDS_MUST_BE_BOOLEAN          | AND operands must be boolean                      |
+| 2605 | OR_OPERANDS_MUST_BE_BOOLEAN           | OR operands must be boolean                       |
+| 2606 | NULL_NOT_VALID_BOOLEAN_OPERAND        | NULL is not a valid boolean operand (use IS NULL) |
 
 **Example:**
 
@@ -166,11 +166,11 @@ const query = `SELECT * FROM users WHERE 'text'` as const
 
 ### 2700-2799: Type System - NULL Handling
 
-| Code | ID                                | Message                              |
-| ---- | --------------------------------- | ------------------------------------ |
-| 2700 | NULL_NOT_ALLOWED_NOT_NULL_COLUMN  | NULL not allowed for NOT NULL column |
-| 2701 | NULL_NOT_ALLOWED_ARITHMETIC       | NULL not allowed in arithmetic       |
-| 2704 | USE_IS_NULL_INSTEAD_OF_EQUALS_NULL| Use IS NULL instead of = null        |
+| Code | ID                                 | Message                              |
+| ---- | ---------------------------------- | ------------------------------------ |
+| 2700 | NULL_NOT_ALLOWED_NOT_NULL_COLUMN   | NULL not allowed for NOT NULL column |
+| 2701 | NULL_NOT_ALLOWED_ARITHMETIC        | NULL not allowed in arithmetic       |
+| 2704 | USE_IS_NULL_INSTEAD_OF_EQUALS_NULL | Use IS NULL instead of = null        |
 
 **Example:**
 
@@ -338,6 +338,7 @@ Error code ranges have gaps to allow for future expansion:
 **Complete Coverage:** All error messages in codebase now have error codes
 
 **Implementation Status:**
+
 - ✅ Phase 1: Foundation (38 core errors)
 - ✅ Phase 2: Lexer & Expression Parser (completed)
 - ✅ Phase 3: Statement Parsers (completed)
@@ -346,6 +347,7 @@ Error code ranges have gaps to allow for future expansion:
 - ✅ Renumbering: 3-digit to 4-digit scheme (completed)
 
 **Error Code Distribution:**
+
 - 1000-1099: Lexer/Tokenization - 9 codes (91 slots free)
 - 1100-1999: Parser Syntax - 101 codes (799 slots free)
 - 2000-2199: Validation - 50 codes (150 slots free)

@@ -15,10 +15,11 @@ export type CheckErrorneousResult<Result, S extends string> = Matches<
 	[TokensRest, DbPublicUsers, SqlParserError<S>]
 >
 
-export type CheckErrorneousResultWithCode<Result, Code extends -1 | keyof typeof import("../../src/sql-parser-error.ts").errors, Message extends string> = Matches<
+export type CheckErrorneousResultWithCode<
 	Result,
-	[TokensRest, DbPublicUsers, DbtyperError<Code, Message>]
->
+	Code extends -1 | keyof typeof import("../../src/sql-parser-error.ts").errors,
+	Message extends string,
+> = Matches<Result, [TokensRest, DbPublicUsers, DbtyperError<Code, Message>]>
 
 // Helper to extract error from ParseSqlStatement result
 export type ExtractQueryError<DbShape extends JsqlDatabaseShape, Query extends string> = ParseSqlStatement<

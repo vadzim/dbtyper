@@ -197,7 +197,10 @@ type ParseUpdateSetAssignments<
 																		: [
 																				R3,
 																				Db,
-																				FormatError<"EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT", []>,
+																				FormatError<
+																					"EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT",
+																					[]
+																				>,
 																			]
 																: never
 														: never

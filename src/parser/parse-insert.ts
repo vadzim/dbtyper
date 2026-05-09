@@ -164,7 +164,10 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataSh
 								? SkipToken<R1> extends infer R3 extends TokensList
 									? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
 									: never
-								: SkipFailedExpression<R1, FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST", []>>
+								: SkipFailedExpression<
+										R1,
+										FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST", []>
+									>
 					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME_IN_INSERT_COLUMN_LIST", []>>
 				: never
 			: never
@@ -414,7 +417,10 @@ type ParseInsertValuesCells<
 															: [R2, Db, InsertValuesRowCellsParsedMarker]
 														: SkipFailedExpression<
 																	R2,
-																	FormatError<"EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES", []>
+																	FormatError<
+																		"EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES",
+																		[]
+																	>
 															  > extends [infer Rest extends TokensList, infer Err]
 															? [Rest, Db, Err]
 															: never
@@ -733,13 +739,19 @@ type ParseInsertUpsertSetAssignments<
 																		: [
 																				R3,
 																				Db,
-																				FormatError<"EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET", []>,
+																				FormatError<
+																					"EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
+																					[]
+																				>,
 																			]
 																: never
 														: never
 													: SkipFailedExpression<
 																R3,
-																FormatError<"INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE", []>
+																FormatError<
+																	"INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
+																	[]
+																>
 														  > extends [infer Rest extends TokensList, infer Err]
 														? [Rest, Db, Err]
 														: never
@@ -753,10 +765,10 @@ type ParseInsertUpsertSetAssignments<
 								: never
 							: never
 						: SkipFailedStatement<
-									R1,
-									Db,
-									FormatError<"EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE", []>
-							  >
+								R1,
+								Db,
+								FormatError<"EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE", []>
+							>
 				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE", []>>
 			: never
 		: never

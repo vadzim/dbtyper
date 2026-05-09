@@ -14,12 +14,12 @@ export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseSh
 						? SkipToken<A1> extends infer A2 extends TokensList
 							? ParseCreateTypeQualified<A2, Db, true>
 							: never
-					: SkipFailedExpression<
-								A1,
-								FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE", []>
-						  > extends [infer Rest extends TokensList, infer Err]
-						? [Rest, Db, Err]
-						: never
+						: SkipFailedExpression<
+									A1,
+									FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE", []>
+							  > extends [infer Rest extends TokensList, infer Err]
+							? [Rest, Db, Err]
+							: never
 					: never
 				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE", []>>
 			: never
@@ -58,9 +58,15 @@ type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabase
 		infer Sch extends string,
 		infer Typ extends string,
 	]
-	? E extends null
-		? ParseCreateTypeQualifiedWhenNameOk<R, Db, IfNotExists, Sch, Typ>
-		: [R, Db, E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string> ? E : FormatError<"INVALID_CREATE_TYPE_NAME_PARSE", []>]
+		? E extends null
+			? ParseCreateTypeQualifiedWhenNameOk<R, Db, IfNotExists, Sch, Typ>
+			: [
+					R,
+					Db,
+					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+						? E
+						: FormatError<"INVALID_CREATE_TYPE_NAME_PARSE", []>,
+				]
 		: never
 
 type ParseCreateTypeAsEnum<
@@ -81,20 +87,20 @@ type ParseCreateTypeAsEnum<
 									? ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
 									: ParseCreateTypeSkipEnumBody<AfterEnum, Db>
 								: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
-						: SkipFailedExpression<
-									AfterEnum,
-									FormatError<"EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE", []>
-							  > extends [infer Rest extends TokensList, infer Err]
-							? [Rest, Db, Err]
-							: never
+							: SkipFailedExpression<
+										AfterEnum,
+										FormatError<"EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE", []>
+								  > extends [infer Rest extends TokensList, infer Err]
+								? [Rest, Db, Err]
+								: never
 						: never
 					: never
-			: SkipFailedExpression<
-						AfterAs,
-						FormatError<"EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE", []>
-				  > extends [infer Rest extends TokensList, infer Err]
-				? [Rest, Db, Err]
-				: never
+				: SkipFailedExpression<AfterAs, FormatError<"EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE", []>> extends [
+							infer Rest extends TokensList,
+							infer Err,
+					  ]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -104,11 +110,11 @@ type ParseCreateTypeSkipEnumBody<Tokens extends TokensList, Db extends JsqlDatab
 			? OpenTok extends TokenKey<"(">
 				? SkipToCloseParenAndSemi<AfterOpen, Db>
 				: SkipFailedExpression<
-						AfterOpen,
-						FormatError<"EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE", []>
-				  > extends [infer Rest extends TokensList, infer Err]
-				? [Rest, Db, Err]
-				: never
+							AfterOpen,
+							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE", []>
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -141,11 +147,11 @@ type ParseCreateTypeEnumBody<
 			? OpenTok extends TokenKey<"(">
 				? ParseEnumValues<AfterOpen, Db, Schema, TypeName, Stack>
 				: SkipFailedExpression<
-						AfterOpen,
-						FormatError<"EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE", []>
-				  > extends [infer Rest extends TokensList, infer Err]
-				? [Rest, Db, Err]
-				: never
+							AfterOpen,
+							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE", []>
+					  > extends [infer Rest extends TokensList, infer Err]
+					? [Rest, Db, Err]
+					: never
 			: never
 		: never
 
@@ -160,18 +166,18 @@ type ParseEnumValues<
 		? SkipToken<Tokens> extends infer R extends TokensList
 			? Tok extends TokenString<infer Val extends string>
 				? ParseAfterEnumValue<R, Db, Schema, TypeName, readonly [...Stack, Val]>
-			: Tok extends TokenKey<")">
-				? Stack extends readonly []
-					? [R, Db, FormatError<"EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE", []>]
-					: JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
-						? ParseCreateTypeCloseSemi<R, NewDb>
+				: Tok extends TokenKey<")">
+					? Stack extends readonly []
+						? [R, Db, FormatError<"EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE", []>]
+						: JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
+							? ParseCreateTypeCloseSemi<R, NewDb>
+							: never
+					: SkipFailedExpression<
+								R,
+								FormatError<"EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_CREATE_TYPE", []>
+						  > extends [infer Rest extends TokensList, infer Err]
+						? [Rest, Db, Err]
 						: never
-				: SkipFailedExpression<
-							R,
-							FormatError<"EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_CREATE_TYPE", []>
-					  > extends [infer Rest extends TokensList, infer Err]
-					? [Rest, Db, Err]
-					: never
 			: never
 		: never
 
@@ -186,16 +192,16 @@ type ParseAfterEnumValue<
 		? SkipToken<Tokens> extends infer R extends TokensList
 			? Tok extends TokenKey<",">
 				? ParseEnumValues<R, Db, Schema, TypeName, Stack>
-			: Tok extends TokenKey<")">
-				? JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
-					? ParseCreateTypeCloseSemi<R, NewDb>
-					: never
-				: SkipFailedExpression<
-							R,
-							FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_ENUM_VALUE_IN_CREATE_TYPE", []>
-					  > extends [infer Rest extends TokensList, infer Err]
-					? [Rest, Db, Err]
-					: never
+				: Tok extends TokenKey<")">
+					? JsqlDbReplaceEnum<Db, Schema, TypeName, Stack> extends infer NewDb extends JsqlDatabaseShape
+						? ParseCreateTypeCloseSemi<R, NewDb>
+						: never
+					: SkipFailedExpression<
+								R,
+								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_ENUM_VALUE_IN_CREATE_TYPE", []>
+						  > extends [infer Rest extends TokensList, infer Err]
+						? [Rest, Db, Err]
+						: never
 			: never
 		: never
 

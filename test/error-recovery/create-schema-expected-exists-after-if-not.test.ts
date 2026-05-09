@@ -6,6 +6,8 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"create schema if not myschema">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 3703, "Expected `exists` after `IF NOT` in CREATE SCHEMA">>
+type _resultMatches = Expect<
+	CheckErrorneousResultWithCode<Result, 3703, "Expected `exists` after `IF NOT` in CREATE SCHEMA">
+>
 
 it("CREATE SCHEMA: Expected `exists` after `IF NOT` in CREATE SCHEMA", () => {})

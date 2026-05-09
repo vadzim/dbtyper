@@ -6,6 +6,8 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"create view myview as insert into users (id) values (1)">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1104, "Expected SELECT or WITH after AS in CREATE VIEW">>
+type _resultMatches = Expect<
+	CheckErrorneousResultWithCode<Result, 1104, "Expected SELECT or WITH after AS in CREATE VIEW">
+>
 
 it("CREATE VIEW: Expected SELECT or WITH after AS in CREATE VIEW", () => {})
