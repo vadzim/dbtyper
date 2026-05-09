@@ -1,4 +1,4 @@
-// Integration Test: UPDATE
+// Integration Test: SELECT
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,17 +9,19 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
+	.apply(`create schema billing;`)
 	.apply(`create table users (id text not null, name text not null);`)
+	.apply(`create table billing.subs (id text not null, user_id text not null);`)
 	.database()
 
-// ❌ ERROR: Type mismatch in UPDATE WHERE
-const query = `update users set name = 'x' where id = 1;` as const
+// ❌ ERROR: Unknown column in JOIN ON right side
+const query = `select users.id from users join billing.subs as billing_sub on users.id = billing_sub.not_a_column;` as const
 
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2500, "[dbt:INCOMPATIBLE_TYPES_IN_COMPARISON] Incompatible types in comparison">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2307, "Unknown qualified column billing_sub.not_a_column">>
 >
