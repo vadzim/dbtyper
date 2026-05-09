@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape, JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TBigint, TBoolean, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -41,7 +41,7 @@ type TJoinBadColumn = ParseSqlStatement<
 	ParseSqlTokens<`select users.id, billing_sub.wrong_col from users join billing.subs as billing_sub on users.id = billing_sub.user_id;`>,
 	DbJoinDefaultAndExplicit
 >
-type _joinBadCol = Expect<Extends<TJoinBadColumn[2], SqlParserError<string>>>
+type _joinBadCol = Expect<Extends<TJoinBadColumn[2], DbtyperError<any, any>>>
 
 type TDistinct = ParseSqlStatement<ParseSqlTokens<`select distinct users.id from users;`>, DbJoinDefaultAndExplicit>
 type _distinct = Expect<Extends<TDistinct[2], { kind: "select"; columns: { id: TUuid } }>>
@@ -68,7 +68,7 @@ type TSelectOrderByBad = ParseSqlStatement<
 	ParseSqlTokens<`select users.name from users order by users.nope;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectOrderByBad = Expect<Extends<TSelectOrderByBad[2], SqlParserError<string>>>
+type _selectOrderByBad = Expect<Extends<TSelectOrderByBad[2], DbtyperError<any, any>>>
 
 type TSelectLimitOk = ParseSqlStatement<ParseSqlTokens<`select users.id from users limit 5;`>, DbJoinDefaultAndExplicit>
 type _selectLimitOk = Expect<Extends<TSelectLimitOk[2], JsqlSelectStatementResult>>
@@ -200,13 +200,13 @@ type TDerivedBadCol = ParseSqlStatement<
 	ParseSqlTokens<`select s.nope from (select users.id from users) as s;`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedBadCol = Expect<Extends<TDerivedBadCol[2], SqlParserError<string>>>
+type _derivedBadCol = Expect<Extends<TDerivedBadCol[2], DbtyperError<any, any>>>
 
 type TDerivedNoAlias = ParseSqlStatement<
 	ParseSqlTokens<`select 1 from (select users.id as x from users);`>,
 	DbJoinDefaultAndExplicit
 >
-type _derivedNoAlias = Expect<Extends<TDerivedNoAlias[2], SqlParserError<string>>>
+type _derivedNoAlias = Expect<Extends<TDerivedNoAlias[2], DbtyperError<any, any>>>
 
 /** Inner `WHERE` uses only inner `FROM` scope. */
 type TDerivedInnerWhere = ParseSqlStatement<
@@ -349,7 +349,7 @@ type _selectTwoUnnamed = Expect<
 >
 
 type TBadColInExpr = ParseSqlStatement<ParseSqlTokens<`select users.nope + 1 as x from users;`>, DbJoinWithRowCount>
-type _badColInExpr = Expect<Extends<TBadColInExpr[2], SqlParserError<string>>>
+type _badColInExpr = Expect<Extends<TBadColInExpr[2], DbtyperError<any, any>>>
 
 /** `:name` in the projection list must appear in the statement `Params` map (default empty params errors). */
 type SelectParamsLimit = { limit: TInteger }
@@ -384,19 +384,19 @@ type _selectParamAs = Expect<
 >
 
 type TUnknownFrom = ParseSqlStatement<ParseSqlTokens<`select users.id from ghost_table;`>, DbJoinDefaultAndExplicit>
-type _unknownFrom = Expect<Extends<TUnknownFrom[2], SqlParserError<string>>>
+type _unknownFrom = Expect<Extends<TUnknownFrom[2], DbtyperError<any, any>>>
 
 type TJoinBadOnRight = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users join billing.subs as billing_sub on users.id = billing_sub.not_a_column;`>,
 	DbJoinDefaultAndExplicit
 >
-type _joinBadOnRight = Expect<Extends<TJoinBadOnRight[2], SqlParserError<string>>>
+type _joinBadOnRight = Expect<Extends<TJoinBadOnRight[2], DbtyperError<any, any>>>
 
 type TJoinBadOnLeft = ParseSqlStatement<
 	ParseSqlTokens<`select users.id from users join billing.subs as billing_sub on users.not_a_column = billing_sub.user_id;`>,
 	DbJoinDefaultAndExplicit
 >
-type _joinBadOnLeft = Expect<Extends<TJoinBadOnLeft[2], SqlParserError<string>>>
+type _joinBadOnLeft = Expect<Extends<TJoinBadOnLeft[2], DbtyperError<any, any>>>
 
 type TStarPlusComma = ParseSqlStatement<ParseSqlTokens<`select *, users.id from users;`>, DbJoinDefaultAndExplicit>
 type _starPlusComma = Expect<

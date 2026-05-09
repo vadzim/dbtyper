@@ -3,7 +3,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TInteger, TTextArray } from "./test-utils/sql-type-helpers.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 
 type DbAnyAll = {
 	defaultSchema: "public"
@@ -94,7 +94,7 @@ type _tSomeSubquery = Expect<
 
 // Test error: ANY with non-array
 type TAnyNonArray = ParseSqlStatement<ParseSqlTokens<`select * from items where id = any(priority);`>, DbAnyAll>
-type _tAnyNonArray = Expect<Extends<TAnyNonArray[2], SqlParserError<string>>>
+type _tAnyNonArray = Expect<Extends<TAnyNonArray[2], DbtyperError<any, any>>>
 
 describe("any-all-some-operators (type tests)", () => {
 	it("compile-time assertions above", () => {})

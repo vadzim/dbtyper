@@ -3,7 +3,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TInteger, TTextArray, TIntegerArray, TUnknown } from "./test-utils/sql-type-helpers.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 
 type DbArrays = {
 	defaultSchema: "public"
@@ -73,11 +73,11 @@ type _tNestedArrayFns = Expect<Extends<TNestedArrayFns[2], { kind: "select"; col
 
 // Test error: array_length with non-array argument
 type TArrayLengthBadArgs = ParseSqlStatement<ParseSqlTokens<`select array_length(id, 1) as bad from items;`>, DbArrays>
-type _tArrayLengthBadArgs = Expect<Extends<TArrayLengthBadArgs[2], SqlParserError<string>>>
+type _tArrayLengthBadArgs = Expect<Extends<TArrayLengthBadArgs[2], DbtyperError<any, any>>>
 
 // Test error: unnest with non-array argument
 type TUnnestBadArgs = ParseSqlStatement<ParseSqlTokens<`select unnest(id) as bad from items;`>, DbArrays>
-type _tUnnestBadArgs = Expect<Extends<TUnnestBadArgs[2], SqlParserError<string>>>
+type _tUnnestBadArgs = Expect<Extends<TUnnestBadArgs[2], DbtyperError<any, any>>>
 
 describe("array-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})

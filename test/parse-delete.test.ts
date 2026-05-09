@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -31,10 +31,10 @@ type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where publi
 type _t3null = Expect<Matches<T3[2], null>>
 
 type TBad = ParseSqlStatement<ParseSqlTokens<`delete from users where users.nope = 'u';`>, DbUsers>
-type _tBad = Expect<Extends<TBad[2], SqlParserError<string>>>
+type _tBad = Expect<Extends<TBad[2], DbtyperError<any, any>>>
 
 type TBadUnq = ParseSqlStatement<ParseSqlTokens<`delete from users where ghost = 'u';`>, DbUsers>
-type _tBadUnq = Expect<Extends<TBadUnq[2], SqlParserError<string>>>
+type _tBadUnq = Expect<Extends<TBadUnq[2], DbtyperError<any, any>>>
 
 type TNoFrom = ParseSqlStatement<ParseSqlTokens<`delete users where id = 'u';`>, DbUsers>
 type _tNoFrom = Expect<Extends<TNoFrom[2], { __sql_parser_error__: string }>>

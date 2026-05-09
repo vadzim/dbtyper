@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { SqlSelectRow } from "../../test-utils/parser-test-utils.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
-import type { SqlParserError } from "../../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
@@ -24,6 +24,6 @@ type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table 
 type _errorCheck = Expect<
 	Matches<
 		SqlSelectRow<DbShape, typeof query>,
-		SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">
+		DbtyperError<3501, "stream() requires a row-returning statement (SELECT or RETURNING clause)">
 	>
 >

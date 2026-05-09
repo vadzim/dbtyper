@@ -3,7 +3,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TBigint, TNumeric, TUuid, TTimestamp } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 import type { InferSqlErrors } from "./test-utils/parser-test-utils.ts"
 
 /** Minimal catalog with typed custom SQL functions (`functions`). */
@@ -21,7 +21,7 @@ type DbFns = {
 type InferOk = InferSqlErrors<DbFns, `select custom_fn(x) from t`>
 type _inferOk = Expect<Extends<InferOk, null>>
 type InferBadSel = InferSqlErrors<DbFns, `delete from t`>
-type _inferNonSelect = Expect<Extends<InferBadSel, SqlParserError<string>>>
+type _inferNonSelect = Expect<Extends<InferBadSel, DbtyperError<any, any>>>
 type TCustomFn = ParseSqlStatement<ParseSqlTokens<`select custom_fn(x) from t`>, DbFns>
 type _customFn = Expect<Extends<TCustomFn[2], { kind: "select"; columns: { "?column?": TInteger } }>>
 type TCountStar = ParseSqlStatement<ParseSqlTokens<`select count(*) from t`>, DbFns>

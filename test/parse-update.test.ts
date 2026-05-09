@@ -30,7 +30,7 @@ type UpBadSet = ParseSqlStatement<ParseSqlTokens<`update users set name = 1 wher
 type _upBadSet = Expect<
 	Extends<
 		UpBadSet[2],
-		DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>
+		DbtyperError<2507, `Incompatible value type for column ${string}`>
 	>
 >
 
@@ -38,7 +38,7 @@ type UpBadWhere = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' 
 type _upBadWhere = Expect<
 	Extends<
 		UpBadWhere[2],
-		DbtyperError<2500, "[dbt:INCOMPATIBLE_TYPES_IN_COMPARISON] Incompatible types in comparison">
+		DbtyperError<2500, "Incompatible types in comparison">
 	>
 >
 
@@ -55,7 +55,7 @@ type UpMultiBadSecond = ParseSqlStatement<
 type _upMultiBadSecond = Expect<
 	Extends<
 		UpMultiBadSecond[2],
-		DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>
+		DbtyperError<2507, `Incompatible value type for column ${string}`>
 	>
 >
 

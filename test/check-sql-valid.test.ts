@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../src/parser/parse-expression.ts"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
@@ -15,7 +15,7 @@ import type { PostgresTypeMap } from "../src/postgres/postgres-type-map.ts"
  * (`CheckSqlValid`); documents that broken `SELECT`s resolve to parser messages, not literals.
  */
 type CheckSqlValid<
-	Db extends JsqlDatabaseShape | SqlParserError<string>,
+	Db extends JsqlDatabaseShape | DbtyperError<any, any>,
 	Stmt extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = [SqlSelectRow<Db, Stmt, PostgresTypeMap, Params>] extends [SqlParserError<infer Msg>] ? Msg : Stmt
