@@ -21,5 +21,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2205, "Unknown table ghost_table">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2200, "Unknown table in FROM">>
 >
