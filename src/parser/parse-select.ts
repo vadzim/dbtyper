@@ -10,7 +10,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SqlParserError, FormatError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -81,7 +81,7 @@ export type ParseSelectStatement<
 			? [R1, Db2, Res]
 			: PeekToken<R1> extends TokenKey<";"> | TokenEot
 				? [SkipToken<R1>, Db2, Res]
-				: SkipFailedStatement<R1, Db2, SqlParserError<"Expected semicolon after SELECT">>
+				: SkipFailedStatement<R1, Db2, FormatError<"EXPECTED_SEMICOLON_AFTER_SELECT", []>>
 		: never
 
 type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
@@ -108,7 +108,7 @@ type ParseSelectWithCtesAfterSubquery<
 					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc>
 					: PeekToken<R4> extends TokenKey<"select">
 						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc>
-						: SkipFailedStatement<R4, Db, SqlParserError<"Expected SELECT after WITH clause">>
+						: SkipFailedStatement<R4, Db, FormatError<"EXPECTED_SELECT_AFTER_WITH", []>>
 				: never
 			: never
 		: never
@@ -123,7 +123,7 @@ type ParseSelectWithCtes<
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokCteName extends TokenIdent<infer CteName extends string>
 				? CteName extends keyof Acc
-					? [R1, Db, SqlParserError<"Duplicate WITH clause name">]
+					? [R1, Db, FormatError<"DUPLICATE_WITH_CLAUSE_NAME", []>]
 					: PeekToken<R1> extends TokenKey<"as">
 						? SkipToken<R1> extends infer R2 extends TokensList
 							? PeekToken<R2> extends TokenKey<"(">
@@ -141,13 +141,13 @@ type ParseSelectWithCtes<
 									: never
 								: SkipFailedExpression<
 											R2,
-											SqlParserError<"Expected open paren after AS in WITH">
+											FormatError<"EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH", []>
 									  > extends [infer Rest extends TokensList, infer Err]
 									? [Rest, Db, Err]
 									: never
 							: never
 						: never
-				: SkipFailedStatement<R1, Db, SqlParserError<"Expected CTE name in WITH">>
+				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_CTE_NAME_IN_WITH", []>>
 			: never
 		: never
 
@@ -162,7 +162,7 @@ type ParseSelectAfterDistinct<
 			? [AfterList, Db, Items]
 			: Items extends readonly RawSelectItem[]
 				? SelectListStarInvalid<Items> extends true
-					? [AfterList, Db, SqlParserError<"SELECT * must be the only projection in the list">]
+					? [AfterList, Db, FormatError<"SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST", []>]
 					: PeekToken<AfterList> extends TokenKey<"from">
 						? SkipToken<AfterList> extends infer AfterFrom extends TokensList
 							? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
@@ -205,7 +205,7 @@ type ParseSelectAfterDistinct<
 									? [AfterList, Db, Res]
 									: FinishSelectStatement<AfterList, Db, Res, {}, Params, Items>
 								: never
-							: SkipFailedStatement<AfterList, Db, SqlParserError<"Expected FROM after SELECT list">>
+							: SkipFailedStatement<AfterList, Db, FormatError<"EXPECTED_FROM_AFTER_SELECT_LIST", []>>
 				: never
 		: never
 
@@ -227,7 +227,7 @@ type ParseOrderByScalarExpr<
 					? SkipFailedExpression<Rw, R>
 					: R extends SqlTypeShape
 						? [Rw, null]
-						: SkipFailedExpression<Rw, SqlParserError<"Invalid ORDER BY expression">>
+						: SkipFailedExpression<Rw, FormatError<"INVALID_ORDER_BY_EXPRESSION", []>>
 				: never
 		: never
 

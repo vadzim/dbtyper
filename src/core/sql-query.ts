@@ -5,7 +5,7 @@ import type {
 	JsqlUpdateStatementResult,
 } from "./jsql-shapes.ts"
 import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError, DbtyperError } from "../sql-parser-error.ts"
+import type { SqlParserError, DbtyperError, FormatError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
 
@@ -22,7 +22,7 @@ type SqlSelectRowForDb<
 				: RowShapeFromStatementResult<Res>
 		: never
 
-type ExpectedRowSetResult = SqlParserError<"stream() requires a row-returning statement (SELECT or RETURNING clause)">
+type ExpectedRowSetResult = FormatError<"STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT", []>
 
 type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
 	? Res["columns"]
