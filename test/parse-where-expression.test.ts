@@ -1,8 +1,8 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
-import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid } from "./test-utils/sql-type-helpers.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { HasAmbiguousUnqualifiedColumn } from "../src/parser/scope-unqualified-helpers.ts"
@@ -33,10 +33,10 @@ type W1 = ParseWhereExpression<ParseSqlTokens<`users.id = 'u'`>, DbUsers, UsersS
 type _w1 = Expect<Extends<W1[1], null>>
 
 type WBadQual = ParseWhereExpression<ParseSqlTokens<`users.nope = 'x'`>, DbUsers, UsersScope>
-type _wBadQual = Expect<Extends<WBadQual[1], SqlParserError<"Unknown qualified column">>>
+type _wBadQual = Expect<Matches<WBadQual[1], DbtyperError<2307, "Unknown qualified column users.nope">>>
 
 type WBadBare = ParseWhereExpression<ParseSqlTokens<`ghost = 'x'`>, DbUsers, UsersScope>
-type _wBadBare = Expect<Extends<WBadBare[1], SqlParserError<"Unknown column">>>
+type _wBadBare = Expect<Matches<WBadBare[1], DbtyperError<2300, "Unknown column ghost">>>
 
 type W3part = ParseWhereExpression<ParseSqlTokens<`public.users.id = 'u'`>, DbUsers, UsersScope>
 type _w3part = Expect<Extends<W3part[1], null>>
@@ -58,67 +58,67 @@ type _wRegex = Expect<Extends<WRegex[1], null>>
 
 /** Catalog-qualified `schema.table.column`: missing table. */
 type W3badTab = ParseWhereExpression<ParseSqlTokens<`public.nope.id = 'u'`>, DbUsers, UsersScope>
-type _w3badTab = Expect<Extends<W3badTab[1], SqlParserError<"Unknown schema or table">>>
+type _w3badTab = Expect<Matches<W3badTab[1], DbtyperError<2207, "Unknown schema public or table nope">>>
 
 /** Catalog-qualified column: unknown schema. */
 type W3badSch = ParseWhereExpression<ParseSqlTokens<`missing.users.id = 'u'`>, DbUsers, UsersScope>
-type _w3badSch = Expect<Extends<W3badSch[1], SqlParserError<"Unknown schema or table">>>
+type _w3badSch = Expect<Matches<W3badSch[1], DbtyperError<2207, "Unknown schema missing or table users">>>
 
 /** Catalog-qualified column: known table, unknown column. */
 type W3badCol = ParseWhereExpression<ParseSqlTokens<`public.users.nope = 'u'`>, DbUsers, UsersScope>
-type _w3badCol = Expect<Extends<W3badCol[1], SqlParserError<"Unknown column (schema.table.column)">>>
+type _w3badCol = Expect<Matches<W3badCol[1], DbtyperError<2306, "Unknown column public.users.nope">>>
 
 /** Two-part qualified: alias not in scope. */
 type W2badAlias = ParseWhereExpression<ParseSqlTokens<`nope.id = 'u'`>, DbUsers, UsersScope>
-type _w2badAlias = Expect<Extends<W2badAlias[1], SqlParserError<"Unknown qualified column">>>
+type _w2badAlias = Expect<Matches<W2badAlias[1], DbtyperError<2307, "Unknown qualified column nope.id">>>
 
 /** RHS subexpression: missing closing `)` (typed value paren uses `ParseExpressionAST` inside `)`). */
 type WUnbalRhs = ParseWhereExpression<ParseSqlTokens<`users.id = ( 'u'`>, DbUsers, UsersScope>
-type _wUnbalRhs = Expect<Extends<WUnbalRhs[1], SqlParserError<"Expected `)`">>>
+type _wUnbalRhs = Expect<Matches<WUnbalRhs[1], DbtyperError<5006, "Expected `)`">>>
 
 /** `IN` list: missing closing `)` (after a valid list element, expect `,` or `)`). */
 type WUnbalIn = ParseWhereExpression<ParseSqlTokens<`users.id in ( 'u'`>, DbUsers, UsersScope>
-type _wUnbalIn = Expect<Extends<WUnbalIn[1], SqlParserError<"Expected `,` or `)` in IN list">>>
+type _wUnbalIn = Expect<Matches<WUnbalIn[1], DbtyperError<4402, "Expected `,` or `)` in IN list">>>
 
 /** Empty `IN ()` list. */
 type WInEmpty = ParseWhereExpression<ParseSqlTokens<`users.id in ()`>, DbUsers, UsersScope>
-type _wInEmpty = Expect<Extends<WInEmpty[1], SqlParserError<"IN list must not be empty">>>
+type _wInEmpty = Expect<Matches<WInEmpty[1], DbtyperError<3303, "IN list must not be empty">>>
 
 /** `IN` without `(`. */
 type WInNoParen = ParseWhereExpression<ParseSqlTokens<`users.id in 'u'`>, DbUsers, UsersScope>
-type _wInNoParen = Expect<Extends<WInNoParen[1], SqlParserError<"Expected `(` after IN">>>
+type _wInNoParen = Expect<Matches<WInNoParen[1], DbtyperError<4401, "Expected `(` after IN">>>
 
 /** `IS` must be followed by `NULL` (not arbitrary identifier). */
 type WIsBad = ParseWhereExpression<ParseSqlTokens<`users.name is users`>, DbUsers, UsersScope>
-type _wIsBad = Expect<Extends<WIsBad[1], SqlParserError<"Expected NULL after IS">>>
+type _wIsBad = Expect<Matches<WIsBad[1], DbtyperError<5002, "Expected NULL after IS">>>
 
 /** `IS NOT` must be followed by `NULL`. */
 type WIsNotBad = ParseWhereExpression<ParseSqlTokens<`users.name is not true`>, DbUsers, UsersScope>
-type _wIsNotBad = Expect<Extends<WIsNotBad[1], SqlParserError<"Expected NULL after IS NOT">>>
+type _wIsNotBad = Expect<Matches<WIsNotBad[1], DbtyperError<5003, "Expected NULL after IS NOT">>>
 
 /** Grouped WHERE: inner ok but outer `)` missing. */
 type WGrpNoClose = ParseWhereExpression<ParseSqlTokens<`( users.id = 'u'`>, DbUsers, UsersScope>
-type _wGrpNoClose = Expect<Extends<WGrpNoClose[1], SqlParserError<"Expected `)`">>>
+type _wGrpNoClose = Expect<Matches<WGrpNoClose[1], DbtyperError<5006, "Expected `)`">>>
 
 /** Operand position: token stream not a valid operand (e.g. lone `+`). */
 type WUnexpectedRhs = ParseWhereExpression<ParseSqlTokens<`users.id = +`>, DbUsers, UsersScope>
-type _wUnexpectedRhs = Expect<Extends<WUnexpectedRhs[1], SqlParserError<"Unexpected token">>>
+type _wUnexpectedRhs = Expect<Matches<WUnexpectedRhs[1], DbtyperError<1007, "Unexpected token">>>
 
 /** `OR` second conjunct: bad column. */
 type WOrBad = ParseWhereExpression<ParseSqlTokens<`users.id = 'u' or users.nope = 'v'`>, DbUsers, UsersScope>
-type _wOrBad = Expect<Extends<WOrBad[1], SqlParserError<"Unknown qualified column">>>
+type _wOrBad = Expect<Matches<WOrBad[1], DbtyperError<2307, "Unknown qualified column users.nope">>>
 
 /** `AND` second conjunct: bad column. */
 type WAndBad = ParseWhereExpression<ParseSqlTokens<`users.id = 'u' and users.nope = 'v'`>, DbUsers, UsersScope>
-type _wAndBad = Expect<Extends<WAndBad[1], SqlParserError<"Unknown qualified column">>>
+type _wAndBad = Expect<Matches<WAndBad[1], DbtyperError<2307, "Unknown qualified column users.nope">>>
 
 /** Unary `NOT` then invalid column ref. */
 type WNotBad = ParseWhereExpression<ParseSqlTokens<`not users.nope = 'u'`>, DbUsers, UsersScope>
-type _wNotBad = Expect<Extends<WNotBad[1], SqlParserError<"Unknown qualified column">>>
+type _wNotBad = Expect<Matches<WNotBad[1], DbtyperError<2307, "Unknown qualified column users.nope">>>
 
 /** Function-like call on RHS: missing closing `)` in argument list. */
 type WFuncUnbal = ParseWhereExpression<ParseSqlTokens<`users.id = lower( 'x'`>, DbUsers, UsersScope>
-type _wFuncUnbal = Expect<Extends<WFuncUnbal[1], SqlParserError<"Expected `,` or `)` in argument list">>>
+type _wFuncUnbal = Expect<Matches<WFuncUnbal[1], DbtyperError<5000, "Expected `,` or `)` in argument list">>>
 
 /** Success: comparison operators and literals. */
 type WNe = ParseWhereExpression<ParseSqlTokens<`users.id <> 'v'`>, DbUsers, UsersScope>
@@ -130,9 +130,9 @@ type _wLe = Expect<Extends<WLe[1], null>>
 type WStr = ParseWhereExpression<ParseSqlTokens<`users.name = 'a'`>, DbUsers, UsersScope>
 type _wStr = Expect<Extends<WStr[1], null>>
 type WBool = ParseWhereExpression<ParseSqlTokens<`users.id = true`>, DbUsers, UsersScope>
-type _wBool = Expect<Extends<WBool[1], SqlParserError<"Incompatible types in comparison">>>
+type _wBool = Expect<Matches<WBool[1], DbtyperError<2500, "Incompatible types in comparison">>>
 type WNullRhs = ParseWhereExpression<ParseSqlTokens<`users.id = null`>, DbUsers, UsersScope>
-type _wNullRhs = Expect<Extends<WNullRhs[1], SqlParserError<"Use IS NULL instead of = null">>>
+type _wNullRhs = Expect<Matches<WNullRhs[1], DbtyperError<2704, "Use IS NULL instead of = null">>>
 
 /** Success: `IS NOT NULL`, `IN (...)`, nested parens, `OR` inside parens. */
 type WIsNotNull = ParseWhereExpression<ParseSqlTokens<`users.name is not null`>, DbUsers, UsersScope>
@@ -142,7 +142,7 @@ type _wInList = Expect<Extends<WInList[1], null>>
 
 /** `IN` list: each element must match the left-hand comparison class (`uuid` column vs number literals). */
 type WInListTypeErr = ParseWhereExpression<ParseSqlTokens<`users.id in ( 1, 2 )`>, DbUsers, UsersScope>
-type _wInListTypeErr = Expect<Extends<WInListTypeErr[1], SqlParserError<"Incompatible types in IN list">>>
+type _wInListTypeErr = Expect<Matches<WInListTypeErr[1], DbtyperError<2504, "Incompatible types in IN list">>>
 type WNested = ParseWhereExpression<ParseSqlTokens<`( ( users.id = 'u' ) )`>, DbUsers, UsersScope>
 type _wNested = Expect<Extends<WNested[1], null>>
 type WOrInParens = ParseWhereExpression<
@@ -159,7 +159,7 @@ type _wNotNot = Expect<Extends<WNotNot[1], null>>
 type WBetween = ParseWhereExpression<ParseSqlTokens<`users.name between 'a' and 'z'`>, DbUsers, UsersScope>
 type _wBetween = Expect<Extends<WBetween[1], null>>
 type WBetweenBad = ParseWhereExpression<ParseSqlTokens<`users.name between 1 and 2`>, DbUsers, UsersScope>
-type _wBetweenBad = Expect<Extends<WBetweenBad[1], SqlParserError<"Incompatible types in BETWEEN">>>
+type _wBetweenBad = Expect<Matches<WBetweenBad[1], DbtyperError<2503, "Incompatible types in BETWEEN">>>
 
 /** `BETWEEN`: numeric column vs string bounds (same as SQL type mismatch at resolve). */
 type DbUsersWithAmount = {
@@ -189,11 +189,11 @@ type WBetweenNumColStringBounds = ParseWhereExpression<
 	UsersScopeWithAmount
 >
 type _wBetweenNumColStringBounds = Expect<
-	Extends<WBetweenNumColStringBounds[1], SqlParserError<"Incompatible types in BETWEEN">>
+	Matches<WBetweenNumColStringBounds[1], DbtyperError<2503, "Incompatible types in BETWEEN">>
 >
 
 type WBetweenNullBound = ParseWhereExpression<ParseSqlTokens<`inner_t.a between null and 1`>, DbUsers, JoinedUsersInner>
-type _wBetweenNullBound = Expect<Extends<WBetweenNullBound[1], SqlParserError<"NULL not allowed in BETWEEN">>>
+type _wBetweenNullBound = Expect<Matches<WBetweenNullBound[1], DbtyperError<2702, "NULL not allowed in BETWEEN">>>
 
 /** `LIKE` / `ILIKE`: both sides text. */
 type WLike = ParseWhereExpression<ParseSqlTokens<`users.name like '%x%'`>, DbUsers, UsersScope>
@@ -203,16 +203,16 @@ type _wILike = Expect<Extends<WILike[1], null>>
 
 type JoinedUsersInner = MergeScope<UsersScope, InnerScope>
 type WLikeNum = ParseWhereExpression<ParseSqlTokens<`inner_t.a like '1'`>, DbUsers, JoinedUsersInner>
-type _wLikeNum = Expect<Extends<WLikeNum[1], SqlParserError<"LIKE left operand must be text">>>
+type _wLikeNum = Expect<Matches<WLikeNum[1], DbtyperError<2803, "LIKE left operand must be text">>>
 
 type WLikePatternNonText = ParseWhereExpression<ParseSqlTokens<`users.name like 1`>, DbUsers, UsersScope>
-type _wLikePatternNonText = Expect<Extends<WLikePatternNonText[1], SqlParserError<"LIKE pattern must be text">>>
+type _wLikePatternNonText = Expect<Matches<WLikePatternNonText[1], DbtyperError<2804, "LIKE pattern must be text">>>
 
 type WLikeNullPattern = ParseWhereExpression<ParseSqlTokens<`users.name like null`>, DbUsers, UsersScope>
-type _wLikeNullPattern = Expect<Extends<WLikeNullPattern[1], SqlParserError<"NULL not allowed in LIKE">>>
+type _wLikeNullPattern = Expect<Matches<WLikeNullPattern[1], DbtyperError<2703, "NULL not allowed in LIKE">>>
 
 type WILikePatternNonText = ParseWhereExpression<ParseSqlTokens<`users.name ilike 1`>, DbUsers, UsersScope>
-type _wILikePatternNonText = Expect<Extends<WILikePatternNonText[1], SqlParserError<"LIKE pattern must be text">>>
+type _wILikePatternNonText = Expect<Matches<WILikePatternNonText[1], DbtyperError<2804, "LIKE pattern must be text">>>
 
 /** Searched `CASE WHEN … THEN … [ELSE …] END`. */
 type WCase = ParseWhereExpression<
@@ -226,9 +226,9 @@ type WCaseWhenNotBool = ParseWhereExpression<
 	DbUsers,
 	UsersScope
 >
-type _wCaseWhenNotBool = Expect<Extends<WCaseWhenNotBool[1], SqlParserError<"CASE WHEN must be boolean">>>
+type _wCaseWhenNotBool = Expect<Matches<WCaseWhenNotBool[1], DbtyperError<2601, "CASE WHEN must be boolean">>>
 type WCaseIncompat = ParseWhereExpression<ParseSqlTokens<`case when true then 1 else 'x' end`>, DbUsers, UsersScope>
-type _wCaseIncompat = Expect<Extends<WCaseIncompat[1], SqlParserError<"Incompatible types in CASE">>>
+type _wCaseIncompat = Expect<Matches<WCaseIncompat[1], DbtyperError<2502, "Incompatible types in CASE">>>
 
 /** Simple `CASE expr WHEN value …` — `WHEN` values use `=` comparison-class rules against `expr`. */
 type WCaseSimple = ParseWhereExpression<
@@ -243,7 +243,7 @@ type WCaseSimpleWhenMismatch = ParseWhereExpression<
 	UsersScope
 >
 type _wCaseSimpleWhenMismatch = Expect<
-	Extends<WCaseSimpleWhenMismatch[1], SqlParserError<"Incompatible types in comparison">>
+	Matches<WCaseSimpleWhenMismatch[1], DbtyperError<2500, "Incompatible types in comparison">>
 >
 /** No `ELSE`: result type is `boolean | null`, which is not a valid bare `WHERE` root. */
 type WCaseSimpleNoElse = ParseWhereExpression<
@@ -255,11 +255,11 @@ type _wCaseSimpleNoElse = Expect<Extends<WCaseSimpleNoElse[1], null>>
 
 /** Arithmetic (`ParseAddValue` chain): both operands must be numbers; NULL rejected. */
 type WArithNumPlusString = ParseWhereExpression<ParseSqlTokens<`inner_t.a + 'x'`>, DbUsers, JoinedUsersInner>
-type _wArithNumPlusString = Expect<Extends<WArithNumPlusString[1], SqlParserError<"Incompatible types in arithmetic">>>
+type _wArithNumPlusString = Expect<Matches<WArithNumPlusString[1], DbtyperError<2501, "Incompatible types in arithmetic">>>
 type WArithStringPlusNum = ParseWhereExpression<ParseSqlTokens<`'x' + inner_t.a`>, DbUsers, JoinedUsersInner>
-type _wArithStringPlusNum = Expect<Extends<WArithStringPlusNum[1], SqlParserError<"Incompatible types in arithmetic">>>
+type _wArithStringPlusNum = Expect<Matches<WArithStringPlusNum[1], DbtyperError<2501, "Incompatible types in arithmetic">>>
 type WArithNull = ParseWhereExpression<ParseSqlTokens<`inner_t.a + null`>, DbUsers, JoinedUsersInner>
-type _wArithNull = Expect<Extends<WArithNull[1], SqlParserError<"NULL not allowed in arithmetic">>>
+type _wArithNull = Expect<Matches<WArithNull[1], DbtyperError<2701, "NULL not allowed in arithmetic">>>
 
 type WCastTextToInteger = ParseWhereExpression<ParseSqlTokens<`cast(users.name as integer) = 1`>, DbUsers, UsersScope>
 type _wCastTextToInteger = Expect<Extends<WCastTextToInteger[1], null>>

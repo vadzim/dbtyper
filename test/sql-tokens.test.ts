@@ -1,5 +1,5 @@
 import type { ParseSqlTokens, PeekToken, TokenKey, TokenNumber, TokenString } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { TestTokensL } from "./test-utils/lexer-test-utils.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
@@ -36,19 +36,19 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 {
 	// numbers
 	type test = PeekToken<ParseSqlTokens<`123.d,`>>
-	type _expect = Expect<Matches<test, SqlParserError<"Invalid number">>>
+	type _expect = Expect<Matches<test, DbtyperError<2116, "Invalid number">>>
 }
 
 {
 	// numbers
 	type test = PeekToken<ParseSqlTokens<`123.e,`>>
-	type _expect = Expect<Matches<test, SqlParserError<"Invalid number">>>
+	type _expect = Expect<Matches<test, DbtyperError<2116, "Invalid number">>>
 }
 
 {
 	// numbers
 	type test = PeekToken<ParseSqlTokens<`123.e+d,`>>
-	type _expect = Expect<Matches<test, SqlParserError<"Invalid number">>>
+	type _expect = Expect<Matches<test, DbtyperError<2116, "Invalid number">>>
 }
 
 {
@@ -72,7 +72,7 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 {
 	// numbers
 	type test = PeekToken<ParseSqlTokens<`123x,`>>
-	type _expect = Expect<Matches<test, SqlParserError<"Invalid number">>>
+	type _expect = Expect<Matches<test, DbtyperError<2116, "Invalid number">>>
 }
 
 {
