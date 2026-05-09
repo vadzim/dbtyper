@@ -1041,11 +1041,11 @@ export const errors = {
 	},
 	3208: {
 		id: "COLUMN_ALREADY_EXISTS",
-		msg: ["Column already exists"],
+		msg: ["Column ", " already exists"],
 	},
 	3209: {
 		id: "COLUMN_DOES_NOT_EXIST",
-		msg: ["Column does not exist"],
+		msg: ["Column ", " does not exist"],
 	},
 	3210: {
 		id: "DUPLICATE_WITH_CLAUSE_NAME",
