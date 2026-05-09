@@ -1327,37 +1327,35 @@ export type ResolveExpressionAST<
  * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
  */
 type MaximalIdentChain<Tokens extends TokensList> =
-	PeekToken<Tokens> extends DbtyperError
-		? never
-		: PeekToken<Tokens> extends TokenIdent<infer A extends string>
-			? SkipToken<Tokens> extends infer R1 extends TokensList
-				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends TokensList
-						? PeekToken<R2> extends TokenKey<"*">
+	PeekToken<Tokens> extends TokenIdent<infer A extends string>
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? PeekToken<R1> extends TokenKey<".">
+				? SkipToken<R1> extends infer R2 extends TokensList
+					? PeekToken<R2> extends TokenKey<"*">
+						? SkipToken<R2> extends infer R3 extends TokensList
+							? [R3, readonly ["__ats__", A]]
+							: never
+						: PeekToken<R2> extends TokenIdent<infer B extends string>
 							? SkipToken<R2> extends infer R3 extends TokensList
-								? [R3, readonly ["__ats__", A]]
-								: never
-							: PeekToken<R2> extends TokenIdent<infer B extends string>
-								? SkipToken<R2> extends infer R3 extends TokensList
-									? PeekToken<R3> extends TokenKey<".">
-										? SkipToken<R3> extends infer R4 extends TokensList
-											? PeekToken<R4> extends TokenKey<"*">
+								? PeekToken<R3> extends TokenKey<".">
+									? SkipToken<R3> extends infer R4 extends TokensList
+										? PeekToken<R4> extends TokenKey<"*">
+											? SkipToken<R4> extends infer R5 extends TokensList
+												? [R5, readonly ["__qts__", A, B]]
+												: never
+											: PeekToken<R4> extends TokenIdent<infer C extends string>
 												? SkipToken<R4> extends infer R5 extends TokensList
-													? [R5, readonly ["__qts__", A, B]]
+													? [R5, readonly [A, B, C]]
 													: never
-												: PeekToken<R4> extends TokenIdent<infer C extends string>
-													? SkipToken<R4> extends infer R5 extends TokensList
-														? [R5, readonly [A, B, C]]
-														: never
-													: never
-											: never
-										: [R3, readonly [A, B]]
-									: never
+												: never
+										: never
+									: [R3, readonly [A, B]]
 								: never
-						: never
-					: [R1, readonly [A]]
-				: never
+							: never
+					: never
+				: [R1, readonly [A]]
 			: never
+		: never
 
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? Params[Name]
@@ -1967,45 +1965,43 @@ type ResolveAnyAllSomeOp<
 				: FormatError<"INVALID_ANY_ALL_SOME_LEFT_OPERAND", []>
 		: never
 
-type MergeBoolNot<V> = V extends DbtyperError
-	? V
-	: V extends SqlTypeShape
-		? V["type"] extends "null"
-			? FormatError<"NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL", []>
-			: IsSqlBooleanType<V> extends true
-				? SqlBoolean
-				: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
-		: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
+type MergeBoolNot<V> =
+	V extends DbtyperError<any, any>
+		? V
+		: V extends SqlTypeShape
+			? V["type"] extends "null"
+				? FormatError<"NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL", []>
+				: IsSqlBooleanType<V> extends true
+					? SqlBoolean
+					: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
+			: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
 
-type MergeBoolBinary<
-	L,
-	R,
-	ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN" | "OR_OPERANDS_MUST_BE_BOOLEAN",
-> = L extends DbtyperError
-	? L
-	: R extends DbtyperError
-		? R
-		: L extends SqlTypeShape
-			? R extends SqlTypeShape
-				? L["type"] extends "null"
-					? FormatError<"NULL_NOT_VALID_BOOLEAN_OPERAND", []>
-					: R["type"] extends "null"
+type MergeBoolBinary<L, R, ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN" | "OR_OPERANDS_MUST_BE_BOOLEAN"> =
+	L extends DbtyperError<any, any>
+		? L
+		: R extends DbtyperError<any, any>
+			? R
+			: L extends SqlTypeShape
+				? R extends SqlTypeShape
+					? L["type"] extends "null"
 						? FormatError<"NULL_NOT_VALID_BOOLEAN_OPERAND", []>
-						: IsSqlBooleanType<L> extends true
-							? IsSqlBooleanType<R> extends true
-								? SqlBoolean
+						: R["type"] extends "null"
+							? FormatError<"NULL_NOT_VALID_BOOLEAN_OPERAND", []>
+							: IsSqlBooleanType<L> extends true
+								? IsSqlBooleanType<R> extends true
+									? SqlBoolean
+									: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
+										? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
+										: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
 								: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
 									? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
 									: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
-							: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
-								? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
-								: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+					: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
+						? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
+						: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
 				: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
 					? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
 					: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
-			: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
-				? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
-				: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
 
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
 type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
@@ -2190,53 +2186,51 @@ type TryParenOperandScalarUntyped<Tokens extends TokensList, Env extends ExprPar
 		: never
 
 type TryOperandScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
-	PeekToken<Tokens> extends DbtyperError
-		? SkipFailedExpression<Tokens, PeekToken<Tokens>>
-		: PeekToken<Tokens> extends TokenKey<"cast">
-			? ParseCastKeywordOperand<Tokens, Env>
-			: PeekToken<Tokens> extends TokenKey<"case">
-				? SkipToken<Tokens> extends infer Rcase extends TokensList
-					? ParseCaseAfterCaseKw<Rcase, Env>
-					: never
-				: PeekToken<Tokens> extends TokenKey<"array">
-					? SkipToken<Tokens> extends infer RarrKw extends TokensList
-						? ParseArrayCtorAfterArrayKw<RarrKw, Env> extends [infer Rarr extends TokensList, infer ArrOut]
-							? ArrOut extends DbtyperError
-								? SkipFailedExpression<Rarr, ArrOut>
-								: ArrOut extends ScalarExprAst
-									? [Rarr, ArrOut]
-									: never
-							: never
-						: never
-					: PeekToken<Tokens> extends TokenKey<"(">
-						? TryParenOperandScalarUntyped<Tokens, Env>
-						: PeekToken<Tokens> extends TokenKey<"true">
-							? SkipToken<Tokens> extends infer Rt extends TokensList
-								? [Rt, { kind: "true" }]
+	PeekToken<Tokens> extends TokenKey<"cast">
+		? ParseCastKeywordOperand<Tokens, Env>
+		: PeekToken<Tokens> extends TokenKey<"case">
+			? SkipToken<Tokens> extends infer Rcase extends TokensList
+				? ParseCaseAfterCaseKw<Rcase, Env>
+				: never
+			: PeekToken<Tokens> extends TokenKey<"array">
+				? SkipToken<Tokens> extends infer RarrKw extends TokensList
+					? ParseArrayCtorAfterArrayKw<RarrKw, Env> extends [infer Rarr extends TokensList, infer ArrOut]
+						? ArrOut extends DbtyperError<any, any>
+							? SkipFailedExpression<Rarr, ArrOut>
+							: ArrOut extends ScalarExprAst
+								? [Rarr, ArrOut]
 								: never
-							: PeekToken<Tokens> extends TokenKey<"false">
-								? SkipToken<Tokens> extends infer Rf extends TokensList
-									? [Rf, { kind: "false" }]
+						: never
+					: never
+				: PeekToken<Tokens> extends TokenKey<"(">
+					? TryParenOperandScalarUntyped<Tokens, Env>
+					: PeekToken<Tokens> extends TokenKey<"true">
+						? SkipToken<Tokens> extends infer Rt extends TokensList
+							? [Rt, { kind: "true" }]
+							: never
+						: PeekToken<Tokens> extends TokenKey<"false">
+							? SkipToken<Tokens> extends infer Rf extends TokensList
+								? [Rf, { kind: "false" }]
+								: never
+							: PeekToken<Tokens> extends TokenKey<"null">
+								? SkipToken<Tokens> extends infer Rn extends TokensList
+									? [Rn, { kind: "sql_null" }]
 									: never
-								: PeekToken<Tokens> extends TokenKey<"null">
-									? SkipToken<Tokens> extends infer Rn extends TokensList
-										? [Rn, { kind: "sql_null" }]
+								: PeekToken<Tokens> extends TokenString<infer Str>
+									? SkipToken<Tokens> extends infer Rs extends TokensList
+										? [Rs, { kind: "string"; value: Str }]
 										: never
-									: PeekToken<Tokens> extends TokenString<infer Str>
-										? SkipToken<Tokens> extends infer Rs extends TokensList
-											? [Rs, { kind: "string"; value: Str }]
+									: PeekToken<Tokens> extends TokenNumber<infer Raw>
+										? SkipToken<Tokens> extends infer Rnum extends TokensList
+											? [Rnum, { kind: "number"; raw: Raw }]
 											: never
-										: PeekToken<Tokens> extends TokenNumber<infer Raw>
-											? SkipToken<Tokens> extends infer Rnum extends TokensList
-												? [Rnum, { kind: "number"; raw: Raw }]
+										: PeekToken<Tokens> extends TokenParam<infer P extends string>
+											? SkipToken<Tokens> extends infer Rp extends TokensList
+												? [Rp, { kind: "param"; name: P }]
 												: never
-											: PeekToken<Tokens> extends TokenParam<infer P extends string>
-												? SkipToken<Tokens> extends infer Rp extends TokensList
-													? [Rp, { kind: "param"; name: P }]
-													: never
-												: SkipToken<Tokens> extends infer Rbad extends TokensList
-													? SkipFailedExpression<Rbad, FormatError<"UNEXPECTED_TOKEN", []>>
-													: never
+											: SkipToken<Tokens> extends infer Rbad extends TokensList
+												? SkipFailedExpression<Rbad, FormatError<"UNEXPECTED_TOKEN", []>>
+												: never
 
 type ParseUnaryScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"-">

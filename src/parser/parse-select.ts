@@ -1263,33 +1263,31 @@ type ParseOneRawSelectItem<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends DbtyperError<any, any>
-		? [Tokens, PeekToken<Tokens>]
-		: PeekToken<Tokens> extends TokenParam<infer P extends string>
-			? SkipToken<Tokens> extends infer R1 extends TokensList
-				? ParseOptionalAs<R1> extends [infer M2 extends TokensList, infer As extends string | undefined]
-					? [M2, RawSelectParamItem<P, As>]
+	PeekToken<Tokens> extends TokenParam<infer P extends string>
+		? SkipToken<Tokens> extends infer R1 extends TokensList
+			? ParseOptionalAs<R1> extends [infer M2 extends TokensList, infer As extends string | undefined]
+				? [M2, RawSelectParamItem<P, As>]
+				: never
+			: never
+		: PeekToken<Tokens> extends TokenIdent<string>
+			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
+			: PeekToken<Tokens> extends infer Head
+				? Head extends
+						| TokenKey<"(">
+						| TokenNumber<string>
+						| TokenString<string>
+						| TokenKey<"true">
+						| TokenKey<"false">
+						| TokenKey<"null">
+						| TokenKey<"-">
+						| TokenKey<"not">
+						| TokenKey<"cast">
+						| TokenKey<"case">
+						| TokenKey<"exists">
+						| TokenKey<"array">
+					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 					: never
 				: never
-			: PeekToken<Tokens> extends TokenIdent<string>
-				? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
-				: PeekToken<Tokens> extends infer Head
-					? Head extends
-							| TokenKey<"(">
-							| TokenNumber<string>
-							| TokenString<string>
-							| TokenKey<"true">
-							| TokenKey<"false">
-							| TokenKey<"null">
-							| TokenKey<"-">
-							| TokenKey<"not">
-							| TokenKey<"cast">
-							| TokenKey<"case">
-							| TokenKey<"exists">
-							| TokenKey<"array">
-						? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
-						: never
-					: never
 
 type ParseOptionalAs<Tokens extends TokensList> =
 	PeekToken<Tokens> extends TokenKey<"as">
