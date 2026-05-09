@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape, JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
+import type { _SqlParserError, _DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TBigint, TBoolean, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"

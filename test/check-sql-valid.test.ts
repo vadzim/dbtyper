@@ -38,7 +38,7 @@ type _chkGood = Expect<Matches<ChkGood, `select users.id from users;`>>
 
 
 
-type DbDefaultPublic = {
+type _DbDefaultPublic = {
 	defaultSchema: "public"
 	schemas: {
 		public: JsqlSchemaShape & {

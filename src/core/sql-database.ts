@@ -219,7 +219,7 @@ type CheckSqlValidForStream<
 	Params extends ExpressionParamsShape,
 > = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer Msg>]
 	? `Error in query: ${Msg}`
-	: [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer Code, infer Msg>]
+	: [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer Msg>]
 		? `Error in query: ${Msg}`
 		: Stmt
 
@@ -227,7 +227,7 @@ type CheckSqlValidForStream<
 type CheckSqlValidForQuery<Db extends JsqlDatabaseShape, Stmt extends string, Params extends ExpressionParamsShape> =
 	ApplyStatements<Db, Stmt, Params>[1] extends SqlParserError<infer Msg>
 		? `Error in query: ${Msg}`
-		: ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer Code, infer Msg>
+		: ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer _Code, infer Msg>
 			? `Error in query: ${Msg}`
 			: Stmt
 
@@ -247,7 +247,7 @@ type QueryReturnType<
 type CheckSqlMigrationSource<Db extends JsqlDatabaseShape, Source extends string> =
 	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M>
 		? M
-		: ApplyStatements<Db, Source>[1] extends DbtyperError<infer Code, infer M>
+		: ApplyStatements<Db, Source>[1] extends DbtyperError<infer _Code, infer M>
 			? M
 			: Source
 

@@ -1,8 +1,8 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { DbtyperError } from "../src/sql-parser-error.ts"
+import type { _DbtyperError } from "../src/sql-parser-error.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends, _Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid } from "./test-utils/sql-type-helpers.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { HasAmbiguousUnqualifiedColumn } from "../src/parser/scope-unqualified-helpers.ts"
@@ -87,7 +87,7 @@ type _wBetween = Expect<Extends<WBetween[1], null>>
 
 
 /** `BETWEEN`: numeric column vs string bounds (same as SQL type mismatch at resolve). */
-type DbUsersWithAmount = {
+type _DbUsersWithAmount = {
 	defaultSchema: "public"
 	schemas: {
 		public: {
@@ -100,7 +100,7 @@ type DbUsersWithAmount = {
 		}
 	}
 }
-type UsersScopeWithAmount = Record<
+type _UsersScopeWithAmount = Record<
 	"users",
 	{
 		schema: "public"
@@ -118,7 +118,7 @@ type _wLike = Expect<Extends<WLike[1], null>>
 type WILike = ParseWhereExpression<ParseSqlTokens<`users.name ilike '%X%'`>, DbUsers, UsersScope>
 type _wILike = Expect<Extends<WILike[1], null>>
 
-type JoinedUsersInner = MergeScope<UsersScope, InnerScope>
+type _JoinedUsersInner = MergeScope<UsersScope, InnerScope>
 
 
 

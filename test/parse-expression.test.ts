@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
+import type { _SqlParserError, _DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type {
@@ -10,7 +10,7 @@ import type {
 	ResolveExpressionAST,
 	SqlCastTypeNorm,
 } from "../src/parser/parse-expression.ts"
-import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { _ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { TBoolean, TInteger, TText, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { SqlTypeShape } from "../src/core/sql-type-shape.ts"

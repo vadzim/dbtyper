@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
+import type { _SqlParserError, _DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { TInteger, TText, TNumeric, TBigint } from "./test-utils/sql-type-helpers.ts"
 
@@ -34,7 +34,7 @@ type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region:
 
 
 
-type TGroupProjAggOk = ParseSqlStatement<
+type _TGroupProjAggOk = ParseSqlStatement<
 	ParseSqlTokens<`select region, sum(amount) as s from sales group by region;`>,
 	DbGroup
 >
