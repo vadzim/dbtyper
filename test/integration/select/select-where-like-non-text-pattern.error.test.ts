@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2804, "LIKE pattern must be text">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2806, "LIKE pattern must be text">>
 >

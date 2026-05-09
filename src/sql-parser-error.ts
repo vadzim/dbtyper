@@ -992,10 +992,18 @@ export const errors = {
 		msg: ["LIKE left operand must be text"],
 	},
 	2804: {
+		id: "CANNOT_CONCATENATE_TEXT_WITH_TYPE",
+		msg: ["Cannot concatenate text with ", ""],
+	},
+	2805: {
+		id: "CANNOT_CONCATENATE_TYPE_WITH_TEXT",
+		msg: ["Cannot concatenate ", " with text"],
+	},
+	2806: {
 		id: "LIKE_PATTERN_MUST_BE_TEXT",
 		msg: ["LIKE pattern must be text"],
 	},
-	2805: {
+	2807: {
 		id: "FUNCTION_EXPECTS_TEXT_ARGUMENT",
 		msg: ["Function expects text argument"],
 	},
@@ -1247,6 +1255,10 @@ export const errors = {
 	3618: {
 		id: "STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT",
 		msg: ["`*` is only allowed as COUNT(*) argument"],
+	},
+	3619: {
+		id: "UNKNOWN_FUNCTION",
+		msg: ["Unknown function: ", ""],
 	},
 
 	// DDL-Specific Errors

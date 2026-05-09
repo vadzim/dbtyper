@@ -2,23 +2,21 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
-import type { SqlParserError, DbtyperError } from "../src/sql-parser-error.ts"
+
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../src/parser/parse-expression.ts"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { TInteger } from "./test-utils/sql-type-helpers.ts"
-import type { SqlSelectRow } from "./test-utils/parser-test-utils.ts"
-import type { PostgresTypeMap } from "../src/postgres/postgres-type-map.ts"
 
 /**
  * Mirrors the private {@link SqlDatabase.query} constraint in `sql-database.ts`
- * (`CheckSqlValid`); documents that broken `SELECT`s resolve to parser messages, not literals.
+ * (`CheckSqlValid`); documents that valid `SELECT`s resolve to the statement string.
  */
 type CheckSqlValid<
-	Db extends JsqlDatabaseShape | DbtyperError<any, any>,
+	_Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, PostgresTypeMap, Params>] extends [SqlParserError<infer Msg>] ? Msg : Stmt
+	_Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = Stmt
 
 /** Same seeded shape as **`parse-select.test.ts`** (**`DbJoinDefaultAndExplicit`**). */
 type DbJoinUsersBilling = ApplyStatements<

@@ -853,9 +853,9 @@ type ResolveFunctionCall<
 																						}
 																					: SqlUnknown
 																			: SqlUnknown
-																		: SqlParserError<`Unknown function: ${Name}`>
-																	: SqlParserError<`Unknown function: ${Name}`>
-																: SqlParserError<`Unknown function: ${Name}`>
+																		: FormatError<"UNKNOWN_FUNCTION", [Name]>
+																	: FormatError<"UNKNOWN_FUNCTION", [Name]>
+																: FormatError<"UNKNOWN_FUNCTION", [Name]>
 					: never
 			: never
 
@@ -924,7 +924,7 @@ type ResolveCustomOp<
 														| "uuid"
 														| "boolean"
 													? SqlText
-													: SqlParserError<`Cannot concatenate text with ${Rv["type"]}`>
+													: FormatError<"CANNOT_CONCATENATE_TEXT_WITH_TYPE", [Rv["type"]]>
 												: Rv["type"] extends "text"
 													? Lv["type"] extends
 															| "integer"
@@ -933,7 +933,7 @@ type ResolveCustomOp<
 															| "uuid"
 															| "boolean"
 														? SqlText
-														: SqlParserError<`Cannot concatenate ${Lv["type"]} with text`>
+														: FormatError<"CANNOT_CONCATENATE_TYPE_WITH_TEXT", [Lv["type"]]>
 													: FormatError<"CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND", []>
 									: SqlUnknown
 							: FormatError<"INVALID_CUSTOM_OPERATOR_OPERAND", []>

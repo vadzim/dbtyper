@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1105, "Expected semicolon after SELECT">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<4401, "Expected `(` after IN">>
 >

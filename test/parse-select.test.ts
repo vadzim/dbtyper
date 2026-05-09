@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape, JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError as _SqlParserError, DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
+
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TBigint, TBoolean, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -174,23 +174,6 @@ type TDerivedLeftOuterJoinRhs = ParseSqlStatement<
 >
 type _derivedLeftOuterJoinRhs = Expect<Extends<TDerivedLeftOuterJoinRhs[2], { kind: "select"; columns: { id: TUuid } }>>
 
-// NOTE: SELECT without FROM is now supported, so this test is no longer valid
-// /** Inner closes with `;` before `)` → `ReadClosingParenAndAliasDerived` sees `;`. */
-// type TDerivedUnclosedParen = ParseSqlStatement<
-// 	ParseSqlTokens<`select 1 from (select users.id from users as x;`>,
-// 	DbJoinDefaultAndExplicit
-// >
-// type _derivedUnclosedParen = Expect<
-// 	Extends<TDerivedUnclosedParen[2], SqlParserError<"Expected `)` after derived table">>
-// >
-
-// NOTE: SELECT without FROM is now supported, so this test is no longer valid
-// type TDerivedNoInnerFrom = ParseSqlStatement<
-// 	ParseSqlTokens<`select 1 from (select users.id) as x;`>,
-// 	DbJoinDefaultAndExplicit
-// >
-// type _derivedNoInnerFrom = Expect<Extends<TDerivedNoInnerFrom[2], { kind: "select"; columns: { id: TUuid } }>>
-
 type DerivedParamsRid = { rid: TUuid }
 type TDerivedInnerParam = ParseSqlStatement<
 	ParseSqlTokens<`select s.id from (select :rid as id from users) as s;`>,
@@ -290,10 +273,6 @@ type _selectParamAs = Expect<
 		}
 	>
 >
-
-// NOTE: SELECT without FROM is now supported, so this test is no longer valid
-// type TMissingFrom = ParseSqlStatement<ParseSqlTokens<`select users.id , users.name`>, DbJoinDefaultAndExplicit>
-// type _missingFrom = Expect<Extends<TMissingFrom[2], SqlParserError<"Unknown column">>>
 
 /** `name` exists only on `users`; unqualified is valid with a join (Postgres-like uniqueness). */
 type TUnqualNameUnambiguous = ParseSqlStatement<

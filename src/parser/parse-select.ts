@@ -10,7 +10,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { SqlParserError, FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -35,7 +35,7 @@ type TokenKeyOn = TokenKey<"on">
  * Third slot of `[Tokens, Mid, Third]` is not correlated with `Mid` under `infer`; it may union with
  * `SqlParserError` from other branches. Strip non-scope constituents before `extends ScopeMap`.
  */
-type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | SqlParserError<string>>
+type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | DbtyperError<any, any>>
 
 type RawSelectItem =
 	| { kind: "star" }
@@ -178,30 +178,30 @@ type ParseSelectAfterDistinct<
 										? [JoinScopeOnly<Tail>] extends [never]
 											? never
 											: JoinScopeOnly<Tail> extends ScopeMap
-												? ResolveSelectList<
-														Items,
-														Db,
-														JoinScopeOnly<Tail>,
-														Params
-													> extends infer Res
-													? Res extends SqlParserError<infer _Msg extends string>
-														? [R, Db, Res]
-														: FinishSelectStatement<
-																R,
-																Db,
-																Res,
-																JoinScopeOnly<Tail>,
-																Params,
-																Items
-															>
-													: never
+							? ResolveSelectList<
+													Items,
+													Db,
+													JoinScopeOnly<Tail>,
+													Params
+												> extends infer Res
+												? Res extends DbtyperError<any, any>
+													? [R, Db, Res]
+													: FinishSelectStatement<
+															R,
+															Db,
+															Res,
+															JoinScopeOnly<Tail>,
+															Params,
+															Items
+														>
+												: never
 												: never
 										: never
 								: never
 							: never
 						: PeekToken<AfterList> extends TokenKey<";"> | TokenKey<")"> | TokenEot
 							? ResolveSelectList<Items, Db, {}, Params> extends infer Res
-								? Res extends SqlParserError<infer _Msg extends string>
+								? Res extends DbtyperError<any, any>
 									? [AfterList, Db, Res]
 									: FinishSelectStatement<AfterList, Db, Res, {}, Params, Items>
 								: never
@@ -1221,7 +1221,7 @@ type ParseOneRawSelectExprItem<
 		infer RExpr extends TokensList,
 		infer Out,
 	]
-		? Out extends SqlParserError<infer _Msg extends string>
+		? Out extends DbtyperError<any, any>
 			? [RExpr, Out]
 			: Out extends ScalarExprAst
 				? ParseOptionalAs<RExpr> extends [infer M2 extends TokensList, infer As extends string | undefined]
