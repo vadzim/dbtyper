@@ -1650,7 +1650,7 @@ type Errors = {
 		: never
 }
 
-type ErrorArgs<ID extends ErrorIds> = Tuple<string | number, Dec[Errors[ID]["msg"]["length"]]>
+type ErrorArgs<ID extends ErrorIds> = Tuple<string | number, ErrorArgsNumber<ID>>
 
 type ErrorArgsNumber<ID extends ErrorIds> = Dec[Errors[ID]["msg"]["length"]]
 
