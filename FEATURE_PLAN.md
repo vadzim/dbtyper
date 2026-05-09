@@ -65,16 +65,23 @@ Replace all `SqlParserError<"generic message">` usages with `FormatError<"ERROR_
 ## Quality Checklist
 
 - ✅ All migrated files pass typecheck
-- ✅ Main codebase compiles successfully
+- ✅ Main codebase compiles successfully (0 errors)
 - ✅ DELETE tests fully passing with informative errors
 - ✅ Infrastructure handles both error types during transition
 - ✅ No breaking changes to existing functionality
-- ⏳ INSERT/UPDATE tests need migration (blocked on parse-insert/update)
-- ⏳ Expression tests need migration (blocked on parse-expression)
+- ✅ INSERT/UPDATE integration tests migrated to DbtyperError format
+- ✅ SELECT integration tests migrated to DbtyperError format
+- ✅ Stream validation tests migrated to DbtyperError format
+- ⏳ Unit tests: 131 type-level test errors remaining (error format mismatches)
 
 ## Session Notes
 
 - Session 1: Migrated 16 files, 137 usages (30.3%)
-- Estimated 2-3 more sessions needed for completion
+- Session 2: Completed test migration
+  - Main codebase: 0 typecheck errors ✅
+  - Integration tests: All migrated to DbtyperError format (62 files)
+  - Unit tests: Partially migrated, 131 type-level assertion errors remain
+  - These are tests checking exact error message formats
+  - Need investigation to match actual FormatError output
 - All commits have clear, descriptive messages
 - Branch: feature/migrate-to-format-error
