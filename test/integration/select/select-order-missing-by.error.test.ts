@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: Missing BY after ORDER
 const query = `select users.name from users order users.name;` as const
 
+// @ts-expect-error
 await db.query(query)
 
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]

@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: ORDER BY unknown column
 const query = `select * from users order by invalid_column;` as const
 
+// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

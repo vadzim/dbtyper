@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: WHERE clause type mismatch
 const query = `select * from users where age = 'not a number';` as const
 
+// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

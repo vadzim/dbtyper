@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: CASE WHEN with non-boolean condition
 const query = `select users.id from users where case when 1 then true else false end;` as const
 
+// @ts-expect-error
 await db.query(query)
 
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]

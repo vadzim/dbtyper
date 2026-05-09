@@ -28,6 +28,7 @@ const query = `
 		where id = 6;
 	` as const
 
+// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

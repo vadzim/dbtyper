@@ -24,6 +24,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: still must provide NOT NULL columns without DEFAULT
 const query = `insert into users (age) values (20) returning *;` as const
 
+// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

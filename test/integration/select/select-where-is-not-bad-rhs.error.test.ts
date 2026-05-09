@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: IS NOT with non-NULL operand
 const query = `select users.id from users where users.name is not true;` as const
 
+// @ts-expect-error
 await db.query(query)
 
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]

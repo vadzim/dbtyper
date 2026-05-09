@@ -15,6 +15,7 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: SELECT non-grouped column without aggregate
 const query = `select user_id, title from posts group by user_id;` as const
 
+// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking
