@@ -2,10 +2,10 @@ import type { Dec, Tuple } from "./core/type-utils.ts"
 
 type ErrorIds = keyof Errors
 
-export type FormatError<
-	ID extends ErrorIds,
-	Args extends Tuple<string | number, Dec[Errors[ID]["msg"]["length"]]>,
-> = Errors[ID] extends { code: infer Code extends keyof ErrorsConst; msg: infer Msg }
+export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Errors[ID] extends {
+	code: infer Code extends keyof ErrorsConst
+	msg: infer Msg
+}
 	? Msg extends readonly string[]
 		? DbtyperError<Code, JoinWithArgs<Msg, Args>>
 		: never
@@ -280,6 +280,26 @@ export const errors = {
 	1219: {
 		id: "EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE",
 		msg: ["Expected `=` after column in ON CONFLICT UPDATE"],
+	},
+	1220: {
+		id: "EXPECTED_TABLE_NAME_IN_INSERT_INTO",
+		msg: ["Expected table name in INSERT INTO"],
+	},
+	1221: {
+		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO",
+		msg: ["Expected table name after `.` in INSERT INTO"],
+	},
+	1222: {
+		id: "EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
+		msg: ["Expected `,`, WHERE, or end after ON CONFLICT SET"],
+	},
+	1223: {
+		id: "INVALID_VALUE_EXPRESSION_IN_INSERT",
+		msg: ["Invalid value expression in INSERT"],
+	},
+	1224: {
+		id: "INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
+		msg: ["Invalid value expression in ON CONFLICT UPDATE"],
 	},
 
 	// UPDATE Statement
@@ -747,7 +767,7 @@ export const errors = {
 	},
 	2203: {
 		id: "UNKNOWN_TABLE_INSERT_INTO",
-		msg: ["Unknown table in INSERT INTO"],
+		msg: ["Unknown table ", " in INSERT INTO"],
 	},
 	2204: {
 		id: "UNKNOWN_TABLE_DELETE_FROM",
@@ -779,7 +799,7 @@ export const errors = {
 	},
 	2211: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
-		msg: ["Unknown schema or table in INSERT INTO"],
+		msg: ["Unknown schema ", " or table ", " in INSERT INTO"],
 	},
 	2212: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM",
@@ -817,15 +837,15 @@ export const errors = {
 	},
 	2303: {
 		id: "UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
-		msg: ["Unknown column in INSERT column list"],
+		msg: ["Unknown column ", " in INSERT column list"],
 	},
 	2304: {
 		id: "UNKNOWN_COLUMN_IN_ON_CONFLICT",
-		msg: ["Unknown column in ON CONFLICT"],
+		msg: ["Unknown column ", " in ON CONFLICT"],
 	},
 	2305: {
 		id: "UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET",
-		msg: ["Unknown column in ON CONFLICT DO UPDATE SET"],
+		msg: ["Unknown column ", " in ON CONFLICT DO UPDATE SET"],
 	},
 	2306: {
 		id: "UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN",
@@ -890,7 +910,7 @@ export const errors = {
 	},
 	2508: {
 		id: "INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN",
-		msg: ["INSERT...SELECT type mismatch for column"],
+		msg: ["INSERT...SELECT type mismatch for column ", ""],
 	},
 
 	// Boolean Type Errors
@@ -1059,7 +1079,7 @@ export const errors = {
 	// Constraint Violations
 	3300: {
 		id: "MISSING_NOT_NULL_COLUMN_IN_INSERT",
-		msg: ["Missing NOT NULL column in INSERT"],
+		msg: ["Missing NOT NULL column ", " in INSERT"],
 	},
 	3301: {
 		id: "INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY",
@@ -1630,7 +1650,11 @@ type Errors = {
 		: never
 }
 
-type JoinWithArgs<Msg extends readonly string[], Args extends (string|number)[]> = Msg extends readonly [
+type ErrorArgs<ID extends ErrorIds> = Tuple<string | number, Dec[Errors[ID]["msg"]["length"]]>
+
+type ErrorArgsNumber<ID extends ErrorIds> = Dec[Errors[ID]["msg"]["length"]]
+
+type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[]> = Msg extends readonly [
 	infer First,
 	...infer Rest,
 ]
@@ -1638,7 +1662,7 @@ type JoinWithArgs<Msg extends readonly string[], Args extends (string|number)[]>
 		? Rest extends readonly string[]
 			? Args extends readonly [infer Arg, ...infer RestArgs]
 				? Arg extends string
-					? RestArgs extends (string|number)[]
+					? RestArgs extends (string | number)[]
 						? Rest["length"] extends 0
 							? `${First}${Arg}`
 							: `${First}${Arg}${JoinWithArgs<Rest, RestArgs>}`

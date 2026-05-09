@@ -5,7 +5,7 @@ import type {
 	JsqlDataShape,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SqlParserError, FormatError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
@@ -88,12 +88,12 @@ type ParseInsertAliasAfterTable<
 							]
 						: [
 								Ra,
-								SqlParserError<"Expected `(` (column list) after table in INSERT">,
+								FormatError<"EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT", []>,
 								ParserRefErrorThirdSentinel,
 							]
 					: [
 							Ra,
-							SqlParserError<"Expected `(` (column list) after table in INSERT">,
+							FormatError<"EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT", []>,
 							ParserRefErrorThirdSentinel,
 						]
 				: never
@@ -116,20 +116,20 @@ type ParseInsertFromTableRef<
 										? [TblTry] extends [never]
 											? [
 													R3,
-													SqlParserError<"Unknown schema or table in INSERT INTO">,
+													FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO", [A, B]>,
 													ParserRefErrorThirdSentinel,
 												]
 											: TblTry extends JsqlDataShape
 												? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
 												: [
 														R3,
-														SqlParserError<"Unknown schema or table in INSERT INTO">,
+														FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO", [A, B]>,
 														ParserRefErrorThirdSentinel,
 													]
 										: never
 									: [
 											R3,
-											SqlParserError<"Expected table name after `.` in INSERT INTO">,
+											FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO", []>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -137,25 +137,25 @@ type ParseInsertFromTableRef<
 						: never
 					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
-							? [R1, SqlParserError<"Unknown table in INSERT INTO">, ParserRefErrorThirdSentinel]
+							? [R1, FormatError<"UNKNOWN_TABLE_INSERT_INTO", [A]>, ParserRefErrorThirdSentinel]
 							: TblTry extends JsqlDataShape
 								? ParseInsertAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Params>
-								: [R1, SqlParserError<"Unknown table in INSERT INTO">, ParserRefErrorThirdSentinel]
+								: [R1, FormatError<"UNKNOWN_TABLE_INSERT_INTO", [A]>, ParserRefErrorThirdSentinel]
 						: never
-				: [R1, SqlParserError<"Expected table name in INSERT INTO">, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_INSERT_INTO", []>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
 type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
-			? SkipFailedExpression<Tokens, SqlParserError<"INSERT column list must not be empty">>
+			? SkipFailedExpression<Tokens, FormatError<"INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY", []>>
 			: [Tokens, Acc]
 		: PeekToken<Tokens> extends infer Tok
 			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? Tok extends TokenIdent<infer Col extends string>
 					? JsqlDataGetColumnType<Tbl, Col> extends null
-						? SkipFailedExpression<R1, SqlParserError<"Unknown column in INSERT column list">>
+						? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST", [Col]>>
 						: PeekToken<R1> extends TokenKey<")">
 							? SkipToken<R1> extends infer R2 extends TokensList
 								? [R2, readonly [...Acc, Col]]
@@ -164,8 +164,8 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataSh
 								? SkipToken<R1> extends infer R3 extends TokensList
 									? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
 									: never
-								: SkipFailedExpression<R1, SqlParserError<"Expected `,` or `)` in INSERT column list">>
-					: SkipFailedExpression<R1, SqlParserError<"Expected column name in INSERT column list">>
+								: SkipFailedExpression<R1, FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST", []>>
+					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME_IN_INSERT_COLUMN_LIST", []>>
 				: never
 			: never
 
@@ -189,11 +189,14 @@ type MissingRequiredInsertColumn<Tbl extends JsqlDataShape, Cols extends readonl
 		: never
 }[Extract<keyof Tbl["columns"], string>]
 
-type ValidateInsertRequiredColumns<Tbl extends JsqlDataShape, Cols extends readonly string[]> = [
-	MissingRequiredInsertColumn<Tbl, Cols>,
-] extends [never]
-	? true
-	: SqlParserError<"Missing NOT NULL column in INSERT">
+type ValidateInsertRequiredColumns<Tbl extends JsqlDataShape, Cols extends readonly string[]> =
+	MissingRequiredInsertColumn<Tbl, Cols> extends infer Missing
+		? [Missing] extends [never]
+			? true
+			: Missing extends string
+				? FormatError<"MISSING_NOT_NULL_COLUMN_IN_INSERT", [Missing]>
+				: FormatError<"MISSING_NOT_NULL_COLUMN_IN_INSERT", [string]>
+		: never
 
 type ParseInsertAfterOpenParenCols<
 	Tokens extends TokensList,
@@ -238,7 +241,7 @@ type ParseInsertAfterColumnNames<
 			: TkValues extends TokenKey<"select">
 				? ParseInsertWithSelect<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 				: SkipToken<R1> extends infer Rv extends TokensList
-					? [Rv, Db, SqlParserError<"Expected VALUES or SELECT after column list in INSERT">]
+					? [Rv, Db, FormatError<"EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT", []>]
 					: never
 		: never
 
@@ -293,7 +296,7 @@ type ValidateInsertSelectColumnCount<
 	SelectRes extends JsqlSelectStatementResult,
 > = InsertCols["length"] extends keyof SelectRes["columns"] & number
 	? true
-	: SqlParserError<"INSERT...SELECT column count mismatch">
+	: FormatError<"INSERT_SELECT_COLUMN_COUNT_MISMATCH", []>
 
 type ValidateInsertSelectColumnTypes<
 	Tbl extends JsqlDataShape,
@@ -307,10 +310,10 @@ type ValidateInsertSelectColumnTypes<
 			? JsqlDataGetColumnType<Tbl, Col> extends infer InsertType extends SqlTypeShape
 				? SameComparisonClass<SelectType, InsertType> extends true
 					? ValidateInsertSelectColumnTypes<Tbl, RestCols, SelectRes, AllCols, readonly [...Idx, 0]>
-					: SqlParserError<"INSERT...SELECT type mismatch for column">
-				: SqlParserError<"Unknown column in INSERT">
-			: SqlParserError<"SELECT result missing column">
-		: SqlParserError<"SELECT result column index out of bounds">
+					: FormatError<"INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN", [Col]>
+				: FormatError<"UNKNOWN_COLUMN_INSERT", [Col]>
+			: FormatError<"SELECT_RESULT_MISSING_COLUMN", []>
+		: FormatError<"SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS", []>
 	: true
 
 /** Unwrap `InsertValuesRowCellsParsedMarker` after a `VALUES` row cell pass (same rules as after `VALUES (`). */
@@ -363,7 +366,7 @@ type ParseInsertAfterValuesKeyword<
 								: never
 						: never
 					: never
-				: SkipFailedStatement<Rvals, Db, SqlParserError<"Expected `(` after VALUES in INSERT">>
+				: SkipFailedStatement<Rvals, Db, FormatError<"EXPECTED_OPEN_PAREN_AFTER_VALUES_IN_INSERT", []>>
 			: never
 		: never
 
@@ -411,7 +414,7 @@ type ParseInsertValuesCells<
 															: [R2, Db, InsertValuesRowCellsParsedMarker]
 														: SkipFailedExpression<
 																	R2,
-																	SqlParserError<"Expected `)` after INSERT values">
+																	FormatError<"EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES", []>
 															  > extends [infer Rest extends TokensList, infer Err]
 															? [Rest, Db, Err]
 															: never
@@ -430,9 +433,9 @@ type ParseInsertValuesCells<
 												>
 										: never
 								: never
-							: SkipFailedStatement<R1, Db, SqlParserError<"Invalid value expression in INSERT">>
+							: SkipFailedStatement<R1, Db, FormatError<"INVALID_VALUE_EXPRESSION_IN_INSERT", []>>
 					: never
-				: SkipFailedStatement<R1, Db, SqlParserError<"Invalid value expression in INSERT">>
+				: SkipFailedStatement<R1, Db, FormatError<"INVALID_VALUE_EXPRESSION_IN_INSERT", []>>
 		: never
 	: never
 
@@ -451,7 +454,7 @@ type ParseInsertValuesCommaThenRest<
 		? SkipToken<Tokens> extends infer Rc extends TokensList
 			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
 			: never
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `,` between INSERT values">>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COMMA_BETWEEN_INSERT_VALUES", []>>
 
 type InsertExcludedScope<
 	Sch extends string,
@@ -507,7 +510,7 @@ type ParseInsertAfterValuesRowClose<
 							: never
 						: SkipFailedExpression<
 									R4,
-									SqlParserError<"Expected `(` after `,` between INSERT VALUES rows">
+									FormatError<"EXPECTED_OPEN_PAREN_AFTER_COMMA_BETWEEN_INSERT_VALUES_ROWS", []>
 							  > extends [infer Rest extends TokensList, infer Err]
 							? [Rest, Db, Err]
 							: never
@@ -534,7 +537,7 @@ type ParseInsertOptionalTail<
 				? SkipToken<ROn> extends infer Rcf extends TokensList
 					? ParseInsertOnConflictDoUpdate<Rcf, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: never
-				: SkipFailedStatement<ROn, Db, SqlParserError<"Expected CONFLICT after ON in INSERT">>
+				: SkipFailedStatement<ROn, Db, FormatError<"EXPECTED_CONFLICT_AFTER_ON_IN_INSERT", []>>
 			: never
 		: ParseInsertMaybeReturning<Tokens, Db, Scope, Params, Tbl, Sch, Tab, Cols, UpsertCols, Returning>
 
@@ -552,7 +555,7 @@ type ParseInsertOnConflictDoUpdate<
 		? SkipToken<Tokens> extends infer R0 extends TokensList
 			? T0 extends TokenKey<"(">
 				? ParseInsertOnConflictAfterOpenParen<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipFailedStatement<R0, Db, SqlParserError<"Expected `(` after ON CONFLICT in INSERT">>
+				: SkipFailedStatement<R0, Db, FormatError<"EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT", []>>
 			: never
 		: never
 
@@ -591,13 +594,13 @@ type ParseInsertOnConflictAfterConflictCloseParen<
 					? ParseInsertOnConflictAfterDoKw<R3, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: SkipFailedExpression<
 								R3,
-								SqlParserError<"Expected DO after ON CONFLICT columns in INSERT">
+								FormatError<"EXPECTED_DO_AFTER_ON_CONFLICT_COLUMNS_IN_INSERT", []>
 						  > extends [infer Rest extends TokensList, infer Err]
 						? [Rest, Db, Err]
 						: never
 				: never
 			: never
-		: SkipFailedStatement<R2, Db, SqlParserError<"Expected DO after ON CONFLICT column list in INSERT">>
+		: SkipFailedStatement<R2, Db, FormatError<"EXPECTED_DO_AFTER_ON_CONFLICT_COLUMN_LIST_IN_INSERT", []>>
 
 type ParseInsertOnConflictAfterDoKw<
 	R3 extends TokensList,
@@ -613,7 +616,7 @@ type ParseInsertOnConflictAfterDoKw<
 		? SkipToken<R3> extends infer R4 extends TokensList
 			? TUp extends TokenKey<"update">
 				? ParseInsertOnConflictAfterUpdateKw<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipFailedStatement<R4, Db, SqlParserError<"Expected UPDATE after DO in INSERT ON CONFLICT">>
+				: SkipFailedStatement<R4, Db, FormatError<"EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT", []>>
 			: never
 		: never
 
@@ -643,14 +646,14 @@ type ParseInsertOnConflictAfterUpdateKw<
 								: never
 						: never
 					: never
-				: SkipFailedStatement<R5, Db, SqlParserError<"Expected SET after UPDATE in INSERT ON CONFLICT">>
+				: SkipFailedStatement<R5, Db, FormatError<"EXPECTED_SET_AFTER_UPDATE_IN_INSERT_ON_CONFLICT", []>>
 			: never
 		: never
 
 type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
-			? SkipFailedExpression<Tokens, SqlParserError<"ON CONFLICT column list must not be empty">>
+			? SkipFailedExpression<Tokens, FormatError<"ON_CONFLICT_COLUMN_LIST_MUST_NOT_BE_EMPTY", []>>
 			: PeekToken<Tokens> extends TokenKey<")">
 				? SkipToken<Tokens> extends infer R extends TokensList
 					? [R, Acc]
@@ -660,7 +663,7 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? Tok extends TokenIdent<infer C extends string>
 					? JsqlDataGetColumnType<Tbl, C> extends null
-						? SkipFailedExpression<R1, SqlParserError<"Unknown column in ON CONFLICT">>
+						? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN_IN_ON_CONFLICT", [C]>>
 						: PeekToken<R1> extends TokenKey<")">
 							? SkipToken<R1> extends infer R2 extends TokensList
 								? [R2, readonly [...Acc, C]]
@@ -671,9 +674,9 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 									: never
 								: SkipFailedExpression<
 										R1,
-										SqlParserError<"Expected `,` or `)` in ON CONFLICT column list">
+										FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ON_CONFLICT_COLUMN_LIST", []>
 									>
-					: SkipFailedExpression<R1, SqlParserError<"Expected column name in ON CONFLICT">>
+					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME_IN_ON_CONFLICT", []>>
 				: never
 			: never
 
@@ -689,7 +692,7 @@ type ParseInsertUpsertSetAssignments<
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokCol extends TokenIdent<infer Col extends string>
 				? JsqlDataGetColumnType<Tbl, Col> extends null
-					? [R1, Db, SqlParserError<"Unknown column in ON CONFLICT DO UPDATE SET">]
+					? [R1, Db, FormatError<"UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET", [Col]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
 							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
@@ -730,32 +733,31 @@ type ParseInsertUpsertSetAssignments<
 																		: [
 																				R3,
 																				Db,
-																				SqlParserError<"Expected `,`, WHERE, or end after ON CONFLICT SET">,
+																				FormatError<"EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET", []>,
 																			]
 																: never
 														: never
 													: SkipFailedExpression<
 																R3,
-																SqlParserError<"Invalid value expression in ON CONFLICT UPDATE">
+																FormatError<"INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE", []>
 														  > extends [infer Rest extends TokensList, infer Err]
 														? [Rest, Db, Err]
 														: never
 											: never
 										: SkipFailedExpression<
 													R3,
-													SqlParserError<"Invalid value expression in ON CONFLICT UPDATE">
+													FormatError<"INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE", []>
 											  > extends [infer Rest extends TokensList, infer Err]
 											? [Rest, Db, Err]
 											: never
 								: never
 							: never
-						: SkipFailedExpression<
+						: SkipFailedStatement<
 									R1,
-									SqlParserError<"Expected `=` after column in ON CONFLICT UPDATE">
-							  > extends [infer Rest extends TokensList, infer Err]
-							? [Rest, Db, Err]
-							: never
-				: SkipFailedStatement<R1, Db, SqlParserError<"Expected column name in ON CONFLICT UPDATE">>
+									Db,
+									FormatError<"EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE", []>
+							  >
+				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE", []>>
 			: never
 		: never
 
@@ -815,7 +817,7 @@ type FinishInsertSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `;` after INSERT">>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_INSERT", []>>
 
 type ParseInsertAfterInto<
 	Tokens extends TokensList,
@@ -849,4 +851,4 @@ export type ParseInsert<
 > =
 	PeekToken<Tokens> extends TokenKey<"into">
 		? ParseInsertAfterInto<SkipToken<Tokens>, Db, Params>
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected INTO after INSERT">>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_INTO_AFTER_INSERT", []>>
