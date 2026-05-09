@@ -1763,16 +1763,16 @@ type JoinOnQualifiedEqOk<
 	R extends readonly [string, string, string],
 > =
 	ResolveColumnRefValue<Db, Scope, L> extends DbtyperError<any, any>
-		? SqlParserError<`Unknown column in JOIN ON (left): ${L[0]}.${L[1]}.${L[2]}`>
+		? FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [L[0], L[1], L[2]]>
 		: ResolveColumnRefValue<Db, Scope, R> extends DbtyperError<any, any>
-			? SqlParserError<`Unknown column in JOIN ON (right): ${R[0]}.${R[1]}.${R[2]}`>
+			? FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [R[0], R[1], R[2]]>
 			: ResolveColumnRefValue<Db, Scope, L> extends { sql: infer Ls extends SqlTypeShape }
 				? ResolveColumnRefValue<Db, Scope, R> extends { sql: infer Rs extends SqlTypeShape }
 					? SameComparisonClass<Ls, Rs> extends true
 						? true
 						: FormatError<"INCOMPATIBLE_TYPES_IN_JOIN_ON", []>
-					: SqlParserError<`Unknown column in JOIN ON (right): ${R[0]}.${R[1]}.${R[2]}`>
-				: SqlParserError<`Unknown column in JOIN ON (left): ${L[0]}.${L[1]}.${L[2]}`>
+					: FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [R[0], R[1], R[2]]>
+				: FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [L[0], L[1], L[2]]>
 
 type JoinOnAliasEqOk<
 	Db extends JsqlDatabaseShape,
@@ -1783,9 +1783,9 @@ type JoinOnAliasEqOk<
 	RightCol extends string,
 > =
 	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends DbtyperError<any, any>
-		? SqlParserError<`Unknown column in JOIN (left side): ${LeftAlias}.${LeftCol}`>
+		? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
 		: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends DbtyperError<any, any>
-			? SqlParserError<`Unknown column in JOIN (right side): ${RightAlias}.${RightCol}`>
+			? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
 			: ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends {
 						sql: infer Ls extends SqlTypeShape
 				  }
@@ -1795,8 +1795,8 @@ type JoinOnAliasEqOk<
 					? SameComparisonClass<Ls, Rs> extends true
 						? true
 						: FormatError<"INCOMPATIBLE_TYPES_IN_JOIN_ON", []>
-					: SqlParserError<`Unknown column in JOIN (right side): ${RightAlias}.${RightCol}`>
-				: SqlParserError<`Unknown column in JOIN (left side): ${LeftAlias}.${LeftCol}`>
+					: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
+				: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
 
 /** After `=` when the join predicate uses `alias.col = alias.col`. */
 type ParseJoinEqPairAliasRightTail<
