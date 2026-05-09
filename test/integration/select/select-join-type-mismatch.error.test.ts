@@ -26,5 +26,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<"Incompatible types in JOIN ON">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2506, "Incompatible types in JOIN ON">>
 >

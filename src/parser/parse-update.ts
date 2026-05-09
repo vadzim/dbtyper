@@ -5,7 +5,7 @@ import type {
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError, FormatError } from "../sql-parser-error.ts"
+import type { SqlParserError, FormatError, DbtyperError } from "../sql-parser-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -150,11 +150,11 @@ type ParseUpdateSetAssignments<
 									infer R3 extends TokensList,
 									infer Ast,
 								]
-								? Ast extends SqlParserError<string>
+								? Ast extends DbtyperError<any, any>
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst
 										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-											? Resolved extends SqlParserError<string>
+											? Resolved extends DbtyperError<any, any>
 												? [R3, Db, Resolved]
 												: Resolved extends SqlTypeShape
 													? ValidateMutationValueForColumn<
@@ -162,7 +162,7 @@ type ParseUpdateSetAssignments<
 															Col,
 															Resolved
 														> extends infer V0
-														? V0 extends SqlParserError<string>
+														? V0 extends DbtyperError<any, any>
 															? [R3, Db, V0]
 															: V0 extends true
 																? PeekToken<R3> extends TokenKey<",">
@@ -251,7 +251,7 @@ type ParseUpdateFromClause<
 		infer FromErr,
 		infer FromScope,
 	]
-		? FromErr extends SqlParserError<string>
+		? FromErr extends DbtyperError<any, any>
 			? [RFrom, Db, FromErr]
 			: FromScope extends ScopeMap
 				? MergeScope<Scope, FromScope> extends infer MergedScope
@@ -262,7 +262,7 @@ type ParseUpdateFromClause<
 										infer Rw extends TokensList,
 										infer We,
 									]
-									? We extends SqlParserError<string>
+									? We extends DbtyperError<any, any>
 										? [Rw, Db, We]
 										: FinishUpdateReturning<Rw, Db, MergedScope, Params, Res>
 									: never
@@ -393,7 +393,7 @@ type FinishUpdateStatement<
 		: PeekToken<Tokens> extends TokenKey<"where">
 			? SkipToken<Tokens> extends infer Rw0 extends TokensList
 				? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
-					? We extends SqlParserError<string>
+					? We extends DbtyperError<any, any>
 						? [Rw, Db, We]
 						: FinishUpdateReturning<Rw, Db, Scope, Params, Res>
 					: never
@@ -414,7 +414,7 @@ type FinishUpdateReturning<
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
-				? Ret extends SqlParserError<string>
+				? Ret extends DbtyperError<any, any>
 					? [Ra, DbA, Ret]
 					: Ret extends JsqlSelectStatementResult
 						? FinishUpdateSemicolon<Ra, DbA, Res, Ret>
@@ -439,7 +439,7 @@ type ParseUpdateAfterTableRef<
 	Params extends ExpressionParamsShape,
 > =
 	ParseUpdateFromTableRef<Tokens, Db> extends [infer R extends TokensList, infer Mid, infer Third]
-		? Mid extends SqlParserError<string>
+		? Mid extends DbtyperError<any, any>
 			? Third extends ParserRefErrorThirdSentinel
 				? SkipFailedStatement<R, Db, Mid>
 				: never
@@ -454,7 +454,7 @@ type ParseUpdateAfterTableRef<
 							Third["schema"],
 							Third["table"]
 						> extends [infer R2 extends TokensList, infer Db2 extends JsqlDatabaseShape, infer Out]
-						? Out extends SqlParserError<string>
+						? Out extends DbtyperError<any, any>
 							? [R2, Db2, Out]
 							: Out extends JsqlUpdateStatementResult
 								? FinishUpdateStatement<R2, Db2, Third["scope"], Params, Out>

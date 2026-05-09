@@ -25,5 +25,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<"Incompatible types in IN list">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2504, "Incompatible types in IN list">>
 >

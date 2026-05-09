@@ -34,7 +34,7 @@ export type ApplyStatements<
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params, null> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
-			infer Error extends SqlParserError<string> | DbtyperError<any, any> | null,
+			infer Error extends DbtyperError<any, any> | DbtyperError<any, any> | null,
 		]
 		? [NewDB, Error]
 		: never
@@ -44,7 +44,7 @@ export type ApplyParsedStatements<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
-	Error extends SqlParserError<string> | DbtyperError<any, any> | null,
+	Error extends DbtyperError<any, any> | DbtyperError<any, any> | null,
 	BatchDepth extends number = 0,
 > = BatchDepth extends 50
 	? [Tokens, Db, Error]
@@ -53,7 +53,7 @@ export type ApplyParsedStatements<
 		: ApplyParsedStatementsInner<Tokens, Db, Params, Error> extends [
 					infer Rest extends TokensList,
 					infer NewDB extends JsqlDatabaseShape,
-					infer NewError extends SqlParserError<string> | DbtyperError<any, any> | null,
+					infer NewError extends DbtyperError<any, any> | DbtyperError<any, any> | null,
 			  ]
 			? ApplyParsedStatements<Rest, NewDB, Params, NewError, Inc[BatchDepth]>
 			: never
@@ -62,7 +62,7 @@ type ApplyParsedStatementsInner<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
-	Error extends SqlParserError<string> | DbtyperError<any, any> | null,
+	Error extends DbtyperError<any, any> | DbtyperError<any, any> | null,
 	Depth extends number = 0,
 > = Depth extends 50
 	? [Tokens, Db, Error]
@@ -77,7 +77,7 @@ type ApplyParsedStatementsInner<
 					Rest,
 					NewDb,
 					Params,
-					Result extends SqlParserError<string>
+					Result extends DbtyperError<any, any>
 						? ConcatErrors<Error, Result>
 						: Result extends DbtyperError<any, any>
 							? ConcatErrors<Error, Result>
@@ -112,9 +112,9 @@ export type ParseSqlStatement<
 										: ParseSkipStatement<Tokens, Db>
 
 type ConcatErrors<
-	Errors extends SqlParserError<string> | DbtyperError<any, any> | null,
-	Result extends SqlParserError<string> | DbtyperError<any, any>,
-> = Errors extends SqlParserError<string> | DbtyperError<any, any> ? Errors : Result
+	Errors extends DbtyperError<any, any> | DbtyperError<any, any> | null,
+	Result extends DbtyperError<any, any> | DbtyperError<any, any>,
+> = Errors extends DbtyperError<any, any> | DbtyperError<any, any> ? Errors : Result
 
 // Errors extends SqlParserError<infer ErrorsMsg>
 // 		? Result extends SqlParserError<infer ResultMsg>

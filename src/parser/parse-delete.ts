@@ -24,7 +24,7 @@ type ParseDeleteAfterFrom<
 	Params extends ExpressionParamsShape,
 > =
 	ParseDeleteFromTableRef<Tokens, Db, {}, Params> extends [infer R extends TokensList, infer Mid, infer Third]
-		? Mid extends SqlParserError<string> | DbtyperError<any, any>
+		? Mid extends DbtyperError<any, any> | DbtyperError<any, any>
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]
 				: never
@@ -38,9 +38,9 @@ type ParseDeleteAfterFrom<
 							? SkipToken<R> extends infer Rw0 extends TokensList
 								? ParseWhereExpression<Rw0, Db, Third, Params> extends [
 										infer Rw extends TokensList,
-										infer We extends SqlParserError<string> | DbtyperError<any, any> | null,
+										infer We extends DbtyperError<any, any> | DbtyperError<any, any> | null,
 									]
-									? We extends SqlParserError<string> | DbtyperError<any, any>
+									? We extends DbtyperError<any, any> | DbtyperError<any, any>
 										? [Rw, Db, We]
 										: FinishDeleteStatement<Rw, Db, Third, Params>
 									: never
@@ -61,7 +61,7 @@ type ParseDeleteUsingClause<
 		infer UsingErr,
 		infer UsingScope,
 	]
-		? UsingErr extends SqlParserError<string> | DbtyperError<any, any>
+		? UsingErr extends DbtyperError<any, any> | DbtyperError<any, any>
 			? [RUsing, Db, UsingErr]
 			: UsingScope extends ScopeMap
 				? MergeScope<Scope, UsingScope> extends infer MergedScope
@@ -72,7 +72,7 @@ type ParseDeleteUsingClause<
 										infer Rw extends TokensList,
 										infer We,
 									]
-									? We extends SqlParserError<string> | DbtyperError<any, any>
+									? We extends DbtyperError<any, any> | DbtyperError<any, any>
 										? [Rw, Db, We]
 										: FinishDeleteStatement<Rw, Db, MergedScope, Params>
 									: never
@@ -202,7 +202,7 @@ type FinishDeleteStatement<
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
-				? Ret extends SqlParserError<string> | DbtyperError<any, any>
+				? Ret extends DbtyperError<any, any> | DbtyperError<any, any>
 					? [Ra, DbA, Ret]
 					: Ret extends JsqlSelectStatementResult
 						? FinishDeleteSemicolon<Ra, DbA, Ret>

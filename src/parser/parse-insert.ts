@@ -5,7 +5,7 @@ import type {
 	JsqlDataShape,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError, FormatError } from "../sql-parser-error.ts"
+import type { SqlParserError, FormatError, DbtyperError } from "../sql-parser-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
@@ -213,7 +213,7 @@ type ParseInsertAfterOpenParenCols<
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipToken<Tokens> extends infer R0 extends TokensList
 			? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [infer R1 extends TokensList, infer ColsOrErr]
-				? ColsOrErr extends SqlParserError<string>
+				? ColsOrErr extends DbtyperError<any, any>
 					? [R1, Db, ColsOrErr]
 					: ColsOrErr extends readonly string[]
 						? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
@@ -236,7 +236,7 @@ type ParseInsertAfterColumnNames<
 		? TkValues extends TokenKey<"values">
 			? SkipToken<R1> extends infer Rv extends TokensList
 				? ValidateInsertRequiredColumns<Tbl, Cols> extends infer RequiredColsOk
-					? RequiredColsOk extends SqlParserError<string>
+					? RequiredColsOk extends DbtyperError<any, any>
 						? [Rv, Db, RequiredColsOk]
 						: ParseInsertAfterValuesKeyword<Rv, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: never
@@ -259,11 +259,11 @@ type ParseInsertWithSelect<
 	Cols extends readonly string[],
 > =
 	ParseSelectExpression<Tokens, Db, Params> extends [infer RSelect extends TokensList, infer Db2, infer SelectRes]
-		? SelectRes extends SqlParserError<string>
+		? SelectRes extends DbtyperError<any, any>
 			? [RSelect, Db2, SelectRes]
 			: SelectRes extends JsqlSelectStatementResult
 				? ValidateInsertSelectColumns<Tbl, Cols, SelectRes> extends infer ValidationRes
-					? ValidationRes extends SqlParserError<string>
+					? ValidationRes extends DbtyperError<any, any>
 						? [RSelect, Db2, ValidationRes]
 						: ValidationRes extends true
 							? Db2 extends JsqlDatabaseShape
@@ -289,7 +289,7 @@ type ValidateInsertSelectColumns<
 	SelectRes extends JsqlSelectStatementResult,
 > =
 	ValidateInsertSelectColumnCount<InsertCols, SelectRes> extends infer CountCheck
-		? CountCheck extends SqlParserError<string>
+		? CountCheck extends DbtyperError<any, any>
 			? CountCheck
 			: ValidateInsertSelectColumnTypes<Tbl, InsertCols, SelectRes, InsertCols>
 		: never
@@ -331,7 +331,7 @@ type ParseInsertAfterValuesCellsOutcome<
 	Cols extends readonly string[],
 	Res,
 > =
-	Res extends SqlParserError<string>
+	Res extends DbtyperError<any, any>
 		? [Rf, Db2, Res]
 		: [Extract<Res, InsertValuesRowCellsParsedMarker>] extends [never]
 			? Res extends JsqlInsertStatementResult
@@ -362,7 +362,7 @@ type ParseInsertAfterValuesKeyword<
 							infer DbOut extends JsqlDatabaseShape,
 							infer Out3,
 						]
-						? Out3 extends SqlParserError<string>
+						? Out3 extends DbtyperError<any, any>
 							? [ROut, DbOut, Out3]
 							: Out3 extends JsqlInsertStatementResult
 								? FinishInsertSemicolon<ROut, DbOut, Out3>
@@ -388,15 +388,15 @@ type ParseInsertValuesCells<
 			infer R1 extends TokensList,
 			infer Ast,
 		]
-		? Ast extends SqlParserError<string>
+		? Ast extends DbtyperError<any, any>
 			? [R1, Db, Ast]
 			: Ast extends ScalarExprAst
 				? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-					? Resolved extends SqlParserError<string>
+					? Resolved extends DbtyperError<any, any>
 						? [R1, Db, Resolved]
 						: Resolved extends SqlTypeShape
 							? ValidateMutationValueForColumn<Tbl, C0, Resolved> extends infer V0
-								? V0 extends SqlParserError<string>
+								? V0 extends DbtyperError<any, any>
 									? [R1, Db, V0]
 									: V0 extends true
 										? CR extends readonly []
@@ -576,7 +576,7 @@ type ParseInsertOnConflictAfterOpenParen<
 	Cols extends readonly string[],
 > =
 	ParseInsertConflictColList<R0, Tbl, readonly []> extends [infer R1 extends TokensList, infer CRes]
-		? CRes extends SqlParserError<string>
+		? CRes extends DbtyperError<any, any>
 			? [R1, Db, CRes]
 			: CRes extends readonly string[]
 				? ParseInsertOnConflictAfterConflictCloseParen<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
@@ -645,7 +645,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 							infer Db6 extends JsqlDatabaseShape,
 							infer SetOut,
 						]
-						? SetOut extends SqlParserError<string>
+						? SetOut extends DbtyperError<any, any>
 							? [R6, Db6, SetOut]
 							: SetOut extends readonly string[]
 								? ParseInsertAfterUpsertSet<R6, Db6, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetOut>
@@ -705,11 +705,11 @@ type ParseInsertUpsertSetAssignments<
 									infer R3 extends TokensList,
 									infer Ast,
 								]
-								? Ast extends SqlParserError<string>
+								? Ast extends DbtyperError<any, any>
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst
 										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-											? Resolved extends SqlParserError<string>
+											? Resolved extends DbtyperError<any, any>
 												? [R3, Db, Resolved]
 												: Resolved extends SqlTypeShape
 													? ValidateMutationValueForColumn<
@@ -717,7 +717,7 @@ type ParseInsertUpsertSetAssignments<
 															Col,
 															Resolved
 														> extends infer V0
-														? V0 extends SqlParserError<string>
+														? V0 extends DbtyperError<any, any>
 															? [R3, Db, V0]
 															: V0 extends true
 																? PeekToken<R3> extends TokenKey<",">
@@ -787,7 +787,7 @@ type ParseInsertAfterUpsertSet<
 	PeekToken<Tokens> extends TokenKey<"where">
 		? SkipToken<Tokens> extends infer Rw0 extends TokensList
 			? ParseWhereExpression<Rw0, Db, UpsertScope, Params> extends [infer Rw extends TokensList, infer We]
-				? We extends SqlParserError<string>
+				? We extends DbtyperError<any, any>
 					? [Rw, Db, We]
 					: ParseInsertMaybeReturning<Rw, Db, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
 				: never
@@ -813,7 +813,7 @@ type ParseInsertMaybeReturning<
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
-				? Ret extends SqlParserError<string>
+				? Ret extends DbtyperError<any, any>
 					? [Ra, DbA, Ret]
 					: Ret extends JsqlSelectStatementResult
 						? FinishInsertSemicolon<Ra, DbA, BuildInsertResult<Sch, Tab, Cols, UpsertCols, Ret>>
@@ -837,7 +837,7 @@ type ParseInsertAfterInto<
 	Params extends ExpressionParamsShape,
 > =
 	ParseInsertFromTableRef<Tokens, Db, Params> extends [infer R extends TokensList, infer Mid, infer Third]
-		? Mid extends SqlParserError<string>
+		? Mid extends DbtyperError<any, any>
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]
 				: never

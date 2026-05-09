@@ -26,6 +26,6 @@ type DbShape = ApplyStatements<
 type _errorCheck = Expect<
 	Matches<
 		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
+		DbtyperError<3403, "Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
 >

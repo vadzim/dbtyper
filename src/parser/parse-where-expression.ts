@@ -22,10 +22,10 @@ export type ParseWhereExpression<
 		infer Rw extends TokensList,
 		infer Ast,
 	]
-		? Ast extends SqlParserError<string> | DbtyperError<any, any>
+		? Ast extends DbtyperError<any, any> | DbtyperError<any, any>
 			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
-				? R extends SqlParserError<string> | DbtyperError<any, any>
+				? R extends DbtyperError<any, any> | DbtyperError<any, any>
 					? SkipFailedExpression<Rw, R>
 					: R extends SqlTypeShape
 						? R["type"] extends "boolean"
