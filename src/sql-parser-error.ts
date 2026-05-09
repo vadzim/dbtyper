@@ -199,6 +199,14 @@ export const errors = {
 		id: "EXPECTED_WHEN_ELSE_OR_END_IN_CASE",
 		msg: ["Expected WHEN ELSE or END in CASE"],
 	},
+	1120: {
+		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_FROM",
+		msg: ["Expected table name after `.` in FROM"],
+	},
+	1121: {
+		id: "EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM",
+		msg: ["Expected table name or `(` in FROM"],
+	},
 
 	// INSERT Statement
 	1200: {

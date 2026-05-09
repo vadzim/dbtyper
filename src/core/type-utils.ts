@@ -4,7 +4,7 @@ type Counting<N extends number, Acc extends unknown[] = []> = Acc["length"] exte
 
 type Repeat<X, N extends number, Acc extends unknown[] = []> = Acc["length"] extends N ? Acc : Repeat<X, N, [...Acc, X]>
 
-type Numbers = Counting<100>
+type Numbers = Counting<200>
 
 export type Inc = Numbers extends [0, ...infer Rest] ? [...Rest, number] : never
 export type Dec = [never, ...Numbers]
@@ -42,3 +42,11 @@ export type LastOf<T> = UnionToIntersection<T extends any ? () => T : never> ext
 type TupleSize = Counting<21>[number]
 
 export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec[N]>]
+
+export type ExpectTrue<T extends true> = T
+
+export type IsNotAny<T> = 0 extends 1 & T ? (1 extends 0 & T ? false : true) : true
+
+export type IsNotNever<T> = [T] extends [never] ? false : true
+
+export type IsNotAnyOrNever<T> = [IsNotNever<T>, IsNotAny<T>] extends [true, true] ? true : false
