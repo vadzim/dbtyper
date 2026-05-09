@@ -12,6 +12,7 @@ const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema pu
 // ❌ FAILURE: Unknown schema
 const query = `create type ghost.status as enum ('active');` as const
 
+// @ts-expect-error - Expected to fail: unknown schema
 await migrations.apply(query)
 
 // Type-level database shape for error checking

@@ -12,6 +12,7 @@ const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema pu
 // ❌ FAILURE: Missing AS keyword
 const query = `create type status enum ('active');` as const
 
+// @ts-expect-error - Expected to fail: missing AS keyword
 await migrations.apply(query)
 
 // Type-level database shape for error checking

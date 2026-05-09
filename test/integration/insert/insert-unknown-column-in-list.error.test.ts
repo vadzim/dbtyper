@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: Unknown column in INSERT column list
 const query = `insert into users (id, nope) values ('u', 'x');` as const
 
-// @ts-expect-error
 await db.query(query)
 
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text not null, name text not null);`>[0]

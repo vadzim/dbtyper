@@ -12,6 +12,7 @@ const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema pu
 // ❌ FAILURE: Empty enum values
 const query = `create type empty as enum ();` as const
 
+// @ts-expect-error - Expected to fail: empty enum values list
 await migrations.apply(query)
 
 // Type-level database shape for error checking

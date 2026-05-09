@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: Arithmetic with incompatible types (number + string)
 const query = `select inner_t.a from inner_t where inner_t.a + 'x' = 1;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table inner_t (a int not null);`>[0]

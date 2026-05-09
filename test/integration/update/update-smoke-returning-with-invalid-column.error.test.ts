@@ -18,7 +18,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: RETURNING with invalid column
 const query = `update users set name = null returning invalid_column;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

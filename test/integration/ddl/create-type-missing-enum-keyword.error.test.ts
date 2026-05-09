@@ -12,6 +12,7 @@ const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema pu
 // ❌ FAILURE: Missing ENUM keyword
 const query = `create type status as ('active');` as const
 
+// @ts-expect-error - Expected to fail: missing ENUM keyword
 await migrations.apply(query)
 
 // Type-level database shape for error checking

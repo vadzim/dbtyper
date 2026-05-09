@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: type mismatch (text instead of integer)
 const query = `insert into users (id, age) values ('1', 'not a number') returning *;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

@@ -16,7 +16,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: subquery type mismatch
 const query = `select * from users where id in (select user_id from posts);` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

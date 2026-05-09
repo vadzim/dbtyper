@@ -14,6 +14,7 @@ const migrations = sqlMigrations({ driver: mockDriver })
 // ❌ FAILURE: Add duplicate value
 const query = `alter type status add value 'active';` as const
 
+// @ts-expect-error - Expected to fail: duplicate enum value
 await migrations.apply(query)
 
 // Type-level database shape for error checking

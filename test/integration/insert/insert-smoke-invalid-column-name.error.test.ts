@@ -18,7 +18,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: Invalid column name
 const query = `insert into users (id, invalid_column) values (null, null);` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

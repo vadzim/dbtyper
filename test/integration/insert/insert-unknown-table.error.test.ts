@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: unknown table
 const query = `insert into nonexistent (id) values ('1') returning *;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

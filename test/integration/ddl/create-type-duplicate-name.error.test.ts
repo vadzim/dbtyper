@@ -14,6 +14,7 @@ const migrations = sqlMigrations({ driver: mockDriver })
 // ❌ FAILURE: Duplicate type name
 const query = `create type status as enum ('new');` as const
 
+// @ts-expect-error - Expected to fail: duplicate type name
 await migrations.apply(query)
 
 // Type-level database shape for error checking

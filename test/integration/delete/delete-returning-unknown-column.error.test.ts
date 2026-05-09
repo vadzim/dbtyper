@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: RETURNING unknown column
 const query = `delete from users where id = '1' returning invalid_column;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

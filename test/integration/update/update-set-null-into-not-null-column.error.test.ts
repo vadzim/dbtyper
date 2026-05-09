@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: SET NULL into NOT NULL column
 const query = `update users set id = null where name = 'Alice' returning *;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking

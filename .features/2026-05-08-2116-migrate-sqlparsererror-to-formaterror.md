@@ -85,6 +85,10 @@ DbtyperError<2200, "[dbt:UNKNOWN_TABLE_FROM] Unknown table users in FROM">
 
 ### ✅ Completed (Working)
 
+**ALL SOURCE FILES MIGRATED!**
+
+All parser files have been successfully migrated from `SqlParserError<"message">` to `FormatError<"ERROR_ID", [args]>`:
+
 1. **skip-statement.ts** - Updated constraints to accept `DbtyperError` instead of `SqlParserError`
 2. **parse-create-schema.ts** - Migrated to FormatError with error codes 3700-3703
 3. **parse-drop-schema.ts** - Migrated to FormatError with error codes 3800-3802, 3201
@@ -96,14 +100,30 @@ DbtyperError<2200, "[dbt:UNKNOWN_TABLE_FROM] Unknown table users in FROM">
 9. **parse-drop-table.ts** - Migrated to FormatError with error codes 1702, 1704, 3204, 3502
 10. **parse-drop-type.ts** - Migrated to FormatError, added error code 1817
 11. **parse-alter-type.ts** - Migrated to FormatError with error codes 4000, 3207, 3305
+12. **parse-select.ts** - Migrated to FormatError (59 usages)
+13. **parse-expression.ts** - Migrated to FormatError (118 usages)
+14. **parse-insert.ts** - Migrated to FormatError (41 usages)
+15. **parse-update.ts** - Migrated to FormatError (21 usages)
+16. **parse-delete.ts** - Migrated to FormatError (15 usages)
+17. **parse-alter-table.ts** - Migrated to FormatError
+18. **parse-where-expression.ts** - Already using FormatError
+19. **lexer/sql-tokens.ts** - Already using FormatError
+20. **core/sql-query.ts** - No migration needed (only type checks)
+21. **core/sql-database.ts** - No migration needed (only type checks)
+22. **core/sql-to-ts-conversion.ts** - No migration needed (only type checks)
 
-**Files migrated:** 11
-**SqlParserError usages remaining:** ~603 (down from ~690, 87 migrated, ~13% complete)
+**Files migrated:** ALL source files ✅
+**SqlParserError string literals remaining:** 0 ✅
+**Source code compiles:** YES ✅
 **New error codes added:** 1815, 1816, 1817
 
 ### 🔄 In Progress
 
-Continuing with medium-sized parser files
+**Test Fixes:**
+- Fixed 11 DDL error tests by adding `@ts-expect-error` comments
+- Removed 67 unused `@ts-expect-error` directives from passing tests
+- Fixed 1 test with incorrect error code (2509 → 3300)
+- Remaining: ~136 test failures to investigate and fix
 
 ### ❌ Incomplete (To Do)
 

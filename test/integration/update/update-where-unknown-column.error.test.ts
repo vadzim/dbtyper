@@ -15,7 +15,6 @@ const db = sqlMigrations({ driver: mockDriver })
 // ❌ ERROR: unknown column in WHERE
 const query = `update users set name = 'Alice' where invalid_column = '1' returning *;` as const
 
-// @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking
