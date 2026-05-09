@@ -12,7 +12,7 @@ const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema pu
 // ❌ FAILURE: DROP type from unknown schema
 const query = `drop type ghost.status;` as const
 
-// @ts-expect-error - Expected to fail: unknown schema
+// @ts-expect-error
 await migrations.apply(query)
 
 // Type-level database shape for error checking

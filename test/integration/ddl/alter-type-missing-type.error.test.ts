@@ -12,7 +12,7 @@ const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema pu
 // ❌ FAILURE: ALTER non-existing type
 const query = `alter type missing add value 'new';` as const
 
-// @ts-expect-error - Expected to fail: type does not exist
+// @ts-expect-error
 await migrations.apply(query)
 
 // Type-level database shape for error checking

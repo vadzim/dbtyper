@@ -19,7 +19,7 @@ const query = `create table users (
 		created_at timestamp default now()
 	);` as const
 
-// @ts-expect-error - Expected to fail: wrong default value type
+// @ts-expect-error
 await migrations.apply(query)
 
 // Type-level database shape for error checking
