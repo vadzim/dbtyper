@@ -763,7 +763,7 @@ export const errors = {
 	},
 	2207: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE",
-		msg: ["Unknown schema or table"],
+		msg: ["Unknown schema ", " or table ", ""],
 	},
 	2208: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_FROM",
@@ -805,7 +805,7 @@ export const errors = {
 	// Column Resolution
 	2300: {
 		id: "UNKNOWN_COLUMN",
-		msg: ["Unknown column"],
+		msg: ["Unknown column ", ""],
 	},
 	2301: {
 		id: "UNKNOWN_COLUMN_UPDATE_SET",
@@ -829,11 +829,11 @@ export const errors = {
 	},
 	2306: {
 		id: "UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN",
-		msg: ["Unknown column (schema.table.column)"],
+		msg: ["Unknown column ", ".", ".", ""],
 	},
 	2307: {
 		id: "UNKNOWN_QUALIFIED_COLUMN",
-		msg: ["Unknown qualified column"],
+		msg: ["Unknown qualified column ", ".", ""],
 	},
 	2308: {
 		id: "UNKNOWN_ALIAS_IN_SELECT_STAR",
@@ -1101,7 +1101,7 @@ export const errors = {
 	},
 	3404: {
 		id: "AMBIGUOUS_UNQUALIFIED_COLUMN",
-		msg: ["Ambiguous unqualified column"],
+		msg: ["Ambiguous unqualified column ", ""],
 	},
 	3405: {
 		id: "QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS",

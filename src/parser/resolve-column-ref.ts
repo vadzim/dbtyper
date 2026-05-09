@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
@@ -8,14 +8,14 @@ import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, Col extends string> = [
 	JsqlDbGetData<Db, Sch, Tab>,
 ] extends [never]
-	? SqlParserError<"Unknown schema or table">
+	? FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [Sch, Tab]>
 	: JsqlDbGetData<Db, Sch, Tab> extends JsqlDataShape
 		? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends infer ColType extends SqlTypeShape
 			? {
 					sql: ColType
 				}
-			: SqlParserError<"Unknown column (schema.table.column)">
-		: SqlParserError<"Unknown schema or table">
+			: FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [Sch, Tab, Col]>
+		: FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [Sch, Tab]>
 
 type ValidateColumnPartsShared<
 	Db extends JsqlDatabaseShape,
@@ -29,14 +29,14 @@ type ValidateColumnPartsShared<
 				? {
 						sql: Scope[A]["columns"][C]
 					}
-				: SqlParserError<"Unknown qualified column">
-			: SqlParserError<"Unknown qualified column">
+				: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [A, C]>
+			: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [A, C]>
 		: Parts extends readonly [infer C0 extends string]
 			? true extends HasAmbiguousUnqualifiedColumn<Scope, C0>
-				? SqlParserError<"Ambiguous unqualified column">
+				? FormatError<"AMBIGUOUS_UNQUALIFIED_COLUMN", [C0]>
 				: ScopeKeysWithColumn<Scope, C0> extends infer U
 					? [U] extends [never]
-						? SqlParserError<"Unknown column">
+						? FormatError<"UNKNOWN_COLUMN", [C0]>
 						: U extends keyof Scope
 							? C0 extends keyof Scope[U]["columns"]
 								? {
