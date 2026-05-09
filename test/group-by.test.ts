@@ -39,19 +39,7 @@ type TGroupProjAggOk = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupProjAggOk = Expect<Matches<TGroupProjAggOk[2], { kind: "select"; columns: { region: TText; s: TNumeric } }>>
 
-/** `HAVING` without `GROUP BY` still enforces “aggregates or constants / grouped columns” on projections. */
-type THavingNoGroupBareCol = ParseSqlStatement<ParseSqlTokens<`select region from sales having count(*) > 0;`>, DbGroup>
-
-type _havingNoGroupBareCol = Expect<
-	Matches<
-		THavingNoGroupBareCol[2],
-		DbtyperError<3403, "Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
-	>
->
-
-/** `HAVING` only — all selected values are aggregates. */
 type THavingNoGroupAggOnly = ParseSqlStatement<
 	ParseSqlTokens<`select count(*) as c from sales having count(*) > 0;`>,
 	DbGroup

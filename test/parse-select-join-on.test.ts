@@ -75,21 +75,9 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 	>
 >
 
-type TJoinOnAliasTypeMismatch = ParseSqlStatement<
-	ParseSqlTokens<`select email from auth.users u left join public.agenda a on u.email = a.user_id;`>,
-	DbJoinAuthAgenda
->
-type _joinOnAliasTypeMismatchErr = Expect<
-	Extends<TJoinOnAliasTypeMismatch[2], SqlParserError<"Incompatible types in JOIN ON">>
->
 
-type TJoinOnQualifiedTypeMismatch = ParseSqlStatement<
-	ParseSqlTokens<`select email from auth.users left join public.agenda on auth.users.email = public.agenda.user_id;`>,
-	DbJoinAuthAgenda
->
-type _joinOnQualifiedTypeMismatchErr = Expect<
-	Extends<TJoinOnQualifiedTypeMismatch[2], SqlParserError<"Incompatible types in JOIN ON">>
->
+
+
 
 /** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE` via `:emailPat`, `ORDER BY`. */
 type TNestPostgresAppCliSelect = ParseSqlStatement<

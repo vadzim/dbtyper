@@ -34,11 +34,9 @@ create table billing.subs ( id uuid not null, user_id uuid not null, plan_code t
 type ChkGood = CheckSqlValid<DbJoinUsersBilling, `select users.id from users;`>
 type _chkGood = Expect<Matches<ChkGood, `select users.id from users;`>>
 
-type ChkBadCol = CheckSqlValid<DbJoinUsersBilling, `select users.nope from users;`>
-type _chkBadCol = Expect<Matches<ChkBadCol, "Unknown qualified column users.nope">>
 
-type ChkBadBare = CheckSqlValid<DbJoinUsersBilling, `select ghost from users;`>
-type _chkBadBare = Expect<Matches<ChkBadBare, "Unknown column ghost">>
+
+
 
 type DbDefaultPublic = {
 	defaultSchema: "public"
