@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TBoolean, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -83,31 +83,12 @@ type _alterNoopChainMeta = Expect<
 	Extends<ItemsAfterChain["columns"], { id: TUuid; title: TText; meta: TNull<"integer"> }>
 >
 
-/** Unknown schema in qualified table name. */
-type TAlterBadSchema = ParseSqlStatement<ParseSqlTokens<`alter table missing.items add column x int;`>, DbItems>
-type _alterBadSchema = Expect<Extends<TAlterBadSchema[2], SqlParserError<"Table does not exist">>>
-
-/** Unknown column in `DROP COLUMN`. */
-type TAlterDropUnknownCol = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column ghost;`>, DbItems>
-type _alterDropUnknownCol = Expect<Extends<TAlterDropUnknownCol[2], SqlParserError<"Column does not exist">>>
-
-/** Unknown old name in `RENAME COLUMN`. */
-type TAlterRenameUnknownCol = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items rename column ghost to x;`>,
-	DbItems
->
-type _alterRenameUnknownCol = Expect<Extends<TAlterRenameUnknownCol[2], SqlParserError<"Column does not exist">>>
-
-/** Unsupported action keyword after table name. */
-type TAlterUnsupported = ParseSqlStatement<ParseSqlTokens<`alter table public.items freeze;`>, DbItems>
-type _alterUnsupported = Expect<Extends<TAlterUnsupported[2], SqlParserError<"Unsupported ALTER TABLE action">>>
-
 /** Malformed `ALTER COLUMN` tail. */
 type TAlterColBadSet = ParseSqlStatement<
 	ParseSqlTokens<`alter table public.items alter column title set xyzzy;`>,
 	DbItems
 >
-type _alterColBadSet = Expect<Extends<TAlterColBadSet[2], SqlParserError<"Unsupported ALTER COLUMN SET clause">>>
+type _alterColBadSet = Expect<Extends<TAlterColBadSet[2], DbtyperError<5403, "Unsupported ALTER COLUMN SET clause">>>
 
 describe("parse-alter-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

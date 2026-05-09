@@ -2,6 +2,8 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
+- [ ] define if tsak is simple and make it with fresh context and exit to preserve tokens
+- [ ] add a test that all the error codes are tested in .error.tests.ts files
 - [ ] remove Expects and replace with Matches in all the tests
 - [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
 - [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1

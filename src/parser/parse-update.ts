@@ -5,7 +5,7 @@ import type {
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SqlParserError as _SqlParserError, FormatError, DbtyperError } from "../sql-parser-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -81,8 +81,8 @@ type ParseUpdateAliasAfterTable<
 									table: Tab
 								},
 							]
-						: [Ra, SqlParserError<"Expected SET after table in UPDATE">, ParserRefErrorThirdSentinel]
-					: [Ra, SqlParserError<"Expected SET after table in UPDATE">, ParserRefErrorThirdSentinel]
+						: [Ra, FormatError<"EXPECTED_SET_AFTER_TABLE_IN_UPDATE", []>, ParserRefErrorThirdSentinel]
+					: [Ra, FormatError<"EXPECTED_SET_AFTER_TABLE_IN_UPDATE", []>, ParserRefErrorThirdSentinel]
 				: never
 			: never
 
@@ -99,20 +99,20 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 										? [TblTry] extends [never]
 											? [
 													R3,
-													SqlParserError<"Unknown schema or table in UPDATE">,
+													FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE", [A, B]>,
 													ParserRefErrorThirdSentinel,
 												]
 											: TblTry extends JsqlDataShape
 												? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
 												: [
 														R3,
-														SqlParserError<"Unknown schema or table in UPDATE">,
+														FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE", [A, B]>,
 														ParserRefErrorThirdSentinel,
 													]
 										: never
 									: [
 											R3,
-											SqlParserError<"Expected table name after `.` in UPDATE">,
+											FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE", []>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -120,12 +120,12 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 						: never
 					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
 						? [TblTry] extends [never]
-							? [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
+							? [R1, FormatError<"UNKNOWN_TABLE_UPDATE", [A]>, ParserRefErrorThirdSentinel]
 							: TblTry extends JsqlDataShape
 								? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
-								: [R1, SqlParserError<"Unknown table in UPDATE">, ParserRefErrorThirdSentinel]
+								: [R1, FormatError<"UNKNOWN_TABLE_UPDATE", [A]>, ParserRefErrorThirdSentinel]
 						: never
-				: [R1, SqlParserError<"Expected table name in UPDATE">, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE", []>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -143,18 +143,18 @@ type ParseUpdateSetAssignments<
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokCol extends TokenIdent<infer Col extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-					? [R1, Db, SqlParserError<"Unknown column in UPDATE SET">]
+					? [R1, Db, FormatError<"UNKNOWN_COLUMN_UPDATE_SET", [Col]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
 							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
 									infer R3 extends TokensList,
 									infer Ast,
 								]
-								? Ast extends SqlParserError<string>
+								? Ast extends DbtyperError<any, any>
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst
 										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-											? Resolved extends SqlParserError<string>
+											? Resolved extends DbtyperError<any, any>
 												? [R3, Db, Resolved]
 												: Resolved extends SqlTypeShape
 													? ValidateMutationValueForColumn<
@@ -162,7 +162,7 @@ type ParseUpdateSetAssignments<
 															Col,
 															Resolved
 														> extends infer V0
-														? V0 extends SqlParserError<string>
+														? V0 extends DbtyperError<any, any>
 															? [R3, Db, V0]
 															: V0 extends true
 																? PeekToken<R3> extends TokenKey<",">
@@ -197,27 +197,30 @@ type ParseUpdateSetAssignments<
 																		: [
 																				R3,
 																				Db,
-																				SqlParserError<"Expected `,`, FROM, WHERE, or end after UPDATE assignment">,
+																				FormatError<
+																					"EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT",
+																					[]
+																				>,
 																			]
 																: never
 														: never
 													: SkipFailedExpression<
 																R3,
-																SqlParserError<"Invalid value expression in UPDATE">
+																FormatError<"INVALID_VALUE_EXPRESSION_IN_UPDATE", []>
 														  > extends [infer Rest extends TokensList, infer Err]
 														? [Rest, Db, Err]
 														: never
 											: never
 										: SkipFailedExpression<
 													R3,
-													SqlParserError<"Invalid value expression in UPDATE">
+													FormatError<"INVALID_VALUE_EXPRESSION_IN_UPDATE", []>
 											  > extends [infer Rest extends TokensList, infer Err]
 											? [Rest, Db, Err]
 											: never
 								: never
 							: never
-						: SkipFailedStatement<R1, Db, SqlParserError<"Expected `=` after column in UPDATE SET">>
-				: SkipFailedStatement<R1, Db, SqlParserError<"Expected column name in UPDATE SET">>
+						: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET", []>>
+				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME_IN_UPDATE_SET", []>>
 			: never
 		: never
 
@@ -234,7 +237,7 @@ type ParseUpdateAfterSetKeyword<
 		? SkipToken<Tokens> extends infer Rs extends TokensList
 			? ParseUpdateSetAssignments<Rs, Db, Scope, Params, Tbl, Sch, Tab, readonly []>
 			: never
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected SET in UPDATE">>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SET_IN_UPDATE", []>>
 
 type ParseUpdateFromClause<
 	Tokens extends TokensList,
@@ -248,7 +251,7 @@ type ParseUpdateFromClause<
 		infer FromErr,
 		infer FromScope,
 	]
-		? FromErr extends SqlParserError<string>
+		? FromErr extends DbtyperError<any, any>
 			? [RFrom, Db, FromErr]
 			: FromScope extends ScopeMap
 				? MergeScope<Scope, FromScope> extends infer MergedScope
@@ -259,7 +262,7 @@ type ParseUpdateFromClause<
 										infer Rw extends TokensList,
 										infer We,
 									]
-									? We extends SqlParserError<string>
+									? We extends DbtyperError<any, any>
 										? [Rw, Db, We]
 										: FinishUpdateReturning<Rw, Db, MergedScope, Params, Res>
 									: never
@@ -288,20 +291,20 @@ type ParseUpdateFromClauseTableRef<
 										? [TblTry] extends [never]
 											? [
 													R3,
-													SqlParserError<"Unknown schema or table in UPDATE FROM">,
+													FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM", [A, B]>,
 													ParserRefErrorThirdSentinel,
 												]
 											: TblTry extends JsqlDataShape
 												? ParseUpdateFromClauseTableAlias<R3, A, B, TblTry>
 												: [
 														R3,
-														SqlParserError<"Invalid table in UPDATE FROM">,
+														FormatError<"INVALID_TABLE_IN_UPDATE_FROM", []>,
 														ParserRefErrorThirdSentinel,
 													]
 										: never
 									: [
 											R3,
-											SqlParserError<"Expected table name in UPDATE FROM">,
+											FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE_FROM", []>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -309,12 +312,12 @@ type ParseUpdateFromClauseTableRef<
 						: never
 					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
 						? [TblTry2] extends [never]
-							? [R1, SqlParserError<"Unknown table in UPDATE FROM">, ParserRefErrorThirdSentinel]
+							? [R1, FormatError<"UNKNOWN_TABLE_IN_UPDATE_FROM", [A]>, ParserRefErrorThirdSentinel]
 							: TblTry2 extends JsqlDataShape
 								? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
-								: [R1, SqlParserError<"Invalid table in UPDATE FROM">, ParserRefErrorThirdSentinel]
+								: [R1, FormatError<"INVALID_TABLE_IN_UPDATE_FROM", []>, ParserRefErrorThirdSentinel]
 						: never
-				: [R1, SqlParserError<"Expected table name in UPDATE FROM">, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE_FROM", []>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -390,7 +393,7 @@ type FinishUpdateStatement<
 		: PeekToken<Tokens> extends TokenKey<"where">
 			? SkipToken<Tokens> extends infer Rw0 extends TokensList
 				? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
-					? We extends SqlParserError<string>
+					? We extends DbtyperError<any, any>
 						? [Rw, Db, We]
 						: FinishUpdateReturning<Rw, Db, Scope, Params, Res>
 					: never
@@ -411,7 +414,7 @@ type FinishUpdateReturning<
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
-				? Ret extends SqlParserError<string>
+				? Ret extends DbtyperError<any, any>
 					? [Ra, DbA, Ret]
 					: Ret extends JsqlSelectStatementResult
 						? FinishUpdateSemicolon<Ra, DbA, Res, Ret>
@@ -428,7 +431,7 @@ type FinishUpdateSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning extends null ? Res : Returning]
-		: SkipFailedStatement<Tokens, Db, SqlParserError<"Expected `;` after UPDATE">>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_UPDATE", []>>
 
 type ParseUpdateAfterTableRef<
 	Tokens extends TokensList,
@@ -436,7 +439,7 @@ type ParseUpdateAfterTableRef<
 	Params extends ExpressionParamsShape,
 > =
 	ParseUpdateFromTableRef<Tokens, Db> extends [infer R extends TokensList, infer Mid, infer Third]
-		? Mid extends SqlParserError<string>
+		? Mid extends DbtyperError<any, any>
 			? Third extends ParserRefErrorThirdSentinel
 				? SkipFailedStatement<R, Db, Mid>
 				: never
@@ -451,7 +454,7 @@ type ParseUpdateAfterTableRef<
 							Third["schema"],
 							Third["table"]
 						> extends [infer R2 extends TokensList, infer Db2 extends JsqlDatabaseShape, infer Out]
-						? Out extends SqlParserError<string>
+						? Out extends DbtyperError<any, any>
 							? [R2, Db2, Out]
 							: Out extends JsqlUpdateStatementResult
 								? FinishUpdateStatement<R2, Db2, Third["scope"], Params, Out>

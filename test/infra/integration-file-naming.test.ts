@@ -124,10 +124,12 @@ describe("Integration test files correctness", async () => {
 
 				await it(`the file ${file} must have error message check`, async () => {
 					const hasErrorCheck =
-						/\btype\s+\w+\s*=\s*Expect<\s*Matches<\s*(ExtractQueryError|SqlSelectRow)</.test(content)
+						/\btype\s+\w+\s*=\s*Expect<\s*(Matches|Extends)<\s*(ExtractQueryError|SqlSelectRow)</.test(
+							content,
+						)
 					assert.ok(
 						hasErrorCheck,
-						'Error test files must include: type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"...">>> or SqlSelectRow for stream tests',
+						"Error test files must include: type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<...>>> or Expect<Extends<...>> for union types, or SqlSelectRow for stream tests",
 					)
 				})
 

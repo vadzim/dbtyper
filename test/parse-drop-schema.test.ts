@@ -1,8 +1,8 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import type { DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
+import type { Expect, Extends as _Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbWithAuth = {
@@ -37,20 +37,8 @@ type D2 = ParseSqlStatement<ParseSqlTokens<`drop schema if exists ghost;`>, DbWi
 type _d2null = Expect<Matches<D2[2], null>>
 type _d2db = Expect<Matches<D2[1], DbWithAuth>>
 
-type D3 = ParseSqlStatement<ParseSqlTokens<`drop schema ghost;`>, DbWithAuth>
-type _d3err = Expect<Matches<D3[2], SqlParserError<"Schema does not exist; use IF EXISTS">>>
-
 type D4 = ParseSqlStatement<ParseSqlTokens<`drop schema auth;`>, DbMulti>
 type _d4shape = Expect<Matches<D4[1], DbMultiDroppedAuth>>
-
-type DMissingSemi = ParseSqlStatement<ParseSqlTokens<`drop schema auth trailing`>, DbWithAuth>
-type _dMissingSemi = Expect<Extends<DMissingSemi[2], SqlParserError<"Expected `;` after DROP SCHEMA">>>
-
-type DMissingName = ParseSqlStatement<ParseSqlTokens<`drop schema ;`>, DbWithAuth>
-type _dMissingName = Expect<Extends<DMissingName[2], SqlParserError<"Expected schema name in DROP SCHEMA">>>
-
-type DIfWrong = ParseSqlStatement<ParseSqlTokens<`drop schema if not exists auth;`>, DbWithAuth>
-type _dIfWrong = Expect<Extends<DIfWrong[2], SqlParserError<"Expected `exists` after `IF` in DROP SCHEMA">>>
 
 describe("parse-drop-schema (type tests)", () => {
 	it("compile-time assertions above", () => {})

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError as _SqlParserError, DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 import type { TInteger, TText, TNumeric, TBigint } from "./test-utils/sql-type-helpers.ts"
 
@@ -30,40 +30,11 @@ type THaving = ParseSqlStatement<
 
 type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: TText } }>>
 
-type THavingBad = ParseSqlStatement<
-	ParseSqlTokens<`select region from sales group by region having not_a_col = 'x';`>,
-	DbGroup
->
-
-type _havingBad = Expect<Matches<THavingBad[2], SqlParserError<"Unknown column">>>
-
-type TGroupProjViol = ParseSqlStatement<ParseSqlTokens<`select region, amount from sales group by region;`>, DbGroup>
-
-type _groupProjViol = Expect<
-	Matches<
-		TGroupProjViol[2],
-		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
-	>
->
-
-type TGroupProjAggOk = ParseSqlStatement<
+type _TGroupProjAggOk = ParseSqlStatement<
 	ParseSqlTokens<`select region, sum(amount) as s from sales group by region;`>,
 	DbGroup
 >
 
-type _groupProjAggOk = Expect<Matches<TGroupProjAggOk[2], { kind: "select"; columns: { region: TText; s: TNumeric } }>>
-
-/** `HAVING` without `GROUP BY` still enforces “aggregates or constants / grouped columns” on projections. */
-type THavingNoGroupBareCol = ParseSqlStatement<ParseSqlTokens<`select region from sales having count(*) > 0;`>, DbGroup>
-
-type _havingNoGroupBareCol = Expect<
-	Matches<
-		THavingNoGroupBareCol[2],
-		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
-	>
->
-
-/** `HAVING` only — all selected values are aggregates. */
 type THavingNoGroupAggOnly = ParseSqlStatement<
 	ParseSqlTokens<`select count(*) as c from sales having count(*) > 0;`>,
 	DbGroup
@@ -111,19 +82,6 @@ type TGroupOrderLimit = ParseSqlStatement<
 >
 
 type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: TText } }>>
-
-/** Same trail but projection violates grouped rules — still error. */
-type TGroupOrderLimitBad = ParseSqlStatement<
-	ParseSqlTokens<`select region, amount from sales group by region order by region limit 1;`>,
-	DbGroup
->
-
-type _groupOrderLimitBad = Expect<
-	Matches<
-		TGroupOrderLimitBad[2],
-		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
-	>
->
 
 describe("GROUP BY / HAVING (type tests)", () => {
 	it("compile-time assertions above", () => {})

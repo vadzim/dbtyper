@@ -1,4 +1,4 @@
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError, SqlParserError, DbtyperError } from "../sql-parser-error.ts"
 
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
@@ -20,7 +20,7 @@ export type TokenParam<Param extends string> = TokenType<"param", Param>
 export type TokenEot = TokenType<"eot">
 
 /** Lexeme head: a normal token, or a lexical failure as the same {@link SqlParserError} brand parsers use. */
-type TokenStreamHead = TokenType<TokenKind, string> | SqlParserError<string>
+type TokenStreamHead = TokenType<TokenKind, string> | SqlParserError<string> | DbtyperError<any, any>
 
 export type TokensList = Buffer<TokenStreamHead, string>
 
@@ -62,7 +62,7 @@ type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Res
 							: Head extends '"'
 								? Rest extends `${infer String}"${infer Rest}`
 									? Buffer<TokenIdent<String>, Rest>
-									: Buffer<SqlParserError<"Unclosed quoted identifier literal">, S>
+									: Buffer<FormatError<"UNCLOSED_QUOTED_IDENTIFIER", []>, S>
 								: Head extends "\x20" | "\n" | "\r" | "\t"
 									? ReadTokenFromString<SkipSpaces<Rest>>
 									: Head extends "'"
@@ -89,23 +89,23 @@ type ReadDollar<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends "$"
 		? Rest extends `${infer String}$$${infer Rest2}`
 			? Buffer<TokenString<String>, Rest2>
-			: Buffer<SqlParserError<"Unclosed tagged string">, S>
+			: Buffer<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
 		: Head extends StartTokenChar
 			? Rest extends `${infer Tag}$${infer Rest2}`
 				? ReadTokenChars<Tag> extends { rest: "" }
 					? Rest2 extends `${infer String}$${Head}${Tag}$${infer Rest3}`
 						? Buffer<TokenString<String>, Rest3>
-						: Buffer<SqlParserError<"Unclosed tagged string">, S>
-					: Buffer<SqlParserError<"Wrong string tag">, S>
-				: Buffer<SqlParserError<"Wrong string tag">, S>
-			: Buffer<SqlParserError<"Wrong string tag">, S>
-	: Buffer<SqlParserError<"Wrong string tag">, S>
+						: Buffer<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
+					: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
+				: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
+			: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
+	: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
 
 type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`
 		? ReadSingleQuotedString<R2> extends Buffer<TokenString<infer P2 extends string>, infer R3 extends string>
 			? Buffer<TokenString<`${P1}'${P2}`>, R3>
-			: Buffer<SqlParserError<"Unclosed string literal">, S>
+			: Buffer<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
 		: SkipSpaces<R1> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
 				? ReadSingleQuotedString<R5> extends Buffer<
@@ -113,10 +113,10 @@ type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R
 						infer R6 extends string
 					>
 					? Buffer<TokenString<`${P1}${P6}`>, R6>
-					: Buffer<SqlParserError<"Unclosed string literal">, S>
+					: Buffer<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
 				: Buffer<TokenString<P1>, R4>
 			: never
-	: Buffer<SqlParserError<"Unclosed string literal">, S>
+	: Buffer<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
@@ -397,7 +397,7 @@ type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${i
 			: D1 extends "e" | "E"
 				? GetNumberExpStart<Rest, `${Num}${D1}`>
 				: D1 extends Letter
-					? Buffer<SqlParserError<"Invalid number">, S>
+					? Buffer<FormatError<"INVALID_NUMBER", []>, S>
 					: Buffer<TokenNumber<Num>, S>
 	: Buffer<TokenNumber<Num>, S>
 
@@ -407,7 +407,7 @@ type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1
 		: D1 extends "e" | "E"
 			? GetNumberExpStart<Rest, `${Buf}${D1}`>
 			: D1 extends Letter
-				? Buffer<SqlParserError<"Invalid number">, S>
+				? Buffer<FormatError<"INVALID_NUMBER", []>, S>
 				: Buffer<TokenNumber<Buf>, S>
 	: Buffer<TokenNumber<Buf>, S>
 
@@ -416,19 +416,19 @@ type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infe
 		? GetNumberExpNumStart<Rest, `${Buf}${D1}`>
 		: D1 extends Digit
 			? GetNumberExpNum<Rest, `${Buf}${D1}`>
-			: Buffer<SqlParserError<"Invalid number">, S>
-	: Buffer<SqlParserError<"Invalid number">, S>
+			: Buffer<FormatError<"INVALID_NUMBER", []>, S>
+	: Buffer<FormatError<"INVALID_NUMBER", []>, S>
 
 type GetNumberExpNumStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
-		: Buffer<SqlParserError<"Invalid number">, S>
-	: Buffer<SqlParserError<"Invalid number">, S>
+		: Buffer<FormatError<"INVALID_NUMBER", []>, S>
+	: Buffer<FormatError<"INVALID_NUMBER", []>, S>
 
 type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
 		: D1 extends Letter
-			? Buffer<SqlParserError<"Invalid number">, S>
+			? Buffer<FormatError<"INVALID_NUMBER", []>, S>
 			: Buffer<TokenNumber<Buf>, S>
 	: Buffer<TokenNumber<Buf>, S>

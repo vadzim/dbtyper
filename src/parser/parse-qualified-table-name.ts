@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError } from "../sql-parser-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 
 /** After `schema.` — parse table name, then peek `(`. */
@@ -10,8 +10,8 @@ type ParseQualifiedSecondIdent<AfterDot extends TokensList, _Db extends JsqlData
 			? Tok2 extends TokenIdent<infer B extends string>
 				? PeekToken<R2> extends TokenKey<"(">
 					? [R2, null, A, B]
-					: SkipFailedQualifiedName<R2, SqlParserError<"Expected `(` after qualified table name">>
-				: SkipFailedQualifiedName<R2, SqlParserError<"Expected table name after `.` in qualified table name">>
+					: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME", []>>
+				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME", []>>
 			: never
 		: never
 
@@ -23,7 +23,7 @@ type ParseQualifiedAfterFirstIdent<AfterFirst extends TokensList, Db extends Jsq
 			? SkipToken<AfterFirst> extends infer AfterDot extends TokensList
 				? Tdot extends TokenKey<".">
 					? ParseQualifiedSecondIdent<AfterDot, Db, A>
-					: SkipFailedQualifiedName<AfterDot, SqlParserError<"Expected `.` or `(` after table name">>
+					: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME", []>>
 				: never
 			: never
 
@@ -33,6 +33,6 @@ export type ParseQualifiedTableName<Tokens extends TokensList, Db extends JsqlDa
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseQualifiedAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, SqlParserError<"Expected table name in CREATE TABLE">>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME_IN_CREATE_TABLE", []>>
 			: never
 		: never

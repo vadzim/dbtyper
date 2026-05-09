@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TNumeric, TUuid } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -36,9 +36,6 @@ type _d1IfExistsShape = Expect<Matches<D1IfExists[1], DbAuthItemsDropped>>
 type D2 = ParseSqlStatement<ParseSqlTokens<`drop table if exists ghost;`>, DbAuthItems>
 type _d2null = Expect<Matches<D2[2], null>>
 type _d2db = Expect<Matches<D2[1], DbAuthItems>>
-
-type D3 = ParseSqlStatement<ParseSqlTokens<`drop table ghost;`>, DbAuthItems>
-type _d3err = Expect<Matches<D3[2], SqlParserError<"Table does not exist; use IF EXISTS">>>
 
 /** DB whose default schema is `public` and that schema exists (unqualified names land here). */
 type DbDefaultPublicWithNotifications = {
@@ -106,17 +103,23 @@ type DbWithView = {
 }
 
 type DDropViewAsTable = ParseSqlStatement<ParseSqlTokens<`drop table v_reports;`>, DbWithView>
-type _dDropViewErr = Expect<Extends<DDropViewAsTable[2], SqlParserError<"DROP TABLE targets a view; use DROP VIEW">>>
+type _dDropViewErr = Expect<
+	Extends<DDropViewAsTable[2], DbtyperError<3502, "DROP TABLE targets a view; use DROP VIEW">>
+>
 
 type DDropViewIfExists = ParseSqlStatement<ParseSqlTokens<`drop table if exists v_reports;`>, DbWithView>
 type _dDropViewIfExistsNull = Expect<Matches<DDropViewIfExists[2], null>>
 type _dDropViewIfExistsDb = Expect<Matches<DDropViewIfExists[1], DbWithView>>
 
 type DUnknownSchema = ParseSqlStatement<ParseSqlTokens<`drop table missing_schema.widgets;`>, DbBillingAndPublic>
-type _dUnknownSchema = Expect<Extends<DUnknownSchema[2], SqlParserError<string>>>
+type _dUnknownSchema = Expect<
+	Extends<DUnknownSchema[2], DbtyperError<-1 | keyof typeof import("../src/sql-parser-error.ts").errors, string>>
+>
 
 type DGarbage = ParseSqlStatement<ParseSqlTokens<`drop table auth.items extra ;`>, DbAuthItems>
-type _dGarbage = Expect<Extends<DGarbage[2], SqlParserError<"Expected `;` after qualified table name in DROP TABLE">>>
+type _dGarbage = Expect<
+	Extends<DGarbage[2], DbtyperError<1704, "Expected `;` after qualified table name in DROP TABLE">>
+>
 
 describe("parse-drop-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

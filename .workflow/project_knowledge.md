@@ -40,15 +40,15 @@ Update this when you discover patterns, conventions, or insights specific to THI
 - Registry location: `src/sql-parser-error.ts`
 - Documentation: `docs/ERROR_CODES.md`
 - **4-digit numbering scheme (1000-5499) with 100-code intervals:**
-  - 1000-1099: Lexer/Tokenization (9 codes, 91 slots free)
-  - 1100-1999: Parser Syntax (101 codes, 799 slots free)
-  - 2000-2199: Validation (50 codes, 150 slots free)
-  - 2200-2499: Resolution (29 codes, 271 slots free)
-  - 2500-3199: Type System (40 codes, 660 slots free)
-  - 3200-3699: Semantic/Constraints (59 codes, 441 slots free)
-  - 3700-4199: DDL-Specific (32 codes, 468 slots free)
-  - 4200-5099: DML/Expression (58 codes, 842 slots free)
-  - 5100-5499: Type/Data Specific (39 codes, 361 slots free)
+    - 1000-1099: Lexer/Tokenization (9 codes, 91 slots free)
+    - 1100-1999: Parser Syntax (101 codes, 799 slots free)
+    - 2000-2199: Validation (50 codes, 150 slots free)
+    - 2200-2499: Resolution (29 codes, 271 slots free)
+    - 2500-3199: Type System (40 codes, 660 slots free)
+    - 3200-3699: Semantic/Constraints (59 codes, 441 slots free)
+    - 3700-4199: DDL-Specific (32 codes, 468 slots free)
+    - 4200-5099: DML/Expression (58 codes, 842 slots free)
+    - 5100-5499: Type/Data Specific (39 codes, 361 slots free)
 - Total: 357 codes used, ~3,400 slots available for future expansion
 - Compile-time duplicate detection for both IDs and messages
 - Format: `{ id: "SCREAMING_SNAKE_CASE", msg: ["message", "parts"] }`

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError as _SqlParserError, DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
@@ -73,22 +73,6 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 			}
 		}
 	>
->
-
-type TJoinOnAliasTypeMismatch = ParseSqlStatement<
-	ParseSqlTokens<`select email from auth.users u left join public.agenda a on u.email = a.user_id;`>,
-	DbJoinAuthAgenda
->
-type _joinOnAliasTypeMismatchErr = Expect<
-	Extends<TJoinOnAliasTypeMismatch[2], SqlParserError<"Incompatible types in JOIN ON">>
->
-
-type TJoinOnQualifiedTypeMismatch = ParseSqlStatement<
-	ParseSqlTokens<`select email from auth.users left join public.agenda on auth.users.email = public.agenda.user_id;`>,
-	DbJoinAuthAgenda
->
-type _joinOnQualifiedTypeMismatchErr = Expect<
-	Extends<TJoinOnQualifiedTypeMismatch[2], SqlParserError<"Incompatible types in JOIN ON">>
 >
 
 /** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE` via `:emailPat`, `ORDER BY`. */

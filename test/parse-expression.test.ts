@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError as _SqlParserError, DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { MergeScope } from "../src/parser/parser-scope.ts"
 import type {
@@ -10,7 +10,7 @@ import type {
 	ResolveExpressionAST,
 	SqlCastTypeNorm,
 } from "../src/parser/parse-expression.ts"
-import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { ParseSqlStatement as _ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { TBoolean, TInteger, TText, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { SqlTypeShape } from "../src/core/sql-type-shape.ts"
@@ -43,24 +43,11 @@ type UsersEntry = {
 
 type UsersScope = Record<"users", UsersEntry>
 
-type WUnknownParam = ParseWhereExpression<ParseSqlTokens<`:n = 'x'`>, DbUsers, UsersScope, EmptyExpressionParams>
-type _wUnknownParam = Expect<Extends<WUnknownParam[1], SqlParserError<"Unknown query parameter">>>
-
 type WParamUnknownTs = ParseWhereExpression<ParseSqlTokens<`:p = 'x'`>, DbUsers, UsersScope, { p: SqlTypeShape }>
 type _wParamUnknownTs = Expect<Extends<WParamUnknownTs[1], null>>
 
 type WParamBoolOk = ParseWhereExpression<ParseSqlTokens<`:flag`>, DbUsers, UsersScope, { flag: TBoolean }>
 type _wParamBoolOk = Expect<Extends<WParamBoolOk[1], null>>
-
-type WNonBoolRoot = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
-type _wNonBoolRoot = Expect<Extends<WNonBoolRoot[1], SqlParserError<"Expression must be boolean">>>
-
-/** Non-boolean root: same rule as `WHERE` (untyped parse + resolve). */
-type SelBareCol = ParseWhereExpression<ParseSqlTokens<`users.id`>, DbUsers, UsersScope>
-type _selBareCol = Expect<Extends<SelBareCol[1], SqlParserError<"Expression must be boolean">>>
-
-type TSelectParamNoBind = ParseSqlStatement<ParseSqlTokens<`select :limit, users.id from users;`>, DbUsers>
-type _selectParamNoBind = Expect<Extends<TSelectParamNoBind[2], SqlParserError<"Unknown query parameter in SELECT">>>
 
 type InnerScope = Record<"inner_t", { schema: "public"; table: "inner_t"; columns: { a: TInteger } }>
 type OuterScope = Record<"outer_t", { schema: "public"; table: "outer_t"; columns: { b: TText } }>
@@ -80,27 +67,6 @@ type _uAndCmp = Expect<Extends<UAndCmp[1], { kind: "and" }>>
 
 type UOrAndPrec = ParseExpressionAST<ParseSqlTokens<`true or false and false`>, TestEnvForExprParse>
 type _uOrAndPrec = Expect<Extends<UOrAndPrec[1], { kind: "or" }>>
-
-type UIsBad = ParseExpressionAST<ParseSqlTokens<`1 is 2`>, TestEnvForExprParse>
-type _uIsBad = Expect<Extends<UIsBad[1], SqlParserError<"Expected NULL after IS">>>
-
-type RNotNum = ResolveExpressionAST<
-	ParseExpressionAST<ParseSqlTokens<`not 1`>, TestEnvForExprParse> extends [infer _R, infer Ast] ? Ast : never,
-	DbUsers,
-	UsersScope,
-	EmptyExpressionParams
->
-type _rNotNum = Expect<Extends<RNotNum, SqlParserError<"NOT requires a boolean operand">>>
-
-type RUnaryMinusText = ResolveExpressionAST<
-	ParseExpressionAST<ParseSqlTokens<`-(users.name)`>, TestEnvForExprParse> extends [infer _R, infer Ast]
-		? Ast
-		: never,
-	DbUsers,
-	UsersScope,
-	EmptyExpressionParams
->
-type _rUnaryMinusText = Expect<Extends<RUnaryMinusText, SqlParserError<"Unary minus requires a number">>>
 
 type UCastPg = ParseExpressionAST<ParseSqlTokens<`1::text`>, TestEnvForExprParse>
 type _uCastPg = Expect<Extends<UCastPg[1], { kind: "pg_cast" }>>

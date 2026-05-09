@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-shapes.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { SqlParserError, DbtyperError } from "../sql-parser-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { PostgresTypeMap } from "../postgres/postgres-type-map.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
@@ -217,11 +217,19 @@ type CheckSqlValidForStream<
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
-> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer Msg>] ? `Error in query: ${Msg}` : Stmt
+> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [SqlParserError<infer Msg>]
+	? `Error in query: ${Msg}`
+	: [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer Msg>]
+		? `Error in query: ${Msg}`
+		: Stmt
 
 /** Type check for .query() - accepts any valid SQL (including non-RETURNING statements) */
 type CheckSqlValidForQuery<Db extends JsqlDatabaseShape, Stmt extends string, Params extends ExpressionParamsShape> =
-	ApplyStatements<Db, Stmt, Params>[1] extends SqlParserError<infer Msg> ? `Error in query: ${Msg}` : Stmt
+	ApplyStatements<Db, Stmt, Params>[1] extends SqlParserError<infer Msg>
+		? `Error in query: ${Msg}`
+		: ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer _Code, infer Msg>
+			? `Error in query: ${Msg}`
+			: Stmt
 
 /** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
 type QueryReturnType<
@@ -232,10 +240,16 @@ type QueryReturnType<
 > =
 	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends SqlParserError<string>
 		? unknown
-		: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
+		: SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<any, any>
+			? unknown
+			: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
 
 type CheckSqlMigrationSource<Db extends JsqlDatabaseShape, Source extends string> =
-	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M> ? M : Source
+	ApplyStatements<Db, Source>[1] extends SqlParserError<infer M>
+		? M
+		: ApplyStatements<Db, Source>[1] extends DbtyperError<infer _Code, infer M>
+			? M
+			: Source
 
 export type DataBase<Db extends JsqlDatabaseShape, ScalarTypes extends Record<string, unknown>> = {
 	/**

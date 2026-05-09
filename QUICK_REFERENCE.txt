@@ -1,0 +1,113 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║              DELETED ERROR CHECKS VERIFICATION - QUICK REFERENCE           ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+DATE: 2026-05-09
+TASK: Verify deleted error checks have corresponding integration tests
+RESULT: 108 of 110 deleted error checks are MISSING integration tests
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ SUMMARY                                                                    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Total Deleted:    110
+✅ Covered:         2 (1.8%)
+❌ Missing:       108 (98.2%)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ BREAKDOWN                                                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+WHERE Expressions:        44  🔴 HIGH PRIORITY
+Expressions/Operators:    37  🔴 HIGH PRIORITY  
+SELECT:                   29  🔴 HIGH PRIORITY
+INSERT:                    6  🟡 MEDIUM
+CREATE TABLE:              6  🟡 MEDIUM
+ALTER TABLE:               5  🟡 MEDIUM
+DROP SCHEMA:               4  🟢 LOW
+DROP TABLE:                4  🟢 LOW
+UPDATE:                    3  🟡 MEDIUM
+DELETE:                    2  🟡 MEDIUM
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ KEY FILES                                                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+📄 VERIFICATION_REPORT.md (workspace)
+   → Main comprehensive report with all details
+
+📄 /tmp/opencode/verification-report.json
+   → Full structured data (23K)
+
+📄 /tmp/opencode/missing-tests-list.json
+   → List of all 108 missing tests (21K)
+
+📄 /tmp/opencode/NEXT_STEPS.md
+   → Step-by-step guide for creating tests
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ QUICK COMMANDS                                                             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+# View main report
+cat VERIFICATION_REPORT.md
+
+# List all missing WHERE tests
+node -e "require('/tmp/opencode/missing-tests-list.json').filter(t=>t.category.includes('WHERE')).forEach(t=>console.log(t.name+': '+t.query))"
+
+# Count by category
+node -e "const t=require('/tmp/opencode/missing-tests-list.json');const c={};t.forEach(x=>c[x.category]=(c[x.category]||0)+1);console.log(c)"
+
+# Generate checklist
+node -e "require('/tmp/opencode/missing-tests-list.json').forEach(t=>console.log('- [ ] '+t.name+' ('+t.category+')'))" > CHECKLIST.md
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ EXAMPLES OF MISSING TESTS                                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+❌ WBadQual: users.nope = 'x'
+   Error 2307 - Unknown qualified column users.nope
+
+❌ InsBadType: insert into users (id, name) values (1, 'n');
+   Incompatible value type for column
+
+❌ UpBadWhere: update users set name = 'x' where id = 1;
+   Error 2500 - Incompatible types in comparison
+
+❌ TAlterDropUnknownCol: alter table public.items drop column ghost;
+   Error 3209 - Column ghost does not exist
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ NEXT STEPS                                                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+1. Review VERIFICATION_REPORT.md
+2. Start with WHERE expressions (44 tests) - highest priority
+3. Use pattern from existing integration tests
+4. Estimated effort: ~9 hours total
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ INTEGRATION TEST PATTERN                                                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+const db = sqlMigrations({ driver: mockDriver })
+  .apply(`create schema public;`)
+  .apply(`create table users (id text, name text);`)
+  .database()
+
+const query = `[exact query from deleted test]` as const
+
+// @ts-expect-error
+await db.query(query)
+
+type DbShape = ApplyStatements<SqlDatabase, `[DDL]`>[0]
+type _errorCheck = Expect<Matches<
+  ExtractQueryError<DbShape, typeof query>, 
+  DbtyperError<[code], "[message]">
+>>
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ STATUS: ✅ VERIFICATION COMPLETE                                           ║
+╚════════════════════════════════════════════════════════════════════════════╝

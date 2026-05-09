@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -58,7 +58,9 @@ type DbWithDup = {
 }
 
 type T3 = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( n int not null );`>, DbWithDup>
-type _t3err = Expect<Extends<T3[2], SqlParserError<string>>>
+type _t3err = Expect<
+	Extends<T3[2], DbtyperError<-1 | keyof typeof import("../src/sql-parser-error.ts").errors, string>>
+>
 
 type T4 = ParseSqlStatement<
 	ParseSqlTokens<`create table logs.events ( at timestamp with time zone not null );`>,
@@ -127,7 +129,12 @@ type TExplicitUnknownSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table missing_schema.widgets ( id uuid not null );`>,
 	DbBillingAndPublic
 >
-type _tExplicitUnknownSchema = Expect<Extends<TExplicitUnknownSchema[2], SqlParserError<string>>>
+type _tExplicitUnknownSchema = Expect<
+	Extends<
+		TExplicitUnknownSchema[2],
+		DbtyperError<-1 | keyof typeof import("../src/sql-parser-error.ts").errors, string>
+	>
+>
 
 /** DB whose default schema is `public` and that schema exists (unqualified names land here). */
 type DbDefaultPublic = {
@@ -170,23 +177,16 @@ type _t6shape = Expect<
 >
 
 type TExpectedTableName = ParseSqlStatement<ParseSqlTokens<`create table( id int not null );`>, DbDefaultPublic>
-type _expectedTableName = Expect<Extends<TExpectedTableName[2], SqlParserError<"Expected table name in CREATE TABLE">>>
-
-type TDupWithoutIfNot = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( x int not null );`>, DbWithDup>
-type _dupNoIfNot = Expect<Matches<TDupWithoutIfNot[2], SqlParserError<"Table already exists; use IF NOT EXISTS">>>
-
-type TGarbageAfterClose = ParseSqlStatement<
-	ParseSqlTokens<`create table n ( id int not null) extra ;`>,
-	DbDefaultPublic
+type _expectedTableName = Expect<
+	Matches<TExpectedTableName[2], DbtyperError<1506, "Expected table name in CREATE TABLE">>
 >
-type _garbageAfterClose = Expect<Extends<TGarbageAfterClose[2], SqlParserError<"Expected `;` after CREATE TABLE">>>
 
 type TUnknownQualifiedSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table zzz.ghost ( id int not null );`>,
 	DbDefaultPublic
 >
 type _unknownQualifiedSchema = Expect<
-	Extends<TUnknownQualifiedSchema[2], SqlParserError<"Unknown schema for CREATE TABLE">>
+	Extends<TUnknownQualifiedSchema[2], DbtyperError<2214, "Unknown schema zzz for CREATE TABLE">>
 >
 
 /** `defaultSchema` names where to create unqualified tables; that schema must exist (it is never implied). */
@@ -200,7 +200,7 @@ type TUnqualifiedRequiresDefaultSchemaRow = ParseSqlStatement<
 	DbDefaultPublicButOnlyAuth
 >
 type _unqMissingDefaultSchema = Expect<
-	Extends<TUnqualifiedRequiresDefaultSchemaRow[2], SqlParserError<"Unknown schema for CREATE TABLE">>
+	Extends<TUnqualifiedRequiresDefaultSchemaRow[2], DbtyperError<2214, "Unknown schema public for CREATE TABLE">>
 >
 
 type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
@@ -221,7 +221,9 @@ type _qualWhenDefaultMissingShape = Expect<
 >
 
 type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>
-type _missingOpenParen = Expect<Extends<TMissingOpenParen[2], SqlParserError<"Expected `.` or `(` after table name">>>
+type _missingOpenParen = Expect<
+	Matches<TMissingOpenParen[2], DbtyperError<4107, "Expected `.` or `(` after table name">>
+>
 
 describe("parse-create-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

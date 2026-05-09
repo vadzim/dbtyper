@@ -25,6 +25,7 @@
 Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 100-code intervals between sections to allow room for future expansion.
 
 **Current Scheme (3-digit):**
+
 - 100-199: Lexer/Tokenization (9 codes)
 - 200-299: Parser Syntax (101 codes)
 - 300-399: Validation (50 codes)
@@ -36,6 +37,7 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 - 900-999: Type/Data Specific (39 codes)
 
 **New Scheme (4-digit with 100-code intervals):**
+
 - 1000-1099: Lexer/Tokenization (9 codes) - 90 slots free
 - 1100-1199: Parser Syntax - SELECT (11 codes) - 89 slots free
 - 1200-1299: Parser Syntax - INSERT (20 codes) - 80 slots free
@@ -114,12 +116,14 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 ### Phase 1: Planning and Mapping
 
 #### Step 1.1: Create Renumbering Map
+
 - [ ] Read current error registry
 - [ ] Create mapping from 3-digit to 4-digit codes
 - [ ] Verify no conflicts in new numbering
 - [ ] Document mapping
 
 #### Step 1.2: Update Error Registry
+
 - [ ] Launch subagent to renumber all error codes
 - [ ] Verify structure is correct
 - [ ] Run type checking
@@ -130,12 +134,14 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 ### Phase 2: Validation
 
 #### Step 2.1: Test Changes
+
 - [ ] Run `npm run typecheck:full`
 - [ ] Run `npm test`
 - [ ] Verify duplicate detection works
 - [ ] All tests pass
 
 #### Step 2.2: Update Documentation
+
 - [ ] Update ERROR_CODES.md with new ranges
 - [ ] Update feature plan
 - [ ] Commit changes
@@ -145,11 +151,13 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 ### Phase 3: Finalization
 
 #### Step 3.1: Final Validation
+
 - [ ] Review all changes
 - [ ] Verify error code distribution
 - [ ] Confirm no breaking changes
 
 #### Step 3.2: Update Workflow Documents
+
 - [ ] Update .workflow/project_knowledge.md
 - [ ] Complete retrospective
 
@@ -162,6 +170,7 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 **Status:** ✅ Complete
 
 **Completed:**
+
 - ✅ Created renumbering mapping
 - ✅ Launched subagent to update registry
 - ✅ All 357 error codes renumbered to 4-digit scheme
@@ -171,6 +180,7 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 - ✅ Committed changes
 
 **What Was Done:**
+
 1. Created feature plan for renumbering
 2. Launched subagent to renumber all 357 error codes
 3. Verified type checking and tests pass
@@ -180,6 +190,7 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 **Time Taken:** ~11 minutes
 
 **Next Steps:**
+
 - Ready for FormatError implementation
 - Branch: feature/error-codes has 5 commits total
 - Not pushed per original request
@@ -189,6 +200,7 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 ## Workflow Retrospective
 
 ### What went well:
+
 - ✅ Created feature plan BEFORE starting implementation
 - ✅ Added "READ .workflow/ first" directive
 - ✅ Used subagent for bulk renumbering (efficient)
@@ -197,16 +209,19 @@ Update error code numbering from 3-digit (100-999) to 4-digit (1000-9999) with 1
 - ✅ Clear commit message with detailed breakdown
 
 ### What could be improved:
+
 - Could have committed feature plan to main repo
 - **CRITICAL checks:**
-  - Did I create this feature plan BEFORE starting implementation? **[Yes]** ✅
-  - Did I add "READ .workflow/ first" directive at the top? **[Yes]** ✅
-  - Did I update checkboxes during work, not just at end? **[Yes]** ✅
-  - Did I complete this retrospective section? **[Yes]** ✅
+    - Did I create this feature plan BEFORE starting implementation? **[Yes]** ✅
+    - Did I add "READ .workflow/ first" directive at the top? **[Yes]** ✅
+    - Did I update checkboxes during work, not just at end? **[Yes]** ✅
+    - Did I complete this retrospective section? **[Yes]** ✅
 
 ### Workflow doc improvements needed:
+
 - None - workflow worked well for this task
 - Subagent pattern for bulk updates is well-established
 
 ### Actions taken:
+
 - [ ] Updated `.workflow/project_knowledge.md` - Will update with 4-digit scheme info

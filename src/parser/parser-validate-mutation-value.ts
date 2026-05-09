@@ -1,5 +1,5 @@
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError } from "../sql-parser-error.ts"
 import type { SameComparisonClass } from "./parse-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -17,7 +17,7 @@ type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl exten
 export type ValidateMutationValueForColumn<Tbl extends JsqlDataShape, Col extends string, Val extends SqlTypeShape> =
 	JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends SqlTypeShape
 		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
-		: SqlParserError<"Unknown column in INSERT">
+		: FormatError<"UNKNOWN_COLUMN_INSERT", [Col]>
 
 type ValidateMutationValueBySql<
 	Tbl extends JsqlDataShape,
@@ -26,8 +26,8 @@ type ValidateMutationValueBySql<
 	ColSql extends SqlTypeShape,
 > = Val["type"] extends "null"
 	? InsertColNotNull<Tbl, Col> extends true
-		? SqlParserError<"NULL not allowed for NOT NULL column">
+		? FormatError<"NULL_NOT_ALLOWED_NOT_NULL_COLUMN", [Col]>
 		: true
 	: SameComparisonClass<Val, ColSql> extends true
 		? true
-		: SqlParserError<"Incompatible value type for column">
+		: FormatError<"INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN", [Col]>

@@ -94,18 +94,21 @@ type _AssertNoDuplicateIds = ShouldBeFalse<FoundDuplicateIds>
 ```
 
 **Benefits:**
+
 - Catches duplicates at compile time, not runtime
 - No performance overhead
 - Impossible to merge code with duplicates
 - Self-documenting constraints
 
 **Use cases:**
+
 - Error code registries
 - Configuration objects with unique keys
 - Enum-like structures
 - Any collection requiring uniqueness
 
 **Example from error code implementation:**
+
 - 357 error codes with duplicate ID detection
 - Duplicate message detection
 - TypeScript compilation fails if duplicates exist
@@ -155,12 +158,14 @@ When adding many items to a registry (e.g., 300+ error codes):
 4. **Validation phase:** Run full test suite and type checking
 
 **Benefits:**
+
 - Foundation establishes clear pattern for subagent to follow
 - Bulk addition via subagent is much faster than manual
 - Pattern consistency across all items
 - Main context preserved for orchestration
 
 **Example results:**
+
 - Error code implementation: 38 foundation codes (manual), 321 remaining codes (subagent)
 - Total time: 19 minutes for 357 codes
 - Pattern consistency: 100%

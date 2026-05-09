@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken, TokenIdent, TokenKey, TokensList, TokenNumber } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError } from "../sql-parser-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
@@ -47,7 +47,7 @@ export type ParseArraySuffix<Tokens extends TokensList, BaseType extends SqlType
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? ParseArraySuffix<R2, { type: "array"; arg: BaseType; nullable: false }>
 					: never
-				: SkipFailedExpression<R1, SqlParserError<"Expected ] after [ in array type">>
+				: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE", []>>
 			: never
 		: [Tokens, BaseType]
 
@@ -70,10 +70,10 @@ type ParseVarcharLength<Tokens extends TokensList> =
 			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? PeekToken<R1> extends TokenKey<")">
 					? [SkipToken<R1>, Num]
-					: SkipFailedExpression<R1, SqlParserError<"Expected ) after VARCHAR length">>
+					: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH", []>>
 				: never
-			: SkipFailedExpression<Tokens, SqlParserError<"Invalid number for VARCHAR length">>
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected number for VARCHAR length">>
+			: SkipFailedExpression<Tokens, FormatError<"INVALID_NUMBER_FOR_VARCHAR_LENGTH", []>>
+		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_NUMBER_FOR_VARCHAR_LENGTH", []>>
 
 /** Parse NUMERIC(precision) or NUMERIC(precision, scale) */
 type ParseNumericPrecisionScale<Tokens extends TokensList> =
@@ -87,17 +87,23 @@ type ParseNumericPrecisionScale<Tokens extends TokensList> =
 								? SkipToken<R2> extends infer R3 extends TokensList
 									? PeekToken<R3> extends TokenKey<")">
 										? [SkipToken<R3>, { precision: Precision; scale: Scale }]
-										: SkipFailedExpression<R3, SqlParserError<"Expected ) after NUMERIC scale">>
+										: SkipFailedExpression<
+												R3,
+												FormatError<"EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE", []>
+											>
 									: never
-								: SkipFailedExpression<R2, SqlParserError<"Invalid scale number">>
-							: SkipFailedExpression<R2, SqlParserError<"Expected scale number">>
+								: SkipFailedExpression<R2, FormatError<"INVALID_SCALE_NUMBER", []>>
+							: SkipFailedExpression<R2, FormatError<"EXPECTED_SCALE_NUMBER", []>>
 						: never
 					: PeekToken<R1> extends TokenKey<")">
 						? [SkipToken<R1>, { precision: Precision; scale: 0 }]
-						: SkipFailedExpression<R1, SqlParserError<"Expected , or ) after NUMERIC precision">>
+						: SkipFailedExpression<
+								R1,
+								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION", []>
+							>
 				: never
-			: SkipFailedExpression<Tokens, SqlParserError<"Invalid precision number">>
-		: SkipFailedExpression<Tokens, SqlParserError<"Expected precision number">>
+			: SkipFailedExpression<Tokens, FormatError<"INVALID_PRECISION_NUMBER", []>>
+		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_PRECISION_NUMBER", []>>
 
 /** Parse type modifiers like (n) for VARCHAR, (p,s) for NUMERIC */
 type ParseTypeModifiers<Tokens extends TokensList, BaseTypeName extends string> =
@@ -125,7 +131,7 @@ type ParseTypeModifiers<Tokens extends TokensList, BaseTypeName extends string> 
 export type ParseSqlType<Tokens extends TokensList> =
 	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends TokensList, infer Words extends readonly string[]]
 		? Words extends readonly []
-			? SkipFailedExpression<AfterWords, SqlParserError<"Expected type name">>
+			? SkipFailedExpression<AfterWords, FormatError<"EXPECTED_TYPE_NAME", []>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
 				? NormalizeSqlTypeName<TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiers<AfterWords, NormalizedName> extends [

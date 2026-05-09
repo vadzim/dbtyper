@@ -2,15 +2,16 @@ import type { Dec, Tuple } from "./core/type-utils.ts"
 
 type ErrorIds = keyof Errors
 
-export type FormatError<
-	ID extends ErrorIds,
-	Args extends Tuple<string | number, Dec[Errors[ID]["msg"]["length"]]>,
-> = Errors[ID] extends { code: infer Code extends keyof ErrorsConst; msg: infer Msg }
+export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Errors[ID] extends {
+	code: infer Code extends keyof ErrorsConst
+	msg: infer Msg
+}
 	? Msg extends readonly string[]
 		? DbtyperError<Code, JoinWithArgs<Msg, Args>>
 		: never
 	: never
 
+// Legacy type alias for backward compatibility - used for type checking throughout the codebase
 export type SqlParserError<Message extends string> = DbtyperError<-1, Message>
 
 export type DbtyperError<Code extends -1 | keyof ErrorsConst, Message extends string> = {
@@ -199,6 +200,14 @@ export const errors = {
 		id: "EXPECTED_WHEN_ELSE_OR_END_IN_CASE",
 		msg: ["Expected WHEN ELSE or END in CASE"],
 	},
+	1120: {
+		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_FROM",
+		msg: ["Expected table name after `.` in FROM"],
+	},
+	1121: {
+		id: "EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM",
+		msg: ["Expected table name or `(` in FROM"],
+	},
 
 	// INSERT Statement
 	1200: {
@@ -280,6 +289,26 @@ export const errors = {
 	1219: {
 		id: "EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE",
 		msg: ["Expected `=` after column in ON CONFLICT UPDATE"],
+	},
+	1220: {
+		id: "EXPECTED_TABLE_NAME_IN_INSERT_INTO",
+		msg: ["Expected table name in INSERT INTO"],
+	},
+	1221: {
+		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO",
+		msg: ["Expected table name after `.` in INSERT INTO"],
+	},
+	1222: {
+		id: "EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
+		msg: ["Expected `,`, WHERE, or end after ON CONFLICT SET"],
+	},
+	1223: {
+		id: "INVALID_VALUE_EXPRESSION_IN_INSERT",
+		msg: ["Invalid value expression in INSERT"],
+	},
+	1224: {
+		id: "INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
+		msg: ["Invalid value expression in ON CONFLICT UPDATE"],
 	},
 
 	// UPDATE Statement
@@ -513,6 +542,18 @@ export const errors = {
 		id: "EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE",
 		msg: ["Expected `value` after `ADD` in ALTER TYPE"],
 	},
+	1815: {
+		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE",
+		msg: ["Expected `not` after `IF` in CREATE TYPE"],
+	},
+	1816: {
+		id: "EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE",
+		msg: ["Expected `exists` after `IF NOT` in CREATE TYPE"],
+	},
+	1817: {
+		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE",
+		msg: ["Expected `exists` after `IF` in DROP TYPE"],
+	},
 
 	// Validation Errors - Invalid X
 	// Expression Validation
@@ -727,23 +768,23 @@ export const errors = {
 	},
 	2201: {
 		id: "UNKNOWN_TABLE_UPDATE",
-		msg: ["Unknown table in UPDATE"],
+		msg: ["Unknown table ", " in UPDATE"],
 	},
 	2202: {
 		id: "UNKNOWN_TABLE_IN_UPDATE_FROM",
-		msg: ["Unknown table in UPDATE FROM"],
+		msg: ["Unknown table ", " in UPDATE FROM"],
 	},
 	2203: {
 		id: "UNKNOWN_TABLE_INSERT_INTO",
-		msg: ["Unknown table in INSERT INTO"],
+		msg: ["Unknown table ", " in INSERT INTO"],
 	},
 	2204: {
 		id: "UNKNOWN_TABLE_DELETE_FROM",
-		msg: ["Unknown table in DELETE FROM"],
+		msg: ["Unknown table ", " in DELETE FROM"],
 	},
 	2205: {
 		id: "UNKNOWN_TABLE_IN_DELETE_USING",
-		msg: ["Unknown table in DELETE USING"],
+		msg: ["Unknown table ", " in DELETE USING"],
 	},
 	2206: {
 		id: "UNKNOWN_TABLE_IN_SELECT_STAR",
@@ -751,7 +792,7 @@ export const errors = {
 	},
 	2207: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE",
-		msg: ["Unknown schema or table"],
+		msg: ["Unknown schema ", " or table ", ""],
 	},
 	2208: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_FROM",
@@ -759,69 +800,69 @@ export const errors = {
 	},
 	2209: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE",
-		msg: ["Unknown schema or table in UPDATE"],
+		msg: ["Unknown schema ", " or table ", " in UPDATE"],
 	},
 	2210: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM",
-		msg: ["Unknown schema or table in UPDATE FROM"],
+		msg: ["Unknown schema ", " or table ", " in UPDATE FROM"],
 	},
 	2211: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
-		msg: ["Unknown schema or table in INSERT INTO"],
+		msg: ["Unknown schema ", " or table ", " in INSERT INTO"],
 	},
 	2212: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM",
-		msg: ["Unknown schema or table in DELETE FROM"],
+		msg: ["Unknown schema ", " or table ", " in DELETE FROM"],
 	},
 	2213: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING",
-		msg: ["Unknown schema or table in DELETE USING"],
+		msg: ["Unknown schema ", " or table ", " in DELETE USING"],
 	},
 	2214: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_TABLE",
-		msg: ["Unknown schema for CREATE TABLE"],
+		msg: ["Unknown schema ", " for CREATE TABLE"],
 	},
 	2215: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_TYPE",
-		msg: ["Unknown schema for CREATE TYPE"],
+		msg: ["Unknown schema ", " for CREATE TYPE"],
 	},
 	2216: {
 		id: "UNKNOWN_SCHEMA_FOR_CREATE_VIEW",
-		msg: ["Unknown schema for CREATE VIEW"],
+		msg: ["Unknown schema ", " for CREATE VIEW"],
 	},
 
 	// Column Resolution
 	2300: {
 		id: "UNKNOWN_COLUMN",
-		msg: ["Unknown column"],
+		msg: ["Unknown column ", ""],
 	},
 	2301: {
 		id: "UNKNOWN_COLUMN_UPDATE_SET",
-		msg: ["Unknown column in UPDATE SET"],
+		msg: ["Unknown column ", " in UPDATE SET"],
 	},
 	2302: {
 		id: "UNKNOWN_COLUMN_INSERT",
-		msg: ["Unknown column in INSERT"],
+		msg: ["Unknown column ", " in INSERT"],
 	},
 	2303: {
 		id: "UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
-		msg: ["Unknown column in INSERT column list"],
+		msg: ["Unknown column ", " in INSERT column list"],
 	},
 	2304: {
 		id: "UNKNOWN_COLUMN_IN_ON_CONFLICT",
-		msg: ["Unknown column in ON CONFLICT"],
+		msg: ["Unknown column ", " in ON CONFLICT"],
 	},
 	2305: {
 		id: "UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET",
-		msg: ["Unknown column in ON CONFLICT DO UPDATE SET"],
+		msg: ["Unknown column ", " in ON CONFLICT DO UPDATE SET"],
 	},
 	2306: {
 		id: "UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN",
-		msg: ["Unknown column (schema.table.column)"],
+		msg: ["Unknown column ", ".", ".", ""],
 	},
 	2307: {
 		id: "UNKNOWN_QUALIFIED_COLUMN",
-		msg: ["Unknown qualified column"],
+		msg: ["Unknown qualified column ", ".", ""],
 	},
 	2308: {
 		id: "UNKNOWN_ALIAS_IN_SELECT_STAR",
@@ -874,11 +915,11 @@ export const errors = {
 	},
 	2507: {
 		id: "INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN",
-		msg: ["Incompatible value type for column"],
+		msg: ["Incompatible value type for column ", ""],
 	},
 	2508: {
 		id: "INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN",
-		msg: ["INSERT...SELECT type mismatch for column"],
+		msg: ["INSERT...SELECT type mismatch for column ", ""],
 	},
 
 	// Boolean Type Errors
@@ -914,7 +955,7 @@ export const errors = {
 	// NULL Handling
 	2700: {
 		id: "NULL_NOT_ALLOWED_NOT_NULL_COLUMN",
-		msg: ["NULL not allowed for NOT NULL column"],
+		msg: ["NULL not allowed for NOT NULL column ", ""],
 	},
 	2701: {
 		id: "NULL_NOT_ALLOWED_ARITHMETIC",
@@ -1029,11 +1070,11 @@ export const errors = {
 	},
 	3208: {
 		id: "COLUMN_ALREADY_EXISTS",
-		msg: ["Column already exists"],
+		msg: ["Column ", " already exists"],
 	},
 	3209: {
 		id: "COLUMN_DOES_NOT_EXIST",
-		msg: ["Column does not exist"],
+		msg: ["Column ", " does not exist"],
 	},
 	3210: {
 		id: "DUPLICATE_WITH_CLAUSE_NAME",
@@ -1047,7 +1088,7 @@ export const errors = {
 	// Constraint Violations
 	3300: {
 		id: "MISSING_NOT_NULL_COLUMN_IN_INSERT",
-		msg: ["Missing NOT NULL column in INSERT"],
+		msg: ["Missing NOT NULL column ", " in INSERT"],
 	},
 	3301: {
 		id: "INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY",
@@ -1089,7 +1130,7 @@ export const errors = {
 	},
 	3404: {
 		id: "AMBIGUOUS_UNQUALIFIED_COLUMN",
-		msg: ["Ambiguous unqualified column"],
+		msg: ["Ambiguous unqualified column ", ""],
 	},
 	3405: {
 		id: "QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS",
@@ -1618,7 +1659,11 @@ type Errors = {
 		: never
 }
 
-type JoinWithArgs<Msg extends readonly string[], Args extends (string|number)[]> = Msg extends readonly [
+type ErrorArgs<ID extends ErrorIds> = Tuple<string | number, ErrorArgsNumber<ID>>
+
+type ErrorArgsNumber<ID extends ErrorIds> = Dec[Errors[ID]["msg"]["length"]]
+
+type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[]> = Msg extends readonly [
 	infer First,
 	...infer Rest,
 ]
@@ -1626,7 +1671,7 @@ type JoinWithArgs<Msg extends readonly string[], Args extends (string|number)[]>
 		? Rest extends readonly string[]
 			? Args extends readonly [infer Arg, ...infer RestArgs]
 				? Arg extends string
-					? RestArgs extends (string|number)[]
+					? RestArgs extends (string | number)[]
 						? Rest["length"] extends 0
 							? `${First}${Arg}`
 							: `${First}${Arg}${JoinWithArgs<Rest, RestArgs>}`

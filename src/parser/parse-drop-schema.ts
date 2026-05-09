@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetSchema, JsqlDbReplaceSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { SqlParserError } from "../sql-parser-error.ts"
+import type { FormatError } from "../sql-parser-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
@@ -11,7 +11,7 @@ export type ParseDropSchema<Tokens extends TokensList, Db extends JsqlDatabaseSh
 				? SkipToken<A0> extends infer A1 extends TokensList
 					? ParseDropSchemaName<A1, Db, true>
 					: never
-				: SkipFailedStatement<A0, Db, SqlParserError<"Expected `exists` after `IF` in DROP SCHEMA">>
+				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_EXISTS_AFTER_IF_IN_DROP_SCHEMA", []>>
 			: never
 		: ParseDropSchemaName<Tokens, Db, false>
 
@@ -33,7 +33,7 @@ type ParseDropSchemaAfterIdent<
 			: JsqlDbGetSchema<Db, SchemaName> extends null
 				? SkipFailedExpression<
 						SkipToken<AfterName>,
-						SqlParserError<"Schema does not exist; use IF EXISTS">
+						FormatError<"SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS", []>
 					> extends [infer Rest extends TokensList, infer Err]
 					? [Rest, Db, Err]
 					: never
@@ -42,13 +42,13 @@ type ParseDropSchemaAfterIdent<
 						? [SkipToken<AfterName>, NewDb, null]
 						: never
 					: never
-		: SkipFailedStatement<AfterName, Db, SqlParserError<"Expected `;` after DROP SCHEMA">>
+		: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA", []>>
 
 type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	PeekToken<Tokens> extends infer NameTok
 		? SkipToken<Tokens> extends infer AfterName extends TokensList
 			? NameTok extends TokenIdent<infer SchemaName extends string>
 				? ParseDropSchemaAfterIdent<AfterName, Db, IfExists, SchemaName>
-				: SkipFailedStatement<AfterName, Db, SqlParserError<"Expected schema name in DROP SCHEMA">>
+				: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SCHEMA_NAME_IN_DROP_SCHEMA", []>>
 			: never
 		: never

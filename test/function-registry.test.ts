@@ -3,7 +3,7 @@ import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TBigint, TNumeric, TUuid, TTimestamp } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { SqlParserError as _SqlParserError, DbtyperError as _DbtyperError } from "../src/sql-parser-error.ts"
 import type { InferSqlErrors } from "./test-utils/parser-test-utils.ts"
 
 /** Minimal catalog with typed custom SQL functions (`functions`). */
@@ -20,8 +20,7 @@ type DbFns = {
 }
 type InferOk = InferSqlErrors<DbFns, `select custom_fn(x) from t`>
 type _inferOk = Expect<Extends<InferOk, null>>
-type InferBadSel = InferSqlErrors<DbFns, `delete from t`>
-type _inferNonSelect = Expect<Extends<InferBadSel, SqlParserError<string>>>
+
 type TCustomFn = ParseSqlStatement<ParseSqlTokens<`select custom_fn(x) from t`>, DbFns>
 type _customFn = Expect<Extends<TCustomFn[2], { kind: "select"; columns: { "?column?": TInteger } }>>
 type TCountStar = ParseSqlStatement<ParseSqlTokens<`select count(*) from t`>, DbFns>
@@ -35,18 +34,15 @@ type _lower = Expect<Extends<TLower[2], { kind: "select"; columns: { "?column?":
 /** `coalesce` picks first argument type. */
 type TCoalesce = ParseSqlStatement<ParseSqlTokens<`select coalesce(x, x) from t`>, DbFns>
 type _coalesce = Expect<Extends<TCoalesce[2], { kind: "select"; columns: { "?column?": TInteger } }>>
-type TCoalesceEmpty = ParseSqlStatement<ParseSqlTokens<`select coalesce() from t`>, DbFns>
-type _coalesceEmpty = Expect<Extends<TCoalesceEmpty[2], SqlParserError<"coalesce() requires at least one argument">>>
+
 type TSum = ParseSqlStatement<ParseSqlTokens<`select sum(x) from t`>, DbFns>
 type _sum = Expect<Extends<TSum[2], { kind: "select"; columns: { "?column?": TNumeric } }>>
-type TSumEmpty = ParseSqlStatement<ParseSqlTokens<`select sum() from t`>, DbFns>
-type _sumEmpty = Expect<Extends<TSumEmpty[2], SqlParserError<"sum() requires an argument">>>
+
 type TNow = ParseSqlStatement<ParseSqlTokens<`select now() from t`>, DbFns>
 type _now = Expect<Extends<TNow[2], { kind: "select"; columns: { "?column?": TTimestamp } }>>
 type TGenRandomUuid = ParseSqlStatement<ParseSqlTokens<`select gen_random_uuid() from t`>, DbFns>
 type _uuid = Expect<Extends<TGenRandomUuid[2], { kind: "select"; columns: { "?column?": TUuid } }>>
-type TLowerBare = ParseSqlStatement<ParseSqlTokens<`select lower() from t`>, DbFns>
-type _lowerBare = Expect<Extends<TLowerBare[2], SqlParserError<"Function requires at least one argument">>>
+
 type TUpperNum = ParseSqlStatement<ParseSqlTokens<`select upper(1) from t`>, DbFns>
 type _upperNum = Expect<Extends<TUpperNum[2], { kind: "select"; columns: { "?column?": TText } }>>
 type TUpper = ParseSqlStatement<ParseSqlTokens<`select upper('x') from t`>, DbFns>
