@@ -797,11 +797,15 @@ type ResolveFunctionCall<
 									? ArgsRes extends readonly []
 										? SqlTimestamp
 										: FormatError<"NOW_TAKES_NO_ARGUMENTS", []>
-									: L extends "sum"
+									: L extends "sum" | "avg"
 										? ArgsRes extends readonly [SqlTypeShape, ...infer _R]
 											? SqlNumeric
 											: FormatError<"SUM_REQUIRES_AN_ARGUMENT", []>
-										: L extends "uuid_generate_v4" | "gen_random_uuid"
+										: L extends "min" | "max"
+											? ArgsRes extends readonly [infer First extends SqlTypeShape, ...infer _R]
+												? First
+												: FormatError<"FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT", []>
+											: L extends "uuid_generate_v4" | "gen_random_uuid"
 											? ArgsRes extends readonly []
 												? SqlUuid
 												: FormatError<"THIS_FUNCTION_TAKES_NO_ARGUMENTS", []>
