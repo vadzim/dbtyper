@@ -296,15 +296,15 @@ export const errors = {
 		msg: ["Expected table name after `.` in INSERT INTO"],
 	},
 	1222: {
-		id: "EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
+		id: "OBSOLETE_1222_EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
 		msg: ["Expected `,`, WHERE, or end after ON CONFLICT SET"],
 	},
 	1223: {
-		id: "INVALID_VALUE_EXPRESSION_IN_INSERT",
+		id: "OBSOLETE_1223_INVALID_VALUE_EXPRESSION_IN_INSERT",
 		msg: ["Invalid value expression in INSERT"],
 	},
 	1224: {
-		id: "INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
+		id: "OBSOLETE_1224_INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
 		msg: ["Invalid value expression in ON CONFLICT UPDATE"],
 	},
 
