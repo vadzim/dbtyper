@@ -1,5 +1,4 @@
-// Integration Test: SELECT with type casts - Cannot cast boolean to integer
-// Integration Test: PostgreSQL type casts (::type)
+// Integration Test: SELECT
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -10,21 +9,18 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create table data (id integer not null, value text not null, num integer not null, flag boolean not null);`)
+	.apply(`create table t (id integer);`)
 	.database()
 
-// ❌ ERROR: Cannot cast boolean to integer
-const query = `select flag::integer from data;` as const
+// ❌ ERROR: Function requires at least one argument
+const query = `select lower() from t;` as const
 
 // @ts-expect-error
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table data (id integer not null, value text not null, num integer not null, flag boolean not null);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table t (id integer);`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2801, "Cannot cast boolean to integer">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3601, "Function requires at least one argument">>
 >

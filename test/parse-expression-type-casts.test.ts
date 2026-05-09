@@ -3,7 +3,7 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { EmptyExpressionParams, ParseExpressionAST, ResolveExpressionAST } from "../src/parser/parse-expression.ts"
-import type { TText, TUuid, TTimestamptz, TBytea, TInet, TBoolean } from "./test-utils/sql-type-helpers.ts"
+import type { TText, TUuid, TTimestamptz, TBytea, TInet } from "./test-utils/sql-type-helpers.ts"
 
 type DbEmpty = {
 	defaultSchema: "public"
@@ -74,7 +74,7 @@ type TCastIntToBool = ResolveExpressionAST<
 	{},
 	EmptyExpressionParams
 >
-type _tCastIntToBool = Expect<Extends<TCastIntToBool, TBoolean>>
+type _tCastIntToBool = Expect<Extends<TCastIntToBool, { __sql_parser_error__: string }>>
 
 // Test chained casts
 type TCastChainedAst = ParseExpressionAST<ParseSqlTokens<`123::text::uuid`>, TestEnvForExprParse>

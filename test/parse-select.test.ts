@@ -335,7 +335,7 @@ type TSelectPgCastBoolIntErr = ParseSqlStatement<
 	DbJoinDefaultAndExplicit
 >
 type _selectPgCastBoolIntErr = Expect<
-	Extends<TSelectPgCastBoolIntErr[2], { kind: "select"; columns: { bad: TInteger } }>
+	Extends<TSelectPgCastBoolIntErr[2], { __sql_parser_error__: string }>
 >
 
 /** Two **`WITH`** CTEs (parser must accept a comma-separated CTE list before the main **`SELECT`**). */

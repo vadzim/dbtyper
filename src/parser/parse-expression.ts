@@ -2000,11 +2000,17 @@ type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"
 	: N extends "text" | "varchar" | "character varying" | "char"
 		? SqlText
 		: N extends "integer" | "int" | "int4" | "smallint" | "int2" | "serial" | "smallserial"
-			? SqlInteger
+			? Ev["type"] extends "boolean"
+				? DbtyperError<4503, "Cannot cast boolean to integer">
+				: SqlInteger
 			: N extends "bigint" | "int8" | "bigserial"
-				? SqlBigint
+				? Ev["type"] extends "boolean"
+					? DbtyperError<4503, "Cannot cast boolean to integer">
+					: SqlBigint
 				: N extends "boolean" | "bool"
-					? SqlBoolean
+					? Ev["type"] extends "integer" | "bigint" | "numeric"
+						? DbtyperError<4504, "Cannot cast integer to boolean">
+						: SqlBoolean
 					: N extends "uuid"
 						? SqlUuid
 						: N extends "bytea"

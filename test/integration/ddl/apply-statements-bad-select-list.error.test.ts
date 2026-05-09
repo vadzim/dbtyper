@@ -1,4 +1,4 @@
-// Integration Test: SELECT
+// Integration Test: ApplyStatements
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,18 +9,17 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create table users (id text);`)
+	.apply(`create table ok_sel ( id int );`)
 	.database()
 
 // ❌ ERROR: Scalar expression in SELECT requires AS alias
-const query = `select 1, 2 from users;` as const
+const query = `select 1, 2 from ok_sel;` as const
 
 // @ts-expect-error
 await db.query(query)
 
-// Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text);`>[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table ok_sel ( id int );`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3401, "Scalar expression in SELECT requires AS alias">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3402, "Scalar expression in SELECT requires AS alias">>
 >

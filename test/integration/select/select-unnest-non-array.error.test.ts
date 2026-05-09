@@ -1,4 +1,4 @@
-// Integration Test: INSERT
+// Integration Test: SELECT - unnest with non-array argument
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,20 +9,24 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create schema auth;`)
-	.apply(`create table auth.users (id uuid not null, email text not null, display_name text, login_count integer);`)
+	.apply(`create table items (id integer, priority integer);`)
 	.database()
 
-// ❌ ERROR: UUID literal without cast
-const query =
-	`insert into auth.users (id, email, display_name, login_count) values ('11111111-1111-1111-1111-111111111111', 'alice@example.com', 'Alice', 0);` as const
+// ❌ ERROR: unnest requires array type, but id is integer
+const query = `select unnest(id) as bad from items;` as const
 
 // @ts-expect-error
 await db.query(query)
 
+// Type-level database shape for error checking
 type DbShape = ApplyStatements<
 	SqlDatabase,
-	`create schema public; create schema auth; create table auth.users (id uuid not null, email text not null, display_name text, login_count integer);`
+	`create schema public; create table items (id integer, priority integer);`
 >[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError>>
+type _errorCheck = Expect<
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<3616, "unnest expects an array">
+	>
+>

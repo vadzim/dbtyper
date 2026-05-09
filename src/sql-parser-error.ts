@@ -1449,6 +1449,14 @@ export const errors = {
 		id: "EXPECTED_AS_IN_CAST",
 		msg: ["Expected AS in CAST"],
 	},
+	4503: {
+		id: "CANNOT_CAST_BOOLEAN_TO_INTEGER",
+		msg: ["Cannot cast boolean to integer"],
+	},
+	4504: {
+		id: "CANNOT_CAST_INTEGER_TO_BOOLEAN",
+		msg: ["Cannot cast integer to boolean"],
+	},
 
 	// Window Functions
 	4600: {

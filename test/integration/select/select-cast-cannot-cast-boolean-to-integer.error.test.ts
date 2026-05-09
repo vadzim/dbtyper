@@ -1,4 +1,5 @@
-// Integration Test: SELECT - array_length with non-array argument
+// Integration Test: SELECT with type casts - Cannot cast boolean to integer
+// Integration Test: PostgreSQL type casts (::type)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,11 +10,11 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create table items (id integer, priority integer);`)
+	.apply(`create table data (id integer not null, value text not null, num integer not null, flag boolean not null);`)
 	.database()
 
-// ❌ ERROR: array_length requires array type, but id is integer
-const query = `select array_length(id, 1) as bad from items;` as const
+// ❌ ERROR: Cannot cast boolean to integer
+const query = `select flag::integer from data;` as const
 
 // @ts-expect-error
 await db.query(query)
@@ -21,12 +22,9 @@ await db.query(query)
 // Type-level database shape for error checking
 type DbShape = ApplyStatements<
 	SqlDatabase,
-	`create schema public; create table items (id integer, priority integer);`
+	`create schema public; create table data (id integer not null, value text not null, num integer not null, flag boolean not null);`
 >[0]
 
 type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<3614, "[dbt:ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER] array_length expects (array, integer)">
-	>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<4503, "Cannot cast boolean to integer">>
 >

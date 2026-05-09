@@ -12,8 +12,8 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table t (id integer);`)
 	.database()
 
-// ❌ ERROR: Function requires at least one argument
-const query = `select lower() from t;` as const
+// ❌ ERROR: sum() requires an argument
+const query = `select sum() from t;` as const
 
 // @ts-expect-error
 await db.query(query)
@@ -22,5 +22,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table t (id integer);`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3600, "Function lower requires at least one argument">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3608, "sum() requires an argument">>
 >
