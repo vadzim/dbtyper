@@ -24,4 +24,6 @@ export type InferSqlErrors<
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown> = PostgresTypeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer M>] ? DbtyperError<_Code, M> : null
+> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer M>]
+	? DbtyperError<_Code, M>
+	: null

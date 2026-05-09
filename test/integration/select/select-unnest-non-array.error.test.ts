@@ -25,8 +25,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<3616, "unnest expects an array">
-	>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3616, "unnest expects an array">>
 >

@@ -24,4 +24,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create table sales (region text, amount integer);`
 >[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column not_a_col">>>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column not_a_col">>
+>

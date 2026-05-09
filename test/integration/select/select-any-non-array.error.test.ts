@@ -25,8 +25,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<3001, "ANY/ALL/SOME requires an array or subquery">
-	>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3001, "ANY/ALL/SOME requires an array or subquery">>
 >

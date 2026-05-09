@@ -4,7 +4,6 @@ import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TInteger, TTextArray } from "./test-utils/sql-type-helpers.ts"
 
-
 type DbAnyAll = {
 	defaultSchema: "public"
 	schemas: {

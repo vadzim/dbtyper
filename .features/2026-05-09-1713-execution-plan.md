@@ -16,6 +16,7 @@ This document provides a high-level execution plan for implementing two features
 **Total estimated time:** 10.5-15.5 hours
 
 **Current state:**
+
 - Branch: `dev`
 - Working tree: clean
 - Last commit: `417eb75 Add feature plans for correlated subqueries and array operations MVP`
@@ -25,17 +26,21 @@ This document provides a high-level execution plan for implementing two features
 ## Timeline and Session Breakdown
 
 ### Session 1: NOW - ~2 hours (5:13 PM - 7:13 PM)
+
 **Focus:** Start Feature A - Correlated Subqueries
 
 **Goals:**
+
 - Complete Phase 1: Research and Planning (30-45 min)
 - Begin Phase 2: Type Signatures and Scope Threading (1-1.5 hours)
 
 **Natural stopping points:**
+
 - After Phase 1 complete (research done, plan refined)
 - Mid-Phase 2 (type signatures updated, compilation errors expected)
 
 **Deliverables:**
+
 - Research findings documented
 - Type signatures updated
 - Feature plan updated with progress
@@ -44,18 +49,22 @@ This document provides a high-level execution plan for implementing two features
 ---
 
 ### Session 2: ~2-3 hours
+
 **Focus:** Complete Feature A - Correlated Subqueries
 
 **Goals:**
+
 - Complete Phase 2: Scope Threading Implementation
 - Phase 3: Comprehensive Testing
 - Phase 4: Documentation
 
 **Natural stopping points:**
+
 - After implementation complete, before testing
 - After testing complete, before documentation
 
 **Deliverables:**
+
 - Correlated subqueries fully implemented
 - All tests passing
 - Documentation updated
@@ -65,17 +74,21 @@ This document provides a high-level execution plan for implementing two features
 ---
 
 ### Session 3: ~2-3 hours
+
 **Focus:** Start Feature B - Array Operations MVP
 
 **Goals:**
+
 - Phase 1: Research and Planning (30-45 min)
 - Phase 2: Array Literals Implementation (2-3 hours)
 
 **Natural stopping points:**
+
 - After Phase 1 complete (research done)
 - After array literals working with basic tests
 
 **Deliverables:**
+
 - Research findings documented
 - Array literal parsing and resolution implemented
 - Basic tests passing
@@ -85,17 +98,21 @@ This document provides a high-level execution plan for implementing two features
 ---
 
 ### Session 4: ~2-3 hours
+
 **Focus:** Continue Feature B - Array Operators
 
 **Goals:**
+
 - Phase 3: Array Operator Implementation (1-2 hours)
 - Phase 4: Array Indexing (if feasible, 1-2 hours)
 
 **Natural stopping points:**
+
 - After operator implementation complete
 - After indexing assessment (implement or defer)
 
 **Deliverables:**
+
 - Array containment operator (@>) implemented
 - Array indexing implemented or deferred
 - Tests passing for implemented features
@@ -104,18 +121,22 @@ This document provides a high-level execution plan for implementing two features
 ---
 
 ### Session 5: ~2-3 hours
+
 **Focus:** Complete Feature B - Testing and Documentation
 
 **Goals:**
+
 - Phase 5: Comprehensive Testing (1-2 hours)
 - Phase 6: Documentation and Cleanup (30 min)
 - Final verification
 
 **Natural stopping points:**
+
 - After all tests passing
 - After documentation complete
 
 **Deliverables:**
+
 - Full test coverage for array operations
 - Documentation updated
 - All tests passing, 0 TypeScript errors
@@ -129,12 +150,14 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 1: Research and Planning (30-45 min)
 
 **Subagent Task:**
+
 - Research current subquery implementation
 - Map scope threading points
 - Identify type signatures to update
 - Review existing subquery tests
 
 **Main Agent:**
+
 - Review subagent findings
 - Refine implementation plan
 - Create test plan
@@ -146,6 +169,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 2: Type Signatures and Implementation (2-3 hours)
 
 **Tasks:**
+
 1. Add `OuterScope` type parameter to parser types
 2. Thread through call chain (ParseSelect, ParseExpression, etc.)
 3. Update resolver types
@@ -154,6 +178,7 @@ This document provides a high-level execution plan for implementing two features
 6. Fix TypeScript compilation errors
 
 **Verification:**
+
 - `npm run typecheck:test` passes
 - No compilation errors
 
@@ -164,6 +189,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 3: Comprehensive Testing (1-2 hours)
 
 **Test Files to Create:**
+
 - `select-correlated-subquery-exists.success.test.ts`
 - `select-correlated-subquery-scalar.success.test.ts`
 - `select-correlated-subquery-in.success.test.ts`
@@ -172,6 +198,7 @@ This document provides a high-level execution plan for implementing two features
 - `select-correlated-subquery-type-mismatch.error.test.ts`
 
 **Verification:**
+
 - All new tests pass
 - All existing tests still pass
 - `npm test` passes
@@ -183,12 +210,14 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 4: Documentation (30 min - 1 hour)
 
 **Tasks:**
+
 1. Update `docs/SUPPORTED-SQL.md` with correlated subquery section
 2. Update `TODO.md` - mark item complete
 3. Add examples and scope rules documentation
 4. Final verification and commit
 
 **Verification:**
+
 - `npm test` passes
 - `npm run typecheck:full` passes
 - `npm run format:check` passes
@@ -202,6 +231,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 1: Research and Planning (30-45 min)
 
 **Subagent Task:**
+
 - Research current array type implementation
 - Identify where to add array literal parsing
 - Identify where to add operator parsing
@@ -209,6 +239,7 @@ This document provides a high-level execution plan for implementing two features
 - Review existing array function tests
 
 **Main Agent:**
+
 - Review subagent findings
 - Decide on MVP scope (which operator, whether to include indexing)
 - Create detailed test plan
@@ -220,6 +251,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 2: Array Literals (2-3 hours)
 
 **Tasks:**
+
 1. Add lexer support for `[` and `]` tokens (if needed)
 2. Implement array literal parsing in `ParseScalarExprUntyped`
 3. Parse `ARRAY[expr1, expr2, ...]` syntax
@@ -229,6 +261,7 @@ This document provides a high-level execution plan for implementing two features
 7. Add basic tests
 
 **Verification:**
+
 - Array literals parse correctly
 - Type inference works
 - Basic tests pass
@@ -241,6 +274,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 3: Array Operator (1-2 hours)
 
 **Tasks:**
+
 1. Add `@>` operator to operator list
 2. Add to operator precedence table
 3. Parse as binary operator
@@ -250,6 +284,7 @@ This document provides a high-level execution plan for implementing two features
 7. Add tests
 
 **Verification:**
+
 - Operator parses correctly
 - Type checking works
 - Tests pass
@@ -263,6 +298,7 @@ This document provides a high-level execution plan for implementing two features
 **Decision Point:** Assess complexity
 
 **If feasible:**
+
 1. Add postfix `[expr]` parsing
 2. Create indexing AST node
 3. Implement indexing resolution
@@ -271,6 +307,7 @@ This document provides a high-level execution plan for implementing two features
 6. Add tests
 
 **If too complex:**
+
 - Document decision to defer
 - Add to backlog in TODO.md
 - Skip to Phase 5
@@ -282,6 +319,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 5: Comprehensive Testing (1-2 hours)
 
 **Test Files to Create:**
+
 - `select-array-literal.success.test.ts`
 - `select-array-contains.success.test.ts`
 - `select-array-indexing.success.test.ts` (if implemented)
@@ -290,6 +328,7 @@ This document provides a high-level execution plan for implementing two features
 - Integration tests with existing array functions
 
 **Verification:**
+
 - All new tests pass
 - All existing tests still pass
 - Regression tests for existing array functions pass
@@ -302,6 +341,7 @@ This document provides a high-level execution plan for implementing two features
 ### Phase 6: Documentation and Cleanup (30 min)
 
 **Tasks:**
+
 1. Update `docs/SUPPORTED-SQL.md` with array operations section
 2. Document `ARRAY[...]` syntax
 3. Document supported operators
@@ -311,6 +351,7 @@ This document provides a high-level execution plan for implementing two features
 7. Final verification and commit
 
 **Verification:**
+
 - `npm test` passes
 - `npm run typecheck:full` passes
 - `npm run format:check` passes
@@ -324,11 +365,13 @@ This document provides a high-level execution plan for implementing two features
 ### When to Use Subagents
 
 **Use subagents for:**
+
 1. Research and planning phases (preserve main context)
 2. Codebase exploration (understanding current implementation)
 3. Parallel work (if multiple independent tasks)
 
 **Don't use subagents for:**
+
 1. Implementation work (main agent does this)
 2. Testing (main agent runs tests)
 3. Documentation updates (main agent writes docs)
@@ -336,12 +379,14 @@ This document provides a high-level execution plan for implementing two features
 ### Subagent Tasks
 
 **Feature A - Phase 1 Subagent:**
+
 - Task: Research current subquery implementation
 - Files: `parse-select.ts`, `parse-expression.ts`, `resolve-expression.ts`
 - Output: Scope threading map, type signatures to update
 - Duration: 15-20 minutes
 
 **Feature B - Phase 1 Subagent:**
+
 - Task: Research current array implementation
 - Files: `sql-types.ts`, `parse-expression.ts`, `resolve-expression.ts`, `resolve-function-call.ts`
 - Output: Array type structure, parsing entry points, operator integration approach
@@ -354,19 +399,21 @@ This document provides a high-level execution plan for implementing two features
 ### After Each Phase
 
 1. **Run TypeScript compilation:**
-   ```bash
-   npm run typecheck:test
-   ```
+
+    ```bash
+    npm run typecheck:test
+    ```
 
 2. **Run tests:**
-   ```bash
-   npm test
-   ```
+
+    ```bash
+    npm test
+    ```
 
 3. **Check formatting:**
-   ```bash
-   npm run format:check
-   ```
+    ```bash
+    npm run format:check
+    ```
 
 ### Before Each Commit
 
@@ -395,6 +442,7 @@ This document provides a high-level execution plan for implementing two features
 5. **After Phase 4:** "Document correlated subqueries support"
 
 **Final commit message:**
+
 ```
 Implement correlated subqueries with outer scope threading
 
@@ -417,6 +465,7 @@ Closes TODO item: Implement correlated subqueries
 6. **After Phase 6:** "Document array operations MVP"
 
 **Final commit message:**
+
 ```
 Complete array operations MVP
 
@@ -436,49 +485,55 @@ Closes TODO item: PostgreSQL arrays MVP
 ### Potential Blockers
 
 **Feature A:**
+
 1. **Type instantiation depth issues** - Adding OuterScope parameter might exceed TypeScript limits
-   - Mitigation: Use same patterns as existing Params threading
-   - Fallback: Simplify type structure if needed
+    - Mitigation: Use same patterns as existing Params threading
+    - Fallback: Simplify type structure if needed
 
 2. **Scope shadowing complexity** - Inner/outer scope interaction might be tricky
-   - Mitigation: Start with simple cases, add complexity incrementally
-   - Fallback: Document limitations if full shadowing is too complex
+    - Mitigation: Start with simple cases, add complexity incrementally
+    - Fallback: Document limitations if full shadowing is too complex
 
 3. **Breaking existing tests** - Scope changes might affect non-correlated subqueries
-   - Mitigation: Run tests frequently, fix regressions immediately
-   - Fallback: Make outer scope optional/empty by default
+    - Mitigation: Run tests frequently, fix regressions immediately
+    - Fallback: Make outer scope optional/empty by default
 
 **Feature B:**
+
 1. **Array type inference complexity** - Unifying heterogeneous element types
-   - Mitigation: Start with simple cases (all same type)
-   - Fallback: Require explicit type annotation if unification is too complex
+    - Mitigation: Start with simple cases (all same type)
+    - Fallback: Require explicit type annotation if unification is too complex
 
 2. **Operator precedence issues** - Array operators might conflict with existing operators
-   - Mitigation: Research PostgreSQL precedence, test thoroughly
-   - Fallback: Document known precedence limitations
+    - Mitigation: Research PostgreSQL precedence, test thoroughly
+    - Fallback: Document known precedence limitations
 
 3. **Indexing syntax ambiguity** - `[` could be literal or indexing
-   - Mitigation: `ARRAY` keyword disambiguates literals
-   - Fallback: Defer indexing if too complex
+    - Mitigation: `ARRAY` keyword disambiguates literals
+    - Fallback: Defer indexing if too complex
 
 ### Contingency Plans
 
 **If Session 1 runs long:**
+
 - Stop after Phase 1 complete (research done)
 - Commit plan updates
 - Resume with Phase 2 in Session 2
 
 **If Feature A takes longer than expected:**
+
 - Extend Session 2 by 1 hour
 - Adjust Session 3 start time
 - Feature B timeline remains the same
 
 **If Feature B indexing is too complex:**
+
 - Defer to backlog immediately
 - Document decision in TODO.md
 - Continue with testing and documentation
 
 **If running out of time:**
+
 - Prioritize Feature A completion (smaller, more critical)
 - Feature B can be paused after any phase
 - Each phase is committable/resumable
@@ -488,6 +543,7 @@ Closes TODO item: PostgreSQL arrays MVP
 ## Success Criteria
 
 ### Feature A Complete When:
+
 - [ ] Outer columns accessible in subquery WHERE clauses
 - [ ] Outer columns accessible in subquery SELECT expressions
 - [ ] Scope shadowing works correctly
@@ -497,6 +553,7 @@ Closes TODO item: PostgreSQL arrays MVP
 - [ ] Committed and pushed
 
 ### Feature B Complete When:
+
 - [ ] Array literals work with `ARRAY[...]` syntax
 - [ ] Array containment operator (`@>`) works
 - [ ] Array indexing works (or explicitly deferred)
@@ -506,6 +563,7 @@ Closes TODO item: PostgreSQL arrays MVP
 - [ ] Committed and pushed
 
 ### Overall Success:
+
 - [ ] Both features implemented and tested
 - [ ] All tests passing
 - [ ] Documentation complete
@@ -533,6 +591,7 @@ Closes TODO item: PostgreSQL arrays MVP
 ## Next Steps
 
 **Immediate (Session 1):**
+
 1. Launch subagent for Feature A Phase 1 research
 2. Review findings and refine plan
 3. Begin Phase 2 implementation
@@ -569,13 +628,13 @@ Closes TODO item: PostgreSQL arrays MVP
 
 ## Execution Plan Summary
 
-| Session | Duration | Focus | Deliverable |
-|---------|----------|-------|-------------|
-| 1 | 2h | Feature A: Research + Start Implementation | Type signatures updated |
-| 2 | 2-3h | Feature A: Complete Implementation + Testing | Feature A complete, pushed |
-| 3 | 2-3h | Feature B: Research + Array Literals | Array literals working |
-| 4 | 2-3h | Feature B: Operators + Indexing | Operators working |
-| 5 | 2-3h | Feature B: Testing + Documentation | Feature B complete, pushed |
+| Session | Duration | Focus                                        | Deliverable                |
+| ------- | -------- | -------------------------------------------- | -------------------------- |
+| 1       | 2h       | Feature A: Research + Start Implementation   | Type signatures updated    |
+| 2       | 2-3h     | Feature A: Complete Implementation + Testing | Feature A complete, pushed |
+| 3       | 2-3h     | Feature B: Research + Array Literals         | Array literals working     |
+| 4       | 2-3h     | Feature B: Operators + Indexing              | Operators working          |
+| 5       | 2-3h     | Feature B: Testing + Documentation           | Feature B complete, pushed |
 
 **Total: 10.5-15.5 hours across 5 sessions**
 

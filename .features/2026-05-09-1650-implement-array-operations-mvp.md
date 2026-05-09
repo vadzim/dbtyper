@@ -36,6 +36,7 @@
 Implement minimal PostgreSQL array support (MVP) to enable basic array operations without chasing full Postgres array semantics. This is Track E in ROADMAP.md and a TODO item under "PostgreSQL arrays".
 
 **Current state:**
+
 - Array types exist in the type system
 - Some operations work: `ANY(array)`, `ALL(array)`, `SOME(array)`
 - `unnest(array)` function works
@@ -45,12 +46,14 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
 - No array indexing
 
 **What needs to be done (MVP only):**
+
 - One-dimensional array literals: `ARRAY[1, 2, 3]` or `ARRAY[expr1, expr2, ...]`
 - At least one containment or overlap operator (`@>` or `&&`)
 - Basic array indexing if feasible: `array_column[1]`
 - Proper type inference for array operations
 
 **Explicitly deferred (not MVP):**
+
 - Multidimensional arrays
 - Array slicing (`array[1:3]`)
 - Full operator set (`||`, `<@`, etc.)
@@ -58,6 +61,7 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
 - Array constructor with subquery: `ARRAY(SELECT ...)`
 
 **Success criteria:**
+
 - Can create array literals with `ARRAY[...]` syntax
 - Can use at least one array operator (`@>` or `&&`) with proper type checking
 - Array indexing works if implemented
@@ -105,16 +109,19 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
 **Expected test patterns after implementation:**
 
 1. **Array literal:**
+
     ```sql
     SELECT ARRAY[1, 2, 3] as numbers
     ```
 
 2. **Array containment:**
+
     ```sql
     SELECT * FROM users WHERE tags @> ARRAY['admin']
     ```
 
 3. **Array overlap:**
+
     ```sql
     SELECT * FROM users WHERE tags && ARRAY['admin', 'moderator']
     ```
@@ -162,7 +169,6 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
     - Add array literal parsing after `ARRAY` keyword
     - Parse `[` ... `]` with comma-separated expressions
     - Create AST node for array literal
-    
 - `src/resolver/resolve-expression.ts`
     - Add array literal resolution
     - Infer element type from expressions
@@ -190,7 +196,6 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
 - `src/parser/parse-expression.ts`
     - Add `@>` operator to operator precedence
     - Parse as binary operator
-    
 - `src/resolver/resolve-expression.ts`
     - Add `@>` operator resolution
     - Type check: left and right must be compatible array types
@@ -215,7 +220,6 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
 - `src/parser/parse-expression.ts`
     - Add postfix `[` expression `]` parsing
     - Create indexing AST node
-    
 - `src/resolver/resolve-expression.ts`
     - Resolve array indexing
     - Check base is array type
@@ -242,18 +246,14 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
     - Basic array literal with integers
     - Array literal with text
     - Array literal with expressions
-    
 - `test/integration/select/select-array-contains.success.test.ts`
     - Array containment with `@>` operator
     - Type inference for result
-    
 - `test/integration/select/select-array-indexing.success.test.ts`
     - Array indexing syntax (if implemented)
     - Type inference for element
-    
 - `test/integration/select/select-array-literal-type-mismatch.error.test.ts`
     - Error when array elements have incompatible types
-    
 - `test/integration/select/select-array-contains-type-mismatch.error.test.ts`
     - Error when `@>` operands have incompatible types
 
@@ -271,7 +271,6 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
     - Document supported operators
     - Document indexing if implemented
     - Note what is NOT supported (multidimensional, slicing, etc.)
-    
 - `TODO.md`
     - Mark MVP items as complete
     - Keep deferred items in backlog
@@ -339,6 +338,7 @@ Implement minimal PostgreSQL array support (MVP) to enable basic array operation
 - Return array type with unified element type
 
 **Example:**
+
 ```sql
 ARRAY[1, 2, 3]           -- integer[]
 ARRAY['a', 'b']          -- text[]

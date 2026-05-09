@@ -58,10 +58,10 @@ export type ParseSelectExpression<
 	OuterScope extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends TokenIdent<"with">
-		? ParseSelectWithCtes<SkipToken<Tokens>, Db, Params, OuterScope>
+		? ParseSelectWithCtes<SkipToken<Tokens>, Db, Params, {}, OuterScope>
 		: PeekToken<Tokens> extends TokenKey<"distinct">
-			? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, OuterScope>
-			: ParseSelectAfterDistinct<Tokens, Db, Params, OuterScope>
+			? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, {}, OuterScope>
+			: ParseSelectAfterDistinct<Tokens, Db, Params, {}, OuterScope>
 
 /**
  * Parse SELECT statement (consumes terminator `;`).
@@ -100,14 +100,15 @@ type ParseSelectWithCtesAfterSubquery<
 	Acc extends ScopeMap,
 	CteName extends string,
 	SubOut extends JsqlSelectStatementResult,
+	OuterScope extends ScopeMap = {},
 > =
 	SelectResultToDerivedScopeEntry<SubOut> extends infer Entry extends ScopeEntry
 		? MergeScope<Record<CteName, Entry>, Acc> extends infer NextAcc
 			? NextAcc extends ScopeMap
 				? PeekToken<R4> extends TokenKey<",">
-					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc>
+					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
 					: PeekToken<R4> extends TokenKey<"select">
-						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc>
+						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
 						: SkipFailedStatement<R4, Db, FormatError<"EXPECTED_SELECT_AFTER_WITH", []>>
 				: never
 			: never
@@ -118,6 +119,7 @@ type ParseSelectWithCtes<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Acc extends ScopeMap,
+	OuterScope extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends infer TokCteName
 		? SkipToken<Tokens> extends infer R1 extends TokensList
@@ -135,7 +137,15 @@ type ParseSelectWithCtes<
 										? SubOut extends DbtyperError<any, any>
 											? [R4, Db, SubOut]
 											: SubOut extends JsqlSelectStatementResult
-												? ParseSelectWithCtesAfterSubquery<R4, Db, Params, Acc, CteName, SubOut>
+												? ParseSelectWithCtesAfterSubquery<
+														R4,
+														Db,
+														Params,
+														Acc,
+														CteName,
+														SubOut,
+														OuterScope
+													>
 												: never
 										: never
 									: never
@@ -156,57 +166,70 @@ type ParseSelectAfterDistinct<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	CteBase extends ScopeMap = {},
+	OuterScope extends ScopeMap = {},
 > =
-	ParseRawSelectList<Tokens, Db, Params, CteBase> extends [infer AfterList extends TokensList, infer Items]
-		? Items extends DbtyperError<any, any>
-			? [AfterList, Db, Items]
-			: Items extends readonly RawSelectItem[]
-				? SelectListStarInvalid<Items> extends true
-					? [AfterList, Db, FormatError<"SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST", []>]
-					: PeekToken<AfterList> extends TokenKey<"from">
-						? SkipToken<AfterList> extends infer AfterFrom extends TokensList
-							? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
-									infer R extends TokensList,
-									infer Mid,
-									infer Tail,
-								]
-								? Mid extends DbtyperError<any, any>
-									? Tail extends ParserRefErrorThirdSentinel
-										? [R, Db, Mid]
-										: never
-									: Mid extends null
-										? [JoinScopeOnly<Tail>] extends [never]
-											? never
-											: JoinScopeOnly<Tail> extends ScopeMap
-							? ResolveSelectList<
-													Items,
-													Db,
-													JoinScopeOnly<Tail>,
-													Params
-												> extends infer Res
-												? Res extends DbtyperError<any, any>
-													? [R, Db, Res]
-													: FinishSelectStatement<
-															R,
-															Db,
-															Res,
+	MergeScope<CteBase, OuterScope> extends infer MergedOuterScope extends ScopeMap
+		? ParseRawSelectList<Tokens, Db, Params, MergedOuterScope> extends [
+				infer AfterList extends TokensList,
+				infer Items,
+			]
+			? Items extends DbtyperError<any, any>
+				? [AfterList, Db, Items]
+				: Items extends readonly RawSelectItem[]
+					? SelectListStarInvalid<Items> extends true
+						? [AfterList, Db, FormatError<"SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST", []>]
+						: PeekToken<AfterList> extends TokenKey<"from">
+							? SkipToken<AfterList> extends infer AfterFrom extends TokensList
+								? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
+										infer R extends TokensList,
+										infer Mid,
+										infer Tail,
+									]
+									? Mid extends DbtyperError<any, any>
+										? Tail extends ParserRefErrorThirdSentinel
+											? [R, Db, Mid]
+											: never
+										: Mid extends null
+											? [JoinScopeOnly<Tail>] extends [never]
+												? never
+												: JoinScopeOnly<Tail> extends ScopeMap
+													? MergeScope<
 															JoinScopeOnly<Tail>,
-															Params,
-															Items
-														>
-												: never
-												: never
+															OuterScope
+														> extends infer MergedScope extends ScopeMap
+														? ResolveSelectList<
+																Items,
+																Db,
+																MergedScope,
+																Params
+															> extends infer Res
+															? Res extends DbtyperError<any, any>
+																? [R, Db, Res]
+																: FinishSelectStatement<
+																		R,
+																		Db,
+																		Res,
+																		MergedScope,
+																		Params,
+																		Items
+																	>
+															: never
+														: never
+													: never
+											: never
+									: never
+								: never
+							: PeekToken<AfterList> extends TokenKey<";"> | TokenKey<")"> | TokenEot
+								? MergeScope<{}, OuterScope> extends infer MergedScope extends ScopeMap
+									? ResolveSelectList<Items, Db, MergedScope, Params> extends infer Res
+										? Res extends DbtyperError<any, any>
+											? [AfterList, Db, Res]
+											: FinishSelectStatement<AfterList, Db, Res, MergedScope, Params, Items>
 										: never
-								: never
-							: never
-						: PeekToken<AfterList> extends TokenKey<";"> | TokenKey<")"> | TokenEot
-							? ResolveSelectList<Items, Db, {}, Params> extends infer Res
-								? Res extends DbtyperError<any, any>
-									? [AfterList, Db, Res]
-									: FinishSelectStatement<AfterList, Db, Res, {}, Params, Items>
-								: never
-							: SkipFailedStatement<AfterList, Db, FormatError<"EXPECTED_FROM_AFTER_SELECT_LIST", []>>
-				: never
+									: never
+								: SkipFailedStatement<AfterList, Db, FormatError<"EXPECTED_FROM_AFTER_SELECT_LIST", []>>
+					: never
+			: never
 		: never
 
 /** Scalar `ORDER BY` / `LIMIT` / `OFFSET` value: any resolved expression (unlike `WHERE`, not restricted to `boolean`). */

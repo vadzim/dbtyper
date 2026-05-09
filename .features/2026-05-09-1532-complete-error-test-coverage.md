@@ -61,10 +61,7 @@ const db = sqlMigrations(mockDriver, `CREATE TABLE ...`)
 const result = db.query(query)
 
 type _ErrorCheck = Expect<
-  Matches<
-    ExtractQueryError<typeof db, typeof query>,
-    DbtyperError<1234, "[dbt:ERROR_CODE] Error message">
-  >
+	Matches<ExtractQueryError<typeof db, typeof query>, DbtyperError<1234, "[dbt:ERROR_CODE] Error message">>
 >
 ```
 
@@ -122,7 +119,7 @@ type _ErrorCheck = Expect<
 #### SELECT Syntax Errors (6 tests)
 
 9. `select 1, 2 from users;` - Scalar expression requires AS alias
-10. `select *, users.id from users;` - SELECT * must be only projection
+10. `select *, users.id from users;` - SELECT \* must be only projection
 11. `select users.name from users order users.name;` - Expected BY after ORDER
 12. `select users.id from users fetch first 5 only;` - Expected ROW/ROWS in FETCH
 13. `select id from users join billing.subs on users.id = billing_sub.user_id;` - Ambiguous unqualified column
@@ -360,12 +357,14 @@ type _ErrorCheck = Expect<
 ## Related Files
 
 ### Test Files
+
 - `test/integration/where/*.error.test.ts` - WHERE clause error tests (templates)
 - `test/integration/select/*.error.test.ts` - SELECT error tests (templates)
 - `test/integration/insert/*.error.test.ts` - INSERT error tests (templates)
 - `test/integration/**/*.error.test.skip.ts` - 76 skipped tests to implement
 
 ### Parser/Type System
+
 - `src/parser/parse-sql-statement.ts` - Main parser entry point
 - `src/parser/parse-where-expression.ts` - WHERE clause parser
 - `src/parser/parse-select.ts` - SELECT parser
@@ -373,11 +372,13 @@ type _ErrorCheck = Expect<
 - `src/sql-parser-error.ts` - Error code registry (357 codes)
 
 ### Documentation
+
 - `.features/erroneous-queries-inventory.md` - Complete inventory with checkboxes
 - `.features/erroneous-queries-summary.md` - Summary and recommendations
 - `docs/ERROR_CODES.md` - Error code documentation
 
 ### Infrastructure
+
 - `test/infra/integration-file-naming.test.ts` - Test pattern validation
 - `test/test-utils/error-test-utils.ts` - Test utilities
 
@@ -443,7 +444,7 @@ type _ErrorCheck = Expect<
     - Note: Created as `select-multiple-unnamed-scalars.error.test.ts`
 - [x] Create `test/integration/select/select-star-with-other-columns.error.test.ts`
     - Query: `select *, users.id from users;`
-    - Error: SELECT * must be only projection
+    - Error: SELECT \* must be only projection
 - [x] Create `test/integration/select/select-order-missing-by.error.test.ts`
     - Query: `select users.name from users order users.name;`
     - Error: Expected BY after ORDER
@@ -701,18 +702,21 @@ type _ErrorCheck = Expect<
 ### Accomplishments
 
 **Phase 1: High-Priority Integration Tests**
+
 - Created 21 new integration tests for critical error cases
 - Tests cover: type validation (8), SELECT syntax (5), boolean logic (5), parameters (3)
 - All tests follow established patterns and pass TypeScript compilation
 - One test (ambiguous-unqualified-column) already existed, so 21 created instead of 22
 
 **Phase 2: Validation Logic Implementation**
+
 - Implemented comprehensive type cast validation system
 - Added 2 new error codes: 4503 (invalid cast), 4504 (cast context error)
 - Unskipped 17 previously skipped tests that now pass with new validation
 - Cast validation covers: boolean, integer, text, numeric, uuid, timestamp types
 
 **Phase 3: Verification and Documentation**
+
 - All 3485 tests passing with 0 TypeScript errors
 - Updated erroneous-queries-inventory.md with improved coverage
 - Updated workflow documents with learnings

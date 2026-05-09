@@ -21,5 +21,8 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table ok_sel ( id int );`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3402, "Scalar expression in SELECT requires AS alias">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query>,
+		DbtyperError<3402, "Scalar expression in SELECT requires AS alias">
+	>
 >

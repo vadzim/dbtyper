@@ -22,10 +22,7 @@ const query = `select 1 from (select users.id from users);` as const
 await db.query(query)
 
 // Type-level database shape for error checking
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text, name text);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
 
 type _errorCheck = Expect<
 	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1113, "Expected alias after derived table">>

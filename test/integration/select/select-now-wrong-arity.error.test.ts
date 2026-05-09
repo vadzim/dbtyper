@@ -21,4 +21,6 @@ await db.query(query)
 // Type-level database shape for error checking
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table u (id integer, n text);`>[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3604, "now() takes no arguments">>>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3604, "now() takes no arguments">>
+>

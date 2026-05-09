@@ -334,9 +334,7 @@ type TSelectPgCastBoolIntErr = ParseSqlStatement<
 	ParseSqlTokens<`select false::integer as bad from users;`>,
 	DbJoinDefaultAndExplicit
 >
-type _selectPgCastBoolIntErr = Expect<
-	Extends<TSelectPgCastBoolIntErr[2], { __sql_parser_error__: string }>
->
+type _selectPgCastBoolIntErr = Expect<Extends<TSelectPgCastBoolIntErr[2], { __sql_parser_error__: string }>>
 
 /** Two **`WITH`** CTEs (parser must accept a comma-separated CTE list before the main **`SELECT`**). */
 type TWithTwoCtes = ParseSqlStatement<

@@ -25,8 +25,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<3614, "array_length expects (array, integer)">
-	>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3614, "array_length expects (array, integer)">>
 >

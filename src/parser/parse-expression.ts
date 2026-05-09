@@ -806,60 +806,65 @@ type ResolveFunctionCall<
 												? First
 												: FormatError<"FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT", []>
 											: L extends "uuid_generate_v4" | "gen_random_uuid"
-											? ArgsRes extends readonly []
-												? SqlUuid
-												: FormatError<"THIS_FUNCTION_TAKES_NO_ARGUMENTS", []>
-											: L extends "array_length"
-												? ArgsRes extends readonly [
-														infer S1 extends SqlTypeShape,
-														infer _S2 extends SqlTypeShape,
-													]
-													? S1["type"] extends "array" | "unknown"
-														? SqlInteger
-														: FormatError<"ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER", []>
-													: FormatError<"ARRAY_LENGTH_REQUIRES_2_ARGUMENTS", []>
-												: L extends "array_append"
+												? ArgsRes extends readonly []
+													? SqlUuid
+													: FormatError<"THIS_FUNCTION_TAKES_NO_ARGUMENTS", []>
+												: L extends "array_length"
 													? ArgsRes extends readonly [
 															infer S1 extends SqlTypeShape,
-															SqlTypeShape,
+															infer _S2 extends SqlTypeShape,
 														]
 														? S1["type"] extends "array" | "unknown"
-															? SqlUnknown
-															: FormatError<"ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT", []>
-														: FormatError<"ARRAY_APPEND_REQUIRES_2_ARGUMENTS", []>
-													: L extends "array_prepend"
+															? SqlInteger
+															: FormatError<"ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER", []>
+														: FormatError<"ARRAY_LENGTH_REQUIRES_2_ARGUMENTS", []>
+													: L extends "array_append"
 														? ArgsRes extends readonly [
+																infer S1 extends SqlTypeShape,
 																SqlTypeShape,
-																infer S2 extends SqlTypeShape,
 															]
-															? S2["type"] extends "array" | "unknown"
+															? S1["type"] extends "array" | "unknown"
 																? SqlUnknown
-																: FormatError<"ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY", []>
-															: FormatError<"ARRAY_PREPEND_REQUIRES_2_ARGUMENTS", []>
-														: L extends "unnest"
-															? ArgsRes extends readonly [infer S1 extends SqlTypeShape]
-																? S1["type"] extends "array" | "unknown"
+																: FormatError<"ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT", []>
+															: FormatError<"ARRAY_APPEND_REQUIRES_2_ARGUMENTS", []>
+														: L extends "array_prepend"
+															? ArgsRes extends readonly [
+																	SqlTypeShape,
+																	infer S2 extends SqlTypeShape,
+																]
+																? S2["type"] extends "array" | "unknown"
 																	? SqlUnknown
-																	: FormatError<"UNNEST_EXPECTS_AN_ARRAY", []>
-																: FormatError<"UNNEST_REQUIRES_1_ARGUMENT", []>
-															: "functions" extends keyof Db
-																? Db["functions"] extends Record<string, unknown>
-																	? L extends keyof Db["functions"]
-																		? Db["functions"][L &
-																				keyof Db["functions"]] extends infer FnType
-																			? FnType extends SqlTypeShape
-																				? FnType
-																				: FnType extends string
-																					? {
-																							type: FnType
-																							arg: null
-																							nullable: false
-																						}
-																					: SqlUnknown
-																			: SqlUnknown
+																	: FormatError<
+																			"ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY",
+																			[]
+																		>
+																: FormatError<"ARRAY_PREPEND_REQUIRES_2_ARGUMENTS", []>
+															: L extends "unnest"
+																? ArgsRes extends readonly [
+																		infer S1 extends SqlTypeShape,
+																	]
+																	? S1["type"] extends "array" | "unknown"
+																		? SqlUnknown
+																		: FormatError<"UNNEST_EXPECTS_AN_ARRAY", []>
+																	: FormatError<"UNNEST_REQUIRES_1_ARGUMENT", []>
+																: "functions" extends keyof Db
+																	? Db["functions"] extends Record<string, unknown>
+																		? L extends keyof Db["functions"]
+																			? Db["functions"][L &
+																					keyof Db["functions"]] extends infer FnType
+																				? FnType extends SqlTypeShape
+																					? FnType
+																					: FnType extends string
+																						? {
+																								type: FnType
+																								arg: null
+																								nullable: false
+																							}
+																						: SqlUnknown
+																				: SqlUnknown
+																			: FormatError<"UNKNOWN_FUNCTION", [Name]>
 																		: FormatError<"UNKNOWN_FUNCTION", [Name]>
 																	: FormatError<"UNKNOWN_FUNCTION", [Name]>
-																: FormatError<"UNKNOWN_FUNCTION", [Name]>
 					: never
 			: never
 

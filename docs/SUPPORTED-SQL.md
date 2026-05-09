@@ -17,7 +17,7 @@ Lexing, token types, and monad mechanics are out of scope here.
 | `ALTER` + `TABLE`                        | Parsed; may **mutate** table shape (see **`ALTER TABLE`** below). **`ALTER`** without **`TABLE`** → error **`Expected TABLE after ALTER`**. |
 | `DROP` + `TABLE` / `SCHEMA`              | Parsed; may **remove** from `JsqlDatabaseShape`                                                                                             |
 | `DELETE`                                 | Parsed; **checked** against the DB (`WHERE` is type-checked); does **not** mutate the schema object                                         |
-| `WITH` … (CTE) + `SELECT`                | Parsed as one statement: CTEs bind in **`ScopeMap`** for the following **`SELECT`**; duplicate CTE name → **`DbtyperError`**.             |
+| `WITH` … (CTE) + `SELECT`                | Parsed as one statement: CTEs bind in **`ScopeMap`** for the following **`SELECT`**; duplicate CTE name → **`DbtyperError`**.               |
 | `SELECT`                                 | Parsed; projection/joins and list **`:name`** params checked; does **not** mutate the DB                                                    |
 | `INSERT` / `UPDATE`                      | Parsed; checked; schema unchanged in this model.                                                                                            |
 | Anything else (e.g. `GRANT`, `TRUNCATE`) | **Skipped** to the next `;` (or end): same bracket-aware scan as **`CREATE VIEW`**, no structured parse.                                    |
