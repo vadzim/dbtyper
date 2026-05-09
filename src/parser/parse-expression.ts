@@ -1081,14 +1081,14 @@ type ExpressionResolvers<
 	and: Ast extends { kind: "and"; left: infer La extends ScalarExprAst; right: infer Ra extends ScalarExprAst }
 		? ResolveExpressionAST<La, Db, Scope, Params> extends infer Lv
 			? ResolveExpressionAST<Ra, Db, Scope, Params> extends infer Rv
-				? MergeBoolBinary<Lv, Rv, "AND operands must be boolean">
+				? MergeBoolBinary<Lv, Rv, "AND_OPERANDS_MUST_BE_BOOLEAN">
 				: never
 			: never
 		: never
 	or: Ast extends { kind: "or"; left: infer Lo extends ScalarExprAst; right: infer Ro extends ScalarExprAst }
 		? ResolveExpressionAST<Lo, Db, Scope, Params> extends infer Lv2
 			? ResolveExpressionAST<Ro, Db, Scope, Params> extends infer Rv2
-				? MergeBoolBinary<Lv2, Rv2, "OR operands must be boolean">
+				? MergeBoolBinary<Lv2, Rv2, "OR_OPERANDS_MUST_BE_BOOLEAN">
 				: never
 			: never
 		: never
@@ -1967,7 +1967,11 @@ type MergeBoolNot<V> =
 					: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
 			: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
 
-type MergeBoolBinary<L, R, Msg extends string> =
+type MergeBoolBinary<
+	L,
+	R,
+	ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN" | "OR_OPERANDS_MUST_BE_BOOLEAN"
+> =
 	L extends DbtyperError<any, any>
 		? L
 		: R extends DbtyperError<any, any>
@@ -1981,10 +1985,18 @@ type MergeBoolBinary<L, R, Msg extends string> =
 							: IsSqlBooleanType<L> extends true
 								? IsSqlBooleanType<R> extends true
 									? SqlBoolean
-									: SqlParserError<Msg>
-								: SqlParserError<Msg>
-					: SqlParserError<Msg>
-				: SqlParserError<Msg>
+									: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
+										? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
+										: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+								: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
+									? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
+									: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+					: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
+						? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
+						: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+				: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
+					? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
+					: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
 
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
 type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
