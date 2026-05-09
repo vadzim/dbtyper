@@ -11,6 +11,7 @@ export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Error
 		: never
 	: never
 
+// Legacy type alias for backward compatibility - used for type checking throughout the codebase
 export type SqlParserError<Message extends string> = DbtyperError<-1, Message>
 
 export type DbtyperError<Code extends -1 | keyof ErrorsConst, Message extends string> = {
