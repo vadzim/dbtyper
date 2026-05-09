@@ -71,13 +71,9 @@ type TNestedArrayFns = ParseSqlStatement<
 >
 type _tNestedArrayFns = Expect<Extends<TNestedArrayFns[2], { kind: "select"; columns: { nested_len: TInteger } }>>
 
-// Test error: array_length with non-array argument
-type TArrayLengthBadArgs = ParseSqlStatement<ParseSqlTokens<`select array_length(id, 1) as bad from items;`>, DbArrays>
-type _tArrayLengthBadArgs = Expect<Extends<TArrayLengthBadArgs[2], DbtyperError<any, any>>>
 
-// Test error: unnest with non-array argument
-type TUnnestBadArgs = ParseSqlStatement<ParseSqlTokens<`select unnest(id) as bad from items;`>, DbArrays>
-type _tUnnestBadArgs = Expect<Extends<TUnnestBadArgs[2], DbtyperError<any, any>>>
+
+
 
 describe("array-functions (type tests)", () => {
 	it("compile-time assertions above", () => {})

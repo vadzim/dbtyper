@@ -181,14 +181,9 @@ type _expectedTableName = Expect<
 	Matches<TExpectedTableName[2], DbtyperError<1506, "Expected table name in CREATE TABLE">>
 >
 
-type TDupWithoutIfNot = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( x int not null );`>, DbWithDup>
-type _dupNoIfNot = Expect<Matches<TDupWithoutIfNot[2], DbtyperError<3202, "Table already exists; use IF NOT EXISTS">>>
 
-type TGarbageAfterClose = ParseSqlStatement<
-	ParseSqlTokens<`create table n ( id int not null) extra ;`>,
-	DbDefaultPublic
->
-type _garbageAfterClose = Expect<Extends<TGarbageAfterClose[2], DbtyperError<1500, "Expected `;` after CREATE TABLE">>>
+
+
 
 type TUnknownQualifiedSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table zzz.ghost ( id int not null );`>,

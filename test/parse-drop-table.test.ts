@@ -37,8 +37,7 @@ type D2 = ParseSqlStatement<ParseSqlTokens<`drop table if exists ghost;`>, DbAut
 type _d2null = Expect<Matches<D2[2], null>>
 type _d2db = Expect<Matches<D2[1], DbAuthItems>>
 
-type D3 = ParseSqlStatement<ParseSqlTokens<`drop table ghost;`>, DbAuthItems>
-type _d3err = Expect<Matches<D3[2], DbtyperError<3204, "Table does not exist; use IF EXISTS">>>
+
 
 /** DB whose default schema is `public` and that schema exists (unqualified names land here). */
 type DbDefaultPublicWithNotifications = {

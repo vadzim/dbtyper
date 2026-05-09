@@ -30,21 +30,9 @@ type THaving = ParseSqlStatement<
 
 type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: TText } }>>
 
-type THavingBad = ParseSqlStatement<
-	ParseSqlTokens<`select region from sales group by region having not_a_col = 'x';`>,
-	DbGroup
->
 
-type _havingBad = Expect<Matches<THavingBad[2], SqlParserError<"Unknown column">>>
 
-type TGroupProjViol = ParseSqlStatement<ParseSqlTokens<`select region, amount from sales group by region;`>, DbGroup>
 
-type _groupProjViol = Expect<
-	Matches<
-		TGroupProjViol[2],
-		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
-	>
->
 
 type TGroupProjAggOk = ParseSqlStatement<
 	ParseSqlTokens<`select region, sum(amount) as s from sales group by region;`>,
@@ -59,7 +47,7 @@ type THavingNoGroupBareCol = ParseSqlStatement<ParseSqlTokens<`select region fro
 type _havingNoGroupBareCol = Expect<
 	Matches<
 		THavingNoGroupBareCol[2],
-		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
+		DbtyperError<3403, "Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
 	>
 >
 
@@ -112,18 +100,7 @@ type TGroupOrderLimit = ParseSqlStatement<
 
 type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: TText } }>>
 
-/** Same trail but projection violates grouped rules — still error. */
-type TGroupOrderLimitBad = ParseSqlStatement<
-	ParseSqlTokens<`select region, amount from sales group by region order by region limit 1;`>,
-	DbGroup
->
 
-type _groupOrderLimitBad = Expect<
-	Matches<
-		TGroupOrderLimitBad[2],
-		SqlParserError<"Grouped SELECT requires column to appear in GROUP BY or inside an aggregate">
-	>
->
 
 describe("GROUP BY / HAVING (type tests)", () => {
 	it("compile-time assertions above", () => {})

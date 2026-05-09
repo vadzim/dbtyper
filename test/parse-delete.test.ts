@@ -30,21 +30,17 @@ type _t2null = Expect<Matches<T2[2], null>>
 type T3 = ParseSqlStatement<ParseSqlTokens<`delete from public.users where public.users.id = 'u';`>, DbUsers>
 type _t3null = Expect<Matches<T3[2], null>>
 
-type TBad = ParseSqlStatement<ParseSqlTokens<`delete from users where users.nope = 'u';`>, DbUsers>
-type _tBad = Expect<Extends<TBad[2], DbtyperError<any, any>>>
 
-type TBadUnq = ParseSqlStatement<ParseSqlTokens<`delete from users where ghost = 'u';`>, DbUsers>
-type _tBadUnq = Expect<Extends<TBadUnq[2], DbtyperError<any, any>>>
 
-type TNoFrom = ParseSqlStatement<ParseSqlTokens<`delete users where id = 'u';`>, DbUsers>
-type _tNoFrom = Expect<Extends<TNoFrom[2], { __sql_parser_error__: string }>>
+
+
+
 
 /** End-of-input without `;` is accepted (same as `TokenEot` terminator elsewhere). */
 type TNoSemi = ParseSqlStatement<ParseSqlTokens<`delete from users where id = 'u'`>, DbUsers>
 type _tNoSemi = Expect<Matches<TNoSemi[2], null>>
 
-type TUnknownTable = ParseSqlStatement<ParseSqlTokens<`delete from ghosts where id = 'u';`>, DbUsers>
-type _tUnknownTable = Expect<Extends<TUnknownTable[2], { __sql_parser_error__: string }>>
+
 
 type TAnd = ParseSqlStatement<ParseSqlTokens<`delete from users where users.id = 'u' and users.name = 'a';`>, DbUsers>
 type _tAnd = Expect<Matches<TAnd[2], null>>

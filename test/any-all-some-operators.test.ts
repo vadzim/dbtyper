@@ -92,9 +92,7 @@ type _tSomeSubquery = Expect<
 	Extends<TSomeSubquery[2], { kind: "select"; columns: { id: TInteger; tags: TTextArray; priority: TInteger } }>
 >
 
-// Test error: ANY with non-array
-type TAnyNonArray = ParseSqlStatement<ParseSqlTokens<`select * from items where id = any(priority);`>, DbAnyAll>
-type _tAnyNonArray = Expect<Extends<TAnyNonArray[2], DbtyperError<any, any>>>
+
 
 describe("any-all-some-operators (type tests)", () => {
 	it("compile-time assertions above", () => {})

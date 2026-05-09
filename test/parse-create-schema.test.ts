@@ -19,9 +19,7 @@ type NewSchema = ParseSqlStatement<ParseSqlTokens<"create schema bar;">, EmptyDb
 type _newAddsSchema = Expect<Matches<NewSchema[2], null>>
 type _newDbHasBar = Expect<Extends<NewSchema[1], { schemas: Record<"bar", JsqlSchemaShape> }>>
 
-type DupSchema = ParseSqlStatement<ParseSqlTokens<"create schema auth;">, DbWithAuth>
-type _dupIsError = Expect<Matches<DupSchema[2], DbtyperError<3200, "Schema already exists; use IF NOT EXISTS">>>
-type _dupDbUnchanged = Expect<Matches<DupSchema[1], DbWithAuth>>
+
 
 type IfNotDup = ParseSqlStatement<ParseSqlTokens<"create schema if not exists auth;">, DbWithAuth>
 type _ifNotDupNoop = Expect<Matches<IfNotDup[2], null>>

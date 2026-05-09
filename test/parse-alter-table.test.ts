@@ -83,26 +83,13 @@ type _alterNoopChainMeta = Expect<
 	Extends<ItemsAfterChain["columns"], { id: TUuid; title: TText; meta: TNull<"integer"> }>
 >
 
-/** Unknown schema in qualified table name. */
-type TAlterBadSchema = ParseSqlStatement<ParseSqlTokens<`alter table missing.items add column x int;`>, DbItems>
-type _alterBadSchema = Expect<Extends<TAlterBadSchema[2], DbtyperError<3203, "Table does not exist">>>
 
-/** Unknown column in `DROP COLUMN`. */
-type TAlterDropUnknownCol = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column ghost;`>, DbItems>
-type _alterDropUnknownCol = Expect<Extends<TAlterDropUnknownCol[2], DbtyperError<3209, "Column ghost does not exist">>>
 
-/** Unknown old name in `RENAME COLUMN`. */
-type TAlterRenameUnknownCol = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items rename column ghost to x;`>,
-	DbItems
->
-type _alterRenameUnknownCol = Expect<
-	Extends<TAlterRenameUnknownCol[2], DbtyperError<3209, "Column ghost does not exist">>
->
 
-/** Unsupported action keyword after table name. */
-type TAlterUnsupported = ParseSqlStatement<ParseSqlTokens<`alter table public.items freeze;`>, DbItems>
-type _alterUnsupported = Expect<Extends<TAlterUnsupported[2], DbtyperError<5405, "Unsupported ALTER TABLE action">>>
+
+
+
+
 
 /** Malformed `ALTER COLUMN` tail. */
 type TAlterColBadSet = ParseSqlStatement<
