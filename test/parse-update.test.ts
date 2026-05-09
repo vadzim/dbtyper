@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlUpdateStatementResult } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { SqlParserError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/sql-parser-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -27,10 +27,10 @@ type UpSetParam = ParseSqlStatement<ParseSqlTokens<`update users set name = :n w
 type _upSetParam = Expect<Extends<UpSetParam[2], JsqlUpdateStatementResult>>
 
 type UpBadSet = ParseSqlStatement<ParseSqlTokens<`update users set name = 1 where id = 'u';`>, DbUsers>
-type _upBadSet = Expect<Extends<UpBadSet[2], SqlParserError<"Incompatible value type for column">>>
+type _upBadSet = Expect<Extends<UpBadSet[2], DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>>>
 
 type UpBadWhere = ParseSqlStatement<ParseSqlTokens<`update users set name = 'x' where id = 1;`>, DbUsers>
-type _upBadWhere = Expect<Extends<UpBadWhere[2], SqlParserError<"Incompatible types in comparison">>>
+type _upBadWhere = Expect<Extends<UpBadWhere[2], DbtyperError<2500, "[dbt:INCOMPATIBLE_TYPES_IN_COMPARISON] Incompatible types in comparison">>>
 
 type UpMultiOk = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'x', id = 'y' where users.id = 'u';`>,
@@ -42,7 +42,7 @@ type UpMultiBadSecond = ParseSqlStatement<
 	ParseSqlTokens<`update users set name = 'x', id = 1 where users.id = 'u';`>,
 	DbUsers
 >
-type _upMultiBadSecond = Expect<Extends<UpMultiBadSecond[2], SqlParserError<"Incompatible value type for column">>>
+type _upMultiBadSecond = Expect<Extends<UpMultiBadSecond[2], DbtyperError<2507, `[dbt:INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN] Incompatible value type for column ${string}`>>>
 
 type DbAppDefaultPublicUsers = {
 	defaultSchema: "app"

@@ -6,7 +6,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
-import type { SqlParserError } from "../../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
@@ -27,4 +27,4 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text, name text, email text);`
 >[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, SqlParserError<"Unknown table in UPDATE">>>
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2201, "[dbt:UNKNOWN_TABLE_UPDATE] Unknown table invalid_table in UPDATE">>>

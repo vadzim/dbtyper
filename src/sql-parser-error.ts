@@ -739,11 +739,11 @@ export const errors = {
 	},
 	2201: {
 		id: "UNKNOWN_TABLE_UPDATE",
-		msg: ["Unknown table in UPDATE"],
+		msg: ["Unknown table ", " in UPDATE"],
 	},
 	2202: {
 		id: "UNKNOWN_TABLE_IN_UPDATE_FROM",
-		msg: ["Unknown table in UPDATE FROM"],
+		msg: ["Unknown table ", " in UPDATE FROM"],
 	},
 	2203: {
 		id: "UNKNOWN_TABLE_INSERT_INTO",
@@ -771,11 +771,11 @@ export const errors = {
 	},
 	2209: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE",
-		msg: ["Unknown schema or table in UPDATE"],
+		msg: ["Unknown schema ", " or table ", " in UPDATE"],
 	},
 	2210: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM",
-		msg: ["Unknown schema or table in UPDATE FROM"],
+		msg: ["Unknown schema ", " or table ", " in UPDATE FROM"],
 	},
 	2211: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
@@ -809,7 +809,7 @@ export const errors = {
 	},
 	2301: {
 		id: "UNKNOWN_COLUMN_UPDATE_SET",
-		msg: ["Unknown column in UPDATE SET"],
+		msg: ["Unknown column ", " in UPDATE SET"],
 	},
 	2302: {
 		id: "UNKNOWN_COLUMN_INSERT",
