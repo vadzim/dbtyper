@@ -20,5 +20,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3200, "Unknown schema missing_schema for CREATE TABLE">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2214, "Unknown schema missing_schema for CREATE TABLE">>
 >
