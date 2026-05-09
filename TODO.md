@@ -2,16 +2,18 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
-- [ ] define if tsak is simple and make it with fresh context and exit to preserve tokens
-- [ ] add a test that all the error codes are tested in .error.tests.ts files
-- [ ] add infra test that checks for every error code there's at least one integration test
 - [ ] remove Expects and replace with Matches in all the tests
-- [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
-- [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
+- [ ] error: "Incompatible types in IN list" -> "Incompatible types in IN list <type1> and <type2>" and also check if other errors can be more informative like this.
 - [ ] add integration test for "select 1;"
 - [ ] fix result for .query method - it should return smth reasonable for all the queries, not only row sets or unknown.
 - [ ] make better error messages - like column "..." has wrong value or table "..." does not exist
-- [ ] in every migration test wich has @ts-expect-error directive add a way to check the text of message.
+
+- [ ] define if task is simple and make it with fresh context and exit to preserve tokens
+- [x] add a test that all the error codes are tested in .error.tests.ts files
+- [x] add infra test that checks for every error code there's at least one integration test
+- [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
+- [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
+- [x] in every migration test wich has @ts-expect-error directive add a way to check the text of message.
 - [ ] add integration tests for constraints (including reference to the wrong column):
       create table public.profiles (
       id uuid not null,
