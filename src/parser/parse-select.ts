@@ -33,7 +33,7 @@ type TokenKeyOn = TokenKey<"on">
 
 /**
  * Third slot of `[Tokens, Mid, Third]` is not correlated with `Mid` under `infer`; it may union with
- * `SqlParserError` from other branches. Strip non-scope constituents before `extends ScopeMap`.
+ * error types from other branches. Strip non-scope constituents before `extends ScopeMap`.
  */
 type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | DbtyperError<any, any>>
 

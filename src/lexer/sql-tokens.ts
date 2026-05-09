@@ -1,4 +1,4 @@
-import type { FormatError, SqlParserError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
 
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
@@ -19,8 +19,8 @@ export type TokenNumber<Num extends string> = TokenType<"number", Num>
 export type TokenParam<Param extends string> = TokenType<"param", Param>
 export type TokenEot = TokenType<"eot">
 
-/** Lexeme head: a normal token, or a lexical failure as the same {@link SqlParserError} brand parsers use. */
-type TokenStreamHead = TokenType<TokenKind, string> | SqlParserError<string> | DbtyperError<any, any>
+/** Lexeme head: a normal token, or a lexical failure. */
+type TokenStreamHead = TokenType<TokenKind, string> | DbtyperError<any, any>
 
 export type TokensList = Buffer<TokenStreamHead, string>
 

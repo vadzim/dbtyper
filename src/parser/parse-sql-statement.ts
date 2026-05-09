@@ -7,7 +7,7 @@ import type {
 	TokenKey,
 	ParseSqlTokens,
 } from "../lexer/sql-tokens.ts"
-import type { SqlParserError as _SqlParserError, DbtyperError } from "../sql-parser-error.ts"
+import type { DbtyperError } from "../sql-parser-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
@@ -115,12 +115,6 @@ type ConcatErrors<
 	Errors extends DbtyperError<any, any> | DbtyperError<any, any> | null,
 	Result extends DbtyperError<any, any> | DbtyperError<any, any>,
 > = Errors extends DbtyperError<any, any> | DbtyperError<any, any> ? Errors : Result
-
-// Errors extends SqlParserError<infer ErrorsMsg>
-// 		? Result extends SqlParserError<infer ResultMsg>
-// 			? SqlParserError<`${ErrorsMsg}; ${ResultMsg}`>
-// 			: Errors
-// 		: Result
 
 type ParseAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">

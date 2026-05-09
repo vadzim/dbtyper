@@ -7,7 +7,7 @@ import type { PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
 
 /**
  * Infers the **row object** type for a single `SELECT` / `WITH … SELECT` string against `Db`.
- * Non-select statements resolve to {@link SqlParserError} so invalid uses become type errors.
+ * Non-select statements resolve to error types so invalid uses become type errors.
  *
  * This applies SQL-to-TypeScript conversion using the database's scalarTypes map.
  */
@@ -18,7 +18,7 @@ export type SqlSelectRow<
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, ScalarTypes> : Db
 
-/** `SqlParserError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
+/** `DbtyperError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
 export type InferSqlErrors<
 	Db extends JsqlDatabaseShape | DbtyperError<any, any>,
 	Stmt extends string,

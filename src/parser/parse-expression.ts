@@ -9,7 +9,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { SqlParserError, FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
@@ -1657,7 +1657,7 @@ type MergeComparison<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"]
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
 type ValidateCaseSimpleWhenMatch<Disc extends SqlTypeShape, WhenV extends SqlTypeShape> =
-	MergeComparison<Disc, WhenV> extends SqlParserError<infer M> ? SqlParserError<M> : true
+	MergeComparison<Disc, WhenV> extends DbtyperError<any, any> ? MergeComparison<Disc, WhenV> : true
 
 type MergeBetweenBounds<
 	E extends SqlTypeShape,

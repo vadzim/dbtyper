@@ -82,7 +82,7 @@ export type SqlColumnsToTs<
  * Applies SQL-to-TypeScript conversion to a SqlSelectRow result.
  *
  * Takes the SQL column types (SqlTypeShape or strings) returned by SqlSelectRow and converts them
- * to TypeScript types using the scalarTypes map. If the input is a SqlParserError,
+ * to TypeScript types using the scalarTypes map. If the input is an error type,
  * it passes through unchanged.
  *
  * @example

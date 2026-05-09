@@ -1,6 +1,6 @@
 import type { ParseSqlTokens } from "../../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
-import type { SqlParserError, DbtyperError } from "../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../src/sql-parser-error.ts"
 import type { DbPublicUsers } from "./test-databases.ts"
 import type { Matches } from "./type-test-utils.ts"
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
@@ -12,7 +12,7 @@ type TokensRest = ParseSqlTokens<Rest>
 
 export type CheckErrorneousResult<Result, S extends string> = Matches<
 	Result,
-	[TokensRest, DbPublicUsers, SqlParserError<S>]
+	[TokensRest, DbPublicUsers, DbtyperError<-1, S>]
 >
 
 export type CheckErrorneousResultWithCode<
