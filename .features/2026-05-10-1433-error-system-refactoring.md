@@ -436,39 +436,42 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 
 **Notes:** ✅ Completed 2026-05-10 14:43 - Ready to start Phase 1
 
-- [ ] Decide on order of phases
-- [ ] Identify files that need updates
-- [ ] Plan subagent usage for parallel work
-- [ ] Update this plan with detailed steps
-
-### Phase 1: Remove Unreachable INVALID_* Codes (Priority 2)
+### Phase 1: Remove Unreachable INVALID_* Codes (Priority 2) ✅ COMPLETED
 
 **Goal:** Remove 40 unreachable codes that are never triggered.
 
 #### Step 1.1: Identify Unreachable Codes
 
-- [ ] List all INVALID_* codes from audit
-- [ ] Verify they are truly unreachable (check parser/resolver usage)
-- [ ] Document why each is unreachable
+- [x] List all INVALID_* codes from audit
+- [x] Verify they are truly unreachable (check parser/resolver usage)
+- [x] Document why each is unreachable
+
+**Notes:** ✅ Completed 2026-05-10 15:20 - 40 INVALID_* codes identified
 
 #### Step 1.2: Remove Error Code Definitions
 
-- [ ] Remove unreachable codes from src/sql-parser-error.ts
-- [ ] Update error code numbering if needed
-- [ ] Run typecheck to find any usage
+- [x] Remove unreachable codes from src/sql-parser-error.ts
+- [x] Update error code numbering if needed
+- [x] Run typecheck to find any usage
+
+**Notes:** ✅ Completed 2026-05-10 15:25 - 40 codes removed from registry
 
 #### Step 1.3: Remove Defensive Checks
 
-- [ ] Remove defensive checks from parser files
-- [ ] Remove defensive checks from resolver files
-- [ ] Verify type system still catches these errors
+- [x] Remove defensive checks from parser files
+- [x] Remove defensive checks from resolver files
+- [x] Verify type system still catches these errors
+
+**Notes:** ✅ Completed 2026-05-10 15:28 - Replaced with `never` type
 
 #### Step 1.4: Test and Validate
 
-- [ ] Run full test suite: `npm test`
-- [ ] Verify 0 TypeScript errors
-- [ ] Verify all tests still pass
-- [ ] Commit changes
+- [x] Run full test suite: `npm test`
+- [x] Verify 0 TypeScript errors
+- [x] Verify all tests still pass
+- [x] Commit changes
+
+**Notes:** ✅ Completed 2026-05-10 15:35 - All tests passing, committed as eb2573f
 
 ### Phase 2: Consolidate Parser Recovery Codes (Priority 3)
 

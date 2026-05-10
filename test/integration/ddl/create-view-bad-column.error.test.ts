@@ -21,5 +21,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table t (id integer);`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column nope_col">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column nope_col in ">>
 >

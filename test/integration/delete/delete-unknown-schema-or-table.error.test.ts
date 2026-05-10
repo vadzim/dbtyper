@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2212, "Unknown schema ghost_schema or table users in DELETE FROM">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2207, "Unknown schema or table ghost_schema in DELETE FROM">>
 >

@@ -25,7 +25,7 @@ type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDat
 						? [AfterB, null, A & keyof Db["schemas"] & string, B]
 						: never
 					: SkipFailedQualifiedName<AfterB, FormatError<"EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME", []>>
-				: SkipFailedQualifiedName<AfterB, FormatError<"UNKNOWN_SCHEMA_FOR_CREATE_VIEW", [A]>>
+				: SkipFailedQualifiedName<AfterB, FormatError<"UNKNOWN_SCHEMA", [A, "CREATE VIEW"]>>
 			: never
 		: SkipFailedQualifiedName<Rdot, FormatError<"EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW", []>>
 
@@ -110,6 +110,6 @@ export type ParseCreateView<
 							: never
 						: never
 					: SkipFailedStatement<R0, Db, FormatError<"EXPECTED_AS_IN_CREATE_VIEW", []>>
-				: SkipFailedStatement<R0, Db, FormatError<"UNKNOWN_SCHEMA_FOR_CREATE_VIEW", [Sch]>>
+				: SkipFailedStatement<R0, Db, FormatError<"UNKNOWN_SCHEMA", [Sch, "CREATE VIEW"]>>
 			: [R0, Db, E]
 		: never

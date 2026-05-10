@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2207, "Unknown schema missing or table users">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2207, "Unknown schema or table missing.users in ">>
 >

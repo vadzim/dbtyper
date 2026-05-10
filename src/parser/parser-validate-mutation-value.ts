@@ -17,7 +17,7 @@ type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl exten
 export type ValidateMutationValueForColumn<Tbl extends JsqlDataShape, Col extends string, Val extends SqlTypeShape> =
 	JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends SqlTypeShape
 		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
-		: FormatError<"UNKNOWN_COLUMN_INSERT", [Col]>
+		: FormatError<"UNKNOWN_COLUMN", [Col, "INSERT"]>
 
 type ValidateMutationValueBySql<
 	Tbl extends JsqlDataShape,

@@ -25,5 +25,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column not_a_col">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column not_a_col in ">>
 >

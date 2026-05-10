@@ -25,4 +25,4 @@ type DbShape = ApplyStatements<
 	`create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`
 >[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column ghost">>>
+type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column ghost in ">>>

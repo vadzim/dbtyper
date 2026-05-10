@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2201, "Unknown table ghost_table in UPDATE">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2200, "Unknown table ghost_table in UPDATE">>
 >

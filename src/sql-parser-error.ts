@@ -596,99 +596,103 @@ export const errors = {
 
 	// Resolution Errors - Unknown X
 	// Table/Schema Resolution
+	// Group 1: UNKNOWN_TABLE_* consolidated (Phase 2)
 	2200: {
-		id: "UNKNOWN_TABLE_FROM",
-		msg: ["Unknown table in FROM"],
+		id: "UNKNOWN_TABLE",
+		msg: ["Unknown table ", " in ", ""],
 	},
 	2201: {
-		id: "UNKNOWN_TABLE_UPDATE",
-		msg: ["Unknown table ", " in UPDATE"],
+		id: "OBSOLETE_2201_UNKNOWN_TABLE_UPDATE",
+		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 	2202: {
-		id: "UNKNOWN_TABLE_IN_UPDATE_FROM",
-		msg: ["Unknown table ", " in UPDATE FROM"],
+		id: "OBSOLETE_2202_UNKNOWN_TABLE_IN_UPDATE_FROM",
+		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 	2203: {
-		id: "UNKNOWN_TABLE_INSERT_INTO",
-		msg: ["Unknown table ", " in INSERT INTO"],
+		id: "OBSOLETE_2203_UNKNOWN_TABLE_INSERT_INTO",
+		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 	2204: {
-		id: "UNKNOWN_TABLE_DELETE_FROM",
-		msg: ["Unknown table ", " in DELETE FROM"],
+		id: "OBSOLETE_2204_UNKNOWN_TABLE_DELETE_FROM",
+		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 	2205: {
-		id: "UNKNOWN_TABLE_IN_DELETE_USING",
-		msg: ["Unknown table ", " in DELETE USING"],
+		id: "OBSOLETE_2205_UNKNOWN_TABLE_IN_DELETE_USING",
+		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 	2206: {
-		id: "UNKNOWN_TABLE_IN_SELECT_STAR",
-		msg: ["Unknown table in SELECT ... *"],
+		id: "OBSOLETE_2206_UNKNOWN_TABLE_IN_SELECT_STAR",
+		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
+	// Group 2: UNKNOWN_SCHEMA_OR_TABLE_* consolidated (Phase 2)
 	2207: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE",
-		msg: ["Unknown schema ", " or table ", ""],
+		msg: ["Unknown schema or table ", " in ", ""],
 	},
 	2208: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_FROM",
-		msg: ["Unknown schema or table in FROM"],
+		id: "OBSOLETE_2208_UNKNOWN_SCHEMA_OR_TABLE_IN_FROM",
+		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 	2209: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE",
-		msg: ["Unknown schema ", " or table ", " in UPDATE"],
+		id: "OBSOLETE_2209_UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE",
+		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 	2210: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM",
-		msg: ["Unknown schema ", " or table ", " in UPDATE FROM"],
+		id: "OBSOLETE_2210_UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM",
+		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 	2211: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
-		msg: ["Unknown schema ", " or table ", " in INSERT INTO"],
+		id: "OBSOLETE_2211_UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
+		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 	2212: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM",
-		msg: ["Unknown schema ", " or table ", " in DELETE FROM"],
+		id: "OBSOLETE_2212_UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM",
+		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 	2213: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING",
-		msg: ["Unknown schema ", " or table ", " in DELETE USING"],
+		id: "OBSOLETE_2213_UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING",
+		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
+	// Group 4: UNKNOWN_SCHEMA_FOR_* consolidated (Phase 2)
 	2214: {
-		id: "UNKNOWN_SCHEMA_FOR_CREATE_TABLE",
-		msg: ["Unknown schema ", " for CREATE TABLE"],
+		id: "UNKNOWN_SCHEMA",
+		msg: ["Unknown schema ", " for ", ""],
 	},
 	2215: {
-		id: "UNKNOWN_SCHEMA_FOR_CREATE_TYPE",
-		msg: ["Unknown schema ", " for CREATE TYPE"],
+		id: "OBSOLETE_2215_UNKNOWN_SCHEMA_FOR_CREATE_TYPE",
+		msg: ["Use UNKNOWN_SCHEMA with context parameter"],
 	},
 	2216: {
-		id: "UNKNOWN_SCHEMA_FOR_CREATE_VIEW",
-		msg: ["Unknown schema ", " for CREATE VIEW"],
+		id: "OBSOLETE_2216_UNKNOWN_SCHEMA_FOR_CREATE_VIEW",
+		msg: ["Use UNKNOWN_SCHEMA with context parameter"],
 	},
 
 	// Column Resolution
+	// Group 3: UNKNOWN_COLUMN_* consolidated (Phase 2)
 	2300: {
 		id: "UNKNOWN_COLUMN",
-		msg: ["Unknown column ", ""],
+		msg: ["Unknown column ", " in ", ""],
 	},
 	2301: {
-		id: "UNKNOWN_COLUMN_UPDATE_SET",
-		msg: ["Unknown column ", " in UPDATE SET"],
+		id: "OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET",
+		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
 	2302: {
-		id: "UNKNOWN_COLUMN_INSERT",
-		msg: ["Unknown column ", " in INSERT"],
+		id: "OBSOLETE_2302_UNKNOWN_COLUMN_INSERT",
+		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
 	2303: {
-		id: "UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
-		msg: ["Unknown column ", " in INSERT column list"],
+		id: "OBSOLETE_2303_UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
+		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
 	2304: {
-		id: "UNKNOWN_COLUMN_IN_ON_CONFLICT",
-		msg: ["Unknown column ", " in ON CONFLICT"],
+		id: "OBSOLETE_2304_UNKNOWN_COLUMN_IN_ON_CONFLICT",
+		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
 	2305: {
-		id: "UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET",
-		msg: ["Unknown column ", " in ON CONFLICT DO UPDATE SET"],
+		id: "OBSOLETE_2305_UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET",
+		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
 	2306: {
 		id: "UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN",

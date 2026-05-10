@@ -112,21 +112,21 @@ type ParseInsertFromTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-									? JsqlDbGetData<Db, A, B> extends infer TblTry
-										? [TblTry] extends [never]
-											? [
+								? JsqlDbGetData<Db, A, B> extends infer TblTry
+									? [TblTry] extends [never]
+										? [
+												R3,
+												FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "INSERT INTO"]>,
+												ParserRefErrorThirdSentinel,
+											]
+										: TblTry extends JsqlDataShape
+											? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
+											: [
 													R3,
-													FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO", [A, B]>,
+													FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "INSERT INTO"]>,
 													ParserRefErrorThirdSentinel,
 												]
-											: TblTry extends JsqlDataShape
-												? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
-												: [
-														R3,
-														FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO", [A, B]>,
-														ParserRefErrorThirdSentinel,
-													]
-										: never
+									: never
 									: [
 											R3,
 											FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO", []>,
@@ -135,13 +135,13 @@ type ParseInsertFromTableRef<
 								: never
 							: never
 						: never
-					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
-						? [TblTry] extends [never]
-							? [R1, FormatError<"UNKNOWN_TABLE_INSERT_INTO", [A]>, ParserRefErrorThirdSentinel]
-							: TblTry extends JsqlDataShape
-								? ParseInsertAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Params>
-								: [R1, FormatError<"UNKNOWN_TABLE_INSERT_INTO", [A]>, ParserRefErrorThirdSentinel]
-						: never
+				: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
+					? [TblTry] extends [never]
+						? [R1, FormatError<"UNKNOWN_TABLE", [A, "INSERT INTO"]>, ParserRefErrorThirdSentinel]
+						: TblTry extends JsqlDataShape
+							? ParseInsertAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Params>
+							: [R1, FormatError<"UNKNOWN_TABLE", [A, "INSERT INTO"]>, ParserRefErrorThirdSentinel]
+					: never
 				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_INSERT_INTO", []>, ParserRefErrorThirdSentinel]
 			: never
 		: never
@@ -153,9 +153,9 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataSh
 			: [Tokens, Acc]
 		: PeekToken<Tokens> extends infer Tok
 			? SkipToken<Tokens> extends infer R1 extends TokensList
-				? Tok extends TokenIdent<infer Col extends string>
-					? JsqlDataGetColumnType<Tbl, Col> extends null
-						? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST", [Col]>>
+			? Tok extends TokenIdent<infer Col extends string>
+				? JsqlDataGetColumnType<Tbl, Col> extends null
+					? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN", [Col, "INSERT column list"]>>
 						: PeekToken<R1> extends TokenKey<")">
 							? SkipToken<R1> extends infer R2 extends TokensList
 								? [R2, readonly [...Acc, Col]]
@@ -314,7 +314,7 @@ type ValidateInsertSelectColumnTypes<
 				? SameComparisonClass<SelectType, InsertType> extends true
 					? ValidateInsertSelectColumnTypes<Tbl, RestCols, SelectRes, AllCols, readonly [...Idx, 0]>
 					: FormatError<"INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN", [Col]>
-				: FormatError<"UNKNOWN_COLUMN_INSERT", [Col]>
+				: FormatError<"UNKNOWN_COLUMN", [Col, "INSERT"]>
 			: FormatError<"SELECT_RESULT_MISSING_COLUMN", []>
 		: FormatError<"SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS", []>
 	: true
@@ -667,9 +667,9 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 				: never
 		: PeekToken<Tokens> extends infer Tok
 			? SkipToken<Tokens> extends infer R1 extends TokensList
-				? Tok extends TokenIdent<infer C extends string>
-					? JsqlDataGetColumnType<Tbl, C> extends null
-						? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN_IN_ON_CONFLICT", [C]>>
+			? Tok extends TokenIdent<infer C extends string>
+				? JsqlDataGetColumnType<Tbl, C> extends null
+					? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN", [C, "ON CONFLICT"]>>
 						: PeekToken<R1> extends TokenKey<")">
 							? SkipToken<R1> extends infer R2 extends TokensList
 								? [R2, readonly [...Acc, C]]
@@ -696,9 +696,9 @@ type ParseInsertUpsertSetAssignments<
 > =
 	PeekToken<Tokens> extends infer TokCol
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? TokCol extends TokenIdent<infer Col extends string>
-				? JsqlDataGetColumnType<Tbl, Col> extends null
-					? [R1, Db, FormatError<"UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET", [Col]>]
+		? TokCol extends TokenIdent<infer Col extends string>
+			? JsqlDataGetColumnType<Tbl, Col> extends null
+				? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "ON CONFLICT DO UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
 							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [

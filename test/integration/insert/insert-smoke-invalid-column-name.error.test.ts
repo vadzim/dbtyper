@@ -30,6 +30,6 @@ type DbShape = ApplyStatements<
 type _errorCheck = Expect<
 	Matches<
 		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<2303, "Unknown column invalid_column in INSERT column list">
+		DbtyperError<2300, "Unknown column invalid_column in INSERT column list">
 	>
 >

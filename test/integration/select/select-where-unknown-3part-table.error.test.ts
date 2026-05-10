@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2207, "Unknown schema public or table nope">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2207, "Unknown schema or table public.nope in ">>
 >

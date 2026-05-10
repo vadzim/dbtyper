@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2208, "Unknown schema or table in FROM">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2207, "Unknown schema or table ghost_schema in FROM">>
 >

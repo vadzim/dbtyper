@@ -1468,7 +1468,7 @@ type ParseFromTableAfterLeadingIdent<
 					? TokB extends TokenIdent<infer B extends string>
 						? JsqlDbGetData<Db, A, B> extends infer Tbl extends JsqlDataShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
-							: [R3, FormatError<"UNKNOWN_SCHEMA_OR_TABLE_IN_FROM", []>, ParserRefErrorThirdSentinel]
+							: [R3, FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "FROM"]>, ParserRefErrorThirdSentinel]
 						: [R3, FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_FROM", []>, ParserRefErrorThirdSentinel]
 					: never
 				: never
@@ -1477,7 +1477,7 @@ type ParseFromTableAfterLeadingIdent<
 			? ParseAliasAfterCTE<R1, A, Scope[A], Scope>
 			: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlDataShape
 				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
-				: [R1, FormatError<"UNKNOWN_TABLE_FROM", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"UNKNOWN_TABLE", [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
 type ParseAliasAfterCTE<
 	Tokens extends TokensList,
@@ -1981,12 +1981,12 @@ type ResolveSelectListExprItem<
 					Db,
 					Scope,
 					Params,
-					MergeRecords<Cols, E["columns"]>,
-					MergeStringRecords<Sqls, E["columns"]>,
-					AllItems
-				>
-			: FormatError<"UNKNOWN_TABLE_IN_SELECT_STAR", []>
-		: FormatError<"UNKNOWN_TABLE_IN_SELECT_STAR", []>
+				MergeRecords<Cols, E["columns"]>,
+				MergeStringRecords<Sqls, E["columns"]>,
+				AllItems
+			>
+		: FormatError<"UNKNOWN_TABLE", [Sch, "SELECT ... *"]>
+	: FormatError<"UNKNOWN_TABLE", [Tab, "SELECT ... *"]>
 	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
 		? Al extends keyof Scope
 			? Scope[Al] extends infer E extends ScopeEntry
