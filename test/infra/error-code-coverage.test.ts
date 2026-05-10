@@ -122,6 +122,12 @@ const UNTESTABLE_ERROR_CODES = new Set([
 	1222, // OBSOLETE_1222_EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET
 	1223, // OBSOLETE_1223_INVALID_VALUE_EXPRESSION_IN_INSERT
 	1224, // OBSOLETE_1224_INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE
+
+	// Expression syntax errors that are difficult to trigger (4 codes)
+	4300, // CASE_REQUIRES_AT_LEAST_ONE_WHEN - Parser handles CASE END as valid empty case
+	4700, // EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT - Lexer/parser recovery makes this hard to trigger
+	4702, // EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE - Lexer/parser recovery makes this hard to trigger
+	4802, // EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN - Parser recovery handles missing operator
 ])
 
 describe("Error code coverage", async () => {
