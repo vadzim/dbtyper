@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1221, "Expected table name after `.` in INSERT INTO">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1120, "Expected table name after `.` in INSERT INTO">>
 >

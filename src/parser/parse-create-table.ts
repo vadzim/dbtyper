@@ -124,7 +124,7 @@ type ParseCreateTableCloseParenAndSemi<Tokens extends TokensList, NewDb extends 
 					? SkipToken<R1> extends infer R2 extends TokensList
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, NewDb, null]
-							: SkipFailedStatement<R2, NewDb, FormatError<"EXPECTED_SEMICOLON_AFTER_CREATE_TABLE", []>>
+							: SkipFailedStatement<R2, NewDb, FormatError<"EXPECTED_SEMICOLON", ["CREATE TABLE"]>>
 						: never
 					: never
 				: SkipFailedStatement<R1, NewDb, FormatError<"EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE", []>>
@@ -184,7 +184,7 @@ type ParseOneColumn<
 > =
 	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
 		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COLUMN_NAME_IN_CREATE_TABLE", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COLUMN_NAME", ["in CREATE TABLE"]>>
 
 type ContinueAfterColumnType<
 	AfterType extends TokensList,

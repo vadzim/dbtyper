@@ -131,7 +131,7 @@ type ParseTypeModifiers<Tokens extends TokensList, BaseTypeName extends string> 
 export type ParseSqlType<Tokens extends TokensList> =
 	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends TokensList, infer Words extends readonly string[]]
 		? Words extends readonly []
-			? SkipFailedExpression<AfterWords, FormatError<"EXPECTED_TYPE_NAME", []>>
+			? SkipFailedExpression<AfterWords, FormatError<"EXPECTED_TYPE_NAME", [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
 				? NormalizeSqlTypeName<TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiers<AfterWords, NormalizedName> extends [

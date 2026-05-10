@@ -22,7 +22,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
 			? T2 extends TokenIdent<infer B extends string>
 				? [R2, null, A, B]
-				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_TYPE_NAME_AFTER_DOT_IN_DROP_TYPE", []>>
+				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_TYPE_NAME", ["after `.` in DROP TYPE"]>>
 			: never
 		: never
 
@@ -47,7 +47,7 @@ type ParseQualifiedTypeNameForDrop<Tokens extends TokensList, Db extends JsqlDat
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TYPE_NAME_IN_DROP_TYPE", []>>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TYPE_NAME", ["in DROP TYPE"]>>
 			: never
 		: never
 
@@ -82,4 +82,4 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_DROP_TYPE", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["DROP TYPE"]>>

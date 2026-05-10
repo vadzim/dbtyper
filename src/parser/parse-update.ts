@@ -112,7 +112,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 										: never
 									: [
 											R3,
-											FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE", []>,
+											FormatError<"EXPECTED_TABLE_NAME", ["after `.` in UPDATE"]>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -125,7 +125,7 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 							? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
 							: [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
 					: never
-				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in UPDATE"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -220,7 +220,7 @@ type ParseUpdateSetAssignments<
 								: never
 							: never
 						: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET", []>>
-				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME_IN_UPDATE_SET", []>>
+				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME", ["in UPDATE SET"]>>
 			: never
 		: never
 
@@ -304,7 +304,7 @@ type ParseUpdateFromClauseTableRef<
 									: never
 									: [
 											R3,
-											FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE_FROM", []>,
+											FormatError<"EXPECTED_TABLE_NAME", ["in UPDATE FROM"]>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -317,7 +317,7 @@ type ParseUpdateFromClauseTableRef<
 							? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
 							: [R1, never, ParserRefErrorThirdSentinel]
 					: never
-				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE_FROM", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in UPDATE FROM"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -431,7 +431,7 @@ type FinishUpdateSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning extends null ? Res : Returning]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_UPDATE", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["UPDATE"]>>
 
 type ParseUpdateAfterTableRef<
 	Tokens extends TokensList,

@@ -34,7 +34,7 @@ type _ifExistsWrong = Expect<
 
 type TSchemaMissingSemi = ParseSqlStatement<ParseSqlTokens<"create schema almost_schema trailing;">, EmptyDb>
 type _schemaMissingSemi = Expect<
-	Extends<TSchemaMissingSemi[2], DbtyperError<3701, "Expected `;` after schema name in CREATE SCHEMA">>
+	Extends<TSchemaMissingSemi[2], DbtyperError<1105, "Expected semicolon after schema name in CREATE SCHEMA">>
 >
 
 type TSchemaMissingName = ParseSqlStatement<ParseSqlTokens<"create schema ;">, EmptyDb>

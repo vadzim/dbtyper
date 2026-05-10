@@ -6,6 +6,6 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"update users set = 1">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1303, "Expected column name in UPDATE SET">>
+type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1206, "Expected column name in UPDATE SET">>
 
 it("UPDATE: Expected column name in UPDATE SET", () => {})

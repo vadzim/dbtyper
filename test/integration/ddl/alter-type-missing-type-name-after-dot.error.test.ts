@@ -21,5 +21,5 @@ await migrations.apply(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create type status as enum ('active');`>[0]
 
 type _errorCheck = Expect<
-	Extends<ExtractQueryError<DbShape, typeof query>, DbtyperError<1811, "Expected type name after `.` in ALTER TYPE">>
+	Extends<ExtractQueryError<DbShape, typeof query>, DbtyperError<4105, "Expected type name after `.` in ALTER TYPE">>
 >

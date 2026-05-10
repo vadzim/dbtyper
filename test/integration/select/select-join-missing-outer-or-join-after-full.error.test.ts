@@ -27,5 +27,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<4208, "Expected OUTER or JOIN after FULL">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<4200, "Expected JOIN after FULL">>
 >

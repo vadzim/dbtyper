@@ -18,5 +18,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1506, "Expected table name in CREATE TABLE">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1120, "Expected table name in CREATE TABLE">>
 >

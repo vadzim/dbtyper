@@ -28,7 +28,7 @@ export type ParseAlterType<Tokens extends TokensList, Db extends JsqlDatabaseSha
 type ParseAlterQualifiedSecondIdent<AfterDot extends TokensList, A extends string> =
 	PeekToken<AfterDot> extends TokenIdent<infer B extends string>
 		? [SkipToken<AfterDot>, null, A, B]
-		: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_TYPE_NAME_AFTER_DOT_IN_ALTER_TYPE", []>>
+		: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_TYPE_NAME", ["after `.` in ALTER TYPE"]>>
 
 /** After first identifier (type or schema). */
 type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
@@ -42,7 +42,7 @@ type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDat
 type ParseQualifiedTypeNameForAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: SkipFailedQualifiedName<Tokens, FormatError<"EXPECTED_TYPE_NAME_IN_ALTER_TYPE", []>>
+		: SkipFailedQualifiedName<Tokens, FormatError<"EXPECTED_TYPE_NAME", ["in ALTER TYPE"]>>
 
 type ParseAlterTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	ParseQualifiedTypeNameForAlter<Tokens, Db> extends [
@@ -127,4 +127,4 @@ type ParseAlterTypeAddValue<
 type ParseAlterTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: SkipFailedStatement<Tokens, NewDb, FormatError<"EXPECTED_SEMICOLON_AFTER_ALTER_TYPE", []>>
+		: SkipFailedStatement<Tokens, NewDb, FormatError<"EXPECTED_SEMICOLON", ["ALTER TYPE"]>>

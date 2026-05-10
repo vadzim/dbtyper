@@ -6,6 +6,6 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"alter table users drop column">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1606, "Expected column name after DROP COLUMN">>
+type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1206, "Expected column name after DROP COLUMN">>
 
 it("ALTER TABLE: Expected column name after DROP COLUMN", () => {})

@@ -126,7 +126,7 @@ type SkipToCloseParenAndSemi<Tokens extends TokensList, Db extends JsqlDatabaseS
 					? SkipToken<R> extends infer R2 extends TokensList
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, Db, null]
-							: SkipFailedStatement<R2, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_CREATE_TYPE", []>>
+							: SkipFailedStatement<R2, Db, FormatError<"EXPECTED_SEMICOLON", ["CREATE TYPE"]>>
 						: never
 					: never
 				: Tok extends TokenEot
@@ -208,4 +208,4 @@ type ParseAfterEnumValue<
 type ParseCreateTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: SkipFailedStatement<Tokens, NewDb, FormatError<"EXPECTED_SEMICOLON_AFTER_CREATE_TYPE", []>>
+		: SkipFailedStatement<Tokens, NewDb, FormatError<"EXPECTED_SEMICOLON", ["CREATE TYPE"]>>

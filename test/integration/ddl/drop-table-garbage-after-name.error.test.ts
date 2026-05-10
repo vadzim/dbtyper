@@ -27,6 +27,6 @@ type DbShape = ApplyStatements<
 type _errorCheck = Expect<
 	Matches<
 		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<1704, "Expected `;` after qualified table name in DROP TABLE">
+		DbtyperError<1105, "Expected semicolon after qualified table name in DROP TABLE">
 	>
 >

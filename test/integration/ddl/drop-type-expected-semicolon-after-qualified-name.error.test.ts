@@ -21,5 +21,5 @@ await migrations.apply(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create type public.status as enum ('active');`>[0]
 
 type _errorCheck = Expect<
-	Extends<ExtractQueryError<DbShape, typeof query>, DbtyperError<1802, "Expected `;` after DROP TYPE">>
+	Extends<ExtractQueryError<DbShape, typeof query>, DbtyperError<1105, "Expected semicolon after DROP TYPE">>
 >

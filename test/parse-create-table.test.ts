@@ -178,7 +178,7 @@ type _t6shape = Expect<
 
 type TExpectedTableName = ParseSqlStatement<ParseSqlTokens<`create table( id int not null );`>, DbDefaultPublic>
 type _expectedTableName = Expect<
-	Matches<TExpectedTableName[2], DbtyperError<1506, "Expected table name in CREATE TABLE">>
+	Matches<TExpectedTableName[2], DbtyperError<1120, "Expected table name in CREATE TABLE">>
 >
 
 type TUnknownQualifiedSchema = ParseSqlStatement<

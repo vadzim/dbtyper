@@ -129,7 +129,7 @@ type ParseInsertFromTableRef<
 									: never
 									: [
 											R3,
-											FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO", []>,
+											FormatError<"EXPECTED_TABLE_NAME", ["after `.` in INSERT INTO"]>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -142,7 +142,7 @@ type ParseInsertFromTableRef<
 							? ParseInsertAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Params>
 							: [R1, FormatError<"UNKNOWN_TABLE", [A, "INSERT INTO"]>, ParserRefErrorThirdSentinel]
 					: never
-				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_INSERT_INTO", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in INSERT INTO"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -168,7 +168,7 @@ type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataSh
 										R1,
 										FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST", []>
 									>
-					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME_IN_INSERT_COLUMN_LIST", []>>
+					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME", ["in INSERT column list"]>>
 				: never
 			: never
 
@@ -682,7 +682,7 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 										R1,
 										FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ON_CONFLICT_COLUMN_LIST", []>
 									>
-					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME_IN_ON_CONFLICT", []>>
+					: SkipFailedExpression<R1, FormatError<"EXPECTED_COLUMN_NAME", ["in ON CONFLICT"]>>
 				: never
 			: never
 
@@ -761,7 +761,7 @@ type ParseInsertUpsertSetAssignments<
 								Db,
 								FormatError<"EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE", []>
 							>
-				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE", []>>
+				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME", ["in ON CONFLICT UPDATE"]>>
 			: never
 		: never
 
@@ -821,7 +821,7 @@ type FinishInsertSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_INSERT", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["INSERT"]>>
 
 type ParseInsertAfterInto<
 	Tokens extends TokensList,

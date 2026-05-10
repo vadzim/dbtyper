@@ -19,5 +19,5 @@ await migrations.apply(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Extends<ExtractQueryError<DbShape, typeof query>, DbtyperError<1800, "Expected `;` after CREATE TYPE">>
+	Extends<ExtractQueryError<DbShape, typeof query>, DbtyperError<1105, "Expected semicolon after CREATE TYPE">>
 >

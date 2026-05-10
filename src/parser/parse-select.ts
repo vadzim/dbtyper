@@ -81,7 +81,7 @@ export type ParseSelectStatement<
 			? [R1, Db2, Res]
 			: PeekToken<R1> extends TokenKey<";"> | TokenEot
 				? [SkipToken<R1>, Db2, Res]
-				: SkipFailedStatement<R1, Db2, FormatError<"EXPECTED_SEMICOLON_AFTER_SELECT", []>>
+				: SkipFailedStatement<R1, Db2, FormatError<"EXPECTED_SEMICOLON", ["SELECT"]>>
 		: never
 
 type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
@@ -1469,7 +1469,7 @@ type ParseFromTableAfterLeadingIdent<
 						? JsqlDbGetData<Db, A, B> extends infer Tbl extends JsqlDataShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
 							: [R3, FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "FROM"]>, ParserRefErrorThirdSentinel]
-						: [R3, FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_FROM", []>, ParserRefErrorThirdSentinel]
+						: [R3, FormatError<"EXPECTED_TABLE_NAME", ["after `.` in FROM"]>, ParserRefErrorThirdSentinel]
 					: never
 				: never
 			: never
@@ -1654,7 +1654,7 @@ type ParseJoinAfterCross<
 						: never
 				: never
 			: never
-		: [Tokens, FormatError<"EXPECTED_JOIN_AFTER_CROSS", []>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["CROSS"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalInner<
 	Tokens extends TokensList,
@@ -1664,7 +1664,7 @@ type ParseJoinAfterOptionalInner<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_AFTER_INNER", []>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["INNER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterLeft<
 	Tokens extends TokensList,
@@ -1676,7 +1676,7 @@ type ParseJoinAfterLeft<
 		? ParseJoinAfterOptionalOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-			: [Tokens, FormatError<"EXPECTED_OUTER_OR_JOIN_AFTER_LEFT", []>, ParserRefErrorThirdSentinel]
+			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["LEFT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRight<
 	Tokens extends TokensList,
@@ -1688,7 +1688,7 @@ type ParseJoinAfterRight<
 		? ParseJoinAfterRightOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-			: [Tokens, FormatError<"EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT", []>, ParserRefErrorThirdSentinel]
+			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["RIGHT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRightOuter<
 	Tokens extends TokensList,
@@ -1698,7 +1698,7 @@ type ParseJoinAfterRightOuter<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_AFTER_RIGHT_OUTER", []>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["RIGHT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFull<
 	Tokens extends TokensList,
@@ -1710,7 +1710,7 @@ type ParseJoinAfterFull<
 		? ParseJoinAfterFullOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-			: [Tokens, FormatError<"EXPECTED_OUTER_OR_JOIN_AFTER_FULL", []>, ParserRefErrorThirdSentinel]
+			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["FULL"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFullOuter<
 	Tokens extends TokensList,
@@ -1720,7 +1720,7 @@ type ParseJoinAfterFullOuter<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_AFTER_FULL_OUTER", []>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["FULL OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalOuter<
 	Tokens extends TokensList,
@@ -1730,7 +1730,7 @@ type ParseJoinAfterOptionalOuter<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_AFTER_LEFT_OUTER", []>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["LEFT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterJoinKw<
 	Tokens extends TokensList,
@@ -1756,7 +1756,7 @@ type ParseJoinAfterJoinKw<
 						: never
 				: never
 			: never
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", []>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", [""]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinOn<
 	Tokens extends TokensList,

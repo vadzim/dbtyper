@@ -33,6 +33,6 @@ export type ParseQualifiedTableName<Tokens extends TokensList, Db extends JsqlDa
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseQualifiedAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME_IN_CREATE_TABLE", []>>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME", ["in CREATE TABLE"]>>
 			: never
 		: never

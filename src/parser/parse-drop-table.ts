@@ -22,7 +22,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 				? [SkipToken<R2>, null, A, B]
 				: SkipFailedQualifiedName<
 						R2,
-						FormatError<"EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE", []>
+						FormatError<"EXPECTED_SEMICOLON", ["qualified table name in DROP TABLE"]>
 					>
 			: never
 		: never
@@ -41,7 +41,7 @@ type ParseQualifiedTableNameForDrop<Tokens extends TokensList, Db extends JsqlDa
 		? SkipToken<Tokens> extends infer AfterFirst extends TokensList
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME_IN_DROP_TABLE", []>>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME", ["in DROP TABLE"]>>
 			: never
 		: never
 
@@ -78,4 +78,4 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_DROP_TABLE", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["DROP TABLE"]>>

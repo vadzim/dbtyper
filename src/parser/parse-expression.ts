@@ -159,10 +159,10 @@ type ParseSqlTypeName<Tokens extends TokensList, Acc extends readonly string[] =
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
 			? Acc extends readonly []
-				? SkipFailedExpression<Tokens, FormatError<"EXPECTED_TYPE_NAME", []>>
+				? SkipFailedExpression<Tokens, FormatError<"EXPECTED_TYPE_NAME", [""]>>
 				: [Tokens, Acc]
 			: Acc extends readonly []
-				? SkipFailedExpression<Tokens, FormatError<"EXPECTED_TYPE_NAME", []>>
+				? SkipFailedExpression<Tokens, FormatError<"EXPECTED_TYPE_NAME", [""]>>
 				: [Tokens, Acc]
 
 /** True when `C` has exactly one own key (one projected column). */
@@ -191,7 +191,7 @@ type ParseCastKeywordOperand<Tokens extends TokensList, Env extends ExprParseEnv
 												: Parts extends readonly []
 													? SkipFailedExpression<
 															R4,
-															FormatError<"EXPECTED_TYPE_NAME_AFTER_CAST_AS", []>
+															FormatError<"EXPECTED_TYPE_NAME", ["after CAST ... AS"]>
 														>
 													: Parts extends readonly string[]
 														? PeekToken<R4> extends infer TokCl
@@ -232,7 +232,7 @@ type ParsePgCastSuffixTail<Tokens extends TokensList, Acc extends ScalarExprAst>
 				? Parts extends DbtyperError<any, any>
 					? SkipFailedExpression<R1, Parts>
 					: Parts extends readonly []
-						? SkipFailedExpression<R1, FormatError<"EXPECTED_TYPE_NAME_AFTER_DOUBLE_COLON", []>>
+						? SkipFailedExpression<R1, FormatError<"EXPECTED_TYPE_NAME", ["after ::"]>>
 						: Parts extends readonly string[]
 							? ParsePgCastSuffixTail<R1, { kind: "pg_cast"; expr: Acc; type_parts: Parts }>
 							: never

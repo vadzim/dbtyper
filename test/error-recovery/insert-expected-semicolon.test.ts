@@ -6,6 +6,6 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"insert into users (id) values (1) trailing">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1201, "Expected `;` after INSERT">>
+type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1105, "Expected semicolon after INSERT">>
 
 it("INSERT: Expected `;` after INSERT", () => {})

@@ -18,5 +18,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public; create schema auth;`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<3801, "Expected `;` after DROP SCHEMA">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1105, "Expected semicolon after DROP SCHEMA">>
 >

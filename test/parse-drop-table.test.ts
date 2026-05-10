@@ -118,7 +118,7 @@ type _dUnknownSchema = Expect<
 
 type DGarbage = ParseSqlStatement<ParseSqlTokens<`drop table auth.items extra ;`>, DbAuthItems>
 type _dGarbage = Expect<
-	Extends<DGarbage[2], DbtyperError<1704, "Expected `;` after qualified table name in DROP TABLE">>
+	Extends<DGarbage[2], DbtyperError<1105, "Expected semicolon after qualified table name in DROP TABLE">>
 >
 
 describe("parse-drop-table (type tests)", () => {

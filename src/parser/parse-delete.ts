@@ -114,7 +114,7 @@ type ParseDeleteUsingTableRef<
 										: never
 									: [
 											R3,
-											FormatError<"EXPECTED_TABLE_NAME_IN_DELETE_USING", []>,
+											FormatError<"EXPECTED_TABLE_NAME", ["in DELETE USING"]>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -127,7 +127,7 @@ type ParseDeleteUsingTableRef<
 							? ParseDeleteUsingTableAlias<R1, Db["defaultSchema"], A, TblTry2>
 							: [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE USING"]>, ParserRefErrorThirdSentinel]
 					: never
-				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_DELETE_USING", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in DELETE USING"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -218,7 +218,7 @@ type FinishDeleteSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_DELETE", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["DELETE"]>>
 
 type ParseDeleteFromTableRef<
 	Tokens extends TokensList,
@@ -251,7 +251,7 @@ type ParseDeleteFromTableRef<
 										: never
 									: [
 											R3,
-											FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM", []>,
+											FormatError<"EXPECTED_TABLE_NAME", ["after `.` in DELETE FROM"]>,
 											ParserRefErrorThirdSentinel,
 										]
 								: never
@@ -264,7 +264,7 @@ type ParseDeleteFromTableRef<
 							? ParseDeleteAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Scope, Params>
 							: [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE FROM"]>, ParserRefErrorThirdSentinel]
 					: never
-				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_DELETE_FROM", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in DELETE FROM"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 

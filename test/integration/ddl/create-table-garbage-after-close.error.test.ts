@@ -18,5 +18,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1500, "Expected `;` after CREATE TABLE">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1105, "Expected semicolon after CREATE TABLE">>
 >

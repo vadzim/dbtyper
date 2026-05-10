@@ -25,14 +25,14 @@ type ParseAlterAfterFirstIdent<AfterFirst extends TokensList, Db extends JsqlDat
 		? SkipToken<AfterFirst> extends infer Rd1 extends TokensList
 			? PeekToken<Rd1> extends TokenIdent<infer B extends string>
 				? [SkipToken<Rd1>, null, A, B]
-				: [SkipToken<Rd1>, FormatError<"EXPECTED_TABLE_NAME_AFTER_DOT_IN_ALTER_TABLE", []>, never, never]
+				: [SkipToken<Rd1>, FormatError<"EXPECTED_TABLE_NAME", ["after `.` in ALTER TABLE"]>, never, never]
 			: never
 		: [AfterFirst, null, Db["defaultSchema"], A]
 
 type ParseQualifiedAlterTableName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: [SkipToken<Tokens>, FormatError<"EXPECTED_TABLE_NAME_IN_ALTER_TABLE", []>, never, never]
+		: [SkipToken<Tokens>, FormatError<"EXPECTED_TABLE_NAME", ["in ALTER TABLE"]>, never, never]
 
 type ParseAlterAddColumnAfterColName<
 	R2 extends TokensList,
@@ -54,7 +54,7 @@ type ParseAlterAddColumnAfterColName<
 type FinishAlterStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_ALTER_TABLE", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["ALTER TABLE"]>>
 
 type ParseAlterActions<
 	Tokens extends TokensList,
@@ -96,7 +96,7 @@ type ParseAlterAddColumn<
 						? ParseAlterAddColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, Col>
 						: SkipFailedExpression<
 									R1,
-									FormatError<"EXPECTED_COLUMN_NAME_AFTER_ADD_IN_ALTER_TABLE", []>
+									FormatError<"EXPECTED_COLUMN_NAME", ["after ADD in ALTER TABLE"]>
 							  > extends [infer Rest extends TokensList, infer Err]
 							? [Rest, Db, Err]
 							: never
@@ -119,7 +119,7 @@ type ParseAlterDropColumn<
 				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 					? [R1, Db, FormatError<"COLUMN_DOES_NOT_EXIST", [Col]>]
 					: ParseAlterActions<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab>
-				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME_AFTER_DROP_COLUMN", []>>
+				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_COLUMN_NAME", ["after DROP COLUMN"]>>
 			: never
 		: never
 
@@ -348,7 +348,7 @@ type ParseAlterColumnAfterAlterKw<
 							? ParseAlterColumnAfterIdent<R2, Db, Sch, Tab, Col>
 							: SkipFailedExpression<
 										R2,
-										FormatError<"EXPECTED_COLUMN_NAME_AFTER_ALTER_COLUMN", []>
+										FormatError<"EXPECTED_COLUMN_NAME", ["after ALTER COLUMN"]>
 								  > extends [infer Rest extends TokensList, infer Err]
 								? [Rest, Db, Err]
 								: never

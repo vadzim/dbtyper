@@ -137,9 +137,10 @@ export const errors = {
 		id: "EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW",
 		msg: ["Expected SELECT or WITH after AS in CREATE VIEW"],
 	},
+	// Group 1: EXPECTED_SEMICOLON (consolidated from 14 codes)
 	1105: {
-		id: "EXPECTED_SEMICOLON_AFTER_SELECT",
-		msg: ["Expected semicolon after SELECT"],
+		id: "EXPECTED_SEMICOLON",
+		msg: ["Expected semicolon after ", ""],
 	},
 	1106: {
 		id: "EXPECTED_FROM_AFTER_SELECT_LIST",
@@ -197,9 +198,10 @@ export const errors = {
 		id: "EXPECTED_WHEN_ELSE_OR_END_IN_CASE",
 		msg: ["Expected WHEN ELSE or END in CASE"],
 	},
+	// Group 2: EXPECTED_TABLE_NAME (consolidated from 14 codes)
 	1120: {
-		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_FROM",
-		msg: ["Expected table name after `.` in FROM"],
+		id: "EXPECTED_TABLE_NAME",
+		msg: ["Expected table name ", ""],
 	},
 	1121: {
 		id: "EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM",
@@ -212,8 +214,8 @@ export const errors = {
 		msg: ["Expected INTO after INSERT"],
 	},
 	1201: {
-		id: "EXPECTED_SEMICOLON_AFTER_INSERT",
-		msg: ["Expected `;` after INSERT"],
+		id: "OBSOLETE_1201_EXPECTED_SEMICOLON_AFTER_INSERT",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1202: {
 		id: "EXPECTED_OPEN_PAREN_AFTER_VALUES_IN_INSERT",
@@ -231,9 +233,10 @@ export const errors = {
 		id: "EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT",
 		msg: ["Expected `(` (column list) after table in INSERT"],
 	},
+	// Group 3: EXPECTED_COLUMN_NAME (consolidated from 8 codes)
 	1206: {
-		id: "EXPECTED_COLUMN_NAME_IN_INSERT_COLUMN_LIST",
-		msg: ["Expected column name in INSERT column list"],
+		id: "EXPECTED_COLUMN_NAME",
+		msg: ["Expected column name ", ""],
 	},
 	1207: {
 		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST",
@@ -256,8 +259,8 @@ export const errors = {
 		msg: ["Expected `(` after ON CONFLICT in INSERT"],
 	},
 	1212: {
-		id: "EXPECTED_COLUMN_NAME_IN_ON_CONFLICT",
-		msg: ["Expected column name in ON CONFLICT"],
+		id: "OBSOLETE_1212_EXPECTED_COLUMN_NAME_IN_ON_CONFLICT",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1213: {
 		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ON_CONFLICT_COLUMN_LIST",
@@ -280,20 +283,20 @@ export const errors = {
 		msg: ["Expected SET after UPDATE in INSERT ON CONFLICT"],
 	},
 	1218: {
-		id: "EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE",
-		msg: ["Expected column name in ON CONFLICT UPDATE"],
+		id: "OBSOLETE_1218_EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1219: {
 		id: "EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE",
 		msg: ["Expected `=` after column in ON CONFLICT UPDATE"],
 	},
 	1220: {
-		id: "EXPECTED_TABLE_NAME_IN_INSERT_INTO",
-		msg: ["Expected table name in INSERT INTO"],
+		id: "OBSOLETE_1220_EXPECTED_TABLE_NAME_IN_INSERT_INTO",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1221: {
-		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO",
-		msg: ["Expected table name after `.` in INSERT INTO"],
+		id: "OBSOLETE_1221_EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1222: {
 		id: "OBSOLETE_1222_EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
@@ -318,12 +321,12 @@ export const errors = {
 		msg: ["Expected SET after table in UPDATE"],
 	},
 	1302: {
-		id: "EXPECTED_SEMICOLON_AFTER_UPDATE",
-		msg: ["Expected `;` after UPDATE"],
+		id: "OBSOLETE_1302_EXPECTED_SEMICOLON_AFTER_UPDATE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1303: {
-		id: "EXPECTED_COLUMN_NAME_IN_UPDATE_SET",
-		msg: ["Expected column name in UPDATE SET"],
+		id: "OBSOLETE_1303_EXPECTED_COLUMN_NAME_IN_UPDATE_SET",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1304: {
 		id: "EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET",
@@ -334,16 +337,16 @@ export const errors = {
 		msg: ["Expected `,`, FROM, WHERE, or end after UPDATE assignment"],
 	},
 	1306: {
-		id: "EXPECTED_TABLE_NAME_IN_UPDATE",
-		msg: ["Expected table name in UPDATE"],
+		id: "OBSOLETE_1306_EXPECTED_TABLE_NAME_IN_UPDATE",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1307: {
-		id: "EXPECTED_TABLE_NAME_IN_UPDATE_FROM",
-		msg: ["Expected table name in UPDATE FROM"],
+		id: "OBSOLETE_1307_EXPECTED_TABLE_NAME_IN_UPDATE_FROM",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1308: {
-		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE",
-		msg: ["Expected table name after `.` in UPDATE"],
+		id: "OBSOLETE_1308_EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 
 	// DELETE Statement
@@ -352,20 +355,20 @@ export const errors = {
 		msg: ["Expected FROM after DELETE"],
 	},
 	1401: {
-		id: "EXPECTED_SEMICOLON_AFTER_DELETE",
-		msg: ["Expected `;` after DELETE"],
+		id: "OBSOLETE_1401_EXPECTED_SEMICOLON_AFTER_DELETE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1402: {
-		id: "EXPECTED_TABLE_NAME_IN_DELETE_FROM",
-		msg: ["Expected table name in DELETE FROM"],
+		id: "OBSOLETE_1402_EXPECTED_TABLE_NAME_IN_DELETE_FROM",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1403: {
-		id: "EXPECTED_TABLE_NAME_IN_DELETE_USING",
-		msg: ["Expected table name in DELETE USING"],
+		id: "OBSOLETE_1403_EXPECTED_TABLE_NAME_IN_DELETE_USING",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1404: {
-		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM",
-		msg: ["Expected table name after `.` in DELETE FROM"],
+		id: "OBSOLETE_1404_EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1405: {
 		id: "EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM",
@@ -374,8 +377,8 @@ export const errors = {
 
 	// CREATE TABLE
 	1500: {
-		id: "EXPECTED_SEMICOLON_AFTER_CREATE_TABLE",
-		msg: ["Expected `;` after CREATE TABLE"],
+		id: "OBSOLETE_1500_EXPECTED_SEMICOLON_AFTER_CREATE_TABLE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1501: {
 		id: "EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE",
@@ -386,8 +389,8 @@ export const errors = {
 		msg: ["Expected `)` before end of CREATE TABLE"],
 	},
 	1503: {
-		id: "EXPECTED_COLUMN_NAME_IN_CREATE_TABLE",
-		msg: ["Expected column name in CREATE TABLE"],
+		id: "OBSOLETE_1503_EXPECTED_COLUMN_NAME_IN_CREATE_TABLE",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1504: {
 		id: "EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE",
@@ -398,8 +401,8 @@ export const errors = {
 		msg: ["Expected `,` or `)` after column definition"],
 	},
 	1506: {
-		id: "EXPECTED_TABLE_NAME_IN_CREATE_TABLE",
-		msg: ["Expected table name in CREATE TABLE"],
+		id: "OBSOLETE_1506_EXPECTED_TABLE_NAME_IN_CREATE_TABLE",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1507: {
 		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE",
@@ -416,32 +419,32 @@ export const errors = {
 
 	// ALTER TABLE
 	1600: {
-		id: "EXPECTED_SEMICOLON_AFTER_ALTER_TABLE",
-		msg: ["Expected `;` after ALTER TABLE"],
+		id: "OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1601: {
 		id: "EXPECTED_TABLE_AFTER_ALTER",
 		msg: ["Expected TABLE after ALTER"],
 	},
 	1602: {
-		id: "EXPECTED_TABLE_NAME_IN_ALTER_TABLE",
-		msg: ["Expected table name in ALTER TABLE"],
+		id: "OBSOLETE_1602_EXPECTED_TABLE_NAME_IN_ALTER_TABLE",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1603: {
-		id: "EXPECTED_TABLE_NAME_AFTER_DOT_IN_ALTER_TABLE",
-		msg: ["Expected table name after `.` in ALTER TABLE"],
+		id: "OBSOLETE_1603_EXPECTED_TABLE_NAME_AFTER_DOT_IN_ALTER_TABLE",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1604: {
-		id: "EXPECTED_COLUMN_NAME_AFTER_ADD_IN_ALTER_TABLE",
-		msg: ["Expected column name after ADD in ALTER TABLE"],
+		id: "OBSOLETE_1604_EXPECTED_COLUMN_NAME_AFTER_ADD_IN_ALTER_TABLE",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1605: {
-		id: "EXPECTED_COLUMN_NAME_AFTER_ALTER_COLUMN",
-		msg: ["Expected column name after ALTER COLUMN"],
+		id: "OBSOLETE_1605_EXPECTED_COLUMN_NAME_AFTER_ALTER_COLUMN",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1606: {
-		id: "EXPECTED_COLUMN_NAME_AFTER_DROP_COLUMN",
-		msg: ["Expected column name after DROP COLUMN"],
+		id: "OBSOLETE_1606_EXPECTED_COLUMN_NAME_AFTER_DROP_COLUMN",
+		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
 	1607: {
 		id: "EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE",
@@ -458,12 +461,12 @@ export const errors = {
 
 	// DROP TABLE
 	1700: {
-		id: "EXPECTED_SEMICOLON_AFTER_DROP_TABLE",
-		msg: ["Expected `;` after DROP TABLE"],
+		id: "OBSOLETE_1700_EXPECTED_SEMICOLON_AFTER_DROP_TABLE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1701: {
-		id: "EXPECTED_TABLE_NAME_IN_DROP_TABLE",
-		msg: ["Expected table name in DROP TABLE"],
+		id: "OBSOLETE_1701_EXPECTED_TABLE_NAME_IN_DROP_TABLE",
+		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 	1702: {
 		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_TABLE",
@@ -474,22 +477,22 @@ export const errors = {
 		msg: ["Expected `.` or end of table name in DROP TABLE"],
 	},
 	1704: {
-		id: "EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE",
-		msg: ["Expected `;` after qualified table name in DROP TABLE"],
+		id: "OBSOLETE_1704_EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 
 	// CREATE/ALTER/DROP TYPE
 	1800: {
-		id: "EXPECTED_SEMICOLON_AFTER_CREATE_TYPE",
-		msg: ["Expected `;` after CREATE TYPE"],
+		id: "OBSOLETE_1800_EXPECTED_SEMICOLON_AFTER_CREATE_TYPE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1801: {
-		id: "EXPECTED_SEMICOLON_AFTER_ALTER_TYPE",
-		msg: ["Expected `;` after ALTER TYPE"],
+		id: "OBSOLETE_1801_EXPECTED_SEMICOLON_AFTER_ALTER_TYPE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1802: {
-		id: "EXPECTED_SEMICOLON_AFTER_DROP_TYPE",
-		msg: ["Expected `;` after DROP TYPE"],
+		id: "OBSOLETE_1802_EXPECTED_SEMICOLON_AFTER_DROP_TYPE",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	1803: {
 		id: "EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE",
@@ -516,20 +519,20 @@ export const errors = {
 		msg: ["Expected `,` or `)` after enum value in CREATE TYPE"],
 	},
 	1809: {
-		id: "EXPECTED_TYPE_NAME_IN_ALTER_TYPE",
-		msg: ["Expected type name in ALTER TYPE"],
+		id: "OBSOLETE_1809_EXPECTED_TYPE_NAME_IN_ALTER_TYPE",
+		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
 	1810: {
-		id: "EXPECTED_TYPE_NAME_IN_DROP_TYPE",
-		msg: ["Expected type name in DROP TYPE"],
+		id: "OBSOLETE_1810_EXPECTED_TYPE_NAME_IN_DROP_TYPE",
+		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
 	1811: {
-		id: "EXPECTED_TYPE_NAME_AFTER_DOT_IN_ALTER_TYPE",
-		msg: ["Expected type name after `.` in ALTER TYPE"],
+		id: "OBSOLETE_1811_EXPECTED_TYPE_NAME_AFTER_DOT_IN_ALTER_TYPE",
+		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
 	1812: {
-		id: "EXPECTED_TYPE_NAME_AFTER_DOT_IN_DROP_TYPE",
-		msg: ["Expected type name after `.` in DROP TYPE"],
+		id: "OBSOLETE_1812_EXPECTED_TYPE_NAME_AFTER_DOT_IN_DROP_TYPE",
+		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
 	1813: {
 		id: "EXPECTED_ADD_IN_ALTER_TYPE",
@@ -1106,8 +1109,8 @@ export const errors = {
 		msg: ["Expected schema name in CREATE SCHEMA"],
 	},
 	3701: {
-		id: "EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA",
-		msg: ["Expected `;` after schema name in CREATE SCHEMA"],
+		id: "OBSOLETE_3701_EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	3702: {
 		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_SCHEMA",
@@ -1124,8 +1127,8 @@ export const errors = {
 		msg: ["Expected schema name in DROP SCHEMA"],
 	},
 	3801: {
-		id: "EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA",
-		msg: ["Expected `;` after DROP SCHEMA"],
+		id: "OBSOLETE_3801_EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 	3802: {
 		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_SCHEMA",
@@ -1154,8 +1157,8 @@ export const errors = {
 		msg: ["Expected AS after qualified view name"],
 	},
 	3905: {
-		id: "EXPECTED_SEMICOLON_AFTER_CREATE_VIEW",
-		msg: ["Expected semicolon after CREATE VIEW"],
+		id: "OBSOLETE_3905_EXPECTED_SEMICOLON_AFTER_CREATE_VIEW",
+		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 
 	// ALTER TYPE
@@ -1189,17 +1192,18 @@ export const errors = {
 		id: "EXPECTED_DOT_OR_KEYWORD_AFTER_NAME",
 		msg: ["Expected `.` or keyword after name"],
 	},
+	// Group 4: EXPECTED_TYPE_NAME (consolidated from 6 codes)
 	4104: {
-		id: "EXPECTED_TYPE_NAME",
-		msg: ["Expected type name"],
+		id: "OBSOLETE_4104_EXPECTED_TYPE_NAME_GENERIC",
+		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
 	4105: {
-		id: "EXPECTED_TYPE_NAME_AFTER_DOUBLE_COLON",
-		msg: ["Expected type name after ::"],
+		id: "EXPECTED_TYPE_NAME",
+		msg: ["Expected type name ", ""],
 	},
 	4106: {
-		id: "EXPECTED_TYPE_NAME_AFTER_CAST_AS",
-		msg: ["Expected type name after CAST ... AS"],
+		id: "OBSOLETE_4106_EXPECTED_TYPE_NAME_AFTER_CAST_AS",
+		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
 	4107: {
 		id: "EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME",
@@ -1208,41 +1212,42 @@ export const errors = {
 
 	// DML/Expression-Specific Errors
 	// JOIN Operations
+	// Group 5: JOIN-related EXPECTED_* (consolidated from 9 codes to 2)
 	4200: {
-		id: "EXPECTED_JOIN_AFTER_CROSS",
-		msg: ["Expected JOIN after CROSS"],
+		id: "EXPECTED_JOIN_KEYWORD",
+		msg: ["Expected JOIN after ", ""],
 	},
 	4201: {
-		id: "EXPECTED_JOIN_AFTER_INNER",
-		msg: ["Expected JOIN after INNER"],
+		id: "OBSOLETE_4201_EXPECTED_JOIN_AFTER_INNER",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4202: {
-		id: "EXPECTED_JOIN_AFTER_LEFT_OUTER",
-		msg: ["Expected JOIN after LEFT OUTER"],
+		id: "OBSOLETE_4202_EXPECTED_JOIN_AFTER_LEFT_OUTER",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4203: {
-		id: "EXPECTED_JOIN_AFTER_RIGHT_OUTER",
-		msg: ["Expected JOIN after RIGHT OUTER"],
+		id: "OBSOLETE_4203_EXPECTED_JOIN_AFTER_RIGHT_OUTER",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4204: {
-		id: "EXPECTED_JOIN_AFTER_FULL_OUTER",
-		msg: ["Expected JOIN after FULL OUTER"],
+		id: "OBSOLETE_4204_EXPECTED_JOIN_AFTER_FULL_OUTER",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4205: {
-		id: "EXPECTED_JOIN_KEYWORD",
-		msg: ["Expected JOIN keyword"],
+		id: "OBSOLETE_4205_EXPECTED_JOIN_KEYWORD_GENERIC",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4206: {
-		id: "EXPECTED_OUTER_OR_JOIN_AFTER_LEFT",
-		msg: ["Expected OUTER or JOIN after LEFT"],
+		id: "OBSOLETE_4206_EXPECTED_OUTER_OR_JOIN_AFTER_LEFT",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4207: {
-		id: "EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT",
-		msg: ["Expected OUTER or JOIN after RIGHT"],
+		id: "OBSOLETE_4207_EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4208: {
-		id: "EXPECTED_OUTER_OR_JOIN_AFTER_FULL",
-		msg: ["Expected OUTER or JOIN after FULL"],
+		id: "OBSOLETE_4208_EXPECTED_OUTER_OR_JOIN_AFTER_FULL",
+		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
 	4209: {
 		id: "EXPECTED_ON_AFTER_JOIN_TABLE",

@@ -42,7 +42,7 @@ type ParseDropSchemaAfterIdent<
 						? [SkipToken<AfterName>, NewDb, null]
 						: never
 					: never
-		: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA", []>>
+		: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SEMICOLON", ["DROP SCHEMA"]>>
 
 type ParseDropSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	PeekToken<Tokens> extends infer NameTok

@@ -6,6 +6,6 @@ import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test
 
 type Result = ParseErrorneousText<"drop schema myschema trailing">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 3801, "Expected `;` after DROP SCHEMA">>
+type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 1105, "Expected semicolon after DROP SCHEMA">>
 
 it("DROP SCHEMA: Expected `;` after DROP SCHEMA", () => {})

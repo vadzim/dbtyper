@@ -58,7 +58,7 @@ type ParseCreateViewAfterSelect<
 				? [SkipToken<Tokens>, NewDb, null]
 				: never
 			: never
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_CREATE_VIEW", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["CREATE VIEW"]>>
 
 type ParseCreateViewSelectAndSemi<
 	R2 extends TokensList,

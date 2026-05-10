@@ -39,7 +39,7 @@ type ParseCreateSchemaAfterSchemaName<
 			: [SchemaName] extends [keyof Db["schemas"]]
 				? [AfterName, Db, FormatError<"SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS", []>]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-		: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA", []>>
+		: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SEMICOLON", ["schema name in CREATE SCHEMA"]>>
 
 type ParseCreateSchemaName<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends TokenIdent<infer SchemaName extends string>
