@@ -250,7 +250,7 @@ type ParseOrderByScalarExpr<
 					? SkipFailedExpression<Rw, R>
 					: R extends SqlTypeShape
 						? [Rw, null]
-						: SkipFailedExpression<Rw, FormatError<"INVALID_ORDER_BY_EXPRESSION", []>>
+						: SkipFailedExpression<Rw, never>
 				: never
 		: never
 
@@ -444,7 +444,7 @@ type GroupByAstResolution<
 						? ParseGroupByTermsAcc<R2, Db, Scope, Params, readonly [...Acc, Ast]>
 						: never
 					: readonly [R1, { readonly keys: readonly [...Acc, Ast] }]
-				: readonly [R1, { readonly error: FormatError<"INVALID_GROUP_BY_EXPRESSION", []> }]
+				: readonly [R1, { readonly error: never }]
 		: never
 
 type ParseGroupByTermsAcc<
@@ -462,7 +462,7 @@ type ParseGroupByTermsAcc<
 			? readonly [R1, { readonly error: Ast }]
 			: Ast extends ScalarExprAst
 				? GroupByAstResolution<R1, Ast, Acc, Db, Scope, Params>
-				: readonly [R1, { readonly error: FormatError<"INVALID_GROUP_BY_EXPRESSION", []> }]
+				: readonly [R1, { readonly error: never }]
 		: never
 
 /** After `GROUP BY expr[, …]`; optionally parse `HAVING`. */
@@ -1326,7 +1326,7 @@ type ValidateSingleColumn<Result extends JsqlSelectStatementResult> = Result["co
 			? Result
 			: FormatError<"SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
 		: FormatError<"SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
-	: FormatError<"INVALID_SUBQUERY_RESULT", []>
+	: never
 
 /** Helper: Parse alias after derived table and merge into scope. Returns [Tokens, null, Scope] or error. */
 type ParseAliasAfterDerived<
@@ -1942,7 +1942,7 @@ type ResolveSelectList<
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? Params[Name] extends SqlTypeShape
 		? { sql: Params[Name] }
-		: FormatError<"INVALID_PARAMETER_TYPE_IN_SELECT", []>
+		: never
 	: FormatError<"UNKNOWN_QUERY_PARAMETER_IN_SELECT", []>
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */

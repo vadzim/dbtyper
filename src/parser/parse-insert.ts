@@ -439,9 +439,9 @@ type ParseInsertValuesCells<
 												>
 										: never
 								: never
-							: SkipFailedStatement<R1, Db, FormatError<"INVALID_VALUE_EXPRESSION_IN_INSERT", []>>
+							: SkipFailedStatement<R1, Db, never>
 					: never
-				: SkipFailedStatement<R1, Db, FormatError<"INVALID_VALUE_EXPRESSION_IN_INSERT", []>>
+				: SkipFailedStatement<R1, Db, never>
 		: never
 	: never
 
@@ -746,19 +746,11 @@ type ParseInsertUpsertSetAssignments<
 																			]
 																: never
 														: never
-													: SkipFailedExpression<
-																R3,
-																FormatError<
-																	"INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
-																	[]
-																>
-														  > extends [infer Rest extends TokensList, infer Err]
-														? [Rest, Db, Err]
-														: never
+													: never
 											: never
 										: SkipFailedExpression<
 													R3,
-													FormatError<"INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE", []>
+													never
 											  > extends [infer Rest extends TokensList, infer Err]
 											? [Rest, Db, Err]
 											: never

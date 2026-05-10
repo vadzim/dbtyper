@@ -206,14 +206,14 @@ type ParseUpdateSetAssignments<
 														: never
 													: SkipFailedExpression<
 																R3,
-																FormatError<"INVALID_VALUE_EXPRESSION_IN_UPDATE", []>
+																never
 														  > extends [infer Rest extends TokensList, infer Err]
 														? [Rest, Db, Err]
 														: never
 											: never
 										: SkipFailedExpression<
 													R3,
-													FormatError<"INVALID_VALUE_EXPRESSION_IN_UPDATE", []>
+													never
 											  > extends [infer Rest extends TokensList, infer Err]
 											? [Rest, Db, Err]
 											: never
@@ -298,7 +298,7 @@ type ParseUpdateFromClauseTableRef<
 												? ParseUpdateFromClauseTableAlias<R3, A, B, TblTry>
 												: [
 														R3,
-														FormatError<"INVALID_TABLE_IN_UPDATE_FROM", []>,
+														never,
 														ParserRefErrorThirdSentinel,
 													]
 										: never
@@ -315,7 +315,7 @@ type ParseUpdateFromClauseTableRef<
 							? [R1, FormatError<"UNKNOWN_TABLE_IN_UPDATE_FROM", [A]>, ParserRefErrorThirdSentinel]
 							: TblTry2 extends JsqlDataShape
 								? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
-								: [R1, FormatError<"INVALID_TABLE_IN_UPDATE_FROM", []>, ParserRefErrorThirdSentinel]
+								: [R1, never, ParserRefErrorThirdSentinel]
 						: never
 				: [R1, FormatError<"EXPECTED_TABLE_NAME_IN_UPDATE_FROM", []>, ParserRefErrorThirdSentinel]
 			: never

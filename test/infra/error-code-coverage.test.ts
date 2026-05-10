@@ -129,48 +129,6 @@ const UNTESTABLE_ERROR_CODES = new Set([
 	4702, // EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE - Lexer/parser recovery makes this hard to trigger
 	4802, // EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN - Parser recovery handles missing operator
 
-	// INVALID_* validation errors that are unreachable or defensive checks (40 codes)
-	// These exist as defensive checks but the parser/type system prevents reaching them
-	2000, // INVALID_SCALAR_EXPRESSION - Parser validates expressions before this check
-	2001, // INVALID_COMPARISON_OPERAND - Type system catches this earlier
-	2002, // INVALID_COMPARISON_OPERATOR - Parser validates operators
-	2003, // INVALID_ARITHMETIC_OPERAND - Type system catches this earlier
-	2004, // INVALID_BETWEEN_OPERAND - Type system catches this earlier
-	2005, // INVALID_BETWEEN_BOUND - Type system catches this earlier
-	2006, // INVALID_LIKE_OPERAND - Type system catches this earlier
-	2007, // INVALID_LIKE_PATTERN - Type system catches this earlier
-	2008, // INVALID_IS_NULL_OPERAND - Parser validates IS NULL operands
-	2009, // INVALID_IS_NOT_NULL_OPERAND - Parser validates IS NOT NULL operands
-	2010, // INVALID_CAST_OPERAND - Type system catches this earlier
-	2011, // INVALID_CAST_TARGET - Type system catches this earlier
-	2012, // INVALID_COLUMN_REFERENCE - Parser validates column references
-	2013, // INVALID_CASE_EXPRESSION - Type system catches this earlier
-	2014, // INVALID_CASE_DISCRIMINANT - Type system catches this earlier
-	2015, // INVALID_CASE_BRANCH - Type system catches this earlier
-	2016, // INVALID_CASE_WHEN_VALUE - Type system catches this earlier
-	2017, // INVALID_CASE_ELSE - Type system catches this earlier
-	2018, // INVALID_GROUP_BY_EXPRESSION - Type system catches this earlier
-	2019, // INVALID_ORDER_BY_EXPRESSION - Type system catches this earlier
-	2020, // INVALID_IN_LEFT_OPERAND - Type system catches this earlier
-	2021, // INVALID_IN_LIST_ELEMENT - Type system catches this earlier
-	2022, // INVALID_IN_SUBQUERY_COLUMN - Type system catches this earlier
-	2023, // INVALID_ANY_ALL_SOME_OPERAND - Type system catches this earlier
-	2024, // INVALID_ANY_ALL_SOME_LEFT_OPERAND - Type system catches this earlier
-	2025, // INVALID_ANY_ALL_SOME_COMPARISON - Type system catches this earlier
-	2026, // INVALID_ANY_ALL_SOME_SUBQUERY_COLUMN - Type system catches this earlier
-	2027, // INVALID_ARRAY_BASE_OPERAND - Type system catches this earlier
-	2028, // INVALID_ARRAY_SUBSCRIPT_OPERAND - Type system catches this earlier
-	2029, // INVALID_ARRAY_ELEMENT - Type system catches this earlier
-	2100, // INVALID_VALUE_EXPRESSION_IN_INSERT - Type system catches this earlier
-	2101, // INVALID_VALUE_EXPRESSION_IN_UPDATE - Type system catches this earlier
-	2102, // INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE - Type system catches this earlier
-	2103, // INVALID_TABLE_IN_UPDATE_FROM - Parser validates tables
-	2104, // INVALID_TABLE_IN_DELETE_USING - Parser validates tables
-	2105, // INVALID_SUBQUERY_RESULT - Type system catches this earlier
-	2106, // INVALID_PARAMETER_TYPE_IN_SELECT - Type system catches this earlier
-	2113, // INVALID_CUSTOM_OPERATOR_OPERAND - Type system catches this earlier
-	2114, // INVALID_TILDE_OPERAND - Type system catches this earlier
-	2115, // INVALID_TILDE_PATTERN - Type system catches this earlier
 	2116, // INVALID_NUMBER - Lexer validates numbers
 
 	// Additional unreachable or very difficult to test codes (28 codes)

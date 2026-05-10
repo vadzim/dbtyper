@@ -487,7 +487,7 @@ type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, 
 													: Kw extends TokenKey<"some">
 														? [R3, { kind: "some_op"; op: Op; left: L; right: Sub }]
 														: never
-											: SkipFailedExpression<R3, FormatError<"INVALID_COMPARISON_OPERATOR", []>>
+											: SkipFailedExpression<R3, never>
 										: never
 								: never
 							: ParseOrScalarUntyped<R2, Env> extends [infer R4 extends TokensList, infer ArrExpr]
@@ -514,7 +514,7 @@ type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, 
 																: never
 													: SkipFailedExpression<
 															R5,
-															FormatError<"INVALID_COMPARISON_OPERATOR", []>
+															never
 														>
 												: never
 											: SkipFailedExpression<
@@ -543,7 +543,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 							? SkipFailedExpression<R3, Rhs>
 							: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
 								? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }]
-								: SkipFailedExpression<R3, FormatError<"INVALID_COMPARISON_OPERATOR", []>>
+								: SkipFailedExpression<R3, never>
 						: never
 				: never
 			: P extends TokenKey<"is">
@@ -945,8 +945,8 @@ type ResolveCustomOp<
 														: FormatError<"CANNOT_CONCATENATE_TYPE_WITH_TEXT", [Lv["type"]]>
 													: FormatError<"CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND", []>
 									: SqlUnknown
-							: FormatError<"INVALID_CUSTOM_OPERATOR_OPERAND", []>
-						: FormatError<"INVALID_CUSTOM_OPERATOR_OPERAND", []>
+							: never
+						: never
 				: never
 		: never
 
@@ -962,7 +962,7 @@ type ResolveArrayCtorElements<
 			? V
 			: V extends SqlTypeShape
 				? ResolveArrayCtorElements<R, Db, Scope, Params, readonly [...AccTypes, V]>
-				: FormatError<"INVALID_ARRAY_ELEMENT", []>
+				: never
 		: never
 	: InferArrayType<AccTypes>
 
@@ -1050,8 +1050,8 @@ type ExpressionResolvers<
 						: Lv extends SqlTypeShape
 							? Rv extends SqlTypeShape
 								? SqlUnknown
-								: FormatError<"INVALID_ARRAY_SUBSCRIPT_OPERAND", []>
-							: FormatError<"INVALID_ARRAY_BASE_OPERAND", []>
+								: never
+							: never
 					: never
 			: never
 		: never
@@ -1116,8 +1116,8 @@ type ExpressionResolvers<
 						: LcV extends SqlTypeShape
 							? RcV extends SqlTypeShape
 								? MergeComparison<LcV, RcV>
-								: FormatError<"INVALID_COMPARISON_OPERAND", []>
-							: FormatError<"INVALID_COMPARISON_OPERAND", []>
+								: never
+							: never
 				: never
 			: never
 		: never
@@ -1127,7 +1127,7 @@ type ExpressionResolvers<
 				? V0
 				: V0 extends SqlTypeShape
 					? SqlBoolean
-					: FormatError<"INVALID_IS_NULL_OPERAND", []>
+					: never
 			: never
 		: never
 	is_not_null: Ast extends { kind: "is_not_null"; expr: infer E1 extends ScalarExprAst }
@@ -1136,7 +1136,7 @@ type ExpressionResolvers<
 				? V1
 				: V1 extends SqlTypeShape
 					? SqlBoolean
-					: FormatError<"INVALID_IS_NOT_NULL_OPERAND", []>
+					: never
 			: never
 		: never
 	pg_cast: Ast extends {
@@ -1150,8 +1150,8 @@ type ExpressionResolvers<
 				: Evc extends SqlTypeShape
 					? SqlCastTypeNorm<Ptc> extends infer Normc extends string
 						? ResolveCastFromShape<Evc, Normc>
-						: FormatError<"INVALID_CAST_TARGET", []>
-					: FormatError<"INVALID_CAST_OPERAND", []>
+						: never
+					: never
 			: never
 		: never
 	sql_cast: Ast extends {
@@ -1165,8 +1165,8 @@ type ExpressionResolvers<
 				: Evs extends SqlTypeShape
 					? SqlCastTypeNorm<Pts> extends infer Norms extends string
 						? ResolveCastFromShape<Evs, Norms>
-						: FormatError<"INVALID_CAST_TARGET", []>
-					: FormatError<"INVALID_CAST_OPERAND", []>
+						: never
+					: never
 			: never
 		: never
 	between: Ast extends {
@@ -1188,9 +1188,9 @@ type ExpressionResolvers<
 									? LvB extends SqlTypeShape
 										? HvB extends SqlTypeShape
 											? MergeBetweenBounds<EvB, LvB, HvB>
-											: FormatError<"INVALID_BETWEEN_BOUND", []>
-										: FormatError<"INVALID_BETWEEN_BOUND", []>
-									: FormatError<"INVALID_BETWEEN_OPERAND", []>
+											: never
+										: never
+									: never
 							: never
 					: never
 			: never
@@ -1210,8 +1210,8 @@ type ExpressionResolvers<
 						: EvL extends SqlTypeShape
 							? PvL extends SqlTypeShape
 								? MergeLikeOperands<EvL, PvL>
-								: FormatError<"INVALID_LIKE_PATTERN", []>
-							: FormatError<"INVALID_LIKE_OPERAND", []>
+								: never
+							: never
 					: never
 			: never
 		: never
@@ -1230,8 +1230,8 @@ type ExpressionResolvers<
 						: EvR extends SqlTypeShape
 							? PvR extends SqlTypeShape
 								? MergeLikeOperands<EvR, PvR>
-								: FormatError<"INVALID_TILDE_PATTERN", []>
-							: FormatError<"INVALID_TILDE_OPERAND", []>
+								: never
+							: never
 					: never
 			: never
 		: never
@@ -1309,7 +1309,7 @@ type ExpressionResolvers<
 				? LvIn
 				: LvIn extends SqlTypeShape
 					? ResolveInListItemsAgainstLeft<LvIn, Ins, Db, Scope, Params>
-					: FormatError<"INVALID_IN_LEFT_OPERAND", []>
+					: never
 			: never
 		: never
 }
@@ -1321,7 +1321,7 @@ export type ResolveExpressionAST<
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Ast extends { kind: infer K extends keyof ExpressionResolvers<any, any, any, any> }
 	? ExpressionResolvers<Ast, Db, Scope, Params>[K]
-	: FormatError<"INVALID_SCALAR_EXPRESSION", []>
+	: never
 
 /** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path).
  * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
@@ -1371,7 +1371,7 @@ type ResolveIdentChainValue<
 			? V
 			: V extends { sql: infer Sql extends SqlTypeShape }
 				? Sql
-				: FormatError<"INVALID_COLUMN_REFERENCE", []>
+				: never
 		: never
 
 type ParseFunctionArgsAccum<
@@ -1737,9 +1737,9 @@ type ResolveCaseSearchedArms<
 										? Merged
 										: Merged extends SqlTypeShape
 											? ResolveCaseSearchedArms<Rest, ElseB, Db, Scope, Merged, Params>
-											: FormatError<"INVALID_CASE_BRANCH", []>
+											: never
 									: never
-								: FormatError<"INVALID_CASE_BRANCH", []>
+								: never
 						: never
 					: FormatError<"CASE_WHEN_MUST_BE_BOOLEAN", []>
 				: FormatError<"CASE_WHEN_MUST_BE_BOOLEAN", []>
@@ -1754,13 +1754,13 @@ type ResolveCaseSearchedArms<
 							? F
 							: F extends SqlTypeShape
 								? ApplyCaseMissingElseNullability<F, false>
-								: FormatError<"INVALID_CASE_EXPRESSION", []>
+								: never
 						: never
-					: FormatError<"INVALID_CASE_ELSE", []>
+					: never
 			: never
 		: Acc extends SqlTypeShape
 			? ApplyCaseMissingElseNullability<Acc, true>
-			: FormatError<"INVALID_CASE_EXPRESSION", []>
+			: never
 
 type ResolveCaseSearched<
 	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
@@ -1807,13 +1807,13 @@ type ResolveCaseSimpleArms<
 															Merged,
 															Params
 														>
-													: FormatError<"INVALID_CASE_BRANCH", []>
+													: never
 											: never
-										: FormatError<"INVALID_CASE_BRANCH", []>
+										: never
 								: never
 							: never
 					: never
-				: FormatError<"INVALID_CASE_WHEN_VALUE", []>
+				: never
 		: never
 	: ElseB extends ScalarExprAst
 		? ResolveExpressionAST<ElseB, Db, Scope, Params> extends infer Ev
@@ -1825,13 +1825,13 @@ type ResolveCaseSimpleArms<
 							? F
 							: F extends SqlTypeShape
 								? ApplyCaseMissingElseNullability<F, false>
-								: FormatError<"INVALID_CASE_EXPRESSION", []>
+								: never
 						: never
-					: FormatError<"INVALID_CASE_ELSE", []>
+					: never
 			: never
 		: Acc extends SqlTypeShape
 			? ApplyCaseMissingElseNullability<Acc, true>
-			: FormatError<"INVALID_CASE_EXPRESSION", []>
+			: never
 
 type ResolveCaseSimple<
 	DiscAst extends ScalarExprAst,
@@ -1846,12 +1846,12 @@ type ResolveCaseSimple<
 			? Dv
 			: Dv extends SqlTypeShape
 				? ResolveCaseSimpleArms<Arms, ElseB, Db, Scope, Dv, null, Params>
-				: FormatError<"INVALID_CASE_DISCRIMINANT", []>
+				: never
 		: never
 
 /** Per-element check for `expr IN (…)` (same class rules as `=`, but `NULL` list elements are rejected). */
 type ValidateInListElement<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"] extends "null"
-	? FormatError<"INVALID_IN_LEFT_OPERAND", []>
+	? never
 	: R["type"] extends "null"
 		? FormatError<"INCOMPATIBLE_TYPES_IN_IN_LIST", []>
 		: SameComparisonClass<L, R> extends true
@@ -1878,7 +1878,7 @@ type ResolveInListItemsAgainstLeft<
 								: ResolveInListItemsAgainstLeft<Left, Tail, Db, Scope, Params>
 							: never
 					: never
-				: FormatError<"INVALID_IN_LIST_ELEMENT", []>
+				: never
 		: never
 	: FormatError<"IN_LIST_MUST_NOT_BE_EMPTY", []>
 
@@ -1922,9 +1922,9 @@ type ResolveInSubqueryAst<
 										? SqlBoolean
 										: FormatError<"INCOMPATIBLE_TYPES_IN_IN_SUBQUERY", []>
 								: FormatError<"INCOMPATIBLE_TYPES_IN_IN_SUBQUERY", []>
-							: FormatError<"INVALID_IN_SUBQUERY_COLUMN", []>
-					: FormatError<"INVALID_IN_SUBQUERY_COLUMN", []>
-				: FormatError<"INVALID_IN_LEFT_OPERAND", []>
+							: never
+					: never
+				: never
 		: never
 
 type ResolveAnyAllSomeOp<
@@ -1948,9 +1948,9 @@ type ResolveAnyAllSomeOp<
 									? V extends DbtyperError<any, any>
 										? V
 										: SqlBoolean
-									: FormatError<"INVALID_ANY_ALL_SOME_COMPARISON", []>
-								: FormatError<"INVALID_ANY_ALL_SOME_SUBQUERY_COLUMN", []>
-						: FormatError<"INVALID_ANY_ALL_SOME_SUBQUERY_COLUMN", []>
+									: never
+								: never
+						: never
 					: R extends ScalarExprAst
 						? ResolveExpressionAST<R, Db, Scope, Params> extends infer Rv
 							? Rv extends DbtyperError<any, any>
@@ -1959,10 +1959,10 @@ type ResolveAnyAllSomeOp<
 									? Rv["type"] extends "array" | "unknown"
 										? SqlBoolean
 										: FormatError<"ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY", []>
-									: FormatError<"INVALID_ANY_ALL_SOME_OPERAND", []>
+									: never
 							: never
-						: FormatError<"INVALID_ANY_ALL_SOME_OPERAND", []>
-				: FormatError<"INVALID_ANY_ALL_SOME_LEFT_OPERAND", []>
+						: never
+				: never
 		: never
 
 type MergeBoolNot<V> =
@@ -2561,8 +2561,8 @@ type ResolveScalarExprAstPair<
 											? Lv
 											: FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>
 										: FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>
-							: FormatError<"INVALID_ARITHMETIC_OPERAND", []>
-						: FormatError<"INVALID_ARITHMETIC_OPERAND", []>
+							: never
+						: never
 				: never
 		: never
 
