@@ -1,4 +1,4 @@
-// Integration Test: DELETE - unknown table
+// Integration Test: SELECT - unknown alias in SELECT ... *
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -12,8 +12,8 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id integer, name text);`)
 	.database()
 
-// ❌ ERROR: Unknown table in DELETE FROM
-const query = `delete from ghost_table;` as const
+// ❌ ERROR: Unknown alias in SELECT ... *
+const query = `select ghost_alias.* from users;` as const
 
 // @ts-expect-error
 await db.query(query)
@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2204, "Unknown table ghost_table in DELETE FROM">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2308, "Unknown alias in SELECT ... *">>
 >

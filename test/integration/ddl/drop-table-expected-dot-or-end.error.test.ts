@@ -1,4 +1,4 @@
-// Integration Test: DELETE - unknown table
+// Integration Test: DROP TABLE - Expected dot or end of table name (1703)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,20 +9,20 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create table users (id integer, name text);`)
+	.apply(`create table items (id text not null);`)
 	.database()
 
-// ❌ ERROR: Unknown table in DELETE FROM
-const query = `delete from ghost_table;` as const
+// ❌ ERROR: Expected dot or end of table name in DROP TABLE
+const query = `drop table items invalid garbage;` as const
 
 // @ts-expect-error
 await db.query(query)
 
 type DbShape = ApplyStatements<
 	SqlDatabase,
-	`create schema public; create table users (id integer, name text);`
+	`create schema public; create table items (id text not null);`
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2204, "Unknown table ghost_table in DELETE FROM">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1703, "Expected `.` or end of table name in DROP TABLE">>
 >

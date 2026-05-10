@@ -1,0 +1,10 @@
+// Integration Test: INVALID_NUMBER_FOR_VARCHAR_LENGTH (2117)
+import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import { mockDriver } from "../../test-utils/test-databases.ts"
+
+const _db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.database()
+
+// @ts-expect-error: Invalid number for VARCHAR length
+const _result = _db.apply(`create table users (name varchar('invalid'));`)

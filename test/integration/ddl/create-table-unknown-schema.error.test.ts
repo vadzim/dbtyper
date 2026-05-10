@@ -1,4 +1,4 @@
-// Integration Test: CREATE TABLE
+// Integration Test: CREATE TABLE - unknown schema
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -7,10 +7,12 @@ import type { DbtyperError } from "../../../src/sql-parser-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
-const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.database()
 
-// ❌ ERROR: CREATE TABLE with unknown schema
-const query = `create table missing_schema.widgets ( id uuid not null );` as const
+// ❌ ERROR: Unknown schema for CREATE TABLE
+const query = `create table ghost_schema.users (id integer);` as const
 
 // @ts-expect-error
 await db.query(query)
@@ -18,8 +20,5 @@ await db.query(query)
 type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<2214, "Unknown schema missing_schema for CREATE TABLE">
-	>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2214, "Unknown schema ghost_schema for CREATE TABLE">>
 >

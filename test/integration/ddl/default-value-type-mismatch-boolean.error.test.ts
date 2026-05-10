@@ -1,4 +1,4 @@
-// Integration Test: DELETE - unknown table
+// Integration Test: DEFAULT value type mismatch - boolean (5200)
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,20 +9,16 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create table users (id integer, name text);`)
 	.database()
 
-// ❌ ERROR: Unknown table in DELETE FROM
-const query = `delete from ghost_table;` as const
+// ❌ ERROR: DEFAULT value type mismatch - boolean literal for non-boolean column
+const query = `create table items (id text default true);` as const
 
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id integer, name text);`
->[0]
+type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2204, "Unknown table ghost_table in DELETE FROM">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<5200, "DEFAULT value type mismatch: expected boolean column for boolean literal">>
 >

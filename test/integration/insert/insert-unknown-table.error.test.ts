@@ -1,4 +1,4 @@
-// Integration Test: INSERT
+// Integration Test: INSERT - unknown table
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
@@ -9,18 +9,20 @@ import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
-	.apply(`create table users (id text, name text);`)
+	.apply(`create table users (id integer, name text);`)
 	.database()
 
-// ❌ ERROR: unknown table
-const query = `insert into nonexistent (id) values ('1') returning *;` as const
+// ❌ ERROR: Unknown table in INSERT INTO
+const query = `insert into ghost_table (id, name) values (1, 'test');` as const
 
 // @ts-expect-error
 await db.query(query)
 
-// Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
+type DbShape = ApplyStatements<
+	SqlDatabase,
+	`create schema public; create table users (id integer, name text);`
+>[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2203, "Unknown table nonexistent in INSERT INTO">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2203, "Unknown table ghost_table in INSERT INTO">>
 >
