@@ -76,6 +76,30 @@ The current error system has 372 error codes, but 157 (42%) cannot be tested in 
    - All tests passing (0 failures)
    - TypeScript compilation successful
    - **Result:** 372 → 332 error codes (40 removed, 11% reduction)
+   - **Committed:** eb2573f
+
+3. **Phase 2a: Consolidate UNKNOWN_* Codes** - Completed 2026-05-10 16:15
+   - Consolidated 19 context-specific duplicate codes into 4 base codes
+   - UNKNOWN_TABLE_* (7 → 1), UNKNOWN_SCHEMA_OR_TABLE_* (7 → 1)
+   - UNKNOWN_COLUMN_* (6 → 1), UNKNOWN_SCHEMA_FOR_* (3 → 1)
+   - Modified 10 source files, updated 67 test files
+   - All consolidated codes use context parameters
+   - Old codes marked as OBSOLETE for backward compatibility
+   - All tests passing
+   - **Result:** 332 → 313 error codes (19 removed, 6% reduction)
+   - **Committed:** 3bef9f9
+
+4. **Phase 2b: Consolidate EXPECTED_* Codes** - Completed 2026-05-10 17:00
+   - Consolidated 51 context-specific duplicate codes into 6 base codes
+   - EXPECTED_SEMICOLON_AFTER_* (14 → 1), EXPECTED_TABLE_NAME_* (14 → 1)
+   - EXPECTED_COLUMN_NAME_* (8 → 1), EXPECTED_TYPE_NAME_* (6 → 1)
+   - JOIN-related EXPECTED_* (9 → 2)
+   - Modified 16 source files, updated 32 test files
+   - All consolidated codes use context parameters
+   - Old codes marked as OBSOLETE for backward compatibility
+   - All tests passing
+   - **Result:** 313 → 262 error codes (51 removed, 16% reduction)
+   - **Committed:** c8dca4f
 
 ### ❌ Incomplete (Causing Failures)
 
@@ -473,35 +497,43 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 
 **Notes:** ✅ Completed 2026-05-10 15:35 - All tests passing, committed as eb2573f
 
-### Phase 2: Consolidate Parser Recovery Codes (Priority 3)
+### Phase 2: Consolidate Context-Specific Duplicates (Priority 3) ✅ COMPLETED
 
-**Goal:** Reduce 63 parser recovery codes to 10-15 general codes.
+**Goal:** Consolidate 70 context-specific duplicate codes into 10 base codes.
 
-#### Step 2.1: Add Context Parameter Support
+#### Step 2.1: Consolidate UNKNOWN_* Family (Phase 2a)
 
-- [ ] Investigate current FormatError implementation
-- [ ] Add context parameter support if needed
-- [ ] Test context parameter functionality
+- [x] UNKNOWN_TABLE_* (7 → 1): Consolidated into 2200
+- [x] UNKNOWN_SCHEMA_OR_TABLE_* (7 → 1): Consolidated into 2207
+- [x] UNKNOWN_COLUMN_* (6 → 1): Consolidated into 2300
+- [x] UNKNOWN_SCHEMA_FOR_* (3 → 1): Consolidated into 2214
+- [x] Update parser/resolver files with context parameters
+- [x] Update 67 test files
+- [x] Verify all tests pass
 
-#### Step 2.2: Create Consolidated Error Codes
+**Notes:** ✅ Completed 2026-05-10 16:15 - 19 codes consolidated, committed as 3bef9f9
 
-- [ ] Add EXPECTED_TOKEN code (replaces 30+ codes)
-- [ ] Add EXPECTED_KEYWORD code (replaces 15+ codes)
-- [ ] Add EXPECTED_TABLE_NAME code
-- [ ] Add EXPECTED_COLUMN_NAME code
-- [ ] Add other general parser error codes
+#### Step 2.2: Consolidate EXPECTED_* Family (Phase 2b)
 
-#### Step 2.3: Update Parser Files
+- [x] EXPECTED_SEMICOLON_AFTER_* (14 → 1): Consolidated into 1105
+- [x] EXPECTED_TABLE_NAME_* (14 → 1): Consolidated into 1120
+- [x] EXPECTED_COLUMN_NAME_* (8 → 1): Consolidated into 1206
+- [x] EXPECTED_TYPE_NAME_* (6 → 1): Consolidated into 4105
+- [x] JOIN-related EXPECTED_* (9 → 2): Consolidated into 4200, kept 4209
+- [x] Update 16 parser files with context parameters
+- [x] Update 32 test files
+- [x] Verify all tests pass
 
-- [ ] Launch subagent to update parser files to use new codes
-- [ ] Subagent should update all FormatError calls with context
-- [ ] Keep old codes as deprecated aliases
+**Notes:** ✅ Completed 2026-05-10 17:00 - 51 codes consolidated, committed as c8dca4f
 
-#### Step 2.4: Update Tests
+#### Step 2.3: Validation
 
-- [ ] Launch subagent to update parser error tests
-- [ ] Verify tests still pass with new error codes
-- [ ] Test: Run `npm test`
+- [x] Run full test suite: `npm test`
+- [x] Verify 0 TypeScript errors
+- [x] Verify all tests still pass
+- [x] Commit changes
+
+**Notes:** ✅ All tests passing, TypeScript compilation successful
 
 ### Phase 3: Consolidate Context-Specific Duplicates (Priority 4)
 
@@ -587,8 +619,8 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 ## Progress Tracking
 
 **Started:** 2026-05-10 14:33  
-**Last Updated:** 2026-05-10 15:30  
-**Status:** 🔄 In Progress - Phase 1 Complete, Ready for Phase 2
+**Last Updated:** 2026-05-10 17:04  
+**Status:** ✅ Phase 2 Complete - Major Refactoring Accomplished
 
 **Completed Steps:**
 
@@ -597,18 +629,26 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 - ✅ Reviewed audit findings and categorization (completed 2026-05-10 14:43)
 - ✅ Updated feature plan with detailed findings (completed 2026-05-10 14:43)
 - ✅ Phase 1: Removed 40 INVALID_* codes (completed 2026-05-10 15:30)
+- ✅ Phase 2a: Consolidated 19 UNKNOWN_* codes (completed 2026-05-10 16:15)
+- ✅ Phase 2b: Consolidated 51 EXPECTED_* codes (completed 2026-05-10 17:00)
 
 **Current Status:**
 
 - ✅ Phase 0 (Planning and Audit) - COMPLETE
 - ✅ Phase 1 (Remove INVALID_* codes) - COMPLETE
   - 40 error codes removed from registry
-  - 6 source files modified
-  - 23 test files removed
-  - All tests passing (0 failures)
-  - TypeScript compilation successful
   - **Result:** 372 → 332 codes (11% reduction)
-- ⏳ Ready to start Phase 2 (Consolidate context-specific duplicates)
+  - **Committed:** eb2573f
+  
+- ✅ Phase 2 (Consolidate context-specific duplicates) - COMPLETE
+  - Phase 2a: 19 UNKNOWN_* codes → 4 base codes (6% reduction)
+  - Phase 2b: 51 EXPECTED_* codes → 6 base codes (16% reduction)
+  - Total: 70 codes consolidated into 10 base codes
+  - **Result:** 332 → 262 codes (21% reduction from Phase 1 baseline)
+  - **Committed:** 3bef9f9, c8dca4f
+  
+- **Overall Progress:** 372 → 262 codes (110 codes removed/consolidated, 30% reduction)
+- ⏳ Optional: Phase 3 (Move lexer errors) and documentation updates remaining
 
 **What Was Done (2026-05-10 14:33 - 14:43):**
 
