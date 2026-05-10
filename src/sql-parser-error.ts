@@ -608,10 +608,7 @@ export const errors = {
 		id: "OBSOLETE_2201_UNKNOWN_TABLE_UPDATE",
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
-	2202: {
-		id: "OBSOLETE_2202_UNKNOWN_TABLE_IN_UPDATE_FROM",
-		msg: ["Use UNKNOWN_TABLE with context parameter"],
-	},
+
 	2203: {
 		id: "OBSOLETE_2203_UNKNOWN_TABLE_INSERT_INTO",
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
@@ -624,10 +621,7 @@ export const errors = {
 		id: "OBSOLETE_2205_UNKNOWN_TABLE_IN_DELETE_USING",
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
-	2206: {
-		id: "OBSOLETE_2206_UNKNOWN_TABLE_IN_SELECT_STAR",
-		msg: ["Use UNKNOWN_TABLE with context parameter"],
-	},
+
 	// Group 2: UNKNOWN_SCHEMA_OR_TABLE_* consolidated (Phase 2)
 	2207: {
 		id: "UNKNOWN_SCHEMA_OR_TABLE",
@@ -641,10 +635,7 @@ export const errors = {
 		id: "OBSOLETE_2209_UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE",
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
-	2210: {
-		id: "OBSOLETE_2210_UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM",
-		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
-	},
+
 	2211: {
 		id: "OBSOLETE_2211_UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
@@ -681,10 +672,7 @@ export const errors = {
 		id: "OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET",
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
-	2302: {
-		id: "OBSOLETE_2302_UNKNOWN_COLUMN_INSERT",
-		msg: ["Use UNKNOWN_COLUMN with context parameter"],
-	},
+
 	2303: {
 		id: "OBSOLETE_2303_UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],
@@ -1156,10 +1144,7 @@ export const errors = {
 		id: "EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME",
 		msg: ["Expected AS after qualified view name"],
 	},
-	3905: {
-		id: "OBSOLETE_3905_EXPECTED_SEMICOLON_AFTER_CREATE_VIEW",
-		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
-	},
+
 
 	// ALTER TYPE
 	4000: {
