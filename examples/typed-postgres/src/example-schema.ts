@@ -1,7 +1,7 @@
-import { sqlMigrations } from "dbtyper"
+import { sqlMigrations, type SqlDriver } from "dbtyper"
 import type { PostgresDriver } from "dbtyper/postgres"
 
-export async function exampleDb(driver: PostgresDriver) {
+export async function exampleDb(driver: SqlDriver<PostgresDriver>) {
 	return sqlMigrations({ driver })
 		.apply((await import("../migrations/001.do.schemas.js")).generateSql())
 		.apply((await import("../migrations/002.do.users.js")).generateSql())

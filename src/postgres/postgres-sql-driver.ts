@@ -1,11 +1,11 @@
 import postgres from "postgres"
 
-import type { SqlDriver, SqlDriverParams } from "../core/sql-database.ts"
+import { createDriver, type SqlDriver, type SqlDriverParams } from "../core/sql-database.ts"
 import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
 import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
 import type { PostgresTypeMap } from "./postgres-type-map.ts"
 
-export type PostgresDriver = SqlDriver<PostgresTypeMap>
+export type PostgresDriverConfig = { scalarTypes: PostgresTypeMap }
 
 export type PostgresSqlDriverConfig = {
 	/** Connected **`postgres()`** client from the **`postgres`** package. */
@@ -32,8 +32,11 @@ function pgQueryArgs(text: string, params?: SqlDriverParams): { text: string; va
 	return bindColonNamedParamsForPg(text, params as Record<string, unknown>)
 }
 
-function createConnectedPostgresDriver(sql: ReturnType<typeof postgres>, pageSize: number): PostgresDriver {
-	return {
+function createConnectedPostgresDriver(
+	sql: ReturnType<typeof postgres>,
+	pageSize: number,
+): SqlDriver<PostgresDriverConfig> {
+	return createDriver<PostgresDriverConfig>({
 		async query(text: string, params?: SqlDriverParams) {
 			const { text: sqlText, values } = pgQueryArgs(text, params)
 			const rows = values.length > 0 ? await sql.unsafe(sqlText, [...values] as never) : await sql.unsafe(sqlText)
@@ -57,9 +60,7 @@ function createConnectedPostgresDriver(sql: ReturnType<typeof postgres>, pageSiz
 				}
 			})()
 		},
-
-		scalarTypes: {} as PostgresTypeMap,
-	}
+	})
 }
 
 /**
@@ -70,7 +71,7 @@ function createConnectedPostgresDriver(sql: ReturnType<typeof postgres>, pageSiz
  * Accepts positional parameter arrays or `:name` maps; `:name` tokens are rewritten to `$1`, `$2`, … (skipping
  * PostgreSQL `::` casts and `:name` inside single-quoted literals).
  */
-export function postgresSqlDriver(config: PostgresSqlDriverConfig): PostgresDriver {
+export function postgresSqlDriver(config: PostgresSqlDriverConfig): SqlDriver<PostgresDriverConfig> {
 	const pageSize = config.pageSize ?? 50
 	return createConnectedPostgresDriver(config.sql, pageSize)
 }

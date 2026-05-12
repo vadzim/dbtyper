@@ -1,16 +1,9 @@
-import type { PostgresTypeMap } from "../../../src/postgres/index.ts"
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import type { PostgresDriver } from "../../../src/postgres/index.ts"
+import { createDriver, sqlMigrations } from "../../../src/core/sql-database.ts"
 
 export const createTestDatabase = async () =>
 	sqlMigrations({
-		driver: {
-			query: async () => [],
-			stream: async () =>
-				(async function* () {
-					// Empty async generator
-				})(),
-			scalarTypes: {} as PostgresTypeMap,
-		},
+		driver: createDriver<PostgresDriver>({ query: async () => [] }),
 	})
 		.apply((await import("./001.do.schemas.js")).generateSql())
 		.apply((await import("./002.do.users.js")).generateSql())
