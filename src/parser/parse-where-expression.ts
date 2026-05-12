@@ -18,7 +18,7 @@ export type ParseWhereExpression<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 		infer Rw extends TokensList,
 		infer Ast,
 	]

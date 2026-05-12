@@ -716,6 +716,14 @@ export const errors = {
 		id: "UNKNOWN_WINDOW_FUNCTION",
 		msg: ["Unknown window function"],
 	},
+	2403: {
+		id: "POSITIONAL_PARAMETER_REQUIRES_ARRAY",
+		msg: ["Positional parameter (?) requires array parameters, not named parameters"],
+	},
+	2404: {
+		id: "POSITIONAL_PARAMETER_OUT_OF_BOUNDS",
+		msg: ["Positional parameter index ", " is out of bounds"],
+	},
 
 	// Type System Errors
 	// Type Compatibility

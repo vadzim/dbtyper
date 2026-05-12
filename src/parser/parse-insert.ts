@@ -383,7 +383,7 @@ type ParseInsertValuesCells<
 	Cols extends readonly string[],
 	ColsFull extends readonly string[] = Cols,
 > = Cols extends readonly [infer C0 extends string, ...infer CR extends readonly string[]]
-	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 			infer R1 extends TokensList,
 			infer Ast,
 		]
@@ -700,7 +700,7 @@ type ParseInsertUpsertSetAssignments<
 					? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "ON CONFLICT DO UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
-							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 									infer R3 extends TokensList,
 									infer Ast,
 								]

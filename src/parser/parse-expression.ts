@@ -27,9 +27,10 @@ import type {
 	SqlUnknown,
 	SqlTimestamp,
 } from "../core/sql-type-shape.ts"
+import type { Inc } from "../core/type-utils.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
-export type ExpressionParamsShape = Record<string, SqlTypeShape>
+export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
 
 /** Default `Params` for parsers: `keyof` is `never` (plain `{}` widens against `Record<string, …>`). */
 export type EmptyExpressionParams = Record<never, never>
@@ -39,10 +40,24 @@ export type ExprParseEnv = {
 	db: JsqlDatabaseShape
 	params: ExpressionParamsShape
 	outerScope: ScopeMap
+	positionalParamIndex: number
 }
 
 /** True when `T` is `unknown` or `any` (not other types). */
 export type IsUnknownOrAny<T> = 0 extends 1 & T ? true : unknown extends T ? (T extends unknown ? true : false) : false
+
+/** Get the current positional parameter index from the environment, defaulting to 0 */
+type GetPositionalParamIndex<Env extends ExprParseEnv> = Env["positionalParamIndex"] extends number
+	? Env["positionalParamIndex"]
+	: 0
+
+/** Increment the positional parameter index in the environment */
+type IncrementPositionalParamIndex<Env extends ExprParseEnv> = {
+	db: Env["db"]
+	params: Env["params"]
+	outerScope: Env["outerScope"]
+	positionalParamIndex: Inc[GetPositionalParamIndex<Env>]
+}
 
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
 export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
@@ -61,6 +76,7 @@ export type ScalarExprAst =
 	| { kind: "string"; value: string }
 	| { kind: "number"; raw: string }
 	| { kind: "param"; name: string }
+	| { kind: "positional-param"; index: number }
 	| { kind: "col"; parts: ScalarIdentParts }
 	/** `alias.*` in a SELECT list item (resolved against JOIN scope). */
 	| { kind: "alias_table_star"; alias: string }
@@ -996,6 +1012,9 @@ type ExpressionResolvers<
 	string: Ast extends { kind: "string"; value: string } ? SqlText : never
 	number: Ast extends { kind: "number"; raw: string } ? SqlInteger : never
 	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
+	"positional-param": Ast extends { kind: "positional-param"; index: infer I extends number }
+		? LookupPositionalParam<Params, I>
+		: never
 	custom_op: Ast extends {
 		kind: "custom_op"
 		op: infer Op extends string
@@ -1357,6 +1376,12 @@ type MaximalIdentChain<Tokens extends TokensList> =
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? Params[Name]
 	: FormatError<"UNKNOWN_QUERY_PARAMETER", [Name]>
+
+type LookupPositionalParam<Params extends ExpressionParamsShape, Index extends number> = Params extends readonly SqlTypeShape[]
+	? Index extends keyof Params
+		? Params[Index]
+		: FormatError<"POSITIONAL_PARAMETER_OUT_OF_BOUNDS", [Index]>
+	: FormatError<"POSITIONAL_PARAMETER_REQUIRES_ARRAY", []>
 
 type ResolveIdentChainValue<
 	Db extends JsqlDatabaseShape,
@@ -2205,31 +2230,35 @@ type TryOperandScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv
 					? TryParenOperandScalarUntyped<Tokens, Env>
 					: PeekToken<Tokens> extends TokenKey<"true">
 						? SkipToken<Tokens> extends infer Rt extends TokensList
-							? [Rt, { kind: "true" }]
+							? [Rt, { kind: "true" }, Env]
 							: never
 						: PeekToken<Tokens> extends TokenKey<"false">
 							? SkipToken<Tokens> extends infer Rf extends TokensList
-								? [Rf, { kind: "false" }]
+								? [Rf, { kind: "false" }, Env]
 								: never
 							: PeekToken<Tokens> extends TokenKey<"null">
 								? SkipToken<Tokens> extends infer Rn extends TokensList
-									? [Rn, { kind: "sql_null" }]
+									? [Rn, { kind: "sql_null" }, Env]
 									: never
 								: PeekToken<Tokens> extends TokenString<infer Str>
 									? SkipToken<Tokens> extends infer Rs extends TokensList
-										? [Rs, { kind: "string"; value: Str }]
+										? [Rs, { kind: "string"; value: Str }, Env]
 										: never
 									: PeekToken<Tokens> extends TokenNumber<infer Raw>
 										? SkipToken<Tokens> extends infer Rnum extends TokensList
-											? [Rnum, { kind: "number"; raw: Raw }]
+											? [Rnum, { kind: "number"; raw: Raw }, Env]
 											: never
 										: PeekToken<Tokens> extends TokenParam<infer P extends string>
 											? SkipToken<Tokens> extends infer Rp extends TokensList
-												? [Rp, { kind: "param"; name: P }]
+												? [Rp, { kind: "param"; name: P }, Env]
 												: never
-											: SkipToken<Tokens> extends infer Rbad extends TokensList
-												? SkipFailedExpression<Rbad, FormatError<"UNEXPECTED_TOKEN", []>>
+										: PeekToken<Tokens> extends TokenKey<"?">
+											? SkipToken<Tokens> extends infer Rpp extends TokensList
+												? [Rpp, { kind: "positional-param"; index: GetPositionalParamIndex<Env> }, IncrementPositionalParamIndex<Env>]
 												: never
+												: SkipToken<Tokens> extends infer Rbad extends TokensList
+													? SkipFailedExpression<Rbad, FormatError<"UNEXPECTED_TOKEN", []>>
+													: never
 
 type ParseUnaryScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"-">

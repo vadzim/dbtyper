@@ -146,7 +146,7 @@ type ParseUpdateSetAssignments<
 					? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
-							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 									infer R3 extends TokensList,
 									infer Ast,
 								]

@@ -239,7 +239,7 @@ type ParseOrderByScalarExpr<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 		infer Rw extends TokensList,
 		infer Ast,
 	]
@@ -454,7 +454,7 @@ type ParseGroupByTermsAcc<
 	Params extends ExpressionParamsShape,
 	Acc extends readonly ScalarExprAst[] = readonly [],
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 		infer R1 extends TokensList,
 		infer Ast,
 	]
@@ -1240,7 +1240,7 @@ type ParseOneRawSelectExprItem<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope; positionalParamIndex: 0 }> extends [
 		infer RExpr extends TokensList,
 		infer Out,
 	]

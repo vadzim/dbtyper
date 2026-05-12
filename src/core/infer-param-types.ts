@@ -17,9 +17,12 @@ export type TsTypeToSqlType<T> = T extends number
 						: "text" // fallback to text for unknown types
 
 /**
- * Infer ExpressionParamsShape from a runtime params object.
+ * Infer ExpressionParamsShape from a runtime params object or array.
  * Converts { userId: 5, name: "Alice" } to { userId: SqlTypeShape, name: SqlTypeShape }
+ * Converts [5, "Alice"] to readonly [SqlTypeShape, SqlTypeShape]
  */
-export type InferParamsFromValues<T extends Record<string, unknown>> = {
-	[K in keyof T]: { type: TsTypeToSqlType<T[K]>; arg: null; nullable: false }
-}
+export type InferParamsFromValues<T> = T extends readonly unknown[]
+	? { [K in keyof T]: { type: TsTypeToSqlType<T[K]>; arg: null; nullable: false } }
+	: T extends Record<string, unknown>
+		? { [K in keyof T]: { type: TsTypeToSqlType<T[K]>; arg: null; nullable: false } }
+		: never

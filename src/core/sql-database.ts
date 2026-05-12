@@ -260,6 +260,13 @@ export type DataBase<Db extends JsqlDatabaseShape, ScalarTypes extends Record<st
 		params: ParamsValues,
 	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>>
 
+	query<Stmt extends string, ParamsValues extends readonly unknown[]>(
+		statement: Stmt extends CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>
+			? Stmt
+			: CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>,
+		params: ParamsValues,
+	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>>
+
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
 	/**
@@ -272,6 +279,13 @@ export type DataBase<Db extends JsqlDatabaseShape, ScalarTypes extends Record<st
 	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, EmptyExpressionParams>>>
 
 	stream<Stmt extends string, ParamsValues extends Record<string, unknown>>(
+		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>
+			? Stmt
+			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>,
+		params: ParamsValues,
+	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>>>
+
+	stream<Stmt extends string, ParamsValues extends readonly unknown[]>(
 		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>
 			? Stmt
 			: CheckSqlValidForStream<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>,

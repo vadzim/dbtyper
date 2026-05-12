@@ -2,6 +2,7 @@ import postgres from "postgres"
 
 import type { SqlDriver, SqlDriverParams } from "../core/sql-database.ts"
 import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
+import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
 import type { PostgresTypeMap } from "./postgres-type-map.ts"
 
 export type PostgresDriver = SqlDriver<PostgresTypeMap>
@@ -21,6 +22,11 @@ function pgQueryArgs(text: string, params?: SqlDriverParams): { text: string; va
 		return { text, values: [] }
 	}
 	if (Array.isArray(params)) {
+		// Check if SQL contains "?" - if so, bind positional params
+		if (text.includes("?")) {
+			return bindPositionalParamsForPg(text, params)
+		}
+		// Otherwise, assume it's already using $1, $2, etc.
 		return { text, values: params }
 	}
 	return bindColonNamedParamsForPg(text, params as Record<string, unknown>)
