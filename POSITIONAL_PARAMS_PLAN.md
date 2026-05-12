@@ -306,9 +306,20 @@ This is a **large refactor** affecting:
 
 **Recommendation:** Do this refactor incrementally, one parser file at a time, ensuring tests pass after each change.
 
-## Type Debugging Trick
-When needing to inspect TypeScript types during development:
+## 🔧 Type Debugging Trick
+
+When needing to inspect TypeScript types during development, use this trick to force TypeScript to display the actual resolved type in an error message:
+
 ```typescript
 const i: never = 1 as unknown as YourTypeHere;
 ```
-This will cause a type error that displays the actual type.
+
+This will cause a type error that displays the actual type, which is invaluable for debugging complex type-level computations. For example:
+
+```typescript
+// To see what ParseExpressionAST returns:
+const debug: never = 1 as unknown as ParseExpressionAST<ParseSqlTokens<"SELECT ?">, MyEnv>;
+// Error will show: Type '[TokensList, ScalarExprAst, ExprParseEnv]' is not assignable to type 'never'
+```
+
+This trick is essential when working with deeply nested conditional types and helps verify that your type transformations are working as expected.
