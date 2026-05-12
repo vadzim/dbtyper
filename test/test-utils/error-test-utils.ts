@@ -22,7 +22,9 @@ export type CheckErrorneousResultWithCode<
 > = Matches<Result, [TokensRest, DbPublicUsers, DbtyperError<Code, Message>]>
 
 // Helper to extract error from ParseSqlStatement result
-export type ExtractQueryError<DbShape extends JsqlDatabaseShape, Query extends string> = ParseSqlStatement<
-	ParseSqlTokens<Query>,
-	DbShape
->[2]
+export type ExtractQueryError<
+	DbShape extends JsqlDatabaseShape,
+	Query extends string,
+	Params extends import("../../src/parser/parse-expression.ts").ExpressionParamsShape =
+		import("../../src/parser/parse-expression.ts").EmptyExpressionParams,
+> = ParseSqlStatement<ParseSqlTokens<Query>, DbShape, Params>[2]

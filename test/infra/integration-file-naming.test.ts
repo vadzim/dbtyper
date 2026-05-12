@@ -109,7 +109,7 @@ describe("Integration test files correctness", async () => {
 
 				await it(`the file ${file} should have @ts-expect-error right before query call`, async () => {
 					const pattern =
-						/\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*(await\s+db\.(query|stream)\(query\)|await\s+migrations\.apply\(query\))/
+						/\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*(await\s+db\.(query|stream)\(query[^)]*\)|await\s+migrations\.apply\(query[^)]*\))/
 
 					assert.ok(
 						pattern.test(content),

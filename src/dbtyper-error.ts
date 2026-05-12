@@ -706,11 +706,11 @@ export const errors = {
 	// Other Resolution
 	2400: {
 		id: "UNKNOWN_QUERY_PARAMETER",
-		msg: ["Unknown query parameter"],
+		msg: ["Unknown query parameter: ", ""],
 	},
 	2401: {
-		id: "UNKNOWN_QUERY_PARAMETER_IN_SELECT",
-		msg: ["Unknown query parameter in SELECT"],
+		id: "<deleted>",
+		msg: [""],
 	},
 	2402: {
 		id: "UNKNOWN_WINDOW_FUNCTION",

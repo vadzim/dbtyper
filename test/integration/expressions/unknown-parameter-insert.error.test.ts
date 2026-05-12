@@ -6,6 +6,7 @@ import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
+import type { InferParamsFromValues } from "../../../src/core/infer-param-types.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
@@ -16,7 +17,7 @@ const db = sqlMigrations({ driver: mockDriver })
 const query = `insert into users (id, name) values (:id, :name);` as const
 
 // @ts-expect-error
-await db.query(query)
+await db.query(query, { id: "id" })
 
 type DbShape = ApplyStatements<
 	SqlDatabase,
@@ -24,5 +25,8 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2400, "Unknown query parameter">>
+	Matches<
+		ExtractQueryError<DbShape, typeof query, InferParamsFromValues<{ id: string }>>,
+		DbtyperError<2400, "Unknown query parameter: name">
+	>
 >

@@ -24,5 +24,5 @@ type DbShape = ApplyStatements<
 >[0]
 
 type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2401, "Unknown query parameter in SELECT">>
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2400, "Unknown query parameter: limit">>
 >

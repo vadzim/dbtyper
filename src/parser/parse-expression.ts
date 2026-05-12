@@ -1356,7 +1356,7 @@ type MaximalIdentChain<Tokens extends TokensList> =
 
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? Params[Name]
-	: FormatError<"UNKNOWN_QUERY_PARAMETER", []>
+	: FormatError<"UNKNOWN_QUERY_PARAMETER", [Name]>
 
 type ResolveIdentChainValue<
 	Db extends JsqlDatabaseShape,

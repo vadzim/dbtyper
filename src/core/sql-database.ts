@@ -213,6 +213,8 @@ type SqlSelectRowObject<
 			: { [K in keyof R]: R[K] }
 		: never
 
+type FormatErrorText<Code extends number, Msg extends string> = `error [dbtyper:${Code}]: ${Msg}`
+
 /** Type check for .stream() - requires SELECT or RETURNING */
 type CheckSqlValidForStream<
 	Db extends JsqlDatabaseShape,
@@ -220,15 +222,15 @@ type CheckSqlValidForStream<
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<infer _Code, infer Msg>
-		? `Error in query: ${Msg}`
+	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<infer Code, infer Msg>
+		? FormatErrorText<Code, Msg>
 		: Stmt
 
 type CheckSqlValid<
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer _Code, infer Msg> ? `Error in query: ${Msg}` : Stmt
+> = ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer Code, infer Msg> ? FormatErrorText<Code, Msg> : Stmt
 
 /** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
 type QueryReturnType<

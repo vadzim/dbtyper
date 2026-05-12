@@ -1943,7 +1943,7 @@ type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string
 	? Params[Name] extends SqlTypeShape
 		? { sql: Params[Name] }
 		: never
-	: FormatError<"UNKNOWN_QUERY_PARAMETER_IN_SELECT", []>
+	: FormatError<"UNKNOWN_QUERY_PARAMETER", [Name]>
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */
 type ParamSelectOut<As, P extends string, Sql extends SqlTypeShape> = As extends string
