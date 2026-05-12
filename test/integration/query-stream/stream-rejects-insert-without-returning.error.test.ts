@@ -5,7 +5,7 @@ import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
-import type { ExtractResultError } from "../../test-utils/error-test-utils.ts"
+import type { ExtractStreamError } from "../../test-utils/error-test-utils.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
@@ -23,7 +23,7 @@ type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table 
 
 type _errorCheck = Expect<
 	Matches<
-		ExtractResultError<DbShape, typeof query>,
+		ExtractStreamError<DbShape, typeof query>,
 		DbtyperError<3501, "stream() requires a row-returning statement (SELECT or RETURNING clause)">
 	>
 >

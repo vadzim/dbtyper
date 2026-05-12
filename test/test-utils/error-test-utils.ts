@@ -27,7 +27,7 @@ export type ExtractQueryError<
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = ParseSqlStatement<ParseSqlTokens<Query>, DbShape, Params>[2]
 
-export type ExtractResultError<
+export type ExtractStreamError<
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,
 	Query extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
