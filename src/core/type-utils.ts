@@ -20,7 +20,7 @@ type Diag<
 		: Acc
 	: Acc
 
-type NN = 20
+type NN = 100
 
 export type LT = Diag<Repeat<false, NN>, Repeat<true, NN>>
 export type LTE = [Repeat<true, NN>, ...LT]
