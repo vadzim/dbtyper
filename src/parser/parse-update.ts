@@ -138,6 +138,7 @@ type ParseUpdateSetAssignments<
 	Sch extends string,
 	Tab extends string,
 	Acc extends readonly string[],
+	PositionalParamIndex extends number = 0,
 > =
 	PeekToken<Tokens> extends infer TokCol
 		? SkipToken<Tokens> extends infer R1 extends TokensList
@@ -146,9 +147,10 @@ type ParseUpdateSetAssignments<
 					? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
-							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
+							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: PositionalParamIndex }> extends [
 									infer R3 extends TokensList,
 									infer Ast,
+									infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
 								]
 								? Ast extends DbtyperErrorShape
 									? [R3, Db, Ast]
@@ -175,7 +177,8 @@ type ParseUpdateSetAssignments<
 																				Tbl,
 																				Sch,
 																				Tab,
-																				readonly [...Acc, Col]
+																				readonly [...Acc, Col],
+																				UpdatedEnv["positionalParamIndex"]
 																			>
 																		: never
 																	: PeekToken<R3> extends
