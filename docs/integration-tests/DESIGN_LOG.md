@@ -44,28 +44,6 @@ Find a testing approach so that **invalid SQL queries produce TypeScript compile
 
 ---
 
-### Design 3: InferSqlErrors API (PARTIAL SUCCESS)
-
-**Idea:** Use `InferSqlErrors<Db, Stmt>` - public API for checking errors.
-
-**Attempt:** `test/integration/smoke/03-design3-infer-errors.test.ts`
-
-**Result:** ⚠️ Partial success
-
-- ✅ Success-case tests (valid queries) **work** - `InferSqlErrors` returns `null`
-- ❌ Error-case tests **do not work** - `InferSqlErrors` does not return `SqlParserError` for invalid queries
-- Column/table validation may not be implemented in the parser
-
-**Conclusions:**
-
-- `InferSqlErrors` API exists and works for success scenarios
-- But error validation (invalid columns/tables) may not be implemented
-- Need to verify whether parser actually validates column/table existence
-
-**Status:** Need deeper investigation into whether validation is implemented at all
-
----
-
 ### Design 4: Copy exactly from parse-select.test.ts (SUCCESS!)
 
 **Idea:** Use **exactly** the same DB structure and test style as in `parse-select.test.ts`.

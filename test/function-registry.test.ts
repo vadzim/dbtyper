@@ -4,7 +4,7 @@ import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TBigint, TNumeric, TUuid, TTimestamp } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
-import type { InferSqlErrors } from "./test-utils/parser-test-utils.ts"
+import type { ExtractResultError } from "./test-utils/error-test-utils.ts"
 
 /** Minimal catalog with typed custom SQL functions (`functions`). */
 type DbFns = {
@@ -18,7 +18,7 @@ type DbFns = {
 	}
 	functions: { custom_fn: TInteger }
 }
-type InferOk = InferSqlErrors<DbFns, `select custom_fn(x) from t`>
+type InferOk = ExtractResultError<DbFns, `select custom_fn(x) from t`>
 type _inferOk = Expect<Extends<InferOk, null>>
 
 type TCustomFn = ParseSqlStatement<ParseSqlTokens<`select custom_fn(x) from t`>, DbFns>

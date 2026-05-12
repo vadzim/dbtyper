@@ -124,7 +124,7 @@ describe("Integration test files correctness", async () => {
 
 				await it(`the file ${file} must have error message check`, async () => {
 					const hasErrorCheck =
-						/\btype\s+\w+\s*=\s*Expect<\s*(Matches|Extends)<\s*(ExtractQueryError|SqlSelectRow)</.test(
+						/\btype\s+\w+\s*=\s*Expect<\s*(Matches|Extends)<\s*(ExtractQueryError|ExtractResultError)</.test(
 							content,
 						)
 					assert.ok(

@@ -33,7 +33,6 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 ## Documentation
 
 - [ ] In **`README.md`**, document **custom functions**: optional **`functions?: Record<string, …>`** on the typed **`JsqlDatabaseShape`** / migration **`Db`** (types-only registry; **no** runtime `extend` API for typings).
-- [ ] In **`README.md`**, document **`InferSqlErrors<Db, Stmt, Params?>`** (or finalized name/shape): when it resolves to **`SqlParserError<"…">`**, tooling can surface the same messages as **`db.query`** squiggles.
 - [ ] In **`README.md`**, add a **“Type-level API”** section: import path **`core/sql.ts`**, primary entry **`ParseSqlStatement<Tokens, Db, Params>`** (third generic defaults to **`{}`**), document the **`[RestTokens, Db, Result]`** triple for statements and when **`Result`** is **`SqlParserError<…>`** vs **`null`** (end).
 - [ ] In **`README.md`**, either **move the `SqlCreateTable` / `SqlSchema` / `SqlDatabase` example** behind a “Legacy / alternate path” note or **replace it** with a minimal example that uses **`ParseSqlTokens`** + **`ParseSqlStatement`** + a hand-written **`JsqlDatabaseShape`** (match **`test/parse-select.test.ts`** style).
 - [ ] **Diff `README.md` links** against **`core/sql.ts`** `export` list; fix any path or symbol that does not exist.
@@ -76,10 +75,6 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 - [ ] **`DataBase.query` / `.stream`** (and migrations **`apply`** if applicable): retain **parameter constraint** so invalid SQL resolves the first generic to **`SqlParserError`** message literals (**squiggle on the string**).
 - [ ] Tune messages for common mistakes (stable string templates for **`Expect`**).
 
-## Error tooling (`InferSqlErrors`)
-
-- [ ] Export **`InferSqlErrors<Db, Stmt, Params?>`** (name final TBD): alias of or wrapper around **`SqlSelectRow`** / **`ParseSqlStatement`** error extraction so **`SqlParserError<string>`** is inspectable **without** `Parameters<typeof db.query<…>>`.
-- [ ] Add **`Expect<Extends<InferSqlErrors<…>, SqlParserError<`expected fragment`>>>>`** (or message-specific) smoke tests beside **`CheckSql`** / **`db.query`** tests.
 - [ ] Cross-link from **`README.md`** and **`SUPPORTED-SQL.md`** error examples.
 
 ## Function registry (**types-only**, config on \*\*`Db`)

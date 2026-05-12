@@ -1,6 +1,8 @@
 import type { Dec, Tuple } from "./core/type-utils.ts"
 
-type ErrorIds = keyof Errors
+export type ErrorCodes = keyof ErrorsConst
+
+export type ErrorIds = keyof Errors
 
 export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Errors[ID] extends {
 	code: infer Code extends keyof ErrorsConst

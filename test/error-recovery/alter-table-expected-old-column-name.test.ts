@@ -1,11 +1,11 @@
 import { it } from "node:test"
 import type { Expect } from "../test-utils/type-test-utils.ts"
-import type { CheckErrorneousResultWithCode, ParseErrorneousText } from "../test-utils/error-test-utils.ts"
+import type { CheckErrorneousResult, ParseErrorneousText } from "../test-utils/error-test-utils.ts"
 
 // Test: ALTER TABLE RENAME COLUMN with missing old column name
 
 type Result = ParseErrorneousText<"alter table users rename column to newname">
 
-type _resultMatches = Expect<CheckErrorneousResultWithCode<Result, 5401, "Expected old column name in RENAME COLUMN">>
+type _resultMatches = Expect<CheckErrorneousResult<Result, 5401, "Expected old column name in RENAME COLUMN">>
 
 it("ALTER TABLE: Expected old column name in RENAME COLUMN", () => {})
