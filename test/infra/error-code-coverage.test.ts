@@ -177,6 +177,7 @@ const UNTESTABLE_ERROR_CODES = new Set([
 	4802, // EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN - Parser recovery handles missing operator
 
 	2116, // INVALID_NUMBER - Lexer validates numbers
+	2404, // POSITIONAL_PARAMETER_OUT_OF_BOUNDS - TypeScript doesn't properly detect out-of-bounds tuple access
 
 	// Additional unreachable or very difficult to test codes (27 codes)
 	1117, // EXPECTED_END_AFTER_CASE - Parser recovery handles this

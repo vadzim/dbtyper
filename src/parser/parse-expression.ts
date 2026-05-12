@@ -13,7 +13,7 @@ import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-er
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
-import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type {
 	SqlTypeShape,
 	SqlType,
@@ -195,19 +195,24 @@ type ParseCastKeywordOperand<Tokens extends TokensList, Env extends ExprParseEnv
 		? SkipToken<Tokens> extends infer R0 extends TokensList
 			? PeekToken<R0> extends TokenKey<"(">
 				? SkipToken<R0> extends infer R1 extends TokensList
-					? ParseOrScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer Inner]
+					? ParseOrScalarUntyped<R1, Env> extends [
+							infer R2 extends TokensList,
+							infer Inner,
+							infer Env2 extends ExprParseEnv,
+						]
 						? Inner extends DbtyperErrorShape
-							? SkipFailedExpression<R2, Inner>
+							? SkipFailedExpressionWithEnv<R2, Inner, Env2>
 							: Inner extends ScalarExprAst
 								? PeekToken<R2> extends TokenKey<"as">
 									? SkipToken<R2> extends infer R3 extends TokensList
 										? ParseSqlTypeName<R3, []> extends [infer R4 extends TokensList, infer Parts]
 											? Parts extends DbtyperErrorShape
-												? SkipFailedExpression<R4, Parts>
+												? SkipFailedExpressionWithEnv<R4, Parts, Env2>
 												: Parts extends readonly []
-													? SkipFailedExpression<
+													? SkipFailedExpressionWithEnv<
 															R4,
-															FormatError<"EXPECTED_TYPE_NAME", ["after CAST ... AS"]>
+															FormatError<"EXPECTED_TYPE_NAME", ["after CAST ... AS"]>,
+															Env2
 														>
 													: Parts extends readonly string[]
 														? PeekToken<R4> extends infer TokCl
@@ -220,6 +225,7 @@ type ParseCastKeywordOperand<Tokens extends TokensList, Env extends ExprParseEnv
 																				expr: Inner
 																				type_parts: Parts
 																			},
+																			Env2,
 																		]
 																	: [
 																			R5,
@@ -227,17 +233,18 @@ type ParseCastKeywordOperand<Tokens extends TokensList, Env extends ExprParseEnv
 																				"EXPECTED_CLOSE_PAREN_AFTER_CAST_TYPE",
 																				[]
 																			>,
+																			Env2,
 																		]
 																: never
 															: never
 														: never
 											: never
 										: never
-									: SkipFailedExpression<R2, FormatError<"EXPECTED_AS_IN_CAST", []>>
+									: SkipFailedExpressionWithEnv<R2, FormatError<"EXPECTED_AS_IN_CAST", []>, Env2>
 								: never
 						: never
 					: never
-				: SkipFailedExpression<R0, FormatError<"EXPECTED_OPEN_PAREN_AFTER_CAST", []>>
+				: SkipFailedExpressionWithEnv<R0, FormatError<"EXPECTED_OPEN_PAREN_AFTER_CAST", []>, Env>
 			: never
 		: never
 
@@ -285,7 +292,7 @@ type ParseInListUntypedAccum<
 > =
 	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E, infer Env1 extends ExprParseEnv]
 		? E extends DbtyperErrorShape
-			? SkipFailedExpression<R1, E>
+			? SkipFailedExpressionWithEnv<R1, E, Env1>
 			: E extends ScalarExprAst
 				? PeekToken<R1> extends TokenKey<")">
 					? SkipToken<R1> extends infer R2 extends TokensList
@@ -295,20 +302,24 @@ type ParseInListUntypedAccum<
 						? SkipToken<R1> extends infer R3 extends TokensList
 							? ParseInListUntypedAccum<R3, readonly [...Acc, E], Env1>
 							: never
-						: SkipFailedExpression<R1, FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST", []>>
+						: SkipFailedExpressionWithEnv<
+								R1,
+								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST", []>,
+								Env1
+							>
 				: never
 		: never
 
 type ParseInListUntypedTail<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
-		? SkipFailedExpression<Tokens, FormatError<"IN_LIST_MUST_NOT_BE_EMPTY", []>>
+		? SkipFailedExpressionWithEnv<Tokens, FormatError<"IN_LIST_MUST_NOT_BE_EMPTY", []>, Env>
 		: PeekToken<Tokens> extends TokenKey<"select">
 			? ParseParenEnclosedSelect<Tokens, Env["db"], Env["params"], Env["outerScope"]> extends [
 					infer R9 extends TokensList,
 					infer Sub,
 				]
 				? Sub extends DbtyperErrorShape
-					? SkipFailedExpression<R9, Sub>
+					? SkipFailedExpressionWithEnv<R9, Sub, Env>
 					: Sub extends JsqlSelectStatementResult
 						? [R9, Sub, Env]
 						: never
@@ -319,34 +330,50 @@ type ParseInListUntypedAfterInKw<Tokens extends TokensList, L extends ScalarExpr
 	PeekToken<Tokens> extends TokenKey<"in">
 		? SkipToken<Tokens> extends infer R8 extends TokensList
 			? PeekToken<R8> extends TokenKey<"(">
-				? ParseInListUntypedTail<SkipToken<R8>, Env> extends [infer R9 extends TokensList, infer ListRes, infer Env9 extends ExprParseEnv]
+				? ParseInListUntypedTail<SkipToken<R8>, Env> extends [
+						infer R9 extends TokensList,
+						infer ListRes,
+						infer Env9 extends ExprParseEnv,
+					]
 					? ListRes extends DbtyperErrorShape
-						? SkipFailedExpression<R9, ListRes>
+						? SkipFailedExpressionWithEnv<R9, ListRes, Env9>
 						: ListRes extends JsqlSelectStatementResult
 							? [R9, { kind: "in_subquery"; expr: L; sub: ListRes }, Env9]
 							: ListRes extends readonly ScalarExprAst[]
 								? [R9, { kind: "in_list"; expr: L; items: ListRes }, Env9]
 								: never
 					: never
-				: SkipFailedExpression<R8, FormatError<"EXPECTED_OPEN_PAREN_AFTER_IN", []>>
+				: SkipFailedExpressionWithEnv<R8, FormatError<"EXPECTED_OPEN_PAREN_AFTER_IN", []>, Env>
 			: never
 		: never
 
 type ParseBetweenAfterL<Tokens extends TokensList, L extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"between">
 		? SkipToken<Tokens> extends infer Rb extends TokensList
-			? ParseAddScalarUntyped<Rb, Env> extends [infer Rlow extends TokensList, infer Low, infer EnvLow extends ExprParseEnv]
+			? ParseAddScalarUntyped<Rb, Env> extends [
+					infer Rlow extends TokensList,
+					infer Low,
+					infer EnvLow extends ExprParseEnv,
+				]
 				? Low extends DbtyperErrorShape
-					? SkipFailedExpression<Rlow, Low>
+					? SkipFailedExpressionWithEnv<Rlow, Low, EnvLow>
 					: PeekToken<Rlow> extends TokenKey<"and">
 						? SkipToken<Rlow> extends infer Ra extends TokensList
-							? ParseOtherOpScalarUntyped<Ra, EnvLow> extends [infer Rh extends TokensList, infer High, infer EnvH extends ExprParseEnv]
+							? ParseOtherOpScalarUntyped<Ra, EnvLow> extends [
+									infer Rh extends TokensList,
+									infer High,
+									infer EnvH extends ExprParseEnv,
+								]
 								? High extends DbtyperErrorShape
-									? SkipFailedExpression<Rh, High>
+									? SkipFailedExpressionWithEnv<Rh, High, EnvH>
 									: [Rh, { kind: "between"; expr: L; low: Low; high: High }, EnvH]
 								: never
 							: never
-						: SkipFailedExpression<Rlow, FormatError<"EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS", []>>
+						: SkipFailedExpressionWithEnv<
+								Rlow,
+								FormatError<"EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS", []>,
+								EnvLow
+							>
 				: never
 			: never
 		: never
@@ -355,9 +382,13 @@ type ParseLikeAfterL<Tokens extends TokensList, L extends ScalarExprAst, CI exte
 	PeekToken<Tokens> extends infer TokKw
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? TokKw extends TokenKey<"like"> | TokenKey<"ilike">
-				? ParseOtherOpScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer Pat, infer Env2 extends ExprParseEnv]
+				? ParseOtherOpScalarUntyped<R1, Env> extends [
+						infer R2 extends TokensList,
+						infer Pat,
+						infer Env2 extends ExprParseEnv,
+					]
 					? Pat extends DbtyperErrorShape
-						? SkipFailedExpression<R2, Pat>
+						? SkipFailedExpressionWithEnv<R2, Pat, Env2>
 						: [R2, { kind: "like"; expr: L; pattern: Pat; case_insensitive: CI }, Env2]
 					: never
 				: never
@@ -369,16 +400,17 @@ type ParseCaseExpectEndKeyword<
 	Acc extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
 	ElseB extends ScalarExprAst | null,
 	Disc extends ScalarExprAst | null,
+	Env extends ExprParseEnv,
 > =
 	PeekToken<Tokens> extends TokenKey<"end">
 		? SkipToken<Tokens> extends infer Rend extends TokensList
 			? Acc extends readonly []
-				? SkipFailedExpression<Rend, FormatError<"CASE_REQUIRES_AT_LEAST_ONE_WHEN", []>>
+				? SkipFailedExpressionWithEnv<Rend, FormatError<"CASE_REQUIRES_AT_LEAST_ONE_WHEN", []>, Env>
 				: Disc extends null
-					? [Rend, { kind: "case_searched"; arms: Acc; else_: ElseB }]
-					: [Rend, { kind: "case_simple"; discriminant: Disc; arms: Acc; else_: ElseB }]
+					? [Rend, { kind: "case_searched"; arms: Acc; else_: ElseB }, Env]
+					: [Rend, { kind: "case_simple"; discriminant: Disc; arms: Acc; else_: ElseB }, Env]
 			: never
-		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_END_AFTER_CASE", []>>
+		: SkipFailedExpressionWithEnv<Tokens, FormatError<"EXPECTED_END_AFTER_CASE", []>, Env>
 
 type ParseCaseAfterOneArm<
 	Tokens extends TokensList,
@@ -390,17 +422,21 @@ type ParseCaseAfterOneArm<
 		? ParseCaseWhenArmsThenElseEnd<Tokens, Acc, Disc, Env>
 		: PeekToken<Tokens> extends TokenKey<"else">
 			? SkipToken<Tokens> extends infer Re extends TokensList
-				? ParseOrScalarUntyped<Re, Env> extends [infer Rel extends TokensList, infer Ea]
+				? ParseOrScalarUntyped<Re, Env> extends [
+						infer Rel extends TokensList,
+						infer Ea,
+						infer EnvEa extends ExprParseEnv,
+					]
 					? Ea extends DbtyperErrorShape
-						? SkipFailedExpression<Rel, Ea>
+						? SkipFailedExpressionWithEnv<Rel, Ea, EnvEa>
 						: Ea extends ScalarExprAst
-							? ParseCaseExpectEndKeyword<Rel, Acc, Ea, Disc>
+							? ParseCaseExpectEndKeyword<Rel, Acc, Ea, Disc, EnvEa>
 							: never
 					: never
 				: never
 			: PeekToken<Tokens> extends TokenKey<"end">
-				? ParseCaseExpectEndKeyword<Tokens, Acc, null, Disc>
-				: SkipFailedExpression<Tokens, FormatError<"EXPECTED_WHEN_ELSE_OR_END_IN_CASE", []>>
+				? ParseCaseExpectEndKeyword<Tokens, Acc, null, Disc, Env>
+				: SkipFailedExpressionWithEnv<Tokens, FormatError<"EXPECTED_WHEN_ELSE_OR_END_IN_CASE", []>, Env>
 
 type ParseCaseWhenArmsThenElseEnd<
 	Tokens extends TokensList,
@@ -410,26 +446,34 @@ type ParseCaseWhenArmsThenElseEnd<
 > =
 	PeekToken<Tokens> extends TokenKey<"when">
 		? SkipToken<Tokens> extends infer Rw extends TokensList
-			? ParseOrScalarUntyped<Rw, Env> extends [infer Rcond extends TokensList, infer Wast]
+			? ParseOrScalarUntyped<Rw, Env> extends [
+					infer Rcond extends TokensList,
+					infer Wast,
+					infer EnvW extends ExprParseEnv,
+				]
 				? Wast extends DbtyperErrorShape
-					? SkipFailedExpression<Rcond, Wast>
+					? SkipFailedExpressionWithEnv<Rcond, Wast, EnvW>
 					: Wast extends ScalarExprAst
 						? PeekToken<Rcond> extends TokenKey<"then">
 							? SkipToken<Rcond> extends infer Rt extends TokensList
-								? ParseOrScalarUntyped<Rt, Env> extends [infer Rth extends TokensList, infer Thast]
+								? ParseOrScalarUntyped<Rt, EnvW> extends [
+										infer Rth extends TokensList,
+										infer Thast,
+										infer EnvTh extends ExprParseEnv,
+									]
 									? Thast extends DbtyperErrorShape
-										? SkipFailedExpression<Rth, Thast>
+										? SkipFailedExpressionWithEnv<Rth, Thast, EnvTh>
 										: Thast extends ScalarExprAst
 											? ParseCaseAfterOneArm<
 													Rth,
 													readonly [...Acc, { when: Wast; then: Thast }],
 													Disc,
-													Env
+													EnvTh
 												>
 											: never
 									: never
 								: never
-							: SkipFailedExpression<Rcond, FormatError<"EXPECTED_THEN_AFTER_CASE_WHEN", []>>
+							: SkipFailedExpressionWithEnv<Rcond, FormatError<"EXPECTED_THEN_AFTER_CASE_WHEN", []>, EnvW>
 						: never
 				: never
 			: never
@@ -439,13 +483,17 @@ type ParseCaseWhenArmsThenElseEnd<
 type ParseCaseAfterCaseKw<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"when">
 		? ParseCaseWhenArmsThenElseEnd<Tokens, readonly [], null, Env>
-		: ParseOrScalarUntyped<Tokens, Env> extends [infer Rd extends TokensList, infer Dast]
+		: ParseOrScalarUntyped<Tokens, Env> extends [
+					infer Rd extends TokensList,
+					infer Dast,
+					infer EnvD extends ExprParseEnv,
+			  ]
 			? Dast extends DbtyperErrorShape
-				? SkipFailedExpression<Rd, Dast>
+				? SkipFailedExpressionWithEnv<Rd, Dast, EnvD>
 				: Dast extends ScalarExprAst
 					? PeekToken<Rd> extends TokenKey<"when">
-						? ParseCaseWhenArmsThenElseEnd<Rd, readonly [], Dast, Env>
-						: SkipFailedExpression<Rd, FormatError<"EXPECTED_WHEN_AFTER_CASE_EXPRESSION", []>>
+						? ParseCaseWhenArmsThenElseEnd<Rd, readonly [], Dast, EnvD>
+						: SkipFailedExpressionWithEnv<Rd, FormatError<"EXPECTED_WHEN_AFTER_CASE_EXPRESSION", []>, EnvD>
 					: never
 			: never
 
@@ -456,13 +504,13 @@ type ParseAfterIsUntyped<Tokens extends TokensList, L extends ScalarExprAst, Env
 				? SkipToken<R5> extends infer R6 extends TokensList
 					? [R6, { kind: "is_not_null"; expr: L }, Env]
 					: never
-				: SkipFailedExpression<R5, FormatError<"EXPECTED_NULL_AFTER_IS_NOT", []>>
+				: SkipFailedExpressionWithEnv<R5, FormatError<"EXPECTED_NULL_AFTER_IS_NOT", []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? SkipToken<Tokens> extends infer R7 extends TokensList
 				? [R7, { kind: "is_null"; expr: L }, Env]
 				: never
-			: SkipFailedExpression<Tokens, FormatError<"EXPECTED_NULL_AFTER_IS", []>>
+			: SkipFailedExpressionWithEnv<Tokens, FormatError<"EXPECTED_NULL_AFTER_IS", []>, Env>
 
 type IsRelOp<T> =
 	T extends TokenKey<"=">
@@ -493,7 +541,7 @@ type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, 
 									infer Sub,
 								]
 								? Sub extends DbtyperErrorShape
-									? SkipFailedExpression<R3, Sub>
+									? SkipFailedExpressionWithEnv<R3, Sub, Env>
 									: Sub extends JsqlSelectStatementResult
 										? TokenToCmpOp<OpToken> extends infer Op extends ScalarCmpOp
 											? Kw extends TokenKey<"any">
@@ -503,20 +551,32 @@ type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, 
 													: Kw extends TokenKey<"some">
 														? [R3, { kind: "some_op"; op: Op; left: L; right: Sub }, Env]
 														: never
-											: SkipFailedExpression<R3, never>
+											: SkipFailedExpressionWithEnv<R3, never, Env>
 										: never
 								: never
-							: ParseOrScalarUntyped<R2, Env> extends [infer R4 extends TokensList, infer ArrExpr, infer Env4 extends ExprParseEnv]
+							: ParseOrScalarUntyped<R2, Env> extends [
+										infer R4 extends TokensList,
+										infer ArrExpr,
+										infer Env4 extends ExprParseEnv,
+								  ]
 								? ArrExpr extends DbtyperErrorShape
-									? SkipFailedExpression<R4, ArrExpr>
+									? SkipFailedExpressionWithEnv<R4, ArrExpr, Env4>
 									: ArrExpr extends ScalarExprAst
 										? PeekToken<R4> extends TokenKey<")">
 											? SkipToken<R4> extends infer R5 extends TokensList
 												? TokenToCmpOp<OpToken> extends infer Op extends ScalarCmpOp
 													? Kw extends TokenKey<"any">
-														? [R5, { kind: "any_op"; op: Op; left: L; right: ArrExpr }, Env4]
+														? [
+																R5,
+																{ kind: "any_op"; op: Op; left: L; right: ArrExpr },
+																Env4,
+															]
 														: Kw extends TokenKey<"all">
-															? [R5, { kind: "all_op"; op: Op; left: L; right: ArrExpr }, Env4]
+															? [
+																	R5,
+																	{ kind: "all_op"; op: Op; left: L; right: ArrExpr },
+																	Env4,
+																]
 															: Kw extends TokenKey<"some">
 																? [
 																		R5,
@@ -526,22 +586,23 @@ type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, 
 																			left: L
 																			right: ArrExpr
 																		},
-																		Env4
+																		Env4,
 																	]
 																: never
-													: SkipFailedExpression<R5, never>
+													: SkipFailedExpressionWithEnv<R5, never, Env4>
 												: never
-											: SkipFailedExpression<
+											: SkipFailedExpressionWithEnv<
 													R4,
 													FormatError<
 														"EXPECTED_CLOSE_PAREN_AFTER_ANY_ALL_SOME_EXPRESSION",
 														[]
-													>
+													>,
+													Env4
 												>
 										: never
 								: never
 						: never
-					: SkipFailedExpression<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME", []>>
+					: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME", []>, Env>
 				: never
 			: never
 		: never
@@ -552,12 +613,16 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 			? SkipToken<Tokens> extends infer R2 extends TokensList
 				? PeekToken<R2> extends TokenKey<"any"> | TokenKey<"all"> | TokenKey<"some">
 					? ParseAnyAllSomeAfterOp<R2, L, P, Env>
-					: ParseOtherOpScalarUntyped<R2, Env> extends [infer R3 extends TokensList, infer Rhs, infer Env3 extends ExprParseEnv]
+					: ParseOtherOpScalarUntyped<R2, Env> extends [
+								infer R3 extends TokensList,
+								infer Rhs,
+								infer Env3 extends ExprParseEnv,
+						  ]
 						? Rhs extends DbtyperErrorShape
-							? SkipFailedExpression<R3, Rhs>
+							? SkipFailedExpressionWithEnv<R3, Rhs, Env3>
 							: TokenToCmpOp<P> extends infer Cop extends ScalarCmpOp
 								? [R3, { kind: "cmp"; op: Cop; left: L; right: Rhs }, Env3]
-								: SkipFailedExpression<R3, never>
+								: SkipFailedExpressionWithEnv<R3, never, Env3>
 						: never
 				: never
 			: P extends TokenKey<"is">
@@ -573,10 +638,10 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 								? ParseOtherOpScalarUntyped<Rregex, Env> extends [
 										infer Rrp extends TokensList,
 										infer Pat,
-										infer EnvRp extends ExprParseEnv
+										infer EnvRp extends ExprParseEnv,
 									]
 									? Pat extends DbtyperErrorShape
-										? SkipFailedExpression<Rrp, Pat>
+										? SkipFailedExpressionWithEnv<Rrp, Pat, EnvRp>
 										: [
 												Rrp,
 												{
@@ -585,7 +650,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 													pattern: Pat
 													case_insensitive: false
 												},
-												EnvRp
+												EnvRp,
 											]
 									: never
 								: never
@@ -594,10 +659,10 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 									? ParseOtherOpScalarUntyped<Rregexi, Env> extends [
 											infer Rrpi extends TokensList,
 											infer Pati,
-											infer EnvRpi extends ExprParseEnv
+											infer EnvRpi extends ExprParseEnv,
 										]
 										? Pati extends DbtyperErrorShape
-											? SkipFailedExpression<Rrpi, Pati>
+											? SkipFailedExpressionWithEnv<Rrpi, Pati, EnvRpi>
 											: [
 													Rrpi,
 													{
@@ -606,7 +671,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 														pattern: Pati
 														case_insensitive: true
 													},
-													EnvRpi
+													EnvRpi,
 												]
 										: never
 									: never
@@ -615,10 +680,10 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 										? ParseOtherOpScalarUntyped<Rnotregex, Env> extends [
 												infer Rrpn extends TokensList,
 												infer Patn,
-												infer EnvRpn extends ExprParseEnv
+												infer EnvRpn extends ExprParseEnv,
 											]
 											? Patn extends DbtyperErrorShape
-												? SkipFailedExpression<Rrpn, Patn>
+												? SkipFailedExpressionWithEnv<Rrpn, Patn, EnvRpn>
 												: [
 														Rrpn,
 														{
@@ -630,7 +695,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 																case_insensitive: false
 															}
 														},
-														EnvRpn
+														EnvRpn,
 													]
 											: never
 										: never
@@ -639,10 +704,10 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 											? ParseOtherOpScalarUntyped<Rnotregexi, Env> extends [
 													infer Rrpni extends TokensList,
 													infer Patni,
-													infer EnvRpni extends ExprParseEnv
+													infer EnvRpni extends ExprParseEnv,
 												]
 												? Patni extends DbtyperErrorShape
-													? SkipFailedExpression<Rrpni, Patni>
+													? SkipFailedExpressionWithEnv<Rrpni, Patni, EnvRpni>
 													: [
 															Rrpni,
 															{
@@ -654,7 +719,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 																	case_insensitive: true
 																}
 															},
-															EnvRpni
+															EnvRpni,
 														]
 												: never
 											: never
@@ -666,9 +731,13 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends TokensList, L extends Scal
 		: never
 
 type ParseRelScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
-	ParseOtherOpScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E1, infer Env1 extends ExprParseEnv]
+	ParseOtherOpScalarUntyped<Tokens, Env> extends [
+		infer R1 extends TokensList,
+		infer E1,
+		infer Env1 extends ExprParseEnv,
+	]
 		? E1 extends DbtyperErrorShape
-			? SkipFailedExpression<R1, E1>
+			? SkipFailedExpressionWithEnv<R1, E1, Env1>
 			: E1 extends ScalarExprAst
 				? ParseAfterAddScalarRelIsInUntyped<R1, E1, Env1>
 				: never
@@ -685,20 +754,24 @@ type ParseNotScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> 
 								infer Sub,
 							]
 							? Sub extends DbtyperErrorShape
-								? SkipFailedExpression<Rex2, Sub>
+								? SkipFailedExpressionWithEnv<Rex2, Sub, Env>
 								: Sub extends JsqlSelectStatementResult
 									? [Rex2, { kind: "exists_subquery"; sub: Sub }, Env]
 									: never
 							: never
-						: SkipFailedExpression<Rex1, FormatError<"EXPECTED_SELECT_IN_EXISTS_SUBQUERY", []>>
+						: SkipFailedExpressionWithEnv<Rex1, FormatError<"EXPECTED_SELECT_IN_EXISTS_SUBQUERY", []>, Env>
 					: never
-				: SkipFailedExpression<Rex0, FormatError<"EXPECTED_OPEN_PAREN_AFTER_EXISTS", []>>
+				: SkipFailedExpressionWithEnv<Rex0, FormatError<"EXPECTED_OPEN_PAREN_AFTER_EXISTS", []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"not">
 			? SkipToken<Tokens> extends infer Rn extends TokensList
-				? ParseNotScalarUntyped<Rn, Env> extends [infer Ru extends TokensList, infer U, infer EnvU extends ExprParseEnv]
+				? ParseNotScalarUntyped<Rn, Env> extends [
+						infer Ru extends TokensList,
+						infer U,
+						infer EnvU extends ExprParseEnv,
+					]
 					? U extends DbtyperErrorShape
-						? SkipFailedExpression<Ru, U>
+						? SkipFailedExpressionWithEnv<Ru, U, EnvU>
 						: U extends ScalarExprAst
 							? [Ru, { kind: "not"; inner: U }, EnvU]
 							: never
@@ -709,9 +782,13 @@ type ParseNotScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> 
 type ParseAndLoopScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"and">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseNotScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1, infer Env1 extends ExprParseEnv]
+			? ParseNotScalarUntyped<R1, Env> extends [
+					infer R2 extends TokensList,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+				]
 				? E1 extends DbtyperErrorShape
-					? SkipFailedExpression<R2, E1>
+					? SkipFailedExpressionWithEnv<R2, E1, Env1>
 					: E1 extends ScalarExprAst
 						? ParseAndLoopScalarUntyped<R2, { kind: "and"; left: Acc; right: E1 }, Env1>
 						: never
@@ -722,7 +799,7 @@ type ParseAndLoopScalarUntyped<Tokens extends TokensList, Acc extends ScalarExpr
 type ParseAndScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	ParseNotScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0, infer Env0 extends ExprParseEnv]
 		? E0 extends DbtyperErrorShape
-			? SkipFailedExpression<R0, E0>
+			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ParseAndLoopScalarUntyped<R0, E0, Env0>
 				: never
@@ -731,9 +808,13 @@ type ParseAndScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> 
 type ParseOrLoopScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"or">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseAndScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1, infer Env1 extends ExprParseEnv]
+			? ParseAndScalarUntyped<R1, Env> extends [
+					infer R2 extends TokensList,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+				]
 				? E1 extends DbtyperErrorShape
-					? SkipFailedExpression<R2, E1>
+					? SkipFailedExpressionWithEnv<R2, E1, Env1>
 					: E1 extends ScalarExprAst
 						? ParseOrLoopScalarUntyped<R2, { kind: "or"; left: Acc; right: E1 }, Env1>
 						: never
@@ -744,7 +825,7 @@ type ParseOrLoopScalarUntyped<Tokens extends TokensList, Acc extends ScalarExprA
 type ParseOrScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	ParseAndScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0, infer Env0 extends ExprParseEnv]
 		? E0 extends DbtyperErrorShape
-			? SkipFailedExpression<R0, E0>
+			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ParseOrLoopScalarUntyped<R0, E0, Env0>
 				: never
@@ -1386,7 +1467,10 @@ type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Na
 	? Params[Name]
 	: FormatError<"UNKNOWN_QUERY_PARAMETER", [Name]>
 
-type LookupPositionalParam<Params extends ExpressionParamsShape, Index extends number> = Params extends readonly SqlTypeShape[]
+type LookupPositionalParam<
+	Params extends ExpressionParamsShape,
+	Index extends number,
+> = Params extends readonly SqlTypeShape[]
 	? Index extends keyof Params
 		? Params[Index]
 		: FormatError<"POSITIONAL_PARAMETER_OUT_OF_BOUNDS", [Index]>
@@ -1412,17 +1496,22 @@ type ParseFunctionArgsAccum<
 > =
 	PeekToken<Tokens> extends TokenKey<")">
 		? [SkipToken<Tokens>, Acc, Env]
-		: ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E, infer Env1 extends ExprParseEnv]
+		: ParseOrScalarUntyped<Tokens, Env> extends [
+					infer R1 extends TokensList,
+					infer E,
+					infer Env1 extends ExprParseEnv,
+			  ]
 			? E extends DbtyperErrorShape
-				? SkipFailedExpression<R1, E>
+				? SkipFailedExpressionWithEnv<R1, E, Env1>
 				: E extends ScalarExprAst
 					? PeekToken<R1> extends TokenKey<")">
 						? [SkipToken<R1>, readonly [...Acc, E], Env1]
 						: PeekToken<R1> extends TokenKey<",">
 							? ParseFunctionArgsAccum<SkipToken<R1>, Env1, readonly [...Acc, E]>
-							: SkipFailedExpression<
+							: SkipFailedExpressionWithEnv<
 									R1,
-									FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST", []>
+									FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST", []>,
+									Env1
 								>
 					: never
 			: never
@@ -1432,7 +1521,7 @@ type ParseFunctionArgs<Tokens extends TokensList, Env extends ExprParseEnv> =
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<")">
 				? [SkipToken<R1>, readonly [{ kind: "star" }], Env]
-				: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_STAR", []>>
+				: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_STAR", []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
 			? [SkipToken<Tokens>, readonly [], Env]
@@ -1450,7 +1539,7 @@ type ParseOptionalOverClause<
 				? SkipToken<R1> extends infer R2 extends TokensList
 					? ParseWindowClauseContent<R2, FnName, Args, Env>
 					: never
-				: SkipFailedExpression<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OVER", []>>
+				: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OVER", []>, Env>
 			: never
 		: [Tokens, { kind: "function_call"; name: FnName; args: Args }, Env]
 
@@ -1466,12 +1555,13 @@ type ParseWindowClauseContent<
 				? ParseWindowPartitionByList<SkipToken<R1>, Env> extends [
 						infer R2 extends TokensList,
 						infer PartitionList,
+						infer Env2 extends ExprParseEnv,
 					]
 					? PartitionList extends DbtyperErrorShape
-						? SkipFailedExpression<R2, PartitionList>
+						? SkipFailedExpressionWithEnv<R2, PartitionList, Env2>
 						: PartitionList extends readonly ScalarExprAst[]
 							? PeekToken<R2> extends TokenKey<"order">
-								? ParseWindowOrderByAfterPartition<R2, FnName, Args, PartitionList, Env>
+								? ParseWindowOrderByAfterPartition<R2, FnName, Args, PartitionList, Env2>
 								: PeekToken<R2> extends TokenKey<")">
 									? [
 											SkipToken<R2>,
@@ -1481,18 +1571,24 @@ type ParseWindowClauseContent<
 												args: Args
 												over: { partition_by: PartitionList; order_by: readonly [] }
 											},
+											Env2,
 										]
-									: SkipFailedExpression<
+									: SkipFailedExpressionWithEnv<
 											R2,
-											FormatError<"EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY", []>
+											FormatError<"EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY", []>,
+											Env2
 										>
 							: never
 					: never
-				: SkipFailedExpression<R1, FormatError<"EXPECTED_BY_AFTER_PARTITION", []>>
+				: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_BY_AFTER_PARTITION", []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"order">
 			? ParseWindowOrderByWithoutPartition<Tokens, FnName, Args, Env>
-			: SkipFailedExpression<Tokens, FormatError<"EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE", []>>
+			: SkipFailedExpressionWithEnv<
+					Tokens,
+					FormatError<"EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE", []>,
+					Env
+				>
 
 type ParseWindowOrderByWithoutPartition<
 	Tokens extends TokensList,
@@ -1502,9 +1598,13 @@ type ParseWindowOrderByWithoutPartition<
 > =
 	SkipToken<Tokens> extends infer R3 extends TokensList
 		? PeekToken<R3> extends TokenKey<"by">
-			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [infer R4 extends TokensList, infer OrderList]
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
+					infer R4 extends TokensList,
+					infer OrderList,
+					infer Env4 extends ExprParseEnv,
+				]
 				? OrderList extends DbtyperErrorShape
-					? SkipFailedExpression<R4, OrderList>
+					? SkipFailedExpressionWithEnv<R4, OrderList, Env4>
 					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
 						? PeekToken<R4> extends TokenKey<")">
 							? [
@@ -1515,11 +1615,16 @@ type ParseWindowOrderByWithoutPartition<
 										args: Args
 										over: { order_by: OrderList }
 									},
+									Env4,
 								]
-							: SkipFailedExpression<R4, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE", []>>
+							: SkipFailedExpressionWithEnv<
+									R4,
+									FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE", []>,
+									Env4
+								>
 						: never
 				: never
-			: SkipFailedExpression<R3, FormatError<"EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE", []>>
+			: SkipFailedExpressionWithEnv<R3, FormatError<"EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE", []>, Env>
 		: never
 
 type ParseWindowOrderByAfterPartition<
@@ -1531,9 +1636,13 @@ type ParseWindowOrderByAfterPartition<
 > =
 	SkipToken<Tokens> extends infer R3 extends TokensList
 		? PeekToken<R3> extends TokenKey<"by">
-			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [infer R4 extends TokensList, infer OrderList]
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
+					infer R4 extends TokensList,
+					infer OrderList,
+					infer Env4 extends ExprParseEnv,
+				]
 				? OrderList extends DbtyperErrorShape
-					? SkipFailedExpression<R4, OrderList>
+					? SkipFailedExpressionWithEnv<R4, OrderList, Env4>
 					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
 						? PeekToken<R4> extends TokenKey<")">
 							? [
@@ -1544,11 +1653,16 @@ type ParseWindowOrderByAfterPartition<
 										args: Args
 										over: { partition_by: PartitionList; order_by: OrderList }
 									},
+									Env4,
 								]
-							: SkipFailedExpression<R4, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE", []>>
+							: SkipFailedExpressionWithEnv<
+									R4,
+									FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE", []>,
+									Env4
+								>
 						: never
 				: never
-			: SkipFailedExpression<R3, FormatError<"EXPECTED_BY_AFTER_ORDER", []>>
+			: SkipFailedExpressionWithEnv<R3, FormatError<"EXPECTED_BY_AFTER_ORDER", []>, Env>
 		: never
 
 type ParseWindowPartitionByList<
@@ -1556,13 +1670,13 @@ type ParseWindowPartitionByList<
 	Env extends ExprParseEnv,
 	Acc extends readonly ScalarExprAst[] = readonly [],
 > =
-	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr]
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr, infer Env1 extends ExprParseEnv]
 		? Expr extends DbtyperErrorShape
-			? SkipFailedExpression<R1, Expr>
+			? SkipFailedExpressionWithEnv<R1, Expr, Env1>
 			: Expr extends ScalarExprAst
 				? PeekToken<R1> extends TokenKey<",">
-					? ParseWindowPartitionByList<SkipToken<R1>, Env, readonly [...Acc, Expr]>
-					: [R1, readonly [...Acc, Expr]]
+					? ParseWindowPartitionByList<SkipToken<R1>, Env1, readonly [...Acc, Expr]>
+					: [R1, readonly [...Acc, Expr], Env1]
 				: never
 		: never
 
@@ -1571,23 +1685,23 @@ type ParseWindowOrderByList<
 	Env extends ExprParseEnv,
 	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[] = readonly [],
 > =
-	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr]
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Expr, infer Env1 extends ExprParseEnv]
 		? Expr extends DbtyperErrorShape
-			? SkipFailedExpression<R1, Expr>
+			? SkipFailedExpressionWithEnv<R1, Expr, Env1>
 			: Expr extends ScalarExprAst
 				? PeekToken<R1> extends TokenKey<"asc">
 					? ParseWindowOrderByListTail<
 							SkipToken<R1>,
-							Env,
+							Env1,
 							readonly [...Acc, { expr: Expr; direction: "asc" }]
 						>
 					: PeekToken<R1> extends TokenKey<"desc">
 						? ParseWindowOrderByListTail<
 								SkipToken<R1>,
-								Env,
+								Env1,
 								readonly [...Acc, { expr: Expr; direction: "desc" }]
 							>
-						: ParseWindowOrderByListTail<R1, Env, readonly [...Acc, { expr: Expr; direction: null }]>
+						: ParseWindowOrderByListTail<R1, Env1, readonly [...Acc, { expr: Expr; direction: null }]>
 				: never
 		: never
 
@@ -1595,7 +1709,7 @@ type ParseWindowOrderByListTail<
 	Tokens extends TokensList,
 	Env extends ExprParseEnv,
 	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
-> = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc]
+> = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc, Env]
 
 type SqlComparisonClass<Sql extends string> = Sql extends `${infer Base}[]`
 	? `array_${SqlComparisonClass<Base>}`
@@ -2132,17 +2246,22 @@ type ParseArrayCtorElementsAccum<
 > =
 	PeekToken<Tokens> extends TokenKey<"]">
 		? [SkipToken<Tokens>, Acc, Env]
-		: ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer Ele, infer Env1 extends ExprParseEnv]
+		: ParseOrScalarUntyped<Tokens, Env> extends [
+					infer R1 extends TokensList,
+					infer Ele,
+					infer Env1 extends ExprParseEnv,
+			  ]
 			? Ele extends DbtyperErrorShape
-				? SkipFailedExpression<R1, Ele>
+				? SkipFailedExpressionWithEnv<R1, Ele, Env1>
 				: Ele extends ScalarExprAst
 					? PeekToken<R1> extends TokenKey<"]">
 						? [SkipToken<R1>, readonly [...Acc, Ele], Env1]
 						: PeekToken<R1> extends TokenKey<",">
 							? ParseArrayCtorElementsAccum<SkipToken<R1>, readonly [...Acc, Ele], Env1>
-							: SkipFailedExpression<
+							: SkipFailedExpressionWithEnv<
 									R1,
-									FormatError<"EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR", []>
+									FormatError<"EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR", []>,
+									Env1
 								>
 					: never
 			: never
@@ -2152,9 +2271,13 @@ type ParseArrayCtorAfterArrayKw<Tokens extends TokensList, Env extends ExprParse
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<"]">
 				? [SkipToken<R1>, { kind: "array_ctor"; elements: readonly [] }, Env]
-				: ParseArrayCtorElementsAccum<R1, readonly [], Env> extends [infer R2 extends TokensList, infer Out, infer Env2 extends ExprParseEnv]
+				: ParseArrayCtorElementsAccum<R1, readonly [], Env> extends [
+							infer R2 extends TokensList,
+							infer Out,
+							infer Env2 extends ExprParseEnv,
+					  ]
 					? Out extends DbtyperErrorShape
-						? SkipFailedExpression<R2, Out>
+						? SkipFailedExpressionWithEnv<R2, Out, Env2>
 						: Out extends readonly ScalarExprAst[]
 							? [R2, { kind: "array_ctor"; elements: Out }, Env2]
 							: never
@@ -2165,15 +2288,23 @@ type ParseArrayCtorAfterArrayKw<Tokens extends TokensList, Env extends ExprParse
 type ParsePostfixArrayIndexTail<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"[">
 		? SkipToken<Tokens> extends infer Ri extends TokensList
-			? ParseOrScalarUntyped<Ri, Env> extends [infer Rj extends TokensList, infer Idx, infer EnvIdx extends ExprParseEnv]
+			? ParseOrScalarUntyped<Ri, Env> extends [
+					infer Rj extends TokensList,
+					infer Idx,
+					infer EnvIdx extends ExprParseEnv,
+				]
 				? Idx extends DbtyperErrorShape
-					? SkipFailedExpression<Rj, Idx>
+					? SkipFailedExpressionWithEnv<Rj, Idx, EnvIdx>
 					: Idx extends ScalarExprAst
 						? PeekToken<Rj> extends TokenKey<"]">
 							? SkipToken<Rj> extends infer Rk extends TokensList
 								? ParsePostfixArrayIndexTail<Rk, { kind: "array_index"; base: Acc; index: Idx }, EnvIdx>
 								: never
-							: SkipFailedExpression<Rj, FormatError<"EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT", []>>
+							: SkipFailedExpressionWithEnv<
+									Rj,
+									FormatError<"EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT", []>,
+									EnvIdx
+								>
 						: never
 				: never
 			: never
@@ -2188,7 +2319,7 @@ type TryParenOperandScalarUntyped<Tokens extends TokensList, Env extends ExprPar
 						infer Sub,
 					]
 					? Sub extends DbtyperErrorShape
-						? SkipFailedExpression<Rk, Sub>
+						? SkipFailedExpressionWithEnv<Rk, Sub, Env>
 						: Sub extends JsqlSelectStatementResult
 							? [Rk, { kind: "scalar_subquery"; sel: Sub }, Env]
 							: never
@@ -2199,19 +2330,27 @@ type TryParenOperandScalarUntyped<Tokens extends TokensList, Env extends ExprPar
 							infer Subw,
 						]
 						? Subw extends DbtyperErrorShape
-							? SkipFailedExpression<Rw, Subw>
+							? SkipFailedExpressionWithEnv<Rw, Subw, Env>
 							: Subw extends JsqlSelectStatementResult
 								? [Rw, { kind: "scalar_subquery"; sel: Subw }, Env]
 								: never
 						: never
-					: ParseOrScalarUntyped<Ri, Env> extends [infer Rj extends TokensList, infer Ej, infer EnvJ extends ExprParseEnv]
+					: ParseOrScalarUntyped<Ri, Env> extends [
+								infer Rj extends TokensList,
+								infer Ej,
+								infer EnvJ extends ExprParseEnv,
+						  ]
 						? Ej extends DbtyperErrorShape
-							? SkipFailedExpression<Rj, Ej>
+							? SkipFailedExpressionWithEnv<Rj, Ej, EnvJ>
 							: PeekToken<Rj> extends infer TokCl
 								? SkipToken<Rj> extends infer Rk2 extends TokensList
 									? TokCl extends TokenKey<")">
 										? [Rk2, Ej, EnvJ]
-										: SkipFailedExpression<Rk2, FormatError<"EXPECTED_CLOSE_PAREN", []>>
+										: SkipFailedExpressionWithEnv<
+												Rk2,
+												FormatError<"EXPECTED_CLOSE_PAREN", []>,
+												EnvJ
+											>
 									: never
 								: never
 						: never
@@ -2227,9 +2366,13 @@ type TryOperandScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv
 				: never
 			: PeekToken<Tokens> extends TokenKey<"array">
 				? SkipToken<Tokens> extends infer RarrKw extends TokensList
-					? ParseArrayCtorAfterArrayKw<RarrKw, Env> extends [infer Rarr extends TokensList, infer ArrOut, infer EnvArr extends ExprParseEnv]
+					? ParseArrayCtorAfterArrayKw<RarrKw, Env> extends [
+							infer Rarr extends TokensList,
+							infer ArrOut,
+							infer EnvArr extends ExprParseEnv,
+						]
 						? ArrOut extends DbtyperErrorShape
-							? SkipFailedExpression<Rarr, ArrOut>
+							? SkipFailedExpressionWithEnv<Rarr, ArrOut, EnvArr>
 							: ArrOut extends ScalarExprAst
 								? [Rarr, ArrOut, EnvArr]
 								: never
@@ -2261,28 +2404,47 @@ type TryOperandScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv
 											? SkipToken<Tokens> extends infer Rp extends TokensList
 												? [Rp, { kind: "param"; name: P }, Env]
 												: never
-										: PeekToken<Tokens> extends TokenKey<"?">
-											? SkipToken<Tokens> extends infer Rpp extends TokensList
-												? [Rpp, { kind: "positional-param"; index: GetPositionalParamIndex<Env> }, IncrementPositionalParamIndex<Env>]
-												: never
+											: PeekToken<Tokens> extends TokenKey<"?">
+												? SkipToken<Tokens> extends infer Rpp extends TokensList
+													? [
+															Rpp,
+															{
+																kind: "positional-param"
+																index: GetPositionalParamIndex<Env>
+															},
+															IncrementPositionalParamIndex<Env>,
+														]
+													: never
 												: SkipToken<Tokens> extends infer Rbad extends TokensList
-													? SkipFailedExpression<Rbad, FormatError<"UNEXPECTED_TOKEN", []>>
+													? SkipFailedExpressionWithEnv<
+															Rbad,
+															FormatError<"UNEXPECTED_TOKEN", []>,
+															Env
+														>
 													: never
 
 type ParseUnaryScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"-">
 		? SkipToken<Tokens> extends infer Rn extends TokensList
-			? ParseUnaryScalarUntyped<Rn, Env> extends [infer Ru extends TokensList, infer U, infer EnvU extends ExprParseEnv]
+			? ParseUnaryScalarUntyped<Rn, Env> extends [
+					infer Ru extends TokensList,
+					infer U,
+					infer EnvU extends ExprParseEnv,
+				]
 				? U extends DbtyperErrorShape
-					? SkipFailedExpression<Ru, U>
+					? SkipFailedExpressionWithEnv<Ru, U, EnvU>
 					: U extends ScalarExprAst
 						? [Ru, { kind: "neg"; inner: U }, EnvU]
 						: never
 				: never
 			: never
-		: TryOperandScalarUntyped<Tokens, Env> extends [infer Tu extends TokensList, infer Bu, infer EnvB extends ExprParseEnv]
+		: TryOperandScalarUntyped<Tokens, Env> extends [
+					infer Tu extends TokensList,
+					infer Bu,
+					infer EnvB extends ExprParseEnv,
+			  ]
 			? Bu extends DbtyperErrorShape
-				? SkipFailedExpression<Tu, Bu>
+				? SkipFailedExpressionWithEnv<Tu, Bu, EnvB>
 				: Bu extends ScalarExprAst
 					? ParsePgCastSuffixTail<Tu, Bu> extends [
 							infer Tp extends TokensList,
@@ -2300,9 +2462,13 @@ type ParseMulLoopAfterFirstScalarUntyped<
 > =
 	PeekToken<Tokens> extends TokenKey<"*" | "/" | "%">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseExpScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1, infer Env1 extends ExprParseEnv]
+			? ParseExpScalarUntyped<R1, Env> extends [
+					infer R2 extends TokensList,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+				]
 				? E1 extends DbtyperErrorShape
-					? SkipFailedExpression<R2, E1>
+					? SkipFailedExpressionWithEnv<R2, E1, Env1>
 					: E1 extends ScalarExprAst
 						? PeekToken<Tokens> extends TokenKey<"%">
 							? ParseMulLoopAfterFirstScalarUntyped<R2, { kind: "mod"; left: Acc; right: E1 }, Env1>
@@ -2315,9 +2481,13 @@ type ParseMulLoopAfterFirstScalarUntyped<
 type ParseExpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"^">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseUnaryScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer E1, infer Env1 extends ExprParseEnv]
+			? ParseUnaryScalarUntyped<R1, Env> extends [
+					infer R2 extends TokensList,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+				]
 				? E1 extends DbtyperErrorShape
-					? SkipFailedExpression<R2, E1>
+					? SkipFailedExpressionWithEnv<R2, E1, Env1>
 					: E1 extends ScalarExprAst
 						? ParseExpLoop<R2, { kind: "exp"; left: Acc; right: E1 }, Env1>
 						: never
@@ -2326,9 +2496,13 @@ type ParseExpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env exte
 		: [Tokens, Acc, Env]
 
 type ParseExpScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
-	ParseUnaryScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0, infer Env0 extends ExprParseEnv]
+	ParseUnaryScalarUntyped<Tokens, Env> extends [
+		infer R0 extends TokensList,
+		infer E0,
+		infer Env0 extends ExprParseEnv,
+	]
 		? E0 extends DbtyperErrorShape
-			? SkipFailedExpression<R0, E0>
+			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ParseExpLoop<R0, E0, Env0>
 				: never
@@ -2337,7 +2511,7 @@ type ParseExpScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> 
 type ParseMulScalarUntypedEntry<Tokens extends TokensList, Env extends ExprParseEnv> =
 	ParseExpScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0, infer Env0 extends ExprParseEnv]
 		? E0 extends DbtyperErrorShape
-			? SkipFailedExpression<R0, E0>
+			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ScalarAstNonNumericForMulHead<E0> extends true
 					? PeekToken<R0> extends infer P
@@ -2348,7 +2522,7 @@ type ParseMulScalarUntypedEntry<Tokens extends TokensList, Env extends ExprParse
 								| TokenKey<"/">
 								| TokenKey<"%">
 								| TokenKey<"^">
-							? SkipFailedExpression<R0, FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>>
+							? SkipFailedExpressionWithEnv<R0, FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>, Env0>
 							: [R0, E0, Env0]
 						: never
 					: ParseMulLoopAfterFirstScalarUntyped<R0, E0, Env0>
@@ -2386,6 +2560,7 @@ type IsOtherOp<T> =
 					| "~*"
 					| "!~"
 					| "!~*"
+					| "?"
 				? false
 				: true
 			: false
@@ -2396,9 +2571,13 @@ type ParseOtherOpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env 
 		? IsOtherOp<P> extends true
 			? SkipToken<Tokens> extends infer R1 extends TokensList
 				? P extends TokenKey<infer Op>
-					? ParseAddScalarUntyped<R1, Env> extends [infer R2 extends TokensList, infer Rhs, infer Env2 extends ExprParseEnv]
+					? ParseAddScalarUntyped<R1, Env> extends [
+							infer R2 extends TokensList,
+							infer Rhs,
+							infer Env2 extends ExprParseEnv,
+						]
 						? Rhs extends DbtyperErrorShape
-							? SkipFailedExpression<R2, Rhs>
+							? SkipFailedExpressionWithEnv<R2, Rhs, Env2>
 							: Rhs extends ScalarExprAst
 								? ParseOtherOpLoop<R2, { kind: "custom_op"; op: Op; left: Acc; right: Rhs }, Env2>
 								: never
@@ -2416,10 +2595,10 @@ type ParseOtherOpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env 
 											? ParseAddScalarUntyped<R4, Env> extends [
 													infer R5 extends TokensList,
 													infer Rhs,
-													infer Env5 extends ExprParseEnv
+													infer Env5 extends ExprParseEnv,
 												]
 												? Rhs extends DbtyperErrorShape
-													? SkipFailedExpression<R5, Rhs>
+													? SkipFailedExpressionWithEnv<R5, Rhs, Env5>
 													: Rhs extends ScalarExprAst
 														? ParseOtherOpLoop<
 																R5,
@@ -2429,17 +2608,19 @@ type ParseOtherOpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env 
 														: never
 												: never
 											: never
-										: SkipFailedExpression<
+										: SkipFailedExpressionWithEnv<
 												R3,
-												FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN", []>
+												FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN", []>,
+												Env
 											>
 									: never
-								: SkipFailedExpression<
+								: SkipFailedExpressionWithEnv<
 										R2,
-										FormatError<"EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN", []>
+										FormatError<"EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN", []>,
+										Env
 									>
 							: never
-						: SkipFailedExpression<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OPERATOR", []>>
+						: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OPERATOR", []>, Env>
 					: never
 				: [Tokens, Acc, Env]
 		: [Tokens, Acc]
@@ -2447,7 +2628,7 @@ type ParseOtherOpLoop<Tokens extends TokensList, Acc extends ScalarExprAst, Env 
 type ParseOtherOpScalarUntyped<Tokens extends TokensList, Env extends ExprParseEnv> =
 	ParseAddScalarUntyped<Tokens, Env> extends [infer R0 extends TokensList, infer E0, infer Env0 extends ExprParseEnv]
 		? E0 extends DbtyperErrorShape
-			? SkipFailedExpression<R0, E0>
+			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ParseOtherOpLoop<R0, E0, Env0>
 				: never
@@ -2460,9 +2641,13 @@ type ParseAddLoopAfterPlusScalarUntyped<
 > =
 	PeekToken<Tokens> extends TokenKey<"+">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseMulScalarUntypedEntry<R1, Env> extends [infer R2 extends TokensList, infer E1, infer Env1 extends ExprParseEnv]
+			? ParseMulScalarUntypedEntry<R1, Env> extends [
+					infer R2 extends TokensList,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+				]
 				? E1 extends DbtyperErrorShape
-					? SkipFailedExpression<R2, E1>
+					? SkipFailedExpressionWithEnv<R2, E1, Env1>
 					: E1 extends ScalarExprAst
 						? ParseAddLoopAfterFirstScalarUntyped<R2, MergeScalarAstAddSub<"add", Acc, E1>, Env1>
 						: never
@@ -2477,9 +2662,13 @@ type ParseAddLoopAfterMinusScalarUntyped<
 > =
 	PeekToken<Tokens> extends TokenKey<"-">
 		? SkipToken<Tokens> extends infer R3 extends TokensList
-			? ParseMulScalarUntypedEntry<R3, Env> extends [infer R4 extends TokensList, infer E2, infer Env2 extends ExprParseEnv]
+			? ParseMulScalarUntypedEntry<R3, Env> extends [
+					infer R4 extends TokensList,
+					infer E2,
+					infer Env2 extends ExprParseEnv,
+				]
 				? E2 extends DbtyperErrorShape
-					? SkipFailedExpression<R4, E2>
+					? SkipFailedExpressionWithEnv<R4, E2, Env2>
 					: E2 extends ScalarExprAst
 						? ParseAddLoopAfterFirstScalarUntyped<R4, MergeScalarAstAddSub<"sub", Acc, E2>, Env2>
 						: never
@@ -2508,10 +2697,11 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 			? PeekToken<Rm> extends TokenKey<"(">
 				? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends TokensList, infer Rs]
 					? Rs extends DbtyperErrorShape
-						? SkipFailedExpression<After, FormatError<"UNBALANCED_PARENTHESES", []>>
-						: SkipFailedExpression<
+						? SkipFailedExpressionWithEnv<After, FormatError<"UNBALANCED_PARENTHESES", []>, Env>
+						: SkipFailedExpressionWithEnv<
 								SkipToken<After>,
-								FormatError<"UNSUPPORTED_PARENTHESIZED_EXPRESSION", []>
+								FormatError<"UNSUPPORTED_PARENTHESIZED_EXPRESSION", []>,
+								Env
 							>
 					: never
 				: [Rm, { kind: "alias_table_star"; alias: Al }, Env]
@@ -2522,24 +2712,30 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 							infer Rs,
 						]
 						? Rs extends DbtyperErrorShape
-							? SkipFailedExpression<After, FormatError<"UNBALANCED_PARENTHESES", []>>
-							: SkipFailedExpression<
+							? SkipFailedExpressionWithEnv<After, FormatError<"UNBALANCED_PARENTHESES", []>, Env>
+							: SkipFailedExpressionWithEnv<
 									SkipToken<After>,
-									FormatError<"UNSUPPORTED_PARENTHESIZED_EXPRESSION", []>
+									FormatError<"UNSUPPORTED_PARENTHESIZED_EXPRESSION", []>,
+									Env
 								>
 						: never
 					: [Rm, { kind: "qualified_table_star"; schema: Sch; table: Tab }, Env]
 				: Parts extends ScalarIdentParts
 					? PeekToken<Rm> extends TokenKey<"(">
-						? ParseFunctionArgs<SkipToken<Rm>, Env> extends [infer After extends TokensList, infer Args, infer EnvAfter extends ExprParseEnv]
+						? ParseFunctionArgs<SkipToken<Rm>, Env> extends [
+								infer After extends TokensList,
+								infer Args,
+								infer EnvAfter extends ExprParseEnv,
+							]
 							? Args extends DbtyperErrorShape
-								? SkipFailedExpression<After, Args>
+								? SkipFailedExpressionWithEnv<After, Args, EnvAfter>
 								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 									? Parts extends readonly [infer FnName extends string]
 										? ParseOptionalOverClause<After, FnName, Args, EnvAfter>
-										: SkipFailedExpression<
+										: SkipFailedExpressionWithEnv<
 												After,
-												FormatError<"QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED", []>
+												FormatError<"QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED", []>,
+												EnvAfter
 											>
 									: never
 							: never
@@ -2561,14 +2757,18 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 		: never
 
 type ParseScalarExprUntypedNonIdent<Tokens extends TokensList, Env extends ExprParseEnv> =
-	ParseMulScalarUntypedEntry<Tokens, Env> extends [infer R0 extends TokensList, infer E0, infer Env0 extends ExprParseEnv]
+	ParseMulScalarUntypedEntry<Tokens, Env> extends [
+		infer R0 extends TokensList,
+		infer E0,
+		infer Env0 extends ExprParseEnv,
+	]
 		? E0 extends DbtyperErrorShape
-			? SkipFailedExpression<R0, E0>
+			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ScalarAstNonNumericForMulHead<E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-							? SkipFailedExpression<R0, FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>>
+							? SkipFailedExpressionWithEnv<R0, FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>, Env0>
 							: [R0, E0, Env0]
 						: never
 					: ParseAddLoopAfterFirstScalarUntyped<R0, E0, Env0>

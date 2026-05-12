@@ -49,6 +49,7 @@ Main Agent:
 ### Completed Phases:
 
 **Phase 1 - Infrastructure (✅ DONE)**
+
 - Created `ParserState` type with `positionalParamIndex` tracking
 - Updated AST to include `index` field for positional-param
 - Updated `LookupPositionalParam` to use specific index instead of union
@@ -59,6 +60,7 @@ Main Agent:
 
 **Phase 2 - Expression Parser Updates (✅ DONE)**
 Updated ~45+ expression parser types to return `[Tokens, AST, Env]`:
+
 - All literal parsers (true, false, null, string, number, params)
 - Positional param parser returns incremented environment
 - Array constructor and array indexing
@@ -70,11 +72,13 @@ Updated ~45+ expression parser types to return `[Tokens, AST, Env]`:
 - Parenthesized expressions and subqueries
 
 **Phase 3 - Statement Parser Updates (✅ DONE)**
+
 - SELECT list parsing threads positionalParamIndex through items
 - INSERT VALUES parsing threads positionalParamIndex through values
 - UPDATE SET parsing threads positionalParamIndex through assignments
 
 **Phase 4 - Cleanup (✅ DONE)**
+
 - Updated all remaining callers to handle new 3-tuple return type
 - ParseWhereExpression ✅
 - ParseOrderByScalarExpr ✅
@@ -82,6 +86,7 @@ Updated ~45+ expression parser types to return `[Tokens, AST, Env]`:
 - ParseInsertOnConflictDoUpdate ✅
 
 **Phase 5 - Testing (✅ DONE)**
+
 - Typecheck passes ✅
 - Single positional parameter works ✅
 - Multiple positional parameters work ✅
@@ -94,9 +99,11 @@ Updated ~45+ expression parser types to return `[Tokens, AST, Env]`:
 All work is done. Positional parameters are fully functional.
 
 ## Goal
+
 Implement parsing "?" as positional parameters in SQL queries, allowing users to pass parameters as an array instead of only as a record/object.
 
 ## Current State - FINDINGS ✓
+
 - Currently uses `:name` syntax for named parameters (e.g., `:userId`)
 - Parameters are passed as `Record<string, unknown>` at runtime
 - Type-level parser in `src/lexer/sql-tokens.ts` tokenizes parameters
@@ -104,6 +111,7 @@ Implement parsing "?" as positional parameters in SQL queries, allowing users to
 - Main query interface in `src/core/sql-database.ts` with `query<Stmt>(statement, params?)`
 
 ### Key Files Identified:
+
 1. **Lexer:** `src/lexer/sql-tokens.ts` - Tokenizes SQL, handles `TokenParam<Param>` for `:name`
 2. **Expression Parser:** `src/parser/parse-expression.ts` - Parses params into AST, resolves types
 3. **Runtime Binding:** `src/postgres/bind-colon-named-params-for-pg.ts` - Converts named to positional
@@ -113,6 +121,7 @@ Implement parsing "?" as positional parameters in SQL queries, allowing users to
 ## Key Architectural Discovery
 
 **Current Architecture:**
+
 - Parsers take `Db` as a type parameter (e.g., `ParseSelect<Tokens, Db, Params>`)
 - `Db` is actually **state** that gets threaded through parsing
 - Expression parser uses `Env` which bundles `{ db, params, outerScope }`
@@ -120,6 +129,7 @@ Implement parsing "?" as positional parameters in SQL queries, allowing users to
 
 **The Solution:**
 Replace `Db` parameter with `State` parameter throughout all parsers:
+
 ```typescript
 // OLD: Db is passed separately
 ParseSelect<Tokens, Db, Params>
@@ -136,39 +146,43 @@ where State = {
 ## Implementation Strategy - REVISED
 
 ### Phase 1: Define Parser State Type
+
 Create a new `ParserState` type that replaces the standalone `Db` parameter:
 
 ```typescript
 // In src/parser/parser-state.ts (new file)
 export type ParserState = {
-  db: JsqlDatabaseShape
-  positionalParamIndex: number
+	db: JsqlDatabaseShape
+	positionalParamIndex: number
 }
 
 export type InitialParserState<Db extends JsqlDatabaseShape> = {
-  db: Db
-  positionalParamIndex: 0
+	db: Db
+	positionalParamIndex: 0
 }
 
 export type IncrementPositionalParamIndex<State extends ParserState> = {
-  db: State["db"]
-  positionalParamIndex: Inc[State["positionalParamIndex"]]
+	db: State["db"]
+	positionalParamIndex: Inc[State["positionalParamIndex"]]
 }
 ```
 
 ### Phase 2: Update Expression Parser
+
 **File:** `src/parser/parse-expression.ts`
 
 1. Update `ExprParseEnv` to use `State`:
+
 ```typescript
 export type ExprParseEnv = {
-  state: ParserState  // Instead of db: JsqlDatabaseShape
-  params: ExpressionParamsShape
-  outerScope: ScopeMap
+	state: ParserState // Instead of db: JsqlDatabaseShape
+	params: ExpressionParamsShape
+	outerScope: ScopeMap
 }
 ```
 
 2. Update `ParseExpressionAST` to return updated state:
+
 ```typescript
 // OLD: Returns [Tokens, AST]
 export type ParseExpressionAST<Tokens, Env> = [TokensList, ScalarExprAst]
@@ -178,11 +192,12 @@ export type ParseExpressionAST<Tokens, Env> = [TokensList, ScalarExprAst, Parser
 ```
 
 3. Update positional param parsing to use and increment state:
+
 ```typescript
 : PeekToken<Tokens> extends TokenKey<"?">
   ? SkipToken<Tokens> extends infer Rpp extends TokensList
     ? [
-        Rpp, 
+        Rpp,
         { kind: "positional-param"; index: Env["state"]["positionalParamIndex"] },
         IncrementPositionalParamIndex<Env["state"]>
       ]
@@ -192,9 +207,11 @@ export type ParseExpressionAST<Tokens, Env> = [TokensList, ScalarExprAst, Parser
 4. Thread updated state through all expression parsing functions
 
 ### Phase 3: Update All Statement Parsers
+
 Update each parser to use `State` instead of `Db`:
 
 **Files to update:**
+
 - `src/parser/parse-select.ts`
 - `src/parser/parse-insert.ts`
 - `src/parser/parse-update.ts`
@@ -204,6 +221,7 @@ Update each parser to use `State` instead of `Db`:
 - All other parser files
 
 **Pattern for each file:**
+
 ```typescript
 // OLD
 export type ParseSelect<
@@ -221,6 +239,7 @@ export type ParseSelect<
 ```
 
 **Threading state through:**
+
 ```typescript
 // When calling ParseExpressionAST, pass state and receive updated state
 ParseExpressionAST<Tokens, { state: State; params: Params; outerScope: Scope }> extends [
@@ -238,19 +257,24 @@ ParseExpressionAST<Tokens, { state: State; params: Params; outerScope: Scope }> 
 ```
 
 ### Phase 4: Update Resolution Phase
+
 **File:** `src/parser/parse-expression.ts`
 
 Update `LookupPositionalParam` to use index:
+
 ```typescript
-type LookupPositionalParam<Params extends ExpressionParamsShape, Index extends number> = 
-  Params extends readonly SqlTypeShape[]
-    ? Index extends keyof Params
-      ? Params[Index]
-      : FormatError<"POSITIONAL_PARAMETER_OUT_OF_BOUNDS", [Index]>
-    : FormatError<"POSITIONAL_PARAMETER_REQUIRES_ARRAY", []>
+type LookupPositionalParam<
+	Params extends ExpressionParamsShape,
+	Index extends number,
+> = Params extends readonly SqlTypeShape[]
+	? Index extends keyof Params
+		? Params[Index]
+		: FormatError<"POSITIONAL_PARAMETER_OUT_OF_BOUNDS", [Index]>
+	: FormatError<"POSITIONAL_PARAMETER_REQUIRES_ARRAY", []>
 ```
 
 Update resolution to extract index from AST:
+
 ```typescript
 "positional-param": Ast extends { kind: "positional-param"; index: infer I extends number }
   ? LookupPositionalParam<Params, I>
@@ -258,9 +282,11 @@ Update resolution to extract index from AST:
 ```
 
 ### Phase 5: Update Entry Points
+
 **File:** `src/parser/parse-sql-statement.ts`
 
 Update `ParseSqlStatement` to initialize and use state:
+
 ```typescript
 export type ParseSqlStatement<
   Tokens extends TokensList,
@@ -276,59 +302,62 @@ type ParseSqlStatementWithState<
 ```
 
 ### Phase 6: Update AST Type
+
 **File:** `src/parser/parse-expression.ts`
 
 Update AST to store index:
+
 ```typescript
 export type ScalarExprAst =
-  | { kind: "true" }
-  | { kind: "false" }
-  | { kind: "sql_null" }
-  | { kind: "string"; value: string }
-  | { kind: "number"; raw: string }
-  | { kind: "param"; name: string }
-  | { kind: "positional-param"; index: number }  // <-- Add index
-  | { kind: "col"; parts: ScalarIdentParts }
-  // ...
+	| { kind: "true" }
+	| { kind: "false" }
+	| { kind: "sql_null" }
+	| { kind: "string"; value: string }
+	| { kind: "number"; raw: string }
+	| { kind: "param"; name: string }
+	| { kind: "positional-param"; index: number } // <-- Add index
+	| { kind: "col"; parts: ScalarIdentParts }
+// ...
 ```
 
 ## Implementation Steps - REVISED
 
 1. **Create ParserState type** (new file)
-   - [ ] Create `src/parser/parser-state.ts`
-   - [ ] Define `ParserState`, `InitialParserState`, `IncrementPositionalParamIndex`
+    - [ ] Create `src/parser/parser-state.ts`
+    - [ ] Define `ParserState`, `InitialParserState`, `IncrementPositionalParamIndex`
 
 2. **Update Expression Parser**
-   - [ ] Update `ExprParseEnv` to use `state: ParserState`
-   - [ ] Change `ParseExpressionAST` return type to include `UpdatedState`
-   - [ ] Update positional param parsing to store index and return updated state
-   - [ ] Thread updated state through all expression parsing functions
-   - [ ] Update `LookupPositionalParam` to take `Index` parameter
-   - [ ] Update resolution to use index from AST
+    - [ ] Update `ExprParseEnv` to use `state: ParserState`
+    - [ ] Change `ParseExpressionAST` return type to include `UpdatedState`
+    - [ ] Update positional param parsing to store index and return updated state
+    - [ ] Thread updated state through all expression parsing functions
+    - [ ] Update `LookupPositionalParam` to take `Index` parameter
+    - [ ] Update resolution to use index from AST
 
 3. **Update All Statement Parsers** (systematic refactor)
-   - [ ] `parse-select.ts` - Replace `Db` with `State`, thread state through
-   - [ ] `parse-insert.ts` - Replace `Db` with `State`, thread state through
-   - [ ] `parse-update.ts` - Replace `Db` with `State`, thread state through
-   - [ ] `parse-delete.ts` - Replace `Db` with `State`, thread state through
-   - [ ] `parse-where-expression.ts` - Replace `Db` with `State`, thread state through
-   - [ ] All other parser files - Replace `Db` with `State`
+    - [ ] `parse-select.ts` - Replace `Db` with `State`, thread state through
+    - [ ] `parse-insert.ts` - Replace `Db` with `State`, thread state through
+    - [ ] `parse-update.ts` - Replace `Db` with `State`, thread state through
+    - [ ] `parse-delete.ts` - Replace `Db` with `State`, thread state through
+    - [ ] `parse-where-expression.ts` - Replace `Db` with `State`, thread state through
+    - [ ] All other parser files - Replace `Db` with `State`
 
 4. **Update Entry Points**
-   - [ ] `parse-sql-statement.ts` - Initialize state with `positionalParamIndex: 0`
-   - [ ] Ensure state is properly threaded through statement parsing
+    - [ ] `parse-sql-statement.ts` - Initialize state with `positionalParamIndex: 0`
+    - [ ] Ensure state is properly threaded through statement parsing
 
 5. **Testing**
-   - [ ] Test positional parameters with proper index tracking
-   - [ ] Test that `SELECT ?, ?` gives index 0 and 1
-   - [ ] Test that `INSERT INTO t VALUES (?, ?)` gives index 0 and 1
-   - [ ] Test mixed queries with positional params in multiple clauses
-   - [ ] Test backward compatibility with named parameters
-   - [ ] Ensure all existing tests still pass
+    - [ ] Test positional parameters with proper index tracking
+    - [ ] Test that `SELECT ?, ?` gives index 0 and 1
+    - [ ] Test that `INSERT INTO t VALUES (?, ?)` gives index 0 and 1
+    - [ ] Test mixed queries with positional params in multiple clauses
+    - [ ] Test backward compatibility with named parameters
+    - [ ] Ensure all existing tests still pass
 
 ## Expected Outcome
 
 After this refactor:
+
 - ✅ Each "?" will have a unique index based on order of appearance
 - ✅ `Params[0]`, `Params[1]`, `Params[2]` will be used instead of `Params[number]`
 - ✅ Full type safety for positional parameters with tuples
@@ -338,6 +367,7 @@ After this refactor:
 ## Estimated Scope
 
 This is a **large refactor** affecting:
+
 - ~10-15 parser files
 - Hundreds of type definitions
 - All places where `Db` is passed as a parameter
@@ -349,14 +379,14 @@ This is a **large refactor** affecting:
 When needing to inspect TypeScript types during development, use this trick to force TypeScript to display the actual resolved type in an error message:
 
 ```typescript
-const i: never = 1 as unknown as YourTypeHere;
+const i: never = 1 as unknown as YourTypeHere
 ```
 
 This will cause a type error that displays the actual type, which is invaluable for debugging complex type-level computations. For example:
 
 ```typescript
 // To see what ParseExpressionAST returns:
-const debug: never = 1 as unknown as ParseExpressionAST<ParseSqlTokens<"SELECT ?">, MyEnv>;
+const debug: never = 1 as unknown as ParseExpressionAST<ParseSqlTokens<"SELECT ?">, MyEnv>
 // Error will show: Type '[TokensList, ScalarExprAst, ExprParseEnv]' is not assignable to type 'never'
 ```
 

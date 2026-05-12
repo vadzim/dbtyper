@@ -84,7 +84,11 @@ type UCaseSimple = ParseExpressionAST<ParseSqlTokens<`case 1 when 1 then 2 else 
 type _uCaseSimple = Expect<Extends<UCaseSimple[1], { kind: "case_simple" }>>
 
 type RCaseNoElse = ResolveExpressionAST<
-	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>, TestEnvForExprParse> extends [infer _R, infer Ast]
+	ParseExpressionAST<ParseSqlTokens<`case when false then 1 end`>, TestEnvForExprParse> extends [
+		infer _R,
+		infer Ast,
+		infer _Env,
+	]
 		? Ast
 		: never,
 	DbUsers,

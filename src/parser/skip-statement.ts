@@ -21,6 +21,16 @@ export type SkipFailedExpression<
 		? [SkipToken<Rest>, Error]
 		: never
 
+export type SkipFailedExpressionWithEnv<
+	Tokens extends TokensList,
+	Error extends DbtyperErrorShape,
+	Env,
+	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
+> =
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+		? [SkipToken<Rest>, Error, Env]
+		: never
+
 export type SkipFailedStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,

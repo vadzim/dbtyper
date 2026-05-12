@@ -20,7 +20,7 @@ type TestEnvForExprParse = {
 // Test basic type casts
 type TCastIntToTextAst = ParseExpressionAST<ParseSqlTokens<`123::text`>, TestEnvForExprParse>
 type TCastIntToText = ResolveExpressionAST<
-	TCastIntToTextAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastIntToTextAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams
@@ -32,7 +32,7 @@ type TCastTextToUuidAst = ParseExpressionAST<
 	TestEnvForExprParse
 >
 type TCastTextToUuid = ResolveExpressionAST<
-	TCastTextToUuidAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastTextToUuidAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams
@@ -42,7 +42,7 @@ type _tCastTextToUuidOk = Expect<Extends<TCastTextToUuid, TUuid>>
 // Test PostgreSQL-specific type casts
 type TCastTextToTimestamptzAst = ParseExpressionAST<ParseSqlTokens<`'2024-01-01'::timestamptz`>, TestEnvForExprParse>
 type TCastTextToTimestamptz = ResolveExpressionAST<
-	TCastTextToTimestamptzAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastTextToTimestamptzAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams
@@ -51,7 +51,7 @@ type _tCastTextToTimestamptzOk = Expect<Extends<TCastTextToTimestamptz, TTimesta
 
 type TCastTextToByteaAst = ParseExpressionAST<ParseSqlTokens<`'data'::bytea`>, TestEnvForExprParse>
 type TCastTextToBytea = ResolveExpressionAST<
-	TCastTextToByteaAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastTextToByteaAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams
@@ -60,7 +60,7 @@ type _tCastTextToByteaOk = Expect<Extends<TCastTextToBytea, TBytea>>
 
 type TCastTextToInetAst = ParseExpressionAST<ParseSqlTokens<`'192.168.1.1'::inet`>, TestEnvForExprParse>
 type TCastTextToInet = ResolveExpressionAST<
-	TCastTextToInetAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastTextToInetAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams
@@ -70,7 +70,7 @@ type _tCastTextToInetOk = Expect<Extends<TCastTextToInet, TInet>>
 // Test invalid casts
 type TCastIntToBoolAst = ParseExpressionAST<ParseSqlTokens<`123::boolean`>, TestEnvForExprParse>
 type TCastIntToBool = ResolveExpressionAST<
-	TCastIntToBoolAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastIntToBoolAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams
@@ -80,7 +80,7 @@ type _tCastIntToBool = Expect<Extends<TCastIntToBool, { __sql_parser_error__: st
 // Test chained casts
 type TCastChainedAst = ParseExpressionAST<ParseSqlTokens<`123::text::uuid`>, TestEnvForExprParse>
 type TCastChained = ResolveExpressionAST<
-	TCastChainedAst extends [infer _R, infer Ast] ? Ast : never,
+	TCastChainedAst extends [infer _R, infer Ast, infer _Env] ? Ast : never,
 	DbEmpty,
 	{},
 	EmptyExpressionParams

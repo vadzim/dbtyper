@@ -1530,7 +1530,7 @@ type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[
 	? First extends string
 		? Rest extends readonly string[]
 			? Args extends readonly [infer Arg, ...infer RestArgs]
-				? Arg extends string
+				? Arg extends string | number
 					? RestArgs extends (string | number)[]
 						? Rest["length"] extends 0
 							? `${First}${Arg}`

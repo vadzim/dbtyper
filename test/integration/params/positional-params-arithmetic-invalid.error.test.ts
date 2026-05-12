@@ -6,10 +6,9 @@ import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
+import type { SqlInteger, SqlText } from "../../../src/core/sql-type-shape.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
 // ❌ ERROR: multiplication with number and string should fail
 const query = `select ? * ? as result;` as const
@@ -21,7 +20,7 @@ type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
 
 type _test = Expect<
 	Matches<
-		ExtractQueryError<DbShape, typeof query, [number, string]>,
-		DbtyperError<1301, "Incompatible types in arithmetic operation">
+		ExtractQueryError<DbShape, typeof query, readonly [SqlInteger, SqlText]>,
+		DbtyperError<2501, "Incompatible types in arithmetic">
 	>
 >

@@ -1214,7 +1214,14 @@ type ParseRawSelectList<
 	PeekToken<Tokens> extends TokenKey<"from">
 		? [Tokens, Acc]
 		: PeekToken<Tokens> extends TokenKey<"*">
-			? ParseRawSelectListAfterItem<SkipToken<Tokens>, Db, Params, OuterScope, [...Acc, { kind: "star" }], PositionalParamIndex>
+			? ParseRawSelectListAfterItem<
+					SkipToken<Tokens>,
+					Db,
+					Params,
+					OuterScope,
+					[...Acc, { kind: "star" }],
+					PositionalParamIndex
+				>
 			: ParseOneRawSelectItem<Tokens, Db, Params, OuterScope, PositionalParamIndex> extends [
 						infer AfterItem extends TokensList,
 						infer It,
@@ -1246,7 +1253,10 @@ type ParseOneRawSelectExprItem<
 	OuterScope extends ScopeMap,
 	PositionalParamIndex extends number,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope; positionalParamIndex: PositionalParamIndex }> extends [
+	ParseExpressionAST<
+		Tokens,
+		{ db: Db; params: Params; outerScope: OuterScope; positionalParamIndex: PositionalParamIndex }
+	> extends [
 		infer RExpr extends TokensList,
 		infer Out,
 		infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
@@ -1293,6 +1303,7 @@ type ParseOneRawSelectItem<
 						| TokenKey<"case">
 						| TokenKey<"exists">
 						| TokenKey<"array">
+						| TokenKey<"?">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope, PositionalParamIndex>
 					: never
 				: never

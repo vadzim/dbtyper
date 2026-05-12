@@ -384,7 +384,10 @@ type ParseInsertValuesCells<
 	ColsFull extends readonly string[] = Cols,
 	PositionalParamIndex extends number = 0,
 > = Cols extends readonly [infer C0 extends string, ...infer CR extends readonly string[]]
-	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: PositionalParamIndex }> extends [
+	? ParseExpressionAST<
+			Tokens,
+			{ db: Db; params: Params; outerScope: Scope; positionalParamIndex: PositionalParamIndex }
+		> extends [
 			infer R1 extends TokensList,
 			infer Ast,
 			infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
@@ -704,11 +707,10 @@ type ParseInsertUpsertSetAssignments<
 					? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "ON CONFLICT DO UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
-							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
-									infer R3 extends TokensList,
-									infer Ast,
-									infer _UpdatedEnv,
-								]
+							? ParseExpressionAST<
+									R2,
+									{ db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }
+								> extends [infer R3 extends TokensList, infer Ast, infer _UpdatedEnv]
 								? Ast extends DbtyperErrorShape
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst
