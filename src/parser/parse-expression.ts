@@ -1411,15 +1411,15 @@ type ParseFunctionArgsAccum<
 	Acc extends readonly (ScalarExprAst | { kind: "star" })[],
 > =
 	PeekToken<Tokens> extends TokenKey<")">
-		? [SkipToken<Tokens>, Acc]
-		: ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E]
+		? [SkipToken<Tokens>, Acc, Env]
+		: ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends TokensList, infer E, infer Env1 extends ExprParseEnv]
 			? E extends DbtyperErrorShape
 				? SkipFailedExpression<R1, E>
 				: E extends ScalarExprAst
 					? PeekToken<R1> extends TokenKey<")">
-						? [SkipToken<R1>, readonly [...Acc, E]]
+						? [SkipToken<R1>, readonly [...Acc, E], Env1]
 						: PeekToken<R1> extends TokenKey<",">
-							? ParseFunctionArgsAccum<SkipToken<R1>, Env, readonly [...Acc, E]>
+							? ParseFunctionArgsAccum<SkipToken<R1>, Env1, readonly [...Acc, E]>
 							: SkipFailedExpression<
 									R1,
 									FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST", []>
@@ -1431,11 +1431,11 @@ type ParseFunctionArgs<Tokens extends TokensList, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"*">
 		? SkipToken<Tokens> extends infer R1 extends TokensList
 			? PeekToken<R1> extends TokenKey<")">
-				? [SkipToken<R1>, readonly [{ kind: "star" }]]
+				? [SkipToken<R1>, readonly [{ kind: "star" }], Env]
 				: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_STAR", []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
-			? [SkipToken<Tokens>, readonly []]
+			? [SkipToken<Tokens>, readonly [], Env]
 			: ParseFunctionArgsAccum<Tokens, Env, readonly []>
 
 type ParseOptionalOverClause<
@@ -1452,7 +1452,7 @@ type ParseOptionalOverClause<
 					: never
 				: SkipFailedExpression<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OVER", []>>
 			: never
-		: [Tokens, { kind: "function_call"; name: FnName; args: Args }]
+		: [Tokens, { kind: "function_call"; name: FnName; args: Args }, Env]
 
 type ParseWindowClauseContent<
 	Tokens extends TokensList,
@@ -2531,12 +2531,12 @@ type ParseScalarExprUntypedFromIdent<Tokens extends TokensList, Env extends Expr
 					: [Rm, { kind: "qualified_table_star"; schema: Sch; table: Tab }, Env]
 				: Parts extends ScalarIdentParts
 					? PeekToken<Rm> extends TokenKey<"(">
-						? ParseFunctionArgs<SkipToken<Rm>, Env> extends [infer After extends TokensList, infer Args]
+						? ParseFunctionArgs<SkipToken<Rm>, Env> extends [infer After extends TokensList, infer Args, infer EnvAfter extends ExprParseEnv]
 							? Args extends DbtyperErrorShape
 								? SkipFailedExpression<After, Args>
 								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 									? Parts extends readonly [infer FnName extends string]
-										? ParseOptionalOverClause<After, FnName, Args, Env>
+										? ParseOptionalOverClause<After, FnName, Args, EnvAfter>
 										: SkipFailedExpression<
 												After,
 												FormatError<"QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED", []>
