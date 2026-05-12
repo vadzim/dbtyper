@@ -41,7 +41,9 @@ export type SqlDatabase<
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape, ScalarTypes extends Record<string, unknown>> {
 	apply<Source extends string>(
-		statement: Source extends CheckSqlMigrationSource<Db, Source> ? Source : CheckSqlMigrationSource<Db, Source>,
+		statement: Source extends CheckSqlValid<Db, Source, EmptyExpressionParams>
+			? Source
+			: CheckSqlValid<Db, Source, EmptyExpressionParams>,
 		name?: string,
 	): SqlMigrations<FlattenedJsqlDatabase<ApplyStatements<Db, Source>[0]>, ScalarTypes>
 	database(): DataBase<FlattenedJsqlDatabase<Db>, ScalarTypes>
@@ -217,15 +219,16 @@ type CheckSqlValidForStream<
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
-> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer Msg>]
-	? `Error in query: ${Msg}`
-	: [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer Msg>]
+> =
+	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<infer _Code, infer Msg>
 		? `Error in query: ${Msg}`
 		: Stmt
 
-/** Type check for .query() - accepts any valid SQL (including non-RETURNING statements) */
-type CheckSqlValidForQuery<Db extends JsqlDatabaseShape, Stmt extends string, Params extends ExpressionParamsShape> =
-	ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer _Code, infer Msg> ? `Error in query: ${Msg}` : Stmt
+type CheckSqlValid<
+	Db extends JsqlDatabaseShape,
+	Stmt extends string,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+> = ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer _Code, infer Msg> ? `Error in query: ${Msg}` : Stmt
 
 /** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
 type QueryReturnType<
@@ -236,27 +239,22 @@ type QueryReturnType<
 > =
 	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperErrorShape
 		? unknown
-		: SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperErrorShape
-			? unknown
-			: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
-
-type CheckSqlMigrationSource<Db extends JsqlDatabaseShape, Source extends string> =
-	ApplyStatements<Db, Source>[1] extends DbtyperError<infer _Code, infer M> ? M : Source
+		: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
 
 export type DataBase<Db extends JsqlDatabaseShape, ScalarTypes extends Record<string, unknown>> = {
 	/**
 	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, unknown for other statements.
 	 */
 	query<Stmt extends string>(
-		statement: Stmt extends CheckSqlValidForQuery<Db, Stmt, EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValid<Db, Stmt, EmptyExpressionParams>
 			? Stmt
-			: CheckSqlValidForQuery<Db, Stmt, EmptyExpressionParams>,
+			: CheckSqlValid<Db, Stmt, EmptyExpressionParams>,
 	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, EmptyExpressionParams>>
 
 	query<Stmt extends string, ParamsValues extends Record<string, unknown>>(
-		statement: Stmt extends CheckSqlValidForQuery<Db, Stmt, InferParamsFromValues<ParamsValues>>
+		statement: Stmt extends CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValidForQuery<Db, Stmt, InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>,
 		params: ParamsValues,
 	): Promise<QueryReturnType<Db, Stmt, ScalarTypes, InferParamsFromValues<ParamsValues>>>
 

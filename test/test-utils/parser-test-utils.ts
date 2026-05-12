@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
-import type { DbtyperError } from "../../src/dbtyper-error.ts"
+import type { DbtyperError, DbtyperErrorShape } from "../../src/dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
 import type { SqlSelectRowSqlTypes } from "../../src/core/sql-query.ts"
 import type { ApplySqlToTsConversion } from "../../src/core/sql-to-ts-conversion.ts"
@@ -24,6 +24,4 @@ export type InferSqlErrors<
 	Stmt extends string,
 	ScalarTypes extends Record<string, unknown> = PostgresTypeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = [SqlSelectRow<Db, Stmt, ScalarTypes, Params>] extends [DbtyperError<infer _Code, infer M>]
-	? DbtyperError<_Code, M>
-	: null
+> = SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<infer Code, infer M> ? DbtyperError<Code, M> : null

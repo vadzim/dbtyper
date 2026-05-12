@@ -5,7 +5,7 @@ import type {
 	JsqlUpdateStatementResult,
 } from "./jsql-shapes.ts"
 import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
 
@@ -17,9 +17,7 @@ type SqlSelectRowForDb<
 	ParseSqlStatement<ParseSqlTokens<Text>, Db, Params> extends [infer _Rest extends TokensList, infer _Db, infer Res]
 		? Res extends DbtyperErrorShape
 			? Res
-			: Res extends DbtyperErrorShape
-				? Res
-				: RowShapeFromStatementResult<Res>
+			: RowShapeFromStatementResult<Res>
 		: never
 
 type ExpectedRowSetResult = FormatError<"STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT", []>
@@ -48,10 +46,4 @@ export type SqlSelectRowSqlTypes<
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends DbtyperErrorShape
-	? Db
-	: Db extends DbtyperErrorShape
-		? Db
-		: Db extends JsqlDatabaseShape
-			? SqlSelectRowForDb<Db, Text, Params>
-			: never
+> = Db extends DbtyperErrorShape ? Db : Db extends JsqlDatabaseShape ? SqlSelectRowForDb<Db, Text, Params> : never

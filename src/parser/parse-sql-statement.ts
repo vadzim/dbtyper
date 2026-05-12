@@ -7,7 +7,7 @@ import type {
 	TokenKey,
 	ParseSqlTokens,
 } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
@@ -77,11 +77,7 @@ type ApplyParsedStatementsInner<
 					Rest,
 					NewDb,
 					Params,
-					Result extends DbtyperErrorShape
-						? ConcatErrors<Error, Result>
-						: Result extends DbtyperErrorShape
-							? ConcatErrors<Error, Result>
-							: Error,
+					Result extends DbtyperErrorShape ? ConcatErrors<Error, Result> : Error,
 					Inc[Depth]
 				>
 			: never

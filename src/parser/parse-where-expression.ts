@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,

@@ -10,7 +10,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -1805,21 +1805,21 @@ type JoinOnAliasEqOk<
 	RightAlias extends string,
 	RightCol extends string,
 > =
-	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends DbtyperErrorShape
-		? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
-		: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends DbtyperErrorShape
-			? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
-			: ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends {
-						sql: infer Ls extends SqlTypeShape
-				  }
-				? ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends {
-						sql: infer Rs extends SqlTypeShape
-					}
-					? SameComparisonClass<Ls, Rs> extends true
-						? true
-						: FormatError<"INCOMPATIBLE_TYPES_IN_JOIN_ON", []>
-					: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
-				: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
+	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends infer LeftRefValue
+		? LeftRefValue extends DbtyperErrorShape
+			? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
+			: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends infer RightLeftValue
+				? RightLeftValue extends DbtyperErrorShape
+					? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
+					: LeftRefValue extends { sql: infer Ls extends SqlTypeShape }
+						? RightLeftValue extends { sql: infer Rs extends SqlTypeShape }
+							? SameComparisonClass<Ls, Rs> extends true
+								? true
+								: FormatError<"INCOMPATIBLE_TYPES_IN_JOIN_ON", []>
+							: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
+						: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
+				: never
+		: never
 
 /** After `=` when the join predicate uses `alias.col = alias.col`. */
 type ParseJoinEqPairAliasRightTail<
