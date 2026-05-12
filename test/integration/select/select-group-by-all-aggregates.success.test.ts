@@ -31,10 +31,10 @@ type _check = Expect<
 			region: string
 			total_count: bigint
 			amount_count: bigint
-			total_amount: string
-			avg_amount: string
-			min_amount: string
-			max_amount: string
+			total_amount: number
+			avg_amount: number
+			min_amount: number
+			max_amount: number
 			min_qty: number
 			max_qty: number
 		}[]

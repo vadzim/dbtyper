@@ -11,8 +11,8 @@ export type PostgresTypeMap = {
 	smallint: number
 	boolean: boolean
 	bool: boolean
-	numeric: string
-	decimal: string
+	numeric: number
+	decimal: number
 	real: number
 	float: number
 	"double precision": number
