@@ -3,7 +3,8 @@ import type { DbtyperError, DbtyperErrorShape } from "../../src/dbtyper-error.ts
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
 import type { SqlSelectRowSqlTypes } from "../../src/core/sql-query.ts"
 import type { ApplySqlToTsConversion } from "../../src/core/sql-to-ts-conversion.ts"
-import type { PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
+import type { PostgresDriverConfig } from "../../src/postgres/postgres-sql-driver.ts"
+import type { DriverConfig } from "../../src/core/sql-database.ts"
 
 /**
  * Infers the **row object** type for a single `SELECT` / `WITH … SELECT` string against `Db`.
@@ -14,14 +15,14 @@ import type { PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
 export type SqlSelectRow<
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,
 	Text extends string,
-	ScalarTypes extends Record<string, unknown> = PostgresTypeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, ScalarTypes> : Db
+	Config extends DriverConfig = PostgresDriverConfig,
+> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<Config, SqlSelectRowSqlTypes<Config, Db, Text, Params>> : Db
 
 /** `DbtyperError<…>` when `Stmt` is not a typed `SELECT`; `null` when row inference succeeds (tooling hook). */
 export type InferSqlErrors<
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,
 	Stmt extends string,
-	ScalarTypes extends Record<string, unknown> = PostgresTypeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<infer Code, infer M> ? DbtyperError<Code, M> : null
+	Config extends DriverConfig = PostgresDriverConfig,
+> = SqlSelectRow<Db, Stmt, Params, Config> extends DbtyperError<infer Code, infer M> ? DbtyperError<Code, M> : null

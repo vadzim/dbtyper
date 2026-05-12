@@ -7,6 +7,7 @@
  * DO NOT import this module anywhere else - not in parsers, not in sql-query.ts, nowhere except sql-database.ts.
  */
 
+import type { DriverConfig } from "./sql-database.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 
 /**
@@ -92,10 +93,10 @@ export type SqlColumnsToTs<
  * >
  * // => { id: string; name: string }
  */
-export type ApplySqlToTsConversion<SqlColumns, ScalarMap extends Record<string, unknown>> = SqlColumns extends {
+export type ApplySqlToTsConversion<Config extends DriverConfig, SqlColumns> = SqlColumns extends {
 	__sql_parser_error__: string
 }
 	? SqlColumns
 	: SqlColumns extends Record<string, SqlTypeShape | string>
-		? SqlColumnsToTs<SqlColumns, ScalarMap>
+		? SqlColumnsToTs<SqlColumns, Config["scalarTypes"]>
 		: SqlColumns

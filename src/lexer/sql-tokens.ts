@@ -1,15 +1,17 @@
 import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 
+export type SQLSyntax = "postgres" | "sqlite"
+
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 
-export type ParseSqlTokens<S extends string = string> = [ReadTokenFromString<S>] extends [
-	infer Result extends TokensList,
-]
+export type ParseSqlTokens<Query extends string, Syntax extends string = "postgres"> = [
+	ReadTokenFromString<Query, Syntax>,
+] extends [infer Result extends TokensList]
 	? Result
 	: never
 
-export type EmptyTokenList = ParseSqlTokens<"">
+export type EmptyTokenList = ParseSqlTokens<"", string>
 export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "eot"
 export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
 export type TokenKey<Key extends string> = TokenType<"key", Key>
@@ -22,101 +24,109 @@ export type TokenEot = TokenType<"eot">
 /** Lexeme head: a normal token, or a lexical failure. */
 type TokenStreamHead = TokenType<TokenKind, string> | DbtyperErrorShape
 
-export type TokensList = Buffer<TokenStreamHead, string>
+export type TokensList = Buffer<TokenStreamHead, string, string>
 
 export type PeekToken<Tokens extends TokensList> = Tokens[typeof tokenKey]
-export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens[typeof restKey]>
+export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens[typeof restKey], Tokens["syntax"]>
 
-type Buffer<Token extends TokenStreamHead, Rest extends string> = {
+type Buffer<Token extends TokenStreamHead, Rest extends string, Syntax extends string> = {
 	[tokenKey]: Token
 	[restKey]: Rest
+	syntax: Syntax
 }
 
 /** Lex one token from a string (internal) */
-type ReadTokenFromString<S extends string> = S extends `${infer Head}${infer Rest}`
+type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends StartTokenChar
 		? ReadTokenChars<Rest> extends {
 				token: infer Word extends string
 				rest: infer Tail extends string
 			}
-			? Buffer<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+			? Buffer<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail, Syntax>
 			: never
 		: Head extends "/"
 			? Rest extends `*${string}`
-				? ReadTokenFromString<SkipSpaces<S>>
-				: ReadOperator<S>
+				? ReadTokenFromString<SkipSpaces<S>, Syntax>
+				: ReturnToBuffer<ReadOperator<S>, Syntax>
 			: Head extends "-"
 				? Rest extends `-${string}`
-					? ReadTokenFromString<SkipSpaces<S>>
-					: ReadOperator<S>
+					? ReadTokenFromString<SkipSpaces<S>, Syntax>
+					: ReturnToBuffer<ReadOperator<S>, Syntax>
 				: Head extends OperatorChars
-					? ReadOperator<S>
+					? ReturnToBuffer<ReadOperator<S>, Syntax>
 					: Head extends Digit
-						? GetNumber<Rest, Head>
+						? ReturnToBuffer<GetNumber<Rest, Head>, Syntax>
 						: Head extends "."
 							? Rest extends `${infer Second}${infer Rest2}`
 								? Second extends Digit
-									? GetNumberFrac<Rest2, `${Head}${Second}`>
-									: Buffer<TokenKey<".">, Rest>
-								: Buffer<TokenKey<".">, Rest>
+									? ReturnToBuffer<GetNumberFrac<Rest2, `${Head}${Second}`>, Syntax>
+									: Buffer<TokenKey<".">, Rest, Syntax>
+								: Buffer<TokenKey<".">, Rest, Syntax>
 							: Head extends '"'
 								? Rest extends `${infer String}"${infer Rest}`
-									? Buffer<TokenIdent<String>, Rest>
-									: Buffer<FormatError<"UNCLOSED_QUOTED_IDENTIFIER", []>, S>
+									? Buffer<TokenIdent<String>, Rest, Syntax>
+									: Buffer<FormatError<"UNCLOSED_QUOTED_IDENTIFIER", []>, S, Syntax>
 								: Head extends "\x20" | "\n" | "\r" | "\t"
-									? ReadTokenFromString<SkipSpaces<Rest>>
+									? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
 									: Head extends "'"
-										? ReadSingleQuotedString<Rest>
+										? ReturnToBuffer<ReadSingleQuotedString<Rest>, Syntax>
 										: Head extends ":"
 											? Rest extends `${infer Next}${infer Rest2}`
 												? Next extends ":"
-													? Buffer<TokenKey<"::">, Rest2>
+													? Buffer<TokenKey<"::">, Rest2, Syntax>
 													: Next extends TokenChar
 														? ReadTokenChars<Rest2> extends {
 																token: infer Token extends string
 																rest: infer Rest3 extends string
 															}
-															? Buffer<TokenParam<`${Next}${Token}`>, Rest3>
+															? Buffer<TokenParam<`${Next}${Token}`>, Rest3, Syntax>
 															: never
-														: Buffer<TokenKey<":">, Rest>
-												: Buffer<TokenKey<":">, Rest>
+														: Buffer<TokenKey<":">, Rest, Syntax>
+												: Buffer<TokenKey<":">, Rest, Syntax>
 											: Head extends "$"
-												? ReadDollar<Rest>
-												: Buffer<TokenKey<Head>, Rest>
-	: Buffer<TokenEot, "">
+												? ReturnToBuffer<ReadDollar<Rest>, Syntax>
+												: Buffer<TokenKey<Head>, Rest, Syntax>
+	: Buffer<TokenEot, "", Syntax>
+
+type Return<_Result, _Rest> = [_Result, _Rest]
+
+type ReturnToBuffer<T extends Return<TokenStreamHead, string>, Syntax extends string> =
+	T extends Return<infer Result extends TokenStreamHead, infer Rest extends string>
+		? Buffer<Result, Rest, Syntax>
+		: never
 
 type ReadDollar<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends "$"
 		? Rest extends `${infer String}$$${infer Rest2}`
-			? Buffer<TokenString<String>, Rest2>
-			: Buffer<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
+			? Return<TokenString<String>, Rest2>
+			: Return<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
 		: Head extends StartTokenChar
 			? Rest extends `${infer Tag}$${infer Rest2}`
 				? ReadTokenChars<Tag> extends { rest: "" }
 					? Rest2 extends `${infer String}$${Head}${Tag}$${infer Rest3}`
-						? Buffer<TokenString<String>, Rest3>
-						: Buffer<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
-					: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
-				: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
-			: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
-	: Buffer<FormatError<"WRONG_STRING_TAG", []>, S>
+						? Return<TokenString<String>, Rest3>
+						: Return<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
+					: Return<FormatError<"WRONG_STRING_TAG", []>, S>
+				: Return<FormatError<"WRONG_STRING_TAG", []>, S>
+			: Return<FormatError<"WRONG_STRING_TAG", []>, S>
+	: Return<FormatError<"WRONG_STRING_TAG", []>, S>
 
 type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`
-		? ReadSingleQuotedString<R2> extends Buffer<TokenString<infer P2 extends string>, infer R3 extends string>
-			? Buffer<TokenString<`${P1}'${P2}`>, R3>
-			: Buffer<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
+		? ReadSingleQuotedString<R2> extends Return<TokenString<infer P2 extends string>, infer R3 extends string>
+			? Return<TokenString<`${P1}'${P2}`>, R3>
+			: Return<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
 		: SkipSpaces<R1> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
-				? ReadSingleQuotedString<R5> extends Buffer<
+				? ReadSingleQuotedString<R5> extends Return<
 						TokenString<infer P6 extends string>,
 						infer R6 extends string
 					>
-					? Buffer<TokenString<`${P1}${P6}`>, R6>
-					: Buffer<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
-				: Buffer<TokenString<P1>, R4>
+					? Return<TokenString<`${P1}${P6}`>, R6>
+					: Return<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
+				: Return<TokenString<P1>, R4>
 			: never
-	: Buffer<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
+	: Return<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
@@ -157,13 +167,13 @@ type ReadOperator<S extends string> =
 	OptimizedBySpaceReadOperatorChars<S> extends { token: infer Word extends string; rest: infer Tail extends string }
 		? Word extends `${infer Before}--${string}`
 			? S extends `${Before}${infer Rest}`
-				? Buffer<TokenKey<Before>, Rest>
+				? Return<TokenKey<Before>, Rest>
 				: never
 			: Word extends `${infer Before}/*${string}`
 				? S extends `${Before}${infer Rest}`
-					? Buffer<TokenKey<Before>, Rest>
+					? Return<TokenKey<Before>, Rest>
 					: never
-				: Buffer<TokenKey<Word>, Tail>
+				: Return<TokenKey<Word>, Tail>
 		: never
 
 type OptimizedBySpaceReadOperatorChars<S extends string> =
@@ -397,9 +407,9 @@ type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${i
 			: D1 extends "e" | "E"
 				? GetNumberExpStart<Rest, `${Num}${D1}`>
 				: D1 extends Letter
-					? Buffer<FormatError<"INVALID_NUMBER", []>, S>
-					: Buffer<TokenNumber<Num>, S>
-	: Buffer<TokenNumber<Num>, S>
+					? Return<FormatError<"INVALID_NUMBER", []>, S>
+					: Return<TokenNumber<Num>, S>
+	: Return<TokenNumber<Num>, S>
 
 type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
@@ -407,28 +417,28 @@ type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1
 		: D1 extends "e" | "E"
 			? GetNumberExpStart<Rest, `${Buf}${D1}`>
 			: D1 extends Letter
-				? Buffer<FormatError<"INVALID_NUMBER", []>, S>
-				: Buffer<TokenNumber<Buf>, S>
-	: Buffer<TokenNumber<Buf>, S>
+				? Return<FormatError<"INVALID_NUMBER", []>, S>
+				: Return<TokenNumber<Buf>, S>
+	: Return<TokenNumber<Buf>, S>
 
 type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends "+" | "-"
 		? GetNumberExpNumStart<Rest, `${Buf}${D1}`>
 		: D1 extends Digit
 			? GetNumberExpNum<Rest, `${Buf}${D1}`>
-			: Buffer<FormatError<"INVALID_NUMBER", []>, S>
-	: Buffer<FormatError<"INVALID_NUMBER", []>, S>
+			: Return<FormatError<"INVALID_NUMBER", []>, S>
+	: Return<FormatError<"INVALID_NUMBER", []>, S>
 
 type GetNumberExpNumStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
-		: Buffer<FormatError<"INVALID_NUMBER", []>, S>
-	: Buffer<FormatError<"INVALID_NUMBER", []>, S>
+		: Return<FormatError<"INVALID_NUMBER", []>, S>
+	: Return<FormatError<"INVALID_NUMBER", []>, S>
 
 type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
 		: D1 extends Letter
-			? Buffer<FormatError<"INVALID_NUMBER", []>, S>
-			: Buffer<TokenNumber<Buf>, S>
-	: Buffer<TokenNumber<Buf>, S>
+			? Return<FormatError<"INVALID_NUMBER", []>, S>
+			: Return<TokenNumber<Buf>, S>
+	: Return<TokenNumber<Buf>, S>

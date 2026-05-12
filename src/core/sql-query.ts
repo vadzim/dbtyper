@@ -8,13 +8,19 @@ import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
+import type { DriverConfig } from "./sql-database.ts"
 
 type SqlSelectRowForDb<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseSqlStatement<ParseSqlTokens<Text>, Db, Params> extends [infer _Rest extends TokensList, infer _Db, infer Res]
+	ParseSqlStatement<ParseSqlTokens<Text, Config["syntax"]>, Db, Params> extends [
+		infer _Rest extends TokensList,
+		infer _Db,
+		infer Res,
+	]
 		? Res extends DbtyperErrorShape
 			? Res
 			: RowShapeFromStatementResult<Res>
@@ -43,7 +49,12 @@ type RowShapeFromStatementResult<Res> = Res extends JsqlSelectStatementResult
  * For the public API with TypeScript types, import SqlSelectRow from sql-database.ts or index.ts.
  */
 export type SqlSelectRowSqlTypes<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends DbtyperErrorShape ? Db : Db extends JsqlDatabaseShape ? SqlSelectRowForDb<Db, Text, Params> : never
+> = Db extends DbtyperErrorShape
+	? Db
+	: Db extends JsqlDatabaseShape
+		? SqlSelectRowForDb<Config, Db, Text, Params>
+		: never

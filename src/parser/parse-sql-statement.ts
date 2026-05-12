@@ -6,6 +6,7 @@ import type {
 	TokenIdent,
 	TokenKey,
 	ParseSqlTokens,
+	SQLSyntax,
 } from "../lexer/sql-tokens.ts"
 import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
@@ -30,8 +31,9 @@ export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Syntax extends SQLSyntax = "postgres",
 > = Db extends JsqlDatabaseShape
-	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params, null> extends [
+	? ApplyParsedStatements<ParseSqlTokens<Text, Syntax>, Db, Params, null> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
 			infer Error extends DbtyperErrorShape | null,

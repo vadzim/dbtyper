@@ -5,7 +5,10 @@ import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
 import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
 import type { PostgresTypeMap } from "./postgres-type-map.ts"
 
-export type PostgresDriverConfig = { scalarTypes: PostgresTypeMap }
+export type PostgresDriverConfig = {
+	scalarTypes: PostgresTypeMap
+	syntax: "postgres"
+}
 
 export type PostgresSqlDriverConfig = {
 	/** Connected **`postgres()`** client from the **`postgres`** package. */

@@ -5,6 +5,7 @@ import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectRowSqlTypes } from "./sql-query.ts"
 import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
+import type { SQLSyntax } from "../lexer/sql-tokens.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -12,7 +13,8 @@ import type { InferParamsFromValues } from "./infer-param-types.ts"
  */
 export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
 
-type DriverConfig = {
+export type DriverConfig = {
+	syntax: SQLSyntax
 	scalarTypes: Record<string, unknown>
 }
 
@@ -52,11 +54,14 @@ export type SqlDatabase<
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
-		statement: Source extends CheckSqlValid<Db, Source, EmptyExpressionParams>
+		statement: Source extends CheckSqlValid<Config, Db, Source, EmptyExpressionParams>
 			? Source
-			: CheckSqlValid<Db, Source, EmptyExpressionParams>,
+			: CheckSqlValid<Config, Db, Source, EmptyExpressionParams>,
 		name?: string,
-	): SqlMigrations<FlattenedJsqlDatabase<ApplyStatements<Db, Source>[0]>, Config>
+	): SqlMigrations<
+		FlattenedJsqlDatabase<ApplyStatements<Db, Source, EmptyExpressionParams, Config["syntax"]>[0]>,
+		Config
+	>
 	database(): DataBase<FlattenedJsqlDatabase<Db>, Config>
 	getDefaultSchema(): string
 }
@@ -202,19 +207,19 @@ export class DBMigrations {
  * Used by .stream() which requires statements that return rows.
  */
 type SqlSelectRow<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Text extends string,
-	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<SqlSelectRowSqlTypes<Db, Text, Params>, ScalarTypes> : Db
+> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<Config, SqlSelectRowSqlTypes<Config, Db, Text, Params>> : Db
 
 type SqlSelectRowObject<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends infer R
+	SqlSelectRow<Config, Db, Stmt, Params> extends infer R
 		? R extends DbtyperErrorShape
 			? never
 			: { [K in keyof R]: R[K] }
@@ -224,55 +229,59 @@ type FormatErrorText<Code extends number, Msg extends string> = `error [dbtyper:
 
 /** Type check for .stream() - requires SELECT or RETURNING */
 type CheckSqlValidForStream<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperError<infer Code, infer Msg>
+	SqlSelectRow<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
 		: Stmt
 
 type CheckSqlValid<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = ApplyStatements<Db, Stmt, Params>[1] extends DbtyperError<infer Code, infer Msg> ? FormatErrorText<Code, Msg> : Stmt
+> =
+	ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1] extends DbtyperError<infer Code, infer Msg>
+		? FormatErrorText<Code, Msg>
+		: Stmt
 
 /** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
 type QueryReturnType<
+	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	ScalarTypes extends Record<string, unknown>,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Db, Stmt, ScalarTypes, Params> extends DbtyperErrorShape
+	SqlSelectRow<Config, Db, Stmt, Params> extends DbtyperErrorShape
 		? unknown
-		: Array<SqlSelectRowObject<Db, Stmt, ScalarTypes, Params>>
+		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
 
 export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> = {
 	/**
 	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, unknown for other statements.
 	 */
 	query<Stmt extends string>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValid<Config, Db, Stmt, EmptyExpressionParams>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, EmptyExpressionParams>,
-	): Promise<QueryReturnType<Db, Stmt, Config["scalarTypes"], EmptyExpressionParams>>
+			: CheckSqlValid<Config, Db, Stmt, EmptyExpressionParams>,
+	): Promise<QueryReturnType<Config, Db, Stmt, EmptyExpressionParams>>
 
 	query<Stmt extends string, ParamsValues extends Record<string, unknown>>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>
+		statement: Stmt extends CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
 		params: ParamsValues,
-	): Promise<QueryReturnType<Db, Stmt, Config["scalarTypes"], InferParamsFromValues<ParamsValues>>>
+	): Promise<QueryReturnType<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>
 
 	query<Stmt extends string, ParamsValues extends readonly unknown[]>(
-		statement: Stmt extends CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>
+		statement: Stmt extends CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValid<Db, Stmt, InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
 		params: ParamsValues,
-	): Promise<QueryReturnType<Db, Stmt, Config["scalarTypes"], InferParamsFromValues<ParamsValues>>>
+	): Promise<QueryReturnType<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>
 
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
@@ -280,34 +289,24 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 	 * Row-by-row iteration. Requires SELECT or RETURNING statements.
 	 */
 	stream<Stmt extends string>(
-		statement: Stmt extends CheckSqlValidForStream<Db, Stmt, Config["scalarTypes"], EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValidForStream<Config, Db, Stmt, EmptyExpressionParams>
 			? Stmt
-			: CheckSqlValidForStream<Db, Stmt, Config["scalarTypes"], EmptyExpressionParams>,
-	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, Config["scalarTypes"], EmptyExpressionParams>>>
+			: CheckSqlValidForStream<Config, Db, Stmt, EmptyExpressionParams>,
+	): Promise<AsyncIterable<SqlSelectRowObject<Config, Db, Stmt, EmptyExpressionParams>>>
 
 	stream<Stmt extends string, ParamsValues extends Record<string, unknown>>(
-		statement: Stmt extends CheckSqlValidForStream<
-			Db,
-			Stmt,
-			Config["scalarTypes"],
-			InferParamsFromValues<ParamsValues>
-		>
+		statement: Stmt extends CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValidForStream<Db, Stmt, Config["scalarTypes"], InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
 		params: ParamsValues,
-	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, Config["scalarTypes"], InferParamsFromValues<ParamsValues>>>>
+	): Promise<AsyncIterable<SqlSelectRowObject<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>>
 
 	stream<Stmt extends string, ParamsValues extends readonly unknown[]>(
-		statement: Stmt extends CheckSqlValidForStream<
-			Db,
-			Stmt,
-			Config["scalarTypes"],
-			InferParamsFromValues<ParamsValues>
-		>
+		statement: Stmt extends CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
 			? Stmt
-			: CheckSqlValidForStream<Db, Stmt, Config["scalarTypes"], InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
 		params: ParamsValues,
-	): Promise<AsyncIterable<SqlSelectRowObject<Db, Stmt, Config["scalarTypes"], InferParamsFromValues<ParamsValues>>>>
+	): Promise<AsyncIterable<SqlSelectRowObject<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>>
 
 	streamUntyped(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<any>>
 
