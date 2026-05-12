@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -69,7 +69,7 @@ type ParseCreateViewSelectAndSemi<
 > =
 	JsqlDbGetData<Db, Sch, Vname> extends null
 		? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
-			? Res extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+			? Res extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 				? [R3, Db, Res]
 				: Res extends JsqlSelectStatementResult
 					? ParseCreateViewAfterSelect<R3, Db, Sch, Vname, Res>

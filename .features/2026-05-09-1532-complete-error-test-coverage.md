@@ -369,7 +369,7 @@ type _ErrorCheck = Expect<
 - `src/parser/parse-where-expression.ts` - WHERE clause parser
 - `src/parser/parse-select.ts` - SELECT parser
 - `src/type-system/type-checker.ts` - Type validation logic
-- `src/sql-parser-error.ts` - Error code registry (357 codes)
+- `src/dbtyper-error.ts` - Error code registry (357 codes)
 
 ### Documentation
 

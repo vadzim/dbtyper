@@ -1145,7 +1145,6 @@ export const errors = {
 		msg: ["Expected AS after qualified view name"],
 	},
 
-
 	// ALTER TYPE
 	4000: {
 		id: "EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE",

@@ -5,7 +5,7 @@ import type {
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -97,18 +97,18 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 								? TokB extends TokenIdent<infer B extends string>
 									? JsqlDbGetData<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
-										? [
-												R3,
-												FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "UPDATE"]>,
-												ParserRefErrorThirdSentinel,
-											]
-										: TblTry extends JsqlDataShape
-											? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
-											: [
+											? [
 													R3,
 													FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "UPDATE"]>,
 													ParserRefErrorThirdSentinel,
 												]
+											: TblTry extends JsqlDataShape
+												? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
+												: [
+														R3,
+														FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "UPDATE"]>,
+														ParserRefErrorThirdSentinel,
+													]
 										: never
 									: [
 											R3,
@@ -118,13 +118,13 @@ type ParseUpdateFromTableRef<Tokens extends TokensList, Db extends JsqlDatabaseS
 								: never
 							: never
 						: never
-				: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
-					? [TblTry] extends [never]
-						? [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
-						: TblTry extends JsqlDataShape
-							? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
-							: [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
-					: never
+					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
+						? [TblTry] extends [never]
+							? [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
+							: TblTry extends JsqlDataShape
+								? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
+								: [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
+						: never
 				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in UPDATE"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
@@ -141,9 +141,9 @@ type ParseUpdateSetAssignments<
 > =
 	PeekToken<Tokens> extends infer TokCol
 		? SkipToken<Tokens> extends infer R1 extends TokensList
-		? TokCol extends TokenIdent<infer Col extends string>
-			? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-				? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "UPDATE SET"]>]
+			? TokCol extends TokenIdent<infer Col extends string>
+				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+					? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends TokensList
 							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
@@ -204,17 +204,17 @@ type ParseUpdateSetAssignments<
 																			]
 																: never
 														: never
-													: SkipFailedExpression<
-																R3,
-																never
-														  > extends [infer Rest extends TokensList, infer Err]
+													: SkipFailedExpression<R3, never> extends [
+																infer Rest extends TokensList,
+																infer Err,
+														  ]
 														? [Rest, Db, Err]
 														: never
 											: never
-										: SkipFailedExpression<
-													R3,
-													never
-											  > extends [infer Rest extends TokensList, infer Err]
+										: SkipFailedExpression<R3, never> extends [
+													infer Rest extends TokensList,
+													infer Err,
+											  ]
 											? [Rest, Db, Err]
 											: never
 								: never
@@ -287,21 +287,21 @@ type ParseUpdateFromClauseTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-								? JsqlDbGetData<Db, A, B> extends infer TblTry
-									? [TblTry] extends [never]
-										? [
-												R3,
-												FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "UPDATE FROM"]>,
-												ParserRefErrorThirdSentinel,
-											]
-										: TblTry extends JsqlDataShape
-											? ParseUpdateFromClauseTableAlias<R3, A, B, TblTry>
-											: [
+									? JsqlDbGetData<Db, A, B> extends infer TblTry
+										? [TblTry] extends [never]
+											? [
 													R3,
 													FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "UPDATE FROM"]>,
 													ParserRefErrorThirdSentinel,
 												]
-									: never
+											: TblTry extends JsqlDataShape
+												? ParseUpdateFromClauseTableAlias<R3, A, B, TblTry>
+												: [
+														R3,
+														FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "UPDATE FROM"]>,
+														ParserRefErrorThirdSentinel,
+													]
+										: never
 									: [
 											R3,
 											FormatError<"EXPECTED_TABLE_NAME", ["in UPDATE FROM"]>,
@@ -310,13 +310,13 @@ type ParseUpdateFromClauseTableRef<
 								: never
 							: never
 						: never
-				: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
-					? [TblTry2] extends [never]
-						? [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE FROM"]>, ParserRefErrorThirdSentinel]
-						: TblTry2 extends JsqlDataShape
-							? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
-							: [R1, never, ParserRefErrorThirdSentinel]
-					: never
+					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
+						? [TblTry2] extends [never]
+							? [R1, FormatError<"UNKNOWN_TABLE", [A, "UPDATE FROM"]>, ParserRefErrorThirdSentinel]
+							: TblTry2 extends JsqlDataShape
+								? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
+								: [R1, never, ParserRefErrorThirdSentinel]
+						: never
 				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in UPDATE FROM"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never

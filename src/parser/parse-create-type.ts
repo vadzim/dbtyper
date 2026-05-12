@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenKey, TokenString, TokensList } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
@@ -63,7 +63,7 @@ type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabase
 			: [
 					R,
 					Db,
-					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+					E extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 						? E
 						: FormatError<"INVALID_CREATE_TYPE_NAME_PARSE", []>,
 				]

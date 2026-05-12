@@ -1,4 +1,4 @@
-import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
 
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way

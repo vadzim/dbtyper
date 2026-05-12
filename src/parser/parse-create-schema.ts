@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbReplaceSchema, JsqlCreateSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError } from "../sql-parser-error.ts"
+import type { FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseCreateSchema<Tokens extends TokensList, Db extends JsqlDatabaseShape> =

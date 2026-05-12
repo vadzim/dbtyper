@@ -2,7 +2,7 @@ import { readdir, stat, readFile } from "fs/promises"
 import { join } from "path"
 import { describe, it } from "node:test"
 import assert from "node:assert"
-import { errors } from "../../src/sql-parser-error.ts"
+import { errors } from "../../src/dbtyper-error.ts"
 
 async function* getIntegrationTestFiles(dir: string): AsyncGenerator<string> {
 	const entries = await readdir(dir)

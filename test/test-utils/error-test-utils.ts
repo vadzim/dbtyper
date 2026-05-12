@@ -1,6 +1,6 @@
 import type { ParseSqlTokens } from "../../src/lexer/sql-tokens.ts"
 import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
-import type { DbtyperError } from "../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import type { DbPublicUsers } from "./test-databases.ts"
 import type { Matches } from "./type-test-utils.ts"
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
@@ -17,7 +17,7 @@ export type CheckErrorneousResult<Result, S extends string> = Matches<
 
 export type CheckErrorneousResultWithCode<
 	Result,
-	Code extends -1 | keyof typeof import("../../src/sql-parser-error.ts").errors,
+	Code extends -1 | keyof typeof import("../../src/dbtyper-error.ts").errors,
 	Message extends string,
 > = Matches<Result, [TokensRest, DbPublicUsers, DbtyperError<Code, Message>]>
 

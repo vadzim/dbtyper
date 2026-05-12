@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -97,20 +97,20 @@ type ParseDeleteUsingTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-								? JsqlDbGetData<Db, A, B> extends infer TblTry
-									? [TblTry] extends [never]
-										? [
-												R3,
-												FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "DELETE USING"]>,
-												ParserRefErrorThirdSentinel,
-											]
-										: TblTry extends JsqlDataShape
-											? ParseDeleteUsingTableAlias<R3, A, B, TblTry>
-											: [
+									? JsqlDbGetData<Db, A, B> extends infer TblTry
+										? [TblTry] extends [never]
+											? [
 													R3,
 													FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "DELETE USING"]>,
 													ParserRefErrorThirdSentinel,
 												]
+											: TblTry extends JsqlDataShape
+												? ParseDeleteUsingTableAlias<R3, A, B, TblTry>
+												: [
+														R3,
+														FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "DELETE USING"]>,
+														ParserRefErrorThirdSentinel,
+													]
 										: never
 									: [
 											R3,
@@ -120,13 +120,13 @@ type ParseDeleteUsingTableRef<
 								: never
 							: never
 						: never
-				: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
-					? [TblTry2] extends [never]
-						? [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE USING"]>, ParserRefErrorThirdSentinel]
-						: TblTry2 extends JsqlDataShape
-							? ParseDeleteUsingTableAlias<R1, Db["defaultSchema"], A, TblTry2>
-							: [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE USING"]>, ParserRefErrorThirdSentinel]
-					: never
+					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
+						? [TblTry2] extends [never]
+							? [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE USING"]>, ParserRefErrorThirdSentinel]
+							: TblTry2 extends JsqlDataShape
+								? ParseDeleteUsingTableAlias<R1, Db["defaultSchema"], A, TblTry2>
+								: [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE USING"]>, ParserRefErrorThirdSentinel]
+						: never
 				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in DELETE USING"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never
@@ -234,20 +234,20 @@ type ParseDeleteFromTableRef<
 						? PeekToken<R2> extends infer TokB
 							? SkipToken<R2> extends infer R3 extends TokensList
 								? TokB extends TokenIdent<infer B extends string>
-								? JsqlDbGetData<Db, A, B> extends infer TblTry
-									? [TblTry] extends [never]
-										? [
-												R3,
-												FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "DELETE FROM"]>,
-												ParserRefErrorThirdSentinel,
-											]
-										: TblTry extends JsqlDataShape
-											? ParseDeleteAliasAfterTable<R3, Db, A, B, TblTry, Scope, Params>
-											: [
+									? JsqlDbGetData<Db, A, B> extends infer TblTry
+										? [TblTry] extends [never]
+											? [
 													R3,
 													FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "DELETE FROM"]>,
 													ParserRefErrorThirdSentinel,
 												]
+											: TblTry extends JsqlDataShape
+												? ParseDeleteAliasAfterTable<R3, Db, A, B, TblTry, Scope, Params>
+												: [
+														R3,
+														FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "DELETE FROM"]>,
+														ParserRefErrorThirdSentinel,
+													]
 										: never
 									: [
 											R3,
@@ -257,13 +257,13 @@ type ParseDeleteFromTableRef<
 								: never
 							: never
 						: never
-				: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
-					? [TblTry] extends [never]
-						? [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE FROM"]>, ParserRefErrorThirdSentinel]
-						: TblTry extends JsqlDataShape
-							? ParseDeleteAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Scope, Params>
-							: [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE FROM"]>, ParserRefErrorThirdSentinel]
-					: never
+					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
+						? [TblTry] extends [never]
+							? [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE FROM"]>, ParserRefErrorThirdSentinel]
+							: TblTry extends JsqlDataShape
+								? ParseDeleteAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Scope, Params>
+								: [R1, FormatError<"UNKNOWN_TABLE", [A, "DELETE FROM"]>, ParserRefErrorThirdSentinel]
+						: never
 				: [R1, FormatError<"EXPECTED_TABLE_NAME", ["in DELETE FROM"]>, ParserRefErrorThirdSentinel]
 			: never
 		: never

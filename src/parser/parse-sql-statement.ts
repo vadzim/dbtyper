@@ -7,7 +7,7 @@ import type {
 	TokenKey,
 	ParseSqlTokens,
 } from "../lexer/sql-tokens.ts"
-import type { DbtyperError } from "../sql-parser-error.ts"
+import type { DbtyperError } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"

@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
-import type { DbtyperError } from "../../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
@@ -25,4 +25,6 @@ type DbShape = ApplyStatements<
 	`create schema public; create schema billing; create table users (id text not null, name text not null); create table billing.subs (id text not null, user_id text not null);`
 >[0]
 
-type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column ghost in ">>>
+type _errorCheck = Expect<
+	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2300, "Unknown column ghost in ">>
+>

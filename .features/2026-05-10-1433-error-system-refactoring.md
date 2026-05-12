@@ -42,12 +42,14 @@ The current error system has 372 error codes, but 157 (42%) cannot be tested in 
 
 **Target:** Reduce from 372 codes to ~201 testable codes while preserving all error information.
 
-**Reference Documents:** 
+**Reference Documents:**
+
 - `docs/ERROR_SYSTEM_REFACTORING.md` - Original proposal
 - `/tmp/opencode/final_report.md` - Detailed audit report
 - `/tmp/opencode/summary_for_main_agent.txt` - Executive summary
 
 **Audit Results (Completed 2026-05-10 14:40):**
+
 - **REMOVE:** 90 codes (24%) - Dead/unreachable code
 - **CONSOLIDATE:** 80 codes (22%) - Context-specific duplicates → 10 codes
 - **MOVE:** 1 code (<1%) - Wrong abstraction level
@@ -61,45 +63,45 @@ The current error system has 372 error codes, but 157 (42%) cannot be tested in 
 ### ✅ Completed (Working)
 
 1. **Planning and Audit** (Phase 0) - Completed 2026-05-10 14:43
-   - Launched planning subagent for comprehensive audit
-   - Analyzed all 372 error codes in src/sql-parser-error.ts
-   - Categorized codes: REMOVE (90), CONSOLIDATE (80), MOVE (1), KEEP (201)
-   - Generated detailed reports in /tmp/opencode/
-   - Identified implementation phases and priorities
+    - Launched planning subagent for comprehensive audit
+    - Analyzed all 372 error codes in src/dbtyper-error.ts
+    - Categorized codes: REMOVE (90), CONSOLIDATE (80), MOVE (1), KEEP (201)
+    - Generated detailed reports in /tmp/opencode/
+    - Identified implementation phases and priorities
 
-2. **Phase 1: Remove INVALID_* Codes** - Completed 2026-05-10 15:30
-   - Removed 40 INVALID_* defensive check codes from error registry
-   - Modified 6 source files (error registry + 5 parser files)
-   - Removed 23 test files for removed codes
-   - Replaced FormatError<"INVALID_*"> with `never` type in parser
-   - Updated UNTESTABLE_ERROR_CODES list
-   - All tests passing (0 failures)
-   - TypeScript compilation successful
-   - **Result:** 372 → 332 error codes (40 removed, 11% reduction)
-   - **Committed:** eb2573f
+2. **Phase 1: Remove INVALID\_\* Codes** - Completed 2026-05-10 15:30
+    - Removed 40 INVALID\_\* defensive check codes from error registry
+    - Modified 6 source files (error registry + 5 parser files)
+    - Removed 23 test files for removed codes
+    - Replaced FormatError<"INVALID\_\*"> with `never` type in parser
+    - Updated UNTESTABLE_ERROR_CODES list
+    - All tests passing (0 failures)
+    - TypeScript compilation successful
+    - **Result:** 372 → 332 error codes (40 removed, 11% reduction)
+    - **Committed:** eb2573f
 
-3. **Phase 2a: Consolidate UNKNOWN_* Codes** - Completed 2026-05-10 16:15
-   - Consolidated 19 context-specific duplicate codes into 4 base codes
-   - UNKNOWN_TABLE_* (7 → 1), UNKNOWN_SCHEMA_OR_TABLE_* (7 → 1)
-   - UNKNOWN_COLUMN_* (6 → 1), UNKNOWN_SCHEMA_FOR_* (3 → 1)
-   - Modified 10 source files, updated 67 test files
-   - All consolidated codes use context parameters
-   - Old codes marked as OBSOLETE for backward compatibility
-   - All tests passing
-   - **Result:** 332 → 313 error codes (19 removed, 6% reduction)
-   - **Committed:** 3bef9f9
+3. **Phase 2a: Consolidate UNKNOWN\_\* Codes** - Completed 2026-05-10 16:15
+    - Consolidated 19 context-specific duplicate codes into 4 base codes
+    - UNKNOWN*TABLE*_ (7 → 1), UNKNOWN*SCHEMA_OR_TABLE*_ (7 → 1)
+    - UNKNOWN*COLUMN*_ (6 → 1), UNKNOWN*SCHEMA_FOR*_ (3 → 1)
+    - Modified 10 source files, updated 67 test files
+    - All consolidated codes use context parameters
+    - Old codes marked as OBSOLETE for backward compatibility
+    - All tests passing
+    - **Result:** 332 → 313 error codes (19 removed, 6% reduction)
+    - **Committed:** 3bef9f9
 
-4. **Phase 2b: Consolidate EXPECTED_* Codes** - Completed 2026-05-10 17:00
-   - Consolidated 51 context-specific duplicate codes into 6 base codes
-   - EXPECTED_SEMICOLON_AFTER_* (14 → 1), EXPECTED_TABLE_NAME_* (14 → 1)
-   - EXPECTED_COLUMN_NAME_* (8 → 1), EXPECTED_TYPE_NAME_* (6 → 1)
-   - JOIN-related EXPECTED_* (9 → 2)
-   - Modified 16 source files, updated 32 test files
-   - All consolidated codes use context parameters
-   - Old codes marked as OBSOLETE for backward compatibility
-   - All tests passing
-   - **Result:** 313 → 262 error codes (51 removed, 16% reduction)
-   - **Committed:** c8dca4f
+4. **Phase 2b: Consolidate EXPECTED\_\* Codes** - Completed 2026-05-10 17:00
+    - Consolidated 51 context-specific duplicate codes into 6 base codes
+    - EXPECTED*SEMICOLON_AFTER*_ (14 → 1), EXPECTED*TABLE_NAME*_ (14 → 1)
+    - EXPECTED*COLUMN_NAME*_ (8 → 1), EXPECTED*TYPE_NAME*_ (6 → 1)
+    - JOIN-related EXPECTED\_\* (9 → 2)
+    - Modified 16 source files, updated 32 test files
+    - All consolidated codes use context parameters
+    - Old codes marked as OBSOLETE for backward compatibility
+    - All tests passing
+    - **Result:** 313 → 262 error codes (51 removed, 16% reduction)
+    - **Committed:** c8dca4f
 
 ### ❌ Incomplete (Causing Failures)
 
@@ -124,36 +126,38 @@ None yet - no changes made.
 **Status:** ✅ Completed 2026-05-10 14:40
 
 **Results:**
+
 - **REMOVE:** 90 codes (24%)
-  - 40 INVALID_* codes (type system catches earlier)
-  - 8 Lexer error recovery codes
-  - 13 Parser validation codes
-  - 11 Parser error recovery codes
-  - 5 Runtime/internal checks
-  - 3 Unreachable text concatenation
-  - 3 Generic fallback codes
-  - 3 Obsolete codes
-  - 4 Misc unreachable
+    - 40 INVALID\_\* codes (type system catches earlier)
+    - 8 Lexer error recovery codes
+    - 13 Parser validation codes
+    - 11 Parser error recovery codes
+    - 5 Runtime/internal checks
+    - 3 Unreachable text concatenation
+    - 3 Generic fallback codes
+    - 3 Obsolete codes
+    - 4 Misc unreachable
 
 - **CONSOLIDATE:** 80 codes (22%) → 10 codes
-  - 7 UNKNOWN_TABLE_* → 1 with context
-  - 7 UNKNOWN_SCHEMA_OR_TABLE_* → 1 with context
-  - 6 UNKNOWN_COLUMN_* → 1 with context
-  - 3 UNKNOWN_SCHEMA_FOR_* → 1 with context
-  - 14 EXPECTED_SEMICOLON_AFTER_* → 1 with context
-  - 14 EXPECTED_TABLE_NAME_* → 1 with context
-  - 8 EXPECTED_COLUMN_NAME_* → 1 with context
-  - 7 EXPECTED_TYPE_NAME_* → 1 with context
-  - 9 JOIN-related EXPECTED_* → 2 with context
-  - 6 Numeric/VARCHAR parsing codes
+    - 7 UNKNOWN*TABLE*\* → 1 with context
+    - 7 UNKNOWN*SCHEMA_OR_TABLE*\* → 1 with context
+    - 6 UNKNOWN*COLUMN*\* → 1 with context
+    - 3 UNKNOWN*SCHEMA_FOR*\* → 1 with context
+    - 14 EXPECTED*SEMICOLON_AFTER*\* → 1 with context
+    - 14 EXPECTED*TABLE_NAME*\* → 1 with context
+    - 8 EXPECTED*COLUMN_NAME*\* → 1 with context
+    - 7 EXPECTED*TYPE_NAME*\* → 1 with context
+    - 9 JOIN-related EXPECTED\_\* → 2 with context
+    - 6 Numeric/VARCHAR parsing codes
 
 - **MOVE:** 1 code
-  - 1007 UNEXPECTED_TOKEN → Move to lexer module
+    - 1007 UNEXPECTED_TOKEN → Move to lexer module
 
 - **KEEP:** 201 codes (54%)
-  - Unique, testable, necessary codes
+    - Unique, testable, necessary codes
 
 **Deliverables:**
+
 - `/tmp/opencode/final_report.md` - Comprehensive analysis
 - `/tmp/opencode/summary_for_main_agent.txt` - Executive summary
 - `/tmp/opencode/detailed_categorization.txt` - Detailed lists
@@ -171,7 +175,7 @@ None yet - no changes made.
 
 **Codes to remove (90 total):**
 
-1. **INVALID_* codes (40):** 2000-2029, 2100-2106, 2113-2115
+1. **INVALID\_\* codes (40):** 2000-2029, 2100-2106, 2113-2115
 2. **Lexer error recovery (8):** 1001-1006, 1008-1009
 3. **Parser validation (13):** 2107-2112, 2116-2119, 3102-3103, 3606
 4. **Runtime/internal (5):** 3406-3407, 3504-3505, 5007
@@ -182,7 +186,7 @@ None yet - no changes made.
 
 **Files to update:**
 
-- `src/sql-parser-error.ts` - Remove error code definitions
+- `src/dbtyper-error.ts` - Remove error code definitions
 - Parser/resolver files - Remove defensive checks (if any)
 
 **Testing:** Run existing test suite - should pass without changes (these codes are unreachable)
@@ -202,20 +206,20 @@ None yet - no changes made.
 
 **Consolidation groups (80 → 10 codes):**
 
-1. **UNKNOWN_TABLE_* (7 → 1):** 2200-2206 → UNKNOWN_TABLE(table, context)
-2. **UNKNOWN_SCHEMA_OR_TABLE_* (7 → 1):** 2207-2213 → UNKNOWN_SCHEMA_OR_TABLE(schema, table, context)
-3. **UNKNOWN_COLUMN_* (6 → 1):** 2300-2305 → UNKNOWN_COLUMN(column, context)
-4. **UNKNOWN_SCHEMA_FOR_* (3 → 1):** 2214-2216 → UNKNOWN_SCHEMA(schema, context)
-5. **EXPECTED_SEMICOLON_AFTER_* (14 → 1):** 1105, 1201, 1302, 1401, 1500, 1600, 1700, 1704, 1800-1802, 3701, 3801, 3905 → EXPECTED_SEMICOLON(context)
-6. **EXPECTED_TABLE_NAME_* (14 → 1):** 1120-1121, 1220-1221, 1306-1308, 1402-1404, 1506, 1602-1603, 1701 → EXPECTED_TABLE_NAME(context, afterDot?)
-7. **EXPECTED_COLUMN_NAME_* (8 → 1):** 1206, 1212, 1218, 1303, 1503, 1604-1606 → EXPECTED_COLUMN_NAME(context)
-8. **EXPECTED_TYPE_NAME_* (7 → 1):** 1809-1812, 4105-4106 → EXPECTED_TYPE_NAME(context)
-9. **JOIN-related EXPECTED_* (9 → 2):** 4200-4204, 4206-4209 → EXPECTED_JOIN_KEYWORD(after), EXPECTED_ON_AFTER_JOIN
+1. **UNKNOWN*TABLE*\* (7 → 1):** 2200-2206 → UNKNOWN_TABLE(table, context)
+2. **UNKNOWN*SCHEMA_OR_TABLE*\* (7 → 1):** 2207-2213 → UNKNOWN_SCHEMA_OR_TABLE(schema, table, context)
+3. **UNKNOWN*COLUMN*\* (6 → 1):** 2300-2305 → UNKNOWN_COLUMN(column, context)
+4. **UNKNOWN*SCHEMA_FOR*\* (3 → 1):** 2214-2216 → UNKNOWN_SCHEMA(schema, context)
+5. **EXPECTED*SEMICOLON_AFTER*\* (14 → 1):** 1105, 1201, 1302, 1401, 1500, 1600, 1700, 1704, 1800-1802, 3701, 3801, 3905 → EXPECTED_SEMICOLON(context)
+6. **EXPECTED*TABLE_NAME*\* (14 → 1):** 1120-1121, 1220-1221, 1306-1308, 1402-1404, 1506, 1602-1603, 1701 → EXPECTED_TABLE_NAME(context, afterDot?)
+7. **EXPECTED*COLUMN_NAME*\* (8 → 1):** 1206, 1212, 1218, 1303, 1503, 1604-1606 → EXPECTED_COLUMN_NAME(context)
+8. **EXPECTED*TYPE_NAME*\* (7 → 1):** 1809-1812, 4105-4106 → EXPECTED_TYPE_NAME(context)
+9. **JOIN-related EXPECTED\_\* (9 → 2):** 4200-4204, 4206-4209 → EXPECTED_JOIN_KEYWORD(after), EXPECTED_ON_AFTER_JOIN
 10. **Numeric/VARCHAR parsing (6):** 5100-5105 (already untestable, consolidate if kept)
 
 **Files to update:**
 
-- `src/sql-parser-error.ts` - Add consolidated error codes, keep old as deprecated aliases
+- `src/dbtyper-error.ts` - Add consolidated error codes, keep old as deprecated aliases
 - Parser/resolver files - Update to use general codes with context
 - Test files - Update to use new error codes (~400 tests)
 
@@ -226,12 +230,13 @@ None yet - no changes made.
 **Goal:** Move 1 code to appropriate abstraction level.
 
 **Code to move:**
+
 - 1007 UNEXPECTED_TOKEN → Move to lexer module (or remove if unused)
 
 **Files to update:**
 
 - `src/lexer/lexer-errors.ts` (new file or existing) - Move lexer error
-- `src/sql-parser-error.ts` - Remove from main registry
+- `src/dbtyper-error.ts` - Remove from main registry
 - Lexer files - Update imports if needed
 
 **Estimated effort:** 30 minutes - 1 hour
@@ -256,48 +261,48 @@ None yet - no changes made.
 ### Recommended Approach: Phased Incremental Refactoring
 
 1. **Phase 0: Planning and Audit (Current)**
-   - Audit all 372 error codes
-   - Create detailed categorization
-   - Identify test coverage gaps
-   - Create mapping document
+    - Audit all 372 error codes
+    - Create detailed categorization
+    - Identify test coverage gaps
+    - Create mapping document
 
 2. **Phase 1: Remove Unreachable Codes**
-   - Remove 40 INVALID_* codes
-   - Remove defensive checks
-   - Verify type system still catches errors
-   - Run full test suite
+    - Remove 40 INVALID\_\* codes
+    - Remove defensive checks
+    - Verify type system still catches errors
+    - Run full test suite
 
 3. **Phase 2: Consolidate Parser Recovery**
-   - Add context parameter support to FormatError (if needed)
-   - Create 10-15 general parser error codes
-   - Update parser to use new codes
-   - Update tests
-   - Keep old codes as deprecated aliases
+    - Add context parameter support to FormatError (if needed)
+    - Create 10-15 general parser error codes
+    - Update parser to use new codes
+    - Update tests
+    - Keep old codes as deprecated aliases
 
 4. **Phase 3: Consolidate Context-Specific Duplicates**
-   - Create 10-15 general resolver error codes
-   - Update resolver to use new codes
-   - Update tests
-   - Keep old codes as deprecated aliases
+    - Create 10-15 general resolver error codes
+    - Update resolver to use new codes
+    - Update tests
+    - Keep old codes as deprecated aliases
 
 5. **Phase 4: Move Lexer Errors**
-   - Create separate lexer error registry
-   - Move 8 lexer errors
-   - Update lexer to use new registry
-   - Add lexer unit tests
+    - Create separate lexer error registry
+    - Move 8 lexer errors
+    - Update lexer to use new registry
+    - Add lexer unit tests
 
 6. **Phase 5: Documentation and Cleanup**
-   - Update ERROR_CODES.md
-   - Create migration guide
-   - Remove deprecated aliases (or mark for next major version)
-   - Final validation
+    - Update ERROR_CODES.md
+    - Create migration guide
+    - Remove deprecated aliases (or mark for next major version)
+    - Final validation
 
 ### Alternative Approach: Big Bang Refactoring
 
 1. **Do all changes at once**
-   - Higher risk of breaking things
-   - Harder to debug if issues arise
-   - Faster if successful
+    - Higher risk of breaking things
+    - Harder to debug if issues arise
+    - Faster if successful
 
 **Recommendation:** Use phased incremental approach for safety and easier debugging.
 
@@ -396,7 +401,7 @@ None yet - no changes made.
 
 ## Related Files
 
-- `src/sql-parser-error.ts` - Main error registry (357 codes)
+- `src/dbtyper-error.ts` - Main error registry (357 codes)
 - `docs/ERROR_CODES.md` - Error code documentation
 - `docs/ERROR_SYSTEM_REFACTORING.md` - Refactoring proposal (reference)
 - `test/integration/**/*.error.test.ts` - Error tests (74 files)
@@ -412,9 +417,9 @@ None yet - no changes made.
 **IMPORTANT:** When working on this migration, follow these rules:
 
 1. **Update checkboxes immediately** - Mark `[x]` as soon as a task is completed
-   - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
-   - **Don't batch updates - update as you go**
-   - This makes the plan resumable at any point
+    - **CRITICAL: Mark checkboxes [x] IMMEDIATELY after completing each task**
+    - **Don't batch updates - update as you go**
+    - This makes the plan resumable at any point
 2. **Update the plan as you learn** - If you discover new requirements or issues, add them to the plan
 3. **Document blockers** - If stuck, add a note explaining what's blocking progress
 4. **Keep progress tracking current** - Update the "Last Updated" timestamp and current phase
@@ -422,8 +427,8 @@ None yet - no changes made.
 6. **Commit frequently** - Commit the updated plan document after completing each major step
 7. **Run tests frequently** - Run tests after completing each significant change or step to catch issues early
 8. **Update knowledge documents** - When you discover something that applies beyond this feature:
-   - Project-specific → Update `.workflow/project_knowledge.md`
-   - General patterns → Update `.workflow/findings.md`
+    - Project-specific → Update `.workflow/project_knowledge.md`
+    - General patterns → Update `.workflow/findings.md`
 
 This ensures the plan is always up-to-date and can be resumed at any time.
 
@@ -435,7 +440,7 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 
 #### Step 0.1: Launch Planning Subagent
 
-- [x] Launch explore subagent to audit all error codes in src/sql-parser-error.ts
+- [x] Launch explore subagent to audit all error codes in src/dbtyper-error.ts
 - [x] Subagent should categorize each code as: Keep/Remove/Consolidate/Move
 - [x] Subagent should identify which codes are tested vs untested
 - [x] Subagent should create detailed mapping document
@@ -460,21 +465,21 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 
 **Notes:** ✅ Completed 2026-05-10 14:43 - Ready to start Phase 1
 
-### Phase 1: Remove Unreachable INVALID_* Codes (Priority 2) ✅ COMPLETED
+### Phase 1: Remove Unreachable INVALID\_\* Codes (Priority 2) ✅ COMPLETED
 
 **Goal:** Remove 40 unreachable codes that are never triggered.
 
 #### Step 1.1: Identify Unreachable Codes
 
-- [x] List all INVALID_* codes from audit
+- [x] List all INVALID\_\* codes from audit
 - [x] Verify they are truly unreachable (check parser/resolver usage)
 - [x] Document why each is unreachable
 
-**Notes:** ✅ Completed 2026-05-10 15:20 - 40 INVALID_* codes identified
+**Notes:** ✅ Completed 2026-05-10 15:20 - 40 INVALID\_\* codes identified
 
 #### Step 1.2: Remove Error Code Definitions
 
-- [x] Remove unreachable codes from src/sql-parser-error.ts
+- [x] Remove unreachable codes from src/dbtyper-error.ts
 - [x] Update error code numbering if needed
 - [x] Run typecheck to find any usage
 
@@ -501,25 +506,25 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 
 **Goal:** Consolidate 70 context-specific duplicate codes into 10 base codes.
 
-#### Step 2.1: Consolidate UNKNOWN_* Family (Phase 2a)
+#### Step 2.1: Consolidate UNKNOWN\_\* Family (Phase 2a)
 
-- [x] UNKNOWN_TABLE_* (7 → 1): Consolidated into 2200
-- [x] UNKNOWN_SCHEMA_OR_TABLE_* (7 → 1): Consolidated into 2207
-- [x] UNKNOWN_COLUMN_* (6 → 1): Consolidated into 2300
-- [x] UNKNOWN_SCHEMA_FOR_* (3 → 1): Consolidated into 2214
+- [x] UNKNOWN*TABLE*\* (7 → 1): Consolidated into 2200
+- [x] UNKNOWN*SCHEMA_OR_TABLE*\* (7 → 1): Consolidated into 2207
+- [x] UNKNOWN*COLUMN*\* (6 → 1): Consolidated into 2300
+- [x] UNKNOWN*SCHEMA_FOR*\* (3 → 1): Consolidated into 2214
 - [x] Update parser/resolver files with context parameters
 - [x] Update 67 test files
 - [x] Verify all tests pass
 
 **Notes:** ✅ Completed 2026-05-10 16:15 - 19 codes consolidated, committed as 3bef9f9
 
-#### Step 2.2: Consolidate EXPECTED_* Family (Phase 2b)
+#### Step 2.2: Consolidate EXPECTED\_\* Family (Phase 2b)
 
-- [x] EXPECTED_SEMICOLON_AFTER_* (14 → 1): Consolidated into 1105
-- [x] EXPECTED_TABLE_NAME_* (14 → 1): Consolidated into 1120
-- [x] EXPECTED_COLUMN_NAME_* (8 → 1): Consolidated into 1206
-- [x] EXPECTED_TYPE_NAME_* (6 → 1): Consolidated into 4105
-- [x] JOIN-related EXPECTED_* (9 → 2): Consolidated into 4200, kept 4209
+- [x] EXPECTED*SEMICOLON_AFTER*\* (14 → 1): Consolidated into 1105
+- [x] EXPECTED*TABLE_NAME*\* (14 → 1): Consolidated into 1120
+- [x] EXPECTED*COLUMN_NAME*\* (8 → 1): Consolidated into 1206
+- [x] EXPECTED*TYPE_NAME*\* (6 → 1): Consolidated into 4105
+- [x] JOIN-related EXPECTED\_\* (9 → 2): Consolidated into 4200, kept 4209
 - [x] Update 16 parser files with context parameters
 - [x] Update 32 test files
 - [x] Verify all tests pass
@@ -573,7 +578,7 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 #### Step 4.2: Update Lexer Files
 
 - [ ] Update lexer to use new registry
-- [ ] Remove lexer errors from src/sql-parser-error.ts
+- [ ] Remove lexer errors from src/dbtyper-error.ts
 - [ ] Update imports
 
 #### Step 4.3: Add Lexer Unit Tests
@@ -626,9 +631,9 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 **Completed Phases:**
 
 - ✅ Phase 0: Planning and Audit (completed 2026-05-10 14:43)
-- ✅ Phase 1: Remove INVALID_* codes (completed 2026-05-10 15:30)
-- ✅ Phase 2a: Consolidate UNKNOWN_* codes (completed 2026-05-10 16:15)
-- ✅ Phase 2b: Consolidate EXPECTED_* codes (completed 2026-05-10 17:00)
+- ✅ Phase 1: Remove INVALID\_\* codes (completed 2026-05-10 15:30)
+- ✅ Phase 2a: Consolidate UNKNOWN\_\* codes (completed 2026-05-10 16:15)
+- ✅ Phase 2b: Consolidate EXPECTED\_\* codes (completed 2026-05-10 17:00)
 - ✅ Documentation: Updated ERROR_CODES.md (completed 2026-05-10 17:10)
 - ⏭️ Phase 3: Move lexer errors (skipped - not needed)
 
@@ -643,9 +648,10 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 - **Documentation:** ✅ Complete and up-to-date
 
 **Git Commits:**
-- `eb2573f` - Phase 1: Remove 40 INVALID_* codes
-- `3bef9f9` - Phase 2a: Consolidate 19 UNKNOWN_* codes
-- `c8dca4f` - Phase 2b: Consolidate 51 EXPECTED_* codes
+
+- `eb2573f` - Phase 1: Remove 40 INVALID\_\* codes
+- `3bef9f9` - Phase 2a: Consolidate 19 UNKNOWN\_\* codes
+- `c8dca4f` - Phase 2b: Consolidate 51 EXPECTED\_\* codes
 - `efba951` - Update feature plan documentation
 - `e0ec5a7` - Update ERROR_CODES.md documentation
 
@@ -653,31 +659,29 @@ This ensures the plan is always up-to-date and can be resumed at any time.
 
 1. Created feature plan document from template
 2. Launched explore subagent with "very thorough" analysis
-3. Subagent analyzed all 372 error codes in src/sql-parser-error.ts
+3. Subagent analyzed all 372 error codes in src/dbtyper-error.ts
 4. Subagent categorized codes into REMOVE (90), CONSOLIDATE (80), MOVE (1), KEEP (201)
 5. Generated comprehensive reports:
-   - /tmp/opencode/final_report.md (16KB)
-   - /tmp/opencode/summary_for_main_agent.txt (8.3KB)
-   - /tmp/opencode/detailed_categorization.txt (14KB)
-   - /tmp/opencode/detailed_categorization_part2.txt (13KB)
+    - /tmp/opencode/final_report.md (16KB)
+    - /tmp/opencode/summary_for_main_agent.txt (8.3KB)
+    - /tmp/opencode/detailed_categorization.txt (14KB)
+    - /tmp/opencode/detailed_categorization_part2.txt (13KB)
 6. Reviewed findings and validated recommendations
 7. Updated feature plan with audit results and detailed phase breakdown
 
 **Audit Key Findings:**
 
 - **REMOVE:** 90 codes (24%) - Dead/unreachable code
-  - 40 INVALID_* codes (type system catches earlier)
-  - 8 Lexer error recovery codes
-  - 13 Parser validation codes
-  - 11 Parser error recovery codes
-  - 18 Other unreachable codes
-  
+    - 40 INVALID\_\* codes (type system catches earlier)
+    - 8 Lexer error recovery codes
+    - 13 Parser validation codes
+    - 11 Parser error recovery codes
+    - 18 Other unreachable codes
 - **CONSOLIDATE:** 80 codes (22%) → 10 codes with context parameters
-  - 23 UNKNOWN_* codes → 4 codes
-  - 43 EXPECTED_* codes → 5 codes
-  - 9 JOIN-related codes → 2 codes
-  - 6 Numeric/VARCHAR parsing codes
-  
+    - 23 UNKNOWN\_\* codes → 4 codes
+    - 43 EXPECTED\_\* codes → 5 codes
+    - 9 JOIN-related codes → 2 codes
+    - 6 Numeric/VARCHAR parsing codes
 - **MOVE:** 1 code - 1007 UNEXPECTED_TOKEN to lexer module
 - **KEEP:** 201 codes (54%) - Unique, testable, necessary
 
@@ -716,31 +720,31 @@ Successfully refactored the error system to reduce complexity, improve maintaina
 ### Key Changes Made
 
 1. **Phase 1: Remove Unreachable Codes** (eb2573f)
-   - Removed 40 INVALID_* defensive check codes
-   - These were unreachable because the type system catches errors earlier
-   - Modified 6 source files, removed 23 test files
-   - Result: 372 → 332 codes (11% reduction)
+    - Removed 40 INVALID\_\* defensive check codes
+    - These were unreachable because the type system catches errors earlier
+    - Modified 6 source files, removed 23 test files
+    - Result: 372 → 332 codes (11% reduction)
 
-2. **Phase 2a: Consolidate UNKNOWN_* Family** (3bef9f9)
-   - Consolidated 19 context-specific duplicate codes into 4 base codes
-   - UNKNOWN_TABLE (7→1), UNKNOWN_SCHEMA_OR_TABLE (7→1), UNKNOWN_COLUMN (6→1), UNKNOWN_SCHEMA (3→1)
-   - All codes now use context parameters for dynamic messages
-   - Modified 10 source files, updated 67 test files
-   - Result: 332 → 313 codes (6% reduction)
+2. **Phase 2a: Consolidate UNKNOWN\_\* Family** (3bef9f9)
+    - Consolidated 19 context-specific duplicate codes into 4 base codes
+    - UNKNOWN_TABLE (7→1), UNKNOWN_SCHEMA_OR_TABLE (7→1), UNKNOWN_COLUMN (6→1), UNKNOWN_SCHEMA (3→1)
+    - All codes now use context parameters for dynamic messages
+    - Modified 10 source files, updated 67 test files
+    - Result: 332 → 313 codes (6% reduction)
 
-3. **Phase 2b: Consolidate EXPECTED_* Family** (c8dca4f)
-   - Consolidated 51 context-specific duplicate codes into 6 base codes
-   - EXPECTED_SEMICOLON (14→1), EXPECTED_TABLE_NAME (14→1), EXPECTED_COLUMN_NAME (8→1)
-   - EXPECTED_TYPE_NAME (6→1), JOIN-related (9→2)
-   - All codes now use context parameters for dynamic messages
-   - Modified 16 source files, updated 32 test files
-   - Result: 313 → 264 codes (16% reduction)
+3. **Phase 2b: Consolidate EXPECTED\_\* Family** (c8dca4f)
+    - Consolidated 51 context-specific duplicate codes into 6 base codes
+    - EXPECTED_SEMICOLON (14→1), EXPECTED_TABLE_NAME (14→1), EXPECTED_COLUMN_NAME (8→1)
+    - EXPECTED_TYPE_NAME (6→1), JOIN-related (9→2)
+    - All codes now use context parameters for dynamic messages
+    - Modified 16 source files, updated 32 test files
+    - Result: 313 → 264 codes (16% reduction)
 
 4. **Documentation Updates** (e0ec5a7)
-   - Updated ERROR_CODES.md with new code counts and structure
-   - Added "Consolidated Error Codes" section with examples
-   - Added "Migration Guide" for users updating their code
-   - Recalculated all error code range statistics
+    - Updated ERROR_CODES.md with new code counts and structure
+    - Added "Consolidated Error Codes" section with examples
+    - Added "Migration Guide" for users updating their code
+    - Recalculated all error code range statistics
 
 ### Test Results
 
@@ -752,7 +756,7 @@ Successfully refactored the error system to reduce complexity, improve maintaina
 ### Benefits Achieved
 
 1. ✅ **30% reduction in error codes** (372 → 264 active codes)
-2. ✅ **Removed dead code** (40 unreachable INVALID_* codes)
+2. ✅ **Removed dead code** (40 unreachable INVALID\_\* codes)
 3. ✅ **Improved maintainability** (70 duplicates → 10 consolidated codes)
 4. ✅ **Context-aware error messages** (better debugging information)
 5. ✅ **100% backward compatibility** (68 codes marked as OBSOLETE)
@@ -780,11 +784,13 @@ All success criteria met:
 ### Learnings Added to Knowledge Base
 
 **Project-specific learnings → `.workflow/project_knowledge.md`:**
+
 - Error system refactoring patterns
 - Context parameter usage in FormatError
 - OBSOLETE code marking strategy
 
 **General patterns/techniques → `.workflow/findings.md`:**
+
 - Large-scale code consolidation strategies
 - Subagent usage for parallel refactoring work
 - Incremental refactoring with continuous testing
@@ -813,14 +819,13 @@ All success criteria met:
 ### What could be improved:
 
 - ⚠️ **Initial audit was too aggressive** - Categorized parser recovery codes as "removable" when they should have been "consolidatable"
-  - **Why:** Audit conflated "untestable" with "removable"
-  - **Fix:** Had to revert first attempt and revise Phase 1 scope
-  - **Learning:** Distinguish between "dead code" and "hard to test but necessary" code
-  
+    - **Why:** Audit conflated "untestable" with "removable"
+    - **Fix:** Had to revert first attempt and revise Phase 1 scope
+    - **Learning:** Distinguish between "dead code" and "hard to test but necessary" code
 - ⚠️ **First subagent attempt removed too many codes** - Removed 90 codes instead of 40
-  - **Why:** Subagent followed audit categorization without questioning it
-  - **Fix:** Reverted changes, clarified scope, re-ran with correct list
-  - **Learning:** Provide explicit code lists to subagents, not just categories
+    - **Why:** Subagent followed audit categorization without questioning it
+    - **Fix:** Reverted changes, clarified scope, re-ran with correct list
+    - **Learning:** Provide explicit code lists to subagents, not just categories
 
 ### CRITICAL checks:
 
@@ -832,40 +837,48 @@ All success criteria met:
 ### CRITICAL: What in the workflow could be done better keeping in mind this feature?
 
 **What was unclear:**
+
 - The distinction between "untestable" and "removable" codes wasn't clear in the audit phase
 - Should have validated audit findings more carefully before proceeding
 
 **What thresholds or rules would have helped:**
+
 - **Rule:** When audit suggests removing codes, verify they're truly unused (not just hard to test)
 - **Rule:** For large removals (>20 codes), do a sample verification before full execution
 - **Threshold:** If subagent encounters compilation errors, stop and report rather than continuing
 
 **What examples would have made the workflow clearer:**
+
 - Example of how to validate audit findings before implementation
 - Example of incremental approach (remove 10 codes, test, then continue)
 
 **What caused deviations:**
+
 - Trusted audit categorization without sufficient validation
 - Should have done a "dry run" on a small subset first
 
 **What would make the workflow easier for similar features:**
+
 - Add a "validation phase" between audit and implementation
 - Checklist: "Verify audit findings with spot checks before proceeding"
 
 ### Workflow doc improvements needed:
 
 **For `.workflow/README.md`:**
+
 - Add section: "Validating Audit Results Before Implementation"
 - Add guideline: "For large-scale changes, validate findings on a small subset first"
 - Add example: "Audit says remove 90 codes → verify 5-10 codes first → adjust scope if needed"
 
 **For `.workflow/findings.md`:**
+
 - Add pattern: "Incremental validation for large refactorings"
 - Add technique: "Distinguish between 'hard to test' and 'dead code'"
 
 **For `.workflow/project_knowledge.md`:**
+
 - Add: "Error codes marked UNTESTABLE may still be necessary (parser recovery)"
-- Add: "INVALID_* codes are truly unreachable, but EXPECTED_* codes are just hard to test"
+- Add: "INVALID*\* codes are truly unreachable, but EXPECTED*\* codes are just hard to test"
 
 ### Actions taken:
 

@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { SqlSelectRow } from "../../test-utils/parser-test-utils.ts"
 import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
-import type { DbtyperError } from "../../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 

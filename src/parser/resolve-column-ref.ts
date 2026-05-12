@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { FormatError } from "../sql-parser-error.ts"
+import type { FormatError } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
@@ -32,19 +32,19 @@ type ValidateColumnPartsShared<
 				: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [A, C]>
 			: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [A, C]>
 		: Parts extends readonly [infer C0 extends string]
-		? true extends HasAmbiguousUnqualifiedColumn<Scope, C0>
-			? FormatError<"AMBIGUOUS_UNQUALIFIED_COLUMN", [C0]>
-			: ScopeKeysWithColumn<Scope, C0> extends infer U
-				? [U] extends [never]
-					? FormatError<"UNKNOWN_COLUMN", [C0, ""]>
-					: U extends keyof Scope
-						? C0 extends keyof Scope[U]["columns"]
-							? {
-									sql: Scope[U]["columns"][C0]
-								}
+			? true extends HasAmbiguousUnqualifiedColumn<Scope, C0>
+				? FormatError<"AMBIGUOUS_UNQUALIFIED_COLUMN", [C0]>
+				: ScopeKeysWithColumn<Scope, C0> extends infer U
+					? [U] extends [never]
+						? FormatError<"UNKNOWN_COLUMN", [C0, ""]>
+						: U extends keyof Scope
+							? C0 extends keyof Scope[U]["columns"]
+								? {
+										sql: Scope[U]["columns"][C0]
+									}
+								: never
 							: never
-						: never
-				: never
+					: never
 			: never
 
 /**

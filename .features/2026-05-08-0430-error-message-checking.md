@@ -169,7 +169,7 @@ None - this is a new feature addition, not a workaround replacement.
 - `test/infra/integration-file-naming.test.ts` - Infrastructure validation (update rules here)
 - `src/core/sql-database.ts` - Database types and query validation
 - `src/parser/parse-sql-statement.ts` - ApplyStatements type
-- `src/sql-parser-error.ts` - SqlParserError type definition
+- `src/dbtyper-error.ts` - SqlParserError type definition
 
 ---
 

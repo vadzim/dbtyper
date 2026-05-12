@@ -10,7 +10,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -1981,12 +1981,12 @@ type ResolveSelectListExprItem<
 					Db,
 					Scope,
 					Params,
-				MergeRecords<Cols, E["columns"]>,
-				MergeStringRecords<Sqls, E["columns"]>,
-				AllItems
-			>
-		: FormatError<"UNKNOWN_TABLE", [Sch, "SELECT ... *"]>
-	: FormatError<"UNKNOWN_TABLE", [Tab, "SELECT ... *"]>
+					MergeRecords<Cols, E["columns"]>,
+					MergeStringRecords<Sqls, E["columns"]>,
+					AllItems
+				>
+			: FormatError<"UNKNOWN_TABLE", [Sch, "SELECT ... *"]>
+		: FormatError<"UNKNOWN_TABLE", [Tab, "SELECT ... *"]>
 	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
 		? Al extends keyof Scope
 			? Scope[Al] extends infer E extends ScopeEntry

@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
-import type { DbtyperError } from "../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
 import type { SqlSelectRowSqlTypes } from "../../src/core/sql-query.ts"
 import type { ApplySqlToTsConversion } from "../../src/core/sql-to-ts-conversion.ts"

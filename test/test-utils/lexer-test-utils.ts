@@ -6,7 +6,7 @@ import type {
 	TokensList,
 	TokenType,
 } from "../../src/lexer/sql-tokens.ts"
-import type { DbtyperError } from "../../src/sql-parser-error.ts"
+import type { DbtyperError } from "../../src/dbtyper-error.ts"
 
 export type TestTokensS<S extends string> = TestTokensL<ParseSqlTokens<S>>[1]
 

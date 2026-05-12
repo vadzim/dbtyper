@@ -21,9 +21,10 @@ jsql uses a type-level error system where errors are TypeScript types. Error cod
 **Recent Changes (2026-05-10):**
 
 The error system underwent a major refactoring to improve maintainability:
-- **Phase 1:** Removed 40 INVALID_* codes (replaced with more specific errors)
-- **Phase 2a:** Consolidated 19 UNKNOWN_* codes into 4 base codes with context parameters
-- **Phase 2b:** Consolidated 51 EXPECTED_* codes into 6 base codes with context parameters
+
+- **Phase 1:** Removed 40 INVALID\_\* codes (replaced with more specific errors)
+- **Phase 2a:** Consolidated 19 UNKNOWN\_\* codes into 4 base codes with context parameters
+- **Phase 2b:** Consolidated 51 EXPECTED\_\* codes into 6 base codes with context parameters
 - **Result:** Reduced from 372 total codes to 264 active codes (29% reduction)
 
 Many error codes now use context parameters to provide specific information while maintaining a single code. For example, `UNKNOWN_TABLE` replaces 7 different codes like `UNKNOWN_TABLE_FROM`, `UNKNOWN_TABLE_UPDATE`, etc.
@@ -86,76 +87,86 @@ Each category has 100 slots, providing room for future expansion.
 
 Many error codes have been consolidated to use context parameters instead of having separate codes for each context. This improves maintainability while preserving error specificity through dynamic message formatting.
 
-### UNKNOWN_* Family (Phase 2a Consolidation)
+### UNKNOWN\_\* Family (Phase 2a Consolidation)
 
 **UNKNOWN_TABLE (2200)**
+
 - **Replaces:** 7 context-specific codes
-  - `UNKNOWN_TABLE_FROM` → `UNKNOWN_TABLE` with context "FROM"
-  - `UNKNOWN_TABLE_UPDATE` → `UNKNOWN_TABLE` with context "UPDATE"
-  - `UNKNOWN_TABLE_IN_UPDATE_FROM` → `UNKNOWN_TABLE` with context "UPDATE FROM"
-  - `UNKNOWN_TABLE_INSERT_INTO` → `UNKNOWN_TABLE` with context "INSERT INTO"
-  - `UNKNOWN_TABLE_DELETE_FROM` → `UNKNOWN_TABLE` with context "DELETE FROM"
-  - `UNKNOWN_TABLE_IN_DELETE_USING` → `UNKNOWN_TABLE` with context "DELETE USING"
-  - `UNKNOWN_TABLE_IN_SELECT_STAR` → `UNKNOWN_TABLE` with context "SELECT *"
+    - `UNKNOWN_TABLE_FROM` → `UNKNOWN_TABLE` with context "FROM"
+    - `UNKNOWN_TABLE_UPDATE` → `UNKNOWN_TABLE` with context "UPDATE"
+    - `UNKNOWN_TABLE_IN_UPDATE_FROM` → `UNKNOWN_TABLE` with context "UPDATE FROM"
+    - `UNKNOWN_TABLE_INSERT_INTO` → `UNKNOWN_TABLE` with context "INSERT INTO"
+    - `UNKNOWN_TABLE_DELETE_FROM` → `UNKNOWN_TABLE` with context "DELETE FROM"
+    - `UNKNOWN_TABLE_IN_DELETE_USING` → `UNKNOWN_TABLE` with context "DELETE USING"
+    - `UNKNOWN_TABLE_IN_SELECT_STAR` → `UNKNOWN_TABLE` with context "SELECT \*"
 - **Format:** `["Unknown table ", " in ", ""]`
 - **Example:** `Unknown table "users" in UPDATE`
 
 **UNKNOWN_SCHEMA_OR_TABLE (2207)**
+
 - **Replaces:** 6 context-specific codes
-  - `UNKNOWN_SCHEMA_OR_TABLE_IN_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "FROM"
-  - `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE` → `UNKNOWN_SCHEMA_OR_TABLE` with context "UPDATE"
-  - `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "UPDATE FROM"
-  - `UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO` → `UNKNOWN_SCHEMA_OR_TABLE` with context "INSERT INTO"
-  - `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "DELETE FROM"
-  - `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING` → `UNKNOWN_SCHEMA_OR_TABLE` with context "DELETE USING"
+    - `UNKNOWN_SCHEMA_OR_TABLE_IN_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "FROM"
+    - `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE` → `UNKNOWN_SCHEMA_OR_TABLE` with context "UPDATE"
+    - `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "UPDATE FROM"
+    - `UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO` → `UNKNOWN_SCHEMA_OR_TABLE` with context "INSERT INTO"
+    - `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "DELETE FROM"
+    - `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING` → `UNKNOWN_SCHEMA_OR_TABLE` with context "DELETE USING"
 - **Format:** `["Unknown schema or table ", " in ", ""]`
 - **Example:** `Unknown schema or table "public.users" in FROM`
 
 **UNKNOWN_SCHEMA (2214)**
+
 - **Replaces:** 2 context-specific codes
-  - `UNKNOWN_SCHEMA_FOR_CREATE_TYPE` → `UNKNOWN_SCHEMA` with context "CREATE TYPE"
-  - `UNKNOWN_SCHEMA_FOR_CREATE_VIEW` → `UNKNOWN_SCHEMA` with context "CREATE VIEW"
+    - `UNKNOWN_SCHEMA_FOR_CREATE_TYPE` → `UNKNOWN_SCHEMA` with context "CREATE TYPE"
+    - `UNKNOWN_SCHEMA_FOR_CREATE_VIEW` → `UNKNOWN_SCHEMA` with context "CREATE VIEW"
 - **Format:** `["Unknown schema ", " for ", ""]`
 - **Example:** `Unknown schema "myschema" for CREATE TYPE`
 
 **UNKNOWN_COLUMN (2300)**
+
 - **Replaces:** 5 context-specific codes
-  - `UNKNOWN_COLUMN_UPDATE_SET` → `UNKNOWN_COLUMN` with context "UPDATE SET"
-  - `UNKNOWN_COLUMN_INSERT` → `UNKNOWN_COLUMN` with context "INSERT"
-  - `UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST` → `UNKNOWN_COLUMN` with context "INSERT column list"
-  - `UNKNOWN_COLUMN_IN_ON_CONFLICT` → `UNKNOWN_COLUMN` with context "ON CONFLICT"
-  - `UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET` → `UNKNOWN_COLUMN` with context "ON CONFLICT DO UPDATE SET"
+    - `UNKNOWN_COLUMN_UPDATE_SET` → `UNKNOWN_COLUMN` with context "UPDATE SET"
+    - `UNKNOWN_COLUMN_INSERT` → `UNKNOWN_COLUMN` with context "INSERT"
+    - `UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST` → `UNKNOWN_COLUMN` with context "INSERT column list"
+    - `UNKNOWN_COLUMN_IN_ON_CONFLICT` → `UNKNOWN_COLUMN` with context "ON CONFLICT"
+    - `UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET` → `UNKNOWN_COLUMN` with context "ON CONFLICT DO UPDATE SET"
 - **Format:** `["Unknown column ", " in ", ""]`
 - **Example:** `Unknown column "email" in UPDATE SET`
 
-### EXPECTED_* Family (Phase 2b Consolidation)
+### EXPECTED\_\* Family (Phase 2b Consolidation)
 
 **EXPECTED_SEMICOLON (1105)**
+
 - **Replaces:** 14 context-specific codes across all statement types
 - **Format:** `["Expected semicolon after ", ""]`
 - **Example:** `Expected semicolon after INSERT`
 
 **EXPECTED_TABLE_NAME (1120)**
+
 - **Replaces:** 14 context-specific codes
 - **Format:** `["Expected table name ", ""]`
 - **Example:** `Expected table name in UPDATE`
 
 **EXPECTED_COLUMN_NAME (1206)**
+
 - **Replaces:** 8 context-specific codes
 - **Format:** `["Expected column name ", ""]`
 - **Example:** `Expected column name in INSERT column list`
 
 **EXPECTED_TYPE_NAME (4105)**
+
 - **Replaces:** 6 context-specific codes
 - **Format:** `["Expected type name ", ""]`
 - **Example:** `Expected type name after CAST AS`
 
 **EXPECTED_JOIN_KEYWORD (4200)**
+
 - **Replaces:** 9 context-specific codes
 - **Format:** `["Expected JOIN after ", ""]`
 - **Example:** `Expected JOIN after INNER`
 
 **EXPECTED_ON_KEYWORD (4210)**
+
 - **Replaces:** Consolidates ON-related expectations
 - **Format:** `["Expected ON keyword"]`
 - **Example:** `Expected ON keyword`
@@ -183,13 +194,15 @@ type Err = DbtyperError<2200, ...> // UNKNOWN_TABLE with context parameter
 
 ### Code Mapping Reference
 
-**UNKNOWN_* codes (2200-2399):**
+**UNKNOWN\_\* codes (2200-2399):**
+
 - 2201-2206 → 2200 (UNKNOWN_TABLE)
 - 2208-2213 → 2207 (UNKNOWN_SCHEMA_OR_TABLE)
 - 2215-2216 → 2214 (UNKNOWN_SCHEMA)
 - 2301-2305 → 2300 (UNKNOWN_COLUMN)
 
-**EXPECTED_* codes (1100-5400):**
+**EXPECTED\_\* codes (1100-5400):**
+
 - 1201, 1302, 1401, 1500, 1600, 1700, 1800-1802, 3701, 3801, 3905 → 1105 (EXPECTED_SEMICOLON)
 - 1220-1221, 1306-1308, 1402-1404, 1506, 1602-1603, 1701 → 1120 (EXPECTED_TABLE_NAME)
 - 1212, 1218, 1303, 1503, 1604-1606 → 1206 (EXPECTED_COLUMN_NAME)
@@ -199,6 +212,7 @@ type Err = DbtyperError<2200, ...> // UNKNOWN_TABLE with context parameter
 ### Obsolete Code Handling
 
 Obsolete codes are marked in the source code as `OBSOLETE_<CODE>_<OLD_NAME>` and include a message directing you to the replacement code. These codes are kept in the registry to:
+
 1. Maintain code number stability (codes are never reused)
 2. Provide clear migration paths
 3. Support online documentation and help systems
@@ -235,7 +249,7 @@ const query = `SELECT "unclosed FROM users` as const
 | 1102 | EXPECTED_SELECT_IN_DERIVED_TABLE                | Expected SELECT in derived table                |
 | 1103 | EXPECTED_SELECT_IN_EXISTS_SUBQUERY              | Expected SELECT in EXISTS subquery              |
 | 1104 | EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW | Expected SELECT or WITH after AS in CREATE VIEW |
-| 1105 | EXPECTED_SEMICOLON ⭐                            | Expected semicolon after {context}              |
+| 1105 | EXPECTED_SEMICOLON ⭐                           | Expected semicolon after {context}              |
 | 1106 | EXPECTED_FROM_AFTER_SELECT_LIST                 | Expected FROM after SELECT list                 |
 | 1107 | EXPECTED_BY_AFTER_GROUP                         | Expected BY after GROUP                         |
 | 1108 | EXPECTED_BY_AFTER_ORDER                         | Expected BY after ORDER                         |
@@ -250,7 +264,7 @@ const query = `SELECT "unclosed FROM users` as const
 | 1117 | EXPECTED_END_AFTER_CASE                         | Expected END after CASE                         |
 | 1118 | EXPECTED_WHEN_AFTER_CASE_EXPRESSION             | Expected WHEN after CASE expression             |
 | 1119 | EXPECTED_WHEN_ELSE_OR_END_IN_CASE               | Expected WHEN ELSE or END in CASE               |
-| 1120 | EXPECTED_TABLE_NAME ⭐                           | Expected table name {context}                   |
+| 1120 | EXPECTED_TABLE_NAME ⭐                          | Expected table name {context}                   |
 | 1121 | EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM       | Expected table name or `(` in FROM              |
 
 ⭐ = Consolidated code with context parameters (see Consolidated Error Codes section)
@@ -267,11 +281,11 @@ const query2 = `INSERT INTO users VALUES (1)` as const
 
 ### 2200-2299: Resolution - Table/Schema Errors
 
-| Code | ID                      | Message                                      |
-| ---- | ----------------------- | -------------------------------------------- |
-| 2200 | UNKNOWN_TABLE ⭐         | Unknown table {name} in {context}            |
+| Code | ID                         | Message                                     |
+| ---- | -------------------------- | ------------------------------------------- |
+| 2200 | UNKNOWN_TABLE ⭐           | Unknown table {name} in {context}           |
 | 2207 | UNKNOWN_SCHEMA_OR_TABLE ⭐ | Unknown schema or table {name} in {context} |
-| 2214 | UNKNOWN_SCHEMA ⭐        | Unknown schema {name} for {context}          |
+| 2214 | UNKNOWN_SCHEMA ⭐          | Unknown schema {name} for {context}         |
 
 ⭐ = Consolidated code with context parameters (see Consolidated Error Codes section)
 
@@ -290,12 +304,12 @@ const query3 = `SELECT * FROM public.nonexistent` as const
 
 ### 2300-2399: Resolution - Column Errors
 
-| Code | ID                          | Message                                       |
-| ---- | --------------------------- | --------------------------------------------- |
-| 2300 | UNKNOWN_COLUMN ⭐            | Unknown column {name} in {context}            |
-| 2306 | UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN | Unknown column {schema}.{table}.{column} |
-| 2307 | UNKNOWN_QUALIFIED_COLUMN    | Unknown qualified column {table}.{column}     |
-| 2308 | UNKNOWN_ALIAS_IN_SELECT_STAR | Unknown alias in SELECT ... *                |
+| Code | ID                                 | Message                                   |
+| ---- | ---------------------------------- | ----------------------------------------- |
+| 2300 | UNKNOWN_COLUMN ⭐                  | Unknown column {name} in {context}        |
+| 2306 | UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN | Unknown column {schema}.{table}.{column}  |
+| 2307 | UNKNOWN_QUALIFIED_COLUMN           | Unknown qualified column {table}.{column} |
+| 2308 | UNKNOWN_ALIAS_IN_SELECT_STAR       | Unknown alias in SELECT ... \*            |
 
 ⭐ = Consolidated code with context parameters (see Consolidated Error Codes section)
 
@@ -356,14 +370,14 @@ When adding a new error code to the registry:
 4. **Format the message** as an array:
     - Static messages: `["message text"]`
     - Dynamic messages: `["part1", "part2"]` for interpolation
-5. **Add to registry** in `src/sql-parser-error.ts`
+5. **Add to registry** in `src/dbtyper-error.ts`
 6. **Update this documentation** with the new error code
 7. **Never reuse error codes** - mark deleted codes as OBSOLETE instead
 
 ### Example
 
 ```typescript
-// In src/sql-parser-error.ts
+// In src/dbtyper-error.ts
 export const errors = {
 	// ... existing codes ...
 
@@ -427,9 +441,9 @@ Error codes follow this structure:
 - ✅ Phase 5: Semantic & Finalization (completed)
 - ✅ Renumbering: 3-digit to 4-digit scheme (completed)
 - ✅ Phase 6: Error System Refactoring (completed 2026-05-10)
-  - Removed 40 INVALID_* codes
-  - Consolidated 70 codes into 10 base codes with context parameters
-  - Reduced from 372 to 264 active codes (29% reduction)
+    - Removed 40 INVALID\_\* codes
+    - Consolidated 70 codes into 10 base codes with context parameters
+    - Reduced from 372 to 264 active codes (29% reduction)
 
 **Error Code Distribution:**
 
@@ -481,7 +495,7 @@ Error codes follow this structure:
 
 ## See Also
 
-- `src/sql-parser-error.ts` - Error code registry implementation
+- `src/dbtyper-error.ts` - Error code registry implementation
 - `.features/2026-05-08-1416-error-codes.md` - Initial error codes feature implementation
 - `docs/ERROR_SYSTEM_REFACTORING.md` - Error system refactoring documentation (2026-05-10)
 - `.features/2026-05-10-1433-error-system-refactoring.md` - Refactoring implementation plan

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { DbtyperError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/dbtyper-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TNumeric, TUuid } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -113,7 +113,7 @@ type _dDropViewIfExistsDb = Expect<Matches<DDropViewIfExists[1], DbWithView>>
 
 type DUnknownSchema = ParseSqlStatement<ParseSqlTokens<`drop table missing_schema.widgets;`>, DbBillingAndPublic>
 type _dUnknownSchema = Expect<
-	Extends<DUnknownSchema[2], DbtyperError<-1 | keyof typeof import("../src/sql-parser-error.ts").errors, string>>
+	Extends<DUnknownSchema[2], DbtyperError<-1 | keyof typeof import("../src/dbtyper-error.ts").errors, string>>
 >
 
 type DGarbage = ParseSqlStatement<ParseSqlTokens<`drop table auth.items extra ;`>, DbAuthItems>

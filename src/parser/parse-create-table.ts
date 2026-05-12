@@ -9,7 +9,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
@@ -78,7 +78,7 @@ type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabas
 			: [
 					R,
 					Db,
-					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+					E extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 						? E
 						: FormatError<"INVALID_CREATE_TABLE_NAME_PARSE", []>,
 				]
@@ -110,7 +110,7 @@ type ParseCreateTableOpenParen<
 
 type ParseCreateTableBodySkipOnly<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	SkipBracketedUntil<Tokens, TokenKey<";">> extends [infer AfterSemi extends TokensList, infer R]
-		? R extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+		? R extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 			? [SkipToken<AfterSemi>, Db, R]
 			: [SkipToken<AfterSemi>, Db, null]
 		: never
@@ -151,7 +151,7 @@ type ParseCreateTableBody<
 			: never
 		: PeekToken<Tokens> extends TokenKey<"constraint">
 			? SkipConstraintClause<Tokens> extends [infer AfterC extends TokensList, infer CE]
-				? CE extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+				? CE extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 					? [AfterC, Db, CE]
 					: CE extends null
 						? ParseCreateTableBody<AfterC, Db, Schema, Table, Stack>
@@ -169,7 +169,7 @@ type ParseOneColumnAfterColName<
 > =
 	ParseSqlType<AfterColName> extends [infer AfterType extends TokensList, infer TypeShape]
 		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+			? TypeShape extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 				? [AfterType, Db, TypeShape]
 				: ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
 			: [AfterType, Db, FormatError<"EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE", []>]
@@ -330,7 +330,7 @@ type ContinueAfterColumnDef<
 				]
 				? DefaultErr extends null
 					? ContinueAfterDefault<AfterDefaultVal, Db, Schema, Table, Stack, ColName, TypeShape, NotNull, true>
-					: DefaultErr extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+					: DefaultErr extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 						? [AfterDefaultVal, Db, DefaultErr]
 						: never
 				: never
@@ -460,7 +460,7 @@ type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
 		? SkipToken<AfterKeyTok> extends infer AfterLp extends TokensList
 			? T4 extends TokenKey<"(">
 				? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends TokensList, infer Res]
-					? Res extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+					? Res extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 						? SkipFailedExpression<R, Res>
 						: [SkipToken<R>, null]
 					: never

@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
@@ -73,7 +73,7 @@ type ParseDropTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseSh
 			: [
 					R,
 					Db,
-					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+					E extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 						? E
 						: FormatError<"INVALID_DROP_TYPE_PARSE", []>,
 				]

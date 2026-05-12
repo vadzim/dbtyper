@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
-import type { DbtyperError } from "../src/sql-parser-error.ts"
+import type { DbtyperError } from "../src/dbtyper-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TBoolean, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"

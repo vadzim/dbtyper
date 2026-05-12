@@ -37,7 +37,7 @@ Update this when you discover patterns, conventions, or insights specific to THI
 
 - Comprehensive error code registry with 357 unique codes
 - Error codes are type-level (visible in IDE tooltips, not runtime)
-- Registry location: `src/sql-parser-error.ts`
+- Registry location: `src/dbtyper-error.ts`
 - Documentation: `docs/ERROR_CODES.md`
 - **4-digit numbering scheme (1000-5499) with 100-code intervals:**
     - 1000-1099: Lexer/Tokenization (9 codes, 91 slots free)
@@ -268,7 +268,7 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 - **Test utilities:** `test/test-utils/error-test-utils.ts`
 - **Infrastructure tests:** `test/infra/integration-file-naming.test.ts`
 - **Parser source:** `src/parser/parse-sql-statement.ts`
-- **Error types:** `src/sql-parser-error.ts`
+- **Error types:** `src/dbtyper-error.ts`
 - **Database types:** `src/core/sql-database.ts`
 - **Automation system:** `.automation/` directory
 - **Automation docs:** `.automation/README.md`, `.automation/MONITOR-README.md`

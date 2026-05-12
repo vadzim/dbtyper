@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken, TokenIdent, TokenKey, TokensList, TokenNumber } from "../lexer/sql-tokens.ts"
-import type { FormatError } from "../sql-parser-error.ts"
+import type { FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 

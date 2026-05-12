@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken, TokensList, TokenEot, TokenKey, TokenKind, TokenType } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 
 export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenType<TokenKind, string>> = {
@@ -14,7 +14,7 @@ export type ParseSkipStatement<Tokens extends TokensList, DB extends JsqlDatabas
 
 export type SkipFailedExpression<
 	Tokens extends TokensList,
-	Error extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>,
+	Error extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
@@ -24,7 +24,7 @@ export type SkipFailedExpression<
 export type SkipFailedStatement<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
-	Error extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>,
+	Error extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
@@ -33,7 +33,7 @@ export type SkipFailedStatement<
 
 export type SkipFailedQualifiedName<
 	Tokens extends TokensList,
-	Error extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>,
+	Error extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
 	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]

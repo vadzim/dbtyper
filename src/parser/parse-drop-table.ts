@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../sql-parser-error.ts"
+import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
@@ -20,10 +20,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends TokensList, A extends string
 		? SkipToken<AfterDot> extends infer R2 extends TokensList
 			? PeekToken<R2> extends TokenKey<";"> | TokenEot
 				? [SkipToken<R2>, null, A, B]
-				: SkipFailedQualifiedName<
-						R2,
-						FormatError<"EXPECTED_SEMICOLON", ["qualified table name in DROP TABLE"]>
-					>
+				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_SEMICOLON", ["qualified table name in DROP TABLE"]>>
 			: never
 		: never
 
@@ -69,7 +66,7 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 			: [
 					R,
 					Db,
-					E extends DbtyperError<-1 | keyof typeof import("../sql-parser-error.ts").errors, string>
+					E extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
 						? E
 						: FormatError<"INVALID_DROP_TABLE_PARSE", []>,
 				]

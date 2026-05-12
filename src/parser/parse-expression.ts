@@ -9,7 +9,7 @@ import type {
 	TokenString,
 	TokensList,
 } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../sql-parser-error.ts"
+import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
@@ -512,10 +512,7 @@ type ParseAnyAllSomeAfterOp<Tokens extends TokensList, L extends ScalarExprAst, 
 																		},
 																	]
 																: never
-													: SkipFailedExpression<
-															R5,
-															never
-														>
+													: SkipFailedExpression<R5, never>
 												: never
 											: SkipFailedExpression<
 													R4,
