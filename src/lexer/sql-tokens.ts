@@ -1,4 +1,4 @@
-import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
+import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
@@ -20,7 +20,7 @@ export type TokenParam<Param extends string> = TokenType<"param", Param>
 export type TokenEot = TokenType<"eot">
 
 /** Lexeme head: a normal token, or a lexical failure. */
-type TokenStreamHead = TokenType<TokenKind, string> | DbtyperError<any, any>
+type TokenStreamHead = TokenType<TokenKind, string> | DbtyperErrorShape
 
 export type TokensList = Buffer<TokenStreamHead, string>
 

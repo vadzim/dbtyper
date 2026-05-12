@@ -7,7 +7,7 @@ import type {
 	TokenKey,
 	ParseSqlTokens,
 } from "../lexer/sql-tokens.ts"
-import type { DbtyperError } from "../dbtyper-error.ts"
+import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
@@ -34,7 +34,7 @@ export type ApplyStatements<
 	? ApplyParsedStatements<ParseSqlTokens<Text>, Db, Params, null> extends [
 			infer _Rest extends TokensList,
 			infer NewDB extends JsqlDatabaseShape,
-			infer Error extends DbtyperError<any, any> | DbtyperError<any, any> | null,
+			infer Error extends DbtyperErrorShape | null,
 		]
 		? [NewDB, Error]
 		: never
@@ -44,7 +44,7 @@ export type ApplyParsedStatements<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
-	Error extends DbtyperError<any, any> | DbtyperError<any, any> | null,
+	Error extends DbtyperErrorShape | null,
 	BatchDepth extends number = 0,
 > = BatchDepth extends 50
 	? [Tokens, Db, Error]
@@ -53,7 +53,7 @@ export type ApplyParsedStatements<
 		: ApplyParsedStatementsInner<Tokens, Db, Params, Error> extends [
 					infer Rest extends TokensList,
 					infer NewDB extends JsqlDatabaseShape,
-					infer NewError extends DbtyperError<any, any> | DbtyperError<any, any> | null,
+					infer NewError extends DbtyperErrorShape | null,
 			  ]
 			? ApplyParsedStatements<Rest, NewDB, Params, NewError, Inc[BatchDepth]>
 			: never
@@ -62,7 +62,7 @@ type ApplyParsedStatementsInner<
 	Tokens extends TokensList,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
-	Error extends DbtyperError<any, any> | DbtyperError<any, any> | null,
+	Error extends DbtyperErrorShape | null,
 	Depth extends number = 0,
 > = Depth extends 50
 	? [Tokens, Db, Error]
@@ -77,9 +77,9 @@ type ApplyParsedStatementsInner<
 					Rest,
 					NewDb,
 					Params,
-					Result extends DbtyperError<any, any>
+					Result extends DbtyperErrorShape
 						? ConcatErrors<Error, Result>
-						: Result extends DbtyperError<any, any>
+						: Result extends DbtyperErrorShape
 							? ConcatErrors<Error, Result>
 							: Error,
 					Inc[Depth]
@@ -112,9 +112,9 @@ export type ParseSqlStatement<
 										: ParseSkipStatement<Tokens, Db>
 
 type ConcatErrors<
-	Errors extends DbtyperError<any, any> | DbtyperError<any, any> | null,
-	Result extends DbtyperError<any, any> | DbtyperError<any, any>,
-> = Errors extends DbtyperError<any, any> | DbtyperError<any, any> ? Errors : Result
+	Errors extends DbtyperErrorShape | null,
+	Result extends DbtyperErrorShape,
+> = Errors extends DbtyperErrorShape ? Errors : Result
 
 type ParseAlter<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">

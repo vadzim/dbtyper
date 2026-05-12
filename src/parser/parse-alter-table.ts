@@ -9,7 +9,7 @@ import type {
 	JsqlDbGetColumnType,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
+import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
@@ -43,7 +43,7 @@ type ParseAlterAddColumnAfterColName<
 > =
 	ParseSqlType<R2> extends [infer AfterType extends TokensList, infer TypeShape]
 		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperError<any, any>
+			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]
 				: JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 					? ParseAlterActions<AfterType, JsqlDbReplaceColumn<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
@@ -199,7 +199,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 > =
 	ParseSqlType<R3> extends [infer AfterType extends TokensList, infer TypeShape]
 		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperError<any, any>
+			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]
 				: ParseAlterActions<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
 			: [AfterType, Db, FormatError<"EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE", []>]
@@ -390,7 +390,7 @@ type ParseAlterAfterQualified<
 			? ParseAlterActions<R, Db, Sch & string, Tab & string>
 			: never
 		: SkipFailedStatement<R, Db, FormatError<"TABLE_DOES_NOT_EXIST", []>>
-	: [R, Db, Err extends DbtyperError<any, any> ? Err : FormatError<"INVALID_ALTER_TABLE_NAME", []>]
+	: [R, Db, Err extends DbtyperErrorShape ? Err : FormatError<"INVALID_ALTER_TABLE_NAME", []>]
 
 type ParseAlterAfterTableKeyword<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
 	ParseQualifiedAlterTableName<Tokens, Db> extends [

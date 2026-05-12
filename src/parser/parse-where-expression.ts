@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
+import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -22,10 +22,10 @@ export type ParseWhereExpression<
 		infer Rw extends TokensList,
 		infer Ast,
 	]
-		? Ast extends DbtyperError<any, any> | DbtyperError<any, any>
+		? Ast extends DbtyperErrorShape
 			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
-				? R extends DbtyperError<any, any> | DbtyperError<any, any>
+				? R extends DbtyperErrorShape
 					? SkipFailedExpression<Rw, R>
 					: R extends SqlTypeShape
 						? R["type"] extends "boolean"

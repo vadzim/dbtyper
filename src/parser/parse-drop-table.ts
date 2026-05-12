@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { DbtyperError, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperError, DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
@@ -63,13 +63,7 @@ type ParseDropTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseS
 					: JsqlDbGetData<Db, Sch, Tab> extends null
 						? SkipFailedStatement<R, Db, FormatError<"TABLE_DOES_NOT_EXIST_USE_IF_EXISTS", []>>
 						: SkipFailedStatement<R, Db, FormatError<"DROP_TABLE_TARGETS_A_VIEW_USE_DROP_VIEW", []>>
-			: [
-					R,
-					Db,
-					E extends DbtyperError<-1 | keyof typeof import("../dbtyper-error.ts").errors, string>
-						? E
-						: FormatError<"INVALID_DROP_TABLE_PARSE", []>,
-				]
+			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<"INVALID_DROP_TABLE_PARSE", []>]
 		: never
 
 type FinishDropStatement<Tokens extends TokensList, Db extends JsqlDatabaseShape> =

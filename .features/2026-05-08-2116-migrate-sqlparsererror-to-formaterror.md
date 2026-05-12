@@ -117,11 +117,11 @@ All parser files have been successfully migrated from `SqlParserError<"message">
 **Source code compiles:** YES ✅
 **New error codes added:** 1815, 1816, 1817
 
-**CRITICAL FIX:** Updated all parser files to check for `DbtyperError<any, any>` instead of `SqlParserError<string>` in error detection (198 occurrences fixed across 8 files)
+**CRITICAL FIX:** Updated all parser files to check for `DbtyperErrorShape` instead of `SqlParserError<string>` in error detection (198 occurrences fixed across 8 files)
 
 **Test Fixes - ALL 137 ERRORS FIXED:**
 
-- Fixed source code error detection (replaced `extends SqlParserError<string>` with `extends DbtyperError<any, any>`)
+- Fixed source code error detection (replaced `extends SqlParserError<string>` with `extends DbtyperErrorShape`)
 - Fixed MergeBoolBinary to use FormatError for AND/OR boolean errors
 - Fixed JOIN validation to use FormatError for unknown column errors
 - Added @ts-expect-error to 67 runtime query calls
@@ -237,7 +237,7 @@ The "Incomplete" section is no longer applicable - all work is complete.
 
 **Summary:**
 
-1. ✅ Fixed critical source code bug: 198 error checks updated from `SqlParserError<string>` to `DbtyperError<any, any>`
+1. ✅ Fixed critical source code bug: 198 error checks updated from `SqlParserError<string>` to `DbtyperErrorShape`
 2. ✅ Fixed MergeBoolBinary to use FormatError for AND/OR errors
 3. ✅ Fixed JOIN validation to use FormatError for unknown column errors
 4. ✅ Added @ts-expect-error to 67 runtime query calls

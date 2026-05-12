@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
-import type { FormatError, DbtyperError } from "../dbtyper-error.ts"
+import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -24,7 +24,7 @@ type ParseDeleteAfterFrom<
 	Params extends ExpressionParamsShape,
 > =
 	ParseDeleteFromTableRef<Tokens, Db, {}, Params> extends [infer R extends TokensList, infer Mid, infer Third]
-		? Mid extends DbtyperError<any, any> | DbtyperError<any, any>
+		? Mid extends DbtyperErrorShape
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]
 				: never
@@ -38,9 +38,9 @@ type ParseDeleteAfterFrom<
 							? SkipToken<R> extends infer Rw0 extends TokensList
 								? ParseWhereExpression<Rw0, Db, Third, Params> extends [
 										infer Rw extends TokensList,
-										infer We extends DbtyperError<any, any> | DbtyperError<any, any> | null,
+										infer We extends DbtyperErrorShape | null,
 									]
-									? We extends DbtyperError<any, any> | DbtyperError<any, any>
+									? We extends DbtyperErrorShape
 										? [Rw, Db, We]
 										: FinishDeleteStatement<Rw, Db, Third, Params>
 									: never
@@ -61,7 +61,7 @@ type ParseDeleteUsingClause<
 		infer UsingErr,
 		infer UsingScope,
 	]
-		? UsingErr extends DbtyperError<any, any> | DbtyperError<any, any>
+		? UsingErr extends DbtyperErrorShape
 			? [RUsing, Db, UsingErr]
 			: UsingScope extends ScopeMap
 				? MergeScope<Scope, UsingScope> extends infer MergedScope
@@ -72,7 +72,7 @@ type ParseDeleteUsingClause<
 										infer Rw extends TokensList,
 										infer We,
 									]
-									? We extends DbtyperError<any, any> | DbtyperError<any, any>
+									? We extends DbtyperErrorShape
 										? [Rw, Db, We]
 										: FinishDeleteStatement<Rw, Db, MergedScope, Params>
 									: never
@@ -202,7 +202,7 @@ type FinishDeleteStatement<
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
-				? Ret extends DbtyperError<any, any> | DbtyperError<any, any>
+				? Ret extends DbtyperErrorShape
 					? [Ra, DbA, Ret]
 					: Ret extends JsqlSelectStatementResult
 						? FinishDeleteSemicolon<Ra, DbA, Ret>

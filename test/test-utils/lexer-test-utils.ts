@@ -17,7 +17,7 @@ export type TestTokensL<S extends TokensList, Acc extends unknown[] = []> = Acc[
 		: PeekToken<S> extends infer P
 			? P extends TokenType<infer _kind, infer _Value>
 				? TestTokensL<SkipToken<S>, [...Acc, P]>
-				: P extends DbtyperError<any, any>
+				: P extends DbtyperErrorShape
 					? TestTokensL<SkipToken<S>, [...Acc, P]>
 					: never
 			: never

@@ -16,6 +16,11 @@ export type DbtyperError<Code extends -1 | keyof ErrorsConst, Message extends st
 	__sql_parser_error__: Message
 }
 
+export type DbtyperErrorShape = {
+	__sql_parser_error_code__: number
+	__sql_parser_error__: string
+}
+
 /**
  * Error Code Registry
  *
