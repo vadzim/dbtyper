@@ -382,10 +382,12 @@ type ParseInsertValuesCells<
 	Tab extends string,
 	Cols extends readonly string[],
 	ColsFull extends readonly string[] = Cols,
+	PositionalParamIndex extends number = 0,
 > = Cols extends readonly [infer C0 extends string, ...infer CR extends readonly string[]]
-	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
+	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: PositionalParamIndex }> extends [
 			infer R1 extends TokensList,
 			infer Ast,
+			infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
 		]
 		? Ast extends DbtyperErrorShape
 			? [R1, Db, Ast]
@@ -434,7 +436,8 @@ type ParseInsertValuesCells<
 													Sch,
 													Tab,
 													CR,
-													ColsFull
+													ColsFull,
+													UpdatedEnv["positionalParamIndex"]
 												>
 										: never
 								: never
@@ -454,10 +457,11 @@ type ParseInsertValuesCommaThenRest<
 	Tab extends string,
 	CR extends readonly string[],
 	ColsFull extends readonly string[],
+	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenKey<",">
 		? SkipToken<Tokens> extends infer Rc extends TokensList
-			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
+			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull, PositionalParamIndex>
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COMMA_BETWEEN_INSERT_VALUES", []>>
 
