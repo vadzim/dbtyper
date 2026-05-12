@@ -11,6 +11,39 @@
 
 **This refactor is intentional and necessary.** There is no simpler alternative that would correctly handle multiple positional parameters in a single query.
 
+## 🤖 CRITICAL: Use Subagents to Minimize Token Usage
+
+**This refactor is extremely token-intensive.** To complete it efficiently:
+
+### ✅ DO: Use Subagents Heavily
+
+- **Launch subagents for each parser file update** - Each file update is independent
+- **Use minimal context** - Only load the specific file being edited
+- **Batch similar updates** - Update all arithmetic parsers in one subagent, all comparison parsers in another
+- **Parallel execution** - Launch multiple subagents simultaneously for independent files
+- **Clear, focused prompts** - "Update all parsers in parse-select.ts to return [Tokens, AST, Env]"
+
+### ❌ DON'T: Load Everything in Main Context
+
+- **Don't read entire files** unless absolutely necessary
+- **Don't load multiple parser files** into main context simultaneously
+- **Don't explore broadly** - Use targeted searches with subagents
+- **Don't keep large file contents** in context after editing
+
+### Example Workflow
+
+```
+Main Agent:
+1. Read POSITIONAL_PARAMS_PLAN.md (this file)
+2. Launch subagent: "Update parse-select.ts parsers to return [Tokens, AST, Env]"
+3. Launch subagent: "Update parse-insert.ts parsers to return [Tokens, AST, Env]"
+4. Launch subagent: "Update parse-update.ts parsers to return [Tokens, AST, Env]"
+5. Wait for completion, verify typecheck passes
+6. Launch subagent: "Fix remaining ParseExpressionAST call sites"
+```
+
+**Token Savings:** Using subagents can reduce token usage by 70-80% compared to loading all files in main context.
+
 ## ✅ IMPLEMENTATION STATUS: ~95% COMPLETE
 
 ### Completed Phases:
