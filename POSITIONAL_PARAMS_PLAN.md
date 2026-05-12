@@ -11,6 +11,50 @@
 
 **This refactor is intentional and necessary.** There is no simpler alternative that would correctly handle multiple positional parameters in a single query.
 
+## ✅ IMPLEMENTATION STATUS: ~95% COMPLETE
+
+### Completed Phases:
+
+**Phase 1 - Infrastructure (✅ DONE)**
+- Created `ParserState` type with `positionalParamIndex` tracking
+- Updated AST to include `index` field for positional-param
+- Updated `LookupPositionalParam` to use specific index instead of union
+- Added `POSITIONAL_PARAMETER_OUT_OF_BOUNDS` error code
+- Added `positionalParamIndex` to `ExprParseEnv`
+- Fixed all `ExprParseEnv` construction sites
+- Added runtime binding for positional params
+
+**Phase 2 - Expression Parser Updates (✅ DONE)**
+Updated ~45+ expression parser types to return `[Tokens, AST, Env]`:
+- All literal parsers (true, false, null, string, number, params)
+- Positional param parser returns incremented environment
+- Array constructor and array indexing
+- Unary operators, arithmetic operators, comparison operators
+- Boolean operators (NOT, AND, OR)
+- Special operators (IS NULL, IN, BETWEEN, LIKE, ANY/ALL/SOME)
+- Custom operators
+- Function argument parsing
+- Parenthesized expressions and subqueries
+
+**Phase 3 - Statement Parser Updates (✅ DONE)**
+- SELECT list parsing threads positionalParamIndex through items
+- INSERT VALUES parsing threads positionalParamIndex through values
+- UPDATE SET parsing threads positionalParamIndex through assignments
+
+**Phase 4 - Cleanup (🔄 IN PROGRESS)**
+- Updating remaining callers to handle new 3-tuple return type
+- ParseWhereExpression ✅
+- ParseOrderByScalarExpr ✅
+- ParseGroupByTermsAcc ✅
+- ParseInsertOnConflictDoUpdate (in progress)
+
+### Remaining Work (~5%):
+
+1. **Fix remaining ParseExpressionAST call sites** - A few more places need to handle the 3-tuple
+2. **Update window clause parsers** (optional, lower priority)
+3. **Update CASE/CAST parsers** (optional, lower priority)
+4. **Final testing** - Verify `SELECT ?, ?` gives indices 0 and 1
+
 ## Goal
 Implement parsing "?" as positional parameters in SQL queries, allowing users to pass parameters as an array instead of only as a record/object.
 

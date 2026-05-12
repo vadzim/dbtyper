@@ -707,6 +707,7 @@ type ParseInsertUpsertSetAssignments<
 							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 									infer R3 extends TokensList,
 									infer Ast,
+									infer _UpdatedEnv,
 								]
 								? Ast extends DbtyperErrorShape
 									? [R3, Db, Ast]

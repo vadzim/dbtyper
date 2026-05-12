@@ -21,6 +21,7 @@ export type ParseWhereExpression<
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
 		infer Rw extends TokensList,
 		infer Ast,
+		infer _UpdatedEnv,
 	]
 		? Ast extends DbtyperErrorShape
 			? SkipFailedExpression<Rw, Ast>
