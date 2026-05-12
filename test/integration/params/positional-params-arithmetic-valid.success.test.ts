@@ -12,7 +12,7 @@ type _check = Expect<
 	Matches<
 		typeof _result,
 		Array<{
-			result: string
+			result: number
 		}>
 	>
 >
