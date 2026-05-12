@@ -20,10 +20,11 @@ export type SqlDriver<S extends Record<string, unknown>> = {
 }
 
 /** Configuration for {@link sqlMigrations}: logical schema name (default `public`) plus the runtime {@link SqlDriver}. */
-export type SqlDatabaseConfig<D extends SqlDriver<Record<string, unknown>> = SqlDriver<Record<string, unknown>>> = {
-	defaultSchema?: string
-	driver: D
-}
+export type SqlDatabaseConfig<Driver extends SqlDriver<Record<string, unknown>> = SqlDriver<Record<string, unknown>>> =
+	{
+		defaultSchema?: string
+		driver: Driver
+	}
 
 /** Values object matching `:name` slots implied by {@link ExpressionParamsShape}. */
 export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
