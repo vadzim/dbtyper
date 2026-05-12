@@ -5,7 +5,7 @@ export type ErrorCodes = keyof ErrorsConst
 export type ErrorIds = keyof Errors
 
 export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Errors[ID] extends {
-	code: infer Code extends keyof ErrorsConst
+	code: infer Code extends ErrorCodes
 	msg: infer Msg
 }
 	? Msg extends readonly string[]
@@ -13,7 +13,7 @@ export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Error
 		: never
 	: never
 
-export type DbtyperError<Code extends -1 | keyof ErrorsConst, Message extends string> = {
+export type DbtyperError<Code extends ErrorCodes, Message extends string> = {
 	__sql_parser_error_code__: Code
 	__sql_parser_error__: Message
 }

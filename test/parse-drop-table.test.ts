@@ -112,9 +112,7 @@ type _dDropViewIfExistsNull = Expect<Matches<DDropViewIfExists[2], null>>
 type _dDropViewIfExistsDb = Expect<Matches<DDropViewIfExists[1], DbWithView>>
 
 type DUnknownSchema = ParseSqlStatement<ParseSqlTokens<`drop table missing_schema.widgets;`>, DbBillingAndPublic>
-type _dUnknownSchema = Expect<
-	Extends<DUnknownSchema[2], DbtyperError<-1 | keyof typeof import("../src/dbtyper-error.ts").errors, string>>
->
+type _dUnknownSchema = Expect<Extends<DUnknownSchema[2], DbtyperError<3204, string>>>
 
 type DGarbage = ParseSqlStatement<ParseSqlTokens<`drop table auth.items extra ;`>, DbAuthItems>
 type _dGarbage = Expect<

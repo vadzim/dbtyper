@@ -58,7 +58,7 @@ type DbWithDup = {
 }
 
 type T3 = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( n int not null );`>, DbWithDup>
-type _t3err = Expect<Extends<T3[2], DbtyperError<-1 | keyof typeof import("../src/dbtyper-error.ts").errors, string>>>
+type _t3err = Expect<Extends<T3[2], DbtyperError<3202, string>>>
 
 type T4 = ParseSqlStatement<
 	ParseSqlTokens<`create table logs.events ( at timestamp with time zone not null );`>,
@@ -127,9 +127,7 @@ type TExplicitUnknownSchema = ParseSqlStatement<
 	ParseSqlTokens<`create table missing_schema.widgets ( id uuid not null );`>,
 	DbBillingAndPublic
 >
-type _tExplicitUnknownSchema = Expect<
-	Extends<TExplicitUnknownSchema[2], DbtyperError<-1 | keyof typeof import("../src/dbtyper-error.ts").errors, string>>
->
+type _tExplicitUnknownSchema = Expect<Extends<TExplicitUnknownSchema[2], DbtyperError<2214, string>>>
 
 /** DB whose default schema is `public` and that schema exists (unqualified names land here). */
 type DbDefaultPublic = {
