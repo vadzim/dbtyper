@@ -5,11 +5,12 @@ export type LexerFeatures = "" | "dollar-strings" | "named-params"
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 
-export type ParseSqlTokens<Query extends string, Syntax extends string = LexerFeatures> = [
-	ReadTokenFromString<Query, Syntax>,
-] extends [infer Result extends TokensList]
-	? Result
-	: never
+export type ParseSqlTokens<Query extends string, Syntax extends string = LexerFeatures> =
+	ReadTokenFromString<Query, Syntax> extends Return<infer Result extends TokenStreamHead, infer Rest extends string>
+		? [Buffer<Result, Rest, Syntax>] extends [infer B extends TokensList] // TODO: update monad checker to remove this workaround to be able to just return Buffer<Result, Rest, Syntax>
+			? B
+			: never
+		: never
 
 export type EmptyTokenList = ParseSqlTokens<"", string>
 export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "eot"
@@ -42,62 +43,57 @@ type ReadTokenFromString<S extends string, Syntax extends string> = S extends `$
 				token: infer Word extends string
 				rest: infer Tail extends string
 			}
-			? Buffer<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail, Syntax>
+			? Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
 			: never
 		: Head extends "/"
 			? Rest extends `*${string}`
 				? ReadTokenFromString<SkipSpaces<S>, Syntax>
-				: ReturnToBuffer<ReadOperator<S>, Syntax>
+				: ReadOperator<S>
 			: Head extends "-"
 				? Rest extends `-${string}`
 					? ReadTokenFromString<SkipSpaces<S>, Syntax>
-					: ReturnToBuffer<ReadOperator<S>, Syntax>
+					: ReadOperator<S>
 				: Head extends OperatorChars
-					? ReturnToBuffer<ReadOperator<S>, Syntax>
+					? ReadOperator<S>
 					: Head extends Digit
-						? ReturnToBuffer<GetNumber<Rest, Head>, Syntax>
+						? GetNumber<Rest, Head>
 						: Head extends "."
 							? Rest extends `${infer Second}${infer Rest2}`
 								? Second extends Digit
-									? ReturnToBuffer<GetNumberFrac<Rest2, `${Head}${Second}`>, Syntax>
-									: Buffer<TokenKey<".">, Rest, Syntax>
-								: Buffer<TokenKey<".">, Rest, Syntax>
+									? GetNumberFrac<Rest2, `${Head}${Second}`>
+									: Return<TokenKey<".">, Rest>
+								: Return<TokenKey<".">, Rest>
 							: Head extends '"'
 								? Rest extends `${infer String}"${infer Rest}`
-									? Buffer<TokenIdent<String>, Rest, Syntax>
-									: Buffer<FormatError<"UNCLOSED_QUOTED_IDENTIFIER", []>, S, Syntax>
+									? Return<TokenIdent<String>, Rest>
+									: Return<FormatError<"UNCLOSED_QUOTED_IDENTIFIER", []>, S>
 								: Head extends "\x20" | "\n" | "\r" | "\t"
 									? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
 									: Head extends "'"
-										? ReturnToBuffer<ReadSingleQuotedString<Rest>, Syntax>
+										? ReadSingleQuotedString<Rest>
 										: Head extends ":"
 											? Rest extends `${infer Next}${infer Rest2}`
 												? Next extends ":"
-													? Buffer<TokenKey<"::">, Rest2, Syntax>
+													? Return<TokenKey<"::">, Rest2>
 													: Next extends TokenChar
 														? "named-params" extends Syntax
 															? ReadTokenChars<Rest2> extends {
 																	token: infer Token extends string
 																	rest: infer Rest3 extends string
 																}
-																? Buffer<TokenParam<`${Next}${Token}`>, Rest3, Syntax>
+																? Return<TokenParam<`${Next}${Token}`>, Rest3>
 																: never
-															: Buffer<TokenKey<":">, Rest, Syntax>
-														: Buffer<TokenKey<":">, Rest, Syntax>
-												: Buffer<TokenKey<":">, Rest, Syntax>
+															: Return<TokenKey<":">, Rest>
+														: Return<TokenKey<":">, Rest>
+												: Return<TokenKey<":">, Rest>
 											: Head extends "$"
 												? "dollar-strings" extends Syntax
-													? ReturnToBuffer<ReadDollar<Rest>, Syntax>
-													: Buffer<FormatError<"UNEXPECTED_TOKEN", []>, S, Syntax>
-												: Buffer<TokenKey<Head>, Rest, Syntax>
-	: Buffer<TokenEot, "", Syntax>
+													? ReadDollar<Rest>
+													: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
+												: Return<TokenKey<Head>, Rest>
+	: Return<TokenEot, "">
 
 type Return<_Result, _Rest> = [_Result, _Rest]
-
-type ReturnToBuffer<T extends Return<TokenStreamHead, string>, Syntax extends string> =
-	T extends Return<infer Result extends TokenStreamHead, infer Rest extends string>
-		? Buffer<Result, Rest, Syntax>
-		: never
 
 type ReadDollar<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends "$"
