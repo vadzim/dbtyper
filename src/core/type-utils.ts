@@ -31,7 +31,7 @@ export type HasKey<T, K extends string> = K extends keyof T ? true : false
 
 export type I<T, K extends string | number, R = {}> = K extends keyof T ? T[K] & R : R
 
-export type ReplaceProp<T, K extends string, V> = Omit<T, K> & Record<K, V> extends infer R
+export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K, V> extends infer R
 	? { [K in keyof R]: R[K] }
 	: never
 
