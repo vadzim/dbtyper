@@ -66,7 +66,7 @@
 		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
 		"typecheck:watch": "nodemon -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run typecheck'\"",
 		"test:verbose": "npm run --silent test:ci && npm run --silent test -w @dbtyper/example-postgres && npm run --silent test -w @dbtyper/example-nest-postgres",
-		"test": "mkdir -p .logs; npm run --silent test:verbose 1>.logs/test.log 2>&1; RC=$?; [ $RC -ne 0 ] && tail -n 100 .logs/test.log; exit $RC",
+		"test": "mkdir -p .logs; npm run --silent test:verbose 1>.logs/test.log 2>&1; RC=$?; [ $RC -ne 0 ] && tail -n 100 .logs/test.log || echo 'Ok.'; exit $RC",
 		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w dbtyper-nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
