@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { DbtyperError } from "../src/dbtyper-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
@@ -26,7 +26,7 @@ type DbUsers = {
 }
 
 type T1 = ParseSqlStatement<
-	ParseSqlTokens<`create table if not exists auth.items ( id uuid not null, body text null );`>,
+	CreateParserMonad<`create table if not exists auth.items ( id uuid not null, body text null );`>,
 	DbAuth
 >
 type T1Table = T1[1]["schemas"]["auth"]["sets"]["items"]
@@ -42,7 +42,7 @@ type _t1shape = Expect<
 	>
 >
 
-type T2 = ParseSqlStatement<ParseSqlTokens<`create table if not exists auth.users ( id uuid not null );`>, DbUsers>
+type T2 = ParseSqlStatement<CreateParserMonad<`create table if not exists auth.users ( id uuid not null );`>, DbUsers>
 type _t2noop = Expect<Matches<T2[2], null>>
 type _t2db = Expect<Extends<T2[1], DbUsers>>
 
@@ -57,11 +57,11 @@ type DbWithDup = {
 	}
 }
 
-type T3 = ParseSqlStatement<ParseSqlTokens<`create table auth.dup ( n int not null );`>, DbWithDup>
+type T3 = ParseSqlStatement<CreateParserMonad<`create table auth.dup ( n int not null );`>, DbWithDup>
 type _t3err = Expect<Extends<T3[2], DbtyperError<3202, string>>>
 
 type T4 = ParseSqlStatement<
-	ParseSqlTokens<`create table logs.events ( at timestamp with time zone not null );`>,
+	CreateParserMonad<`create table logs.events ( at timestamp with time zone not null );`>,
 	{
 		defaultSchema: "public"
 		schemas: { logs: JsqlSchemaShape }
@@ -90,7 +90,7 @@ type DbBillingAndPublic = {
 }
 
 type TExplicit = ParseSqlStatement<
-	ParseSqlTokens<`create table billing.invoices ( amount numeric not null, note text not null );`>,
+	CreateParserMonad<`create table billing.invoices ( amount numeric not null, note text not null );`>,
 	DbBillingAndPublic
 >
 type TExplicitTable = TExplicit[1]["schemas"]["billing"]["sets"]["invoices"]
@@ -107,7 +107,7 @@ type _tExplicitShape = Expect<
 >
 
 type TExplicitIfNot = ParseSqlStatement<
-	ParseSqlTokens<`create table if not exists billing.credits ( id int not null );`>,
+	CreateParserMonad<`create table if not exists billing.credits ( id int not null );`>,
 	DbBillingAndPublic
 >
 type TExplicitIfNotTable = TExplicitIfNot[1]["schemas"]["billing"]["sets"]["credits"]
@@ -124,7 +124,7 @@ type _tExplicitIfNotShape = Expect<
 >
 
 type TExplicitUnknownSchema = ParseSqlStatement<
-	ParseSqlTokens<`create table missing_schema.widgets ( id uuid not null );`>,
+	CreateParserMonad<`create table missing_schema.widgets ( id uuid not null );`>,
 	DbBillingAndPublic
 >
 type _tExplicitUnknownSchema = Expect<Extends<TExplicitUnknownSchema[2], DbtyperError<2214, string>>>
@@ -136,7 +136,7 @@ type DbDefaultPublic = {
 }
 
 type T5 = ParseSqlStatement<
-	ParseSqlTokens<`create table notifications ( id uuid not null, title text not null );`>,
+	CreateParserMonad<`create table notifications ( id uuid not null, title text not null );`>,
 	DbDefaultPublic
 >
 type T5Table = T5[1]["schemas"]["public"]["sets"]["notifications"]
@@ -153,7 +153,7 @@ type _t5shape = Expect<
 >
 
 type T6 = ParseSqlStatement<
-	ParseSqlTokens<`create table if not exists notifications ( id uuid not null, title text not null );`>,
+	CreateParserMonad<`create table if not exists notifications ( id uuid not null, title text not null );`>,
 	DbDefaultPublic
 >
 type T6Table = T6[1]["schemas"]["public"]["sets"]["notifications"]
@@ -169,13 +169,13 @@ type _t6shape = Expect<
 	>
 >
 
-type TExpectedTableName = ParseSqlStatement<ParseSqlTokens<`create table( id int not null );`>, DbDefaultPublic>
+type TExpectedTableName = ParseSqlStatement<CreateParserMonad<`create table( id int not null );`>, DbDefaultPublic>
 type _expectedTableName = Expect<
 	Matches<TExpectedTableName[2], DbtyperError<1120, "Expected table name in CREATE TABLE">>
 >
 
 type TUnknownQualifiedSchema = ParseSqlStatement<
-	ParseSqlTokens<`create table zzz.ghost ( id int not null );`>,
+	CreateParserMonad<`create table zzz.ghost ( id int not null );`>,
 	DbDefaultPublic
 >
 type _unknownQualifiedSchema = Expect<
@@ -189,7 +189,7 @@ type DbDefaultPublicButOnlyAuth = {
 }
 
 type TUnqualifiedRequiresDefaultSchemaRow = ParseSqlStatement<
-	ParseSqlTokens<`create table widgets ( id uuid not null );`>,
+	CreateParserMonad<`create table widgets ( id uuid not null );`>,
 	DbDefaultPublicButOnlyAuth
 >
 type _unqMissingDefaultSchema = Expect<
@@ -197,7 +197,7 @@ type _unqMissingDefaultSchema = Expect<
 >
 
 type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
-	ParseSqlTokens<`create table auth.widgets ( id uuid not null );`>,
+	CreateParserMonad<`create table auth.widgets ( id uuid not null );`>,
 	DbDefaultPublicButOnlyAuth
 >
 type TQualifiedWidgets = TQualifiedStillOkWhenDefaultMissing[1]["schemas"]["auth"]["sets"]["widgets"]
@@ -213,7 +213,7 @@ type _qualWhenDefaultMissingShape = Expect<
 	>
 >
 
-type TMissingOpenParen = ParseSqlStatement<ParseSqlTokens<`create table t id int not null);`>, DbDefaultPublic>
+type TMissingOpenParen = ParseSqlStatement<CreateParserMonad<`create table t id int not null);`>, DbDefaultPublic>
 type _missingOpenParen = Expect<
 	Matches<TMissingOpenParen[2], DbtyperError<4107, "Expected `.` or `(` after table name">>
 >

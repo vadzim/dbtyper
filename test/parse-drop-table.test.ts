@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { DbtyperError } from "../src/dbtyper-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TNumeric, TUuid } from "./test-utils/sql-type-helpers.ts"
@@ -25,15 +25,15 @@ type DbAuthItemsDropped = {
 	}
 }
 
-type D1 = ParseSqlStatement<ParseSqlTokens<`drop table auth.items;`>, DbAuthItems>
+type D1 = ParseSqlStatement<CreateParserMonad<`drop table auth.items;`>, DbAuthItems>
 type _d1null = Expect<Matches<D1[2], null>>
 type _d1shape = Expect<Matches<D1[1], DbAuthItemsDropped>>
 
-type D1IfExists = ParseSqlStatement<ParseSqlTokens<`drop table if exists auth.items;`>, DbAuthItems>
+type D1IfExists = ParseSqlStatement<CreateParserMonad<`drop table if exists auth.items;`>, DbAuthItems>
 type _d1IfExistsNull = Expect<Matches<D1IfExists[2], null>>
 type _d1IfExistsShape = Expect<Matches<D1IfExists[1], DbAuthItemsDropped>>
 
-type D2 = ParseSqlStatement<ParseSqlTokens<`drop table if exists ghost;`>, DbAuthItems>
+type D2 = ParseSqlStatement<CreateParserMonad<`drop table if exists ghost;`>, DbAuthItems>
 type _d2null = Expect<Matches<D2[2], null>>
 type _d2db = Expect<Matches<D2[1], DbAuthItems>>
 
@@ -58,7 +58,7 @@ type DbDefaultPublicDroppedNotifications = {
 	}
 }
 
-type D4 = ParseSqlStatement<ParseSqlTokens<`drop table notifications;`>, DbDefaultPublicWithNotifications>
+type D4 = ParseSqlStatement<CreateParserMonad<`drop table notifications;`>, DbDefaultPublicWithNotifications>
 type _d4null = Expect<Matches<D4[2], null>>
 type _d4shape = Expect<Matches<D4[1], DbDefaultPublicDroppedNotifications>>
 
@@ -87,7 +87,7 @@ type DbBillingInvoicesDropped = {
 	}
 }
 
-type D5 = ParseSqlStatement<ParseSqlTokens<`drop table billing.invoices;`>, DbBillingWithInvoices>
+type D5 = ParseSqlStatement<CreateParserMonad<`drop table billing.invoices;`>, DbBillingWithInvoices>
 type _d5null = Expect<Matches<D5[2], null>>
 type _d5shape = Expect<Matches<D5[1], DbBillingInvoicesDropped>>
 
@@ -102,19 +102,19 @@ type DbWithView = {
 	}
 }
 
-type DDropViewAsTable = ParseSqlStatement<ParseSqlTokens<`drop table v_reports;`>, DbWithView>
+type DDropViewAsTable = ParseSqlStatement<CreateParserMonad<`drop table v_reports;`>, DbWithView>
 type _dDropViewErr = Expect<
 	Extends<DDropViewAsTable[2], DbtyperError<3502, "DROP TABLE targets a view; use DROP VIEW">>
 >
 
-type DDropViewIfExists = ParseSqlStatement<ParseSqlTokens<`drop table if exists v_reports;`>, DbWithView>
+type DDropViewIfExists = ParseSqlStatement<CreateParserMonad<`drop table if exists v_reports;`>, DbWithView>
 type _dDropViewIfExistsNull = Expect<Matches<DDropViewIfExists[2], null>>
 type _dDropViewIfExistsDb = Expect<Matches<DDropViewIfExists[1], DbWithView>>
 
-type DUnknownSchema = ParseSqlStatement<ParseSqlTokens<`drop table missing_schema.widgets;`>, DbBillingAndPublic>
+type DUnknownSchema = ParseSqlStatement<CreateParserMonad<`drop table missing_schema.widgets;`>, DbBillingAndPublic>
 type _dUnknownSchema = Expect<Extends<DUnknownSchema[2], DbtyperError<3204, string>>>
 
-type DGarbage = ParseSqlStatement<ParseSqlTokens<`drop table auth.items extra ;`>, DbAuthItems>
+type DGarbage = ParseSqlStatement<CreateParserMonad<`drop table auth.items extra ;`>, DbAuthItems>
 type _dGarbage = Expect<
 	Extends<DGarbage[2], DbtyperError<1105, "Expected semicolon after qualified table name in DROP TABLE">>
 >

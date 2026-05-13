@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { TokensList } from "../lexer/sql-tokens.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
@@ -13,13 +13,13 @@ import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** WHERE predicate: tuple `[rest, error | null]` (not monad-registered; use from statement parsers). */
 export type ParseWhereExpression<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
-		infer Rw extends TokensList,
+		infer Rw extends ParserMonad,
 		infer Ast,
 		infer _UpdatedEnv,
 	]

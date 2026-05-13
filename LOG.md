@@ -83,7 +83,7 @@ Recorded in **`docs/ROADMAP.md` § Active plan** and reflected in **`docs/TODO.m
 
 ### Implemented function call parsing and fixed 'now()' as identifier
 
-- Removed 'now' from service words map in sql-tokens.ts to allow it as a function name.
+- Removed 'now' from service words map in parser-monad.ts to allow it as a function name.
 - Verified built-in and custom functions with tests in test/function-registry.test.ts.
 - All function tests passed.
 

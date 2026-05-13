@@ -1,14 +1,11 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type {
-	PeekToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokenNumber,
-	TokenString,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenNumber } from "../lexer/sql-lexer.ts"
+import type { TokenString } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
@@ -16,19 +13,19 @@ import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } fr
 import type { JsqlCreateTable, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
-export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+export type ParseCreateTable<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? SkipToken<Tokens> extends infer A0 extends TokensList
+		? SkipToken<Tokens> extends infer A0 extends ParserMonad
 			? PeekToken<A0> extends TokenKey<"not">
-				? SkipToken<A0> extends infer A1 extends TokensList
+				? SkipToken<A0> extends infer A1 extends ParserMonad
 					? PeekToken<A1> extends TokenKey<"exists">
-						? SkipToken<A1> extends infer A2 extends TokensList
+						? SkipToken<A1> extends infer A2 extends ParserMonad
 							? ParseCreateTableQualified<A2, Db, true>
 							: never
 						: SkipFailedExpression<
 									A1,
 									FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE", []>
-							  > extends [infer Rest extends TokensList, infer Err]
+							  > extends [infer Rest extends ParserMonad, infer Err]
 							? [Rest, Db, Err]
 							: never
 					: never
@@ -39,7 +36,7 @@ export type ParseCreateTable<Tokens extends TokensList, Db extends JsqlDatabaseS
 type ColumnTriple = readonly [string, SqlTypeShape, boolean, boolean]
 
 type ParseCreateTableQualifiedWhenSchKnown<
-	R extends TokensList,
+	R extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	IfNotExists extends boolean,
 	Sch extends keyof Db["schemas"] & string,
@@ -54,7 +51,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 		: never
 
 type ParseCreateTableQualifiedWhenNameOk<
-	R extends TokensList,
+	R extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	IfNotExists extends boolean,
 	Sch extends string,
@@ -66,9 +63,9 @@ type ParseCreateTableQualifiedWhenNameOk<
 			: never
 		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA", [Sch, "CREATE TABLE"]>>
 
-type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
+type ParseCreateTableQualified<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedTableName<Tokens, Db> extends [
-		infer R extends TokensList,
+		infer R extends ParserMonad,
 		infer E,
 		infer Sch extends string,
 		infer Tab extends string,
@@ -79,14 +76,14 @@ type ParseCreateTableQualified<Tokens extends TokensList, Db extends JsqlDatabas
 		: never
 
 type ParseCreateTableOpenParen<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
 	IfNotExists extends boolean,
 > =
 	PeekToken<Tokens> extends infer OpenTok
-		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
+		? SkipToken<Tokens> extends infer AfterOpen extends ParserMonad
 			? OpenTok extends TokenKey<"(">
 				? IfNotExists extends true
 					? JsqlDbGetData<Db, Schema, Table> extends null
@@ -96,26 +93,26 @@ type ParseCreateTableOpenParen<
 				: SkipFailedExpression<
 							AfterOpen,
 							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE", []>
-					  > extends [infer Rest extends TokensList, infer Err]
+					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
 			: never
 		: never
 
-type ParseCreateTableBodySkipOnly<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
-	SkipBracketedUntil<Tokens, TokenKey<";">> extends [infer AfterSemi extends TokensList, infer R]
+type ParseCreateTableBodySkipOnly<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+	SkipBracketedUntil<Tokens, TokenKey<";">> extends [infer AfterSemi extends ParserMonad, infer R]
 		? R extends DbtyperErrorShape
 			? [SkipToken<AfterSemi>, Db, R]
 			: [SkipToken<AfterSemi>, Db, null]
 		: never
 
 /** After `)`, read `;` or end. */
-type ParseCreateTableCloseParenAndSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
+type ParseCreateTableCloseParenAndSemi<Tokens extends ParserMonad, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends infer Tok1
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok1 extends TokenKey<")">
 				? PeekToken<R1> extends infer Tok2
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, NewDb, null]
 							: SkipFailedStatement<R2, NewDb, FormatError<"EXPECTED_SEMICOLON", ["CREATE TABLE"]>>
@@ -126,7 +123,7 @@ type ParseCreateTableCloseParenAndSemi<Tokens extends TokensList, NewDb extends 
 		: never
 
 type ParseCreateTableBody<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
@@ -144,7 +141,7 @@ type ParseCreateTableBody<
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenKey<"constraint">
-			? SkipConstraintClause<Tokens> extends [infer AfterC extends TokensList, infer CE]
+			? SkipConstraintClause<Tokens> extends [infer AfterC extends ParserMonad, infer CE]
 				? CE extends DbtyperErrorShape
 					? [AfterC, Db, CE]
 					: CE extends null
@@ -154,14 +151,14 @@ type ParseCreateTableBody<
 			: ParseOneColumn<Tokens, Db, Schema, Table, Stack>
 
 type ParseOneColumnAfterColName<
-	AfterColName extends TokensList,
+	AfterColName extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 	ColName extends string,
 > =
-	ParseSqlType<AfterColName> extends [infer AfterType extends TokensList, infer TypeShape]
+	ParseSqlType<AfterColName> extends [infer AfterType extends ParserMonad, infer TypeShape]
 		? TypeShape extends SqlTypeShape
 			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]
@@ -170,7 +167,7 @@ type ParseOneColumnAfterColName<
 		: never
 
 type ParseOneColumn<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
@@ -181,7 +178,7 @@ type ParseOneColumn<
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COLUMN_NAME", ["in CREATE TABLE"]>>
 
 type ContinueAfterColumnType<
-	AfterType extends TokensList,
+	AfterType extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
@@ -237,9 +234,9 @@ type SqlTypeClass<T extends SqlTypeShape> = T["type"] extends "array"
 									? "fulltext"
 									: "unknown"
 
-type ParseDefaultValue<Tokens extends TokensList, ColumnType extends SqlTypeShape> =
+type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeShape> =
 	PeekToken<Tokens> extends TokenNumber<infer _Raw>
-		? SkipToken<Tokens> extends infer R extends TokensList
+		? SkipToken<Tokens> extends infer R extends ParserMonad
 			? SqlTypeClass<ColumnType> extends "numeric"
 				? [R, null]
 				: SkipFailedExpression<
@@ -248,7 +245,7 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends SqlTypeShap
 					>
 			: never
 		: PeekToken<Tokens> extends TokenString<infer _Str>
-			? SkipToken<Tokens> extends infer R extends TokensList
+			? SkipToken<Tokens> extends infer R extends ParserMonad
 				? SqlTypeClass<ColumnType> extends "text" | "uuid" | "unknown"
 					? [R, null]
 					: SkipFailedExpression<
@@ -257,7 +254,7 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends SqlTypeShap
 						>
 				: never
 			: PeekToken<Tokens> extends TokenKey<"true"> | TokenKey<"false">
-				? SkipToken<Tokens> extends infer R extends TokensList
+				? SkipToken<Tokens> extends infer R extends ParserMonad
 					? SqlTypeClass<ColumnType> extends "boolean"
 						? [R, null]
 						: [
@@ -269,19 +266,19 @@ type ParseDefaultValue<Tokens extends TokensList, ColumnType extends SqlTypeShap
 							]
 					: never
 				: PeekToken<Tokens> extends TokenKey<"null">
-					? SkipToken<Tokens> extends infer R extends TokensList
+					? SkipToken<Tokens> extends infer R extends ParserMonad
 						? [R, null]
 						: never
 					: PeekToken<Tokens> extends TokenIdent<infer FnName>
 						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
 						: SkipFailedExpression<Tokens, FormatError<"EXPECTED_DEFAULT_VALUE", []>>
 
-type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends string, ColumnType extends SqlTypeShape> =
-	SkipToken<Tokens> extends infer R1 extends TokensList
+type ParseDefaultFunctionOrIdent<Tokens extends ParserMonad, FnName extends string, ColumnType extends SqlTypeShape> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
 		? PeekToken<R1> extends TokenKey<"(">
-			? SkipToken<R1> extends infer R2 extends TokensList
+			? SkipToken<R1> extends infer R2 extends ParserMonad
 				? PeekToken<R2> extends TokenKey<")">
-					? SkipToken<R2> extends infer R3 extends TokensList
+					? SkipToken<R2> extends infer R3 extends ParserMonad
 						? Lowercase<FnName> extends "now"
 							? SqlTypeClass<ColumnType> extends "datetime"
 								? [R3, null]
@@ -307,7 +304,7 @@ type ParseDefaultFunctionOrIdent<Tokens extends TokensList, FnName extends strin
 		: never
 
 type ContinueAfterColumnDef<
-	AfterNull extends TokensList,
+	AfterNull extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
@@ -317,9 +314,9 @@ type ContinueAfterColumnDef<
 	NotNull extends boolean,
 > =
 	PeekToken<AfterNull> extends TokenKey<"default">
-		? SkipToken<AfterNull> extends infer AfterDefault extends TokensList
+		? SkipToken<AfterNull> extends infer AfterDefault extends ParserMonad
 			? ParseDefaultValue<AfterDefault, TypeShape> extends [
-					infer AfterDefaultVal extends TokensList,
+					infer AfterDefaultVal extends ParserMonad,
 					infer DefaultErr,
 				]
 				? DefaultErr extends null
@@ -330,7 +327,7 @@ type ContinueAfterColumnDef<
 				: never
 			: never
 		: PeekToken<AfterNull> extends TokenKey<",">
-			? SkipToken<AfterNull> extends infer AfterComma extends TokensList
+			? SkipToken<AfterNull> extends infer AfterComma extends ParserMonad
 				? ParseCreateTableBody<
 						AfterComma,
 						Db,
@@ -350,12 +347,12 @@ type ContinueAfterColumnDef<
 				: SkipFailedExpression<
 							AfterNull,
 							FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION", []>
-					  > extends [infer Rest extends TokensList, infer Err]
+					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
 
 type ContinueAfterDefault<
-	AfterDefaultVal extends TokensList,
+	AfterDefaultVal extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
@@ -366,7 +363,7 @@ type ContinueAfterDefault<
 	HasDefault extends boolean,
 > =
 	PeekToken<AfterDefaultVal> extends TokenKey<",">
-		? SkipToken<AfterDefaultVal> extends infer AfterComma extends TokensList
+		? SkipToken<AfterDefaultVal> extends infer AfterComma extends ParserMonad
 			? ParseCreateTableBody<
 					AfterComma,
 					Db,
@@ -449,11 +446,11 @@ type ColumnsFromStack<S extends readonly ColumnTriple[]> = S extends readonly []
 							>
 					: { cols: {}; facts: {} }
 
-type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
+type SkipConstraintAfterKeyTok<AfterKeyTok extends ParserMonad> =
 	PeekToken<AfterKeyTok> extends infer T4
-		? SkipToken<AfterKeyTok> extends infer AfterLp extends TokensList
+		? SkipToken<AfterKeyTok> extends infer AfterLp extends ParserMonad
 			? T4 extends TokenKey<"(">
-				? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends TokensList, infer Res]
+				? SkipBracketedUntil<AfterLp, TokenKey<")">> extends [infer R extends ParserMonad, infer Res]
 					? Res extends DbtyperErrorShape
 						? SkipFailedExpression<R, Res>
 						: [SkipToken<R>, null]
@@ -462,36 +459,36 @@ type SkipConstraintAfterKeyTok<AfterKeyTok extends TokensList> =
 			: never
 		: never
 
-type SkipConstraintAfterPrim<AfterPrim extends TokensList> =
+type SkipConstraintAfterPrim<AfterPrim extends ParserMonad> =
 	PeekToken<AfterPrim> extends infer T3
-		? SkipToken<AfterPrim> extends infer AfterKeyTok extends TokensList
+		? SkipToken<AfterPrim> extends infer AfterKeyTok extends ParserMonad
 			? T3 extends TokenKey<"key">
 				? SkipConstraintAfterKeyTok<AfterKeyTok>
 				: [AfterKeyTok, null]
 			: never
 		: never
 
-type SkipConstraintAfterName<AfterName extends TokensList> =
+type SkipConstraintAfterName<AfterName extends ParserMonad> =
 	PeekToken<AfterName> extends infer T2
-		? SkipToken<AfterName> extends infer AfterPrim extends TokensList
+		? SkipToken<AfterName> extends infer AfterPrim extends ParserMonad
 			? T2 extends TokenKey<"primary">
 				? SkipConstraintAfterPrim<AfterPrim>
 				: [AfterPrim, null]
 			: never
 		: never
 
-type SkipConstraintAfterKw<AfterKw extends TokensList> =
+type SkipConstraintAfterKw<AfterKw extends ParserMonad> =
 	PeekToken<AfterKw> extends infer T1
-		? SkipToken<AfterKw> extends infer AfterName extends TokensList
+		? SkipToken<AfterKw> extends infer AfterName extends ParserMonad
 			? T1 extends TokenIdent<string>
 				? SkipConstraintAfterName<AfterName>
 				: [AfterName, null]
 			: never
 		: never
 
-type SkipConstraintClause<Tokens extends TokensList> =
+type SkipConstraintClause<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends infer T0
-		? SkipToken<Tokens> extends infer AfterKw extends TokensList
+		? SkipToken<Tokens> extends infer AfterKw extends ParserMonad
 			? T0 extends TokenKey<"constraint">
 				? SkipConstraintAfterKw<AfterKw>
 				: [AfterKw, null]

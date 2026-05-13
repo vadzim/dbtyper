@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -11,7 +11,7 @@ type DbPublicEmpty = {
 }
 
 type CreatedTable = ParseSqlStatement<
-	ParseSqlTokens<`create table odd_cols ( id uuid not null, body text not null, flag int not null );`>,
+	CreateParserMonad<`create table odd_cols ( id uuid not null, body text not null, flag int not null );`>,
 	DbPublicEmpty
 >
 type OddTable = CreatedTable[1] extends { schemas: { public: { sets: { odd_cols: infer T } } } } ? T : never
@@ -35,7 +35,7 @@ type DbTiny = {
 	schemas: { public: JsqlSchemaShape }
 }
 type ExoticTable = ParseSqlStatement<
-	ParseSqlTokens<`create table exotic ( id uuid not null, payload citext not null );`>,
+	CreateParserMonad<`create table exotic ( id uuid not null, payload citext not null );`>,
 	DbTiny
 >
 type ExoticCols = ExoticTable[1] extends { schemas: { public: { sets: { exotic: { columns: infer C } } } } } ? C : never
@@ -54,7 +54,7 @@ type DbOneTable = {
 		}
 	}
 }
-type DropTable = ParseSqlStatement<ParseSqlTokens<`drop table gone;`>, DbOneTable>
+type DropTable = ParseSqlStatement<CreateParserMonad<`drop table gone;`>, DbOneTable>
 type _dropTableSucceeded = Expect<Extends<DropTable[2], null>>
 
 type DbTwoSchemas = {
@@ -64,7 +64,7 @@ type DbTwoSchemas = {
 		spare: { sets: unknown }
 	}
 }
-type DropSchema = ParseSqlStatement<ParseSqlTokens<`drop schema spare;`>, DbTwoSchemas>
+type DropSchema = ParseSqlStatement<CreateParserMonad<`drop schema spare;`>, DbTwoSchemas>
 type _dropSchemaSucceeded = Expect<Extends<DropSchema[2], null>>
 
 type DbOneColTable = {
@@ -80,7 +80,7 @@ type DbOneColTable = {
 		}
 	}
 }
-type AlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.t add column body text;`>, DbOneColTable>
+type AlterAdd = ParseSqlStatement<CreateParserMonad<`alter table public.t add column body text;`>, DbOneColTable>
 type AfterAlterCols = AlterAdd[1] extends { schemas: { public: { sets: { t: { columns: infer C } } } } } ? C : never
 type _alterAddUsesDbScalars = Expect<Extends<AfterAlterCols extends { body: infer B } ? B : never, TNull<"text">>>
 

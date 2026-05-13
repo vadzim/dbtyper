@@ -1,6 +1,10 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
@@ -11,14 +15,14 @@ import type { ParseSelectExpression } from "./parse-select.ts"
  * `view_name AS` or `schema.view_name AS` (unlike {@link ParseQualifiedTableName}, not followed by `(`).
  * Success: `[rest before AS, null, schema, viewName]`.
  */
-type ParseQualifiedViewNameUnqualified<AfterFirst extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
+type ParseQualifiedViewNameUnqualified<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<"as">
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME", []>>
 
-type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDatabaseShape, A extends string> =
+type ParseQualifiedViewNameQualified<Rdot extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<Rdot> extends TokenIdent<infer B extends string>
-		? SkipToken<Rdot> extends infer AfterB extends TokensList
+		? SkipToken<Rdot> extends infer AfterB extends ParserMonad
 			? JsqlDbGetSchema<Db, A> extends JsqlSchemaShape
 				? PeekToken<AfterB> extends TokenKey<"as">
 					? A extends keyof Db["schemas"]
@@ -30,23 +34,23 @@ type ParseQualifiedViewNameQualified<Rdot extends TokensList, Db extends JsqlDat
 		: SkipFailedQualifiedName<Rdot, FormatError<"EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW", []>>
 
 type ParseQualifiedViewNameAfterFirstIdent<
-	AfterFirst extends TokensList,
+	AfterFirst extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	A extends string,
 > =
 	PeekToken<AfterFirst> extends TokenKey<".">
-		? SkipToken<AfterFirst> extends infer Rdot extends TokensList
+		? SkipToken<AfterFirst> extends infer Rdot extends ParserMonad
 			? ParseQualifiedViewNameQualified<Rdot, Db, A>
 			: never
 		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
 
-type ParseQualifiedViewName<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseQualifiedViewNameAfterFirstIdent<SkipToken<Tokens>, Db, A>
 		: SkipFailedQualifiedName<Tokens, FormatError<"EXPECTED_VIEW_NAME_IN_CREATE_VIEW", []>>
 
 type ParseCreateViewAfterSelect<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Name extends string,
@@ -61,14 +65,14 @@ type ParseCreateViewAfterSelect<
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["CREATE VIEW"]>>
 
 type ParseCreateViewSelectAndSemi<
-	R2 extends TokensList,
+	R2 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Sch extends keyof Db["schemas"] & string,
 	Vname extends string,
 	Params extends ExpressionParamsShape,
 > =
 	JsqlDbGetData<Db, Sch, Vname> extends null
-		? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends TokensList, infer _Db2, infer Res]
+		? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends ParserMonad, infer _Db2, infer Res]
 			? Res extends DbtyperErrorShape
 				? [R3, Db, Res]
 				: Res extends JsqlSelectStatementResult
@@ -78,7 +82,7 @@ type ParseCreateViewSelectAndSemi<
 		: SkipFailedStatement<R2, Db, FormatError<"VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA", []>>
 
 type ParseCreateViewAfterAs<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Sch extends keyof Db["schemas"] & string,
 	Vname extends string,
@@ -91,12 +95,12 @@ type ParseCreateViewAfterAs<
 			: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW", []>>
 
 export type ParseCreateView<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	ParseQualifiedViewName<Tokens, Db> extends [
-		infer R0 extends TokensList,
+		infer R0 extends ParserMonad,
 		infer E,
 		infer Sch extends string,
 		infer Vname extends string,
@@ -104,7 +108,7 @@ export type ParseCreateView<
 		? E extends null
 			? JsqlDbGetSchema<Db, Sch> extends JsqlSchemaShape
 				? PeekToken<R0> extends TokenKey<"as">
-					? SkipToken<R0> extends infer R1 extends TokensList
+					? SkipToken<R0> extends infer R1 extends ParserMonad
 						? Sch extends keyof Db["schemas"]
 							? ParseCreateViewAfterAs<R1, Db, Sch & keyof Db["schemas"] & string, Vname, Params>
 							: never

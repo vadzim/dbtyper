@@ -1,4 +1,9 @@
-import type { PeekToken, SkipToken, TokensList, TokenEot, TokenKey, TokenKind, TokenType } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { TokenType } from "../lexer/sql-lexer.ts"
+import type { TokenKind } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 
@@ -7,51 +12,51 @@ export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenT
 	token: Token
 }
 
-export type ParseSkipStatement<Tokens extends TokensList, DB extends JsqlDatabaseShape> =
-	SkipBracketedUntil<Tokens> extends [infer Rest extends TokensList, infer Result]
+export type ParseSkipStatement<Tokens extends ParserMonad, DB extends JsqlDatabaseShape> =
+	SkipBracketedUntil<Tokens> extends [infer Rest extends ParserMonad, infer Result]
 		? [SkipToken<Rest>, DB, Result]
 		: never
 
 export type SkipFailedExpression<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Error extends DbtyperErrorShape,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
-	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends ParserMonad, unknown]
 		? [SkipToken<Rest>, Error]
 		: never
 
 export type SkipFailedExpressionWithEnv<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Error extends DbtyperErrorShape,
 	Env,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
-	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends ParserMonad, unknown]
 		? [SkipToken<Rest>, Error, Env]
 		: never
 
 export type SkipFailedStatement<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Error extends DbtyperErrorShape,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
-	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends ParserMonad, unknown]
 		? [SkipToken<Rest>, Db, Error]
 		: never
 
 export type SkipFailedQualifiedName<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Error extends DbtyperErrorShape,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 > =
-	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends TokensList, unknown]
+	SkipBracketedUntil<Tokens, EndToken> extends [infer Rest extends ParserMonad, unknown]
 		? [SkipToken<Rest>, Error, never, never]
 		: never
 
 export type SkipBracketedUntil<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 	ClosingBracketsStack extends ClosingBrackets[] = [],
 > =

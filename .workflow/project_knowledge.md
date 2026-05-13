@@ -143,7 +143,7 @@ TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 
 **SQL Parser Implementation:**
 
-- Lexer: `ParseSqlTokens` tokenizes SQL strings
+- Lexer: `CreateParserMonad` tokenizes SQL strings
 - Parser: `ParseSqlStatement` validates against database shape
 - Returns error as third tuple element: `[Tokens, DbShape, Error]`
 - Error messages are context-specific (e.g., "Unknown table in DELETE FROM")

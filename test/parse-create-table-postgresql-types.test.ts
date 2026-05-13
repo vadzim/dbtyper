@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type {
@@ -25,7 +25,7 @@ type DbPublic = {
 
 // Test serial types
 type TSerialStmt = ParseSqlStatement<
-	ParseSqlTokens<`create table counters (id serial not null, big bigserial not null, small smallserial not null);`>,
+	CreateParserMonad<`create table counters (id serial not null, big bigserial not null, small smallserial not null);`>,
 	DbPublic
 >
 type TSerialTable = TSerialStmt[1]["schemas"]["public"]["sets"]["counters"]
@@ -51,7 +51,7 @@ type _tSerialShape = Expect<
 
 // Test timestamptz and timetz aliases
 type TTimestampAliases = ParseSqlStatement<
-	ParseSqlTokens<`create table events (created timestamptz not null, time timetz not null);`>,
+	CreateParserMonad<`create table events (created timestamptz not null, time timetz not null);`>,
 	DbPublic
 >
 type TTimestampAliasesTable = TTimestampAliases[1]["schemas"]["public"]["sets"]["events"]
@@ -72,7 +72,7 @@ type _tTimestampAliasesShape = Expect<
 
 // Test bytea
 type TByteaStmt = ParseSqlStatement<
-	ParseSqlTokens<`create table files (id integer not null, data bytea not null);`>,
+	CreateParserMonad<`create table files (id integer not null, data bytea not null);`>,
 	DbPublic
 >
 type TByteaTable = TByteaStmt[1]["schemas"]["public"]["sets"]["files"]
@@ -90,7 +90,7 @@ type _tByteaShape = Expect<
 
 // Test interval
 type TIntervalStmt = ParseSqlStatement<
-	ParseSqlTokens<`create table durations (id integer not null, duration interval not null);`>,
+	CreateParserMonad<`create table durations (id integer not null, duration interval not null);`>,
 	DbPublic
 >
 type TIntervalTable = TIntervalStmt[1]["schemas"]["public"]["sets"]["durations"]
@@ -108,7 +108,7 @@ type _tIntervalShape = Expect<
 
 // Test inet and cidr
 type TNetwork = ParseSqlStatement<
-	ParseSqlTokens<`create table hosts (id integer not null, ip inet not null, subnet cidr not null);`>,
+	CreateParserMonad<`create table hosts (id integer not null, ip inet not null, subnet cidr not null);`>,
 	DbPublic
 >
 type TNetworkTable = TNetwork[1]["schemas"]["public"]["sets"]["hosts"]
@@ -134,7 +134,7 @@ type _tNetworkShape = Expect<
 
 // Test tsvector and tsquery
 type TFulltext = ParseSqlStatement<
-	ParseSqlTokens<`create table documents (id integer not null, vec tsvector not null, query tsquery not null);`>,
+	CreateParserMonad<`create table documents (id integer not null, vec tsvector not null, query tsquery not null);`>,
 	DbPublic
 >
 type TFulltextTable = TFulltext[1]["schemas"]["public"]["sets"]["documents"]
@@ -160,7 +160,7 @@ type _tFulltextShape = Expect<
 
 // Test mixed PostgreSQL types
 type TMixed = ParseSqlStatement<
-	ParseSqlTokens<`create table mixed (
+	CreateParserMonad<`create table mixed (
 		id serial not null,
 		created timestamptz not null,
 		data bytea not null,

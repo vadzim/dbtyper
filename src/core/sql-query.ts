@@ -4,7 +4,8 @@ import type {
 	JsqlSelectStatementResult,
 	JsqlUpdateStatementResult,
 } from "./jsql-shapes.ts"
-import type { ParseSqlTokens, TokensList } from "../lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../lexer/parser-monad.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ParseSqlStatement } from "../parser/parse-sql-statement.ts"
@@ -16,8 +17,8 @@ type SqlSelectRowForDb<
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseSqlStatement<ParseSqlTokens<Text, Config["syntax"]>, Db, Params> extends [
-		infer _Rest extends TokensList,
+	ParseSqlStatement<CreateParserMonad<Text, Config["syntax"]>, Db, Params> extends [
+		infer _Rest extends ParserMonad,
 		infer _Db,
 		infer Res,
 	]

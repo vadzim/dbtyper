@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -32,19 +32,19 @@ create table public.agenda ( id uuid not null, user_id uuid not null );
 >[0]
 
 type TJoinOnAliasPredicate = ParseSqlStatement<
-	ParseSqlTokens<`select email from auth.users u left join public.agenda a on u.id = a.user_id;`>,
+	CreateParserMonad<`select email from auth.users u left join public.agenda a on u.id = a.user_id;`>,
 	DbJoinAuthAgenda
 >
 type _joinOnAliasPredicateOk = Expect<Extends<TJoinOnAliasPredicate[2], JsqlSelectStatementResult>>
 
 type TJoinOnCatalogPredicate = ParseSqlStatement<
-	ParseSqlTokens<`select email from auth.users left join public.agenda on auth.users.id = public.agenda.user_id;`>,
+	CreateParserMonad<`select email from auth.users left join public.agenda on auth.users.id = public.agenda.user_id;`>,
 	DbJoinAuthAgenda
 >
 type _joinOnCatalogPredicateOk = Expect<Extends<TJoinOnCatalogPredicate[2], JsqlSelectStatementResult>>
 
 type TJoinOnCatalogPredicateMultiLine = ParseSqlStatement<
-	ParseSqlTokens<`
+	CreateParserMonad<`
 select
 	email,
 	display_name,
@@ -77,7 +77,7 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 
 /** nest-postgres `app-cli.ts`: qualified `.*`, unqualified joined columns, regex `WHERE` via `:emailPat`, `ORDER BY`. */
 type TNestPostgresAppCliSelect = ParseSqlStatement<
-	ParseSqlTokens<`
+	CreateParserMonad<`
 select
 	public.agenda.*,
 	email,

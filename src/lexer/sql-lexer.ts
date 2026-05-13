@@ -1,20 +1,11 @@
-import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 
 export type LexerFeatures = "" | "dollar-strings" | "named-params"
 
-const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
-const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
-
-export type ParseSqlTokens<Query extends string, Syntax extends string = LexerFeatures> =
-	ReadTokenFromString<Query, Syntax> extends Return<infer Result extends TokenStreamHead, infer Rest extends string>
-		? [Buffer<Result, Rest, Syntax>] extends [infer B extends TokensList] // TODO: update monad checker to remove this workaround to be able to just return Buffer<Result, Rest, Syntax>
-			? B
-			: never
-		: never
-
-export type EmptyTokenList = ParseSqlTokens<"", string>
 export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "eot"
+
 export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
+
 export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
 export type TokenString<String extends string> = TokenType<"string", String>
@@ -22,22 +13,10 @@ export type TokenNumber<Num extends string> = TokenType<"number", Num>
 export type TokenParam<Param extends string> = TokenType<"param", Param>
 export type TokenEot = TokenType<"eot">
 
-/** Lexeme head: a normal token, or a lexical failure. */
-type TokenStreamHead = TokenType<TokenKind, string> | DbtyperErrorShape
-
-export type TokensList = Buffer<TokenStreamHead, string, string>
-
-export type PeekToken<Tokens extends TokensList> = Tokens[typeof tokenKey]
-export type SkipToken<Tokens extends TokensList> = ParseSqlTokens<Tokens[typeof restKey], Tokens["syntax"]>
-
-type Buffer<Token extends TokenStreamHead, Rest extends string, Syntax extends string> = {
-	[tokenKey]: Token
-	[restKey]: Rest
-	syntax: Syntax
-}
+export type TokenStreamHead = TokenType<TokenKind, string> | DbtyperErrorShape
 
 /** Lex one token from a string (internal) */
-type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
+export type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends StartTokenChar
 		? ReadTokenChars<Rest> extends {
 				token: infer Word extends string

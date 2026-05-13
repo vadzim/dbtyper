@@ -8,7 +8,7 @@ Legend:
 - ⚠️ = Partially covered or needs verification
 - ❌ = Missing integration test
 
-## test/sql-tokens.test.ts
+## test/parser-monad.test.ts
 
 ### Invalid Numbers
 

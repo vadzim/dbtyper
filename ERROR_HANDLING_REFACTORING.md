@@ -36,7 +36,7 @@ When a parser emits an error, it should skip to the end of the statement (semico
 
 ```typescript
 : SkipFailedExpression<Tokens, SqlParserError<"...">> extends [
-    infer Rest extends TokensList,
+    infer Rest extends ParserMonad,
     infer Err,
   ]
   ? [Rest, Db, Err]

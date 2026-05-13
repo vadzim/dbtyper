@@ -1,23 +1,27 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenKey, TokenString, TokensList } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenString } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
-export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+export type ParseCreateType<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? SkipToken<Tokens> extends infer A0 extends TokensList
+		? SkipToken<Tokens> extends infer A0 extends ParserMonad
 			? PeekToken<A0> extends TokenKey<"not">
-				? SkipToken<A0> extends infer A1 extends TokensList
+				? SkipToken<A0> extends infer A1 extends ParserMonad
 					? PeekToken<A1> extends TokenKey<"exists">
-						? SkipToken<A1> extends infer A2 extends TokensList
+						? SkipToken<A1> extends infer A2 extends ParserMonad
 							? ParseCreateTypeQualified<A2, Db, true>
 							: never
 						: SkipFailedExpression<
 									A1,
 									FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE", []>
-							  > extends [infer Rest extends TokensList, infer Err]
+							  > extends [infer Rest extends ParserMonad, infer Err]
 							? [Rest, Db, Err]
 							: never
 					: never
@@ -26,7 +30,7 @@ export type ParseCreateType<Tokens extends TokensList, Db extends JsqlDatabaseSh
 		: ParseCreateTypeQualified<Tokens, Db, false>
 
 type ParseCreateTypeQualifiedWhenSchKnown<
-	R extends TokensList,
+	R extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	IfNotExists extends boolean,
 	Sch extends keyof Db["schemas"] & string,
@@ -39,7 +43,7 @@ type ParseCreateTypeQualifiedWhenSchKnown<
 			: SkipFailedStatement<R, Db, FormatError<"TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS", []>>
 
 type ParseCreateTypeQualifiedWhenNameOk<
-	R extends TokensList,
+	R extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	IfNotExists extends boolean,
 	Sch extends string,
@@ -51,9 +55,9 @@ type ParseCreateTypeQualifiedWhenNameOk<
 			: never
 		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA", [Sch, "CREATE TYPE"]>>
 
-type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
+type ParseCreateTypeQualified<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedName<Tokens, Db> extends [
-		infer R extends TokensList,
+		infer R extends ParserMonad,
 		infer E,
 		infer Sch extends string,
 		infer Typ extends string,
@@ -64,17 +68,17 @@ type ParseCreateTypeQualified<Tokens extends TokensList, Db extends JsqlDatabase
 		: never
 
 type ParseCreateTypeAsEnum<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	TypeName extends string,
 	IfNotExists extends boolean,
 > =
 	PeekToken<Tokens> extends infer AsTok
-		? SkipToken<Tokens> extends infer AfterAs extends TokensList
+		? SkipToken<Tokens> extends infer AfterAs extends ParserMonad
 			? AsTok extends TokenKey<"as">
 				? PeekToken<AfterAs> extends infer EnumTok
-					? SkipToken<AfterAs> extends infer AfterEnum extends TokensList
+					? SkipToken<AfterAs> extends infer AfterEnum extends ParserMonad
 						? EnumTok extends TokenKey<"enum">
 							? IfNotExists extends true
 								? JsqlDbGetType<Db, Schema, TypeName> extends null
@@ -84,13 +88,13 @@ type ParseCreateTypeAsEnum<
 							: SkipFailedExpression<
 										AfterEnum,
 										FormatError<"EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE", []>
-								  > extends [infer Rest extends TokensList, infer Err]
+								  > extends [infer Rest extends ParserMonad, infer Err]
 								? [Rest, Db, Err]
 								: never
 						: never
 					: never
 				: SkipFailedExpression<AfterAs, FormatError<"EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE", []>> extends [
-							infer Rest extends TokensList,
+							infer Rest extends ParserMonad,
 							infer Err,
 					  ]
 					? [Rest, Db, Err]
@@ -98,26 +102,26 @@ type ParseCreateTypeAsEnum<
 			: never
 		: never
 
-type ParseCreateTypeSkipEnumBody<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+type ParseCreateTypeSkipEnumBody<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends infer OpenTok
-		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
+		? SkipToken<Tokens> extends infer AfterOpen extends ParserMonad
 			? OpenTok extends TokenKey<"(">
 				? SkipToCloseParenAndSemi<AfterOpen, Db>
 				: SkipFailedExpression<
 							AfterOpen,
 							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE", []>
-					  > extends [infer Rest extends TokensList, infer Err]
+					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
 			: never
 		: never
 
-type SkipToCloseParenAndSemi<Tokens extends TokensList, Db extends JsqlDatabaseShape> =
+type SkipToCloseParenAndSemi<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R extends TokensList
+		? SkipToken<Tokens> extends infer R extends ParserMonad
 			? Tok extends TokenKey<")">
 				? PeekToken<R> extends infer Tok2
-					? SkipToken<R> extends infer R2 extends TokensList
+					? SkipToken<R> extends infer R2 extends ParserMonad
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, Db, null]
 							: SkipFailedStatement<R2, Db, FormatError<"EXPECTED_SEMICOLON", ["CREATE TYPE"]>>
@@ -130,34 +134,34 @@ type SkipToCloseParenAndSemi<Tokens extends TokensList, Db extends JsqlDatabaseS
 		: never
 
 type ParseCreateTypeEnumBody<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	TypeName extends string,
 	Stack extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer OpenTok
-		? SkipToken<Tokens> extends infer AfterOpen extends TokensList
+		? SkipToken<Tokens> extends infer AfterOpen extends ParserMonad
 			? OpenTok extends TokenKey<"(">
 				? ParseEnumValues<AfterOpen, Db, Schema, TypeName, Stack>
 				: SkipFailedExpression<
 							AfterOpen,
 							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE", []>
-					  > extends [infer Rest extends TokensList, infer Err]
+					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
 			: never
 		: never
 
 type ParseEnumValues<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	TypeName extends string,
 	Stack extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R extends TokensList
+		? SkipToken<Tokens> extends infer R extends ParserMonad
 			? Tok extends TokenString<infer Val extends string>
 				? ParseAfterEnumValue<R, Db, Schema, TypeName, readonly [...Stack, Val]>
 				: Tok extends TokenKey<")">
@@ -169,21 +173,21 @@ type ParseEnumValues<
 					: SkipFailedExpression<
 								R,
 								FormatError<"EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_CREATE_TYPE", []>
-						  > extends [infer Rest extends TokensList, infer Err]
+						  > extends [infer Rest extends ParserMonad, infer Err]
 						? [Rest, Db, Err]
 						: never
 			: never
 		: never
 
 type ParseAfterEnumValue<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	TypeName extends string,
 	Stack extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R extends TokensList
+		? SkipToken<Tokens> extends infer R extends ParserMonad
 			? Tok extends TokenKey<",">
 				? ParseEnumValues<R, Db, Schema, TypeName, Stack>
 				: Tok extends TokenKey<")">
@@ -193,13 +197,13 @@ type ParseAfterEnumValue<
 					: SkipFailedExpression<
 								R,
 								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_ENUM_VALUE_IN_CREATE_TYPE", []>
-						  > extends [infer Rest extends TokensList, infer Err]
+						  > extends [infer Rest extends ParserMonad, infer Err]
 						? [Rest, Db, Err]
 						: never
 			: never
 		: never
 
-type ParseCreateTypeCloseSemi<Tokens extends TokensList, NewDb extends JsqlDatabaseShape> =
+type ParseCreateTypeCloseSemi<Tokens extends ParserMonad, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
 		: SkipFailedStatement<Tokens, NewDb, FormatError<"EXPECTED_SEMICOLON", ["CREATE TYPE"]>>

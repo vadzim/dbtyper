@@ -834,7 +834,7 @@ Add support for SQL UNION queries with type checking
     - Launches planning subagent
     - Creates `.features/2026-05-08-0745-issue-42-add-support-for-union-queries.md`
     - Identifies files to modify:
-        - `src/lexer/sql-tokens.ts` - Add UNION token
+        - `src/lexer/parser-monad.ts` - Add UNION token
         - `src/parser/parse-sql-statement.ts` - Parse UNION syntax
         - `src/types/query-result.ts` - Type inference for UNION
         - `test/integration/select/select-union.success.test.ts` - New test

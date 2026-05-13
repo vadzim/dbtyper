@@ -5,7 +5,7 @@ import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectRowSqlTypes } from "./sql-query.ts"
 import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
-import type { LexerFeatures } from "../lexer/sql-tokens.ts"
+import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as

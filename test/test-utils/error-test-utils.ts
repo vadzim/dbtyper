@@ -1,4 +1,4 @@
-import type { ParseSqlTokens } from "../../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../../src/lexer/parser-monad.ts"
 import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
 import type { DbtyperError, DbtyperErrorShape, ErrorCodes } from "../../src/dbtyper-error.ts"
 import type { DbPublicUsers } from "./test-databases.ts"
@@ -10,10 +10,10 @@ import type { SqlSelectRowSqlTypes } from "../../src/core/sql-query.ts"
 import type { ApplySqlToTsConversion } from "../../src/core/sql-to-ts-conversion.ts"
 import type { PostgresDriverConfig } from "../../src/postgres/postgres-sql-driver.ts"
 
-export type ParseErrorneousText<S extends string> = ParseSqlStatement<ParseSqlTokens<`${S}; ${Rest}`>, DbPublicUsers>
+export type ParseErrorneousText<S extends string> = ParseSqlStatement<CreateParserMonad<`${S}; ${Rest}`>, DbPublicUsers>
 
 type Rest = "select 42;"
-type TokensRest = ParseSqlTokens<Rest>
+type TokensRest = CreateParserMonad<Rest>
 
 export type CheckErrorneousResult<Result, Code extends ErrorCodes, Message extends string> = Matches<
 	Result,
@@ -25,7 +25,7 @@ export type ExtractQueryError<
 	DbShape extends JsqlDatabaseShape,
 	Query extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = ParseSqlStatement<ParseSqlTokens<Query>, DbShape, Params>[2]
+> = ParseSqlStatement<CreateParserMonad<Query>, DbShape, Params>[2]
 
 export type ExtractStreamError<
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,

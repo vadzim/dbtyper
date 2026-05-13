@@ -138,7 +138,7 @@ botid::text
 **Files to modify:**
 
 - `src/parser/parse-expression.ts` - add :: operator parsing
-- `src/parser/sql-tokens.ts` - add :: token
+- `src/parser/parser-monad.ts` - add :: token
 - `test/integration/types/type-cast.test.ts` - comprehensive tests
 
 ---

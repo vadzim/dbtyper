@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Monad checker: stop and report suspected tool errors
 
-1. **If you believe `check-monad` / `npm run monadcheck` (see [package.json](package.json)) is incorrect** — e.g. false positive, contradicts a deliberate one-way parse design, or conflicts with `core/sql-tokens.ts` — **stop immediately** and **tell the user** in clear terms: what rule fired, what code triggered it, why you think the checker is wrong, and what you would need changed (checker vs code).
+1. **If you believe `check-monad` / `npm run monadcheck` (see [package.json](package.json)) is incorrect** — e.g. false positive, contradicts a deliberate one-way parse design, or conflicts with `core/parser-monad.ts` — **stop immediately** and **tell the user** in clear terms: what rule fired, what code triggered it, why you think the checker is wrong, and what you would need changed (checker vs code).
 
 2. **Do not** disable or remove the monad checker, delete or neuter its npm script, or “fix” the project only by weakening types or adding noise solely to silence the tool **without** that explicit maintainer decision.
 

@@ -23,7 +23,7 @@ This document provides a comprehensive inventory of all erroneous SQL queries te
 
 ### ✅ Excellent Coverage (80%+)
 
-1. **test/sql-tokens.test.ts** - 100% covered
+1. **test/parser-monad.test.ts** - 100% covered
     - All 4 invalid number formats have integration tests
     - Location: `test/integration/lexer/`
 

@@ -107,7 +107,7 @@ All parser files have been successfully migrated from `SqlParserError<"message">
 16. **parse-delete.ts** - Migrated to FormatError (15 usages) + error checks fixed
 17. **parse-alter-table.ts** - Migrated to FormatError + error checks fixed
 18. **parse-where-expression.ts** - Already using FormatError + error checks fixed
-19. **lexer/sql-tokens.ts** - Already using FormatError
+19. **lexer/parser-monad.ts** - Already using FormatError
 20. **core/sql-query.ts** - No migration needed (only type checks)
 21. **core/sql-database.ts** - No migration needed (only type checks)
 22. **core/sql-to-ts-conversion.ts** - No migration needed (only type checks)

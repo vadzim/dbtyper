@@ -1,10 +1,14 @@
-import type { PeekToken, SkipToken, TokenIdent, TokenKey, TokensList, TokenNumber } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenNumber } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
-export type CollectSqlTypeWords<Tokens extends TokensList, Acc extends readonly string[] = []> =
+export type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
 		? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W]>
 		: [Tokens, Acc]
@@ -40,11 +44,11 @@ export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
 type ParseNumericLiteral<S extends string> = S extends `${infer N extends number}` ? N : never
 
 /** Parse array suffix `[]` after a type, returning SqlTypeShape with array wrapper */
-export type ParseArraySuffix<Tokens extends TokensList, BaseType extends SqlTypeShape> =
+export type ParseArraySuffix<Tokens extends ParserMonad, BaseType extends SqlTypeShape> =
 	PeekToken<Tokens> extends TokenKey<"[">
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"]">
-				? SkipToken<R1> extends infer R2 extends TokensList
+				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? ParseArraySuffix<R2, { type: "array"; arg: BaseType; nullable: false }>
 					: never
 				: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE", []>>
@@ -52,9 +56,9 @@ export type ParseArraySuffix<Tokens extends TokensList, BaseType extends SqlType
 		: [Tokens, BaseType]
 
 /** Parse NULL/NOT NULL keywords and set nullability */
-export type ParseNullability<Tokens extends TokensList, BaseType extends SqlTypeShape> =
+export type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTypeShape> =
 	PeekToken<Tokens> extends TokenKey<"not">
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"null">
 				? [SkipToken<R1>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: false }]
 				: [R1, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]
@@ -64,10 +68,10 @@ export type ParseNullability<Tokens extends TokensList, BaseType extends SqlType
 			: [Tokens, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]
 
 /** Parse VARCHAR(n) or CHAR(n) length parameter */
-type ParseVarcharLength<Tokens extends TokensList> =
+type ParseVarcharLength<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenNumber<infer N extends string>
 		? ParseNumericLiteral<N> extends infer Num extends number
-			? SkipToken<Tokens> extends infer R1 extends TokensList
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? PeekToken<R1> extends TokenKey<")">
 					? [SkipToken<R1>, Num]
 					: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH", []>>
@@ -76,15 +80,15 @@ type ParseVarcharLength<Tokens extends TokensList> =
 		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_NUMBER_FOR_VARCHAR_LENGTH", []>>
 
 /** Parse NUMERIC(precision) or NUMERIC(precision, scale) */
-type ParseNumericPrecisionScale<Tokens extends TokensList> =
+type ParseNumericPrecisionScale<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenNumber<infer P extends string>
 		? ParseNumericLiteral<P> extends infer Precision extends number
-			? SkipToken<Tokens> extends infer R1 extends TokensList
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? PeekToken<R1> extends TokenKey<",">
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? PeekToken<R2> extends TokenNumber<infer S extends string>
 							? ParseNumericLiteral<S> extends infer Scale extends number
-								? SkipToken<R2> extends infer R3 extends TokensList
+								? SkipToken<R2> extends infer R3 extends ParserMonad
 									? PeekToken<R3> extends TokenKey<")">
 										? [SkipToken<R3>, { precision: Precision; scale: Scale }]
 										: SkipFailedExpression<
@@ -106,40 +110,40 @@ type ParseNumericPrecisionScale<Tokens extends TokensList> =
 		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_PRECISION_NUMBER", []>>
 
 /** Parse type modifiers like (n) for VARCHAR, (p,s) for NUMERIC */
-type ParseTypeModifiers<Tokens extends TokensList, BaseTypeName extends string> =
+type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string> =
 	PeekToken<Tokens> extends TokenKey<"(">
-		? SkipToken<Tokens> extends infer R0 extends TokensList
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? BaseTypeName extends "varchar" | "character varying" | "char"
-				? ParseVarcharLength<R0> extends [infer R1 extends TokensList, infer Len extends number]
+				? ParseVarcharLength<R0> extends [infer R1 extends ParserMonad, infer Len extends number]
 					? [R1, { type: BaseTypeName; arg: Len; nullable: false }]
 					: never
 				: BaseTypeName extends "numeric" | "decimal"
 					? ParseNumericPrecisionScale<R0> extends [
-							infer R1 extends TokensList,
+							infer R1 extends ParserMonad,
 							infer Arg extends { precision: number; scale: number },
 						]
 						? [R1, { type: BaseTypeName; arg: Arg; nullable: false }]
 						: never
 					: // Other parameterized types - skip the parens for now
-						SkipBracketedUntil<R0, TokenKey<")">> extends [infer R1 extends TokensList, infer _]
+						SkipBracketedUntil<R0, TokenKey<")">> extends [infer R1 extends ParserMonad, infer _]
 						? [R1, { type: BaseTypeName; arg: null; nullable: false }]
 						: never
 			: never
 		: [Tokens, { type: BaseTypeName; arg: null; nullable: false }]
 
 /** Main entry point: parse SQL type and return SqlTypeShape */
-export type ParseSqlType<Tokens extends TokensList> =
-	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends TokensList, infer Words extends readonly string[]]
+export type ParseSqlType<Tokens extends ParserMonad> =
+	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends ParserMonad, infer Words extends readonly string[]]
 		? Words extends readonly []
 			? SkipFailedExpression<AfterWords, FormatError<"EXPECTED_TYPE_NAME", [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
 				? NormalizeSqlTypeName<TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiers<AfterWords, NormalizedName> extends [
-							infer AfterMods extends TokensList,
+							infer AfterMods extends ParserMonad,
 							infer BaseShape extends SqlTypeShape,
 						]
 						? ParseArraySuffix<AfterMods, BaseShape> extends [
-								infer AfterArray extends TokensList,
+								infer AfterArray extends ParserMonad,
 								infer ArrayShape extends SqlTypeShape,
 							]
 							? ParseNullability<AfterArray, ArrayShape>

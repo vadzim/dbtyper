@@ -1,7 +1,7 @@
 import { describe, test } from "node:test"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
 
 // Test database with tables that can shadow each other
@@ -18,7 +18,7 @@ describe("scope shadowing (type tests)", () => {
 	test("compile-time assertions above", () => {
 		// CTE shadows table with same name
 		type CteShadowsTable = ParseSqlStatement<
-			ParseSqlTokens<`
+			CreateParserMonad<`
 				with users as (select id from posts)
 				select id from users;
 			`>,
@@ -29,7 +29,7 @@ describe("scope shadowing (type tests)", () => {
 
 		// Table alias shadows table name - posts now refers to users table
 		type AliasShadowsTable = ParseSqlStatement<
-			ParseSqlTokens<`
+			CreateParserMonad<`
 				select posts.id from users as posts;
 			`>,
 			DbShadowing
@@ -39,7 +39,7 @@ describe("scope shadowing (type tests)", () => {
 
 		// JOIN does not shadow - both tables visible
 		type JoinDoesNotShadow = ParseSqlStatement<
-			ParseSqlTokens<`
+			CreateParserMonad<`
 				select users.id, posts.id from users join posts on users.id = posts.user_id;
 			`>,
 			DbShadowing

@@ -1,5 +1,9 @@
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
@@ -10,7 +14,7 @@ import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 
 export type ParseDelete<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
@@ -19,11 +23,11 @@ export type ParseDelete<
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_FROM_AFTER_DELETE", []>>
 
 type ParseDeleteAfterFrom<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	ParseDeleteFromTableRef<Tokens, Db, {}, Params> extends [infer R extends TokensList, infer Mid, infer Third]
+	ParseDeleteFromTableRef<Tokens, Db, {}, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]
@@ -31,13 +35,13 @@ type ParseDeleteAfterFrom<
 			: Mid extends null
 				? Third extends ScopeMap
 					? PeekToken<R> extends TokenKey<"using">
-						? SkipToken<R> extends infer Ru extends TokensList
+						? SkipToken<R> extends infer Ru extends ParserMonad
 							? ParseDeleteUsingClause<Ru, Db, Third, Params>
 							: never
 						: PeekToken<R> extends TokenKey<"where">
-							? SkipToken<R> extends infer Rw0 extends TokensList
+							? SkipToken<R> extends infer Rw0 extends ParserMonad
 								? ParseWhereExpression<Rw0, Db, Third, Params> extends [
-										infer Rw extends TokensList,
+										infer Rw extends ParserMonad,
 										infer We extends DbtyperErrorShape | null,
 									]
 									? We extends DbtyperErrorShape
@@ -51,13 +55,13 @@ type ParseDeleteAfterFrom<
 		: never
 
 type ParseDeleteUsingClause<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	ParseDeleteUsingTableRef<Tokens, Db, Scope, Params> extends [
-		infer RUsing extends TokensList,
+		infer RUsing extends ParserMonad,
 		infer UsingErr,
 		infer UsingScope,
 	]
@@ -67,9 +71,9 @@ type ParseDeleteUsingClause<
 				? MergeScope<Scope, UsingScope> extends infer MergedScope
 					? MergedScope extends ScopeMap
 						? PeekToken<RUsing> extends TokenKey<"where">
-							? SkipToken<RUsing> extends infer Rw0 extends TokensList
+							? SkipToken<RUsing> extends infer Rw0 extends ParserMonad
 								? ParseWhereExpression<Rw0, Db, MergedScope, Params> extends [
-										infer Rw extends TokensList,
+										infer Rw extends ParserMonad,
 										infer We,
 									]
 									? We extends DbtyperErrorShape
@@ -84,18 +88,18 @@ type ParseDeleteUsingClause<
 		: never
 
 type ParseDeleteUsingTableRef<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	_Scope extends ScopeMap,
 	_Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenIdent<infer A extends string>
 				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends TokensList
+							? SkipToken<R2> extends infer R3 extends ParserMonad
 								? TokB extends TokenIdent<infer B extends string>
 									? JsqlDbGetData<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
@@ -132,7 +136,7 @@ type ParseDeleteUsingTableRef<
 		: never
 
 type ParseDeleteUsingTableAlias<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -154,7 +158,7 @@ type ParseDeleteUsingTableAlias<
 				>,
 			]
 		: PeekToken<Tokens> extends infer TokAlias
-			? SkipToken<Tokens> extends infer Ra extends TokensList
+			? SkipToken<Tokens> extends infer Ra extends ParserMonad
 				? TokAlias extends TokenIdent<infer Alias extends string>
 					? [
 							Ra,
@@ -190,15 +194,15 @@ type ParseDeleteUsingTableAlias<
 			: never
 
 type FinishDeleteStatement<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap = {},
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends TokenKey<"returning">
-		? SkipToken<Tokens> extends infer Rr extends TokensList
+		? SkipToken<Tokens> extends infer Rr extends ParserMonad
 			? ParseAndResolveReturningClause<Rr, Db, Scope, Params> extends [
-					infer Ra extends TokensList,
+					infer Ra extends ParserMonad,
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
@@ -212,7 +216,7 @@ type FinishDeleteStatement<
 		: FinishDeleteSemicolon<Tokens, Db, null>
 
 type FinishDeleteSemicolon<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Returning extends JsqlSelectStatementResult | null,
 > =
@@ -221,18 +225,18 @@ type FinishDeleteSemicolon<
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["DELETE"]>>
 
 type ParseDeleteFromTableRef<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenIdent<infer A extends string>
 				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends TokensList
+							? SkipToken<R2> extends infer R3 extends ParserMonad
 								? TokB extends TokenIdent<infer B extends string>
 									? JsqlDbGetData<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
@@ -269,7 +273,7 @@ type ParseDeleteFromTableRef<
 		: never
 
 type ParseDeleteAliasAfterTable<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	_Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
@@ -294,7 +298,7 @@ type ParseDeleteAliasAfterTable<
 				>,
 			]
 		: PeekToken<Tokens> extends infer TokAlias
-			? SkipToken<Tokens> extends infer Ra extends TokensList
+			? SkipToken<Tokens> extends infer Ra extends ParserMonad
 				? TokAlias extends TokenIdent<infer Alias extends string>
 					? [
 							Ra,

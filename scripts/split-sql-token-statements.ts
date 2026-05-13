@@ -1,10 +1,10 @@
 /**
  * Runtime tokenization and statement grouping aligned with `ReadTokenFromString` in
- * `core/sql-tokens.ts` (including nested C-style block comments, matching
+ * `core/parser-monad.ts` (including nested C-style block comments, matching
  * `SkipMultiComment`) and the `;` / paren / bracket policy of `SkipStatement` in
  * `src/parser/skip-statement.ts` (end at `;` when the bracket stack is empty).
  */
-import { serviceWords, type TokenKind } from "../src/lexer/sql-tokens.ts"
+import { serviceWords, type TokenKind } from "../src/lexer/sql-lexer.ts"
 
 /** Lex, then group into an array of token-arrays, one per top-level `;` segment. */
 export function splitSqlsIntoTokens(source: string): SqlRuntimeToken[][] {
@@ -67,7 +67,7 @@ function isNumericWord(s: string): boolean {
 /**
  * When `s[start] === "/"` and `s[start+1] === "*"`, return the index after the
  * block-closing `*` + `/` token, with **nested** opens counted the same way as
- * `SkipMultiComment` in `core/sql-tokens.ts`. Returns `n` if the comment is
+ * `SkipMultiComment` in `core/parser-monad.ts`. Returns `n` if the comment is
  * unterminated.
  */
 function skipToBlockCommentEnd(s: string, start: number, n: number = s.length): number {
@@ -110,7 +110,7 @@ export function readNextToken(s: string, i: number): { token: SqlRuntimeToken; e
 		const text = s.slice(p + 2, endBody)
 		return { token: { kind: "string", value: text }, end: endBody + 2 }
 	}
-	// `$tag$…$tag$` — `ReadTaggedDollar` in `core/sql-tokens.ts`
+	// `$tag$…$tag$` — `ReadTaggedDollar` in `core/parser-monad.ts`
 	if (s[p] === "$") {
 		let t = p + 1
 		const tag0 = t
@@ -165,7 +165,7 @@ export function readNextToken(s: string, i: number): { token: SqlRuntimeToken; e
 		}
 		return readNextToken(s, t)
 	}
-	// block comment (nested `/*` / `*/` like `SkipMultiComment` in `core/sql-tokens.ts`)
+	// block comment (nested `/*` / `*/` like `SkipMultiComment` in `core/parser-monad.ts`)
 	if (s[p]! === "/" && s[p + 1]! === "*") {
 		const after = skipToBlockCommentEnd(s, p, n)
 		if (after >= n) {

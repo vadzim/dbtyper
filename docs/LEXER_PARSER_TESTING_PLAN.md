@@ -91,12 +91,12 @@ Create a new test suite that:
 // test/unit/lexer-errors.test.ts
 import { describe, it } from "node:test"
 import assert from "node:assert"
-import { ParseSqlTokens } from "../../src/lexer/sql-tokens.ts"
+import { CreateParserMonad } from "../../src/lexer/parser-monad.ts"
 
 describe("Lexer Error Codes", () => {
 	it("should return UNCLOSED_STRING_LITERAL for unclosed string", () => {
 		const sql = `SELECT 'unclosed FROM users` as const
-		const result = ParseSqlTokens<typeof sql>
+		const result = CreateParserMonad<typeof sql>
 
 		// Extract error code from result
 		const errorCode = extractErrorCode(result)
@@ -106,7 +106,7 @@ describe("Lexer Error Codes", () => {
 
 	it("should return UNCLOSED_QUOTED_IDENTIFIER for unclosed identifier", () => {
 		const sql = `SELECT "unclosed FROM users` as const
-		const result = ParseSqlTokens<typeof sql>
+		const result = CreateParserMonad<typeof sql>
 
 		const errorCode = extractErrorCode(result)
 

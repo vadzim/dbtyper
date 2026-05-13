@@ -1,5 +1,5 @@
 import { describe, it } from "node:test"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { DbtyperError } from "../src/dbtyper-error.ts"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TBoolean, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
@@ -36,28 +36,31 @@ type DbItemsWithDraft = {
 	}
 }
 
-type TAlterAdd = ParseSqlStatement<ParseSqlTokens<`alter table public.items add column body text;`>, DbItems>
+type TAlterAdd = ParseSqlStatement<CreateParserMonad<`alter table public.items add column body text;`>, DbItems>
 type _alterAddOk = Expect<Extends<TAlterAdd[2], null>>
 type ItemsAfterAdd = TAlterAdd[1]["schemas"]["public"]["sets"]["items"]
 type _alterAddCols = Expect<Extends<ItemsAfterAdd["columns"], { id: TUuid; title: TText; body: TNull<"text"> }>>
 
-type TAlterDrop = ParseSqlStatement<ParseSqlTokens<`alter table public.items drop column draft;`>, DbItemsWithDraft>
+type TAlterDrop = ParseSqlStatement<CreateParserMonad<`alter table public.items drop column draft;`>, DbItemsWithDraft>
 type _alterDropOk = Expect<Extends<TAlterDrop[2], null>>
 type ItemsAfterDrop = TAlterDrop[1]["schemas"]["public"]["sets"]["items"]
 type _alterDropCols = Expect<Extends<ItemsAfterDrop["columns"], { id: TUuid; title: TText }>>
 
-type TAlterRename = ParseSqlStatement<ParseSqlTokens<`alter table public.items rename column title to label;`>, DbItems>
+type TAlterRename = ParseSqlStatement<
+	CreateParserMonad<`alter table public.items rename column title to label;`>,
+	DbItems
+>
 type _alterRenameOk = Expect<Extends<TAlterRename[2], null>>
 type ItemsAfterRename = TAlterRename[1]["schemas"]["public"]["sets"]["items"]
 type _alterRenameCols = Expect<Extends<ItemsAfterRename["columns"], { id: TUuid; label: TText }>>
 
-type TAlterType = ParseSqlStatement<ParseSqlTokens<`alter table public.items alter column id type bigint;`>, DbItems>
+type TAlterType = ParseSqlStatement<CreateParserMonad<`alter table public.items alter column id type bigint;`>, DbItems>
 type _alterTypeOk = Expect<Extends<TAlterType[2], null>>
 type ItemsAfterType = TAlterType[1]["schemas"]["public"]["sets"]["items"]
 type _alterTypeId = Expect<Extends<ItemsAfterType["columns"]["id"], TNull<"bigint">>>
 
 type TAlterSetNotNull = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items alter column title set not null;`>,
+	CreateParserMonad<`alter table public.items alter column title set not null;`>,
 	DbItems
 >
 type _alterSetNnOk = Expect<Extends<TAlterSetNotNull[2], null>>
@@ -65,7 +68,7 @@ type ItemsAfterSetNn = TAlterSetNotNull[1]["schemas"]["public"]["sets"]["items"]
 type _alterSetNnFact = Expect<Extends<ItemsAfterSetNn["column_facts"]["title"], { nullability: "not_null" }>>
 
 type TAlterDropNotNull = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items alter column id drop not null;`>,
+	CreateParserMonad<`alter table public.items alter column id drop not null;`>,
 	DbItems
 >
 type _alterDropNnOk = Expect<Extends<TAlterDropNotNull[2], null>>
@@ -74,7 +77,7 @@ type _alterDropNnFact = Expect<Extends<ItemsAfterDropNn["column_facts"]["id"], {
 
 /** `ADD CONSTRAINT` is a no-op (skip to `,`), then a real clause applies. */
 type TAlterConstraintNoopThenAdd = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items add constraint chk check ( true ) , add column meta int;`>,
+	CreateParserMonad<`alter table public.items add constraint chk check ( true ) , add column meta int;`>,
 	DbItems
 >
 type _alterNoopChainOk = Expect<Extends<TAlterConstraintNoopThenAdd[2], null>>
@@ -85,7 +88,7 @@ type _alterNoopChainMeta = Expect<
 
 /** Malformed `ALTER COLUMN` tail. */
 type TAlterColBadSet = ParseSqlStatement<
-	ParseSqlTokens<`alter table public.items alter column title set xyzzy;`>,
+	CreateParserMonad<`alter table public.items alter column title set xyzzy;`>,
 	DbItems
 >
 type _alterColBadSet = Expect<Extends<TAlterColBadSet[2], DbtyperError<5403, "Unsupported ALTER COLUMN SET clause">>>

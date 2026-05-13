@@ -4,7 +4,11 @@ import type {
 	JsqlSelectStatementResult,
 	JsqlDataShape,
 } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, TokenEot, TokenIdent, TokenKey, TokensList } from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -34,7 +38,7 @@ type InsertTableContext = {
 }
 
 type ParseInsertAliasAfterTable<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	_Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
@@ -63,7 +67,7 @@ type ParseInsertAliasAfterTable<
 				},
 			]
 		: PeekToken<Tokens> extends infer TokAlias
-			? SkipToken<Tokens> extends infer Ra extends TokensList
+			? SkipToken<Tokens> extends infer Ra extends ParserMonad
 				? TokAlias extends TokenIdent<infer Alias extends string>
 					? PeekToken<Ra> extends TokenKey<"(">
 						? [
@@ -100,17 +104,17 @@ type ParseInsertAliasAfterTable<
 			: never
 
 type ParseInsertFromTableRef<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenIdent<infer A extends string>
 				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends TokensList
+							? SkipToken<R2> extends infer R3 extends ParserMonad
 								? TokB extends TokenIdent<infer B extends string>
 									? JsqlDbGetData<Db, A, B> extends infer TblTry
 										? [TblTry] extends [never]
@@ -146,22 +150,22 @@ type ParseInsertFromTableRef<
 			: never
 		: never
 
-type ParseInsertColumnNameList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
+type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
 			? SkipFailedExpression<Tokens, FormatError<"INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY", []>>
 			: [Tokens, Acc]
 		: PeekToken<Tokens> extends infer Tok
-			? SkipToken<Tokens> extends infer R1 extends TokensList
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? Tok extends TokenIdent<infer Col extends string>
 					? JsqlDataGetColumnType<Tbl, Col> extends null
 						? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN", [Col, "INSERT column list"]>>
 						: PeekToken<R1> extends TokenKey<")">
-							? SkipToken<R1> extends infer R2 extends TokensList
+							? SkipToken<R1> extends infer R2 extends ParserMonad
 								? [R2, readonly [...Acc, Col]]
 								: never
 							: PeekToken<R1> extends TokenKey<",">
-								? SkipToken<R1> extends infer R3 extends TokensList
+								? SkipToken<R1> extends infer R3 extends ParserMonad
 									? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
 									: never
 								: SkipFailedExpression<
@@ -202,7 +206,7 @@ type ValidateInsertRequiredColumns<Tbl extends JsqlDataShape, Cols extends reado
 		: never
 
 type ParseInsertAfterOpenParenCols<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -211,8 +215,8 @@ type ParseInsertAfterOpenParenCols<
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
-		? SkipToken<Tokens> extends infer R0 extends TokensList
-			? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [infer R1 extends TokensList, infer ColsOrErr]
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [infer R1 extends ParserMonad, infer ColsOrErr]
 				? ColsOrErr extends DbtyperErrorShape
 					? [R1, Db, ColsOrErr]
 					: ColsOrErr extends readonly string[]
@@ -223,7 +227,7 @@ type ParseInsertAfterOpenParenCols<
 		: never
 
 type ParseInsertAfterColumnNames<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -234,7 +238,7 @@ type ParseInsertAfterColumnNames<
 > =
 	PeekToken<R1> extends infer TkValues
 		? TkValues extends TokenKey<"values">
-			? SkipToken<R1> extends infer Rv extends TokensList
+			? SkipToken<R1> extends infer Rv extends ParserMonad
 				? ValidateInsertRequiredColumns<Tbl, Cols> extends infer RequiredColsOk
 					? RequiredColsOk extends DbtyperErrorShape
 						? [Rv, Db, RequiredColsOk]
@@ -243,13 +247,13 @@ type ParseInsertAfterColumnNames<
 				: never
 			: TkValues extends TokenKey<"select">
 				? ParseInsertWithSelect<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipToken<R1> extends infer Rv extends TokensList
+				: SkipToken<R1> extends infer Rv extends ParserMonad
 					? [Rv, Db, FormatError<"EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT", []>]
 					: never
 		: never
 
 type ParseInsertWithSelect<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	_Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -258,7 +262,7 @@ type ParseInsertWithSelect<
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseSelectExpression<Tokens, Db, Params> extends [infer RSelect extends TokensList, infer Db2, infer SelectRes]
+	ParseSelectExpression<Tokens, Db, Params> extends [infer RSelect extends ParserMonad, infer Db2, infer SelectRes]
 		? SelectRes extends DbtyperErrorShape
 			? [RSelect, Db2, SelectRes]
 			: SelectRes extends JsqlSelectStatementResult
@@ -321,7 +325,7 @@ type ValidateInsertSelectColumnTypes<
 
 /** Unwrap `InsertValuesRowCellsParsedMarker` after a `VALUES` row cell pass (same rules as after `VALUES (`). */
 type ParseInsertAfterValuesCellsOutcome<
-	Rf extends TokensList,
+	Rf extends ParserMonad,
 	Db2 extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -339,7 +343,7 @@ type ParseInsertAfterValuesCellsOutcome<
 		: ParseInsertAfterValuesRowClose<Rf, Db2, Scope, Params, Tbl, Sch, Tab, Cols>
 
 type ParseInsertAfterValuesKeyword<
-	Rv extends TokensList,
+	Rv extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -349,15 +353,15 @@ type ParseInsertAfterValuesKeyword<
 	Cols extends readonly string[],
 > =
 	PeekToken<Rv> extends infer TkOpen
-		? SkipToken<Rv> extends infer Rvals extends TokensList
+		? SkipToken<Rv> extends infer Rvals extends ParserMonad
 			? TkOpen extends TokenKey<"(">
 				? ParseInsertValuesCells<Rvals, Db, Scope, Params, Tbl, Sch, Tab, Cols, Cols> extends [
-						infer Rf extends TokensList,
+						infer Rf extends ParserMonad,
 						infer Db2 extends JsqlDatabaseShape,
 						infer Res,
 					]
 					? ParseInsertAfterValuesCellsOutcome<Rf, Db2, Scope, Params, Tbl, Sch, Tab, Cols, Res> extends [
-							infer ROut extends TokensList,
+							infer ROut extends ParserMonad,
 							infer DbOut extends JsqlDatabaseShape,
 							infer Out3,
 						]
@@ -373,7 +377,7 @@ type ParseInsertAfterValuesKeyword<
 		: never
 
 type ParseInsertValuesCells<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -388,7 +392,7 @@ type ParseInsertValuesCells<
 			Tokens,
 			{ db: Db; params: Params; outerScope: Scope; positionalParamIndex: PositionalParamIndex }
 		> extends [
-			infer R1 extends TokensList,
+			infer R1 extends ParserMonad,
 			infer Ast,
 			infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
 		]
@@ -405,7 +409,7 @@ type ParseInsertValuesCells<
 									: V0 extends true
 										? CR extends readonly []
 											? PeekToken<R1> extends infer TokCl
-												? SkipToken<R1> extends infer R2 extends TokensList
+												? SkipToken<R1> extends infer R2 extends ParserMonad
 													? TokCl extends TokenKey<")">
 														? Cols["length"] extends ColsFull["length"]
 															? ParseInsertAfterValuesRowClose<
@@ -425,7 +429,7 @@ type ParseInsertValuesCells<
 																		"EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES",
 																		[]
 																	>
-															  > extends [infer Rest extends TokensList, infer Err]
+															  > extends [infer Rest extends ParserMonad, infer Err]
 															? [Rest, Db, Err]
 															: never
 													: never
@@ -451,7 +455,7 @@ type ParseInsertValuesCells<
 	: never
 
 type ParseInsertValuesCommaThenRest<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -463,7 +467,7 @@ type ParseInsertValuesCommaThenRest<
 	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenKey<",">
-		? SkipToken<Tokens> extends infer Rc extends TokensList
+		? SkipToken<Tokens> extends infer Rc extends ParserMonad
 			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull, PositionalParamIndex>
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COMMA_BETWEEN_INSERT_VALUES", []>>
@@ -499,7 +503,7 @@ type BuildInsertResult<
 	: never
 
 type ParseInsertAfterValuesRowClose<
-	R2 extends TokensList,
+	R2 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -509,12 +513,12 @@ type ParseInsertAfterValuesRowClose<
 	Cols extends readonly string[],
 > =
 	PeekToken<R2> extends TokenKey<",">
-		? SkipToken<R2> extends infer R3 extends TokensList
+		? SkipToken<R2> extends infer R3 extends ParserMonad
 			? PeekToken<R3> extends infer TokLp
-				? SkipToken<R3> extends infer R4 extends TokensList
+				? SkipToken<R3> extends infer R4 extends ParserMonad
 					? TokLp extends TokenKey<"(">
 						? ParseInsertValuesCells<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols, Cols> extends [
-								infer Rf2 extends TokensList,
+								infer Rf2 extends ParserMonad,
 								infer Db3 extends JsqlDatabaseShape,
 								infer Res2,
 							]
@@ -523,7 +527,7 @@ type ParseInsertAfterValuesRowClose<
 						: SkipFailedExpression<
 									R4,
 									FormatError<"EXPECTED_OPEN_PAREN_AFTER_COMMA_BETWEEN_INSERT_VALUES_ROWS", []>
-							  > extends [infer Rest extends TokensList, infer Err]
+							  > extends [infer Rest extends ParserMonad, infer Err]
 							? [Rest, Db, Err]
 							: never
 					: never
@@ -532,7 +536,7 @@ type ParseInsertAfterValuesRowClose<
 		: ParseInsertOptionalTail<R2, Db, Scope, Params, Tbl, Sch, Tab, Cols, undefined, undefined>
 
 type ParseInsertOptionalTail<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -544,9 +548,9 @@ type ParseInsertOptionalTail<
 	Returning extends JsqlSelectStatementResult | undefined,
 > =
 	PeekToken<Tokens> extends TokenKey<"on">
-		? SkipToken<Tokens> extends infer ROn extends TokensList
+		? SkipToken<Tokens> extends infer ROn extends ParserMonad
 			? PeekToken<ROn> extends TokenKey<"conflict">
-				? SkipToken<ROn> extends infer Rcf extends TokensList
+				? SkipToken<ROn> extends infer Rcf extends ParserMonad
 					? ParseInsertOnConflictDoUpdate<Rcf, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: never
 				: SkipFailedStatement<ROn, Db, FormatError<"EXPECTED_CONFLICT_AFTER_ON_IN_INSERT", []>>
@@ -554,7 +558,7 @@ type ParseInsertOptionalTail<
 		: ParseInsertMaybeReturning<Tokens, Db, Scope, Params, Tbl, Sch, Tab, Cols, UpsertCols, Returning>
 
 type ParseInsertOnConflictDoUpdate<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -564,7 +568,7 @@ type ParseInsertOnConflictDoUpdate<
 	Cols extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer T0
-		? SkipToken<Tokens> extends infer R0 extends TokensList
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? T0 extends TokenKey<"(">
 				? ParseInsertOnConflictAfterOpenParen<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 				: SkipFailedStatement<R0, Db, FormatError<"EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT", []>>
@@ -572,7 +576,7 @@ type ParseInsertOnConflictDoUpdate<
 		: never
 
 type ParseInsertOnConflictAfterOpenParen<
-	R0 extends TokensList,
+	R0 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -581,7 +585,7 @@ type ParseInsertOnConflictAfterOpenParen<
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseInsertConflictColList<R0, Tbl, readonly []> extends [infer R1 extends TokensList, infer CRes]
+	ParseInsertConflictColList<R0, Tbl, readonly []> extends [infer R1 extends ParserMonad, infer CRes]
 		? CRes extends DbtyperErrorShape
 			? [R1, Db, CRes]
 			: CRes extends readonly string[]
@@ -590,7 +594,7 @@ type ParseInsertOnConflictAfterOpenParen<
 		: never
 
 type ParseInsertOnConflictAfterConflictCloseParen<
-	R2 extends TokensList,
+	R2 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -601,13 +605,13 @@ type ParseInsertOnConflictAfterConflictCloseParen<
 > =
 	PeekToken<R2> extends TokenKey<"do">
 		? PeekToken<R2> extends infer TDo
-			? SkipToken<R2> extends infer R3 extends TokensList
+			? SkipToken<R2> extends infer R3 extends ParserMonad
 				? TDo extends TokenKey<"do">
 					? ParseInsertOnConflictAfterDoKw<R3, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 					: SkipFailedExpression<
 								R3,
 								FormatError<"EXPECTED_DO_AFTER_ON_CONFLICT_COLUMNS_IN_INSERT", []>
-						  > extends [infer Rest extends TokensList, infer Err]
+						  > extends [infer Rest extends ParserMonad, infer Err]
 						? [Rest, Db, Err]
 						: never
 				: never
@@ -615,7 +619,7 @@ type ParseInsertOnConflictAfterConflictCloseParen<
 		: SkipFailedStatement<R2, Db, FormatError<"EXPECTED_DO_AFTER_ON_CONFLICT_COLUMN_LIST_IN_INSERT", []>>
 
 type ParseInsertOnConflictAfterDoKw<
-	R3 extends TokensList,
+	R3 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -625,7 +629,7 @@ type ParseInsertOnConflictAfterDoKw<
 	Cols extends readonly string[],
 > =
 	PeekToken<R3> extends infer TUp
-		? SkipToken<R3> extends infer R4 extends TokensList
+		? SkipToken<R3> extends infer R4 extends ParserMonad
 			? TUp extends TokenKey<"update">
 				? ParseInsertOnConflictAfterUpdateKw<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 				: SkipFailedStatement<R4, Db, FormatError<"EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT", []>>
@@ -633,7 +637,7 @@ type ParseInsertOnConflictAfterDoKw<
 		: never
 
 type ParseInsertOnConflictAfterUpdateKw<
-	R4 extends TokensList,
+	R4 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -643,11 +647,11 @@ type ParseInsertOnConflictAfterUpdateKw<
 	Cols extends readonly string[],
 > =
 	PeekToken<R4> extends infer TSet
-		? SkipToken<R4> extends infer R5 extends TokensList
+		? SkipToken<R4> extends infer R5 extends ParserMonad
 			? TSet extends TokenKey<"set">
 				? InsertExcludedScope<Sch, Tab, Tbl, Scope> extends infer UpsertScope extends ScopeMap
 					? ParseInsertUpsertSetAssignments<R5, Db, UpsertScope, Params, Tbl, readonly []> extends [
-							infer R6 extends TokensList,
+							infer R6 extends ParserMonad,
 							infer Db6 extends JsqlDatabaseShape,
 							infer SetOut,
 						]
@@ -662,26 +666,26 @@ type ParseInsertOnConflictAfterUpdateKw<
 			: never
 		: never
 
-type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
+type ParseInsertConflictColList<Tokens extends ParserMonad, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
 			? SkipFailedExpression<Tokens, FormatError<"ON_CONFLICT_COLUMN_LIST_MUST_NOT_BE_EMPTY", []>>
 			: PeekToken<Tokens> extends TokenKey<")">
-				? SkipToken<Tokens> extends infer R extends TokensList
+				? SkipToken<Tokens> extends infer R extends ParserMonad
 					? [R, Acc]
 					: never
 				: never
 		: PeekToken<Tokens> extends infer Tok
-			? SkipToken<Tokens> extends infer R1 extends TokensList
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? Tok extends TokenIdent<infer C extends string>
 					? JsqlDataGetColumnType<Tbl, C> extends null
 						? SkipFailedExpression<R1, FormatError<"UNKNOWN_COLUMN", [C, "ON CONFLICT"]>>
 						: PeekToken<R1> extends TokenKey<")">
-							? SkipToken<R1> extends infer R2 extends TokensList
+							? SkipToken<R1> extends infer R2 extends ParserMonad
 								? [R2, readonly [...Acc, C]]
 								: never
 							: PeekToken<R1> extends TokenKey<",">
-								? SkipToken<R1> extends infer R3 extends TokensList
+								? SkipToken<R1> extends infer R3 extends ParserMonad
 									? ParseInsertConflictColList<R3, Tbl, readonly [...Acc, C]>
 									: never
 								: SkipFailedExpression<
@@ -693,7 +697,7 @@ type ParseInsertConflictColList<Tokens extends TokensList, Tbl extends JsqlDataS
 			: never
 
 type ParseInsertUpsertSetAssignments<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -701,16 +705,16 @@ type ParseInsertUpsertSetAssignments<
 	Acc extends readonly string[],
 > =
 	PeekToken<Tokens> extends infer TokCol
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? TokCol extends TokenIdent<infer Col extends string>
 				? JsqlDataGetColumnType<Tbl, Col> extends null
 					? [R1, Db, FormatError<"UNKNOWN_COLUMN", [Col, "ON CONFLICT DO UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
-						? SkipToken<R1> extends infer R2 extends TokensList
+						? SkipToken<R1> extends infer R2 extends ParserMonad
 							? ParseExpressionAST<
 									R2,
 									{ db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }
-								> extends [infer R3 extends TokensList, infer Ast, infer _UpdatedEnv]
+								> extends [infer R3 extends ParserMonad, infer Ast, infer _UpdatedEnv]
 								? Ast extends DbtyperErrorShape
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst
@@ -727,7 +731,7 @@ type ParseInsertUpsertSetAssignments<
 															? [R3, Db, V0]
 															: V0 extends true
 																? PeekToken<R3> extends TokenKey<",">
-																	? SkipToken<R3> extends infer R4 extends TokensList
+																	? SkipToken<R3> extends infer R4 extends ParserMonad
 																		? ParseInsertUpsertSetAssignments<
 																				R4,
 																				Db,
@@ -755,7 +759,7 @@ type ParseInsertUpsertSetAssignments<
 													: never
 											: never
 										: SkipFailedExpression<R3, never> extends [
-													infer Rest extends TokensList,
+													infer Rest extends ParserMonad,
 													infer Err,
 											  ]
 											? [Rest, Db, Err]
@@ -772,7 +776,7 @@ type ParseInsertUpsertSetAssignments<
 		: never
 
 type ParseInsertAfterUpsertSet<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	UpsertScope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -783,8 +787,8 @@ type ParseInsertAfterUpsertSet<
 	SetCols extends readonly string[],
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
-		? SkipToken<Tokens> extends infer Rw0 extends TokensList
-			? ParseWhereExpression<Rw0, Db, UpsertScope, Params> extends [infer Rw extends TokensList, infer We]
+		? SkipToken<Tokens> extends infer Rw0 extends ParserMonad
+			? ParseWhereExpression<Rw0, Db, UpsertScope, Params> extends [infer Rw extends ParserMonad, infer We]
 				? We extends DbtyperErrorShape
 					? [Rw, Db, We]
 					: ParseInsertMaybeReturning<Rw, Db, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
@@ -793,7 +797,7 @@ type ParseInsertAfterUpsertSet<
 		: ParseInsertMaybeReturning<Tokens, Db, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
 
 type ParseInsertMaybeReturning<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -805,9 +809,9 @@ type ParseInsertMaybeReturning<
 	Returning extends JsqlSelectStatementResult | undefined,
 > =
 	PeekToken<Tokens> extends TokenKey<"returning">
-		? SkipToken<Tokens> extends infer Rr extends TokensList
+		? SkipToken<Tokens> extends infer Rr extends ParserMonad
 			? ParseAndResolveReturningClause<Rr, Db, Scope, Params> extends [
-					infer Ra extends TokensList,
+					infer Ra extends ParserMonad,
 					infer DbA extends JsqlDatabaseShape,
 					infer Ret,
 				]
@@ -821,7 +825,7 @@ type ParseInsertMaybeReturning<
 		: FinishInsertSemicolon<Tokens, Db, BuildInsertResult<Sch, Tab, Cols, UpsertCols, Returning>>
 
 type FinishInsertSemicolon<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Res extends JsqlInsertStatementResult,
 > =
@@ -830,11 +834,11 @@ type FinishInsertSemicolon<
 		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["INSERT"]>>
 
 type ParseInsertAfterInto<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	ParseInsertFromTableRef<Tokens, Db, Params> extends [infer R extends TokensList, infer Mid, infer Third]
+	ParseInsertFromTableRef<Tokens, Db, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]
@@ -855,7 +859,7 @@ type ParseInsertAfterInto<
 		: never
 
 export type ParseInsert<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =

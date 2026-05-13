@@ -1,15 +1,12 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type {
-	PeekToken,
-	SkipToken,
-	TokenEot,
-	TokenIdent,
-	TokenKey,
-	TokenNumber,
-	TokenParam,
-	TokenString,
-	TokensList,
-} from "../lexer/sql-tokens.ts"
+import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenParam } from "../lexer/sql-lexer.ts"
+import type { TokenNumber } from "../lexer/sql-lexer.ts"
+import type { TokenString } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
@@ -52,7 +49,7 @@ type RawSelectParamItem<P extends string, As extends string | undefined> = [As] 
  * Use this for SELECT in CREATE VIEW, subqueries, CTEs, etc.
  */
 export type ParseSelectExpression<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	OuterScope extends ScopeMap = {},
@@ -68,12 +65,12 @@ export type ParseSelectExpression<
  * Use this for top-level SELECT statements.
  */
 export type ParseSelectStatement<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	ParseSelectExpression<Tokens, Db, Params, {}> extends [
-		infer R1 extends TokensList,
+		infer R1 extends ParserMonad,
 		infer Db2 extends JsqlDatabaseShape,
 		infer Res,
 	]
@@ -94,7 +91,7 @@ type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items exten
 	: false
 
 type ParseSelectWithCtesAfterSubquery<
-	R4 extends TokensList,
+	R4 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Acc extends ScopeMap,
@@ -115,23 +112,23 @@ type ParseSelectWithCtesAfterSubquery<
 		: never
 
 type ParseSelectWithCtes<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Acc extends ScopeMap,
 	OuterScope extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends infer TokCteName
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? TokCteName extends TokenIdent<infer CteName extends string>
 				? CteName extends keyof Acc
 					? [R1, Db, FormatError<"DUPLICATE_WITH_CLAUSE_NAME", []>]
 					: PeekToken<R1> extends TokenKey<"as">
-						? SkipToken<R1> extends infer R2 extends TokensList
+						? SkipToken<R1> extends infer R2 extends ParserMonad
 							? PeekToken<R2> extends TokenKey<"(">
-								? SkipToken<R2> extends infer R3 extends TokensList
+								? SkipToken<R2> extends infer R3 extends ParserMonad
 									? ParseParenEnclosedSelect<R3, Db, Params> extends [
-											infer R4 extends TokensList,
+											infer R4 extends ParserMonad,
 											infer SubOut,
 										]
 										? SubOut extends DbtyperErrorShape
@@ -152,7 +149,7 @@ type ParseSelectWithCtes<
 								: SkipFailedExpression<
 											R2,
 											FormatError<"EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH", []>
-									  > extends [infer Rest extends TokensList, infer Err]
+									  > extends [infer Rest extends ParserMonad, infer Err]
 									? [Rest, Db, Err]
 									: never
 							: never
@@ -162,7 +159,7 @@ type ParseSelectWithCtes<
 		: never
 
 type ParseSelectAfterDistinct<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	CteBase extends ScopeMap = {},
@@ -170,7 +167,7 @@ type ParseSelectAfterDistinct<
 > =
 	MergeScope<CteBase, OuterScope> extends infer MergedOuterScope extends ScopeMap
 		? ParseRawSelectList<Tokens, Db, Params, MergedOuterScope> extends [
-				infer AfterList extends TokensList,
+				infer AfterList extends ParserMonad,
 				infer Items,
 			]
 			? Items extends DbtyperErrorShape
@@ -179,9 +176,9 @@ type ParseSelectAfterDistinct<
 					? SelectListStarInvalid<Items> extends true
 						? [AfterList, Db, FormatError<"SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST", []>]
 						: PeekToken<AfterList> extends TokenKey<"from">
-							? SkipToken<AfterList> extends infer AfterFrom extends TokensList
+							? SkipToken<AfterList> extends infer AfterFrom extends ParserMonad
 								? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
-										infer R extends TokensList,
+										infer R extends ParserMonad,
 										infer Mid,
 										infer Tail,
 									]
@@ -234,13 +231,13 @@ type ParseSelectAfterDistinct<
 
 /** Scalar `ORDER BY` / `LIMIT` / `OFFSET` value: any resolved expression (unlike `WHERE`, not restricted to `boolean`). */
 type ParseOrderByScalarExpr<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
-		infer Rw extends TokensList,
+		infer Rw extends ParserMonad,
 		infer Ast,
 		infer _UpdatedEnv,
 	]
@@ -256,49 +253,49 @@ type ParseOrderByScalarExpr<
 		: never
 
 type ParseOrderByOneTerm<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseOrderByScalarExpr<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
+	ParseOrderByScalarExpr<Tokens, Db, Scope, Params> extends [infer R1 extends ParserMonad, infer E1]
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<"asc">
-				? SkipToken<R1> extends infer R2 extends TokensList
+				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? [R2, null]
 					: never
 				: PeekToken<R1> extends TokenKey<"desc">
-					? SkipToken<R1> extends infer Rd extends TokensList
+					? SkipToken<R1> extends infer Rd extends ParserMonad
 						? [Rd, null]
 						: never
 					: [R1, null]
 		: never
 
 type ParseOrderByTerms<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseOrderByOneTerm<Tokens, Db, Scope, Params> extends [infer R1 extends TokensList, infer E1]
+	ParseOrderByOneTerm<Tokens, Db, Scope, Params> extends [infer R1 extends ParserMonad, infer E1]
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<",">
-				? SkipToken<R1> extends infer R2 extends TokensList
+				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? ParseOrderByTerms<R2, Db, Scope, Params>
 					: never
 				: [R1, null]
 		: never
 
 type ParseOrderByAfterOrderKw<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<R1> extends infer TBy
-		? SkipToken<R1> extends infer R2 extends TokensList
+		? SkipToken<R1> extends infer R2 extends ParserMonad
 			? TBy extends TokenKey<"by">
 				? ParseOrderByTerms<R2, Db, Scope, Params>
 				: SkipFailedExpression<R2, FormatError<"EXPECTED_BY_AFTER_ORDER", []>>
@@ -306,26 +303,26 @@ type ParseOrderByAfterOrderKw<
 		: never
 
 type ParseOptionalOrderByTokens<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"order">
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? ParseOrderByAfterOrderKw<R1, Db, Scope, Params>
 			: never
 		: [Tokens, null]
 
 type LimitExprThenOptionalOffset<
-	Rl1 extends TokensList,
+	Rl1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Rl1> extends TokenKey<"offset">
-		? SkipToken<Rl1> extends infer Ro0 extends TokensList
-			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
+		? SkipToken<Rl1> extends infer Ro0 extends ParserMonad
+			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends ParserMonad, infer Oe]
 				? Oe extends DbtyperErrorShape
 					? SkipFailedExpression<Ro1, Oe>
 					: [Ro1, null]
@@ -335,14 +332,14 @@ type LimitExprThenOptionalOffset<
 
 /** After `OFFSET` expr: optional `LIMIT` expr (PostgreSQL allows `OFFSET … LIMIT …`). */
 type OffsetExprThenOptionalLimit<
-	Ro1 extends TokensList,
+	Ro1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Ro1> extends TokenKey<"limit">
-		? SkipToken<Ro1> extends infer Rl0 extends TokensList
-			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
+		? SkipToken<Ro1> extends infer Rl0 extends ParserMonad
+			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends ParserMonad, infer Le]
 				? Le extends DbtyperErrorShape
 					? SkipFailedExpression<Rl1, Le>
 					: [Rl1, null]
@@ -350,19 +347,19 @@ type OffsetExprThenOptionalLimit<
 			: never
 		: [Ro1, null]
 
-type ExpectRowOrRowsThenOnly<Tokens extends TokensList> =
+type ExpectRowOrRowsThenOnly<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"rows">
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"only">
-				? SkipToken<R1> extends infer R2 extends TokensList
+				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? [R2, null]
 					: never
 				: SkipFailedExpression<R1, FormatError<"EXPECTED_ONLY_AFTER_FETCH_ROWS", []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"row">
-			? SkipToken<Tokens> extends infer R1 extends TokensList
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? PeekToken<R1> extends TokenKey<"only">
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? [R2, null]
 						: never
 					: SkipFailedExpression<R1, FormatError<"EXPECTED_ONLY_AFTER_FETCH_ROW", []>>
@@ -370,22 +367,22 @@ type ExpectRowOrRowsThenOnly<Tokens extends TokensList> =
 			: SkipFailedExpression<Tokens, FormatError<"EXPECTED_ROW_OR_ROWS_IN_FETCH", []>>
 
 type ParseFetchFirstAfterFetchKw<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<R1> extends TokenKey<"first">
-		? SkipToken<R1> extends infer R2 extends TokensList
-			? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
+		? SkipToken<R1> extends infer R2 extends ParserMonad
+			? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends ParserMonad, infer E]
 				? E extends DbtyperErrorShape
 					? SkipFailedExpression<R3, E>
 					: ExpectRowOrRowsThenOnly<R3>
 				: never
 			: never
 		: PeekToken<R1> extends TokenKey<"next">
-			? SkipToken<R1> extends infer R2 extends TokensList
-				? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends TokensList, infer E]
+			? SkipToken<R1> extends infer R2 extends ParserMonad
+				? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends ParserMonad, infer E]
 					? E extends DbtyperErrorShape
 						? SkipFailedExpression<R3, E>
 						: ExpectRowOrRowsThenOnly<R3>
@@ -395,29 +392,29 @@ type ParseFetchFirstAfterFetchKw<
 
 /** Optional `LIMIT …` / `OFFSET …` / `FETCH FIRST|NEXT … ROW(S) ONLY` (single paging block). */
 type ParseOptionalPagingTokens<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"limit">
-		? SkipToken<Tokens> extends infer Rl0 extends TokensList
-			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends TokensList, infer Le]
+		? SkipToken<Tokens> extends infer Rl0 extends ParserMonad
+			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends ParserMonad, infer Le]
 				? Le extends DbtyperErrorShape
 					? SkipFailedExpression<Rl1, Le>
 					: LimitExprThenOptionalOffset<Rl1, Db, Scope, Params>
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenKey<"offset">
-			? SkipToken<Tokens> extends infer Ro0 extends TokensList
-				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends TokensList, infer Oe]
+			? SkipToken<Tokens> extends infer Ro0 extends ParserMonad
+				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends ParserMonad, infer Oe]
 					? Oe extends DbtyperErrorShape
 						? SkipFailedExpression<Ro1, Oe>
 						: OffsetExprThenOptionalLimit<Ro1, Db, Scope, Params>
 					: never
 				: never
 			: PeekToken<Tokens> extends TokenKey<"fetch">
-				? SkipToken<Tokens> extends infer Rf extends TokensList
+				? SkipToken<Tokens> extends infer Rf extends ParserMonad
 					? ParseFetchFirstAfterFetchKw<Rf, Db, Scope, Params>
 					: never
 				: [Tokens, null]
@@ -429,7 +426,7 @@ type SelectGroupClauseMeta = {
 }
 
 type GroupByAstResolution<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Ast extends ScalarExprAst,
 	Acc extends readonly ScalarExprAst[],
 	Db extends JsqlDatabaseShape,
@@ -441,7 +438,7 @@ type GroupByAstResolution<
 			? readonly [R1, { readonly error: Rv }]
 			: Rv extends SqlTypeShape
 				? PeekToken<R1> extends TokenKey<",">
-					? SkipToken<R1> extends infer R2 extends TokensList
+					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? ParseGroupByTermsAcc<R2, Db, Scope, Params, readonly [...Acc, Ast]>
 						: never
 					: readonly [R1, { readonly keys: readonly [...Acc, Ast] }]
@@ -449,14 +446,14 @@ type GroupByAstResolution<
 		: never
 
 type ParseGroupByTermsAcc<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Acc extends readonly ScalarExprAst[] = readonly [],
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
-		infer R1 extends TokensList,
+		infer R1 extends ParserMonad,
 		infer Ast,
 		infer _UpdatedEnv,
 	]
@@ -469,15 +466,15 @@ type ParseGroupByTermsAcc<
 
 /** After `GROUP BY expr[, …]`; optionally parse `HAVING`. */
 type ParseOptionalHavingClauseAfterGroupTerms<
-	R2 extends TokensList,
+	R2 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Gbs extends readonly ScalarExprAst[],
 > =
 	PeekToken<R2> extends TokenKey<"having">
-		? SkipToken<R2> extends infer Rh extends TokensList
-			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends TokensList, infer He]
+		? SkipToken<R2> extends infer Rh extends ParserMonad
+			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends ParserMonad, infer He]
 				? He extends DbtyperErrorShape
 					? readonly [
 							Rhw,
@@ -510,14 +507,14 @@ type ParseOptionalHavingClauseAfterGroupTerms<
 			]
 
 type ParseOptionalHavingWithoutGroupClause<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"having">
-		? SkipToken<Tokens> extends infer Rh extends TokensList
-			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends TokensList, infer He]
+		? SkipToken<Tokens> extends infer Rh extends ParserMonad
+			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends ParserMonad, infer He]
 				? He extends DbtyperErrorShape
 					? readonly [
 							Rhw,
@@ -556,7 +553,7 @@ type EmptyGroupClauseMetaPlain = {
 }
 
 type ParseGroupTailAfterTerms<
-	R2 extends TokensList,
+	R2 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -565,7 +562,7 @@ type ParseGroupTailAfterTerms<
 	? readonly [R2, Ge, EmptyGroupClauseMetaPlain]
 	: Outcome extends { readonly keys: infer Gbs extends readonly ScalarExprAst[] }
 		? ParseOptionalHavingClauseAfterGroupTerms<R2, Db, Scope, Params, Gbs> extends readonly [
-				infer R3 extends TokensList,
+				infer R3 extends ParserMonad,
 				infer He,
 				infer Meta extends SelectGroupClauseMeta,
 			]
@@ -574,17 +571,17 @@ type ParseGroupTailAfterTerms<
 		: never
 
 type ParseOptionalGroupHaving<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"group">
-		? SkipToken<Tokens> extends infer R0 extends TokensList
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? PeekToken<R0> extends TokenKey<"by">
-				? SkipToken<R0> extends infer R1 extends TokensList
+				? SkipToken<R0> extends infer R1 extends ParserMonad
 					? ParseGroupByTermsAcc<R1, Db, Scope, Params> extends readonly [
-							infer R2 extends TokensList,
+							infer R2 extends ParserMonad,
 							infer Outcome,
 						]
 						? ParseGroupTailAfterTerms<R2, Db, Scope, Params, Outcome>
@@ -1143,7 +1140,7 @@ type GroupedProjValidationOutcome<Items extends readonly RawSelectItem[], Meta e
 		: true
 
 type SelectAfterWhereAndGroupHaving<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Res,
 	Scope extends ScopeMap,
@@ -1151,7 +1148,7 @@ type SelectAfterWhereAndGroupHaving<
 	Items extends readonly RawSelectItem[],
 > =
 	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends readonly [
-		infer T1 extends TokensList,
+		infer T1 extends ParserMonad,
 		infer Gh,
 		infer Meta extends SelectGroupClauseMeta,
 	]
@@ -1160,7 +1157,7 @@ type SelectAfterWhereAndGroupHaving<
 			: GroupedProjValidationOutcome<Items, Meta> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
-					: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [infer Rt extends TokensList, infer Te]
+					: ParseSelectTrailingClauses<T1, Db, Scope, Params> extends [infer Rt extends ParserMonad, infer Te]
 						? Te extends DbtyperErrorShape
 							? [Rt, Db, Te]
 							: [Rt, Db, Res]
@@ -1170,15 +1167,15 @@ type SelectAfterWhereAndGroupHaving<
 
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
 type ParseSelectTrailingClauses<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseOptionalOrderByTokens<Tokens, Db, Scope, Params> extends [infer T1 extends TokensList, infer E1]
+	ParseOptionalOrderByTokens<Tokens, Db, Scope, Params> extends [infer T1 extends ParserMonad, infer E1]
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<T1, E1>
-			: ParseOptionalPagingTokens<T1, Db, Scope, Params> extends [infer T2 extends TokensList, infer E2]
+			: ParseOptionalPagingTokens<T1, Db, Scope, Params> extends [infer T2 extends ParserMonad, infer E2]
 				? E2 extends DbtyperErrorShape
 					? SkipFailedExpression<T2, E2>
 					: [T2, null]
@@ -1186,7 +1183,7 @@ type ParseSelectTrailingClauses<
 		: never
 
 type FinishSelectStatement<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Res,
 	Scope extends ScopeMap,
@@ -1194,8 +1191,8 @@ type FinishSelectStatement<
 	Items extends readonly RawSelectItem[],
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
-		? SkipToken<Tokens> extends infer Rw0 extends TokensList
-			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends TokensList, infer We]
+		? SkipToken<Tokens> extends infer Rw0 extends ParserMonad
+			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends ParserMonad, infer We]
 				? We extends DbtyperErrorShape
 					? [Rw, Db, We]
 					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params, Items>
@@ -1204,7 +1201,7 @@ type FinishSelectStatement<
 		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params, Items>
 
 type ParseRawSelectList<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap = {},
@@ -1223,7 +1220,7 @@ type ParseRawSelectList<
 					PositionalParamIndex
 				>
 			: ParseOneRawSelectItem<Tokens, Db, Params, OuterScope, PositionalParamIndex> extends [
-						infer AfterItem extends TokensList,
+						infer AfterItem extends ParserMonad,
 						infer It,
 						infer NextIndex extends number,
 				  ]
@@ -1235,7 +1232,7 @@ type ParseRawSelectList<
 				: never
 
 type ParseRawSelectListAfterItem<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
@@ -1247,7 +1244,7 @@ type ParseRawSelectListAfterItem<
 		: [Tokens, Acc]
 
 type ParseOneRawSelectExprItem<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
@@ -1257,14 +1254,14 @@ type ParseOneRawSelectExprItem<
 		Tokens,
 		{ db: Db; params: Params; outerScope: OuterScope; positionalParamIndex: PositionalParamIndex }
 	> extends [
-		infer RExpr extends TokensList,
+		infer RExpr extends ParserMonad,
 		infer Out,
 		infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
 	]
 		? Out extends DbtyperErrorShape
 			? [RExpr, Out, PositionalParamIndex]
 			: Out extends ScalarExprAst
-				? ParseOptionalAs<RExpr> extends [infer M2 extends TokensList, infer As extends string | undefined]
+				? ParseOptionalAs<RExpr> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
 					? As extends string
 						? [M2, { kind: "expr"; ast: Out; as: As }, UpdatedEnv["positionalParamIndex"]]
 						: Out extends { kind: "col"; parts: ScalarIdentParts }
@@ -1275,15 +1272,15 @@ type ParseOneRawSelectExprItem<
 		: never
 
 type ParseOneRawSelectItem<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenParam<infer P extends string>
-		? SkipToken<Tokens> extends infer R1 extends TokensList
-			? ParseOptionalAs<R1> extends [infer M2 extends TokensList, infer As extends string | undefined]
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? ParseOptionalAs<R1> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
 				? [M2, RawSelectParamItem<P, As>, PositionalParamIndex]
 				: never
 			: never
@@ -1308,17 +1305,17 @@ type ParseOneRawSelectItem<
 					: never
 				: never
 
-type ParseOptionalAs<Tokens extends TokensList> =
+type ParseOptionalAs<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"as">
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenIdent<infer N extends string>
-				? SkipToken<R1> extends infer R2 extends TokensList
+				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? [R2, N]
 					: never
-				: SkipToken<R1> extends infer R2b extends TokensList
+				: SkipToken<R1> extends infer R2b extends ParserMonad
 					? [R2b, undefined]
 					: never
-			: SkipToken<Tokens> extends infer R1b extends TokensList
+			: SkipToken<Tokens> extends infer R1b extends ParserMonad
 				? [R1b, undefined]
 				: never
 		: [Tokens, undefined]
@@ -1331,7 +1328,7 @@ type SelectResultToDerivedScopeEntry<Res extends JsqlSelectStatementResult> = {
 }
 
 /** Helper: Consume closing `)` after subquery. Returns [Tokens, Result] or error. */
-type ConsumeClosingParen<Tokens extends TokensList, Result> =
+type ConsumeClosingParen<Tokens extends ParserMonad, Result> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? [SkipToken<Tokens>, Result]
 		: Result extends JsqlSelectStatementResult
@@ -1349,14 +1346,14 @@ type ValidateSingleColumn<Result extends JsqlSelectStatementResult> = Result["co
 
 /** Helper: Parse alias after derived table and merge into scope. Returns [Tokens, null, Scope] or error. */
 type ParseAliasAfterDerived<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	_Db extends JsqlDatabaseShape,
 	OuterScope extends ScopeMap,
 	Result extends JsqlSelectStatementResult,
 > =
 	SelectResultToDerivedScopeEntry<Result> extends infer Entry extends ScopeEntry
 		? PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ras extends TokensList
+			? SkipToken<Tokens> extends infer Ras extends ParserMonad
 				? PeekToken<Ras> extends TokenIdent<infer Alias extends string>
 					? [SkipToken<Ras>, null, MergeScope<Record<Alias, Entry>, OuterScope>]
 					: [SkipToken<Ras>, FormatError<"EXPECTED_ALIAS_NAME_AFTER_AS", []>, ParserRefErrorThirdSentinel]
@@ -1368,14 +1365,14 @@ type ParseAliasAfterDerived<
 
 /** Inner `( SELECT … FROM … [WHERE …] )` ending with `)`; multi-column allowed (`EXISTS`, CTE, `IN (SELECT …)`). */
 export type ParseParenEnclosedSelect<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap = {},
 > =
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseSelectExpression<SkipToken<R1>, Db, Params, OuterScope> extends [
-				infer R2 extends TokensList,
+				infer R2 extends ParserMonad,
 				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
 			]
@@ -1389,14 +1386,14 @@ export type ParseParenEnclosedSelect<
 
 /** Scalar subquery: exactly one non-`*` projection. */
 export type ParseParenScalarSelect<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap = {},
 > =
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseSelectExpression<SkipToken<R1>, Db, Params, OuterScope> extends [
-				infer R2 extends TokensList,
+				infer R2 extends ParserMonad,
 				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
 			]
@@ -1413,21 +1410,21 @@ export type ParseParenScalarSelect<
 		: SkipFailedExpression<R1, FormatError<"EXPECTED_SELECT_IN_SUBQUERY", []>>
 
 type ParseParenDerivedSelect<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	OuterScope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<R1> extends TokenKey<"select">
 		? ParseSelectExpression<SkipToken<R1>, Db, Params, {}> extends [
-				infer R2 extends TokensList,
+				infer R2 extends ParserMonad,
 				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
 			]
 			? Result extends DbtyperErrorShape
 				? [R2, Result, ParserRefErrorThirdSentinel]
 				: Result extends JsqlSelectStatementResult
-					? ConsumeClosingParen<R2, Result> extends [infer R3 extends TokensList, infer Validated]
+					? ConsumeClosingParen<R2, Result> extends [infer R3 extends ParserMonad, infer Validated]
 						? Validated extends DbtyperErrorShape
 							? [R3, Validated, ParserRefErrorThirdSentinel]
 							: Validated extends JsqlSelectStatementResult
@@ -1439,13 +1436,13 @@ type ParseParenDerivedSelect<
 		: [R1, FormatError<"EXPECTED_SELECT_IN_DERIVED_TABLE", []>, ParserRefErrorThirdSentinel]
 
 type ParseFromTableRef<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
 	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenKey<"(">
 				? ParseParenDerivedSelect<R1, Db, Scope, Params>
 				: Tok extends TokenIdent<infer A extends string>
@@ -1455,12 +1452,12 @@ type ParseFromTableRef<
 		: never
 
 type ParseFromJoinScope<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
-	ParseFromTableRef<Tokens, Db, Scope, Params> extends [infer R0 extends TokensList, infer Mid, infer Third]
+	ParseFromTableRef<Tokens, Db, Scope, Params> extends [infer R0 extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
 			? Third extends ParserRefErrorThirdSentinel
 				? [R0, Mid, ParserRefErrorThirdSentinel]
@@ -1475,15 +1472,15 @@ type ParseFromJoinScope<
 		: never
 
 type ParseFromTableAfterLeadingIdent<
-	R1 extends TokensList,
+	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	A extends string,
 	Scope extends ScopeMap,
 > =
 	PeekToken<R1> extends TokenKey<".">
-		? SkipToken<R1> extends infer R2 extends TokensList
+		? SkipToken<R1> extends infer R2 extends ParserMonad
 			? PeekToken<R2> extends infer TokB
-				? SkipToken<R2> extends infer R3 extends TokensList
+				? SkipToken<R2> extends infer R3 extends ParserMonad
 					? TokB extends TokenIdent<infer B extends string>
 						? JsqlDbGetData<Db, A, B> extends infer Tbl extends JsqlDataShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
@@ -1499,7 +1496,7 @@ type ParseFromTableAfterLeadingIdent<
 				: [R1, FormatError<"UNKNOWN_TABLE", [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
 type ParseAliasAfterCTE<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	CteName extends string,
 	CteEntry extends ScopeEntry,
 	Scope extends ScopeMap,
@@ -1524,9 +1521,9 @@ type ParseAliasAfterCTE<
 		| TokenEot
 		? [Tokens, null, MergeScope<Record<CteName, CteEntry>, Scope>]
 		: PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ras0 extends TokensList
+			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
 				? PeekToken<Ras0> extends infer TokName
-					? SkipToken<Ras0> extends infer Ra extends TokensList
+					? SkipToken<Ras0> extends infer Ra extends ParserMonad
 						? TokName extends TokenIdent<infer Alias extends string>
 							? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
 							: [Ra, FormatError<"EXPECTED_ALIAS_NAME_AFTER_AS", []>, ParserRefErrorThirdSentinel]
@@ -1534,7 +1531,7 @@ type ParseAliasAfterCTE<
 					: never
 				: never
 			: PeekToken<Tokens> extends infer TokAlias
-				? SkipToken<Tokens> extends infer Ra extends TokensList
+				? SkipToken<Tokens> extends infer Ra extends ParserMonad
 					? TokAlias extends TokenIdent<infer Alias extends string>
 						? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
 						: [Ra, FormatError<"EXPECTED_ALIAS_AFTER_CTE", []>, ParserRefErrorThirdSentinel]
@@ -1542,7 +1539,7 @@ type ParseAliasAfterCTE<
 				: never
 
 type ParseAliasAfterTable<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -1582,9 +1579,9 @@ type ParseAliasAfterTable<
 				>,
 			]
 		: PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ras0 extends TokensList
+			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
 				? PeekToken<Ras0> extends infer TokName
-					? SkipToken<Ras0> extends infer Ra extends TokensList
+					? SkipToken<Ras0> extends infer Ra extends ParserMonad
 						? TokName extends TokenIdent<infer Alias extends string>
 							? [
 									Ra,
@@ -1606,7 +1603,7 @@ type ParseAliasAfterTable<
 					: never
 				: never
 			: PeekToken<Tokens> extends infer TokAlias
-				? SkipToken<Tokens> extends infer Ra extends TokensList
+				? SkipToken<Tokens> extends infer Ra extends ParserMonad
 					? TokAlias extends TokenIdent<infer Alias extends string>
 						? [
 								Ra,
@@ -1632,7 +1629,7 @@ type ParseAliasAfterTable<
 				: never
 
 type ParseJoinChain<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
@@ -1652,14 +1649,18 @@ type ParseJoinChain<
 							: [Tokens, null, Scope]
 
 type ParseJoinAfterCross<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? SkipToken<Tokens> extends infer AfterJ extends TokensList
-			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [infer R0 extends TokensList, infer Mid, infer Third]
+		? SkipToken<Tokens> extends infer AfterJ extends ParserMonad
+			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [
+					infer R0 extends ParserMonad,
+					infer Mid,
+					infer Third,
+				]
 				? Mid extends DbtyperErrorShape
 					? Third extends ParserRefErrorThirdSentinel
 						? [R0, Mid, ParserRefErrorThirdSentinel]
@@ -1676,7 +1677,7 @@ type ParseJoinAfterCross<
 		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["CROSS"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalInner<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1686,7 +1687,7 @@ type ParseJoinAfterOptionalInner<
 		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["INNER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterLeft<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1698,7 +1699,7 @@ type ParseJoinAfterLeft<
 			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["LEFT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRight<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1710,7 +1711,7 @@ type ParseJoinAfterRight<
 			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["RIGHT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRightOuter<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1720,7 +1721,7 @@ type ParseJoinAfterRightOuter<
 		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["RIGHT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFull<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1732,7 +1733,7 @@ type ParseJoinAfterFull<
 			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["FULL"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFullOuter<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1742,7 +1743,7 @@ type ParseJoinAfterFullOuter<
 		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["FULL OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalOuter<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -1752,14 +1753,18 @@ type ParseJoinAfterOptionalOuter<
 		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["LEFT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterJoinKw<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? SkipToken<Tokens> extends infer AfterJ extends TokensList
-			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [infer R0 extends TokensList, infer Mid, infer Third]
+		? SkipToken<Tokens> extends infer AfterJ extends ParserMonad
+			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [
+					infer R0 extends ParserMonad,
+					infer Mid,
+					infer Third,
+				]
 				? Mid extends DbtyperErrorShape
 					? Third extends ParserRefErrorThirdSentinel
 						? [R0, Mid, ParserRefErrorThirdSentinel]
@@ -1778,15 +1783,15 @@ type ParseJoinAfterJoinKw<
 		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", [""]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinOn<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends infer TokOn
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? TokOn extends TokenKeyOn
-				? ParseJoinEqPair<R1, Db, Scope> extends [infer R2 extends TokensList, infer Tag]
+				? ParseJoinEqPair<R1, Db, Scope> extends [infer R2 extends ParserMonad, infer Tag]
 					? Tag extends DbtyperErrorShape
 						? [R2, Tag, ParserRefErrorThirdSentinel]
 						: Tag extends true
@@ -1842,18 +1847,18 @@ type JoinOnAliasEqOk<
 
 /** After `=` when the join predicate uses `alias.col = alias.col`. */
 type ParseJoinEqPairAliasRightTail<
-	R4 extends TokensList,
+	R4 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	LeftAlias extends string,
 	LeftCol extends string,
 > =
 	PeekToken<R4> extends TokenIdent<infer RightAlias extends string>
-		? SkipToken<R4> extends infer R5 extends TokensList
+		? SkipToken<R4> extends infer R5 extends ParserMonad
 			? PeekToken<R5> extends TokenKey<".">
-				? SkipToken<R5> extends infer R6 extends TokensList
+				? SkipToken<R5> extends infer R6 extends ParserMonad
 					? PeekToken<R6> extends TokenIdent<infer RightCol extends string>
-						? SkipToken<R6> extends infer R7 extends TokensList
+						? SkipToken<R6> extends infer R7 extends ParserMonad
 							? JoinOnAliasEqOk<Db, Scope, LeftAlias, LeftCol, RightAlias, RightCol> extends infer Ok
 								? Ok extends true
 									? [R7, true]
@@ -1870,21 +1875,21 @@ type ParseJoinEqPairAliasRightTail<
 
 /** After `=` when the join predicate uses `schema.table.column = schema.table.column`. */
 type ParseJoinEqPairQualifiedRightTail<
-	R6 extends TokensList,
+	R6 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	LeftParts extends readonly [string, string, string],
 > =
 	PeekToken<R6> extends TokenIdent<infer S2 extends string>
-		? SkipToken<R6> extends infer R7 extends TokensList
+		? SkipToken<R6> extends infer R7 extends ParserMonad
 			? PeekToken<R7> extends TokenKey<".">
-				? SkipToken<R7> extends infer R8 extends TokensList
+				? SkipToken<R7> extends infer R8 extends ParserMonad
 					? PeekToken<R8> extends TokenIdent<infer T2 extends string>
-						? SkipToken<R8> extends infer R9 extends TokensList
+						? SkipToken<R8> extends infer R9 extends ParserMonad
 							? PeekToken<R9> extends TokenKey<".">
-								? SkipToken<R9> extends infer R10 extends TokensList
+								? SkipToken<R9> extends infer R10 extends ParserMonad
 									? PeekToken<R10> extends TokenIdent<infer C2 extends string>
-										? SkipToken<R10> extends infer R11 extends TokensList
+										? SkipToken<R10> extends infer R11 extends ParserMonad
 											? JoinOnQualifiedEqOk<
 													Db,
 													Scope,
@@ -1910,7 +1915,7 @@ type ParseJoinEqPairQualifiedRightTail<
 
 /** After the second identifier in the left column ref: qualified `… . … . …` vs `alias.col`. */
 type ParseJoinEqPairAfterSecondIdent<
-	R4 extends TokensList,
+	R4 extends ParserMonad,
 	TokAfterP2,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -1919,9 +1924,9 @@ type ParseJoinEqPairAfterSecondIdent<
 > =
 	TokAfterP2 extends TokenKey<".">
 		? PeekToken<R4> extends TokenIdent<infer P3 extends string>
-			? SkipToken<R4> extends infer R5 extends TokensList
+			? SkipToken<R4> extends infer R5 extends ParserMonad
 				? PeekToken<R5> extends TokenKey<"=">
-					? SkipToken<R5> extends infer R6 extends TokensList
+					? SkipToken<R5> extends infer R6 extends ParserMonad
 						? ParseJoinEqPairQualifiedRightTail<R6, Db, Scope, readonly [P1, P2, P3]>
 						: never
 					: never
@@ -1932,15 +1937,15 @@ type ParseJoinEqPairAfterSecondIdent<
 			: never
 
 /** `ON` equality: `alias.col = alias.col` or `schema.table.column = schema.table.column`. */
-type ParseJoinEqPair<Tokens extends TokensList, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
+type ParseJoinEqPair<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
 	PeekToken<Tokens> extends TokenIdent<infer P1 extends string>
-		? SkipToken<Tokens> extends infer R1 extends TokensList
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<".">
-				? SkipToken<R1> extends infer R2 extends TokensList
+				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? PeekToken<R2> extends TokenIdent<infer P2 extends string>
-						? SkipToken<R2> extends infer R3 extends TokensList
+						? SkipToken<R2> extends infer R3 extends ParserMonad
 							? PeekToken<R3> extends infer TokAfterP2
-								? SkipToken<R3> extends infer R4 extends TokensList
+								? SkipToken<R3> extends infer R4 extends ParserMonad
 									? ParseJoinEqPairAfterSecondIdent<R4, TokAfterP2, Db, Scope, P1, P2>
 									: never
 								: never
@@ -2139,12 +2144,12 @@ type OutNameFromParts<
 
 /** Parse and resolve a `RETURNING` projection list against a caller-supplied `ScopeMap` (e.g. `INSERT` row). */
 export type ParseAndResolveReturningClause<
-	Tokens extends TokensList,
+	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseRawSelectList<Tokens, Db, Params, {}> extends [infer After extends TokensList, infer Items]
+	ParseRawSelectList<Tokens, Db, Params, {}> extends [infer After extends ParserMonad, infer Items]
 		? Items extends DbtyperErrorShape
 			? [After, Db, Items]
 			: Items extends readonly RawSelectItem[]

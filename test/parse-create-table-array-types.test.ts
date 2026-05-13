@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type {
@@ -21,7 +21,7 @@ type DbPublic = {
 
 // Test basic array types
 type TTextArrayStmt = ParseSqlStatement<
-	ParseSqlTokens<`create table tags (id integer not null, labels text[] not null);`>,
+	CreateParserMonad<`create table tags (id integer not null, labels text[] not null);`>,
 	DbPublic
 >
 type TTextArrayTable = TTextArrayStmt[1]["schemas"]["public"]["sets"]["tags"]
@@ -39,7 +39,7 @@ type _tTextArrayShape = Expect<
 
 // Test integer array
 type TIntArray = ParseSqlStatement<
-	ParseSqlTokens<`create table scores (id integer not null, nums integer[] not null);`>,
+	CreateParserMonad<`create table scores (id integer not null, nums integer[] not null);`>,
 	DbPublic
 >
 type TIntArrayTable = TIntArray[1]["schemas"]["public"]["sets"]["scores"]
@@ -57,7 +57,7 @@ type _tIntArrayShape = Expect<
 
 // Test uuid array
 type TUuidArrayStmt = ParseSqlStatement<
-	ParseSqlTokens<`create table refs (id integer not null, uuids uuid[] not null);`>,
+	CreateParserMonad<`create table refs (id integer not null, uuids uuid[] not null);`>,
 	DbPublic
 >
 type TUuidArrayTable = TUuidArrayStmt[1]["schemas"]["public"]["sets"]["refs"]
@@ -75,7 +75,7 @@ type _tUuidArrayShape = Expect<
 
 // Test nullable array
 type TNullableArray = ParseSqlStatement<
-	ParseSqlTokens<`create table optional (id integer not null, tags text[]);`>,
+	CreateParserMonad<`create table optional (id integer not null, tags text[]);`>,
 	DbPublic
 >
 type TNullableArrayTable = TNullableArray[1]["schemas"]["public"]["sets"]["optional"]
@@ -93,7 +93,7 @@ type _tNullableArrayShape = Expect<
 
 // Test multiple array columns
 type TMultipleArrays = ParseSqlStatement<
-	ParseSqlTokens<`create table multi (id integer not null, tags text[] not null, scores integer[] not null, flags boolean[] not null);`>,
+	CreateParserMonad<`create table multi (id integer not null, tags text[] not null, scores integer[] not null, flags boolean[] not null);`>,
 	DbPublic
 >
 type TMultipleArraysTable = TMultipleArrays[1]["schemas"]["public"]["sets"]["multi"]
@@ -116,7 +116,7 @@ type _tMultipleArraysShape = Expect<
 
 // Test bigint array
 type TBigintArrayStmt = ParseSqlStatement<
-	ParseSqlTokens<`create table big_nums (id integer not null, nums bigint[] not null);`>,
+	CreateParserMonad<`create table big_nums (id integer not null, nums bigint[] not null);`>,
 	DbPublic
 >
 type TBigintArrayTable = TBigintArrayStmt[1]["schemas"]["public"]["sets"]["big_nums"]

@@ -106,13 +106,13 @@ Implement parsing "?" as positional parameters in SQL queries, allowing users to
 
 - Currently uses `:name` syntax for named parameters (e.g., `:userId`)
 - Parameters are passed as `Record<string, unknown>` at runtime
-- Type-level parser in `src/lexer/sql-tokens.ts` tokenizes parameters
+- Type-level parser in `src/lexer/parser-monad.ts` tokenizes parameters
 - Runtime conversion in `src/postgres/bind-colon-named-params-for-pg.ts` converts `:name` to `$1, $2, ...`
 - Main query interface in `src/core/sql-database.ts` with `query<Stmt>(statement, params?)`
 
 ### Key Files Identified:
 
-1. **Lexer:** `src/lexer/sql-tokens.ts` - Tokenizes SQL, handles `TokenParam<Param>` for `:name`
+1. **Lexer:** `src/lexer/parser-monad.ts` - Tokenizes SQL, handles `TokenParam<Param>` for `:name`
 2. **Expression Parser:** `src/parser/parse-expression.ts` - Parses params into AST, resolves types
 3. **Runtime Binding:** `src/postgres/bind-colon-named-params-for-pg.ts` - Converts named to positional
 4. **Database Interface:** `src/core/sql-database.ts` - Main query API
@@ -185,17 +185,17 @@ export type ExprParseEnv = {
 
 ```typescript
 // OLD: Returns [Tokens, AST]
-export type ParseExpressionAST<Tokens, Env> = [TokensList, ScalarExprAst]
+export type ParseExpressionAST<Tokens, Env> = [ParserMonad, ScalarExprAst]
 
 // NEW: Returns [Tokens, AST, UpdatedState]
-export type ParseExpressionAST<Tokens, Env> = [TokensList, ScalarExprAst, ParserState]
+export type ParseExpressionAST<Tokens, Env> = [ParserMonad, ScalarExprAst, ParserState]
 ```
 
 3. Update positional param parsing to use and increment state:
 
 ```typescript
 : PeekToken<Tokens> extends TokenKey<"?">
-  ? SkipToken<Tokens> extends infer Rpp extends TokensList
+  ? SkipToken<Tokens> extends infer Rpp extends ParserMonad
     ? [
         Rpp,
         { kind: "positional-param"; index: Env["state"]["positionalParamIndex"] },
@@ -225,14 +225,14 @@ Update each parser to use `State` instead of `Db`:
 ```typescript
 // OLD
 export type ParseSelect<
-  Tokens extends TokensList,
+  Tokens extends ParserMonad,
   Db extends JsqlDatabaseShape,
   Params extends ExpressionParamsShape
 > = ...
 
 // NEW
 export type ParseSelect<
-  Tokens extends TokensList,
+  Tokens extends ParserMonad,
   State extends ParserState,
   Params extends ExpressionParamsShape
 > = ...
@@ -243,13 +243,13 @@ export type ParseSelect<
 ```typescript
 // When calling ParseExpressionAST, pass state and receive updated state
 ParseExpressionAST<Tokens, { state: State; params: Params; outerScope: Scope }> extends [
-  infer R1 extends TokensList,
+  infer R1 extends ParserMonad,
   infer Ast,
   infer UpdatedState extends ParserState
 ]
   ? // Use UpdatedState for next ParseExpressionAST call
     ParseExpressionAST<R2, { state: UpdatedState; params: Params; outerScope: Scope }> extends [
-      infer R3 extends TokensList,
+      infer R3 extends ParserMonad,
       infer Ast2,
       infer UpdatedState2 extends ParserState
     ]
@@ -289,13 +289,13 @@ Update `ParseSqlStatement` to initialize and use state:
 
 ```typescript
 export type ParseSqlStatement<
-  Tokens extends TokensList,
+  Tokens extends ParserMonad,
   Db extends JsqlDatabaseShape,
   Params extends ExpressionParamsShape = EmptyExpressionParams
 > = ParseSqlStatementWithState<Tokens, InitialParserState<Db>, Params>
 
 type ParseSqlStatementWithState<
-  Tokens extends TokensList,
+  Tokens extends ParserMonad,
   State extends ParserState,
   Params extends ExpressionParamsShape
 > = // Use State instead of Db throughout
@@ -386,8 +386,8 @@ This will cause a type error that displays the actual type, which is invaluable 
 
 ```typescript
 // To see what ParseExpressionAST returns:
-const debug: never = 1 as unknown as ParseExpressionAST<ParseSqlTokens<"SELECT ?">, MyEnv>
-// Error will show: Type '[TokensList, ScalarExprAst, ExprParseEnv]' is not assignable to type 'never'
+const debug: never = 1 as unknown as ParseExpressionAST<CreateParserMonad<"SELECT ?">, MyEnv>
+// Error will show: Type '[ParserMonad, ScalarExprAst, ExprParseEnv]' is not assignable to type 'never'
 ```
 
 This trick is essential when working with deeply nested conditional types and helps verify that your type transformations are working as expected.

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { ParseSqlTokens } from "../src/lexer/sql-tokens.ts"
+import type { CreateParserMonad, GetDB, SetDB } from "../src/lexer/parser-monad.ts"
 
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TInteger } from "./test-utils/sql-type-helpers.ts"
@@ -30,19 +30,24 @@ type _applyMergedTable = Expect<
 type _applyMergedNoErr = Expect<Extends<ApplyCreateThenSelect[1], null>>
 
 /** First statement errors → **`ApplyParsedStatements`** returns **`[Rest, Db, Error]`** and does not apply the second `CREATE`. */
-type ApplyStopOnFirstError = ApplyParsedStatements<
-	ParseSqlTokens<`create table ghost.m ( id int not null ); create table t ( id int not null );`>,
-	DbDefaultPublic,
-	EmptyExpressionParams,
-	null
+type ApplyStopOnFirstError = GetDB<
+	ApplyParsedStatements<
+		SetDB<
+			CreateParserMonad<`create table ghost.m ( id int not null ); create table t ( id int not null );`>,
+			DbDefaultPublic
+		>,
+		EmptyExpressionParams,
+		null
+	>[0]
 >
-type _applyStopDb = Expect<Matches<ApplyStopOnFirstError[1], DbDefaultPublic>>
 
-type TCreateView = ParseSqlStatement<ParseSqlTokens<`create view v as select t.id from t;`>, DbDefaultPublic>
+type _applyStopDb = Expect<Matches<ApplyStopOnFirstError, DbDefaultPublic>>
+
+type TCreateView = ParseSqlStatement<CreateParserMonad<`create view v as select t.id from t;`>, DbDefaultPublic>
 type _createViewMerged = Expect<Extends<TCreateView[2], null>>
 type _createViewDb = Expect<Extends<TCreateView[1]["schemas"]["public"]["sets"]["v"], { kind: "view" }>>
 
-type TGrantSkip = ParseSqlStatement<ParseSqlTokens<`grant select on public.t to anon;`>, DbDefaultPublic>
+type TGrantSkip = ParseSqlStatement<CreateParserMonad<`grant select on public.t to anon;`>, DbDefaultPublic>
 type _grantSkipped = Expect<Extends<TGrantSkip[2], { kind: "skipped-statement" }>>
 type _grantDb = Expect<Matches<TGrantSkip[1], DbDefaultPublic>>
 

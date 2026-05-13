@@ -15,7 +15,7 @@ The registry package is **compiled** (`dist/`) so Node can load `.js` from `node
 
 ```ts
 import { sqlDatabase, migration } from "dbtyper"
-import type { ApplyStatements, ParseSqlTokens, JsqlDatabaseShape, MigrationExport } from "dbtyper"
+import type { ApplyStatements, CreateParserMonad, JsqlDatabaseShape, MigrationExport } from "dbtyper"
 import { postgresSqlDriver } from "dbtyper/postgres"
 ```
 
@@ -32,7 +32,7 @@ Type-level utilities in this project are helpers and must never become the bottl
 
 ## Parser rule
 
-Parsers must work directly on `TokensList` and report errors as soon as they are knowable.
+Parsers must work directly on `ParserMonad` and report errors as soon as they are knowable.
 
 - Do not collect inner SQL text into a string or `string[]` buffer and then parse that buffer later.
 - Do not delay parse errors until after a matching closing bracket is found if the error can be detected earlier while traversing tokens.
