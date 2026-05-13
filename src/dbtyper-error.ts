@@ -2,9 +2,9 @@ import type { Dec, Tuple } from "./core/type-utils.ts"
 
 export type ErrorCodes = keyof ErrorsConst
 
-export type ErrorIds = keyof Errors
+export type ErrorIds = keyof E
 
-export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = Errors[ID] extends {
+export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = E[ID] extends {
 	code: infer Code extends ErrorCodes
 	msg: infer Msg
 }
@@ -1515,7 +1515,7 @@ export const errors = {
 
 type ErrorsConst = typeof errors
 
-type Errors = {
+export type E = {
 	-readonly [K in keyof ErrorsConst as ErrorsConst[K]["id"]]: { code: K } & ErrorsConst[K] extends infer T
 		? { -readonly [K in keyof T]: T[K] }
 		: never
@@ -1523,7 +1523,7 @@ type Errors = {
 
 type ErrorArgs<ID extends ErrorIds> = Tuple<string | number, ErrorArgsNumber<ID>>
 
-type ErrorArgsNumber<ID extends ErrorIds> = Dec[Errors[ID]["msg"]["length"]]
+type ErrorArgsNumber<ID extends ErrorIds> = Dec[E[ID]["msg"]["length"]]
 
 type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[]> = Msg extends readonly [
 	infer First,

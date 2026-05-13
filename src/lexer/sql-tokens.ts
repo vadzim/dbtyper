@@ -1,11 +1,11 @@
 import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
 
-export type SQLSyntax = "postgres" | "sqlite"
+export type LexerFeatures = "" | "dollar-strings" | "named-params"
 
 const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 
-export type ParseSqlTokens<Query extends string, Syntax extends string = "postgres"> = [
+export type ParseSqlTokens<Query extends string, Syntax extends string = LexerFeatures> = [
 	ReadTokenFromString<Query, Syntax>,
 ] extends [infer Result extends TokensList]
 	? Result
@@ -75,16 +75,20 @@ type ReadTokenFromString<S extends string, Syntax extends string> = S extends `$
 												? Next extends ":"
 													? Buffer<TokenKey<"::">, Rest2, Syntax>
 													: Next extends TokenChar
-														? ReadTokenChars<Rest2> extends {
-																token: infer Token extends string
-																rest: infer Rest3 extends string
-															}
-															? Buffer<TokenParam<`${Next}${Token}`>, Rest3, Syntax>
-															: never
+														? "named-params" extends Syntax
+															? ReadTokenChars<Rest2> extends {
+																	token: infer Token extends string
+																	rest: infer Rest3 extends string
+																}
+																? Buffer<TokenParam<`${Next}${Token}`>, Rest3, Syntax>
+																: never
+															: Buffer<TokenKey<":">, Rest, Syntax>
 														: Buffer<TokenKey<":">, Rest, Syntax>
 												: Buffer<TokenKey<":">, Rest, Syntax>
 											: Head extends "$"
-												? ReturnToBuffer<ReadDollar<Rest>, Syntax>
+												? "dollar-strings" extends Syntax
+													? ReturnToBuffer<ReadDollar<Rest>, Syntax>
+													: Buffer<FormatError<"UNEXPECTED_TOKEN", []>, S, Syntax>
 												: Buffer<TokenKey<Head>, Rest, Syntax>
 	: Buffer<TokenEot, "", Syntax>
 
