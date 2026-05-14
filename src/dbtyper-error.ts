@@ -1521,29 +1521,24 @@ export const errors = {
 } as const satisfies Record<string, ErrorDescription>
 
 type ErrorArgs<ED extends ErrorDescription> = Tuple<
-	string | number,
+	string | number | boolean,
 	Dec[ED["msg"]["length"]] extends infer N extends TupleSize ? N : never
 >
 
-type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[]> = Msg extends readonly [
-	infer First,
-	...infer Rest,
+type JoinWithArgs<Msg extends readonly string[], Args extends (string | number | boolean)[]> = Msg extends readonly [
+	infer First extends string,
+	...infer Rest extends string[],
 ]
-	? First extends string
-		? Rest extends readonly string[]
-			? Args extends readonly [infer Arg, ...infer RestArgs]
-				? Arg extends string | number
-					? RestArgs extends (string | number)[]
-						? Rest["length"] extends 0
-							? `${First}${Arg}`
-							: `${First}${Arg}${JoinWithArgs<Rest, RestArgs>}`
-						: First
-					: First
-				: Rest["length"] extends 0
-					? First
-					: `${First}${JoinWithArgs<Rest, []>}`
-			: never
-		: never
+	? Args extends readonly [
+			infer Arg extends string | number | boolean,
+			...infer RestArgs extends (string | number | boolean)[],
+		]
+		? Rest extends []
+			? `${First}${Arg}`
+			: `${First}${Arg}${JoinWithArgs<Rest, RestArgs>}`
+		: Rest extends []
+			? First
+			: `${First}${JoinWithArgs<Rest, []>}`
 	: ""
 
 const duplicateCodes = Map.groupBy(Object.entries(errors), ([, e]) => e.code)
