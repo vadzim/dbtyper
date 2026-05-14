@@ -37,9 +37,11 @@ export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K
 
 export type ReplaceProps<T, Props> = Omit<T, keyof Props> & Props extends infer R ? { [K in keyof R]: R[K] } : never
 
-export type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never
+export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void
+	? I
+	: never
 
-export type LastOf<T> = UnionToIntersection<T extends any ? () => T : never> extends () => infer R ? R : never
+export type LastOf<T> = UnionToIntersection<T extends unknown ? () => T : never> extends () => infer R ? R : never
 
 type TupleSize = Counting<21>[number]
 
@@ -51,4 +53,15 @@ export type IsNotAny<T> = 0 extends 1 & T ? (1 extends 0 & T ? false : true) : t
 
 export type IsNotNever<T> = [T] extends [never] ? false : true
 
+export type IsNotUnknown<T> = [unknown] extends [T] ? false : true
+
 export type IsNotAnyOrNever<T> = [IsNotNever<T>, IsNotAny<T>] extends [true, true] ? true : false
+
+export type IsNotAnyOrNeverOrUnknown<T> = [IsNotNever<T>, IsNotAny<T>, IsNotUnknown<T>] extends [true, true, true]
+	? true
+	: false
+
+export type BoolAnd<B1 extends boolean, B2 extends boolean> = B1 extends true ? B2 : false
+export type BoolOr<B1 extends boolean, B2 extends boolean> = B1 extends false ? B2 : true
+export type BoolNot<B extends boolean> = B extends true ? false : true
+export type BoolXor<B1 extends boolean, B2 extends boolean> = B1 extends false ? B2 : B2 extends false ? true : false
