@@ -180,58 +180,46 @@ export type JsqlTableGetColumnFacts<Table extends JsqlDataShape<"table"> | null,
 			: null
 		: null
 
-export type JsqlTableGetColumnNullability<Table extends JsqlDataShape<"table"> | null, Col extends string> =
-	Table extends JsqlDataShape<"table">
-		? Table["column_facts"] extends infer Facts
-			? Facts extends Record<string, unknown>
-				? Col extends keyof Facts
-					? Facts[Col & keyof Facts] extends infer F
-						? F extends { nullability: infer N }
-							? N
-							: null
-						: null
-					: null
-				: null
-			: null
-		: null
+export type JsqlColumnGetColumnNullability<Column extends JsqlColumnShape | null> = Column extends JsqlColumnShape
+	? Column["nullability"]
+	: null
 
-export type JsqlTableGetColumnDefault<Table extends JsqlDataShape<"table"> | null, Col extends string> =
-	Table extends JsqlDataShape<"table">
-		? Table["column_facts"] extends infer Facts
-			? Facts extends Record<string, unknown>
-				? Col extends keyof Facts
-					? Facts[Col & keyof Facts] extends infer F
-						? F extends { default: infer D }
-							? D
-							: null
-						: null
-					: null
-				: null
-			: null
-		: null
+export type JsqlColumnGetColumnDefault<Column extends JsqlColumnShape | null> = Column extends JsqlColumnShape
+	? Column["default"]
+	: null
+
+export type JsqlTableGetColumnNullability<
+	Table extends JsqlDataShape<"table"> | null,
+	Col extends string,
+> = JsqlColumnGetColumnNullability<JsqlTableGetColumn<Table, Col>>
+
+export type JsqlTableGetColumnDefault<
+	Table extends JsqlDataShape<"table"> | null,
+	Col extends string,
+> = JsqlColumnGetColumnDefault<JsqlTableGetColumn<Table, Col>>
 
 export type JsqlTableReplaceColumn<
 	Table extends JsqlDataShape<"table"> | null,
-	Name extends string,
-	Column extends (JsqlColumnFactsEntry & { type: SqlTypeShape }) | SqlTypeShape | null,
+	Col extends string,
+	Column extends JsqlColumnShape | SqlTypeShape | null,
 > =
 	Table extends JsqlDataShape<"table">
 		? Column extends JsqlColumnFactsEntry & { type: SqlTypeShape }
 			? ReplaceProp<
-					ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Name, Column["type"]>>,
+					ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column["type"]>>,
 					"column_facts",
 					ReplaceProp<
 						Table["column_facts"] extends Record<string, unknown> ? Table["column_facts"] : {},
-						Name,
+						Col,
 						Omit<Column, "type">
 					>
 				>
 			: Column extends SqlTypeShape
-				? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Name, Column>>
+				? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column>>
 				: ReplaceProp<
-						ReplaceProp<Table, "columns", Omit<Table["columns"], Name>>,
+						ReplaceProp<Table, "columns", Omit<Table["columns"], Col>>,
 						"column_facts",
-						Omit<Table["column_facts"], Name>
+						Omit<Table["column_facts"], Col>
 					>
 		: null
 
@@ -315,14 +303,16 @@ export type JsqlTableReplaceColumnDefault<
 export type JsqlSchemaGetColumnType<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
-	Name extends string,
-> = JsqlDataGetColumnType<JsqlSchemaGetTable<Schema, Tab>, Name>
+	Col extends string,
+> = JsqlDataGetColumnType<JsqlSchemaGetTable<Schema, Tab>, Col>
 
 export type JsqlSchemaGetColumnFacts<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
-	Name extends string,
-> = JsqlTableGetColumnFacts<JsqlSchemaGetTable<Schema, Tab>, Name>
+	Col extends string,
+> = JsqlTableGetColumnFacts<JsqlSchemaGetTable<Schema, Tab>, Col>
+
+type JsqlColumnShape = JsqlColumnFactsEntry & { type: SqlTypeShape }
 
 export type JsqlTableGetColumn<Table extends JsqlDataShape<"table"> | null, Name extends string> =
 	JsqlDataGetColumnType<Table, Name> extends infer Type extends SqlTypeShape
@@ -332,8 +322,8 @@ export type JsqlTableGetColumn<Table extends JsqlDataShape<"table"> | null, Name
 export type JsqlSchemaGetColumn<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
-	Name extends string,
-> = JsqlTableGetColumn<JsqlSchemaGetTable<Schema, Tab>, Name>
+	Col extends string,
+> = JsqlTableGetColumn<JsqlSchemaGetTable<Schema, Tab>, Col>
 
 export type JsqlSchemaGetColumnNullability<
 	Schema extends JsqlSchemaShape | null,
@@ -350,26 +340,16 @@ export type JsqlSchemaGetColumnDefault<
 export type JsqlSchemaReplaceColumn<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
-	Name extends string,
-	Column extends (JsqlColumnFactsEntry & { type: SqlTypeShape }) | SqlTypeShape | null,
-> = Schema extends JsqlSchemaShape
-	? JsqlTableReplaceColumn<JsqlSchemaGetTable<Schema, Tab>, Name, Column> extends infer UpdatedTable extends
-			JsqlDataShape<"table">
-		? ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Tab, UpdatedTable>>
-		: null
-	: null
+	Col extends string,
+	Column extends JsqlColumnShape | SqlTypeShape | null,
+> = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumn<JsqlSchemaGetTable<Schema, Tab>, Col, Column>>
 
 export type JsqlSchemaReplaceColumnType<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
 	Col extends string,
 	SqlType extends SqlTypeShape,
-> = Schema extends JsqlSchemaShape
-	? JsqlTableReplaceColumnType<JsqlSchemaGetTable<Schema, Tab>, Col, SqlType> extends infer UpdatedTable extends
-			JsqlDataShape<"table">
-		? ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Tab, UpdatedTable>>
-		: null
-	: null
+> = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumnType<JsqlSchemaGetTable<Schema, Tab>, Col, SqlType>>
 
 export type JsqlSchemaReplaceColumnNullability<
 	Schema extends JsqlSchemaShape | null,
@@ -387,12 +367,7 @@ export type JsqlSchemaReplaceColumnDefault<
 	Tab extends string,
 	Col extends string,
 	HasDefault extends true | null,
-> = Schema extends JsqlSchemaShape
-	? JsqlTableReplaceColumnDefault<JsqlSchemaGetTable<Schema, Tab>, Col, HasDefault> extends infer UpdatedTable extends
-			JsqlDataShape<"table">
-		? ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Tab, UpdatedTable>>
-		: null
-	: null
+> = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumnDefault<JsqlSchemaGetTable<Schema, Tab>, Col, HasDefault>>
 
 export type JsqlDbGetColumn<
 	Db extends JsqlDatabaseShape,
@@ -434,7 +409,7 @@ export type JsqlDbReplaceColumn<
 	Sch extends string,
 	Tab extends string,
 	Name extends string,
-	Column extends (JsqlColumnFactsEntry & { type: SqlTypeShape }) | SqlTypeShape | null,
+	Column extends JsqlColumnShape | SqlTypeShape | null,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, Column>>
 
 export type JsqlDbReplaceColumnType<

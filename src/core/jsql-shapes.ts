@@ -34,10 +34,10 @@ export type JsqlConstraintEntry =
 	| { kind: "foreign_key"; refs: JsqlForeignKeyRef }
 
 export type JsqlColumnFactsEntry = {
-	default?: true
-	check?: true
-	generated?: true | { mode: "stored" | "virtual" }
-	nullability?: "not_null" | "nullable"
+	default?: true | undefined
+	check?: true | undefined
+	generated?: true | { mode: "stored" | "virtual" } | undefined
+	nullability?: "not_null" | "nullable" | undefined
 }
 
 export type JsqlForeignKeyRef = {
