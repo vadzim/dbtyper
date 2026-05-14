@@ -247,37 +247,19 @@ type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeSha
 		? SkipToken<Tokens> extends infer R extends ParserMonad
 			? SqlTypeClass<ColumnType> extends "numeric"
 				? [R, null]
-				: SkipFailedExpression<
-						R,
-						FormatError<
-							Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC_COLUMN_FOR_NUMERIC_LITERAL"],
-							[]
-						>
-					>
+				: SkipFailedExpression<R, FormatError<Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC"], []>>
 			: never
 		: PeekToken<Tokens> extends TokenString<infer _Str>
 			? SkipToken<Tokens> extends infer R extends ParserMonad
 				? SqlTypeClass<ColumnType> extends "text" | "uuid" | "unknown"
 					? [R, null]
-					: SkipFailedExpression<
-							R,
-							FormatError<
-								Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID_COLUMN_FOR_STRING_LITERAL"],
-								[]
-							>
-						>
+					: SkipFailedExpression<R, FormatError<Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID"], []>>
 				: never
 			: PeekToken<Tokens> extends TokenKey<"true"> | TokenKey<"false">
 				? SkipToken<Tokens> extends infer R extends ParserMonad
 					? SqlTypeClass<ColumnType> extends "boolean"
 						? [R, null]
-						: [
-								R,
-								FormatError<
-									Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL"],
-									[]
-								>,
-							]
+						: [R, FormatError<Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN"], []>]
 					: never
 				: PeekToken<Tokens> extends TokenKey<"null">
 					? SkipToken<Tokens> extends infer R extends ParserMonad
