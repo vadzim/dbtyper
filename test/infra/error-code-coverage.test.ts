@@ -224,8 +224,9 @@ const UNTESTABLE_ERROR_CODES = new Set([
 
 describe("Error code coverage", async () => {
 	it("every error code in the registry should be tested in at least one integration test", async () => {
+		const errorsMap = new Map(Object.entries(errors).map(([id, descr]) => [descr.code, { ...descr, id }]))
 		// Get all error codes from the registry
-		const allErrorCodes = Object.keys(errors).map(code => parseInt(code, 10))
+		const allErrorCodes = [...errorsMap.keys()]
 
 		// Filter out untestable error codes
 		const testableCodes = allErrorCodes.filter(code => !UNTESTABLE_ERROR_CODES.has(code))
@@ -239,7 +240,7 @@ describe("Error code coverage", async () => {
 		if (untestedCodes.length > 0) {
 			const untestedDetails = untestedCodes
 				.map(code => {
-					const error = errors[code as keyof typeof errors]
+					const error = errorsMap.get(code)
 					return `  - ${code}: ${error?.id ?? "unknown"}`
 				})
 				.join("\n")

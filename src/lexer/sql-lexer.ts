@@ -1,4 +1,4 @@
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, E, FormatError } from "../dbtyper-error.ts"
 
 export type LexerFeatures = "" | "dollar-strings" | "named-params" | "indexed-params"
 
@@ -46,7 +46,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 							: Head extends '"'
 								? Rest extends `${infer String}"${infer Rest}`
 									? Return<TokenIdent<String>, Rest>
-									: Return<FormatError<"UNCLOSED_QUOTED_IDENTIFIER", []>, S>
+									: Return<FormatError<E["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
 								: Head extends "\x20" | "\n" | "\r" | "\t"
 									? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
 									: Head extends "'"

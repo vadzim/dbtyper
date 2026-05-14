@@ -43,7 +43,7 @@ export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never
 
 export type LastOf<T> = UnionToIntersection<T extends unknown ? () => T : never> extends () => infer R ? R : never
 
-type TupleSize = Counting<21>[number]
+export type TupleSize = Counting<21>[number]
 
 export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec[N]>]
 

@@ -1,17 +1,26 @@
-import type { Dec, Tuple } from "./core/type-utils.ts"
+import type { Dec, Tuple, TupleSize } from "./core/type-utils.ts"
 
-export type ErrorCodes = keyof ErrorsConst
+export type E = {
+	-readonly [K in keyof typeof errors]: {
+		code: (typeof errors)[K]["code"]
+		id: K
+		msg: (typeof errors)[K]["msg"]
+	}
+}
 
 export type ErrorIds = keyof E
 
-export type FormatError<ID extends ErrorIds, Args extends ErrorArgs<ID>> = E[ID] extends {
-	code: infer Code extends ErrorCodes
-	msg: infer Msg
-}
-	? Msg extends readonly string[]
-		? DbtyperError<Code, JoinWithArgs<Msg, Args>>
+export type ErrorCodes = E[ErrorIds]["code"]
+
+export type FormatError<ID extends ErrorIds | ErrorDescription, Args extends ErrorArgs<GetErrDescr<ID>>> =
+	GetErrDescr<ID> extends {
+		code: infer Code extends ErrorCodes
+		msg: infer Msg
+	}
+		? Msg extends readonly string[]
+			? DbtyperError<Code, JoinWithArgs<Msg, Args>>
+			: never
 		: never
-	: never
 
 export type DbtyperError<Code extends ErrorCodes, Message extends string> = {
 	__sql_parser_error_code__: Code
@@ -21,6 +30,17 @@ export type DbtyperError<Code extends ErrorCodes, Message extends string> = {
 export type DbtyperErrorShape = {
 	__sql_parser_error_code__: number
 	__sql_parser_error__: string
+}
+
+type GetErrDescr<ID extends ErrorIds | ErrorDescription> = ID extends ErrorIds
+	? E[ID]
+	: ID extends ErrorDescription
+		? ID
+		: never
+
+type ErrorDescription = {
+	code: number
+	msg: [string, ...string[]]
 }
 
 /**
@@ -85,1449 +105,1436 @@ export type DbtyperErrorShape = {
  */
 export const errors = {
 	// Lexer/Tokenization Errors
-	1001: {
-		id: "UNCLOSED_QUOTED_IDENTIFIER",
+	UNCLOSED_QUOTED_IDENTIFIER: {
+		code: 1001,
 		msg: ["Unclosed quoted identifier literal"],
 	},
-	1002: {
-		id: "UNCLOSED_STRING_LITERAL",
+	UNCLOSED_STRING_LITERAL: {
+		code: 1002,
 		msg: ["Unclosed string literal"],
 	},
-	1003: {
-		id: "UNCLOSED_TAGGED_STRING",
+	UNCLOSED_TAGGED_STRING: {
+		code: 1003,
 		msg: ["Unclosed tagged string"],
 	},
-	1004: {
-		id: "WRONG_STRING_TAG",
+	WRONG_STRING_TAG: {
+		code: 1004,
 		msg: ["Wrong string tag"],
 	},
-	1005: {
-		id: "UNBALANCED_PARENTHESES",
+	UNBALANCED_PARENTHESES: {
+		code: 1005,
 		msg: ["Unbalanced parentheses"],
 	},
-	1006: {
-		id: "TOKEN_NOT_FOUND",
+	TOKEN_NOT_FOUND: {
+		code: 1006,
 		msg: ["Token not found"],
 	},
-	1007: {
-		id: "UNEXPECTED_TOKEN",
+	UNEXPECTED_TOKEN: {
+		code: 1007,
 		msg: ["Unexpected token"],
 	},
-	1008: {
-		id: "CLOSING_BRACKET_NOT_FOUND",
+	CLOSING_BRACKET_NOT_FOUND: {
+		code: 1008,
 		msg: ["Closing bracket not found: ", ""],
 	},
-	1009: {
-		id: "UNMATCHED_CLOSING_BRACKET",
+	UNMATCHED_CLOSING_BRACKET: {
+		code: 1009,
 		msg: ["Unmatched closing bracket: ", ""],
 	},
-	1010: {
-		id: "INVALID_INDEXED_PARAM",
+	INVALID_INDEXED_PARAM: {
+		code: 1010,
 		msg: ["Invalid indexed parameter: ", ""],
 	},
 
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
-	1100: {
-		id: "EXPECTED_SELECT_AFTER_WITH",
+	EXPECTED_SELECT_AFTER_WITH: {
+		code: 1100,
 		msg: ["Expected SELECT after WITH clause"],
 	},
-	1101: {
-		id: "EXPECTED_SELECT_IN_SUBQUERY",
+	EXPECTED_SELECT_IN_SUBQUERY: {
+		code: 1101,
 		msg: ["Expected SELECT in subquery"],
 	},
-	1102: {
-		id: "EXPECTED_SELECT_IN_DERIVED_TABLE",
+	EXPECTED_SELECT_IN_DERIVED_TABLE: {
+		code: 1102,
 		msg: ["Expected SELECT in derived table"],
 	},
-	1103: {
-		id: "EXPECTED_SELECT_IN_EXISTS_SUBQUERY",
+	EXPECTED_SELECT_IN_EXISTS_SUBQUERY: {
+		code: 1103,
 		msg: ["Expected SELECT in EXISTS subquery"],
 	},
-	1104: {
-		id: "EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW",
+	EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW: {
+		code: 1104,
 		msg: ["Expected SELECT or WITH after AS in CREATE VIEW"],
 	},
 	// Group 1: EXPECTED_SEMICOLON (consolidated from 14 codes)
-	1105: {
-		id: "EXPECTED_SEMICOLON",
+	EXPECTED_SEMICOLON: {
+		code: 1105,
 		msg: ["Expected semicolon after ", ""],
 	},
-	1106: {
-		id: "EXPECTED_FROM_AFTER_SELECT_LIST",
+	EXPECTED_FROM_AFTER_SELECT_LIST: {
+		code: 1106,
 		msg: ["Expected FROM after SELECT list"],
 	},
-	1107: {
-		id: "EXPECTED_BY_AFTER_GROUP",
+	EXPECTED_BY_AFTER_GROUP: {
+		code: 1107,
 		msg: ["Expected BY after GROUP"],
 	},
-	1108: {
-		id: "EXPECTED_BY_AFTER_ORDER",
+	EXPECTED_BY_AFTER_ORDER: {
+		code: 1108,
 		msg: ["Expected BY after ORDER"],
 	},
-	1109: {
-		id: "EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE",
+	EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE: {
+		code: 1109,
 		msg: ["Expected BY after ORDER in OVER clause"],
 	},
-	1110: {
-		id: "EXPECTED_BY_AFTER_PARTITION",
+	EXPECTED_BY_AFTER_PARTITION: {
+		code: 1110,
 		msg: ["Expected BY after PARTITION"],
 	},
-	1111: {
-		id: "EXPECTED_CTE_NAME_IN_WITH",
+	EXPECTED_CTE_NAME_IN_WITH: {
+		code: 1111,
 		msg: ["Expected CTE name in WITH"],
 	},
-	1112: {
-		id: "EXPECTED_ALIAS_AFTER_CTE",
+	EXPECTED_ALIAS_AFTER_CTE: {
+		code: 1112,
 		msg: ["Expected alias after CTE"],
 	},
-	1113: {
-		id: "EXPECTED_ALIAS_AFTER_DERIVED_TABLE",
+	EXPECTED_ALIAS_AFTER_DERIVED_TABLE: {
+		code: 1113,
 		msg: ["Expected alias after derived table"],
 	},
-	1114: {
-		id: "EXPECTED_ALIAS_NAME_AFTER_AS",
+	EXPECTED_ALIAS_NAME_AFTER_AS: {
+		code: 1114,
 		msg: ["Expected alias name after AS"],
 	},
-	1115: {
-		id: "EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE",
+	EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE: {
+		code: 1115,
 		msg: ["Expected alias or join clause after table"],
 	},
-	1116: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH",
+	EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH: {
+		code: 1116,
 		msg: ["Expected open paren after AS in WITH"],
 	},
-	1117: {
-		id: "EXPECTED_END_AFTER_CASE",
+	EXPECTED_END_AFTER_CASE: {
+		code: 1117,
 		msg: ["Expected END after CASE"],
 	},
-	1118: {
-		id: "EXPECTED_WHEN_AFTER_CASE_EXPRESSION",
+	EXPECTED_WHEN_AFTER_CASE_EXPRESSION: {
+		code: 1118,
 		msg: ["Expected WHEN after CASE expression"],
 	},
-	1119: {
-		id: "EXPECTED_WHEN_ELSE_OR_END_IN_CASE",
+	EXPECTED_WHEN_ELSE_OR_END_IN_CASE: {
+		code: 1119,
 		msg: ["Expected WHEN ELSE or END in CASE"],
 	},
 	// Group 2: EXPECTED_TABLE_NAME (consolidated from 14 codes)
-	1120: {
-		id: "EXPECTED_TABLE_NAME",
+	EXPECTED_TABLE_NAME: {
+		code: 1120,
 		msg: ["Expected table name ", ""],
 	},
-	1121: {
-		id: "EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM",
+	EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM: {
+		code: 1121,
 		msg: ["Expected table name or `(` in FROM"],
 	},
 
 	// INSERT Statement
-	1200: {
-		id: "EXPECTED_INTO_AFTER_INSERT",
+	EXPECTED_INTO_AFTER_INSERT: {
+		code: 1200,
 		msg: ["Expected INTO after INSERT"],
 	},
-	1201: {
-		id: "OBSOLETE_1201_EXPECTED_SEMICOLON_AFTER_INSERT",
+	OBSOLETE_1201_EXPECTED_SEMICOLON_AFTER_INSERT: {
+		code: 1201,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1202: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_VALUES_IN_INSERT",
+	EXPECTED_OPEN_PAREN_AFTER_VALUES_IN_INSERT: {
+		code: 1202,
 		msg: ["Expected `(` after VALUES in INSERT"],
 	},
-	1203: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES",
+	EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES: {
+		code: 1203,
 		msg: ["Expected `)` after INSERT values"],
 	},
-	1204: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_COMMA_BETWEEN_INSERT_VALUES_ROWS",
+	EXPECTED_OPEN_PAREN_AFTER_COMMA_BETWEEN_INSERT_VALUES_ROWS: {
+		code: 1204,
 		msg: ["Expected `(` after `,` between INSERT VALUES rows"],
 	},
-	1205: {
-		id: "EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT",
+	EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT: {
+		code: 1205,
 		msg: ["Expected `(` (column list) after table in INSERT"],
 	},
 	// Group 3: EXPECTED_COLUMN_NAME (consolidated from 8 codes)
-	1206: {
-		id: "EXPECTED_COLUMN_NAME",
+	EXPECTED_COLUMN_NAME: {
+		code: 1206,
 		msg: ["Expected column name ", ""],
 	},
-	1207: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST: {
+		code: 1207,
 		msg: ["Expected `,` or `)` in INSERT column list"],
 	},
-	1208: {
-		id: "EXPECTED_COMMA_BETWEEN_INSERT_VALUES",
+	EXPECTED_COMMA_BETWEEN_INSERT_VALUES: {
+		code: 1208,
 		msg: ["Expected `,` between INSERT values"],
 	},
-	1209: {
-		id: "EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT",
+	EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT: {
+		code: 1209,
 		msg: ["Expected VALUES or SELECT after column list in INSERT"],
 	},
-	1210: {
-		id: "EXPECTED_CONFLICT_AFTER_ON_IN_INSERT",
+	EXPECTED_CONFLICT_AFTER_ON_IN_INSERT: {
+		code: 1210,
 		msg: ["Expected CONFLICT after ON in INSERT"],
 	},
-	1211: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT",
+	EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT: {
+		code: 1211,
 		msg: ["Expected `(` after ON CONFLICT in INSERT"],
 	},
-	1212: {
-		id: "OBSOLETE_1212_EXPECTED_COLUMN_NAME_IN_ON_CONFLICT",
+	OBSOLETE_1212_EXPECTED_COLUMN_NAME_IN_ON_CONFLICT: {
+		code: 1212,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1213: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ON_CONFLICT_COLUMN_LIST",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ON_CONFLICT_COLUMN_LIST: {
+		code: 1213,
 		msg: ["Expected `,` or `)` in ON CONFLICT column list"],
 	},
-	1214: {
-		id: "EXPECTED_DO_AFTER_ON_CONFLICT_COLUMN_LIST_IN_INSERT",
+	EXPECTED_DO_AFTER_ON_CONFLICT_COLUMN_LIST_IN_INSERT: {
+		code: 1214,
 		msg: ["Expected DO after ON CONFLICT column list in INSERT"],
 	},
-	1215: {
-		id: "EXPECTED_DO_AFTER_ON_CONFLICT_COLUMNS_IN_INSERT",
+	EXPECTED_DO_AFTER_ON_CONFLICT_COLUMNS_IN_INSERT: {
+		code: 1215,
 		msg: ["Expected DO after ON CONFLICT columns in INSERT"],
 	},
-	1216: {
-		id: "EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT",
+	EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT: {
+		code: 1216,
 		msg: ["Expected UPDATE after DO in INSERT ON CONFLICT"],
 	},
-	1217: {
-		id: "EXPECTED_SET_AFTER_UPDATE_IN_INSERT_ON_CONFLICT",
+	EXPECTED_SET_AFTER_UPDATE_IN_INSERT_ON_CONFLICT: {
+		code: 1217,
 		msg: ["Expected SET after UPDATE in INSERT ON CONFLICT"],
 	},
-	1218: {
-		id: "OBSOLETE_1218_EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE",
+	OBSOLETE_1218_EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE: {
+		code: 1218,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1219: {
-		id: "EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE",
+	EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE: {
+		code: 1219,
 		msg: ["Expected `=` after column in ON CONFLICT UPDATE"],
 	},
-	1220: {
-		id: "OBSOLETE_1220_EXPECTED_TABLE_NAME_IN_INSERT_INTO",
+	OBSOLETE_1220_EXPECTED_TABLE_NAME_IN_INSERT_INTO: {
+		code: 1220,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1221: {
-		id: "OBSOLETE_1221_EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO",
+	OBSOLETE_1221_EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO: {
+		code: 1221,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1222: {
-		id: "OBSOLETE_1222_EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
+	OBSOLETE_1222_EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET: {
+		code: 1222,
 		msg: ["Expected `,`, WHERE, or end after ON CONFLICT SET"],
 	},
-	1223: {
-		id: "OBSOLETE_1223_INVALID_VALUE_EXPRESSION_IN_INSERT",
+	OBSOLETE_1223_INVALID_VALUE_EXPRESSION_IN_INSERT: {
+		code: 1223,
 		msg: ["Invalid value expression in INSERT"],
 	},
-	1224: {
-		id: "OBSOLETE_1224_INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE",
+	OBSOLETE_1224_INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE: {
+		code: 1224,
 		msg: ["Invalid value expression in ON CONFLICT UPDATE"],
 	},
 
 	// UPDATE Statement
-	1300: {
-		id: "EXPECTED_SET_IN_UPDATE",
+	EXPECTED_SET_IN_UPDATE: {
+		code: 1300,
 		msg: ["Expected SET in UPDATE"],
 	},
-	1301: {
-		id: "EXPECTED_SET_AFTER_TABLE_IN_UPDATE",
+	EXPECTED_SET_AFTER_TABLE_IN_UPDATE: {
+		code: 1301,
 		msg: ["Expected SET after table in UPDATE"],
 	},
-	1302: {
-		id: "OBSOLETE_1302_EXPECTED_SEMICOLON_AFTER_UPDATE",
+	OBSOLETE_1302_EXPECTED_SEMICOLON_AFTER_UPDATE: {
+		code: 1302,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1303: {
-		id: "OBSOLETE_1303_EXPECTED_COLUMN_NAME_IN_UPDATE_SET",
+	OBSOLETE_1303_EXPECTED_COLUMN_NAME_IN_UPDATE_SET: {
+		code: 1303,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1304: {
-		id: "EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET",
+	EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET: {
+		code: 1304,
 		msg: ["Expected `=` after column in UPDATE SET"],
 	},
-	1305: {
-		id: "EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT",
+	EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT: {
+		code: 1305,
 		msg: ["Expected `,`, FROM, WHERE, or end after UPDATE assignment"],
 	},
-	1306: {
-		id: "OBSOLETE_1306_EXPECTED_TABLE_NAME_IN_UPDATE",
+	OBSOLETE_1306_EXPECTED_TABLE_NAME_IN_UPDATE: {
+		code: 1306,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1307: {
-		id: "OBSOLETE_1307_EXPECTED_TABLE_NAME_IN_UPDATE_FROM",
+	OBSOLETE_1307_EXPECTED_TABLE_NAME_IN_UPDATE_FROM: {
+		code: 1307,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1308: {
-		id: "OBSOLETE_1308_EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE",
+	OBSOLETE_1308_EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE: {
+		code: 1308,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
 
 	// DELETE Statement
-	1400: {
-		id: "EXPECTED_FROM_AFTER_DELETE",
+	EXPECTED_FROM_AFTER_DELETE: {
+		code: 1400,
 		msg: ["Expected FROM after DELETE"],
 	},
-	1401: {
-		id: "OBSOLETE_1401_EXPECTED_SEMICOLON_AFTER_DELETE",
+	OBSOLETE_1401_EXPECTED_SEMICOLON_AFTER_DELETE: {
+		code: 1401,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1402: {
-		id: "OBSOLETE_1402_EXPECTED_TABLE_NAME_IN_DELETE_FROM",
+	OBSOLETE_1402_EXPECTED_TABLE_NAME_IN_DELETE_FROM: {
+		code: 1402,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1403: {
-		id: "OBSOLETE_1403_EXPECTED_TABLE_NAME_IN_DELETE_USING",
+	OBSOLETE_1403_EXPECTED_TABLE_NAME_IN_DELETE_USING: {
+		code: 1403,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1404: {
-		id: "OBSOLETE_1404_EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM",
+	OBSOLETE_1404_EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM: {
+		code: 1404,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1405: {
-		id: "EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM",
+	EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM: {
+		code: 1405,
 		msg: ["Expected alias or end of table in DELETE FROM"],
 	},
 
 	// CREATE TABLE
-	1500: {
-		id: "OBSOLETE_1500_EXPECTED_SEMICOLON_AFTER_CREATE_TABLE",
+	OBSOLETE_1500_EXPECTED_SEMICOLON_AFTER_CREATE_TABLE: {
+		code: 1500,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1501: {
-		id: "EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE",
+	EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE: {
+		code: 1501,
 		msg: ["Expected `(` before column list in CREATE TABLE"],
 	},
-	1502: {
-		id: "EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE",
+	EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE: {
+		code: 1502,
 		msg: ["Expected `)` before end of CREATE TABLE"],
 	},
-	1503: {
-		id: "OBSOLETE_1503_EXPECTED_COLUMN_NAME_IN_CREATE_TABLE",
+	OBSOLETE_1503_EXPECTED_COLUMN_NAME_IN_CREATE_TABLE: {
+		code: 1503,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1504: {
-		id: "EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE",
+	EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE: {
+		code: 1504,
 		msg: ["Expected column type in CREATE TABLE"],
 	},
-	1505: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION: {
+		code: 1505,
 		msg: ["Expected `,` or `)` after column definition"],
 	},
-	1506: {
-		id: "OBSOLETE_1506_EXPECTED_TABLE_NAME_IN_CREATE_TABLE",
+	OBSOLETE_1506_EXPECTED_TABLE_NAME_IN_CREATE_TABLE: {
+		code: 1506,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1507: {
-		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE",
+	EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE: {
+		code: 1507,
 		msg: ["Expected `not` after `IF` in CREATE TABLE"],
 	},
-	1508: {
-		id: "EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE",
+	EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE: {
+		code: 1508,
 		msg: ["Expected `exists` after `IF NOT` in CREATE TABLE"],
 	},
-	1509: {
-		id: "EXPECTED_DEFAULT_VALUE",
+	EXPECTED_DEFAULT_VALUE: {
+		code: 1509,
 		msg: ["Expected DEFAULT value"],
 	},
 
 	// ALTER TABLE
-	1600: {
-		id: "OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE",
+	OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE: {
+		code: 1600,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1601: {
-		id: "EXPECTED_TABLE_AFTER_ALTER",
+	EXPECTED_TABLE_AFTER_ALTER: {
+		code: 1601,
 		msg: ["Expected TABLE after ALTER"],
 	},
-	1602: {
-		id: "OBSOLETE_1602_EXPECTED_TABLE_NAME_IN_ALTER_TABLE",
+	OBSOLETE_1602_EXPECTED_TABLE_NAME_IN_ALTER_TABLE: {
+		code: 1602,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1603: {
-		id: "OBSOLETE_1603_EXPECTED_TABLE_NAME_AFTER_DOT_IN_ALTER_TABLE",
+	OBSOLETE_1603_EXPECTED_TABLE_NAME_AFTER_DOT_IN_ALTER_TABLE: {
+		code: 1603,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1604: {
-		id: "OBSOLETE_1604_EXPECTED_COLUMN_NAME_AFTER_ADD_IN_ALTER_TABLE",
+	OBSOLETE_1604_EXPECTED_COLUMN_NAME_AFTER_ADD_IN_ALTER_TABLE: {
+		code: 1604,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1605: {
-		id: "OBSOLETE_1605_EXPECTED_COLUMN_NAME_AFTER_ALTER_COLUMN",
+	OBSOLETE_1605_EXPECTED_COLUMN_NAME_AFTER_ALTER_COLUMN: {
+		code: 1605,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1606: {
-		id: "OBSOLETE_1606_EXPECTED_COLUMN_NAME_AFTER_DROP_COLUMN",
+	OBSOLETE_1606_EXPECTED_COLUMN_NAME_AFTER_DROP_COLUMN: {
+		code: 1606,
 		msg: ["Use EXPECTED_COLUMN_NAME with context parameter"],
 	},
-	1607: {
-		id: "EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE",
+	EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE: {
+		code: 1607,
 		msg: ["Expected column type in ALTER TABLE"],
 	},
-	1608: {
-		id: "EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN",
+	EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN: {
+		code: 1608,
 		msg: ["Expected TYPE, SET, or DROP after ALTER COLUMN"],
 	},
-	1609: {
-		id: "EXPECTED_NULL_AFTER_SET_NOT",
+	EXPECTED_NULL_AFTER_SET_NOT: {
+		code: 1609,
 		msg: ["Expected NULL after SET NOT"],
 	},
 
 	// DROP TABLE
-	1700: {
-		id: "OBSOLETE_1700_EXPECTED_SEMICOLON_AFTER_DROP_TABLE",
+	OBSOLETE_1700_EXPECTED_SEMICOLON_AFTER_DROP_TABLE: {
+		code: 1700,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1701: {
-		id: "OBSOLETE_1701_EXPECTED_TABLE_NAME_IN_DROP_TABLE",
+	OBSOLETE_1701_EXPECTED_TABLE_NAME_IN_DROP_TABLE: {
+		code: 1701,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
-	1702: {
-		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_TABLE",
+	EXPECTED_EXISTS_AFTER_IF_IN_DROP_TABLE: {
+		code: 1702,
 		msg: ["Expected `exists` after `IF` in DROP TABLE"],
 	},
-	1703: {
-		id: "EXPECTED_DOT_OR_END_OF_TABLE_NAME_IN_DROP_TABLE",
+	EXPECTED_DOT_OR_END_OF_TABLE_NAME_IN_DROP_TABLE: {
+		code: 1703,
 		msg: ["Expected `.` or end of table name in DROP TABLE"],
 	},
-	1704: {
-		id: "OBSOLETE_1704_EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE",
+	OBSOLETE_1704_EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE: {
+		code: 1704,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
 
 	// CREATE/ALTER/DROP TYPE
-	1800: {
-		id: "OBSOLETE_1800_EXPECTED_SEMICOLON_AFTER_CREATE_TYPE",
+	OBSOLETE_1800_EXPECTED_SEMICOLON_AFTER_CREATE_TYPE: {
+		code: 1800,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1801: {
-		id: "OBSOLETE_1801_EXPECTED_SEMICOLON_AFTER_ALTER_TYPE",
+	OBSOLETE_1801_EXPECTED_SEMICOLON_AFTER_ALTER_TYPE: {
+		code: 1801,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1802: {
-		id: "OBSOLETE_1802_EXPECTED_SEMICOLON_AFTER_DROP_TYPE",
+	OBSOLETE_1802_EXPECTED_SEMICOLON_AFTER_DROP_TYPE: {
+		code: 1802,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	1803: {
-		id: "EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE",
+	EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE: {
+		code: 1803,
 		msg: ["Expected `as` after type name in CREATE TYPE"],
 	},
-	1804: {
-		id: "EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE",
+	EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE: {
+		code: 1804,
 		msg: ["Expected `enum` after `AS` in CREATE TYPE"],
 	},
-	1805: {
-		id: "EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE",
+	EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE: {
+		code: 1805,
 		msg: ["Expected `(` before enum values in CREATE TYPE"],
 	},
-	1806: {
-		id: "EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_CREATE_TYPE",
+	EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_CREATE_TYPE: {
+		code: 1806,
 		msg: ["Expected string literal for enum value in CREATE TYPE"],
 	},
-	1807: {
-		id: "EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE",
+	EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE: {
+		code: 1807,
 		msg: ["Expected string literal for enum value in ALTER TYPE"],
 	},
-	1808: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_ENUM_VALUE_IN_CREATE_TYPE",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_ENUM_VALUE_IN_CREATE_TYPE: {
+		code: 1808,
 		msg: ["Expected `,` or `)` after enum value in CREATE TYPE"],
 	},
-	1809: {
-		id: "OBSOLETE_1809_EXPECTED_TYPE_NAME_IN_ALTER_TYPE",
+	OBSOLETE_1809_EXPECTED_TYPE_NAME_IN_ALTER_TYPE: {
+		code: 1809,
 		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
-	1810: {
-		id: "OBSOLETE_1810_EXPECTED_TYPE_NAME_IN_DROP_TYPE",
+	OBSOLETE_1810_EXPECTED_TYPE_NAME_IN_DROP_TYPE: {
+		code: 1810,
 		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
-	1811: {
-		id: "OBSOLETE_1811_EXPECTED_TYPE_NAME_AFTER_DOT_IN_ALTER_TYPE",
+	OBSOLETE_1811_EXPECTED_TYPE_NAME_AFTER_DOT_IN_ALTER_TYPE: {
+		code: 1811,
 		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
-	1812: {
-		id: "OBSOLETE_1812_EXPECTED_TYPE_NAME_AFTER_DOT_IN_DROP_TYPE",
+	OBSOLETE_1812_EXPECTED_TYPE_NAME_AFTER_DOT_IN_DROP_TYPE: {
+		code: 1812,
 		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
-	1813: {
-		id: "EXPECTED_ADD_IN_ALTER_TYPE",
+	EXPECTED_ADD_IN_ALTER_TYPE: {
+		code: 1813,
 		msg: ["Expected `add` in ALTER TYPE"],
 	},
-	1814: {
-		id: "EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE",
+	EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE: {
+		code: 1814,
 		msg: ["Expected `value` after `ADD` in ALTER TYPE"],
 	},
-	1815: {
-		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE",
+	EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE: {
+		code: 1815,
 		msg: ["Expected `not` after `IF` in CREATE TYPE"],
 	},
-	1816: {
-		id: "EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE",
+	EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE: {
+		code: 1816,
 		msg: ["Expected `exists` after `IF NOT` in CREATE TYPE"],
 	},
-	1817: {
-		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE",
+	EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE: {
+		code: 1817,
 		msg: ["Expected `exists` after `IF` in DROP TYPE"],
 	},
 
 	// Statement Validation
-	2107: {
-		id: "INVALID_ALTER_TABLE_NAME",
+	INVALID_ALTER_TABLE_NAME: {
+		code: 2107,
 		msg: ["Invalid ALTER TABLE name"],
 	},
-	2108: {
-		id: "INVALID_CREATE_TABLE_NAME_PARSE",
+	INVALID_CREATE_TABLE_NAME_PARSE: {
+		code: 2108,
 		msg: ["Invalid CREATE TABLE name parse"],
 	},
-	2109: {
-		id: "INVALID_DROP_TABLE_PARSE",
+	INVALID_DROP_TABLE_PARSE: {
+		code: 2109,
 		msg: ["Invalid DROP TABLE parse"],
 	},
-	2110: {
-		id: "INVALID_CREATE_TYPE_NAME_PARSE",
+	INVALID_CREATE_TYPE_NAME_PARSE: {
+		code: 2110,
 		msg: ["Invalid CREATE TYPE name parse"],
 	},
-	2111: {
-		id: "INVALID_ALTER_TYPE_PARSE",
+	INVALID_ALTER_TYPE_PARSE: {
+		code: 2111,
 		msg: ["Invalid ALTER TYPE parse"],
 	},
-	2112: {
-		id: "INVALID_DROP_TYPE_PARSE",
+	INVALID_DROP_TYPE_PARSE: {
+		code: 2112,
 		msg: ["Invalid DROP TYPE parse"],
 	},
-	2116: {
-		id: "INVALID_NUMBER",
+	INVALID_NUMBER: {
+		code: 2116,
 		msg: ["Invalid number"],
 	},
-	2117: {
-		id: "INVALID_NUMBER_FOR_VARCHAR_LENGTH",
+	INVALID_NUMBER_FOR_VARCHAR_LENGTH: {
+		code: 2117,
 		msg: ["Invalid number for VARCHAR length"],
 	},
-	2118: {
-		id: "INVALID_PRECISION_NUMBER",
+	INVALID_PRECISION_NUMBER: {
+		code: 2118,
 		msg: ["Invalid precision number"],
 	},
-	2119: {
-		id: "INVALID_SCALE_NUMBER",
+	INVALID_SCALE_NUMBER: {
+		code: 2119,
 		msg: ["Invalid scale number"],
 	},
 
 	// Resolution Errors - Unknown X
 	// Table/Schema Resolution
 	// Group 1: UNKNOWN_TABLE_* consolidated (Phase 2)
-	2200: {
-		id: "UNKNOWN_TABLE",
+	UNKNOWN_TABLE: {
+		code: 2200,
 		msg: ["Unknown table ", " in ", ""],
 	},
-	2201: {
-		id: "OBSOLETE_2201_UNKNOWN_TABLE_UPDATE",
+	OBSOLETE_2201_UNKNOWN_TABLE_UPDATE: {
+		code: 2201,
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 
-	2203: {
-		id: "OBSOLETE_2203_UNKNOWN_TABLE_INSERT_INTO",
+	OBSOLETE_2203_UNKNOWN_TABLE_INSERT_INTO: {
+		code: 2203,
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
-	2204: {
-		id: "OBSOLETE_2204_UNKNOWN_TABLE_DELETE_FROM",
+	OBSOLETE_2204_UNKNOWN_TABLE_DELETE_FROM: {
+		code: 2204,
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
-	2205: {
-		id: "OBSOLETE_2205_UNKNOWN_TABLE_IN_DELETE_USING",
+	OBSOLETE_2205_UNKNOWN_TABLE_IN_DELETE_USING: {
+		code: 2205,
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
 	},
 
 	// Group 2: UNKNOWN_SCHEMA_OR_TABLE_* consolidated (Phase 2)
-	2207: {
-		id: "UNKNOWN_SCHEMA_OR_TABLE",
+	UNKNOWN_SCHEMA_OR_TABLE: {
+		code: 2207,
 		msg: ["Unknown schema or table ", " in ", ""],
 	},
-	2208: {
-		id: "OBSOLETE_2208_UNKNOWN_SCHEMA_OR_TABLE_IN_FROM",
+	OBSOLETE_2208_UNKNOWN_SCHEMA_OR_TABLE_IN_FROM: {
+		code: 2208,
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
-	2209: {
-		id: "OBSOLETE_2209_UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE",
+	OBSOLETE_2209_UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE: {
+		code: 2209,
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 
-	2211: {
-		id: "OBSOLETE_2211_UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO",
+	OBSOLETE_2211_UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO: {
+		code: 2211,
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
-	2212: {
-		id: "OBSOLETE_2212_UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM",
+	OBSOLETE_2212_UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM: {
+		code: 2212,
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
-	2213: {
-		id: "OBSOLETE_2213_UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING",
+	OBSOLETE_2213_UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING: {
+		code: 2213,
 		msg: ["Use UNKNOWN_SCHEMA_OR_TABLE with context parameter"],
 	},
 	// Group 4: UNKNOWN_SCHEMA_FOR_* consolidated (Phase 2)
-	2214: {
-		id: "UNKNOWN_SCHEMA",
+	UNKNOWN_SCHEMA: {
+		code: 2214,
 		msg: ["Unknown schema ", " for ", ""],
 	},
-	2215: {
-		id: "OBSOLETE_2215_UNKNOWN_SCHEMA_FOR_CREATE_TYPE",
+	OBSOLETE_2215_UNKNOWN_SCHEMA_FOR_CREATE_TYPE: {
+		code: 2215,
 		msg: ["Use UNKNOWN_SCHEMA with context parameter"],
 	},
-	2216: {
-		id: "OBSOLETE_2216_UNKNOWN_SCHEMA_FOR_CREATE_VIEW",
+	OBSOLETE_2216_UNKNOWN_SCHEMA_FOR_CREATE_VIEW: {
+		code: 2216,
 		msg: ["Use UNKNOWN_SCHEMA with context parameter"],
 	},
 
 	// Column Resolution
 	// Group 3: UNKNOWN_COLUMN_* consolidated (Phase 2)
-	2300: {
-		id: "UNKNOWN_COLUMN",
+	UNKNOWN_COLUMN: {
+		code: 2300,
 		msg: ["Unknown column ", " in ", ""],
 	},
-	2301: {
-		id: "OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET",
+	OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET: {
+		code: 2301,
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
 
-	2303: {
-		id: "OBSOLETE_2303_UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST",
+	OBSOLETE_2303_UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST: {
+		code: 2303,
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
-	2304: {
-		id: "OBSOLETE_2304_UNKNOWN_COLUMN_IN_ON_CONFLICT",
+	OBSOLETE_2304_UNKNOWN_COLUMN_IN_ON_CONFLICT: {
+		code: 2304,
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
-	2305: {
-		id: "OBSOLETE_2305_UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET",
+	OBSOLETE_2305_UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET: {
+		code: 2305,
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],
 	},
-	2306: {
-		id: "UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN",
+	UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN: {
+		code: 2306,
 		msg: ["Unknown column ", ".", ".", ""],
 	},
-	2307: {
-		id: "UNKNOWN_QUALIFIED_COLUMN",
+	UNKNOWN_QUALIFIED_COLUMN: {
+		code: 2307,
 		msg: ["Unknown qualified column ", ".", ""],
 	},
-	2308: {
-		id: "UNKNOWN_ALIAS_IN_SELECT_STAR",
+	UNKNOWN_ALIAS_IN_SELECT_STAR: {
+		code: 2308,
 		msg: ["Unknown alias in SELECT ... *"],
 	},
 
 	// Other Resolution
-	2400: {
-		id: "UNKNOWN_QUERY_PARAMETER",
+	UNKNOWN_QUERY_PARAMETER: {
+		code: 2400,
 		msg: ["Unknown query parameter: ", ""],
 	},
-	2401: {
-		id: "<deleted>",
+	"<deleted>2401": {
+		code: 2401,
 		msg: [""],
 	},
-	2402: {
-		id: "UNKNOWN_WINDOW_FUNCTION",
+	UNKNOWN_WINDOW_FUNCTION: {
+		code: 2402,
 		msg: ["Unknown window function"],
 	},
-	2403: {
-		id: "POSITIONAL_PARAMETER_REQUIRES_ARRAY",
+	POSITIONAL_PARAMETER_REQUIRES_ARRAY: {
+		code: 2403,
 		msg: ["Positional parameter (?) requires array parameters, not named parameters"],
 	},
-	2404: {
-		id: "POSITIONAL_PARAMETER_OUT_OF_BOUNDS",
+	POSITIONAL_PARAMETER_OUT_OF_BOUNDS: {
+		code: 2404,
 		msg: ["Positional parameter index ", " is out of bounds"],
 	},
 
 	// Type System Errors
 	// Type Compatibility
-	2500: {
-		id: "INCOMPATIBLE_TYPES_IN_COMPARISON",
+	INCOMPATIBLE_TYPES_IN_COMPARISON: {
+		code: 2500,
 		msg: ["Incompatible types in comparison"],
 	},
-	2501: {
-		id: "INCOMPATIBLE_TYPES_IN_ARITHMETIC",
+	INCOMPATIBLE_TYPES_IN_ARITHMETIC: {
+		code: 2501,
 		msg: ["Incompatible types in arithmetic"],
 	},
-	2502: {
-		id: "INCOMPATIBLE_TYPES_IN_CASE",
+	INCOMPATIBLE_TYPES_IN_CASE: {
+		code: 2502,
 		msg: ["Incompatible types in CASE"],
 	},
-	2503: {
-		id: "INCOMPATIBLE_TYPES_IN_BETWEEN",
+	INCOMPATIBLE_TYPES_IN_BETWEEN: {
+		code: 2503,
 		msg: ["Incompatible types in BETWEEN"],
 	},
-	2504: {
-		id: "INCOMPATIBLE_TYPES_IN_IN_LIST",
+	INCOMPATIBLE_TYPES_IN_IN_LIST: {
+		code: 2504,
 		msg: ["Incompatible types in IN list"],
 	},
-	2505: {
-		id: "INCOMPATIBLE_TYPES_IN_IN_SUBQUERY",
+	INCOMPATIBLE_TYPES_IN_IN_SUBQUERY: {
+		code: 2505,
 		msg: ["Incompatible types in IN subquery"],
 	},
-	2506: {
-		id: "INCOMPATIBLE_TYPES_IN_JOIN_ON",
+	INCOMPATIBLE_TYPES_IN_JOIN_ON: {
+		code: 2506,
 		msg: ["Incompatible types in JOIN ON"],
 	},
-	2507: {
-		id: "INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN",
+	INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN: {
+		code: 2507,
 		msg: ["Incompatible value type for column ", ""],
 	},
-	2508: {
-		id: "INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN",
+	INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN: {
+		code: 2508,
 		msg: ["INSERT...SELECT type mismatch for column ", ""],
 	},
 
 	// Boolean Type Errors
-	2600: {
-		id: "EXPRESSION_MUST_BE_BOOLEAN",
+	EXPRESSION_MUST_BE_BOOLEAN: {
+		code: 2600,
 		msg: ["Expression must be boolean, but has a type ", "."],
 	},
-	2601: {
-		id: "CASE_WHEN_MUST_BE_BOOLEAN",
+	CASE_WHEN_MUST_BE_BOOLEAN: {
+		code: 2601,
 		msg: ["CASE WHEN must be boolean"],
 	},
-	2602: {
-		id: "NOT_REQUIRES_BOOLEAN_OPERAND",
+	NOT_REQUIRES_BOOLEAN_OPERAND: {
+		code: 2602,
 		msg: ["NOT requires a boolean operand"],
 	},
-	2603: {
-		id: "NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL",
+	NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL: {
+		code: 2603,
 		msg: ["NOT argument must be boolean, not NULL"],
 	},
-	2604: {
-		id: "AND_OPERANDS_MUST_BE_BOOLEAN",
+	AND_OPERANDS_MUST_BE_BOOLEAN: {
+		code: 2604,
 		msg: ["AND operands must be boolean"],
 	},
-	2605: {
-		id: "OR_OPERANDS_MUST_BE_BOOLEAN",
+	OR_OPERANDS_MUST_BE_BOOLEAN: {
+		code: 2605,
 		msg: ["OR operands must be boolean"],
 	},
-	2606: {
-		id: "NULL_NOT_VALID_BOOLEAN_OPERAND",
+	NULL_NOT_VALID_BOOLEAN_OPERAND: {
+		code: 2606,
 		msg: ["NULL is not a valid boolean operand (use IS NULL)"],
 	},
 
 	// NULL Handling
-	2700: {
-		id: "NULL_NOT_ALLOWED_NOT_NULL_COLUMN",
+	NULL_NOT_ALLOWED_NOT_NULL_COLUMN: {
+		code: 2700,
 		msg: ["NULL not allowed for NOT NULL column ", ""],
 	},
-	2701: {
-		id: "NULL_NOT_ALLOWED_ARITHMETIC",
+	NULL_NOT_ALLOWED_ARITHMETIC: {
+		code: 2701,
 		msg: ["NULL not allowed in arithmetic"],
 	},
-	2702: {
-		id: "NULL_NOT_ALLOWED_IN_BETWEEN",
+	NULL_NOT_ALLOWED_IN_BETWEEN: {
+		code: 2702,
 		msg: ["NULL not allowed in BETWEEN"],
 	},
-	2703: {
-		id: "NULL_NOT_ALLOWED_IN_LIKE",
+	NULL_NOT_ALLOWED_IN_LIKE: {
+		code: 2703,
 		msg: ["NULL not allowed in LIKE"],
 	},
-	2704: {
-		id: "USE_IS_NULL_INSTEAD_OF_EQUALS_NULL",
+	USE_IS_NULL_INSTEAD_OF_EQUALS_NULL: {
+		code: 2704,
 		msg: ["Use IS NULL instead of = null"],
 	},
 
 	// Text/String Operations
-	2800: {
-		id: "CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND",
+	CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND: {
+		code: 2800,
 		msg: ["|| requires at least one text operand"],
 	},
-	2801: {
-		id: "CANNOT_CONCATENATE_ARRAY_WITH_TEXT",
+	CANNOT_CONCATENATE_ARRAY_WITH_TEXT: {
+		code: 2801,
 		msg: ["Cannot concatenate array with text"],
 	},
-	2802: {
-		id: "CANNOT_CONCATENATE_TEXT_WITH_ARRAY",
+	CANNOT_CONCATENATE_TEXT_WITH_ARRAY: {
+		code: 2802,
 		msg: ["Cannot concatenate text with array"],
 	},
-	2803: {
-		id: "LIKE_LEFT_OPERAND_MUST_BE_TEXT",
+	LIKE_LEFT_OPERAND_MUST_BE_TEXT: {
+		code: 2803,
 		msg: ["LIKE left operand must be text"],
 	},
-	2804: {
-		id: "CANNOT_CONCATENATE_TEXT_WITH_TYPE",
+	CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
+		code: 2804,
 		msg: ["Cannot concatenate text with ", ""],
 	},
-	2805: {
-		id: "CANNOT_CONCATENATE_TYPE_WITH_TEXT",
+	CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
+		code: 2805,
 		msg: ["Cannot concatenate ", " with text"],
 	},
-	2806: {
-		id: "LIKE_PATTERN_MUST_BE_TEXT",
+	LIKE_PATTERN_MUST_BE_TEXT: {
+		code: 2806,
 		msg: ["LIKE pattern must be text"],
 	},
-	2807: {
-		id: "FUNCTION_EXPECTS_TEXT_ARGUMENT",
+	FUNCTION_EXPECTS_TEXT_ARGUMENT: {
+		code: 2807,
 		msg: ["Function expects text argument"],
 	},
 
 	// Numeric Operations
-	2900: {
-		id: "UNARY_MINUS_REQUIRES_A_NUMBER",
+	UNARY_MINUS_REQUIRES_A_NUMBER: {
+		code: 2900,
 		msg: ["Unary minus requires a number"],
 	},
 
 	// Array Operations
-	3000: {
-		id: "CANNOT_DETERMINE_TYPE_OF_EMPTY_ARRAY",
+	CANNOT_DETERMINE_TYPE_OF_EMPTY_ARRAY: {
+		code: 3000,
 		msg: ["Cannot determine type of empty array"],
 	},
-	3001: {
-		id: "ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY",
+	ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY: {
+		code: 3001,
 		msg: ["ANY/ALL/SOME requires an array or subquery"],
 	},
 
 	// Subquery Type Errors
-	3100: {
-		id: "SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN",
+	SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN: {
+		code: 3100,
 		msg: ["Scalar subquery must project exactly one column"],
 	},
-	3101: {
-		id: "IN_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN",
+	IN_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN: {
+		code: 3101,
 		msg: ["IN subquery must project exactly one column"],
 	},
-	3102: {
-		id: "SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED",
+	SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED: {
+		code: 3102,
 		msg: ["Scalar subquery column inference failed"],
 	},
-	3103: {
-		id: "IN_SUBQUERY_COLUMN_INFERENCE_FAILED",
+	IN_SUBQUERY_COLUMN_INFERENCE_FAILED: {
+		code: 3103,
 		msg: ["IN subquery column inference failed"],
 	},
 
 	// Semantic/Constraint Errors
 	// Duplicate/Existence Checks
-	3200: {
-		id: "SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS",
+	SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS: {
+		code: 3200,
 		msg: ["Schema already exists; use IF NOT EXISTS"],
 	},
-	3201: {
-		id: "SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS",
+	SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS: {
+		code: 3201,
 		msg: ["Schema does not exist; use IF EXISTS"],
 	},
-	3202: {
-		id: "TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS",
+	TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS: {
+		code: 3202,
 		msg: ["Table already exists; use IF NOT EXISTS"],
 	},
-	3203: {
-		id: "TABLE_DOES_NOT_EXIST",
+	TABLE_DOES_NOT_EXIST: {
+		code: 3203,
 		msg: ["Table does not exist"],
 	},
-	3204: {
-		id: "TABLE_DOES_NOT_EXIST_USE_IF_EXISTS",
+	TABLE_DOES_NOT_EXIST_USE_IF_EXISTS: {
+		code: 3204,
 		msg: ["Table does not exist; use IF EXISTS"],
 	},
-	3205: {
-		id: "TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS",
+	TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS: {
+		code: 3205,
 		msg: ["Type already exists; use IF NOT EXISTS"],
 	},
-	3206: {
-		id: "TYPE_DOES_NOT_EXIST_USE_IF_EXISTS",
+	TYPE_DOES_NOT_EXIST_USE_IF_EXISTS: {
+		code: 3206,
 		msg: ["Type does not exist; use IF EXISTS"],
 	},
-	3207: {
-		id: "TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS",
+	TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS: {
+		code: 3207,
 		msg: ["Type does not exist or is not an enum; use IF EXISTS"],
 	},
-	3208: {
-		id: "COLUMN_ALREADY_EXISTS",
+	COLUMN_ALREADY_EXISTS: {
+		code: 3208,
 		msg: ["Column ", " already exists"],
 	},
-	3209: {
-		id: "COLUMN_DOES_NOT_EXIST",
+	COLUMN_DOES_NOT_EXIST: {
+		code: 3209,
 		msg: ["Column ", " does not exist"],
 	},
-	3210: {
-		id: "DUPLICATE_WITH_CLAUSE_NAME",
+	DUPLICATE_WITH_CLAUSE_NAME: {
+		code: 3210,
 		msg: ["Duplicate WITH clause name"],
 	},
-	3211: {
-		id: "VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA",
+	VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA: {
+		code: 3211,
 		msg: ["View or table already exists in schema"],
 	},
 
 	// Constraint Violations
-	3300: {
-		id: "MISSING_NOT_NULL_COLUMN_IN_INSERT",
+	MISSING_NOT_NULL_COLUMN_IN_INSERT: {
+		code: 3300,
 		msg: ["Missing NOT NULL column ", " in INSERT"],
 	},
-	3301: {
-		id: "INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY",
+	INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY: {
+		code: 3301,
 		msg: ["INSERT column list must not be empty"],
 	},
-	3302: {
-		id: "ON_CONFLICT_COLUMN_LIST_MUST_NOT_BE_EMPTY",
+	ON_CONFLICT_COLUMN_LIST_MUST_NOT_BE_EMPTY: {
+		code: 3302,
 		msg: ["ON CONFLICT column list must not be empty"],
 	},
-	3303: {
-		id: "IN_LIST_MUST_NOT_BE_EMPTY",
+	IN_LIST_MUST_NOT_BE_EMPTY: {
+		code: 3303,
 		msg: ["IN list must not be empty"],
 	},
-	3304: {
-		id: "EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE",
+	EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE: {
+		code: 3304,
 		msg: ["Empty enum values list in CREATE TYPE"],
 	},
-	3305: {
-		id: "ENUM_VALUE_ALREADY_EXISTS",
+	ENUM_VALUE_ALREADY_EXISTS: {
+		code: 3305,
 		msg: ["Enum value already exists"],
 	},
 
 	// SELECT Constraints
-	3400: {
-		id: "SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST",
+	SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST: {
+		code: 3400,
 		msg: ["SELECT * must be the only projection in the list"],
 	},
-	3401: {
-		id: "SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE",
+	SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE: {
+		code: 3401,
 		msg: ["SELECT * requires a single FROM table"],
 	},
-	3402: {
-		id: "SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS",
+	SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS: {
+		code: 3402,
 		msg: ["Scalar expression in SELECT requires AS alias"],
 	},
-	3403: {
-		id: "GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE",
+	GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE: {
+		code: 3403,
 		msg: ["Grouped SELECT requires column to appear in GROUP BY or inside an aggregate"],
 	},
-	3404: {
-		id: "AMBIGUOUS_UNQUALIFIED_COLUMN",
+	AMBIGUOUS_UNQUALIFIED_COLUMN: {
+		code: 3404,
 		msg: ["Ambiguous unqualified column ", ""],
 	},
-	3405: {
-		id: "QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS",
+	QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS: {
+		code: 3405,
 		msg: ["Qualified table .* is only valid in SELECT lists"],
 	},
-	3406: {
-		id: "SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS",
+	SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS: {
+		code: 3406,
 		msg: ["SELECT result column index out of bounds"],
 	},
-	3407: {
-		id: "SELECT_RESULT_MISSING_COLUMN",
+	SELECT_RESULT_MISSING_COLUMN: {
+		code: 3407,
 		msg: ["SELECT result missing column"],
 	},
 
 	// Statement Constraints
-	3500: {
-		id: "INSERT_SELECT_COLUMN_COUNT_MISMATCH",
+	INSERT_SELECT_COLUMN_COUNT_MISMATCH: {
+		code: 3500,
 		msg: ["INSERT...SELECT column count mismatch"],
 	},
-	3501: {
-		id: "STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT",
+	STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT: {
+		code: 3501,
 		msg: ["stream() requires a row-returning statement (SELECT or RETURNING clause)"],
 	},
-	3502: {
-		id: "DROP_TABLE_TARGETS_A_VIEW_USE_DROP_VIEW",
+	DROP_TABLE_TARGETS_A_VIEW_USE_DROP_VIEW: {
+		code: 3502,
 		msg: ["DROP TABLE targets a view; use DROP VIEW"],
 	},
-	3503: {
-		id: "ALTER_TABLE_APPLIES_ONLY_TO_BASE_TABLES",
+	ALTER_TABLE_APPLIES_ONLY_TO_BASE_TABLES: {
+		code: 3503,
 		msg: ["ALTER TABLE applies only to base tables"],
 	},
-	3504: {
-		id: "TABLE_KEY_MISMATCH_IN_ALTER_TABLE",
+	TABLE_KEY_MISMATCH_IN_ALTER_TABLE: {
+		code: 3504,
 		msg: ["Table key mismatch in ALTER TABLE"],
 	},
-	3505: {
-		id: "COLUMN_RENAME_FAILED",
+	COLUMN_RENAME_FAILED: {
+		code: 3505,
 		msg: ["Column rename failed"],
 	},
 
 	// Function Constraints
-	3600: {
-		id: "THIS_FUNCTION_TAKES_NO_ARGUMENTS",
+	THIS_FUNCTION_TAKES_NO_ARGUMENTS: {
+		code: 3600,
 		msg: ["This function takes no arguments"],
 	},
-	3601: {
-		id: "FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT",
+	FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT: {
+		code: 3601,
 		msg: ["Function requires at least one argument"],
 	},
-	3602: {
-		id: "ROW_NUMBER_TAKES_NO_ARGUMENTS",
+	ROW_NUMBER_TAKES_NO_ARGUMENTS: {
+		code: 3602,
 		msg: ["ROW_NUMBER() takes no arguments"],
 	},
-	3603: {
-		id: "RANK_DENSE_RANK_TAKES_NO_ARGUMENTS",
+	RANK_DENSE_RANK_TAKES_NO_ARGUMENTS: {
+		code: 3603,
 		msg: ["RANK/DENSE_RANK takes no arguments"],
 	},
-	3604: {
-		id: "NOW_TAKES_NO_ARGUMENTS",
+	NOW_TAKES_NO_ARGUMENTS: {
+		code: 3604,
 		msg: ["now() takes no arguments"],
 	},
-	3605: {
-		id: "LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT",
+	LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT: {
+		code: 3605,
 		msg: ["LAG/LEAD requires at least 1 argument"],
 	},
-	3606: {
-		id: "INVALID_LAG_LEAD_ARGUMENTS",
+	INVALID_LAG_LEAD_ARGUMENTS: {
+		code: 3606,
 		msg: ["Invalid LAG/LEAD arguments"],
 	},
-	3607: {
-		id: "COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT",
+	COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT: {
+		code: 3607,
 		msg: ["coalesce() requires at least one argument"],
 	},
-	3608: {
-		id: "SUM_REQUIRES_AN_ARGUMENT",
+	SUM_REQUIRES_AN_ARGUMENT: {
+		code: 3608,
 		msg: ["sum() requires an argument"],
 	},
-	3609: {
-		id: "ARRAY_APPEND_REQUIRES_2_ARGUMENTS",
+	ARRAY_APPEND_REQUIRES_2_ARGUMENTS: {
+		code: 3609,
 		msg: ["array_append requires 2 arguments"],
 	},
-	3610: {
-		id: "ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT",
+	ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT: {
+		code: 3610,
 		msg: ["array_append expects (array, element)"],
 	},
-	3611: {
-		id: "ARRAY_PREPEND_REQUIRES_2_ARGUMENTS",
+	ARRAY_PREPEND_REQUIRES_2_ARGUMENTS: {
+		code: 3611,
 		msg: ["array_prepend requires 2 arguments"],
 	},
-	3612: {
-		id: "ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY",
+	ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY: {
+		code: 3612,
 		msg: ["array_prepend expects (element, array)"],
 	},
-	3613: {
-		id: "ARRAY_LENGTH_REQUIRES_2_ARGUMENTS",
+	ARRAY_LENGTH_REQUIRES_2_ARGUMENTS: {
+		code: 3613,
 		msg: ["array_length requires 2 arguments"],
 	},
-	3614: {
-		id: "ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER",
+	ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER: {
+		code: 3614,
 		msg: ["array_length expects (array, integer)"],
 	},
-	3615: {
-		id: "UNNEST_REQUIRES_1_ARGUMENT",
+	UNNEST_REQUIRES_1_ARGUMENT: {
+		code: 3615,
 		msg: ["unnest requires 1 argument"],
 	},
-	3616: {
-		id: "UNNEST_EXPECTS_AN_ARRAY",
+	UNNEST_EXPECTS_AN_ARRAY: {
+		code: 3616,
 		msg: ["unnest expects an array"],
 	},
-	3617: {
-		id: "QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED",
+	QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED: {
+		code: 3617,
 		msg: ["Qualified function names are not supported"],
 	},
-	3618: {
-		id: "STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT",
+	STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT: {
+		code: 3618,
 		msg: ["`*` is only allowed as COUNT(*) argument"],
 	},
-	3619: {
-		id: "UNKNOWN_FUNCTION",
+	UNKNOWN_FUNCTION: {
+		code: 3619,
 		msg: ["Unknown function: ", ""],
 	},
 
 	// DDL-Specific Errors
 	// CREATE SCHEMA
-	3700: {
-		id: "EXPECTED_SCHEMA_NAME_IN_CREATE_SCHEMA",
+	EXPECTED_SCHEMA_NAME_IN_CREATE_SCHEMA: {
+		code: 3700,
 		msg: ["Expected schema name in CREATE SCHEMA"],
 	},
-	3701: {
-		id: "OBSOLETE_3701_EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA",
+	OBSOLETE_3701_EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA: {
+		code: 3701,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	3702: {
-		id: "EXPECTED_NOT_AFTER_IF_IN_CREATE_SCHEMA",
+	EXPECTED_NOT_AFTER_IF_IN_CREATE_SCHEMA: {
+		code: 3702,
 		msg: ["Expected `not` after `IF` in CREATE SCHEMA"],
 	},
-	3703: {
-		id: "EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_SCHEMA",
+	EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_SCHEMA: {
+		code: 3703,
 		msg: ["Expected `exists` after `IF NOT` in CREATE SCHEMA"],
 	},
 
 	// DROP SCHEMA
-	3800: {
-		id: "EXPECTED_SCHEMA_NAME_IN_DROP_SCHEMA",
+	EXPECTED_SCHEMA_NAME_IN_DROP_SCHEMA: {
+		code: 3800,
 		msg: ["Expected schema name in DROP SCHEMA"],
 	},
-	3801: {
-		id: "OBSOLETE_3801_EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA",
+	OBSOLETE_3801_EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA: {
+		code: 3801,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
 	},
-	3802: {
-		id: "EXPECTED_EXISTS_AFTER_IF_IN_DROP_SCHEMA",
+	EXPECTED_EXISTS_AFTER_IF_IN_DROP_SCHEMA: {
+		code: 3802,
 		msg: ["Expected `exists` after `IF` in DROP SCHEMA"],
 	},
 
 	// CREATE VIEW
-	3900: {
-		id: "EXPECTED_VIEW_NAME_IN_CREATE_VIEW",
+	EXPECTED_VIEW_NAME_IN_CREATE_VIEW: {
+		code: 3900,
 		msg: ["Expected view name in CREATE VIEW"],
 	},
-	3901: {
-		id: "EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW",
+	EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW: {
+		code: 3901,
 		msg: ["Expected view name after `.` in CREATE VIEW"],
 	},
-	3902: {
-		id: "EXPECTED_AS_IN_CREATE_VIEW",
+	EXPECTED_AS_IN_CREATE_VIEW: {
+		code: 3902,
 		msg: ["Expected AS in CREATE VIEW"],
 	},
-	3903: {
-		id: "EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME",
+	EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME: {
+		code: 3903,
 		msg: ["Expected AS or `.` before view name"],
 	},
-	3904: {
-		id: "EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME",
+	EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME: {
+		code: 3904,
 		msg: ["Expected AS after qualified view name"],
 	},
 
 	// ALTER TYPE
-	4000: {
-		id: "EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE",
+	EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE: {
+		code: 4000,
 		msg: ["Expected `exists` after `IF` in ALTER TYPE"],
 	},
-	4001: {
-		id: "EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE",
+	EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE: {
+		code: 4001,
 		msg: ["Expected `.` or `ADD` in ALTER TYPE"],
 	},
-	4002: {
-		id: "EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE",
+	EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE: {
+		code: 4002,
 		msg: ["Expected `.` or `;` after type name in DROP TYPE"],
 	},
 
 	// Misc DDL
-	4100: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME",
+	EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME: {
+		code: 4100,
 		msg: ["Expected `(` after qualified table name"],
 	},
-	4101: {
-		id: "EXPECTED_NAME",
+	EXPECTED_NAME: {
+		code: 4101,
 		msg: ["Expected name"],
 	},
-	4102: {
-		id: "EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME",
+	EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME: {
+		code: 4102,
 		msg: ["Expected name after `.` in qualified name"],
 	},
-	4103: {
-		id: "EXPECTED_DOT_OR_KEYWORD_AFTER_NAME",
+	EXPECTED_DOT_OR_KEYWORD_AFTER_NAME: {
+		code: 4103,
 		msg: ["Expected `.` or keyword after name"],
 	},
 	// Group 4: EXPECTED_TYPE_NAME (consolidated from 6 codes)
-	4104: {
-		id: "OBSOLETE_4104_EXPECTED_TYPE_NAME_GENERIC",
+	OBSOLETE_4104_EXPECTED_TYPE_NAME_GENERIC: {
+		code: 4104,
 		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
-	4105: {
-		id: "EXPECTED_TYPE_NAME",
+	EXPECTED_TYPE_NAME: {
+		code: 4105,
 		msg: ["Expected type name ", ""],
 	},
-	4106: {
-		id: "OBSOLETE_4106_EXPECTED_TYPE_NAME_AFTER_CAST_AS",
+	OBSOLETE_4106_EXPECTED_TYPE_NAME_AFTER_CAST_AS: {
+		code: 4106,
 		msg: ["Use EXPECTED_TYPE_NAME with context parameter"],
 	},
-	4107: {
-		id: "EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME",
+	EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME: {
+		code: 4107,
 		msg: ["Expected `.` or `(` after table name"],
 	},
 
 	// DML/Expression-Specific Errors
 	// JOIN Operations
 	// Group 5: JOIN-related EXPECTED_* (consolidated from 9 codes to 2)
-	4200: {
-		id: "EXPECTED_JOIN_KEYWORD",
+	EXPECTED_JOIN_KEYWORD: {
+		code: 4200,
 		msg: ["Expected JOIN after ", ""],
 	},
-	4201: {
-		id: "OBSOLETE_4201_EXPECTED_JOIN_AFTER_INNER",
+	OBSOLETE_4201_EXPECTED_JOIN_AFTER_INNER: {
+		code: 4201,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4202: {
-		id: "OBSOLETE_4202_EXPECTED_JOIN_AFTER_LEFT_OUTER",
+	OBSOLETE_4202_EXPECTED_JOIN_AFTER_LEFT_OUTER: {
+		code: 4202,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4203: {
-		id: "OBSOLETE_4203_EXPECTED_JOIN_AFTER_RIGHT_OUTER",
+	OBSOLETE_4203_EXPECTED_JOIN_AFTER_RIGHT_OUTER: {
+		code: 4203,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4204: {
-		id: "OBSOLETE_4204_EXPECTED_JOIN_AFTER_FULL_OUTER",
+	OBSOLETE_4204_EXPECTED_JOIN_AFTER_FULL_OUTER: {
+		code: 4204,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4205: {
-		id: "OBSOLETE_4205_EXPECTED_JOIN_KEYWORD_GENERIC",
+	OBSOLETE_4205_EXPECTED_JOIN_KEYWORD_GENERIC: {
+		code: 4205,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4206: {
-		id: "OBSOLETE_4206_EXPECTED_OUTER_OR_JOIN_AFTER_LEFT",
+	OBSOLETE_4206_EXPECTED_OUTER_OR_JOIN_AFTER_LEFT: {
+		code: 4206,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4207: {
-		id: "OBSOLETE_4207_EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT",
+	OBSOLETE_4207_EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT: {
+		code: 4207,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4208: {
-		id: "OBSOLETE_4208_EXPECTED_OUTER_OR_JOIN_AFTER_FULL",
+	OBSOLETE_4208_EXPECTED_OUTER_OR_JOIN_AFTER_FULL: {
+		code: 4208,
 		msg: ["Use EXPECTED_JOIN_KEYWORD with context parameter"],
 	},
-	4209: {
-		id: "EXPECTED_ON_AFTER_JOIN_TABLE",
+	EXPECTED_ON_AFTER_JOIN_TABLE: {
+		code: 4209,
 		msg: ["Expected ON after JOIN table"],
 	},
-	4210: {
-		id: "EXPECTED_ON_KEYWORD",
+	EXPECTED_ON_KEYWORD: {
+		code: 4210,
 		msg: ["Expected ON keyword"],
 	},
 
 	// CASE Expression
-	4300: {
-		id: "CASE_REQUIRES_AT_LEAST_ONE_WHEN",
+	CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
+		code: 4300,
 		msg: ["CASE requires at least one WHEN"],
 	},
-	4301: {
-		id: "EXPECTED_THEN_AFTER_CASE_WHEN",
+	EXPECTED_THEN_AFTER_CASE_WHEN: {
+		code: 4301,
 		msg: ["Expected THEN after CASE WHEN"],
 	},
 
 	// BETWEEN/IN Operations
-	4400: {
-		id: "EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS",
+	EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS: {
+		code: 4400,
 		msg: ["Expected AND between BETWEEN bounds"],
 	},
-	4401: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_IN",
+	EXPECTED_OPEN_PAREN_AFTER_IN: {
+		code: 4401,
 		msg: ["Expected `(` after IN"],
 	},
-	4402: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST: {
+		code: 4402,
 		msg: ["Expected `,` or `)` in IN list"],
 	},
 
 	// CAST Operations
-	4500: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_CAST",
+	EXPECTED_OPEN_PAREN_AFTER_CAST: {
+		code: 4500,
 		msg: ["Expected `(` after CAST"],
 	},
-	4501: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_CAST_TYPE",
+	EXPECTED_CLOSE_PAREN_AFTER_CAST_TYPE: {
+		code: 4501,
 		msg: ["Expected `)` after CAST type"],
 	},
-	4502: {
-		id: "EXPECTED_AS_IN_CAST",
+	EXPECTED_AS_IN_CAST: {
+		code: 4502,
 		msg: ["Expected AS in CAST"],
 	},
-	4503: {
-		id: "CANNOT_CAST_BOOLEAN_TO_INTEGER",
+	CANNOT_CAST_BOOLEAN_TO_INTEGER: {
+		code: 4503,
 		msg: ["Cannot cast boolean to integer"],
 	},
-	4504: {
-		id: "CANNOT_CAST_INTEGER_TO_BOOLEAN",
+	CANNOT_CAST_INTEGER_TO_BOOLEAN: {
+		code: 4504,
 		msg: ["Cannot cast integer to boolean"],
 	},
 
 	// Window Functions
-	4600: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_OVER",
+	EXPECTED_OPEN_PAREN_AFTER_OVER: {
+		code: 4600,
 		msg: ["Expected ( after OVER"],
 	},
-	4601: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE",
+	EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE: {
+		code: 4601,
 		msg: ["Expected ) after OVER clause"],
 	},
-	4602: {
-		id: "EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE",
+	EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE: {
+		code: 4602,
 		msg: ["Expected PARTITION BY or ORDER BY in OVER clause"],
 	},
-	4603: {
-		id: "EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY",
+	EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY: {
+		code: 4603,
 		msg: ["Expected ORDER BY or ) after PARTITION BY"],
 	},
 
 	// Array Operations
-	4700: {
-		id: "EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT",
+	EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT: {
+		code: 4700,
 		msg: ["Expected `]` after array subscript"],
 	},
-	4701: {
-		id: "EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR",
+	EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR: {
+		code: 4701,
 		msg: ["Expected `,` or `]` in ARRAY constructor"],
 	},
-	4702: {
-		id: "EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE",
+	EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE: {
+		code: 4702,
 		msg: ["Expected ] after [ in array type"],
 	},
 
 	// Operators
-	4800: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_OPERATOR",
+	EXPECTED_OPEN_PAREN_AFTER_OPERATOR: {
+		code: 4800,
 		msg: ["Expected `(` after OPERATOR"],
 	},
-	4801: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN",
+	EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN: {
+		code: 4801,
 		msg: ["Expected ) after OPERATOR("],
 	},
-	4802: {
-		id: "EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN",
+	EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN: {
+		code: 4802,
 		msg: ["Expected operator after OPERATOR("],
 	},
-	4803: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME",
+	EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME: {
+		code: 4803,
 		msg: ["Expected ( after ANY/ALL/SOME"],
 	},
-	4804: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_ANY_ALL_SOME_EXPRESSION",
+	EXPECTED_CLOSE_PAREN_AFTER_ANY_ALL_SOME_EXPRESSION: {
+		code: 4804,
 		msg: ["Expected ) after ANY/ALL/SOME expression"],
 	},
 
 	// EXISTS/Subquery
-	4900: {
-		id: "EXPECTED_OPEN_PAREN_AFTER_EXISTS",
+	EXPECTED_OPEN_PAREN_AFTER_EXISTS: {
+		code: 4900,
 		msg: ["Expected `(` after EXISTS"],
 	},
-	4901: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY",
+	EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY: {
+		code: 4901,
 		msg: ["Expected `)` after subquery"],
 	},
 
 	// Misc Expression
-	5000: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST: {
+		code: 5000,
 		msg: ["Expected `,` or `)` in argument list"],
 	},
-	5001: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT",
+	EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT: {
+		code: 5001,
 		msg: ["Expected `)` after function name in DEFAULT"],
 	},
-	5002: {
-		id: "EXPECTED_NULL_AFTER_IS",
+	EXPECTED_NULL_AFTER_IS: {
+		code: 5002,
 		msg: ["Expected NULL after IS"],
 	},
-	5003: {
-		id: "EXPECTED_NULL_AFTER_IS_NOT",
+	EXPECTED_NULL_AFTER_IS_NOT: {
+		code: 5003,
 		msg: ["Expected NULL after IS NOT"],
 	},
-	5004: {
-		id: "EXPECTED_NULL_AFTER_DROP_NOT",
+	EXPECTED_NULL_AFTER_DROP_NOT: {
+		code: 5004,
 		msg: ["Expected NULL after DROP NOT"],
 	},
-	5005: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_STAR",
+	EXPECTED_CLOSE_PAREN_AFTER_STAR: {
+		code: 5005,
 		msg: ["Expected `)` after `*`"],
 	},
-	5006: {
-		id: "EXPECTED_CLOSE_PAREN",
+	EXPECTED_CLOSE_PAREN: {
+		code: 5006,
 		msg: ["Expected `)`"],
 	},
-	5007: {
-		id: "UNSUPPORTED_PARENTHESIZED_EXPRESSION",
+	UNSUPPORTED_PARENTHESIZED_EXPRESSION: {
+		code: 5007,
 		msg: ["Unsupported parenthesized expression"],
 	},
 
 	// Type/Data Specific Errors
 	// VARCHAR/NUMERIC
-	5100: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH",
+	EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH: {
+		code: 5100,
 		msg: ["Expected ) after VARCHAR length"],
 	},
-	5101: {
-		id: "EXPECTED_NUMBER_FOR_VARCHAR_LENGTH",
+	EXPECTED_NUMBER_FOR_VARCHAR_LENGTH: {
+		code: 5101,
 		msg: ["Expected number for VARCHAR length"],
 	},
-	5102: {
-		id: "EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE",
+	EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE: {
+		code: 5102,
 		msg: ["Expected ) after NUMERIC scale"],
 	},
-	5103: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION: {
+		code: 5103,
 		msg: ["Expected , or ) after NUMERIC precision"],
 	},
-	5104: {
-		id: "EXPECTED_PRECISION_NUMBER",
+	EXPECTED_PRECISION_NUMBER: {
+		code: 5104,
 		msg: ["Expected precision number"],
 	},
-	5105: {
-		id: "EXPECTED_SCALE_NUMBER",
+	EXPECTED_SCALE_NUMBER: {
+		code: 5105,
 		msg: ["Expected scale number"],
 	},
 
 	// DEFAULT Values
-	5200: {
-		id: "DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL",
+	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL: {
+		code: 5200,
 		msg: ["DEFAULT value type mismatch: expected boolean column for boolean literal"],
 	},
-	5201: {
-		id: "DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC_COLUMN_FOR_NUMERIC_LITERAL",
+	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC_COLUMN_FOR_NUMERIC_LITERAL: {
+		code: 5201,
 		msg: ["DEFAULT value type mismatch: expected numeric column for numeric literal"],
 	},
-	5202: {
-		id: "DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID_COLUMN_FOR_STRING_LITERAL",
+	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID_COLUMN_FOR_STRING_LITERAL: {
+		code: 5202,
 		msg: ["DEFAULT value type mismatch: expected text/uuid column for string literal"],
 	},
-	5203: {
-		id: "DEFAULT_VALUE_TYPE_MISMATCH_NOW_REQUIRES_TIMESTAMP_COLUMN",
+	DEFAULT_VALUE_TYPE_MISMATCH_NOW_REQUIRES_TIMESTAMP_COLUMN: {
+		code: 5203,
 		msg: ["DEFAULT value type mismatch: now() requires timestamp column"],
 	},
-	5204: {
-		id: "DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN",
+	DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN: {
+		code: 5204,
 		msg: ["DEFAULT value type mismatch: UUID function requires uuid column"],
 	},
 
 	// FETCH/LIMIT
-	5300: {
-		id: "EXPECTED_FIRST_OR_NEXT_AFTER_FETCH",
+	EXPECTED_FIRST_OR_NEXT_AFTER_FETCH: {
+		code: 5300,
 		msg: ["Expected FIRST or NEXT after FETCH"],
 	},
-	5301: {
-		id: "EXPECTED_ROW_OR_ROWS_IN_FETCH",
+	EXPECTED_ROW_OR_ROWS_IN_FETCH: {
+		code: 5301,
 		msg: ["Expected ROW or ROWS in FETCH"],
 	},
-	5302: {
-		id: "EXPECTED_ONLY_AFTER_FETCH_ROW",
+	EXPECTED_ONLY_AFTER_FETCH_ROW: {
+		code: 5302,
 		msg: ["Expected ONLY after FETCH … ROW"],
 	},
-	5303: {
-		id: "EXPECTED_ONLY_AFTER_FETCH_ROWS",
+	EXPECTED_ONLY_AFTER_FETCH_ROWS: {
+		code: 5303,
 		msg: ["Expected ONLY after FETCH … ROWS"],
 	},
 
 	// Misc
-	5400: {
-		id: "EXPECTED_TO_IN_RENAME_COLUMN",
+	EXPECTED_TO_IN_RENAME_COLUMN: {
+		code: 5400,
 		msg: ["Expected TO in RENAME COLUMN"],
 	},
-	5401: {
-		id: "EXPECTED_OLD_COLUMN_NAME_IN_RENAME_COLUMN",
+	EXPECTED_OLD_COLUMN_NAME_IN_RENAME_COLUMN: {
+		code: 5401,
 		msg: ["Expected old column name in RENAME COLUMN"],
 	},
-	5402: {
-		id: "EXPECTED_NEW_COLUMN_NAME_AFTER_TO_IN_RENAME_COLUMN",
+	EXPECTED_NEW_COLUMN_NAME_AFTER_TO_IN_RENAME_COLUMN: {
+		code: 5402,
 		msg: ["Expected new column name after TO in RENAME COLUMN"],
 	},
-	5403: {
-		id: "UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE",
+	UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE: {
+		code: 5403,
 		msg: ["Unsupported ALTER COLUMN SET clause"],
 	},
-	5404: {
-		id: "UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE",
+	UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE: {
+		code: 5404,
 		msg: ["Unsupported ALTER COLUMN DROP clause"],
 	},
-	5405: {
-		id: "UNSUPPORTED_ALTER_TABLE_ACTION",
+	UNSUPPORTED_ALTER_TABLE_ACTION: {
+		code: 5405,
 		msg: ["Unsupported ALTER TABLE action"],
 	},
-	5406: {
-		id: "UNEXPECTED_END_IN_CREATE_TYPE_ENUM_BODY",
+	UNEXPECTED_END_IN_CREATE_TYPE_ENUM_BODY: {
+		code: 5406,
 		msg: ["Unexpected end in CREATE TYPE enum body"],
 	},
-	5407: {
-		id: "EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE",
+	EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE: {
+		code: 5407,
 		msg: ["Expected `,` or `)` after DEFAULT value"],
 	},
-	5408: {
-		id: "EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET",
+	EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET: {
+		code: 5408,
 		msg: ["Expected `,`, WHERE, or end after ON CONFLICT SET"],
 	},
-} as const satisfies Record<
-	number,
-	{
-		id: string
-		msg: [string, ...string[]]
-	}
+} as const satisfies Record<string, ErrorDescription>
+
+type ErrorArgs<ED extends ErrorDescription> = Tuple<
+	string | number,
+	Dec[ED["msg"]["length"]] extends infer N extends TupleSize ? N : never
 >
-
-type ErrorsConst = typeof errors
-
-export type E = {
-	-readonly [K in keyof ErrorsConst as ErrorsConst[K]["id"]]: { code: K } & ErrorsConst[K] extends infer T
-		? { -readonly [K in keyof T]: T[K] }
-		: never
-}
-
-type ErrorArgs<ID extends ErrorIds> = Tuple<string | number, ErrorArgsNumber<ID>>
-
-type ErrorArgsNumber<ID extends ErrorIds> = Dec[E[ID]["msg"]["length"]]
 
 type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[]> = Msg extends readonly [
 	infer First,
@@ -1550,16 +1557,16 @@ type JoinWithArgs<Msg extends readonly string[], Args extends (string | number)[
 		: never
 	: ""
 
-const duplicateIds = Map.groupBy(Object.entries(errors), ([, e]) => e.id)
+const duplicateCodes = Map.groupBy(Object.entries(errors), ([, e]) => e.code)
 	.entries()
 	.map(
-		([id, entries]) =>
-			entries.length > 1 && `Error codes ${entries.map(([code]) => code).join(", ")} have the same id "${id}"`,
+		([code, entries]) =>
+			entries.length > 1 && `Error codes ${entries.map(([id]) => id).join(", ")} have the same id "${code}"`,
 	)
 	.filter(Boolean)
 	.toArray()
 	.join("; ")
 
-if (duplicateIds) {
-	throw new Error(duplicateIds)
+if (duplicateCodes) {
+	throw new Error(duplicateCodes)
 }
