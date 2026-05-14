@@ -4,7 +4,7 @@ import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError } from "../dbtyper-error.ts"
+import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 
 /** After `schema.` in qualified name. */
@@ -13,7 +13,7 @@ type ParseQualifiedSecondIdent<AfterDot extends ParserMonad, A extends string> =
 		? SkipToken<AfterDot> extends infer R2 extends ParserMonad
 			? T2 extends TokenIdent<infer B extends string>
 				? [R2, null, A, B]
-				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME", []>>
+				: SkipFailedQualifiedName<R2, FormatError<Errors["EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME"], []>>
 			: never
 		: never
 
@@ -25,7 +25,7 @@ type ParseAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabas
 			? SkipToken<AfterFirst> extends infer R1 extends ParserMonad
 				? T1 extends TokenKey<".">
 					? ParseQualifiedSecondIdent<R1, A>
-					: SkipFailedQualifiedName<R1, FormatError<"EXPECTED_DOT_OR_KEYWORD_AFTER_NAME", []>>
+					: SkipFailedQualifiedName<R1, FormatError<Errors["EXPECTED_DOT_OR_KEYWORD_AFTER_NAME"], []>>
 				: never
 			: never
 
@@ -35,6 +35,6 @@ export type ParseQualifiedName<Tokens extends ParserMonad, Db extends JsqlDataba
 		? SkipToken<Tokens> extends infer AfterFirst extends ParserMonad
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_NAME", []>>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_NAME"], []>>
 			: never
 		: never

@@ -5,7 +5,7 @@ import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
@@ -17,7 +17,7 @@ export type ParseAlterType<Tokens extends ParserMonad, Db extends JsqlDatabaseSh
 				? SkipToken<A0> extends infer A1 extends ParserMonad
 					? ParseAlterTypeQualified<A1, Db, true>
 					: never
-				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE", []>>
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE"], []>>
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>
 
@@ -25,7 +25,7 @@ export type ParseAlterType<Tokens extends ParserMonad, Db extends JsqlDatabaseSh
 type ParseAlterQualifiedSecondIdent<AfterDot extends ParserMonad, A extends string> =
 	PeekToken<AfterDot> extends TokenIdent<infer B extends string>
 		? [SkipToken<AfterDot>, null, A, B]
-		: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_TYPE_NAME", ["after `.` in ALTER TYPE"]>>
+		: SkipFailedQualifiedName<AfterDot, FormatError<Errors["EXPECTED_TYPE_NAME"], ["after `.` in ALTER TYPE"]>>
 
 /** After first identifier (type or schema). */
 type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
@@ -33,13 +33,13 @@ type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDa
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends TokenKey<".">
 			? ParseAlterQualifiedSecondIdent<SkipToken<AfterFirst>, A>
-			: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE", []>>
+			: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE"], []>>
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
 type ParseQualifiedTypeNameForAlter<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: SkipFailedQualifiedName<Tokens, FormatError<"EXPECTED_TYPE_NAME", ["in ALTER TYPE"]>>
+		: SkipFailedQualifiedName<Tokens, FormatError<Errors["EXPECTED_TYPE_NAME"], ["in ALTER TYPE"]>>
 
 type ParseAlterTypeQualified<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	ParseQualifiedTypeNameForAlter<Tokens, Db> extends [
@@ -57,11 +57,11 @@ type ParseAlterTypeQualified<Tokens extends ParserMonad, Db extends JsqlDatabase
 					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
 					: SkipFailedExpression<
 								R,
-								FormatError<"TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS", []>
+								FormatError<Errors["TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS"], []>
 						  > extends [infer Rest extends ParserMonad, infer Err]
 						? [Rest, Db, Err]
 						: never
-			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<"INVALID_ALTER_TYPE_PARSE", []>]
+			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<Errors["INVALID_ALTER_TYPE_PARSE"], []>]
 		: never
 
 type ParseAlterTypeAction<
@@ -80,13 +80,13 @@ type ParseAlterTypeAction<
 							? ParseAlterTypeAddValue<AfterValue, Db, Sch, Typ, Values>
 							: SkipFailedExpression<
 										AfterValue,
-										FormatError<"EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE", []>
+										FormatError<Errors["EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE"], []>
 								  > extends [infer Rest extends ParserMonad, infer Err]
 								? [Rest, Db, Err]
 								: never
 						: never
 					: never
-				: SkipFailedStatement<AfterAdd, Db, FormatError<"EXPECTED_ADD_IN_ALTER_TYPE", []>>
+				: SkipFailedStatement<AfterAdd, Db, FormatError<Errors["EXPECTED_ADD_IN_ALTER_TYPE"], []>>
 			: never
 		: never
 
@@ -101,14 +101,14 @@ type ParseAlterTypeAddValue<
 		? SkipToken<Tokens> extends infer AfterVal extends ParserMonad
 			? ValTok extends TokenString<infer NewValue extends string>
 				? NewValue extends Values[number]
-					? [AfterVal, Db, FormatError<"ENUM_VALUE_ALREADY_EXISTS", []>]
+					? [AfterVal, Db, FormatError<Errors["ENUM_VALUE_ALREADY_EXISTS"], []>]
 					: JsqlDbReplaceEnum<Db, Sch, Typ, readonly [...Values, NewValue]> extends infer NewDb extends
 								JsqlDatabaseShape
 						? ParseAlterTypeCloseSemi<AfterVal, NewDb>
 						: never
 				: SkipFailedExpression<
 							AfterVal,
-							FormatError<"EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE", []>
+							FormatError<Errors["EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE"], []>
 					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
@@ -118,4 +118,4 @@ type ParseAlterTypeAddValue<
 type ParseAlterTypeCloseSemi<Tokens extends ParserMonad, NewDb extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
-		: SkipFailedStatement<Tokens, NewDb, FormatError<"EXPECTED_SEMICOLON", ["ALTER TYPE"]>>
+		: SkipFailedStatement<Tokens, NewDb, FormatError<Errors["EXPECTED_SEMICOLON"], ["ALTER TYPE"]>>

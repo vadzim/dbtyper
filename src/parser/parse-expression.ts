@@ -6,7 +6,7 @@ import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { FormatError, Errors, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
@@ -172,10 +172,10 @@ type ParseSqlTypeName<Tokens extends ParserMonad, Acc extends readonly string[] 
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
 			? Acc extends readonly []
-				? SkipFailedExpression<Tokens, FormatError<"EXPECTED_TYPE_NAME", [""]>>
+				? SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 				: [Tokens, Acc]
 			: Acc extends readonly []
-				? SkipFailedExpression<Tokens, FormatError<"EXPECTED_TYPE_NAME", [""]>>
+				? SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 				: [Tokens, Acc]
 
 /** True when `C` has exactly one own key (one projected column). */
@@ -208,7 +208,10 @@ type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends ExprParseEn
 												: Parts extends readonly []
 													? SkipFailedExpressionWithEnv<
 															R4,
-															FormatError<"EXPECTED_TYPE_NAME", ["after CAST ... AS"]>,
+															FormatError<
+																Errors["EXPECTED_TYPE_NAME"],
+																["after CAST ... AS"]
+															>,
 															Env2
 														>
 													: Parts extends readonly string[]
@@ -227,7 +230,7 @@ type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends ExprParseEn
 																	: [
 																			R5,
 																			FormatError<
-																				"EXPECTED_CLOSE_PAREN_AFTER_CAST_TYPE",
+																				Errors["EXPECTED_CLOSE_PAREN_AFTER_CAST_TYPE"],
 																				[]
 																			>,
 																			Env2,
@@ -237,11 +240,15 @@ type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends ExprParseEn
 														: never
 											: never
 										: never
-									: SkipFailedExpressionWithEnv<R2, FormatError<"EXPECTED_AS_IN_CAST", []>, Env2>
+									: SkipFailedExpressionWithEnv<
+											R2,
+											FormatError<Errors["EXPECTED_AS_IN_CAST"], []>,
+											Env2
+										>
 								: never
 						: never
 					: never
-				: SkipFailedExpressionWithEnv<R0, FormatError<"EXPECTED_OPEN_PAREN_AFTER_CAST", []>, Env>
+				: SkipFailedExpressionWithEnv<R0, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_CAST"], []>, Env>
 			: never
 		: never
 
@@ -252,7 +259,7 @@ type ParsePgCastSuffixTail<Tokens extends ParserMonad, Acc extends ScalarExprAst
 				? Parts extends DbtyperErrorShape
 					? SkipFailedExpression<R1, Parts>
 					: Parts extends readonly []
-						? SkipFailedExpression<R1, FormatError<"EXPECTED_TYPE_NAME", ["after ::"]>>
+						? SkipFailedExpression<R1, FormatError<Errors["EXPECTED_TYPE_NAME"], ["after ::"]>>
 						: Parts extends readonly string[]
 							? ParsePgCastSuffixTail<R1, { kind: "pg_cast"; expr: Acc; type_parts: Parts }>
 							: never
@@ -301,7 +308,7 @@ type ParseInListUntypedAccum<
 							: never
 						: SkipFailedExpressionWithEnv<
 								R1,
-								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST", []>,
+								FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST"], []>,
 								Env1
 							>
 				: never
@@ -309,7 +316,7 @@ type ParseInListUntypedAccum<
 
 type ParseInListUntypedTail<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<")">
-		? SkipFailedExpressionWithEnv<Tokens, FormatError<"IN_LIST_MUST_NOT_BE_EMPTY", []>, Env>
+		? SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["IN_LIST_MUST_NOT_BE_EMPTY"], []>, Env>
 		: PeekToken<Tokens> extends TokenKey<"select">
 			? ParseParenEnclosedSelect<Tokens, Env["db"], Env["params"], Env["outerScope"]> extends [
 					infer R9 extends ParserMonad,
@@ -340,7 +347,7 @@ type ParseInListUntypedAfterInKw<Tokens extends ParserMonad, L extends ScalarExp
 								? [R9, { kind: "in_list"; expr: L; items: ListRes }, Env9]
 								: never
 					: never
-				: SkipFailedExpressionWithEnv<R8, FormatError<"EXPECTED_OPEN_PAREN_AFTER_IN", []>, Env>
+				: SkipFailedExpressionWithEnv<R8, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_IN"], []>, Env>
 			: never
 		: never
 
@@ -368,7 +375,7 @@ type ParseBetweenAfterL<Tokens extends ParserMonad, L extends ScalarExprAst, Env
 							: never
 						: SkipFailedExpressionWithEnv<
 								Rlow,
-								FormatError<"EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS", []>,
+								FormatError<Errors["EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS"], []>,
 								EnvLow
 							>
 				: never
@@ -407,12 +414,12 @@ type ParseCaseExpectEndKeyword<
 	PeekToken<Tokens> extends TokenKey<"end">
 		? SkipToken<Tokens> extends infer Rend extends ParserMonad
 			? Acc extends readonly []
-				? SkipFailedExpressionWithEnv<Rend, FormatError<"CASE_REQUIRES_AT_LEAST_ONE_WHEN", []>, Env>
+				? SkipFailedExpressionWithEnv<Rend, FormatError<Errors["CASE_REQUIRES_AT_LEAST_ONE_WHEN"], []>, Env>
 				: Disc extends null
 					? [Rend, { kind: "case_searched"; arms: Acc; else_: ElseB }, Env]
 					: [Rend, { kind: "case_simple"; discriminant: Disc; arms: Acc; else_: ElseB }, Env]
 			: never
-		: SkipFailedExpressionWithEnv<Tokens, FormatError<"EXPECTED_END_AFTER_CASE", []>, Env>
+		: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_END_AFTER_CASE"], []>, Env>
 
 type ParseCaseAfterOneArm<
 	Tokens extends ParserMonad,
@@ -438,7 +445,7 @@ type ParseCaseAfterOneArm<
 				: never
 			: PeekToken<Tokens> extends TokenKey<"end">
 				? ParseCaseExpectEndKeyword<Tokens, Acc, null, Disc, Env>
-				: SkipFailedExpressionWithEnv<Tokens, FormatError<"EXPECTED_WHEN_ELSE_OR_END_IN_CASE", []>, Env>
+				: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_WHEN_ELSE_OR_END_IN_CASE"], []>, Env>
 
 type ParseCaseWhenArmsThenElseEnd<
 	Tokens extends ParserMonad,
@@ -475,7 +482,11 @@ type ParseCaseWhenArmsThenElseEnd<
 											: never
 									: never
 								: never
-							: SkipFailedExpressionWithEnv<Rcond, FormatError<"EXPECTED_THEN_AFTER_CASE_WHEN", []>, EnvW>
+							: SkipFailedExpressionWithEnv<
+									Rcond,
+									FormatError<Errors["EXPECTED_THEN_AFTER_CASE_WHEN"], []>,
+									EnvW
+								>
 						: never
 				: never
 			: never
@@ -495,7 +506,11 @@ type ParseCaseAfterCaseKw<Tokens extends ParserMonad, Env extends ExprParseEnv> 
 				: Dast extends ScalarExprAst
 					? PeekToken<Rd> extends TokenKey<"when">
 						? ParseCaseWhenArmsThenElseEnd<Rd, readonly [], Dast, EnvD>
-						: SkipFailedExpressionWithEnv<Rd, FormatError<"EXPECTED_WHEN_AFTER_CASE_EXPRESSION", []>, EnvD>
+						: SkipFailedExpressionWithEnv<
+								Rd,
+								FormatError<Errors["EXPECTED_WHEN_AFTER_CASE_EXPRESSION"], []>,
+								EnvD
+							>
 					: never
 			: never
 
@@ -506,13 +521,13 @@ type ParseAfterIsUntyped<Tokens extends ParserMonad, L extends ScalarExprAst, En
 				? SkipToken<R5> extends infer R6 extends ParserMonad
 					? [R6, { kind: "is_not_null"; expr: L }, Env]
 					: never
-				: SkipFailedExpressionWithEnv<R5, FormatError<"EXPECTED_NULL_AFTER_IS_NOT", []>, Env>
+				: SkipFailedExpressionWithEnv<R5, FormatError<Errors["EXPECTED_NULL_AFTER_IS_NOT"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? SkipToken<Tokens> extends infer R7 extends ParserMonad
 				? [R7, { kind: "is_null"; expr: L }, Env]
 				: never
-			: SkipFailedExpressionWithEnv<Tokens, FormatError<"EXPECTED_NULL_AFTER_IS", []>, Env>
+			: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_NULL_AFTER_IS"], []>, Env>
 
 type IsRelOp<T> =
 	T extends TokenKey<"=">
@@ -596,7 +611,7 @@ type ParseAnyAllSomeAfterOp<Tokens extends ParserMonad, L extends ScalarExprAst,
 											: SkipFailedExpressionWithEnv<
 													R4,
 													FormatError<
-														"EXPECTED_CLOSE_PAREN_AFTER_ANY_ALL_SOME_EXPRESSION",
+														Errors["EXPECTED_CLOSE_PAREN_AFTER_ANY_ALL_SOME_EXPRESSION"],
 														[]
 													>,
 													Env4
@@ -604,7 +619,11 @@ type ParseAnyAllSomeAfterOp<Tokens extends ParserMonad, L extends ScalarExprAst,
 										: never
 								: never
 						: never
-					: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME", []>, Env>
+					: SkipFailedExpressionWithEnv<
+							R1,
+							FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME"], []>,
+							Env
+						>
 				: never
 			: never
 		: never
@@ -761,9 +780,13 @@ type ParseNotScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv>
 									? [Rex2, { kind: "exists_subquery"; sub: Sub }, Env]
 									: never
 							: never
-						: SkipFailedExpressionWithEnv<Rex1, FormatError<"EXPECTED_SELECT_IN_EXISTS_SUBQUERY", []>, Env>
+						: SkipFailedExpressionWithEnv<
+								Rex1,
+								FormatError<Errors["EXPECTED_SELECT_IN_EXISTS_SUBQUERY"], []>,
+								Env
+							>
 					: never
-				: SkipFailedExpressionWithEnv<Rex0, FormatError<"EXPECTED_OPEN_PAREN_AFTER_EXISTS", []>, Env>
+				: SkipFailedExpressionWithEnv<Rex0, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_EXISTS"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"not">
 			? SkipToken<Tokens> extends infer Rn extends ParserMonad
@@ -879,7 +902,7 @@ type ResolveFunctionCall<
 						? SqlBigint
 						: never
 				: never
-			: FormatError<"STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT", []>
+			: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
 		: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
 			? ArgsRes extends DbtyperErrorShape
 				? ArgsRes
@@ -890,30 +913,30 @@ type ResolveFunctionCall<
 							? ArgsRes extends readonly [SqlTypeShape, ...infer _Rest]
 								? SqlText
 								: ArgsRes extends readonly []
-									? FormatError<"FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT", []>
-									: FormatError<"FUNCTION_EXPECTS_TEXT_ARGUMENT", []>
+									? FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
+									: FormatError<Errors["FUNCTION_EXPECTS_TEXT_ARGUMENT"], []>
 							: L extends "coalesce"
 								? ArgsRes extends readonly []
-									? FormatError<"COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT", []>
+									? FormatError<Errors["COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
 									: ArgsRes[0] extends SqlTypeShape
 										? ArgsRes[0]
 										: SqlUnknown
 								: L extends "now"
 									? ArgsRes extends readonly []
 										? SqlTimestamp
-										: FormatError<"NOW_TAKES_NO_ARGUMENTS", []>
+										: FormatError<Errors["NOW_TAKES_NO_ARGUMENTS"], []>
 									: L extends "sum" | "avg"
 										? ArgsRes extends readonly [SqlTypeShape, ...infer _R]
 											? SqlNumeric
-											: FormatError<"SUM_REQUIRES_AN_ARGUMENT", []>
+											: FormatError<Errors["SUM_REQUIRES_AN_ARGUMENT"], []>
 										: L extends "min" | "max"
 											? ArgsRes extends readonly [infer First extends SqlTypeShape, ...infer _R]
 												? First
-												: FormatError<"FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT", []>
+												: FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
 											: L extends "uuid_generate_v4" | "gen_random_uuid"
 												? ArgsRes extends readonly []
 													? SqlUuid
-													: FormatError<"THIS_FUNCTION_TAKES_NO_ARGUMENTS", []>
+													: FormatError<Errors["THIS_FUNCTION_TAKES_NO_ARGUMENTS"], []>
 												: L extends "array_length"
 													? ArgsRes extends readonly [
 															infer S1 extends SqlTypeShape,
@@ -921,8 +944,11 @@ type ResolveFunctionCall<
 														]
 														? S1["type"] extends "array" | "unknown"
 															? SqlInteger
-															: FormatError<"ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER", []>
-														: FormatError<"ARRAY_LENGTH_REQUIRES_2_ARGUMENTS", []>
+															: FormatError<
+																	Errors["ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER"],
+																	[]
+																>
+														: FormatError<Errors["ARRAY_LENGTH_REQUIRES_2_ARGUMENTS"], []>
 													: L extends "array_append"
 														? ArgsRes extends readonly [
 																infer S1 extends SqlTypeShape,
@@ -930,8 +956,14 @@ type ResolveFunctionCall<
 															]
 															? S1["type"] extends "array" | "unknown"
 																? SqlUnknown
-																: FormatError<"ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT", []>
-															: FormatError<"ARRAY_APPEND_REQUIRES_2_ARGUMENTS", []>
+																: FormatError<
+																		Errors["ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT"],
+																		[]
+																	>
+															: FormatError<
+																	Errors["ARRAY_APPEND_REQUIRES_2_ARGUMENTS"],
+																	[]
+																>
 														: L extends "array_prepend"
 															? ArgsRes extends readonly [
 																	SqlTypeShape,
@@ -940,18 +972,27 @@ type ResolveFunctionCall<
 																? S2["type"] extends "array" | "unknown"
 																	? SqlUnknown
 																	: FormatError<
-																			"ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY",
+																			Errors["ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY"],
 																			[]
 																		>
-																: FormatError<"ARRAY_PREPEND_REQUIRES_2_ARGUMENTS", []>
+																: FormatError<
+																		Errors["ARRAY_PREPEND_REQUIRES_2_ARGUMENTS"],
+																		[]
+																	>
 															: L extends "unnest"
 																? ArgsRes extends readonly [
 																		infer S1 extends SqlTypeShape,
 																	]
 																	? S1["type"] extends "array" | "unknown"
 																		? SqlUnknown
-																		: FormatError<"UNNEST_EXPECTS_AN_ARRAY", []>
-																	: FormatError<"UNNEST_REQUIRES_1_ARGUMENT", []>
+																		: FormatError<
+																				Errors["UNNEST_EXPECTS_AN_ARRAY"],
+																				[]
+																			>
+																	: FormatError<
+																			Errors["UNNEST_REQUIRES_1_ARGUMENT"],
+																			[]
+																		>
 																: "functions" extends keyof Db
 																	? Db["functions"] extends Record<string, unknown>
 																		? L extends keyof Db["functions"]
@@ -967,9 +1008,15 @@ type ResolveFunctionCall<
 																							}
 																						: SqlUnknown
 																				: SqlUnknown
-																			: FormatError<"UNKNOWN_FUNCTION", [Name]>
-																		: FormatError<"UNKNOWN_FUNCTION", [Name]>
-																	: FormatError<"UNKNOWN_FUNCTION", [Name]>
+																			: FormatError<
+																					Errors["UNKNOWN_FUNCTION"],
+																					[Name]
+																				>
+																		: FormatError<
+																				Errors["UNKNOWN_FUNCTION"],
+																				[Name]
+																			>
+																	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
 					: never
 			: never
 
@@ -983,11 +1030,11 @@ type ResolveWindowFunction<
 > = L extends "row_number"
 	? Args extends readonly []
 		? SqlBigint
-		: FormatError<"ROW_NUMBER_TAKES_NO_ARGUMENTS", []>
+		: FormatError<Errors["ROW_NUMBER_TAKES_NO_ARGUMENTS"], []>
 	: L extends "rank" | "dense_rank"
 		? Args extends readonly []
 			? SqlBigint
-			: FormatError<"RANK_DENSE_RANK_TAKES_NO_ARGUMENTS", []>
+			: FormatError<Errors["RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"], []>
 		: L extends "lag" | "lead"
 			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
 				? ArgsRes extends DbtyperErrorShape
@@ -995,10 +1042,10 @@ type ResolveWindowFunction<
 					: ArgsRes extends readonly [infer S extends SqlTypeShape, ...infer _Rest]
 						? S
 						: ArgsRes extends readonly []
-							? FormatError<"LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT", []>
-							: FormatError<"INVALID_LAG_LEAD_ARGUMENTS", []>
+							? FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
+							: FormatError<Errors["INVALID_LAG_LEAD_ARGUMENTS"], []>
 				: never
-			: FormatError<"UNKNOWN_WINDOW_FUNCTION", []>
+			: FormatError<Errors["UNKNOWN_WINDOW_FUNCTION"], []>
 
 type ResolveCustomOp<
 	Op extends string,
@@ -1021,13 +1068,13 @@ type ResolveCustomOp<
 								: Op extends "||"
 									? Lv["type"] extends "array"
 										? Rv["type"] extends "text"
-											? FormatError<"CANNOT_CONCATENATE_ARRAY_WITH_TEXT", []>
+											? FormatError<Errors["CANNOT_CONCATENATE_ARRAY_WITH_TEXT"], []>
 											: Rv["type"] extends "array"
 												? Lv
 												: Lv
 										: Rv["type"] extends "array"
 											? Lv["type"] extends "text"
-												? FormatError<"CANNOT_CONCATENATE_TEXT_WITH_ARRAY", []>
+												? FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_ARRAY"], []>
 												: Rv
 											: Lv["type"] extends "text"
 												? Rv["type"] extends
@@ -1038,7 +1085,10 @@ type ResolveCustomOp<
 														| "uuid"
 														| "boolean"
 													? SqlText
-													: FormatError<"CANNOT_CONCATENATE_TEXT_WITH_TYPE", [Rv["type"]]>
+													: FormatError<
+															Errors["CANNOT_CONCATENATE_TEXT_WITH_TYPE"],
+															[Rv["type"]]
+														>
 												: Rv["type"] extends "text"
 													? Lv["type"] extends
 															| "integer"
@@ -1047,8 +1097,14 @@ type ResolveCustomOp<
 															| "uuid"
 															| "boolean"
 														? SqlText
-														: FormatError<"CANNOT_CONCATENATE_TYPE_WITH_TEXT", [Lv["type"]]>
-													: FormatError<"CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND", []>
+														: FormatError<
+																Errors["CANNOT_CONCATENATE_TYPE_WITH_TEXT"],
+																[Lv["type"]]
+															>
+													: FormatError<
+															Errors["CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND"],
+															[]
+														>
 									: SqlUnknown
 							: never
 						: never
@@ -1072,7 +1128,7 @@ type ResolveArrayCtorElements<
 	: InferArrayType<AccTypes>
 
 type InferArrayType<Types extends readonly SqlTypeShape[]> = Types extends readonly []
-	? FormatError<"CANNOT_DETERMINE_TYPE_OF_EMPTY_ARRAY", []>
+	? FormatError<Errors["CANNOT_DETERMINE_TYPE_OF_EMPTY_ARRAY"], []>
 	: Types extends readonly [infer First extends SqlTypeShape, ...infer Rest extends readonly SqlTypeShape[]]
 		? UnifyArrayElementTypes<First, Rest> extends infer Unified extends SqlTypeShape
 			? { type: "array"; arg: Unified; nullable: false }
@@ -1136,8 +1192,8 @@ type ExpressionResolvers<
 	}
 		? ResolveWindowFunction<FnName, FArgs, Db, Scope, Params>
 		: never
-	qualified_table_star: FormatError<"QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS", []>
-	alias_table_star: FormatError<"QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS", []>
+	qualified_table_star: FormatError<Errors["QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS"], []>
+	alias_table_star: FormatError<Errors["QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS"], []>
 	array_ctor: Ast extends {
 		kind: "array_ctor"
 		elements: infer Els extends readonly ScalarExprAst[]
@@ -1467,7 +1523,7 @@ type MaximalIdentChain<Tokens extends ParserMonad> =
 
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? Params[Name]
-	: FormatError<"UNKNOWN_QUERY_PARAMETER", [Name]>
+	: FormatError<Errors["UNKNOWN_QUERY_PARAMETER"], [Name]>
 
 type LookupPositionalParam<
 	Params extends ExpressionParamsShape,
@@ -1475,8 +1531,8 @@ type LookupPositionalParam<
 > = Params extends readonly SqlTypeShape[]
 	? Index extends keyof Params
 		? Params[Index]
-		: FormatError<"POSITIONAL_PARAMETER_OUT_OF_BOUNDS", [Index]>
-	: FormatError<"POSITIONAL_PARAMETER_REQUIRES_ARRAY", []>
+		: FormatError<Errors["POSITIONAL_PARAMETER_OUT_OF_BOUNDS"], [Index]>
+	: FormatError<Errors["POSITIONAL_PARAMETER_REQUIRES_ARRAY"], []>
 
 type ResolveIdentChainValue<
 	Db extends JsqlDatabaseShape,
@@ -1512,7 +1568,7 @@ type ParseFunctionArgsAccum<
 							? ParseFunctionArgsAccum<SkipToken<R1>, Env1, readonly [...Acc, E]>
 							: SkipFailedExpressionWithEnv<
 									R1,
-									FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST", []>,
+									FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST"], []>,
 									Env1
 								>
 					: never
@@ -1523,7 +1579,7 @@ type ParseFunctionArgs<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<")">
 				? [SkipToken<R1>, readonly [{ kind: "star" }], Env]
-				: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_STAR", []>, Env>
+				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_STAR"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<")">
 			? [SkipToken<Tokens>, readonly [], Env]
@@ -1541,7 +1597,7 @@ type ParseOptionalOverClause<
 				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? ParseWindowClauseContent<R2, FnName, Args, Env>
 					: never
-				: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OVER", []>, Env>
+				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env>
 			: never
 		: [Tokens, { kind: "function_call"; name: FnName; args: Args }, Env]
 
@@ -1577,18 +1633,21 @@ type ParseWindowClauseContent<
 										]
 									: SkipFailedExpressionWithEnv<
 											R2,
-											FormatError<"EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY", []>,
+											FormatError<
+												Errors["EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY"],
+												[]
+											>,
 											Env2
 										>
 							: never
 					: never
-				: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_BY_AFTER_PARTITION", []>, Env>
+				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_BY_AFTER_PARTITION"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"order">
 			? ParseWindowOrderByWithoutPartition<Tokens, FnName, Args, Env>
 			: SkipFailedExpressionWithEnv<
 					Tokens,
-					FormatError<"EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE", []>,
+					FormatError<Errors["EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE"], []>,
 					Env
 				>
 
@@ -1621,12 +1680,12 @@ type ParseWindowOrderByWithoutPartition<
 								]
 							: SkipFailedExpressionWithEnv<
 									R4,
-									FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE", []>,
+									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>,
 									Env4
 								>
 						: never
 				: never
-			: SkipFailedExpressionWithEnv<R3, FormatError<"EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE", []>, Env>
+			: SkipFailedExpressionWithEnv<R3, FormatError<Errors["EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE"], []>, Env>
 		: never
 
 type ParseWindowOrderByAfterPartition<
@@ -1659,12 +1718,12 @@ type ParseWindowOrderByAfterPartition<
 								]
 							: SkipFailedExpressionWithEnv<
 									R4,
-									FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE", []>,
+									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>,
 									Env4
 								>
 						: never
 				: never
-			: SkipFailedExpressionWithEnv<R3, FormatError<"EXPECTED_BY_AFTER_ORDER", []>, Env>
+			: SkipFailedExpressionWithEnv<R3, FormatError<Errors["EXPECTED_BY_AFTER_ORDER"], []>, Env>
 		: never
 
 type ParseWindowPartitionByList<
@@ -1812,12 +1871,12 @@ export type SameComparisonClass<
 			: false
 
 type MergeComparison<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"] extends "null"
-	? FormatError<"USE_IS_NULL_INSTEAD_OF_EQUALS_NULL", []>
+	? FormatError<Errors["USE_IS_NULL_INSTEAD_OF_EQUALS_NULL"], []>
 	: R["type"] extends "null"
-		? FormatError<"USE_IS_NULL_INSTEAD_OF_EQUALS_NULL", []>
+		? FormatError<Errors["USE_IS_NULL_INSTEAD_OF_EQUALS_NULL"], []>
 		: SameComparisonClass<L, R> extends true
 			? SqlBoolean
-			: FormatError<"INCOMPATIBLE_TYPES_IN_COMPARISON", []>
+			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_COMPARISON"], []>
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
 type ValidateCaseSimpleWhenMatch<Disc extends SqlTypeShape, WhenV extends SqlTypeShape> =
@@ -1828,26 +1887,26 @@ type MergeBetweenBounds<
 	Lm extends SqlTypeShape,
 	H extends SqlTypeShape,
 > = E["type"] extends "null"
-	? FormatError<"NULL_NOT_ALLOWED_IN_BETWEEN", []>
+	? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 	: Lm["type"] extends "null"
-		? FormatError<"NULL_NOT_ALLOWED_IN_BETWEEN", []>
+		? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 		: H["type"] extends "null"
-			? FormatError<"NULL_NOT_ALLOWED_IN_BETWEEN", []>
+			? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 			: SameComparisonClass<E, Lm> extends true
 				? SameComparisonClass<E, H> extends true
 					? SqlBoolean
-					: FormatError<"INCOMPATIBLE_TYPES_IN_BETWEEN", []>
-				: FormatError<"INCOMPATIBLE_TYPES_IN_BETWEEN", []>
+					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
+				: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
 
 type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape> = Expr["type"] extends "null"
-	? FormatError<"NULL_NOT_ALLOWED_IN_LIKE", []>
+	? FormatError<Errors["NULL_NOT_ALLOWED_IN_LIKE"], []>
 	: Pat["type"] extends "null"
-		? FormatError<"NULL_NOT_ALLOWED_IN_LIKE", []>
+		? FormatError<Errors["NULL_NOT_ALLOWED_IN_LIKE"], []>
 		: IsSqlTextType<Expr> extends true
 			? IsSqlTextType<Pat> extends true
 				? SqlBoolean
-				: FormatError<"LIKE_PATTERN_MUST_BE_TEXT", []>
-			: FormatError<"LIKE_LEFT_OPERAND_MUST_BE_TEXT", []>
+				: FormatError<Errors["LIKE_PATTERN_MUST_BE_TEXT"], []>
+			: FormatError<Errors["LIKE_LEFT_OPERAND_MUST_BE_TEXT"], []>
 
 type MergeCaseThenAccum<Acc extends SqlTypeShape | null, Tv extends SqlTypeShape> = Acc extends null
 	? Tv
@@ -1860,7 +1919,7 @@ type MergeCaseThenAccum<Acc extends SqlTypeShape | null, Tv extends SqlTypeShape
 				? Acc
 				: SameComparisonClass<Acc, Tv> extends true
 					? Acc
-					: FormatError<"INCOMPATIBLE_TYPES_IN_CASE", []>
+					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_CASE"], []>
 		: never
 
 type ApplyCaseMissingElseNullability<E extends SqlTypeShape, MissingElse extends boolean> = MissingElse extends true
@@ -1896,8 +1955,8 @@ type ResolveCaseSearchedArms<
 									: never
 								: never
 						: never
-					: FormatError<"CASE_WHEN_MUST_BE_BOOLEAN", []>
-				: FormatError<"CASE_WHEN_MUST_BE_BOOLEAN", []>
+					: FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>
+				: FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>
 		: never
 	: ElseB extends ScalarExprAst
 		? ResolveExpressionAST<ElseB, Db, Scope, Params> extends infer Ev
@@ -2008,10 +2067,10 @@ type ResolveCaseSimple<
 type ValidateInListElement<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"] extends "null"
 	? never
 	: R["type"] extends "null"
-		? FormatError<"INCOMPATIBLE_TYPES_IN_IN_LIST", []>
+		? FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_LIST"], []>
 		: SameComparisonClass<L, R> extends true
 			? true
-			: FormatError<"INCOMPATIBLE_TYPES_IN_IN_LIST", []>
+			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_LIST"], []>
 
 type ResolveInListItemsAgainstLeft<
 	Left extends SqlTypeShape,
@@ -2035,25 +2094,25 @@ type ResolveInListItemsAgainstLeft<
 					: never
 				: never
 		: never
-	: FormatError<"IN_LIST_MUST_NOT_BE_EMPTY", []>
+	: FormatError<Errors["IN_LIST_MUST_NOT_BE_EMPTY"], []>
 
 type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["returning"]> extends true
 		? keyof S["returning"] extends infer K extends keyof S["returning"]
 			? S["returning"][K] extends infer ColType extends SqlTypeShape
 				? ColType
-				: FormatError<"SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
-			: FormatError<"SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
-		: FormatError<"SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
+				: FormatError<Errors["SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED"], []>
+			: FormatError<Errors["SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED"], []>
+		: FormatError<Errors["SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN"], []>
 
 type SubSelectColumnAtom<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["returning"]> extends true
 		? keyof S["returning"] extends infer K extends keyof S["returning"]
 			? S["returning"][K] extends infer ColType extends SqlTypeShape
 				? ColType
-				: FormatError<"IN_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
-			: FormatError<"IN_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
-		: FormatError<"IN_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
+				: FormatError<Errors["IN_SUBQUERY_COLUMN_INFERENCE_FAILED"], []>
+			: FormatError<Errors["IN_SUBQUERY_COLUMN_INFERENCE_FAILED"], []>
+		: FormatError<Errors["IN_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN"], []>
 
 type ResolveInSubqueryAst<
 	Lexpr extends ScalarExprAst,
@@ -2075,8 +2134,8 @@ type ResolveInSubqueryAst<
 									? V
 									: V extends true
 										? SqlBoolean
-										: FormatError<"INCOMPATIBLE_TYPES_IN_IN_SUBQUERY", []>
-								: FormatError<"INCOMPATIBLE_TYPES_IN_IN_SUBQUERY", []>
+										: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []>
+								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []>
 							: never
 					: never
 				: never
@@ -2113,7 +2172,7 @@ type ResolveAnyAllSomeOp<
 								: Rv extends SqlTypeShape
 									? Rv["type"] extends "array" | "unknown"
 										? SqlBoolean
-										: FormatError<"ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY", []>
+										: FormatError<Errors["ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY"], []>
 									: never
 							: never
 						: never
@@ -2124,11 +2183,11 @@ type MergeBoolNot<V> = V extends DbtyperErrorShape
 	? V
 	: V extends SqlTypeShape
 		? V["type"] extends "null"
-			? FormatError<"NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL", []>
+			? FormatError<Errors["NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL"], []>
 			: IsSqlBooleanType<V> extends true
 				? SqlBoolean
-				: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
-		: FormatError<"NOT_REQUIRES_BOOLEAN_OPERAND", []>
+				: FormatError<Errors["NOT_REQUIRES_BOOLEAN_OPERAND"], []>
+		: FormatError<Errors["NOT_REQUIRES_BOOLEAN_OPERAND"], []>
 
 type MergeBoolBinary<
 	L,
@@ -2141,24 +2200,24 @@ type MergeBoolBinary<
 		: L extends SqlTypeShape
 			? R extends SqlTypeShape
 				? L["type"] extends "null"
-					? FormatError<"NULL_NOT_VALID_BOOLEAN_OPERAND", []>
+					? FormatError<Errors["NULL_NOT_VALID_BOOLEAN_OPERAND"], []>
 					: R["type"] extends "null"
-						? FormatError<"NULL_NOT_VALID_BOOLEAN_OPERAND", []>
+						? FormatError<Errors["NULL_NOT_VALID_BOOLEAN_OPERAND"], []>
 						: IsSqlBooleanType<L> extends true
 							? IsSqlBooleanType<R> extends true
 								? SqlBoolean
 								: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
-									? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
-									: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+									? FormatError<Errors["AND_OPERANDS_MUST_BE_BOOLEAN"], []>
+									: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 							: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
-								? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
-								: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+								? FormatError<Errors["AND_OPERANDS_MUST_BE_BOOLEAN"], []>
+								: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 				: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
-					? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
-					: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+					? FormatError<Errors["AND_OPERANDS_MUST_BE_BOOLEAN"], []>
+					: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 			: ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN"
-				? FormatError<"AND_OPERANDS_MUST_BE_BOOLEAN", []>
-				: FormatError<"OR_OPERANDS_MUST_BE_BOOLEAN", []>
+				? FormatError<Errors["AND_OPERANDS_MUST_BE_BOOLEAN"], []>
+				: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
 type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
@@ -2270,7 +2329,7 @@ type ParseArrayCtorElementsAccum<
 							? ParseArrayCtorElementsAccum<SkipToken<R1>, readonly [...Acc, Ele], Env1>
 							: SkipFailedExpressionWithEnv<
 									R1,
-									FormatError<"EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR", []>,
+									FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR"], []>,
 									Env1
 								>
 					: never
@@ -2312,7 +2371,7 @@ type ParsePostfixArrayIndexTail<Tokens extends ParserMonad, Acc extends ScalarEx
 								: never
 							: SkipFailedExpressionWithEnv<
 									Rj,
-									FormatError<"EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT", []>,
+									FormatError<Errors["EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT"], []>,
 									EnvIdx
 								>
 						: never
@@ -2358,7 +2417,7 @@ type TryParenOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprPa
 										? [Rk2, Ej, EnvJ]
 										: SkipFailedExpressionWithEnv<
 												Rk2,
-												FormatError<"EXPECTED_CLOSE_PAREN", []>,
+												FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>,
 												EnvJ
 											>
 									: never
@@ -2428,7 +2487,7 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 												: SkipToken<Tokens> extends infer Rbad extends ParserMonad
 													? SkipFailedExpressionWithEnv<
 															Rbad,
-															FormatError<"UNEXPECTED_TOKEN", []>,
+															FormatError<Errors["UNEXPECTED_TOKEN"], []>,
 															Env
 														>
 													: never
@@ -2532,7 +2591,11 @@ type ParseMulScalarUntypedEntry<Tokens extends ParserMonad, Env extends ExprPars
 								| TokenKey<"/">
 								| TokenKey<"%">
 								| TokenKey<"^">
-							? SkipFailedExpressionWithEnv<R0, FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>, Env0>
+							? SkipFailedExpressionWithEnv<
+									R0,
+									FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>,
+									Env0
+								>
 							: [R0, E0, Env0]
 						: never
 					: ParseMulLoopAfterFirstScalarUntyped<R0, E0, Env0>
@@ -2620,17 +2683,24 @@ type ParseOtherOpLoop<Tokens extends ParserMonad, Acc extends ScalarExprAst, Env
 											: never
 										: SkipFailedExpressionWithEnv<
 												R3,
-												FormatError<"EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN", []>,
+												FormatError<
+													Errors["EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN"],
+													[]
+												>,
 												Env
 											>
 									: never
 								: SkipFailedExpressionWithEnv<
 										R2,
-										FormatError<"EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN", []>,
+										FormatError<Errors["EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN"], []>,
 										Env
 									>
 							: never
-						: SkipFailedExpressionWithEnv<R1, FormatError<"EXPECTED_OPEN_PAREN_AFTER_OPERATOR", []>, Env>
+						: SkipFailedExpressionWithEnv<
+								R1,
+								FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OPERATOR"], []>,
+								Env
+							>
 					: never
 				: [Tokens, Acc, Env]
 		: [Tokens, Acc]
@@ -2707,10 +2777,10 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 			? PeekToken<Rm> extends TokenKey<"(">
 				? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends ParserMonad, infer Rs]
 					? Rs extends DbtyperErrorShape
-						? SkipFailedExpressionWithEnv<After, FormatError<"UNBALANCED_PARENTHESES", []>, Env>
+						? SkipFailedExpressionWithEnv<After, FormatError<Errors["UNBALANCED_PARENTHESES"], []>, Env>
 						: SkipFailedExpressionWithEnv<
 								SkipToken<After>,
-								FormatError<"UNSUPPORTED_PARENTHESIZED_EXPRESSION", []>,
+								FormatError<Errors["UNSUPPORTED_PARENTHESIZED_EXPRESSION"], []>,
 								Env
 							>
 					: never
@@ -2722,10 +2792,10 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 							infer Rs,
 						]
 						? Rs extends DbtyperErrorShape
-							? SkipFailedExpressionWithEnv<After, FormatError<"UNBALANCED_PARENTHESES", []>, Env>
+							? SkipFailedExpressionWithEnv<After, FormatError<Errors["UNBALANCED_PARENTHESES"], []>, Env>
 							: SkipFailedExpressionWithEnv<
 									SkipToken<After>,
-									FormatError<"UNSUPPORTED_PARENTHESIZED_EXPRESSION", []>,
+									FormatError<Errors["UNSUPPORTED_PARENTHESIZED_EXPRESSION"], []>,
 									Env
 								>
 						: never
@@ -2744,7 +2814,7 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 										? ParseOptionalOverClause<After, FnName, Args, EnvAfter>
 										: SkipFailedExpressionWithEnv<
 												After,
-												FormatError<"QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED", []>,
+												FormatError<Errors["QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED"], []>,
 												EnvAfter
 											>
 									: never
@@ -2778,7 +2848,11 @@ type ParseScalarExprUntypedNonIdent<Tokens extends ParserMonad, Env extends Expr
 				? ScalarAstNonNumericForMulHead<E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-							? SkipFailedExpressionWithEnv<R0, FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>, Env0>
+							? SkipFailedExpressionWithEnv<
+									R0,
+									FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>,
+									Env0
+								>
 							: [R0, E0, Env0]
 						: never
 					: ParseAddLoopAfterFirstScalarUntyped<R0, E0, Env0>
@@ -2801,14 +2875,14 @@ type ResolveScalarExprAstPair<
 					: Lv extends SqlTypeShape
 						? Rv extends SqlTypeShape
 							? Lv["type"] extends "null"
-								? FormatError<"NULL_NOT_ALLOWED_ARITHMETIC", []>
+								? FormatError<Errors["NULL_NOT_ALLOWED_ARITHMETIC"], []>
 								: Rv["type"] extends "null"
-									? FormatError<"NULL_NOT_ALLOWED_ARITHMETIC", []>
+									? FormatError<Errors["NULL_NOT_ALLOWED_ARITHMETIC"], []>
 									: IsSqlNumericType<Lv["type"]> extends true
 										? IsSqlNumericType<Rv["type"]> extends true
 											? Lv
-											: FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>
-										: FormatError<"INCOMPATIBLE_TYPES_IN_ARITHMETIC", []>
+											: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
+										: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
 							: never
 						: never
 				: never
@@ -2826,8 +2900,8 @@ type ResolveScalarExprAstNeg<
 			: U extends SqlTypeShape
 				? IsSqlNumericType<U["type"]> extends true
 					? U
-					: FormatError<"UNARY_MINUS_REQUIRES_A_NUMBER", []>
-				: FormatError<"UNARY_MINUS_REQUIRES_A_NUMBER", []>
+					: FormatError<Errors["UNARY_MINUS_REQUIRES_A_NUMBER"], []>
+				: FormatError<Errors["UNARY_MINUS_REQUIRES_A_NUMBER"], []>
 		: never
 
 // ============================================================================

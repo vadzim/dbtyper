@@ -4,7 +4,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenKind } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 
 export type SkippedStatement<Token extends TokenType<TokenKind, string> = TokenType<TokenKind, string>> = {
@@ -69,19 +69,22 @@ export type SkipBracketedUntil<
 						...infer Tail extends ClosingBrackets[],
 				  ]
 				? PeekToken<Tokens> extends TokenEot
-					? [Tokens, FormatError<"CLOSING_BRACKET_NOT_FOUND", [CurrentClosingBracket]>]
+					? [Tokens, FormatError<Errors["CLOSING_BRACKET_NOT_FOUND"], [CurrentClosingBracket]>]
 					: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
 						? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
 						: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
-							? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
+							? [Tokens, FormatError<Errors["UNMATCHED_CLOSING_BRACKET"], [PeekToken<Tokens>["value"]]>]
 							: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 				: PeekToken<Tokens> extends infer EndTok
 					? EndTok extends EndToken
 						? [Tokens, SkippedStatement<EndTok>]
 						: PeekToken<Tokens> extends TokenEot
-							? [Tokens, FormatError<"TOKEN_NOT_FOUND", []>]
+							? [Tokens, FormatError<Errors["TOKEN_NOT_FOUND"], []>]
 							: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
-								? [Tokens, FormatError<"UNMATCHED_CLOSING_BRACKET", [PeekToken<Tokens>["value"]]>]
+								? [
+										Tokens,
+										FormatError<Errors["UNMATCHED_CLOSING_BRACKET"], [PeekToken<Tokens>["value"]]>,
+									]
 								: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
 					: never
 

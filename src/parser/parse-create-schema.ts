@@ -5,7 +5,7 @@ import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError } from "../dbtyper-error.ts"
+import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 
 export type ParseCreateSchema<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
@@ -19,12 +19,12 @@ export type ParseCreateSchema<Tokens extends ParserMonad, Db extends JsqlDatabas
 							: never
 						: SkipFailedExpression<
 									A1,
-									FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_SCHEMA", []>
+									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_SCHEMA"], []>
 							  > extends [infer Rest extends ParserMonad, infer Err]
 							? [Rest, Db, Err]
 							: never
 					: never
-				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_NOT_AFTER_IF_IN_CREATE_SCHEMA", []>>
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_SCHEMA"], []>>
 			: never
 		: ParseCreateSchemaName<Tokens, Db, false>
 
@@ -41,11 +41,15 @@ type ParseCreateSchemaAfterSchemaName<
 				? [SkipToken<AfterName>, Db, null]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
 			: [SchemaName] extends [keyof Db["schemas"]]
-				? [AfterName, Db, FormatError<"SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS", []>]
+				? [AfterName, Db, FormatError<Errors["SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS"], []>]
 				: [SkipToken<AfterName>, JsqlDbReplaceSchema<Db, SchemaName, JsqlCreateSchema>, null]
-		: SkipFailedStatement<AfterName, Db, FormatError<"EXPECTED_SEMICOLON", ["schema name in CREATE SCHEMA"]>>
+		: SkipFailedStatement<
+				AfterName,
+				Db,
+				FormatError<Errors["EXPECTED_SEMICOLON"], ["schema name in CREATE SCHEMA"]>
+			>
 
 type ParseCreateSchemaName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	PeekToken<Tokens> extends TokenIdent<infer SchemaName extends string>
 		? ParseCreateSchemaAfterSchemaName<SkipToken<Tokens>, Db, SchemaName, IfNotExists>
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SCHEMA_NAME_IN_CREATE_SCHEMA", []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SCHEMA_NAME_IN_CREATE_SCHEMA"], []>>

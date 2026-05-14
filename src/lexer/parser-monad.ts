@@ -1,4 +1,3 @@
-import type { ReplaceProp } from "../core/type-utils.ts"
 import type { LexerFeatures, ReadTokenFromString, TokenStreamHead } from "./sql-lexer.ts"
 
 export type CreateParserMonad<Query extends string, Syntax extends string = LexerFeatures> =

@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -31,7 +31,7 @@ export type ParseWhereExpression<
 					: R extends SqlTypeShape
 						? R["type"] extends "boolean"
 							? [Rw, null]
-							: SkipFailedExpression<Rw, FormatError<"EXPRESSION_MUST_BE_BOOLEAN", [R["type"]]>>
-						: SkipFailedExpression<Rw, FormatError<"EXPRESSION_MUST_BE_BOOLEAN", ["unknown"]>>
+							: SkipFailedExpression<Rw, FormatError<Errors["EXPRESSION_MUST_BE_BOOLEAN"], [R["type"]]>>
+						: SkipFailedExpression<Rw, FormatError<Errors["EXPRESSION_MUST_BE_BOOLEAN"], ["unknown"]>>
 				: never
 		: never

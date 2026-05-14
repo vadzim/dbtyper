@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { DriverConfig } from "./sql-database.ts"
@@ -7,7 +7,7 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 
-type ExpectedRowSetResult = FormatError<"STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT", []>
+type ExpectedRowSetResult = FormatError<Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"], []>
 
 /**
  * Returns SQL column types as strings (e.g., { id: "uuid", name: "text" }).

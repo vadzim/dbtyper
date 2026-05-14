@@ -5,7 +5,7 @@ import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -18,7 +18,7 @@ import type { ParseSelectExpression } from "./parse-select.ts"
 type ParseQualifiedViewNameUnqualified<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<"as">
 		? [AfterFirst, null, Db["defaultSchema"], A]
-		: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME", []>>
+		: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME"], []>>
 
 type ParseQualifiedViewNameQualified<Rdot extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<Rdot> extends TokenIdent<infer B extends string>
@@ -28,10 +28,10 @@ type ParseQualifiedViewNameQualified<Rdot extends ParserMonad, Db extends JsqlDa
 					? A extends keyof Db["schemas"]
 						? [AfterB, null, A & keyof Db["schemas"] & string, B]
 						: never
-					: SkipFailedQualifiedName<AfterB, FormatError<"EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME", []>>
-				: SkipFailedQualifiedName<AfterB, FormatError<"UNKNOWN_SCHEMA", [A, "CREATE VIEW"]>>
+					: SkipFailedQualifiedName<AfterB, FormatError<Errors["EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME"], []>>
+				: SkipFailedQualifiedName<AfterB, FormatError<Errors["UNKNOWN_SCHEMA"], [A, "CREATE VIEW"]>>
 			: never
-		: SkipFailedQualifiedName<Rdot, FormatError<"EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW", []>>
+		: SkipFailedQualifiedName<Rdot, FormatError<Errors["EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW"], []>>
 
 type ParseQualifiedViewNameAfterFirstIdent<
 	AfterFirst extends ParserMonad,
@@ -47,7 +47,7 @@ type ParseQualifiedViewNameAfterFirstIdent<
 type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseQualifiedViewNameAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: SkipFailedQualifiedName<Tokens, FormatError<"EXPECTED_VIEW_NAME_IN_CREATE_VIEW", []>>
+		: SkipFailedQualifiedName<Tokens, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
 
 type ParseCreateViewAfterSelect<
 	Tokens extends ParserMonad,
@@ -62,7 +62,7 @@ type ParseCreateViewAfterSelect<
 				? [SkipToken<Tokens>, NewDb, null]
 				: never
 			: never
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["CREATE VIEW"]>>
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE VIEW"]>>
 
 type ParseCreateViewSelectAndSemi<
 	R2 extends ParserMonad,
@@ -79,7 +79,7 @@ type ParseCreateViewSelectAndSemi<
 					? ParseCreateViewAfterSelect<R3, Db, Sch, Vname, Res>
 					: never
 			: never
-		: SkipFailedStatement<R2, Db, FormatError<"VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA", []>>
+		: SkipFailedStatement<R2, Db, FormatError<Errors["VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA"], []>>
 
 type ParseCreateViewAfterAs<
 	R1 extends ParserMonad,
@@ -92,7 +92,7 @@ type ParseCreateViewAfterAs<
 		? ParseCreateViewSelectAndSemi<R1, Db, Sch, Vname, Params>
 		: PeekToken<R1> extends TokenKey<"select">
 			? ParseCreateViewSelectAndSemi<SkipToken<R1>, Db, Sch, Vname, Params>
-			: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW", []>>
+			: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW"], []>>
 
 export type ParseCreateView<
 	Tokens extends ParserMonad,
@@ -113,7 +113,7 @@ export type ParseCreateView<
 							? ParseCreateViewAfterAs<R1, Db, Sch & keyof Db["schemas"] & string, Vname, Params>
 							: never
 						: never
-					: SkipFailedStatement<R0, Db, FormatError<"EXPECTED_AS_IN_CREATE_VIEW", []>>
-				: SkipFailedStatement<R0, Db, FormatError<"UNKNOWN_SCHEMA", [Sch, "CREATE VIEW"]>>
+					: SkipFailedStatement<R0, Db, FormatError<Errors["EXPECTED_AS_IN_CREATE_VIEW"], []>>
+				: SkipFailedStatement<R0, Db, FormatError<Errors["UNKNOWN_SCHEMA"], [Sch, "CREATE VIEW"]>>
 			: [R0, Db, E]
 		: never

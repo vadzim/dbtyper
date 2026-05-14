@@ -3,7 +3,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError } from "../dbtyper-error.ts"
+import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 
 /** After `schema.` — parse table name, then peek `(`. */
@@ -13,8 +13,11 @@ type ParseQualifiedSecondIdent<AfterDot extends ParserMonad, _Db extends JsqlDat
 			? Tok2 extends TokenIdent<infer B extends string>
 				? PeekToken<R2> extends TokenKey<"(">
 					? [R2, null, A, B]
-					: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME", []>>
-				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME", []>>
+					: SkipFailedQualifiedName<
+							R2,
+							FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME"], []>
+						>
+				: SkipFailedQualifiedName<R2, FormatError<Errors["EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME"], []>>
 			: never
 		: never
 
@@ -26,7 +29,10 @@ type ParseQualifiedAfterFirstIdent<AfterFirst extends ParserMonad, Db extends Js
 			? SkipToken<AfterFirst> extends infer AfterDot extends ParserMonad
 				? Tdot extends TokenKey<".">
 					? ParseQualifiedSecondIdent<AfterDot, Db, A>
-					: SkipFailedQualifiedName<AfterDot, FormatError<"EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME", []>>
+					: SkipFailedQualifiedName<
+							AfterDot,
+							FormatError<Errors["EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME"], []>
+						>
 				: never
 			: never
 
@@ -36,6 +42,6 @@ export type ParseQualifiedTableName<Tokens extends ParserMonad, Db extends JsqlD
 		? SkipToken<Tokens> extends infer AfterFirst extends ParserMonad
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseQualifiedAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TABLE_NAME", ["in CREATE TABLE"]>>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in CREATE TABLE"]>>
 			: never
 		: never

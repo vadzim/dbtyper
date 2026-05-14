@@ -7,7 +7,7 @@ import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -78,7 +78,7 @@ export type ParseSelectStatement<
 			? [R1, Db2, Res]
 			: PeekToken<R1> extends TokenKey<";"> | TokenEot
 				? [SkipToken<R1>, Db2, Res]
-				: SkipFailedStatement<R1, Db2, FormatError<"EXPECTED_SEMICOLON", ["SELECT"]>>
+				: SkipFailedStatement<R1, Db2, FormatError<Errors["EXPECTED_SEMICOLON"], ["SELECT"]>>
 		: never
 
 type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
@@ -106,7 +106,7 @@ type ParseSelectWithCtesAfterSubquery<
 					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
 					: PeekToken<R4> extends TokenKey<"select">
 						? ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
-						: SkipFailedStatement<R4, Db, FormatError<"EXPECTED_SELECT_AFTER_WITH", []>>
+						: SkipFailedStatement<R4, Db, FormatError<Errors["EXPECTED_SELECT_AFTER_WITH"], []>>
 				: never
 			: never
 		: never
@@ -122,7 +122,7 @@ type ParseSelectWithCtes<
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? TokCteName extends TokenIdent<infer CteName extends string>
 				? CteName extends keyof Acc
-					? [R1, Db, FormatError<"DUPLICATE_WITH_CLAUSE_NAME", []>]
+					? [R1, Db, FormatError<Errors["DUPLICATE_WITH_CLAUSE_NAME"], []>]
 					: PeekToken<R1> extends TokenKey<"as">
 						? SkipToken<R1> extends infer R2 extends ParserMonad
 							? PeekToken<R2> extends TokenKey<"(">
@@ -148,13 +148,13 @@ type ParseSelectWithCtes<
 									: never
 								: SkipFailedExpression<
 											R2,
-											FormatError<"EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH", []>
+											FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH"], []>
 									  > extends [infer Rest extends ParserMonad, infer Err]
 									? [Rest, Db, Err]
 									: never
 							: never
 						: never
-				: SkipFailedStatement<R1, Db, FormatError<"EXPECTED_CTE_NAME_IN_WITH", []>>
+				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
 			: never
 		: never
 
@@ -174,7 +174,11 @@ type ParseSelectAfterDistinct<
 				? [AfterList, Db, Items]
 				: Items extends readonly RawSelectItem[]
 					? SelectListStarInvalid<Items> extends true
-						? [AfterList, Db, FormatError<"SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST", []>]
+						? [
+								AfterList,
+								Db,
+								FormatError<Errors["SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST"], []>,
+							]
 						: PeekToken<AfterList> extends TokenKey<"from">
 							? SkipToken<AfterList> extends infer AfterFrom extends ParserMonad
 								? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
@@ -224,7 +228,11 @@ type ParseSelectAfterDistinct<
 											: FinishSelectStatement<AfterList, Db, Res, MergedScope, Params, Items>
 										: never
 									: never
-								: SkipFailedStatement<AfterList, Db, FormatError<"EXPECTED_FROM_AFTER_SELECT_LIST", []>>
+								: SkipFailedStatement<
+										AfterList,
+										Db,
+										FormatError<Errors["EXPECTED_FROM_AFTER_SELECT_LIST"], []>
+									>
 					: never
 			: never
 		: never
@@ -298,7 +306,7 @@ type ParseOrderByAfterOrderKw<
 		? SkipToken<R1> extends infer R2 extends ParserMonad
 			? TBy extends TokenKey<"by">
 				? ParseOrderByTerms<R2, Db, Scope, Params>
-				: SkipFailedExpression<R2, FormatError<"EXPECTED_BY_AFTER_ORDER", []>>
+				: SkipFailedExpression<R2, FormatError<Errors["EXPECTED_BY_AFTER_ORDER"], []>>
 			: never
 		: never
 
@@ -354,7 +362,7 @@ type ExpectRowOrRowsThenOnly<Tokens extends ParserMonad> =
 				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? [R2, null]
 					: never
-				: SkipFailedExpression<R1, FormatError<"EXPECTED_ONLY_AFTER_FETCH_ROWS", []>>
+				: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_ONLY_AFTER_FETCH_ROWS"], []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"row">
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -362,9 +370,9 @@ type ExpectRowOrRowsThenOnly<Tokens extends ParserMonad> =
 					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? [R2, null]
 						: never
-					: SkipFailedExpression<R1, FormatError<"EXPECTED_ONLY_AFTER_FETCH_ROW", []>>
+					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_ONLY_AFTER_FETCH_ROW"], []>>
 				: never
-			: SkipFailedExpression<Tokens, FormatError<"EXPECTED_ROW_OR_ROWS_IN_FETCH", []>>
+			: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_ROW_OR_ROWS_IN_FETCH"], []>>
 
 type ParseFetchFirstAfterFetchKw<
 	R1 extends ParserMonad,
@@ -388,7 +396,7 @@ type ParseFetchFirstAfterFetchKw<
 						: ExpectRowOrRowsThenOnly<R3>
 					: never
 				: never
-			: SkipFailedExpression<R1, FormatError<"EXPECTED_FIRST_OR_NEXT_AFTER_FETCH", []>>
+			: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_FIRST_OR_NEXT_AFTER_FETCH"], []>>
 
 /** Optional `LIMIT …` / `OFFSET …` / `FETCH FIRST|NEXT … ROW(S) ONLY` (single paging block). */
 type ParseOptionalPagingTokens<
@@ -587,7 +595,7 @@ type ParseOptionalGroupHaving<
 						? ParseGroupTailAfterTerms<R2, Db, Scope, Params, Outcome>
 						: never
 					: never
-				: readonly [R0, FormatError<"EXPECTED_BY_AFTER_GROUP", []>, EmptyGroupClauseMetaPlain]
+				: readonly [R0, FormatError<Errors["EXPECTED_BY_AFTER_GROUP"], []>, EmptyGroupClauseMetaPlain]
 			: never
 		: ParseOptionalHavingWithoutGroupClause<Tokens, Db, Scope, Params>
 
@@ -1128,7 +1136,7 @@ type ValidateGroupedSelectItemsAgainstKeys<
 	? H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
 		? ExprValidInsideGroupedSelection<Ast, GroupKeys, false> extends true
 			? ValidateGroupedSelectItemsAgainstKeys<Rest, GroupKeys>
-			: FormatError<"GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE", []>
+			: FormatError<Errors["GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE"], []>
 		: H extends { kind: "star" } | { kind: "param" }
 			? ValidateGroupedSelectItemsAgainstKeys<Rest, GroupKeys>
 			: never
@@ -1332,16 +1340,16 @@ type ConsumeClosingParen<Tokens extends ParserMonad, Result> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? [SkipToken<Tokens>, Result]
 		: Result extends JsqlSelectStatementResult
-			? SkipFailedExpression<Tokens, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY", []>>
-			: [Tokens, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY", []>]
+			? SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY"], []>>
+			: [Tokens, FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY"], []>]
 
 /** Helper: Validate that a SELECT result has exactly one column (for scalar subqueries). */
 type ValidateSingleColumn<Result extends JsqlSelectStatementResult> = Result["returning"] extends infer Cols
 	? [keyof Cols] extends [infer K]
 		? K extends string
 			? Result
-			: FormatError<"SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
-		: FormatError<"SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
+			: FormatError<Errors["SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN"], []>
+		: FormatError<Errors["SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN"], []>
 	: never
 
 /** Helper: Parse alias after derived table and merge into scope. Returns [Tokens, null, Scope] or error. */
@@ -1356,11 +1364,15 @@ type ParseAliasAfterDerived<
 			? SkipToken<Tokens> extends infer Ras extends ParserMonad
 				? PeekToken<Ras> extends TokenIdent<infer Alias extends string>
 					? [SkipToken<Ras>, null, MergeScope<Record<Alias, Entry>, OuterScope>]
-					: [SkipToken<Ras>, FormatError<"EXPECTED_ALIAS_NAME_AFTER_AS", []>, ParserRefErrorThirdSentinel]
+					: [
+							SkipToken<Ras>,
+							FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>,
+							ParserRefErrorThirdSentinel,
+						]
 				: never
 			: PeekToken<Tokens> extends TokenIdent<infer Alias extends string>
 				? [SkipToken<Tokens>, null, MergeScope<Record<Alias, Entry>, OuterScope>]
-				: [Tokens, FormatError<"EXPECTED_ALIAS_AFTER_DERIVED_TABLE", []>, ParserRefErrorThirdSentinel]
+				: [Tokens, FormatError<Errors["EXPECTED_ALIAS_AFTER_DERIVED_TABLE"], []>, ParserRefErrorThirdSentinel]
 		: never
 
 /** Inner `( SELECT … FROM … [WHERE …] )` ending with `)`; multi-column allowed (`EXISTS`, CTE, `IN (SELECT …)`). */
@@ -1382,7 +1394,7 @@ export type ParseParenEnclosedSelect<
 					? ConsumeClosingParen<R2, Result>
 					: never
 			: never
-		: SkipFailedExpression<R1, FormatError<"EXPECTED_SELECT_IN_SUBQUERY", []>>
+		: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
 
 /** Scalar subquery: exactly one non-`*` projection. */
 export type ParseParenScalarSelect<
@@ -1407,7 +1419,7 @@ export type ParseParenScalarSelect<
 						: never
 					: never
 			: never
-		: SkipFailedExpression<R1, FormatError<"EXPECTED_SELECT_IN_SUBQUERY", []>>
+		: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
 
 type ParseParenDerivedSelect<
 	R1 extends ParserMonad,
@@ -1433,7 +1445,7 @@ type ParseParenDerivedSelect<
 						: never
 					: never
 			: never
-		: [R1, FormatError<"EXPECTED_SELECT_IN_DERIVED_TABLE", []>, ParserRefErrorThirdSentinel]
+		: [R1, FormatError<Errors["EXPECTED_SELECT_IN_DERIVED_TABLE"], []>, ParserRefErrorThirdSentinel]
 
 type ParseFromTableRef<
 	Tokens extends ParserMonad,
@@ -1447,7 +1459,11 @@ type ParseFromTableRef<
 				? ParseParenDerivedSelect<R1, Db, Scope, Params>
 				: Tok extends TokenIdent<infer A extends string>
 					? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
-					: [R1, FormatError<"EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM", []>, ParserRefErrorThirdSentinel]
+					: [
+							R1,
+							FormatError<Errors["EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM"], []>,
+							ParserRefErrorThirdSentinel,
+						]
 			: never
 		: never
 
@@ -1484,8 +1500,16 @@ type ParseFromTableAfterLeadingIdent<
 					? TokB extends TokenIdent<infer B extends string>
 						? JsqlDbGetData<Db, A, B> extends infer Tbl extends JsqlDataShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
-							: [R3, FormatError<"UNKNOWN_SCHEMA_OR_TABLE", [A, "FROM"]>, ParserRefErrorThirdSentinel]
-						: [R3, FormatError<"EXPECTED_TABLE_NAME", ["after `.` in FROM"]>, ParserRefErrorThirdSentinel]
+							: [
+									R3,
+									FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "FROM"]>,
+									ParserRefErrorThirdSentinel,
+								]
+						: [
+								R3,
+								FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in FROM"]>,
+								ParserRefErrorThirdSentinel,
+							]
 					: never
 				: never
 			: never
@@ -1493,7 +1517,7 @@ type ParseFromTableAfterLeadingIdent<
 			? ParseAliasAfterCTE<R1, A, Scope[A], Scope>
 			: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlDataShape
 				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
-				: [R1, FormatError<"UNKNOWN_TABLE", [A, "FROM"]>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
 type ParseAliasAfterCTE<
 	Tokens extends ParserMonad,
@@ -1526,7 +1550,7 @@ type ParseAliasAfterCTE<
 					? SkipToken<Ras0> extends infer Ra extends ParserMonad
 						? TokName extends TokenIdent<infer Alias extends string>
 							? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
-							: [Ra, FormatError<"EXPECTED_ALIAS_NAME_AFTER_AS", []>, ParserRefErrorThirdSentinel]
+							: [Ra, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
 						: never
 					: never
 				: never
@@ -1534,7 +1558,7 @@ type ParseAliasAfterCTE<
 				? SkipToken<Tokens> extends infer Ra extends ParserMonad
 					? TokAlias extends TokenIdent<infer Alias extends string>
 						? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
-						: [Ra, FormatError<"EXPECTED_ALIAS_AFTER_CTE", []>, ParserRefErrorThirdSentinel]
+						: [Ra, FormatError<Errors["EXPECTED_ALIAS_AFTER_CTE"], []>, ParserRefErrorThirdSentinel]
 					: never
 				: never
 
@@ -1598,7 +1622,7 @@ type ParseAliasAfterTable<
 										Scope
 									>,
 								]
-							: [Ra, FormatError<"EXPECTED_ALIAS_NAME_AFTER_AS", []>, ParserRefErrorThirdSentinel]
+							: [Ra, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
 						: never
 					: never
 				: never
@@ -1622,7 +1646,7 @@ type ParseAliasAfterTable<
 							]
 						: [
 								Ra,
-								FormatError<"EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE", []>,
+								FormatError<Errors["EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE"], []>,
 								ParserRefErrorThirdSentinel,
 							]
 					: never
@@ -1674,7 +1698,7 @@ type ParseJoinAfterCross<
 						: never
 				: never
 			: never
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["CROSS"]>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["CROSS"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalInner<
 	Tokens extends ParserMonad,
@@ -1684,7 +1708,7 @@ type ParseJoinAfterOptionalInner<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["INNER"]>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["INNER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterLeft<
 	Tokens extends ParserMonad,
@@ -1696,7 +1720,7 @@ type ParseJoinAfterLeft<
 		? ParseJoinAfterOptionalOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["LEFT"]>, ParserRefErrorThirdSentinel]
+			: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["LEFT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRight<
 	Tokens extends ParserMonad,
@@ -1708,7 +1732,7 @@ type ParseJoinAfterRight<
 		? ParseJoinAfterRightOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["RIGHT"]>, ParserRefErrorThirdSentinel]
+			: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["RIGHT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRightOuter<
 	Tokens extends ParserMonad,
@@ -1718,7 +1742,7 @@ type ParseJoinAfterRightOuter<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["RIGHT OUTER"]>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["RIGHT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFull<
 	Tokens extends ParserMonad,
@@ -1730,7 +1754,7 @@ type ParseJoinAfterFull<
 		? ParseJoinAfterFullOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
 			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-			: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["FULL"]>, ParserRefErrorThirdSentinel]
+			: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["FULL"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFullOuter<
 	Tokens extends ParserMonad,
@@ -1740,7 +1764,7 @@ type ParseJoinAfterFullOuter<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["FULL OUTER"]>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["FULL OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalOuter<
 	Tokens extends ParserMonad,
@@ -1750,7 +1774,7 @@ type ParseJoinAfterOptionalOuter<
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", ["LEFT OUTER"]>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["LEFT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterJoinKw<
 	Tokens extends ParserMonad,
@@ -1775,12 +1799,20 @@ type ParseJoinAfterJoinKw<
 							: JoinScopeOnly<Third> extends ScopeMap
 								? PeekToken<R0> extends TokenKeyOn
 									? ParseJoinOn<R0, Db, JoinScopeOnly<Third>, Params>
-									: [R0, FormatError<"EXPECTED_ON_AFTER_JOIN_TABLE", []>, ParserRefErrorThirdSentinel]
-								: [R0, FormatError<"EXPECTED_ON_AFTER_JOIN_TABLE", []>, ParserRefErrorThirdSentinel]
+									: [
+											R0,
+											FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>,
+											ParserRefErrorThirdSentinel,
+										]
+								: [
+										R0,
+										FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>,
+										ParserRefErrorThirdSentinel,
+									]
 						: never
 				: never
 			: never
-		: [Tokens, FormatError<"EXPECTED_JOIN_KEYWORD", [""]>, ParserRefErrorThirdSentinel]
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], [""]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinOn<
 	Tokens extends ParserMonad,
@@ -1798,7 +1830,7 @@ type ParseJoinOn<
 							? ParseJoinChain<R2, Db, Scope, Params>
 							: never
 					: never
-				: [R1, FormatError<"EXPECTED_ON_KEYWORD", []>, ParserRefErrorThirdSentinel]
+				: [R1, FormatError<Errors["EXPECTED_ON_KEYWORD"], []>, ParserRefErrorThirdSentinel]
 			: never
 		: never
 
@@ -1810,16 +1842,16 @@ type JoinOnQualifiedEqOk<
 	R extends readonly [string, string, string],
 > =
 	ResolveColumnRefValue<Db, Scope, L> extends DbtyperErrorShape
-		? FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [L[0], L[1], L[2]]>
+		? FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [L[0], L[1], L[2]]>
 		: ResolveColumnRefValue<Db, Scope, R> extends DbtyperErrorShape
-			? FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [R[0], R[1], R[2]]>
+			? FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [R[0], R[1], R[2]]>
 			: ResolveColumnRefValue<Db, Scope, L> extends { sql: infer Ls extends SqlTypeShape }
 				? ResolveColumnRefValue<Db, Scope, R> extends { sql: infer Rs extends SqlTypeShape }
 					? SameComparisonClass<Ls, Rs> extends true
 						? true
-						: FormatError<"INCOMPATIBLE_TYPES_IN_JOIN_ON", []>
-					: FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [R[0], R[1], R[2]]>
-				: FormatError<"UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN", [L[0], L[1], L[2]]>
+						: FormatError<Errors["INCOMPATIBLE_TYPES_IN_JOIN_ON"], []>
+					: FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [R[0], R[1], R[2]]>
+				: FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [L[0], L[1], L[2]]>
 
 type JoinOnAliasEqOk<
 	Db extends JsqlDatabaseShape,
@@ -1831,17 +1863,17 @@ type JoinOnAliasEqOk<
 > =
 	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends infer LeftRefValue
 		? LeftRefValue extends DbtyperErrorShape
-			? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
+			? FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [LeftAlias, LeftCol]>
 			: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends infer RightLeftValue
 				? RightLeftValue extends DbtyperErrorShape
-					? FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
+					? FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [RightAlias, RightCol]>
 					: LeftRefValue extends { sql: infer Ls extends SqlTypeShape }
 						? RightLeftValue extends { sql: infer Rs extends SqlTypeShape }
 							? SameComparisonClass<Ls, Rs> extends true
 								? true
-								: FormatError<"INCOMPATIBLE_TYPES_IN_JOIN_ON", []>
-							: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [RightAlias, RightCol]>
-						: FormatError<"UNKNOWN_QUALIFIED_COLUMN", [LeftAlias, LeftCol]>
+								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_JOIN_ON"], []>
+							: FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [RightAlias, RightCol]>
+						: FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [LeftAlias, LeftCol]>
 				: never
 		: never
 
@@ -1967,7 +1999,7 @@ type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string
 	? Params[Name] extends SqlTypeShape
 		? { sql: Params[Name] }
 		: never
-	: FormatError<"UNKNOWN_QUERY_PARAMETER", [Name]>
+	: FormatError<Errors["UNKNOWN_QUERY_PARAMETER"], [Name]>
 
 /** Bound parameter `:name` in the SELECT list — types come from `Params`. */
 type ParamSelectOut<As, P extends string, Sql extends SqlTypeShape> = As extends string
@@ -2000,21 +2032,21 @@ type ResolveSelectListExprItem<
 	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
 		? E extends ScopeEntry
 			? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, E["columns"]>, AllItems>
-			: FormatError<"UNKNOWN_TABLE", [Sch, "SELECT ... *"]>
-		: FormatError<"UNKNOWN_TABLE", [Tab, "SELECT ... *"]>
+			: FormatError<Errors["UNKNOWN_TABLE"], [Sch, "SELECT ... *"]>
+		: FormatError<Errors["UNKNOWN_TABLE"], [Tab, "SELECT ... *"]>
 	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
 		? Al extends keyof Scope
 			? Scope[Al] extends infer E extends ScopeEntry
 				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, E["columns"]>, AllItems>
-				: FormatError<"UNKNOWN_ALIAS_IN_SELECT_STAR", []>
-			: FormatError<"UNKNOWN_ALIAS_IN_SELECT_STAR", []>
+				: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
+			: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
 					? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
-							? FormatError<"SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS", []>
+							? FormatError<Errors["SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS"], []>
 							: ResolveSelectListAcc<
 									R,
 									Db,
@@ -2062,8 +2094,8 @@ type ResolveSelectListAcc<
 		? SingleAliasScope<Scope> extends true
 			? ScopeEntryOfSingle<Scope> extends infer E extends ScopeEntry
 				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, E["columns"]>, AllItems>
-				: FormatError<"SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE", []>
-			: FormatError<"SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE", []>
+				: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
+			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }
 			? ResolveSelectListExprItem<Ast, As, R, Db, Scope, Params, Sqls, AllItems>
 			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
@@ -2114,7 +2146,7 @@ export type ParseAndResolveReturningClause<
 			? [After, Db, Items]
 			: Items extends readonly RawSelectItem[]
 				? SelectListStarInvalid<Items> extends true
-					? [After, Db, FormatError<"SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST", []>]
+					? [After, Db, FormatError<Errors["SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST"], []>]
 					: ResolveSelectList<Items, Db, Scope, Params> extends infer Res
 						? Res extends DbtyperErrorShape
 							? [After, Db, Res]

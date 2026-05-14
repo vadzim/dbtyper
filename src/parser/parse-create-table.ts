@@ -6,7 +6,7 @@ import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
@@ -24,12 +24,12 @@ export type ParseCreateTable<Tokens extends ParserMonad, Db extends JsqlDatabase
 							: never
 						: SkipFailedExpression<
 									A1,
-									FormatError<"EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE", []>
+									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE"], []>
 							  > extends [infer Rest extends ParserMonad, infer Err]
 							? [Rest, Db, Err]
 							: never
 					: never
-				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE", []>>
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE"], []>>
 			: never
 		: ParseCreateTableQualified<Tokens, Db, false>
 
@@ -47,7 +47,7 @@ type ParseCreateTableQualifiedWhenSchKnown<
 			? ParseCreateTableOpenParen<R, Db, Sch, Tab, IfNotExists>
 			: IfNotExists extends true
 				? [R, Db, null]
-				: SkipFailedStatement<R, Db, FormatError<"TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS", []>>
+				: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS"], []>>
 		: never
 
 type ParseCreateTableQualifiedWhenNameOk<
@@ -61,7 +61,7 @@ type ParseCreateTableQualifiedWhenNameOk<
 		? Sch extends keyof Db["schemas"]
 			? ParseCreateTableQualifiedWhenSchKnown<R, Db, IfNotExists, Sch & keyof Db["schemas"] & string, Tab>
 			: never
-		: SkipFailedStatement<R, Db, FormatError<"UNKNOWN_SCHEMA", [Sch, "CREATE TABLE"]>>
+		: SkipFailedStatement<R, Db, FormatError<Errors["UNKNOWN_SCHEMA"], [Sch, "CREATE TABLE"]>>
 
 type ParseCreateTableQualified<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, IfNotExists extends boolean> =
 	ParseQualifiedTableName<Tokens, Db> extends [
@@ -72,7 +72,7 @@ type ParseCreateTableQualified<Tokens extends ParserMonad, Db extends JsqlDataba
 	]
 		? E extends null
 			? ParseCreateTableQualifiedWhenNameOk<R, Db, IfNotExists, Sch, Tab>
-			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<"INVALID_CREATE_TABLE_NAME_PARSE", []>]
+			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<Errors["INVALID_CREATE_TABLE_NAME_PARSE"], []>]
 		: never
 
 type ParseCreateTableOpenParen<
@@ -92,7 +92,7 @@ type ParseCreateTableOpenParen<
 					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
 				: SkipFailedExpression<
 							AfterOpen,
-							FormatError<"EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE", []>
+							FormatError<Errors["EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE"], []>
 					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
@@ -115,10 +115,18 @@ type ParseCreateTableCloseParenAndSemi<Tokens extends ParserMonad, NewDb extends
 					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? Tok2 extends TokenKey<";"> | TokenEot
 							? [R2, NewDb, null]
-							: SkipFailedStatement<R2, NewDb, FormatError<"EXPECTED_SEMICOLON", ["CREATE TABLE"]>>
+							: SkipFailedStatement<
+									R2,
+									NewDb,
+									FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE TABLE"]>
+								>
 						: never
 					: never
-				: SkipFailedStatement<R1, NewDb, FormatError<"EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE", []>>
+				: SkipFailedStatement<
+						R1,
+						NewDb,
+						FormatError<Errors["EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE"], []>
+					>
 			: never
 		: never
 
@@ -163,7 +171,7 @@ type ParseOneColumnAfterColName<
 			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]
 				: ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
-			: [AfterType, Db, FormatError<"EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE", []>]
+			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
 		: never
 
 type ParseOneColumn<
@@ -175,7 +183,7 @@ type ParseOneColumn<
 > =
 	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
 		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_COLUMN_NAME", ["in CREATE TABLE"]>>
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 
 type ContinueAfterColumnType<
 	AfterType extends ParserMonad,
@@ -241,7 +249,10 @@ type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeSha
 				? [R, null]
 				: SkipFailedExpression<
 						R,
-						FormatError<"DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC_COLUMN_FOR_NUMERIC_LITERAL", []>
+						FormatError<
+							Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC_COLUMN_FOR_NUMERIC_LITERAL"],
+							[]
+						>
 					>
 			: never
 		: PeekToken<Tokens> extends TokenString<infer _Str>
@@ -250,7 +261,10 @@ type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeSha
 					? [R, null]
 					: SkipFailedExpression<
 							R,
-							FormatError<"DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID_COLUMN_FOR_STRING_LITERAL", []>
+							FormatError<
+								Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID_COLUMN_FOR_STRING_LITERAL"],
+								[]
+							>
 						>
 				: never
 			: PeekToken<Tokens> extends TokenKey<"true"> | TokenKey<"false">
@@ -260,7 +274,7 @@ type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeSha
 						: [
 								R,
 								FormatError<
-									"DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL",
+									Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL"],
 									[]
 								>,
 							]
@@ -271,7 +285,7 @@ type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeSha
 						: never
 					: PeekToken<Tokens> extends TokenIdent<infer FnName>
 						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
-						: SkipFailedExpression<Tokens, FormatError<"EXPECTED_DEFAULT_VALUE", []>>
+						: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_DEFAULT_VALUE"], []>>
 
 type ParseDefaultFunctionOrIdent<Tokens extends ParserMonad, FnName extends string, ColumnType extends SqlTypeShape> =
 	SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -284,7 +298,10 @@ type ParseDefaultFunctionOrIdent<Tokens extends ParserMonad, FnName extends stri
 								? [R3, null]
 								: SkipFailedExpression<
 										R3,
-										FormatError<"DEFAULT_VALUE_TYPE_MISMATCH_NOW_REQUIRES_TIMESTAMP_COLUMN", []>
+										FormatError<
+											Errors["DEFAULT_VALUE_TYPE_MISMATCH_NOW_REQUIRES_TIMESTAMP_COLUMN"],
+											[]
+										>
 									>
 							: Lowercase<FnName> extends "uuid_generate_v4" | "gen_random_uuid"
 								? SqlTypeClass<ColumnType> extends "uuid"
@@ -292,13 +309,16 @@ type ParseDefaultFunctionOrIdent<Tokens extends ParserMonad, FnName extends stri
 									: [
 											R3,
 											FormatError<
-												"DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN",
+												Errors["DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN"],
 												[]
 											>,
 										]
 								: [R3, null]
 						: never
-					: SkipFailedExpression<R2, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT", []>>
+					: SkipFailedExpression<
+							R2,
+							FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT"], []>
+						>
 				: never
 			: [R1, null]
 		: never
@@ -346,7 +366,7 @@ type ContinueAfterColumnDef<
 					>
 				: SkipFailedExpression<
 							AfterNull,
-							FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION", []>
+							FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
 					  > extends [infer Rest extends ParserMonad, infer Err]
 					? [Rest, Db, Err]
 					: never
@@ -383,7 +403,7 @@ type ContinueAfterDefault<
 			: SkipFailedStatement<
 					AfterDefaultVal,
 					Db,
-					FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE", []>
+					FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE"], []>
 				>
 
 type ColPair = { cols: Record<string, SqlTypeShape>; facts: Record<string, unknown> }

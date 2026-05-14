@@ -1,4 +1,4 @@
-import type { DbtyperErrorShape, E, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 
 export type LexerFeatures = "" | "dollar-strings" | "named-params" | "indexed-params"
 
@@ -46,7 +46,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 							: Head extends '"'
 								? Rest extends `${infer String}"${infer Rest}`
 									? Return<TokenIdent<String>, Rest>
-									: Return<FormatError<E["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
+									: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
 								: Head extends "\x20" | "\n" | "\r" | "\t"
 									? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
 									: Head extends "'"
@@ -71,13 +71,13 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 													? Next extends "$" | StartTokenChar
 														? "dollar-strings" extends Syntax
 															? ReadDollarString<Rest>
-															: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
+															: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
 														: Next extends NonZeroDigit
 															? "indexed-params" extends Syntax
 																? ReadIndexedParam<Next, Rest2>
-																: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
-															: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
-													: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
+																: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
+															: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
+													: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
 												: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
 
@@ -88,7 +88,7 @@ type ReadIndexedParam<Head extends string, Rest extends string> =
 		? Return<TokenIndexedParam<Index["value"]>, Rest2>
 		: Return<
 				FormatError<
-					"INVALID_INDEXED_PARAM",
+					Errors["INVALID_INDEXED_PARAM"],
 					[`$${Head}${ReadTokenChars<Rest, TokenChar | "." | "+" | "-">["token"]}`]
 				>,
 				Rest
@@ -98,8 +98,8 @@ type GetIndexingNumber<Head extends string, Rest extends string> =
 	GetNumber<Rest, Head> extends Return<infer Number extends TokenNumber<string>, infer Rest2 extends string>
 		? IsIndexingNumber<Number["value"]> extends true
 			? Return<Number, Rest2>
-			: Return<FormatError<"UNEXPECTED_TOKEN", []>, Rest>
-		: Return<FormatError<"UNEXPECTED_TOKEN", []>, Rest>
+			: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, Rest>
+		: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, Rest>
 
 type IsIndexingNumber<S extends string> = S extends `${string}.${string}`
 	? false
@@ -121,23 +121,23 @@ type ReadDollarString<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends "$"
 		? Rest extends `${infer String}$$${infer Rest2}`
 			? Return<TokenString<String>, Rest2>
-			: Return<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
+			: Return<FormatError<Errors["UNCLOSED_TAGGED_STRING"], []>, S>
 		: Head extends StartTokenChar
 			? Rest extends `${infer Tag}$${infer Rest2}`
 				? ReadTokenChars<Tag> extends { rest: "" }
 					? Rest2 extends `${infer String}$${Head}${Tag}$${infer Rest3}`
 						? Return<TokenString<String>, Rest3>
-						: Return<FormatError<"UNCLOSED_TAGGED_STRING", []>, S>
-					: Return<FormatError<"WRONG_STRING_TAG", []>, S>
-				: Return<FormatError<"WRONG_STRING_TAG", []>, S>
-			: Return<FormatError<"WRONG_STRING_TAG", []>, S>
-	: Return<FormatError<"WRONG_STRING_TAG", []>, S>
+						: Return<FormatError<Errors["UNCLOSED_TAGGED_STRING"], []>, S>
+					: Return<FormatError<Errors["WRONG_STRING_TAG"], []>, S>
+				: Return<FormatError<Errors["WRONG_STRING_TAG"], []>, S>
+			: Return<FormatError<Errors["WRONG_STRING_TAG"], []>, S>
+	: Return<FormatError<Errors["WRONG_STRING_TAG"], []>, S>
 
 type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`
 		? ReadSingleQuotedString<R2> extends Return<TokenString<infer P2 extends string>, infer R3 extends string>
 			? Return<TokenString<`${P1}'${P2}`>, R3>
-			: Return<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
+			: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
 		: SkipSpaces<R1> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
 				? ReadSingleQuotedString<R5> extends Return<
@@ -145,10 +145,10 @@ type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R
 						infer R6 extends string
 					>
 					? Return<TokenString<`${P1}${P6}`>, R6>
-					: Return<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
+					: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
 				: Return<TokenString<P1>, R4>
 			: never
-	: Return<FormatError<"UNCLOSED_STRING_LITERAL", []>, S>
+	: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
@@ -431,7 +431,7 @@ type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${i
 			: D1 extends "e" | "E"
 				? GetNumberExpStart<Rest, `${Num}${D1}`>
 				: D1 extends Letter
-					? Return<FormatError<"INVALID_NUMBER", []>, S>
+					? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 					: Return<TokenNumber<Num>, S>
 	: Return<TokenNumber<Num>, S>
 
@@ -441,7 +441,7 @@ type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1
 		: D1 extends "e" | "E"
 			? GetNumberExpStart<Rest, `${Buf}${D1}`>
 			: D1 extends Letter
-				? Return<FormatError<"INVALID_NUMBER", []>, S>
+				? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 				: Return<TokenNumber<Buf>, S>
 	: Return<TokenNumber<Buf>, S>
 
@@ -450,19 +450,19 @@ type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infe
 		? GetNumberExpNumStart<Rest, `${Buf}${D1}`>
 		: D1 extends Digit
 			? GetNumberExpNum<Rest, `${Buf}${D1}`>
-			: Return<FormatError<"INVALID_NUMBER", []>, S>
-	: Return<FormatError<"INVALID_NUMBER", []>, S>
+			: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
+	: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 
 type GetNumberExpNumStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
-		: Return<FormatError<"INVALID_NUMBER", []>, S>
-	: Return<FormatError<"INVALID_NUMBER", []>, S>
+		: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
+	: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 
 type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
 		: D1 extends Letter
-			? Return<FormatError<"INVALID_NUMBER", []>, S>
+			? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 			: Return<TokenNumber<Buf>, S>
 	: Return<TokenNumber<Buf>, S>

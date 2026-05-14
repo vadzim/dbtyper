@@ -3,7 +3,7 @@ import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError } from "../dbtyper-error.ts"
+import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
@@ -51,7 +51,10 @@ export type ParseArraySuffix<Tokens extends ParserMonad, BaseType extends SqlTyp
 				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? ParseArraySuffix<R2, { type: "array"; arg: BaseType; nullable: false }>
 					: never
-				: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE", []>>
+				: SkipFailedExpression<
+						R1,
+						FormatError<Errors["EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE"], []>
+					>
 			: never
 		: [Tokens, BaseType]
 
@@ -74,10 +77,10 @@ type ParseVarcharLength<Tokens extends ParserMonad> =
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? PeekToken<R1> extends TokenKey<")">
 					? [SkipToken<R1>, Num]
-					: SkipFailedExpression<R1, FormatError<"EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH", []>>
+					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH"], []>>
 				: never
-			: SkipFailedExpression<Tokens, FormatError<"INVALID_NUMBER_FOR_VARCHAR_LENGTH", []>>
-		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_NUMBER_FOR_VARCHAR_LENGTH", []>>
+			: SkipFailedExpression<Tokens, FormatError<Errors["INVALID_NUMBER_FOR_VARCHAR_LENGTH"], []>>
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_NUMBER_FOR_VARCHAR_LENGTH"], []>>
 
 /** Parse NUMERIC(precision) or NUMERIC(precision, scale) */
 type ParseNumericPrecisionScale<Tokens extends ParserMonad> =
@@ -93,21 +96,21 @@ type ParseNumericPrecisionScale<Tokens extends ParserMonad> =
 										? [SkipToken<R3>, { precision: Precision; scale: Scale }]
 										: SkipFailedExpression<
 												R3,
-												FormatError<"EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE", []>
+												FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE"], []>
 											>
 									: never
-								: SkipFailedExpression<R2, FormatError<"INVALID_SCALE_NUMBER", []>>
-							: SkipFailedExpression<R2, FormatError<"EXPECTED_SCALE_NUMBER", []>>
+								: SkipFailedExpression<R2, FormatError<Errors["INVALID_SCALE_NUMBER"], []>>
+							: SkipFailedExpression<R2, FormatError<Errors["EXPECTED_SCALE_NUMBER"], []>>
 						: never
 					: PeekToken<R1> extends TokenKey<")">
 						? [SkipToken<R1>, { precision: Precision; scale: 0 }]
 						: SkipFailedExpression<
 								R1,
-								FormatError<"EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION", []>
+								FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION"], []>
 							>
 				: never
-			: SkipFailedExpression<Tokens, FormatError<"INVALID_PRECISION_NUMBER", []>>
-		: SkipFailedExpression<Tokens, FormatError<"EXPECTED_PRECISION_NUMBER", []>>
+			: SkipFailedExpression<Tokens, FormatError<Errors["INVALID_PRECISION_NUMBER"], []>>
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_PRECISION_NUMBER"], []>>
 
 /** Parse type modifiers like (n) for VARCHAR, (p,s) for NUMERIC */
 type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string> =
@@ -135,7 +138,7 @@ type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string>
 export type ParseSqlType<Tokens extends ParserMonad> =
 	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends ParserMonad, infer Words extends readonly string[]]
 		? Words extends readonly []
-			? SkipFailedExpression<AfterWords, FormatError<"EXPECTED_TYPE_NAME", [""]>>
+			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
 				? NormalizeSqlTypeName<TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiers<AfterWords, NormalizedName> extends [

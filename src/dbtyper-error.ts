@@ -1,6 +1,6 @@
 import type { Dec, Tuple, TupleSize } from "./core/type-utils.ts"
 
-export type E = {
+export type Errors = {
 	-readonly [K in keyof typeof errors]: {
 		code: (typeof errors)[K]["code"]
 		id: K
@@ -8,21 +8,16 @@ export type E = {
 	}
 }
 
-export type ErrorIds = keyof E
+export type ErrorIds = keyof Errors
 
-export type ErrorCodes = E[ErrorIds]["code"]
+export type ErrorCodes = Errors[ErrorIds]["code"]
 
-export type FormatError<ID extends ErrorIds | ErrorDescription, Args extends ErrorArgs<GetErrDescr<ID>>> =
-	GetErrDescr<ID> extends {
-		code: infer Code extends ErrorCodes
-		msg: infer Msg
-	}
-		? Msg extends readonly string[]
-			? DbtyperError<Code, JoinWithArgs<Msg, Args>>
-			: never
-		: never
+export type FormatError<ED extends ErrorDescription, Args extends ErrorArgs<ED>> = DbtyperError<
+	ED["code"],
+	JoinWithArgs<ED["msg"], Args>
+>
 
-export type DbtyperError<Code extends ErrorCodes, Message extends string> = {
+export type DbtyperError<Code extends number, Message extends string> = {
 	__sql_parser_error_code__: Code
 	__sql_parser_error__: Message
 }
@@ -31,12 +26,6 @@ export type DbtyperErrorShape = {
 	__sql_parser_error_code__: number
 	__sql_parser_error__: string
 }
-
-type GetErrDescr<ID extends ErrorIds | ErrorDescription> = ID extends ErrorIds
-	? E[ID]
-	: ID extends ErrorDescription
-		? ID
-		: never
 
 type ErrorDescription = {
 	code: number

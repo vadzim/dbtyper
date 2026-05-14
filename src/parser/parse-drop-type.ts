@@ -5,7 +5,7 @@ import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
@@ -16,7 +16,7 @@ export type ParseDropType<Tokens extends ParserMonad, Db extends JsqlDatabaseSha
 				? SkipToken<A0> extends infer A1 extends ParserMonad
 					? ParseDropTypeQualified<A1, Db, true>
 					: never
-				: SkipFailedStatement<A0, Db, FormatError<"EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE", []>>
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE"], []>>
 			: never
 		: ParseDropTypeQualified<Tokens, Db, false>
 
@@ -26,7 +26,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends ParserMonad, A extends strin
 		? SkipToken<AfterDot> extends infer R2 extends ParserMonad
 			? T2 extends TokenIdent<infer B extends string>
 				? [R2, null, A, B]
-				: SkipFailedQualifiedName<R2, FormatError<"EXPECTED_TYPE_NAME", ["after `.` in DROP TYPE"]>>
+				: SkipFailedQualifiedName<R2, FormatError<Errors["EXPECTED_TYPE_NAME"], ["after `.` in DROP TYPE"]>>
 			: never
 		: never
 
@@ -40,7 +40,7 @@ type ParseDropAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDat
 					? ParseDropQualifiedSecondIdent<R1, A>
 					: SkipFailedQualifiedName<
 							R1,
-							FormatError<"EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE", []>
+							FormatError<Errors["EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE"], []>
 						>
 				: never
 			: never
@@ -51,7 +51,7 @@ type ParseQualifiedTypeNameForDrop<Tokens extends ParserMonad, Db extends JsqlDa
 		? SkipToken<Tokens> extends infer AfterFirst extends ParserMonad
 			? NameTok extends TokenIdent<infer A extends string>
 				? ParseDropAfterFirstIdent<AfterFirst, Db, A>
-				: SkipFailedQualifiedName<AfterFirst, FormatError<"EXPECTED_TYPE_NAME", ["in DROP TYPE"]>>
+				: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_TYPE_NAME"], ["in DROP TYPE"]>>
 			: never
 		: never
 
@@ -73,11 +73,11 @@ type ParseDropTypeQualified<Tokens extends ParserMonad, Db extends JsqlDatabaseS
 					? JsqlDbReplaceType<Db, Sch, Typ, null> extends infer NewDb extends JsqlDatabaseShape
 						? FinishDropStatement<R, NewDb>
 						: never
-					: SkipFailedStatement<R, Db, FormatError<"TYPE_DOES_NOT_EXIST_USE_IF_EXISTS", []>>
-			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<"INVALID_DROP_TYPE_PARSE", []>]
+					: SkipFailedStatement<R, Db, FormatError<Errors["TYPE_DOES_NOT_EXIST_USE_IF_EXISTS"], []>>
+			: [R, Db, E extends DbtyperErrorShape ? E : FormatError<Errors["INVALID_DROP_TYPE_PARSE"], []>]
 		: never
 
 type FinishDropStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
-		: SkipFailedStatement<Tokens, Db, FormatError<"EXPECTED_SEMICOLON", ["DROP TYPE"]>>
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["DROP TYPE"]>>
