@@ -1442,15 +1442,15 @@ export const errors = {
 	},
 
 	// DEFAULT Values
-	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN_COLUMN_FOR_BOOLEAN_LITERAL: {
+	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN: {
 		code: 5200,
 		msg: ["DEFAULT value type mismatch: expected boolean column for boolean literal"],
 	},
-	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC_COLUMN_FOR_NUMERIC_LITERAL: {
+	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC: {
 		code: 5201,
 		msg: ["DEFAULT value type mismatch: expected numeric column for numeric literal"],
 	},
-	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID_COLUMN_FOR_STRING_LITERAL: {
+	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID: {
 		code: 5202,
 		msg: ["DEFAULT value type mismatch: expected text/uuid column for string literal"],
 	},
