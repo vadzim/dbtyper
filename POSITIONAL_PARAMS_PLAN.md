@@ -269,8 +269,8 @@ type LookupPositionalParam<
 > = Params extends readonly SqlTypeShape[]
 	? Index extends keyof Params
 		? Params[Index]
-		: FormatError<"POSITIONAL_PARAMETER_OUT_OF_BOUNDS", [Index]>
-	: FormatError<"POSITIONAL_PARAMETER_REQUIRES_ARRAY", []>
+		: FormatError<Errors["POSITIONAL_PARAMETER_OUT_OF_BOUNDS"], [Index]>
+	: FormatError<Errors["POSITIONAL_PARAMETER_REQUIRES_ARRAY"], []>
 ```
 
 Update resolution to extract index from AST:

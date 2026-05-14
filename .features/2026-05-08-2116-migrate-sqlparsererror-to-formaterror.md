@@ -70,7 +70,7 @@ SqlParserError<Message extends string> = DbtyperError<-1, Message>
 SqlParserError<"Unknown table in FROM">
 
 // After (source):
-FormatError<"UNKNOWN_TABLE_FROM", [tableName]>
+FormatError<Errors["UNKNOWN_TABLE_FROM"], [tableName]>
 
 // Before (test):
 SqlParserError<"Unknown table in FROM">
@@ -87,7 +87,7 @@ DbtyperError<2200, "[dbt:UNKNOWN_TABLE_FROM] Unknown table users in FROM">
 
 **ALL SOURCE FILES MIGRATED!**
 
-All parser files have been successfully migrated from `SqlParserError<"message">` to `FormatError<"ERROR_ID", [args]>`:
+All parser files have been successfully migrated from `SqlParserError<"message">` to `FormatError<Errors["ERROR_ID"], [args]>`:
 
 1. **skip-statement.ts** - Updated constraints to accept `DbtyperError` instead of `SqlParserError`
 2. **parse-create-schema.ts** - Migrated to FormatError with error codes 3700-3703
