@@ -65,3 +65,5 @@ export type BoolAnd<B1 extends boolean, B2 extends boolean> = B1 extends true ? 
 export type BoolOr<B1 extends boolean, B2 extends boolean> = B1 extends false ? B2 : true
 export type BoolNot<B extends boolean> = B extends true ? false : true
 export type BoolXor<B1 extends boolean, B2 extends boolean> = B1 extends false ? B2 : B2 extends false ? true : false
+
+export type ParseNumber<S extends string> = S extends `${infer Number extends number}` ? Number : never

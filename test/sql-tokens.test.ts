@@ -1,4 +1,4 @@
-import type { TokenKey, TokenNumber, TokenParam, TokenString } from "../src/lexer/sql-lexer.ts"
+import type { TokenIndexedParam, TokenKey, TokenNumber, TokenParam, TokenString } from "../src/lexer/sql-lexer.ts"
 import type { CreateParserMonad, PeekToken } from "../src/lexer/parser-monad.ts"
 import type { TestTokensL } from "./test-utils/lexer-test-utils.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
@@ -52,6 +52,18 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 }
 
 {
+	// param
+	type test = PeekToken<CreateParserMonad<`   :abc ok`>>
+	type _expect = Expect<Matches<test, TokenParam<"abc">>>
+}
+
+{
+	// indexed param
+	type test = PeekToken<CreateParserMonad<`   $4 ok`>>
+	type _expect = Expect<Matches<test, TokenIndexedParam<"4">>>
+}
+
+{
 	// tagged string
 	type test = PeekToken<CreateParserMonad<` $$foo$$`>>
 	type _expect = Expect<Matches<test, TokenString<"foo">>>
@@ -99,14 +111,14 @@ import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
 {
 	// parameters
-	type test = TestTokensL<CreateParserMonad<`select :1, ?`>>[1]
+	type test = TestTokensL<CreateParserMonad<`select :a, ?`>>[1]
 	type _expect = Expect<
 		Matches<
 			test,
 			[
 				//
 				TokenKey<"select">,
-				TokenParam<"1">,
+				TokenParam<"a">,
 				TokenKey<",">,
 				TokenKey<"?">,
 			]

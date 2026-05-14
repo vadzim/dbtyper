@@ -121,6 +121,10 @@ export const errors = {
 		id: "UNMATCHED_CLOSING_BRACKET",
 		msg: ["Unmatched closing bracket: ", ""],
 	},
+	1010: {
+		id: "INVALID_INDEXED_PARAM",
+		msg: ["Invalid indexed parameter: ", ""],
+	},
 
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement

@@ -1,16 +1,17 @@
 import type { DbtyperErrorShape, FormatError } from "../dbtyper-error.ts"
 
-export type LexerFeatures = "" | "dollar-strings" | "named-params"
+export type LexerFeatures = "" | "dollar-strings" | "named-params" | "indexed-params"
 
-export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "eot"
+export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "indexed_param" | "eot"
 
-export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
+export type TokenType<Kind extends TokenKind, Value extends string | number = ""> = { value: Value; kind: Kind }
 
 export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
 export type TokenString<String extends string> = TokenType<"string", String>
 export type TokenNumber<Num extends string> = TokenType<"number", Num>
 export type TokenParam<Param extends string> = TokenType<"param", Param>
+export type TokenIndexedParam<Index extends string> = TokenType<"indexed_param", Index>
 export type TokenEot = TokenType<"eot">
 
 export type TokenStreamHead = TokenType<TokenKind, string> | DbtyperErrorShape
@@ -66,15 +67,57 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 														: Return<TokenKey<":">, Rest>
 												: Return<TokenKey<":">, Rest>
 											: Head extends "$"
-												? "dollar-strings" extends Syntax
-													? ReadDollar<Rest>
+												? Rest extends `${infer Next}${infer Rest2}`
+													? Next extends "$" | StartTokenChar
+														? "dollar-strings" extends Syntax
+															? ReadDollarString<Rest>
+															: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
+														: Next extends NonZeroDigit
+															? "indexed-params" extends Syntax
+																? ReadIndexedParam<Next, Rest2>
+																: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
+															: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
 													: Return<FormatError<"UNEXPECTED_TOKEN", []>, S>
 												: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
 
-type Return<_Result, _Rest> = [_Result, _Rest]
+type Return<Result, Rest> = [Result, Rest]
 
-type ReadDollar<S extends string> = S extends `${infer Head}${infer Rest}`
+type ReadIndexedParam<Head extends string, Rest extends string> =
+	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenNumber<string>, infer Rest2 extends string>
+		? Return<TokenIndexedParam<Index["value"]>, Rest2>
+		: Return<
+				FormatError<
+					"INVALID_INDEXED_PARAM",
+					[`$${Head}${ReadTokenChars<Rest, TokenChar | "." | "+" | "-">["token"]}`]
+				>,
+				Rest
+			>
+
+type GetIndexingNumber<Head extends string, Rest extends string> =
+	GetNumber<Rest, Head> extends Return<infer Number extends TokenNumber<string>, infer Rest2 extends string>
+		? IsIndexingNumber<Number["value"]> extends true
+			? Return<Number, Rest2>
+			: Return<FormatError<"UNEXPECTED_TOKEN", []>, Rest>
+		: Return<FormatError<"UNEXPECTED_TOKEN", []>, Rest>
+
+type IsIndexingNumber<S extends string> = S extends `${string}.${string}`
+	? false
+	: S extends `${string}+${string}`
+		? false
+		: S extends `${string}-${string}`
+			? false
+			: S extends `${string}e${string}`
+				? false
+				: S extends `${string}E${string}`
+					? false
+					: S extends `${string}_${string}`
+						? false
+						: S extends `0${string}`
+							? false
+							: true
+
+type ReadDollarString<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends "$"
 		? Rest extends `${infer String}$$${infer Rest2}`
 			? Return<TokenString<String>, Rest2>
@@ -221,7 +264,9 @@ type StartTokenChar = Letter | "_"
 
 type TokenChar = Letter | Digit | "_"
 
-type Digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+type Digit = "0" | NonZeroDigit
 
 type Letter = LowerCaseLetter | UpperCaseLetter
 
