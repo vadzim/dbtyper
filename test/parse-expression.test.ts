@@ -10,7 +10,6 @@ import type {
 	ResolveExpressionAST,
 	SqlCastTypeNorm,
 } from "../src/parser/parse-expression.ts"
-import type { ParseSqlStatement as _ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { TBoolean, TInteger, TText, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { SqlTypeShape } from "../src/core/sql-type-shape.ts"

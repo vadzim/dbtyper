@@ -1,7 +1,6 @@
 import { describe, it } from "node:test"
 import type { JsqlDatabaseShape, JsqlInsertStatementResult } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
-
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -53,16 +52,19 @@ type InsQualified = ParseSqlStatement<
 	CreateParserMonad<`insert into public.users (id, name) values ('a','b');`>,
 	DbAppDefaultPublicUsers
 >
+
 type _insQualified = Expect<Extends<InsQualified[2], JsqlInsertStatementResult>>
 
 /** Table alias before `(` column list (scope for `VALUES` is still the base table). */
 type InsTableAlias = ParseSqlStatement<CreateParserMonad<`insert into users u (id, name) values ('a','b');`>, DbUsers>
+
 type _insTableAlias = Expect<Extends<InsTableAlias[2], JsqlInsertStatementResult>>
 
 type InsQualifiedTableAlias = ParseSqlStatement<
 	CreateParserMonad<`insert into public.users u (id, name) values ('a','b');`>,
 	DbAppDefaultPublicUsers
 >
+
 type _insQualifiedTableAlias = Expect<Extends<InsQualifiedTableAlias[2], JsqlInsertStatementResult>>
 
 /** Multi-row `VALUES` — each row checked against the column list. */
@@ -70,15 +72,17 @@ type InsMultiRow = ParseSqlStatement<
 	CreateParserMonad<`insert into users (id, name) values ('u1','n1'), ('u2','n2');`>,
 	DbUsers
 >
+
 type _insMultiRow = Expect<Extends<InsMultiRow[2], JsqlInsertStatementResult>>
 
 type InsReturning = ParseSqlStatement<
 	CreateParserMonad<`insert into users (id, name) values ('u1','n1') returning id, name;`>,
 	DbUsers
 >
+
 type InsReturningRes = InsReturning[2]
 type _insReturning = Expect<Extends<InsReturningRes, JsqlInsertStatementResult>>
-type _insReturningProj = Expect<Extends<InsReturningRes["returning"]["columns"], { id: TText; name: TText }>>
+type _insReturningProj = Expect<Extends<InsReturningRes["returning"], { id: TText; name: TText }>>
 
 type InsUpsert = ParseSqlStatement<
 	CreateParserMonad<`insert into users (id, name) values ('u1','n1') on conflict (id) do update set name = excluded.name;`>,
@@ -94,7 +98,7 @@ type InsUpsertWhereReturning = ParseSqlStatement<
 >
 type InsUpsertWhereReturningRes = InsUpsertWhereReturning[2]
 type _insUpsertWhereReturning = Expect<Extends<InsUpsertWhereReturningRes, JsqlInsertStatementResult>>
-type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["returning"]["columns"], { id: TText }>>
+type _insUpsertWhereReturningId = Expect<Extends<InsUpsertWhereReturningRes["returning"], { id: TText }>>
 
 type SeedDb0 = {
 	defaultSchema: "public"

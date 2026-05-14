@@ -4,6 +4,8 @@ import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { DbtyperError } from "../src/dbtyper-error.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
+import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
+import type { SqlDatabase } from "../src/core/sql-database.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbAuth = {
@@ -60,15 +62,13 @@ type DbWithDup = {
 type T3 = ParseSqlStatement<CreateParserMonad<`create table auth.dup ( n int not null );`>, DbWithDup>
 type _t3err = Expect<Extends<T3[2], DbtyperError<3202, string>>>
 
-type T4 = ParseSqlStatement<
-	CreateParserMonad<`create table logs.events ( at timestamp with time zone not null );`>,
-	{
-		defaultSchema: "public"
-		schemas: { logs: JsqlSchemaShape }
-	}
+type T4 = ApplyStatements<
+	SqlDatabase,
+	`create schema logs; create table logs.events ( at timestamp with time zone not null );`
 >
-type T4Table = T4[1]["schemas"]["logs"]["sets"]["events"]
-type _t4null = Expect<Matches<T4[2], null>>
+
+type T4Table = T4[0]["schemas"]["logs"]["sets"]["events"]
+type _t4null = Expect<Matches<T4[1], null>>
 type _t4shape = Expect<
 	Extends<
 		T4Table,

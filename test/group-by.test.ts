@@ -21,14 +21,14 @@ type DbGroup = {
 
 type TGroupBy = ParseSqlStatement<CreateParserMonad<`select region from sales group by region;`>, DbGroup>
 
-type _groupByOk = Expect<Matches<TGroupBy[2], { kind: "select"; columns: { region: TText } }>>
+type _groupByOk = Expect<Matches<TGroupBy[2], { kind: "select"; returning: { region: TText } }>>
 
 type THaving = ParseSqlStatement<
 	CreateParserMonad<`select region from sales group by region having region = 'eu';`>,
 	DbGroup
 >
 
-type _havingOk = Expect<Matches<THaving[2], { kind: "select"; columns: { region: TText } }>>
+type _havingOk = Expect<Matches<THaving[2], { kind: "select"; returning: { region: TText } }>>
 
 type _TGroupProjAggOk = ParseSqlStatement<
 	CreateParserMonad<`select region, sum(amount) as s from sales group by region;`>,
@@ -40,7 +40,7 @@ type THavingNoGroupAggOnly = ParseSqlStatement<
 	DbGroup
 >
 
-type _havingNoGroupAggOnly = Expect<Matches<THavingNoGroupAggOnly[2], { kind: "select"; columns: { c: TBigint } }>>
+type _havingNoGroupAggOnly = Expect<Matches<THavingNoGroupAggOnly[2], { kind: "select"; returning: { c: TBigint } }>>
 
 /** Multi-expression `GROUP BY`: both projected non-aggregates must appear in the key set. */
 type TGroupByTwoKeysOk = ParseSqlStatement<
@@ -49,7 +49,7 @@ type TGroupByTwoKeysOk = ParseSqlStatement<
 >
 
 type _groupByTwoKeysOk = Expect<
-	Matches<TGroupByTwoKeysOk[2], { kind: "select"; columns: { region: TText; amount: TNumeric } }>
+	Matches<TGroupByTwoKeysOk[2], { kind: "select"; returning: { region: TText; amount: TNumeric } }>
 >
 
 /** `GROUP BY region, amount` but `amount` omitted from projection list — ok (column appears in grouping). */
@@ -59,13 +59,13 @@ type TGroupByTwoKeysSubsetProj = ParseSqlStatement<
 >
 
 type _groupByTwoKeysSubsetProj = Expect<
-	Matches<TGroupByTwoKeysSubsetProj[2], { kind: "select"; columns: { region: TText } }>
+	Matches<TGroupByTwoKeysSubsetProj[2], { kind: "select"; returning: { region: TText } }>
 >
 
 /** Literals are allowed in grouped contexts. */
 type TGroupLitOk = ParseSqlStatement<CreateParserMonad<`select region, 1 as one from sales group by region;`>, DbGroup>
 
-type _groupLitOk = Expect<Matches<TGroupLitOk[2], { kind: "select"; columns: { region: TText; one: TInteger } }>>
+type _groupLitOk = Expect<Matches<TGroupLitOk[2], { kind: "select"; returning: { region: TText; one: TInteger } }>>
 
 /** `COUNT(*)` counts as aggregate in projection rules. */
 type TGroupCountStar = ParseSqlStatement<
@@ -73,7 +73,7 @@ type TGroupCountStar = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupCountStar = Expect<Matches<TGroupCountStar[2], { kind: "select"; columns: { region: TText; c: TBigint } }>>
+type _groupCountStar = Expect<Matches<TGroupCountStar[2], { kind: "select"; returning: { region: TText; c: TBigint } }>>
 
 /** Trailing `ORDER BY` / `LIMIT` / `OFFSET` after `GROUP BY` must not drop grouped-projection validation. */
 type TGroupOrderLimit = ParseSqlStatement<
@@ -81,7 +81,7 @@ type TGroupOrderLimit = ParseSqlStatement<
 	DbGroup
 >
 
-type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; columns: { region: TText } }>>
+type _groupOrderLimit = Expect<Matches<TGroupOrderLimit[2], { kind: "select"; returning: { region: TText } }>>
 
 describe("GROUP BY / HAVING (type tests)", () => {
 	it("compile-time assertions above", () => {})

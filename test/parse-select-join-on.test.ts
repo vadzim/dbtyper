@@ -3,9 +3,10 @@ import type { JsqlSelectStatementResult } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
-import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
 import type { TText, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
+import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /**
  * Regression: after `JOIN schema.table`, the next token may be `ON` without an alias — `ParseAliasAfterTable`
@@ -65,7 +66,7 @@ type _joinOnCatalogPredicateMultiLineColumns = Expect<
 		TJoinOnCatalogPredicateMultiLine[2],
 		{
 			kind: "select"
-			columns: {
+			returning: {
 				email: TText
 				display_name: TNull<"text">
 				created_at: TNull<"timestamp with time zone">
@@ -94,11 +95,11 @@ order by display_name asc
 >
 type _nestPostgresAppCliSelectOk = Expect<Extends<TNestPostgresAppCliSelect[2], JsqlSelectStatementResult>>
 // Check individual columns instead of the whole structure
-type _nestPostgresAppCliSelectId = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["id"], TUuid>>
-type _nestPostgresAppCliSelectUserId = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["user_id"], TUuid>>
-type _nestPostgresAppCliSelectEmail = Expect<Extends<TNestPostgresAppCliSelect[2]["columns"]["email"], TText>>
+type _nestPostgresAppCliSelectId = Expect<Extends<TNestPostgresAppCliSelect[2]["returning"]["id"], TUuid>>
+type _nestPostgresAppCliSelectUserId = Expect<Extends<TNestPostgresAppCliSelect[2]["returning"]["user_id"], TUuid>>
+type _nestPostgresAppCliSelectEmail = Expect<Extends<TNestPostgresAppCliSelect[2]["returning"]["email"], TText>>
 type _nestPostgresAppCliSelectDisplayName = Expect<
-	Extends<TNestPostgresAppCliSelect[2]["columns"]["display_name"], TNull<"text">>
+	Extends<TNestPostgresAppCliSelect[2]["returning"]["display_name"], TNull<"text">>
 >
 
 describe("parse-select JOIN … ON (type tests)", () => {

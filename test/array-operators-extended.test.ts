@@ -23,27 +23,27 @@ type TContainedBy = ParseSqlStatement<
 	CreateParserMonad<`select tags <@ array['a','b','c'] as contained from items;`>,
 	DbArrays
 >
-type _tContainedBy = Expect<Extends<TContainedBy[2], { kind: "select"; columns: { contained: TBoolean } }>>
+type _tContainedBy = Expect<Extends<TContainedBy[2], { kind: "select"; returning: { contained: TBoolean } }>>
 
 // Test @> (contains) operator
 type TContains = ParseSqlStatement<CreateParserMonad<`select tags @> array['a'] as contains from items;`>, DbArrays>
-type _tContains = Expect<Extends<TContains[2], { kind: "select"; columns: { contains: TBoolean } }>>
+type _tContains = Expect<Extends<TContains[2], { kind: "select"; returning: { contains: TBoolean } }>>
 
 // Test && (overlaps) operator
 type TOverlaps = ParseSqlStatement<CreateParserMonad<`select tags && array['a','b'] as overlaps from items;`>, DbArrays>
-type _tOverlaps = Expect<Extends<TOverlaps[2], { kind: "select"; columns: { overlaps: TBoolean } }>>
+type _tOverlaps = Expect<Extends<TOverlaps[2], { kind: "select"; returning: { overlaps: TBoolean } }>>
 
 // Test = (array equality) operator
 type TEquals = ParseSqlStatement<CreateParserMonad<`select tags = array['a','b'] as equals from items;`>, DbArrays>
-type _tEquals = Expect<Extends<TEquals[2], { kind: "select"; columns: { equals: TBoolean } }>>
+type _tEquals = Expect<Extends<TEquals[2], { kind: "select"; returning: { equals: TBoolean } }>>
 
 // Test || (array concatenation) operator
 type TConcat = ParseSqlStatement<CreateParserMonad<`select tags || array['new'] as concatenated from items;`>, DbArrays>
-type _tConcat = Expect<Extends<TConcat[2], { kind: "select"; columns: { concatenated: TTextArray } }>>
+type _tConcat = Expect<Extends<TConcat[2], { kind: "select"; returning: { concatenated: TTextArray } }>>
 
 // Test array concatenation with column
 type TConcatColumn = ParseSqlStatement<CreateParserMonad<`select tags || tags as doubled from items;`>, DbArrays>
-type _tConcatColumn = Expect<Extends<TConcatColumn[2], { kind: "select"; columns: { doubled: TTextArray } }>>
+type _tConcatColumn = Expect<Extends<TConcatColumn[2], { kind: "select"; returning: { doubled: TTextArray } }>>
 
 // Test integer arrays with operators
 type TIntArrayOps = ParseSqlStatement<
@@ -51,7 +51,7 @@ type TIntArrayOps = ParseSqlStatement<
 	DbArrays
 >
 type _tIntArrayOps = Expect<
-	Extends<TIntArrayOps[2], { kind: "select"; columns: { has_nums: TBoolean; exact: TBoolean } }>
+	Extends<TIntArrayOps[2], { kind: "select"; returning: { has_nums: TBoolean; exact: TBoolean } }>
 >
 
 describe("array-operators (type tests)", () => {

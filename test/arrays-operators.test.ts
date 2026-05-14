@@ -29,7 +29,7 @@ type _arrayOpsBool = Expect<
 		TArrayOps[2],
 		{
 			kind: "select"
-			columns: { o1: TBoolean; o2: TBoolean }
+			returning: { o1: TBoolean; o2: TBoolean }
 		}
 	>
 >
@@ -37,17 +37,17 @@ type _arrayOpsBool = Expect<
 /** Chained subscript: `ARRAY[1,2,3][2]` parses as nested `array_index`. */
 type TArrayChainedIndex = ParseSqlStatement<CreateParserMonad<`select array[1,2,3][2] as el from sales;`>, DbTiny>
 
-type _arrayChainedIndex = Expect<Extends<TArrayChainedIndex[2], { kind: "select"; columns: { el: unknown } }>>
+type _arrayChainedIndex = Expect<Extends<TArrayChainedIndex[2], { kind: "select"; returning: { el: unknown } }>>
 
 /** Unary `ARRAY` constructor only (no `@>` / `&&`). */
 type TArrayCtorOnly = ParseSqlStatement<CreateParserMonad<`select array[true,false] as flags from sales;`>, DbTiny>
 
-type _arrayCtorOnly = Expect<Extends<TArrayCtorOnly[2], { kind: "select"; columns: { flags: TBooleanArray } }>>
+type _arrayCtorOnly = Expect<Extends<TArrayCtorOnly[2], { kind: "select"; returning: { flags: TBooleanArray } }>>
 
 /** Empty `ARRAY[]` constructor (typed as empty readonly tuple). */
 // TODO: Fix empty array error type after refactoring TS types out of parsers
 // type TArrayEmpty = ParseSqlStatement<CreateParserMonad<`select array[] as e from sales;`>, DbTiny>
-// type _arrayEmpty = Expect<Extends<TArrayEmpty[2], { kind: "select"; columns: { e: "__sql_parser_error__" } }>>
+// type _arrayEmpty = Expect<Extends<TArrayEmpty[2], { kind: "select"; returning: { e: "__sql_parser_error__" } }>>
 
 describe("PostgreSQL ARRAY constructor + containment / overlap ops (type tests)", () => {
 	it("compile-time assertions above", () => {})

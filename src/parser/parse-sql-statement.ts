@@ -1,11 +1,4 @@
-import type {
-	PeekToken,
-	SkipToken,
-	CreateParserMonad,
-	SetDB,
-	SetPositionalParamIndex,
-	GetDB,
-} from "../lexer/parser-monad.ts"
+import type { PeekToken, SkipToken, CreateParserMonad } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -34,59 +27,70 @@ export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	Syntax extends LexerFeatures = LexerFeatures,
-> = Db extends JsqlDatabaseShape
-	? ApplyParsedStatements<
-			SetPositionalParamIndex<SetDB<CreateParserMonad<Text, Syntax>, Db>, 0>,
-			Params,
-			null
-		> extends [infer Rest extends ParserMonad, infer Error extends DbtyperErrorShape | null]
-		? [GetDB<Rest>, Error]
+	Syntax extends LexerFeatures = "",
+> =
+	ApplyParsedStatements<CreateParserMonad<Text, Syntax>, Db, Params, null, null> extends [
+		infer _Rest extends ParserMonad,
+		infer NewDB extends JsqlDatabaseShape,
+		infer Error extends DbtyperErrorShape | null,
+		infer Result,
+	]
+		? [
+				NewDB,
+				Error,
+				Result extends { returning: unknown }
+					? [keyof Result["returning"]] extends [never]
+						? { returning: null }
+						: { returning: { [K in keyof Result["returning"]]: Result["returning"][K] } }
+					: { returning: null },
+			]
 		: never
-	: [Db, null]
 
-export type ApplyParsedStatements<
+type ApplyParsedStatements<
 	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Error extends DbtyperErrorShape | null,
+	Result,
 	BatchDepth extends number = 0,
 > = BatchDepth extends 50
-	? [Tokens, Error]
+	? [Tokens, Db, Error, Result]
 	: PeekToken<Tokens> extends TokenEot
-		? [Tokens, Error]
-		: ApplyParsedStatementsInner<Tokens, Params, Error> extends [
+		? [Tokens, Db, Error, Result]
+		: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
 					infer Rest extends ParserMonad,
+					infer NewDb extends JsqlDatabaseShape,
 					infer NewError extends DbtyperErrorShape | null,
+					infer NewResult,
 			  ]
-			? ApplyParsedStatements<Rest, Params, NewError, Inc[BatchDepth]>
+			? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc[BatchDepth]>
 			: never
 
 type ApplyParsedStatementsInner<
 	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Error extends DbtyperErrorShape | null,
+	Result,
 	Depth extends number = 0,
 > = Depth extends 50
-	? [Tokens, Error]
+	? [Tokens, Db, Error, Result]
 	: PeekToken<Tokens> extends TokenEot
-		? [Tokens, Error]
-		: ParseSqlStatementX<Tokens, Params> extends [infer Rest extends ParserMonad, infer Result]
+		? [Tokens, Db, Error, Result]
+		: ParseSqlStatement<Tokens, Db, Params> extends [
+					infer Rest extends ParserMonad,
+					infer NewDB extends JsqlDatabaseShape,
+					infer NewResult,
+			  ]
 			? ApplyParsedStatementsInner<
 					Rest,
+					NewDB,
 					Params,
-					Result extends DbtyperErrorShape ? ConcatErrors<Error, Result> : Error,
+					NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
+					NewResult extends DbtyperErrorShape ? null : NewResult,
 					Inc[Depth]
 				>
 			: never
-
-export type ParseSqlStatementX<Tokens extends ParserMonad, Params extends ExpressionParamsShape> =
-	ParseSqlStatement<Tokens, GetDB<Tokens>, Params> extends [
-		infer Rest extends ParserMonad,
-		infer Db extends JsqlDatabaseShape,
-		infer Ret,
-	]
-		? [SetDB<Rest, Db>, Ret]
-		: never
 
 export type ParseSqlStatement<
 	Tokens extends ParserMonad,

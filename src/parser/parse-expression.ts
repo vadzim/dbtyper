@@ -2038,18 +2038,18 @@ type ResolveInListItemsAgainstLeft<
 	: FormatError<"IN_LIST_MUST_NOT_BE_EMPTY", []>
 
 type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
-	SingleProjectionColumn<S["columns"]> extends true
-		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? S["columns"][K] extends infer ColType extends SqlTypeShape
+	SingleProjectionColumn<S["returning"]> extends true
+		? keyof S["returning"] extends infer K extends keyof S["returning"]
+			? S["returning"][K] extends infer ColType extends SqlTypeShape
 				? ColType
 				: FormatError<"SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
 			: FormatError<"SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
 		: FormatError<"SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN", []>
 
 type SubSelectColumnAtom<S extends JsqlSelectStatementResult> =
-	SingleProjectionColumn<S["columns"]> extends true
-		? keyof S["columns"] extends infer K extends keyof S["columns"]
-			? S["columns"][K] extends infer ColType extends SqlTypeShape
+	SingleProjectionColumn<S["returning"]> extends true
+		? keyof S["returning"] extends infer K extends keyof S["returning"]
+			? S["returning"][K] extends infer ColType extends SqlTypeShape
 				? ColType
 				: FormatError<"IN_SUBQUERY_COLUMN_INFERENCE_FAILED", []>
 			: FormatError<"IN_SUBQUERY_COLUMN_INFERENCE_FAILED", []>

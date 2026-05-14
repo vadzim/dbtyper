@@ -97,6 +97,6 @@ export type ApplySqlToTsConversion<Config extends DriverConfig, SqlColumns> = Sq
 	__sql_parser_error__: string
 }
 	? SqlColumns
-	: SqlColumns extends Record<string, SqlTypeShape | string>
+	: SqlColumns extends Record<string, SqlTypeShape>
 		? SqlColumnsToTs<SqlColumns, Config["scalarTypes"]>
 		: SqlColumns

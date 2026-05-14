@@ -1,11 +1,10 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
-import type { CreateParserMonad, GetDB, SetDB } from "../src/lexer/parser-monad.ts"
-
+import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TInteger } from "./test-utils/sql-type-helpers.ts"
-import type { ApplyParsedStatements, ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { EmptyExpressionParams } from "../src/parser/parse-expression.ts"
+import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
+import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 /** `public` with one table so **`CREATE VIEW … AS SELECT`** can resolve `FROM`. */
 type DbDefaultPublic = {
@@ -30,16 +29,10 @@ type _applyMergedTable = Expect<
 type _applyMergedNoErr = Expect<Extends<ApplyCreateThenSelect[1], null>>
 
 /** First statement errors → **`ApplyParsedStatements`** returns **`[Rest, Db, Error]`** and does not apply the second `CREATE`. */
-type ApplyStopOnFirstError = GetDB<
-	ApplyParsedStatements<
-		SetDB<
-			CreateParserMonad<`create table ghost.m ( id int not null ); create table t ( id int not null );`>,
-			DbDefaultPublic
-		>,
-		EmptyExpressionParams,
-		null
-	>[0]
->
+type ApplyStopOnFirstError = ApplyStatements<
+	DbDefaultPublic,
+	`create table ghost.m ( id int not null ); create table t ( id int not null );`
+>[0]
 
 type _applyStopDb = Expect<Matches<ApplyStopOnFirstError, DbDefaultPublic>>
 

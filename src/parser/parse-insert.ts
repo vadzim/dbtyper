@@ -279,6 +279,7 @@ type ParseInsertWithSelect<
 											table: Tab
 											schema: Sch
 											columns: Cols
+											returning: null
 										}
 									>
 								: never
@@ -301,7 +302,7 @@ type ValidateInsertSelectColumns<
 type ValidateInsertSelectColumnCount<
 	InsertCols extends readonly string[],
 	SelectRes extends JsqlSelectStatementResult,
-> = InsertCols["length"] extends keyof SelectRes["columns"] & number
+> = InsertCols["length"] extends keyof SelectRes["returning"] & number
 	? true
 	: FormatError<"INSERT_SELECT_COLUMN_COUNT_MISMATCH", []>
 
@@ -312,8 +313,8 @@ type ValidateInsertSelectColumnTypes<
 	AllCols extends readonly string[],
 	Idx extends readonly unknown[] = [],
 > = InsertCols extends readonly [infer Col extends string, ...infer RestCols extends readonly string[]]
-	? Idx["length"] extends keyof SelectRes["columns"] & number
-		? SelectRes["columns"][Idx["length"]] extends infer SelectType extends SqlTypeShape
+	? Idx["length"] extends keyof SelectRes["returning"] & number
+		? SelectRes["returning"][Idx["length"]] extends infer SelectType extends SqlTypeShape
 			? JsqlDataGetColumnType<Tbl, Col> extends infer InsertType extends SqlTypeShape
 				? SameComparisonClass<SelectType, InsertType> extends true
 					? ValidateInsertSelectColumnTypes<Tbl, RestCols, SelectRes, AllCols, readonly [...Idx, 0]>
@@ -498,7 +499,9 @@ type BuildInsertResult<
 > = { kind: "insert"; schema: Sch; table: Tab; columns: Cols } & ([UpsertCols] extends [undefined]
 	? {}
 	: { on_conflict_update_set_columns: UpsertCols }) &
-	([Returning] extends [undefined] ? {} : { returning: Returning }) extends infer R extends JsqlInsertStatementResult
+	([Returning] extends [JsqlSelectStatementResult]
+		? { returning: Returning["returning"] }
+		: { returning: null }) extends infer R extends JsqlInsertStatementResult
 	? R
 	: never
 

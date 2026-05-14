@@ -49,20 +49,22 @@ export type JsqlForeignKeyRef = {
 
 export type JsqlFkColumnPair = [local: string, referenced: string]
 
+export type JsqlReturningResult = {
+	returning: Record<string, SqlTypeShape> | null
+}
+
 /** Type-level result of a parsed `SELECT` (DB state unchanged). */
-export type JsqlSelectStatementResult = {
+export type JsqlSelectStatementResult = JsqlReturningResult & {
 	kind: "select"
-	columns: Record<string, SqlTypeShape>
+	returning: Record<string, SqlTypeShape>
 }
 
 /** Type-level result of a parsed `INSERT` (DB state unchanged in this model). */
-export type JsqlInsertStatementResult = {
+export type JsqlInsertStatementResult = JsqlReturningResult & {
 	kind: "insert"
 	table: string
 	schema: string
 	columns: readonly string[]
-	/** Set when `RETURNING …` is parsed (same shape as a `SELECT` projection). */
-	returning?: JsqlSelectStatementResult
 	/** Set when `ON CONFLICT … DO UPDATE SET …` is parsed (assigned column names only). */
 	on_conflict_update_set_columns?: readonly string[]
 }

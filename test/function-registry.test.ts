@@ -21,31 +21,31 @@ type InferOk = ExtractStreamError<DbFns, `select custom_fn(x) from t`>
 type _inferOk = Expect<Extends<InferOk, null>>
 
 type TCustomFn = ParseSqlStatement<CreateParserMonad<`select custom_fn(x) from t`>, DbFns>
-type _customFn = Expect<Extends<TCustomFn[2], { kind: "select"; columns: { "?column?": TInteger } }>>
+type _customFn = Expect<Extends<TCustomFn[2], { kind: "select"; returning: { "?column?": TInteger } }>>
 type TCountStar = ParseSqlStatement<CreateParserMonad<`select count(*) from t`>, DbFns>
-type _countStar = Expect<Extends<TCountStar[2], { kind: "select"; columns: { "?column?": TBigint } }>>
+type _countStar = Expect<Extends<TCountStar[2], { kind: "select"; returning: { "?column?": TBigint } }>>
 type TCountOne = ParseSqlStatement<CreateParserMonad<`select count(1) from t`>, DbFns>
-type _countOne = Expect<Extends<TCountOne[2], { kind: "select"; columns: { "?column?": TBigint } }>>
+type _countOne = Expect<Extends<TCountOne[2], { kind: "select"; returning: { "?column?": TBigint } }>>
 type TUuidV4 = ParseSqlStatement<CreateParserMonad<`select uuid_generate_v4() from t`>, DbFns>
-type _uuidV4 = Expect<Extends<TUuidV4[2], { kind: "select"; columns: { "?column?": TUuid } }>>
+type _uuidV4 = Expect<Extends<TUuidV4[2], { kind: "select"; returning: { "?column?": TUuid } }>>
 type TLower = ParseSqlStatement<CreateParserMonad<`select lower('a') from t`>, DbFns>
-type _lower = Expect<Extends<TLower[2], { kind: "select"; columns: { "?column?": TText } }>>
+type _lower = Expect<Extends<TLower[2], { kind: "select"; returning: { "?column?": TText } }>>
 /** `coalesce` picks first argument type. */
 type TCoalesce = ParseSqlStatement<CreateParserMonad<`select coalesce(x, x) from t`>, DbFns>
-type _coalesce = Expect<Extends<TCoalesce[2], { kind: "select"; columns: { "?column?": TInteger } }>>
+type _coalesce = Expect<Extends<TCoalesce[2], { kind: "select"; returning: { "?column?": TInteger } }>>
 
 type TSum = ParseSqlStatement<CreateParserMonad<`select sum(x) from t`>, DbFns>
-type _sum = Expect<Extends<TSum[2], { kind: "select"; columns: { "?column?": TNumeric } }>>
+type _sum = Expect<Extends<TSum[2], { kind: "select"; returning: { "?column?": TNumeric } }>>
 
 type TNow = ParseSqlStatement<CreateParserMonad<`select now() from t`>, DbFns>
-type _now = Expect<Extends<TNow[2], { kind: "select"; columns: { "?column?": TTimestamp } }>>
+type _now = Expect<Extends<TNow[2], { kind: "select"; returning: { "?column?": TTimestamp } }>>
 type TGenRandomUuid = ParseSqlStatement<CreateParserMonad<`select gen_random_uuid() from t`>, DbFns>
-type _uuid = Expect<Extends<TGenRandomUuid[2], { kind: "select"; columns: { "?column?": TUuid } }>>
+type _uuid = Expect<Extends<TGenRandomUuid[2], { kind: "select"; returning: { "?column?": TUuid } }>>
 
 type TUpperNum = ParseSqlStatement<CreateParserMonad<`select upper(1) from t`>, DbFns>
-type _upperNum = Expect<Extends<TUpperNum[2], { kind: "select"; columns: { "?column?": TText } }>>
+type _upperNum = Expect<Extends<TUpperNum[2], { kind: "select"; returning: { "?column?": TText } }>>
 type TUpper = ParseSqlStatement<CreateParserMonad<`select upper('x') from t`>, DbFns>
-type _upper = Expect<Extends<TUpper[2], { kind: "select"; columns: { "?column?": TText } }>>
+type _upper = Expect<Extends<TUpper[2], { kind: "select"; returning: { "?column?": TText } }>>
 describe("function registry (type tests)", () => {
 	it("compile-time assertions above", () => {})
 })

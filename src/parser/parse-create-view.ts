@@ -57,7 +57,7 @@ type ParseCreateViewAfterSelect<
 	Sel extends JsqlSelectStatementResult,
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
-		? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["columns"]>> extends infer NewDb
+		? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["returning"]>> extends infer NewDb
 			? NewDb extends JsqlDatabaseShape
 				? [SkipToken<Tokens>, NewDb, null]
 				: never

@@ -24,7 +24,7 @@ type TRowNumber = ParseSqlStatement<
 	DbWindow
 >
 type _tRowNumber = Expect<
-	Extends<TRowNumber[2], { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
+	Extends<TRowNumber[2], { kind: "select"; returning: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test ROW_NUMBER() with ORDER BY DESC
@@ -33,7 +33,7 @@ type TRowNumberDesc = ParseSqlStatement<
 	DbWindow
 >
 type _tRowNumberDesc = Expect<
-	Extends<TRowNumberDesc[2], { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
+	Extends<TRowNumberDesc[2], { kind: "select"; returning: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test RANK() with ORDER BY
@@ -42,7 +42,7 @@ type TRank = ParseSqlStatement<
 	DbWindow
 >
 type _tRank = Expect<
-	Extends<TRank[2], { kind: "select"; columns: { id: TInteger; product: TText; rank_num: TBigint } }>
+	Extends<TRank[2], { kind: "select"; returning: { id: TInteger; product: TText; rank_num: TBigint } }>
 >
 
 // Test DENSE_RANK() with ORDER BY
@@ -51,7 +51,7 @@ type TDenseRank = ParseSqlStatement<
 	DbWindow
 >
 type _tDenseRank = Expect<
-	Extends<TDenseRank[2], { kind: "select"; columns: { id: TInteger; product: TText; dense_rank_num: TBigint } }>
+	Extends<TDenseRank[2], { kind: "select"; returning: { id: TInteger; product: TText; dense_rank_num: TBigint } }>
 >
 
 // Test multiple window functions
@@ -60,7 +60,7 @@ type TMultipleWindow = ParseSqlStatement<
 	DbWindow
 >
 type _tMultipleWindow = Expect<
-	Extends<TMultipleWindow[2], { kind: "select"; columns: { id: TInteger; row_num: TBigint; rank_num: TBigint } }>
+	Extends<TMultipleWindow[2], { kind: "select"; returning: { id: TInteger; row_num: TBigint; rank_num: TBigint } }>
 >
 
 // Test ROW_NUMBER() with PARTITION BY
@@ -69,7 +69,7 @@ type TPartitionBy = ParseSqlStatement<
 	DbWindow
 >
 type _tPartitionBy = Expect<
-	Extends<TPartitionBy[2], { kind: "select"; columns: { id: TInteger; product: TText; row_num: TBigint } }>
+	Extends<TPartitionBy[2], { kind: "select"; returning: { id: TInteger; product: TText; row_num: TBigint } }>
 >
 
 // Test RANK() with PARTITION BY and multiple ORDER BY
@@ -78,7 +78,7 @@ type TPartitionByMultiOrder = ParseSqlStatement<
 	DbWindow
 >
 type _tPartitionByMultiOrder = Expect<
-	Extends<TPartitionByMultiOrder[2], { kind: "select"; columns: { id: TInteger; rank_num: TBigint } }>
+	Extends<TPartitionByMultiOrder[2], { kind: "select"; returning: { id: TInteger; rank_num: TBigint } }>
 >
 
 // Test multiple PARTITION BY columns
@@ -87,7 +87,7 @@ type TMultiPartition = ParseSqlStatement<
 	DbWindow
 >
 type _tMultiPartition = Expect<
-	Extends<TMultiPartition[2], { kind: "select"; columns: { id: TInteger; row_num: TBigint } }>
+	Extends<TMultiPartition[2], { kind: "select"; returning: { id: TInteger; row_num: TBigint } }>
 >
 
 // Test LAG() with PARTITION BY and ORDER BY

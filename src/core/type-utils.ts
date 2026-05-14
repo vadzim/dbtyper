@@ -35,6 +35,8 @@ export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K
 	? { [K in keyof R]: R[K] }
 	: never
 
+export type ReplaceProps<T, Props> = Omit<T, keyof Props> & Props extends infer R ? { [K in keyof R]: R[K] } : never
+
 export type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never
 
 export type LastOf<T> = UnionToIntersection<T extends any ? () => T : never> extends () => infer R ? R : never

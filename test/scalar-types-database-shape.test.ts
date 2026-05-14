@@ -3,7 +3,8 @@ import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
-import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
+import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type DbPublicEmpty = {
 	defaultSchema: "public"

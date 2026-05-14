@@ -58,14 +58,14 @@ type UpMultiQualified = ParseSqlStatement<
 type _upMultiQualified = Expect<Extends<UpMultiQualified[2], JsqlUpdateStatementResult>>
 
 type UpReturning = ParseSqlStatement<CreateParserMonad<`update users set name = 'x' returning id;`>, DbUsers>
-type _upReturning = Expect<Extends<UpReturning[2], { kind: "select"; columns: { id: TText } }>>
+type _upReturning = Expect<Extends<UpReturning[2], { kind: "select"; returning: { id: TText } }>>
 
 type UpWithoutWhereReturning = ParseSqlStatement<
 	CreateParserMonad<`update users set name = 'Everyone' returning *;`>,
 	DbUsers
 >
 type _upWithoutWhereReturning = Expect<
-	Extends<UpWithoutWhereReturning[2], { kind: "select"; columns: { id: TText; name: TText } }>
+	Extends<UpWithoutWhereReturning[2], { kind: "select"; returning: { id: TText; name: TText } }>
 >
 
 describe("parse-update (type tests)", () => {

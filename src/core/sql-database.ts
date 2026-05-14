@@ -2,8 +2,7 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-s
 import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import type { SqlSelectRowSqlTypes } from "./sql-query.ts"
-import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
+import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 
@@ -202,24 +201,13 @@ export class DBMigrations {
 	}
 }
 
-/**
- * Infers the **row object** type for SELECT/RETURNING statements.
- * Used by .stream() which requires statements that return rows.
- */
-type SqlSelectRow<
-	Config extends DriverConfig,
-	Db extends JsqlDatabaseShape,
-	Text extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = Db extends JsqlDatabaseShape ? ApplySqlToTsConversion<Config, SqlSelectRowSqlTypes<Config, Db, Text, Params>> : Db
-
 type SqlSelectRowObject<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Config, Db, Stmt, Params> extends infer R
+	SqlSelectResultTs<Config, Db, Stmt, Params> extends infer R
 		? R extends DbtyperErrorShape
 			? never
 			: { [K in keyof R]: R[K] }
@@ -234,7 +222,7 @@ type CheckSqlValidForStream<
 	Stmt extends string,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
+	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
 		: Stmt
 
@@ -255,7 +243,7 @@ type QueryReturnType<
 	Stmt extends string,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectRow<Config, Db, Stmt, Params> extends DbtyperErrorShape
+	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
 		? unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
 

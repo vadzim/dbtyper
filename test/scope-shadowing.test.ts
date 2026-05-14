@@ -1,8 +1,9 @@
 import { describe, test } from "node:test"
 import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
-import type { ApplyStatements, ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
+import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
+import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 // Test database with tables that can shadow each other
 type DbShadowing = ApplyStatements<
