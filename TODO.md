@@ -2,6 +2,8 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
+- [ ] make it work with sqlite and e.g. with omniroute
+    - [ ] add support of ? for parameters
 - [ ] try to reorganize errors - use first index by id, not by numbers to be able to cclick in IDE on FormatError<E<"here_to_click">> and navigate to error
 - [ ] deal with large enum of tokens in ParseOneRawSelectItem - why it's needed?
 - [ ] remove Expects and replace with Matches in all the tests
