@@ -29,19 +29,14 @@ type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDa
 		? SkipToken<AfterFirst> extends infer Rd1 extends ParserMonad
 			? PeekToken<Rd1> extends TokenIdent<infer B extends string>
 				? [SkipToken<Rd1>, null, A, B]
-				: [
-						SkipToken<Rd1>,
-						FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>,
-						never,
-						never,
-					]
+				: [Rd1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>, null, null]
 			: never
 		: [AfterFirst, null, Db["defaultSchema"], A]
 
 type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: [SkipToken<Tokens>, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>, never, never]
+		: [SkipToken<Tokens>, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>, null, null]
 
 type ParseAlterAddColumnAfterColName<
 	R2 extends ParserMonad,
