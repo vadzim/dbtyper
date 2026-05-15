@@ -14,9 +14,7 @@ export type ParseAlterType<Tokens extends ParserMonad, Db extends JsqlDatabaseSh
 	PeekToken<Tokens> extends TokenKey<"if">
 		? SkipToken<Tokens> extends infer A0 extends ParserMonad
 			? PeekToken<A0> extends TokenKey<"exists">
-				? SkipToken<A0> extends infer A1 extends ParserMonad
-					? ParseAlterTypeQualified<A1, Db, true>
-					: never
+				? ParseAlterTypeQualified<SkipToken<A0>, Db, true>
 				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE"], []>>
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>

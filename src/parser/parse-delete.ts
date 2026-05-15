@@ -35,9 +35,7 @@ type ParseDeleteAfterFrom<
 			: Mid extends null
 				? Third extends ScopeMap
 					? PeekToken<R> extends TokenKey<"using">
-						? SkipToken<R> extends infer Ru extends ParserMonad
-							? ParseDeleteUsingClause<Ru, Db, Third, Params>
-							: never
+						? ParseDeleteUsingClause<SkipToken<R>, Db, Third, Params>
 						: PeekToken<R> extends TokenKey<"where">
 							? SkipToken<R> extends infer Rw0 extends ParserMonad
 								? ParseWhereExpression<Rw0, Db, Third, Params> extends [

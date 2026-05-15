@@ -48,9 +48,7 @@ export type ParseArraySuffix<Tokens extends ParserMonad, BaseType extends SqlTyp
 	PeekToken<Tokens> extends TokenKey<"[">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"]">
-				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? ParseArraySuffix<R2, { type: "array"; arg: BaseType; nullable: false }>
-					: never
+				? ParseArraySuffix<SkipToken<R1>, { type: "array"; arg: BaseType; nullable: false }>
 				: SkipFailedExpression<
 						R1,
 						FormatError<Errors["EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE"], []>

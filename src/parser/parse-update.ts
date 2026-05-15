@@ -257,9 +257,7 @@ type ParseUpdateAfterSetKeyword<
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"set">
-		? SkipToken<Tokens> extends infer Rs extends ParserMonad
-			? ParseUpdateSetAssignments<Rs, Db, Scope, Params, Tbl, Sch, Tab, readonly []>
-			: never
+		? ParseUpdateSetAssignments<SkipToken<Tokens>, Db, Scope, Params, Tbl, Sch, Tab, readonly []>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SET_IN_UPDATE"], []>>
 
 type ParseUpdateFromClause<
@@ -417,9 +415,7 @@ type FinishUpdateStatement<
 	Res extends JsqlUpdateStatementResult,
 > =
 	PeekToken<Tokens> extends TokenKey<"from">
-		? SkipToken<Tokens> extends infer Rf extends ParserMonad
-			? ParseUpdateFromClause<Rf, Db, Scope, Params, Res>
-			: never
+		? ParseUpdateFromClause<SkipToken<Tokens>, Db, Scope, Params, Res>
 		: PeekToken<Tokens> extends TokenKey<"where">
 			? SkipToken<Tokens> extends infer Rw0 extends ParserMonad
 				? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends ParserMonad, infer We]

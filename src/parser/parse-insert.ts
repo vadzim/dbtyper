@@ -176,9 +176,7 @@ type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataS
 								? [R2, readonly [...Acc, Col]]
 								: never
 							: PeekToken<R1> extends TokenKey<",">
-								? SkipToken<R1> extends infer R3 extends ParserMonad
-									? ParseInsertColumnNameList<R3, Tbl, readonly [...Acc, Col]>
-									: never
+								? ParseInsertColumnNameList<SkipToken<R1>, Tbl, readonly [...Acc, Col]>
 								: SkipFailedExpression<
 										R1,
 										FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST"], []>
@@ -479,9 +477,18 @@ type ParseInsertValuesCommaThenRest<
 	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenKey<",">
-		? SkipToken<Tokens> extends infer Rc extends ParserMonad
-			? ParseInsertValuesCells<Rc, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull, PositionalParamIndex>
-			: never
+		? ParseInsertValuesCells<
+				SkipToken<Tokens>,
+				Db,
+				Scope,
+				Params,
+				Tbl,
+				Sch,
+				Tab,
+				CR,
+				ColsFull,
+				PositionalParamIndex
+			>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COMMA_BETWEEN_INSERT_VALUES"], []>>
 
 type InsertExcludedScope<
@@ -567,9 +574,7 @@ type ParseInsertOptionalTail<
 	PeekToken<Tokens> extends TokenKey<"on">
 		? SkipToken<Tokens> extends infer ROn extends ParserMonad
 			? PeekToken<ROn> extends TokenKey<"conflict">
-				? SkipToken<ROn> extends infer Rcf extends ParserMonad
-					? ParseInsertOnConflictDoUpdate<Rcf, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-					: never
+				? ParseInsertOnConflictDoUpdate<SkipToken<ROn>, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 				: SkipFailedStatement<ROn, Db, FormatError<Errors["EXPECTED_CONFLICT_AFTER_ON_IN_INSERT"], []>>
 			: never
 		: ParseInsertMaybeReturning<Tokens, Db, Scope, Params, Tbl, Sch, Tab, Cols, UpsertCols, Returning>
@@ -696,9 +701,7 @@ type ParseInsertConflictColList<Tokens extends ParserMonad, Tbl extends JsqlData
 		? Acc extends readonly []
 			? SkipFailedExpression<Tokens, FormatError<Errors["ON_CONFLICT_COLUMN_LIST_MUST_NOT_BE_EMPTY"], []>>
 			: PeekToken<Tokens> extends TokenKey<")">
-				? SkipToken<Tokens> extends infer R extends ParserMonad
-					? [R, Acc]
-					: never
+				? [SkipToken<Tokens>, Acc]
 				: never
 		: PeekToken<Tokens> extends infer Tok
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -710,9 +713,7 @@ type ParseInsertConflictColList<Tokens extends ParserMonad, Tbl extends JsqlData
 								? [R2, readonly [...Acc, C]]
 								: never
 							: PeekToken<R1> extends TokenKey<",">
-								? SkipToken<R1> extends infer R3 extends ParserMonad
-									? ParseInsertConflictColList<R3, Tbl, readonly [...Acc, C]>
-									: never
+								? ParseInsertConflictColList<SkipToken<R1>, Tbl, readonly [...Acc, C]>
 								: SkipFailedExpression<
 										R1,
 										FormatError<
@@ -759,16 +760,14 @@ type ParseInsertUpsertSetAssignments<
 															? [R3, Db, V0]
 															: V0 extends true
 																? PeekToken<R3> extends TokenKey<",">
-																	? SkipToken<R3> extends infer R4 extends ParserMonad
-																		? ParseInsertUpsertSetAssignments<
-																				R4,
-																				Db,
-																				Scope,
-																				Params,
-																				Tbl,
-																				readonly [...Acc, Col]
-																			>
-																		: never
+																	? ParseInsertUpsertSetAssignments<
+																			SkipToken<R3>,
+																			Db,
+																			Scope,
+																			Params,
+																			Tbl,
+																			readonly [...Acc, Col]
+																		>
 																	: PeekToken<R3> extends
 																				| TokenKey<"where">
 																				| TokenKey<";">

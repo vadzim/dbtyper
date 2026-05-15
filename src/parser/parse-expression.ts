@@ -163,9 +163,7 @@ type ParseSqlTypeName<Tokens extends ParserMonad, Acc extends readonly string[] 
 						: ParseSqlTypeName<SkipToken<R2>, readonly [...Acc, W]>
 					: never
 				: PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? ParseSqlTypeName<R2, readonly [...Acc, W]>
-						: never
+					? ParseSqlTypeName<SkipToken<R1>, readonly [...Acc, W]>
 					: PeekToken<R1> extends TokenIdent<string>
 						? ParseSqlTypeName<R1, readonly [...Acc, W]>
 						: [R1, readonly [...Acc, W]]
@@ -303,9 +301,7 @@ type ParseInListUntypedAccum<
 						? [R2, readonly [...Acc, E], Env1]
 						: never
 					: PeekToken<R1> extends TokenKey<",">
-						? SkipToken<R1> extends infer R3 extends ParserMonad
-							? ParseInListUntypedAccum<R3, readonly [...Acc, E], Env1>
-							: never
+						? ParseInListUntypedAccum<SkipToken<R1>, readonly [...Acc, E], Env1>
 						: SkipFailedExpressionWithEnv<
 								R1,
 								FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST"], []>,
@@ -518,15 +514,11 @@ type ParseAfterIsUntyped<Tokens extends ParserMonad, L extends ScalarExprAst, En
 	PeekToken<Tokens> extends TokenKey<"not">
 		? SkipToken<Tokens> extends infer R5 extends ParserMonad
 			? PeekToken<R5> extends TokenKey<"null">
-				? SkipToken<R5> extends infer R6 extends ParserMonad
-					? [R6, { kind: "is_not_null"; expr: L }, Env]
-					: never
+				? [SkipToken<R5>, { kind: "is_not_null"; expr: L }, Env]
 				: SkipFailedExpressionWithEnv<R5, FormatError<Errors["EXPECTED_NULL_AFTER_IS_NOT"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
-			? SkipToken<Tokens> extends infer R7 extends ParserMonad
-				? [R7, { kind: "is_null"; expr: L }, Env]
-				: never
+			? [SkipToken<Tokens>, { kind: "is_null"; expr: L }, Env]
 			: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_NULL_AFTER_IS"], []>, Env>
 
 type IsRelOp<T> =
@@ -647,9 +639,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends ParserMonad, L extends Sca
 						: never
 				: never
 			: P extends TokenKey<"is">
-				? SkipToken<Tokens> extends infer R4 extends ParserMonad
-					? ParseAfterIsUntyped<R4, L, Env>
-					: never
+				? ParseAfterIsUntyped<SkipToken<Tokens>, L, Env>
 				: P extends TokenKey<"in">
 					? ParseInListUntypedAfterInKw<Tokens, L, Env>
 					: P extends TokenKey<"between">
@@ -1594,9 +1584,7 @@ type ParseOptionalOverClause<
 	PeekToken<Tokens> extends TokenKey<"over">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"(">
-				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? ParseWindowClauseContent<R2, FnName, Args, Env>
-					: never
+				? ParseWindowClauseContent<SkipToken<R1>, FnName, Args, Env>
 				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env>
 			: never
 		: [Tokens, { kind: "function_call"; name: FnName; args: Args }, Env]
@@ -2366,9 +2354,11 @@ type ParsePostfixArrayIndexTail<Tokens extends ParserMonad, Acc extends ScalarEx
 					? SkipFailedExpressionWithEnv<Rj, Idx, EnvIdx>
 					: Idx extends ScalarExprAst
 						? PeekToken<Rj> extends TokenKey<"]">
-							? SkipToken<Rj> extends infer Rk extends ParserMonad
-								? ParsePostfixArrayIndexTail<Rk, { kind: "array_index"; base: Acc; index: Idx }, EnvIdx>
-								: never
+							? ParsePostfixArrayIndexTail<
+									SkipToken<Rj>,
+									{ kind: "array_index"; base: Acc; index: Idx },
+									EnvIdx
+								>
 							: SkipFailedExpressionWithEnv<
 									Rj,
 									FormatError<Errors["EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT"], []>,
@@ -2430,9 +2420,7 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 	PeekToken<Tokens> extends TokenKey<"cast">
 		? ParseCastKeywordOperand<Tokens, Env>
 		: PeekToken<Tokens> extends TokenKey<"case">
-			? SkipToken<Tokens> extends infer Rcase extends ParserMonad
-				? ParseCaseAfterCaseKw<Rcase, Env>
-				: never
+			? ParseCaseAfterCaseKw<SkipToken<Tokens>, Env>
 			: PeekToken<Tokens> extends TokenKey<"array">
 				? SkipToken<Tokens> extends infer RarrKw extends ParserMonad
 					? ParseArrayCtorAfterArrayKw<RarrKw, Env> extends [
@@ -2450,40 +2438,26 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 				: PeekToken<Tokens> extends TokenKey<"(">
 					? TryParenOperandScalarUntyped<Tokens, Env>
 					: PeekToken<Tokens> extends TokenKey<"true">
-						? SkipToken<Tokens> extends infer Rt extends ParserMonad
-							? [Rt, { kind: "true" }, Env]
-							: never
+						? [SkipToken<Tokens>, { kind: "true" }, Env]
 						: PeekToken<Tokens> extends TokenKey<"false">
-							? SkipToken<Tokens> extends infer Rf extends ParserMonad
-								? [Rf, { kind: "false" }, Env]
-								: never
+							? [SkipToken<Tokens>, { kind: "false" }, Env]
 							: PeekToken<Tokens> extends TokenKey<"null">
-								? SkipToken<Tokens> extends infer Rn extends ParserMonad
-									? [Rn, { kind: "sql_null" }, Env]
-									: never
+								? [SkipToken<Tokens>, { kind: "sql_null" }, Env]
 								: PeekToken<Tokens> extends TokenString<infer Str>
-									? SkipToken<Tokens> extends infer Rs extends ParserMonad
-										? [Rs, { kind: "string"; value: Str }, Env]
-										: never
+									? [SkipToken<Tokens>, { kind: "string"; value: Str }, Env]
 									: PeekToken<Tokens> extends TokenNumber<infer Raw>
-										? SkipToken<Tokens> extends infer Rnum extends ParserMonad
-											? [Rnum, { kind: "number"; raw: Raw }, Env]
-											: never
+										? [SkipToken<Tokens>, { kind: "number"; raw: Raw }, Env]
 										: PeekToken<Tokens> extends TokenParam<infer P extends string>
-											? SkipToken<Tokens> extends infer Rp extends ParserMonad
-												? [Rp, { kind: "param"; name: P }, Env]
-												: never
+											? [SkipToken<Tokens>, { kind: "param"; name: P }, Env]
 											: PeekToken<Tokens> extends TokenKey<"?">
-												? SkipToken<Tokens> extends infer Rpp extends ParserMonad
-													? [
-															Rpp,
-															{
-																kind: "positional-param"
-																index: GetPositionalParamIndex<Env>
-															},
-															IncrementPositionalParamIndex<Env>,
-														]
-													: never
+												? [
+														SkipToken<Tokens>,
+														{
+															kind: "positional-param"
+															index: GetPositionalParamIndex<Env>
+														},
+														IncrementPositionalParamIndex<Env>,
+													]
 												: SkipToken<Tokens> extends infer Rbad extends ParserMonad
 													? SkipFailedExpressionWithEnv<
 															Rbad,

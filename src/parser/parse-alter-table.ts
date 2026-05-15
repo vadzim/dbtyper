@@ -73,11 +73,7 @@ type ParseAlterActions<
 			: ParseAlterOneAction<Tokens, Db, Sch, Tab>
 
 type ParseAlterAfterOptionalColumnKw<Tokens extends ParserMonad> =
-	PeekToken<Tokens> extends TokenKey<"column">
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? [R1, null]
-			: never
-		: [Tokens, null]
+	PeekToken<Tokens> extends TokenKey<"column"> ? [SkipToken<Tokens>, null] : [Tokens, null]
 
 type ParseAlterAddColumn<
 	Tokens extends ParserMonad,
@@ -186,9 +182,7 @@ type ParseAlterRenameColumn<
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
 				? PeekToken<R1> extends infer Told
-					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? ParseAlterRenameAfterOldName<R2, Told, Db, Sch, Tab>
-						: never
+					? ParseAlterRenameAfterOldName<SkipToken<R1>, Told, Db, Sch, Tab>
 					: never
 				: never
 			: never
@@ -315,12 +309,7 @@ type ParseAlterColumnDropBranch<
 	Sch extends string,
 	Tab extends string,
 	Col extends string,
-> =
-	PeekToken<R2> extends TokenKey<"drop">
-		? SkipToken<R2> extends infer Rd0 extends ParserMonad
-			? ParseAlterColumnDropAfterRd0<Rd0, Db, Sch, Tab, Col>
-			: never
-		: never
+> = PeekToken<R2> extends TokenKey<"drop"> ? ParseAlterColumnDropAfterRd0<SkipToken<R2>, Db, Sch, Tab, Col> : never
 
 type ParseAlterColumnAfterIdent<
 	R2 extends ParserMonad,

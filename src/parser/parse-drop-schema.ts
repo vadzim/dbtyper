@@ -12,9 +12,7 @@ export type ParseDropSchema<Tokens extends ParserMonad, Db extends JsqlDatabaseS
 	PeekToken<Tokens> extends TokenKey<"if">
 		? SkipToken<Tokens> extends infer A0 extends ParserMonad
 			? PeekToken<A0> extends TokenKey<"exists">
-				? SkipToken<A0> extends infer A1 extends ParserMonad
-					? ParseDropSchemaName<A1, Db, true>
-					: never
+				? ParseDropSchemaName<SkipToken<A0>, Db, true>
 				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_IN_DROP_SCHEMA"], []>>
 			: never
 		: ParseDropSchemaName<Tokens, Db, false>

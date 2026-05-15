@@ -14,9 +14,7 @@ export type ParseCreateSchema<Tokens extends ParserMonad, Db extends JsqlDatabas
 			? PeekToken<A0> extends TokenKey<"not">
 				? SkipToken<A0> extends infer A1 extends ParserMonad
 					? PeekToken<A1> extends TokenKey<"exists">
-						? SkipToken<A1> extends infer A2 extends ParserMonad
-							? ParseCreateSchemaName<A2, Db, true>
-							: never
+						? ParseCreateSchemaName<SkipToken<A1>, Db, true>
 						: SkipFailedExpression<
 									A1,
 									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_SCHEMA"], []>

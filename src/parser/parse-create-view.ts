@@ -39,9 +39,7 @@ type ParseQualifiedViewNameAfterFirstIdent<
 	A extends string,
 > =
 	PeekToken<AfterFirst> extends TokenKey<".">
-		? SkipToken<AfterFirst> extends infer Rdot extends ParserMonad
-			? ParseQualifiedViewNameQualified<Rdot, Db, A>
-			: never
+		? ParseQualifiedViewNameQualified<SkipToken<AfterFirst>, Db, A>
 		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
 
 type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =

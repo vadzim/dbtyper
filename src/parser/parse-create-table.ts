@@ -19,9 +19,7 @@ export type ParseCreateTable<Tokens extends ParserMonad, Db extends JsqlDatabase
 			? PeekToken<A0> extends TokenKey<"not">
 				? SkipToken<A0> extends infer A1 extends ParserMonad
 					? PeekToken<A1> extends TokenKey<"exists">
-						? SkipToken<A1> extends infer A2 extends ParserMonad
-							? ParseCreateTableQualified<A2, Db, true>
-							: never
+						? ParseCreateTableQualified<SkipToken<A1>, Db, true>
 						: SkipFailedExpression<
 									A1,
 									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE"], []>
@@ -262,9 +260,7 @@ type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeSha
 						: [R, FormatError<Errors["DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN"], []>]
 					: never
 				: PeekToken<Tokens> extends TokenKey<"null">
-					? SkipToken<Tokens> extends infer R extends ParserMonad
-						? [R, null]
-						: never
+					? [SkipToken<Tokens>, null]
 					: PeekToken<Tokens> extends TokenIdent<infer FnName>
 						? ParseDefaultFunctionOrIdent<Tokens, FnName, ColumnType>
 						: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_DEFAULT_VALUE"], []>>
@@ -329,15 +325,13 @@ type ContinueAfterColumnDef<
 				: never
 			: never
 		: PeekToken<AfterNull> extends TokenKey<",">
-			? SkipToken<AfterNull> extends infer AfterComma extends ParserMonad
-				? ParseCreateTableBody<
-						AfterComma,
-						Db,
-						Schema,
-						Table,
-						readonly [...Stack, readonly [ColName, TypeShape, NotNull, false]]
-					>
-				: never
+			? ParseCreateTableBody<
+					SkipToken<AfterNull>,
+					Db,
+					Schema,
+					Table,
+					readonly [...Stack, readonly [ColName, TypeShape, NotNull, false]]
+				>
 			: PeekToken<AfterNull> extends TokenKey<")"> | TokenKey<"constraint">
 				? ParseCreateTableBody<
 						AfterNull,
@@ -365,15 +359,13 @@ type ContinueAfterDefault<
 	HasDefault extends boolean,
 > =
 	PeekToken<AfterDefaultVal> extends TokenKey<",">
-		? SkipToken<AfterDefaultVal> extends infer AfterComma extends ParserMonad
-			? ParseCreateTableBody<
-					AfterComma,
-					Db,
-					Schema,
-					Table,
-					readonly [...Stack, readonly [ColName, TypeShape, NotNull, HasDefault]]
-				>
-			: never
+		? ParseCreateTableBody<
+				SkipToken<AfterDefaultVal>,
+				Db,
+				Schema,
+				Table,
+				readonly [...Stack, readonly [ColName, TypeShape, NotNull, HasDefault]]
+			>
 		: PeekToken<AfterDefaultVal> extends TokenKey<")"> | TokenKey<"constraint">
 			? ParseCreateTableBody<
 					AfterDefaultVal,
