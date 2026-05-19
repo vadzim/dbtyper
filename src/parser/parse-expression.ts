@@ -2677,7 +2677,7 @@ type ParseOtherOpLoop<Tokens extends ParserMonad, Acc extends ScalarExprAst, Env
 							>
 					: never
 				: [Tokens, Acc, Env]
-		: [Tokens, Acc]
+		: [Tokens, Acc, Env]
 
 type ParseOtherOpScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	ParseAddScalarUntyped<Tokens, Env> extends [infer R0 extends ParserMonad, infer E0, infer Env0 extends ExprParseEnv]
