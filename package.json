@@ -91,7 +91,7 @@
 		"@typescript-eslint/parser": "^8.59.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
 		"eslint": "^10.3.0",
-		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#5e626a07c6428e7bd3471f02b70b514639fd61cc",
+		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#4d3b2efa10af04d8253e909a0bb8c8f9631cb985",
 		"nodemon": "^3.1.14",
 		"postgres": "^3.4.5",
 		"prettier": "^3.8.1",
