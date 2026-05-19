@@ -7,7 +7,7 @@ import type { PostgresTypeMap } from "./postgres-type-map.ts"
 
 export type PostgresDriverConfig = {
 	scalarTypes: PostgresTypeMap
-	syntax: "dollar-strings" | "named-params"
+	syntax: "dollar-strings" | "named-params" | "indexed-params"
 }
 
 export type PostgresSqlDriverConfig = {

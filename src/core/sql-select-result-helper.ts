@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
+import type { ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { DriverConfig } from "./sql-database.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"

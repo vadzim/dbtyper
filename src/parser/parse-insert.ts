@@ -20,7 +20,6 @@ import type {
 	ParseExpressionAST,
 	ScalarExprAst,
 	ResolveExpressionAST,
-	ExprParseEnv,
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -401,6 +400,7 @@ type ParseInsertValuesCells<
 	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 			infer R1 extends ParserMonad,
 			infer Ast,
+			infer _Env,
 		]
 		? Ast extends DbtyperErrorShape
 			? [R1, Db, Ast]

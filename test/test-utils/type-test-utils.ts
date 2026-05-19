@@ -1,5 +1,11 @@
 /** Type-level test helpers for compile-time assertions. */
 
+export type ExpectType<X> = (x: X) => HasNeverDeep<X> extends true ? "never_or_any" : X
+
+export function toBe<X>(): (x: HasNeverDeep<X> extends true ? "never_or_any" : X) => X {
+	return (() => {}) as any
+}
+
 export type Expect<T extends true> = T
 
 /**

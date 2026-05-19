@@ -1,10 +1,19 @@
+import type { Dec } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 
-export type LexerFeatures = "" | "dollar-strings" | "named-params" | "indexed-params"
+export type LexerNamedQueryParams = "named-params"
+export type LexerIndexedQueryParams = "indexed-params" | "question-params"
+export type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
+
+export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
+
+export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
+	| Exclude<Syntax, LexerQueryParams>
+	| Extract<Syntax, AllowedQueryParams>
 
 export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "indexed_param" | "eot"
 
-export type TokenType<Kind extends TokenKind, Value extends string | number = ""> = { value: Value; kind: Kind }
+export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
 
 export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
@@ -71,13 +80,34 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 													? Next extends "$" | StartTokenChar
 														? "dollar-strings" extends Syntax
 															? ReadDollarString<Rest>
-															: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
+															: Return<
+																	FormatError<
+																		Errors["UNEXPECTED_TOKEN"],
+																		[SomeSymbols<S>]
+																	>,
+																	S
+																>
 														: Next extends NonZeroDigit
 															? "indexed-params" extends Syntax
 																? ReadIndexedParam<Next, Rest2>
-																: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
-															: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
-													: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, S>
+																: Return<
+																		FormatError<
+																			Errors["UNEXPECTED_TOKEN"],
+																			[SomeSymbols<S>]
+																		>,
+																		S
+																	>
+															: Return<
+																	FormatError<
+																		Errors["UNEXPECTED_TOKEN"],
+																		[SomeSymbols<S>]
+																	>,
+																	S
+																>
+													: Return<
+															FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<S>]>,
+															S
+														>
 												: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
 
@@ -98,8 +128,8 @@ type GetIndexingNumber<Head extends string, Rest extends string> =
 	GetNumber<Rest, Head> extends Return<infer Number extends TokenNumber<string>, infer Rest2 extends string>
 		? IsIndexingNumber<Number["value"]> extends true
 			? Return<Number, Rest2>
-			: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, Rest>
-		: Return<FormatError<Errors["UNEXPECTED_TOKEN"], []>, Rest>
+			: Return<FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<Rest>]>, Rest>
+		: Return<FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<Rest>]>, Rest>
 
 type IsIndexingNumber<S extends string> = S extends `${string}.${string}`
 	? false
@@ -466,3 +496,11 @@ type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer 
 			? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 			: Return<TokenNumber<Buf>, S>
 	: Return<TokenNumber<Buf>, S>
+
+type SomeSymbols<Text extends string> = Text extends `${infer Result}${SkipSymbols<Text, 15>}` ? Result : never
+
+type SkipSymbols<Text extends string, Count extends number> = Count extends 0
+	? Text
+	: Text extends `${string}${infer Rest}`
+		? SkipSymbols<Rest, Dec[Count]>
+		: Text

@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenIndexedParam, TokenParam } from "../lexer/sql-lexer.ts"
+import type { TokenIndexedParam, TokenParam, TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
@@ -24,7 +24,7 @@ import type {
 	SqlUnknown,
 	SqlTimestamp,
 } from "../core/sql-type-shape.ts"
-import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
+import type { Dec, ParseNumber } from "../core/type-utils.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -2433,9 +2433,9 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 									? [SkipToken<Tokens>, { kind: "string"; value: Str }, Env]
 									: PeekToken<Tokens> extends TokenNumber<infer Raw>
 										? [SkipToken<Tokens>, { kind: "number"; raw: Raw }, Env]
-										: PeekToken<Tokens> extends TokenParam<infer P extends string>
+										: PeekToken<Tokens> extends TokenParam<infer P>
 											? [SkipToken<Tokens>, { kind: "param"; name: P }, Env]
-											: PeekToken<Tokens> extends TokenIndexedParam<infer Index extends string>
+											: PeekToken<Tokens> extends TokenIndexedParam<infer Index>
 												? [
 														SkipToken<Tokens>,
 														{
@@ -2444,10 +2444,10 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 														},
 														Env,
 													]
-												: SkipToken<Tokens> extends infer Rbad extends ParserMonad
+												: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
 													? SkipFailedExpressionWithEnv<
-															Rbad,
-															FormatError<Errors["UNEXPECTED_TOKEN"], []>,
+															Tokens,
+															FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
 															Env
 														>
 													: never

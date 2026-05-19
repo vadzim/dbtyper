@@ -26,10 +26,16 @@ import type { Inc } from "../core/type-utils.ts"
 export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Params extends ExpressionParamsShape | null = null,
 	Syntax extends LexerFeatures = "",
 > =
-	ApplyParsedStatements<CreateParserMonad<Text, Syntax>, Db, Params, null, null> extends [
+	ApplyParsedStatements<
+		CreateParserMonad<Text, Syntax>,
+		Db,
+		Params extends null ? EmptyExpressionParams : Params,
+		null,
+		null
+	> extends [
 		infer _Rest extends ParserMonad,
 		infer NewDB extends JsqlDatabaseShape,
 		infer Error extends DbtyperErrorShape | null,

@@ -5,7 +5,7 @@ import type { DbPublicUsers } from "./test-databases.ts"
 import type { Matches } from "./type-test-utils.ts"
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
-import type { DriverConfig } from "../../src/core/sql-database.ts"
+import type { DriverConfig, ParamsDriverConfig } from "../../src/core/sql-database.ts"
 import type { SqlSelectResultTs } from "../../src/core/sql-select-result-helper.ts"
 import type { PostgresDriverConfig } from "../../src/postgres/postgres-sql-driver.ts"
 
@@ -23,9 +23,15 @@ export type CheckErrorneousResult<Result, Code extends ErrorCodes, Message exten
 export type ExtractQueryError<
 	DbShape extends JsqlDatabaseShape,
 	Query extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Params extends ExpressionParamsShape | null = null,
 	Config extends DriverConfig = PostgresDriverConfig,
-> = ApplyStatements<DbShape, Query, Params, Config["syntax"]>[1]
+> =
+	ApplyStatements<DbShape, Query, Params, ParamsDriverConfig<Config, Params>["syntax"]>[1] extends DbtyperError<
+		infer N,
+		infer M
+	>
+		? DbtyperError<N, M>
+		: never
 
 export type ExtractStreamError<
 	Db extends JsqlDatabaseShape | DbtyperErrorShape,

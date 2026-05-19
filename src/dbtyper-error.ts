@@ -120,7 +120,7 @@ export const errors = {
 	},
 	UNEXPECTED_TOKEN: {
 		code: 1007,
-		msg: ["Unexpected token"],
+		msg: ["Unexpected token at: ", ""],
 	},
 	CLOSING_BRACKET_NOT_FOUND: {
 		code: 1008,
@@ -733,7 +733,7 @@ export const errors = {
 	},
 	POSITIONAL_PARAMETER_REQUIRES_ARRAY: {
 		code: 2403,
-		msg: ["Positional parameter (?) requires array parameters, not named parameters"],
+		msg: ["Positional parameter (?) requires array of parameters, not named parameters"],
 	},
 	POSITIONAL_PARAMETER_OUT_OF_BOUNDS: {
 		code: 2404,

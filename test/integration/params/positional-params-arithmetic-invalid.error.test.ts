@@ -1,11 +1,9 @@
 // Integration Test: Positional Parameters - Arithmetic with invalid types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
-import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { type ExpectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
-import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
-import type { SqlDatabase } from "../../../src/core/sql-database.ts"
+import type { GetQueryError } from "../../../src/core/sql-database.ts"
 import type { SqlInteger, SqlText } from "../../../src/core/sql-type-shape.ts"
 
 const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
@@ -16,11 +14,5 @@ const query = `select ? * ? as result;` as const
 // @ts-expect-error
 await db.query(query, [5, "hello"])
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public;`>[0]
-
-type _test = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query, readonly [SqlInteger, SqlText]>,
-		DbtyperError<2501, "Incompatible types in arithmetic">
-	>
->
+const _test: ExpectType<GetQueryError<typeof db, typeof query, readonly [SqlInteger, SqlText]>> =
+	toBe<DbtyperError<2501, "Incompatible types in arithmetic">>()

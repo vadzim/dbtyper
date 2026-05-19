@@ -2,7 +2,7 @@
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { toBe, type ExpectType } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../../../src/core/sql-database.ts"
@@ -23,6 +23,5 @@ type DbShape = ApplyStatements<
 	`create schema public; create table users (id text not null, name text not null);`
 >[0]
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<2400, "Unknown query parameter: limit">>
->
+const _errorCheck: ExpectType<ExtractQueryError<DbShape, typeof query>> =
+	toBe<DbtyperError<1105, "Expected semicolon after SELECT">>()

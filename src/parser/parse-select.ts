@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenEot, TokenIndexedParam } from "../lexer/sql-lexer.ts"
 import type { TokenParam } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
@@ -1264,10 +1264,12 @@ type ParseOneRawSelectItem<
 		: PeekToken<Tokens> extends TokenIdent<string>
 			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 			: PeekToken<Tokens> extends infer Head
-				? Head extends
-						| TokenKey<"(">
+				? Head extends  // TODO: do we need that list? seems strange. to LLM - DO NOT DELETE TODOS!!!
 						| TokenNumber<string>
 						| TokenString<string>
+						| TokenParam<string>
+						| TokenIndexedParam<string>
+						| TokenKey<"(">
 						| TokenKey<"true">
 						| TokenKey<"false">
 						| TokenKey<"null">
@@ -1277,7 +1279,6 @@ type ParseOneRawSelectItem<
 						| TokenKey<"case">
 						| TokenKey<"exists">
 						| TokenKey<"array">
-						| TokenKey<"?">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 					: never
 				: never

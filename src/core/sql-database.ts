@@ -4,7 +4,13 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/par
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
-import type { LexerFeatures } from "../lexer/sql-lexer.ts"
+import type {
+	ApplyAllowedQueryParams,
+	LexerFeatures,
+	LexerIndexedQueryParams,
+	LexerNamedQueryParams,
+	LexerQueryParams,
+} from "../lexer/sql-lexer.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -15,6 +21,17 @@ export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
 export type DriverConfig = {
 	syntax: LexerFeatures
 	scalarTypes: Record<string, unknown>
+}
+
+export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = Config & {
+	syntax: ApplyAllowedQueryParams<
+		Config["syntax"],
+		ParamsValues extends null | undefined
+			? never
+			: ParamsValues extends readonly unknown[]
+				? LexerIndexedQueryParams
+				: LexerNamedQueryParams
+	>
 }
 
 export type SqlDriver<_Config extends DriverConfig> = {
@@ -53,12 +70,14 @@ export type SqlDatabase<
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
-		statement: Source extends CheckSqlValid<Config, Db, Source, EmptyExpressionParams>
+		statement: Source extends CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>
 			? Source
-			: CheckSqlValid<Config, Db, Source, EmptyExpressionParams>,
+			: CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>,
 		name?: string,
 	): SqlMigrations<
-		FlattenedJsqlDatabase<ApplyStatements<Db, Source, EmptyExpressionParams, Config["syntax"]>[0]>,
+		FlattenedJsqlDatabase<
+			ApplyStatements<Db, Source, EmptyExpressionParams, ParamsDriverConfig<Config, null>["syntax"]>[0]
+		>,
 		Config
 	>
 	database(): DataBase<FlattenedJsqlDatabase<Db>, Config>
@@ -230,7 +249,7 @@ type CheckSqlValid<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Params extends ExpressionParamsShape,
 > =
 	ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1] extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
@@ -247,29 +266,86 @@ type QueryReturnType<
 		? unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
 
+export type GetQueryError<
+	D,
+	Stmt extends string,
+	ParamsValues extends Record<string, unknown> | readonly unknown[] | null = null,
+> =
+	D extends DataBase<infer Db, infer Config>
+		? CheckSqlValid<
+				ParamsDriverConfig<Config, ParamsValues>,
+				Db,
+				Stmt,
+				InferParamsFromValues<ParamsValues>
+			> extends infer Ret
+			? Stmt extends Ret
+				? null
+				: Ret extends FormatErrorText<infer Code, infer Msg>
+					? DbtyperError<Code, Msg>
+					: never
+			: never
+		: never
+
+export type GetStreamError<
+	D,
+	Stmt extends string,
+	ParamsValues extends Record<string, unknown> | readonly unknown[] | null = null,
+> =
+	D extends DataBase<infer Db, infer Config>
+		? CheckSqlValidForStream<
+				ParamsDriverConfig<Config, ParamsValues>,
+				Db,
+				Stmt,
+				InferParamsFromValues<ParamsValues>
+			> extends infer Ret
+			? Stmt extends Ret
+				? null
+				: Ret extends FormatErrorText<infer Code, infer Msg>
+					? DbtyperError<Code, Msg>
+					: never
+			: never
+		: never
+
 export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> = {
+	__db(): { [K in keyof Db]: Db[K] }
+	__config(): { [K in keyof Config]: Config[K] }
+	// _config_params<ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+	// 	params: ParamsValues,
+	// ): { [K in keyof ParamsDriverConfig<Config, ParamsValues>]: ParamsDriverConfig<Config, ParamsValues>[K] }
+	// _get_params<ParamsValues extends Record<string, unknown> | readonly unknown[]>(params: ParamsValues): ParamsValues
+	// _params_no_any<Stmt extends string>(statement: Stmt): CheckSqlValid<Config, Db, Stmt, EmptyExpressionParams>
+	// _params_no<Stmt extends string>(
+	// 	statement: Stmt,
+	// ): CheckSqlValid<NoParamsDriverConfig<Config,null>, Db, Stmt, EmptyExpressionParams>
+	// _params<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+	// 	statement: Stmt,
+	// 	params: ParamsValues,
+	// ): CheckSqlValid<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>
+	// _params_any<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+	// 	statement: Stmt,
+	// 	params: ParamsValues,
+	// ): CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
+
 	/**
 	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, unknown for other statements.
 	 */
 	query<Stmt extends string>(
-		statement: Stmt extends CheckSqlValid<Config, Db, Stmt, EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>
 			? Stmt
-			: CheckSqlValid<Config, Db, Stmt, EmptyExpressionParams>,
-	): Promise<QueryReturnType<Config, Db, Stmt, EmptyExpressionParams>>
+			: CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>,
+	): Promise<QueryReturnType<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>>
 
-	query<Stmt extends string, ParamsValues extends Record<string, unknown>>(
-		statement: Stmt extends CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
+	query<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+		statement: Stmt extends CheckSqlValid<
+			ParamsDriverConfig<Config, ParamsValues>,
+			Db,
+			Stmt,
+			InferParamsFromValues<ParamsValues>
+		>
 			? Stmt
-			: CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValid<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>,
 		params: ParamsValues,
-	): Promise<QueryReturnType<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>
-
-	query<Stmt extends string, ParamsValues extends readonly unknown[]>(
-		statement: Stmt extends CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
-			? Stmt
-			: CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
-		params: ParamsValues,
-	): Promise<QueryReturnType<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>
+	): Promise<QueryReturnType<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>>
 
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
@@ -277,24 +353,36 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 	 * Row-by-row iteration. Requires SELECT or RETURNING statements.
 	 */
 	stream<Stmt extends string>(
-		statement: Stmt extends CheckSqlValidForStream<Config, Db, Stmt, EmptyExpressionParams>
+		statement: Stmt extends CheckSqlValidForStream<
+			ParamsDriverConfig<Config, null>,
+			Db,
+			Stmt,
+			EmptyExpressionParams
+		>
 			? Stmt
-			: CheckSqlValidForStream<Config, Db, Stmt, EmptyExpressionParams>,
-	): Promise<AsyncIterable<SqlSelectRowObject<Config, Db, Stmt, EmptyExpressionParams>>>
+			: CheckSqlValidForStream<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>,
+	): Promise<AsyncIterable<SqlSelectRowObject<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>>>
 
-	stream<Stmt extends string, ParamsValues extends Record<string, unknown>>(
-		statement: Stmt extends CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
+	stream<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+		statement: Stmt extends CheckSqlValidForStream<
+			ParamsDriverConfig<Config, ParamsValues>,
+			Db,
+			Stmt,
+			InferParamsFromValues<ParamsValues>
+		>
 			? Stmt
-			: CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValidForStream<
+					ParamsDriverConfig<Config, ParamsValues>,
+					Db,
+					Stmt,
+					InferParamsFromValues<ParamsValues>
+				>,
 		params: ParamsValues,
-	): Promise<AsyncIterable<SqlSelectRowObject<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>>
-
-	stream<Stmt extends string, ParamsValues extends readonly unknown[]>(
-		statement: Stmt extends CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
-			? Stmt
-			: CheckSqlValidForStream<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>,
-		params: ParamsValues,
-	): Promise<AsyncIterable<SqlSelectRowObject<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>>>
+	): Promise<
+		AsyncIterable<
+			SqlSelectRowObject<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>
+		>
+	>
 
 	streamUntyped(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<any>>
 
