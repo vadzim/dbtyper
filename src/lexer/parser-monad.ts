@@ -18,10 +18,14 @@ export type PeekToken<M extends ParserMonad> = M[typeof tokenKey]
 
 export type SkipToken<M extends ParserMonad> = ReadToken<M[typeof restKey], M["syntax"], M["positionalIndex"]>
 
+type QuestionKey = TokenKey<"?">
+
 type ReadToken<Rest extends string, Syntax extends string, PositionalIndex extends number> =
 	ReadTokenFromString<Rest, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
-		? [Token, "question-params"] extends [TokenKey<"?">, Syntax]
-			? Buffer<TokenIndexedParam<`${Inc[PositionalIndex]}`>, Rest, Syntax, Inc[PositionalIndex]>
+		? "question-params" extends Syntax
+			? Token extends QuestionKey
+				? Buffer<TokenIndexedParam<`${Inc[PositionalIndex]}`>, Rest, Syntax, Inc[PositionalIndex]>
+				: Buffer<Token, Rest, Syntax, PositionalIndex>
 			: Buffer<Token, Rest, Syntax, PositionalIndex>
 		: never
 
