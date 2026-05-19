@@ -1302,8 +1302,8 @@ type ParseOptionalAs<Tokens extends ParserMonad> =
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenIdent<infer N extends string>
 				? [SkipToken<R1>, N]
-				: [SkipToken<R1>, undefined]
-			: [SkipToken<Tokens>, undefined]
+				: [R1, undefined]
+			: never
 		: [Tokens, undefined]
 
 /** Row shape of a parsed inner `SELECT` used as a derived table in `FROM` / `JOIN`. */

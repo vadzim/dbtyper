@@ -1518,6 +1518,10 @@ export const errors = {
 		code: 5408,
 		msg: ["Expected `,`, WHERE, or end after ON CONFLICT SET"],
 	},
+
+	// Internal error. Usage: FormatError<Errors["INTERNAL_ERROR"], [42]>
+	// Internal error code is unique for every usage of INTERNAL_ERROR for debug purpose.
+	INTERNAL_ERROR: { code: 9999, msg: ["INTERNAL_ERROR", ""] },
 } as const satisfies Record<string, ErrorDescription>
 
 type ErrorArgs<ED extends ErrorDescription> = Tuple<
