@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenParam } from "../lexer/sql-lexer.ts"
+import type { TokenIndexedParam, TokenParam } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
@@ -24,7 +24,7 @@ import type {
 	SqlUnknown,
 	SqlTimestamp,
 } from "../core/sql-type-shape.ts"
-import type { Inc } from "../core/type-utils.ts"
+import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -37,24 +37,10 @@ export type ExprParseEnv = {
 	db: JsqlDatabaseShape
 	params: ExpressionParamsShape
 	outerScope: ScopeMap
-	positionalParamIndex: number
 }
 
 /** True when `T` is `unknown` or `any` (not other types). */
 export type IsUnknownOrAny<T> = 0 extends 1 & T ? true : unknown extends T ? (T extends unknown ? true : false) : false
-
-/** Get the current positional parameter index from the environment, defaulting to 0 */
-type GetPositionalParamIndex<Env extends ExprParseEnv> = Env["positionalParamIndex"] extends number
-	? Env["positionalParamIndex"]
-	: 0
-
-/** Increment the positional parameter index in the environment */
-type IncrementPositionalParamIndex<Env extends ExprParseEnv> = {
-	db: Env["db"]
-	params: Env["params"]
-	outerScope: Env["outerScope"]
-	positionalParamIndex: Inc[GetPositionalParamIndex<Env>]
-}
 
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
 export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
@@ -2449,14 +2435,14 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 										? [SkipToken<Tokens>, { kind: "number"; raw: Raw }, Env]
 										: PeekToken<Tokens> extends TokenParam<infer P extends string>
 											? [SkipToken<Tokens>, { kind: "param"; name: P }, Env]
-											: PeekToken<Tokens> extends TokenKey<"?">
+											: PeekToken<Tokens> extends TokenIndexedParam<infer Index extends string>
 												? [
 														SkipToken<Tokens>,
 														{
 															kind: "positional-param"
-															index: GetPositionalParamIndex<Env>
+															index: Dec[ParseNumber<Index>]
 														},
-														IncrementPositionalParamIndex<Env>,
+														Env,
 													]
 												: SkipToken<Tokens> extends infer Rbad extends ParserMonad
 													? SkipFailedExpressionWithEnv<

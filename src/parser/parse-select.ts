@@ -244,7 +244,7 @@ type ParseOrderByScalarExpr<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 		infer Rw extends ParserMonad,
 		infer Ast,
 		infer _UpdatedEnv,
@@ -444,7 +444,7 @@ type ParseGroupByTermsAcc<
 	Params extends ExpressionParamsShape,
 	Acc extends readonly ScalarExprAst[] = readonly [],
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 		infer R1 extends ParserMonad,
 		infer Ast,
 		infer _UpdatedEnv,
@@ -1198,28 +1198,19 @@ type ParseRawSelectList<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap = {},
 	Acc extends readonly RawSelectItem[] = [],
-	PositionalParamIndex extends number = 0,
 > =
 	PeekToken<Tokens> extends TokenKey<"from">
 		? [Tokens, Acc]
 		: PeekToken<Tokens> extends TokenKey<"*">
-			? ParseRawSelectListAfterItem<
-					SkipToken<Tokens>,
-					Db,
-					Params,
-					OuterScope,
-					[...Acc, { kind: "star" }],
-					PositionalParamIndex
-				>
-			: ParseOneRawSelectItem<Tokens, Db, Params, OuterScope, PositionalParamIndex> extends [
+			? ParseRawSelectListAfterItem<SkipToken<Tokens>, Db, Params, OuterScope, [...Acc, { kind: "star" }]>
+			: ParseOneRawSelectItem<Tokens, Db, Params, OuterScope> extends [
 						infer AfterItem extends ParserMonad,
 						infer It,
-						infer NextIndex extends number,
 				  ]
 				? It extends DbtyperErrorShape
 					? SkipFailedExpression<AfterItem, It>
 					: It extends RawSelectItem
-						? ParseRawSelectListAfterItem<AfterItem, Db, Params, OuterScope, [...Acc, It], NextIndex>
+						? ParseRawSelectListAfterItem<AfterItem, Db, Params, OuterScope, [...Acc, It]>
 						: never
 				: never
 
@@ -1229,10 +1220,9 @@ type ParseRawSelectListAfterItem<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 	Acc extends readonly RawSelectItem[],
-	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenKey<",">
-		? ParseRawSelectList<SkipToken<Tokens>, Db, Params, OuterScope, Acc, PositionalParamIndex>
+		? ParseRawSelectList<SkipToken<Tokens>, Db, Params, OuterScope, Acc>
 		: [Tokens, Acc]
 
 type ParseOneRawSelectExprItem<
@@ -1240,25 +1230,21 @@ type ParseOneRawSelectExprItem<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
-	PositionalParamIndex extends number,
 > =
-	ParseExpressionAST<
-		Tokens,
-		{ db: Db; params: Params; outerScope: OuterScope; positionalParamIndex: PositionalParamIndex }
-	> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope }> extends [
 		infer RExpr extends ParserMonad,
 		infer Out,
-		infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
+		infer _UpdatedEnv,
 	]
 		? Out extends DbtyperErrorShape
-			? [RExpr, Out, PositionalParamIndex]
+			? [RExpr, Out]
 			: Out extends ScalarExprAst
 				? ParseOptionalAs<RExpr> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
 					? As extends string
-						? [M2, { kind: "expr"; ast: Out; as: As }, UpdatedEnv["positionalParamIndex"]]
+						? [M2, { kind: "expr"; ast: Out; as: As }]
 						: Out extends { kind: "col"; parts: ScalarIdentParts }
-							? [M2, { kind: "expr"; ast: Out }, UpdatedEnv["positionalParamIndex"]]
-							: [M2, { kind: "expr"; ast: Out }, UpdatedEnv["positionalParamIndex"]]
+							? [M2, { kind: "expr"; ast: Out }]
+							: [M2, { kind: "expr"; ast: Out }]
 					: never
 				: never
 		: never
@@ -1268,16 +1254,15 @@ type ParseOneRawSelectItem<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
-	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenParam<infer P extends string>
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? ParseOptionalAs<R1> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
-				? [M2, RawSelectParamItem<P, As>, PositionalParamIndex]
+				? [M2, RawSelectParamItem<P, As>]
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenIdent<string>
-			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope, PositionalParamIndex>
+			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 			: PeekToken<Tokens> extends infer Head
 				? Head extends
 						| TokenKey<"(">
@@ -1293,7 +1278,7 @@ type ParseOneRawSelectItem<
 						| TokenKey<"exists">
 						| TokenKey<"array">
 						| TokenKey<"?">
-					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope, PositionalParamIndex>
+					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 					: never
 				: never
 

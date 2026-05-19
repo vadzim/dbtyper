@@ -146,7 +146,6 @@ type ParseUpdateSetAssignments<
 	Sch extends string,
 	Tab extends string,
 	Acc extends readonly string[],
-	PositionalParamIndex extends number = 0,
 > =
 	PeekToken<Tokens> extends infer TokCol
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -161,13 +160,8 @@ type ParseUpdateSetAssignments<
 										db: Db
 										params: Params
 										outerScope: Scope
-										positionalParamIndex: PositionalParamIndex
 									}
-								> extends [
-									infer R3 extends ParserMonad,
-									infer Ast,
-									infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
-								]
+								> extends [infer R3 extends ParserMonad, infer Ast, infer _UpdatedEnv]
 								? Ast extends DbtyperErrorShape
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst
@@ -193,8 +187,7 @@ type ParseUpdateSetAssignments<
 																				Tbl,
 																				Sch,
 																				Tab,
-																				readonly [...Acc, Col],
-																				UpdatedEnv["positionalParamIndex"]
+																				readonly [...Acc, Col]
 																			>
 																		: never
 																	: PeekToken<R3> extends

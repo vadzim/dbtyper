@@ -32,7 +32,6 @@ type TestEnvForExprParse = {
 	db: DbUsers
 	params: EmptyExpressionParams
 	outerScope: {}
-	positionalParamIndex: 0
 }
 
 type UsersEntry = {

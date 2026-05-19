@@ -20,6 +20,7 @@ import type {
 	ParseExpressionAST,
 	ScalarExprAst,
 	ResolveExpressionAST,
+	ExprParseEnv,
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -396,15 +397,10 @@ type ParseInsertValuesCells<
 	Tab extends string,
 	Cols extends readonly string[],
 	ColsFull extends readonly string[] = Cols,
-	PositionalParamIndex extends number = 0,
 > = Cols extends readonly [infer C0 extends string, ...infer CR extends readonly string[]]
-	? ParseExpressionAST<
-			Tokens,
-			{ db: Db; params: Params; outerScope: Scope; positionalParamIndex: PositionalParamIndex }
-		> extends [
+	? ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 			infer R1 extends ParserMonad,
 			infer Ast,
-			infer UpdatedEnv extends import("./parse-expression.ts").ExprParseEnv,
 		]
 		? Ast extends DbtyperErrorShape
 			? [R1, Db, Ast]
@@ -453,8 +449,7 @@ type ParseInsertValuesCells<
 													Sch,
 													Tab,
 													CR,
-													ColsFull,
-													UpdatedEnv["positionalParamIndex"]
+													ColsFull
 												>
 										: never
 								: never
@@ -474,21 +469,9 @@ type ParseInsertValuesCommaThenRest<
 	Tab extends string,
 	CR extends readonly string[],
 	ColsFull extends readonly string[],
-	PositionalParamIndex extends number,
 > =
 	PeekToken<Tokens> extends TokenKey<",">
-		? ParseInsertValuesCells<
-				SkipToken<Tokens>,
-				Db,
-				Scope,
-				Params,
-				Tbl,
-				Sch,
-				Tab,
-				CR,
-				ColsFull,
-				PositionalParamIndex
-			>
+		? ParseInsertValuesCells<SkipToken<Tokens>, Db, Scope, Params, Tbl, Sch, Tab, CR, ColsFull>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COMMA_BETWEEN_INSERT_VALUES"], []>>
 
 type InsertExcludedScope<
@@ -740,10 +723,11 @@ type ParseInsertUpsertSetAssignments<
 					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "ON CONFLICT DO UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
 						? SkipToken<R1> extends infer R2 extends ParserMonad
-							? ParseExpressionAST<
-									R2,
-									{ db: Db; params: Params; outerScope: Scope; positionalParamIndex: 0 }
-								> extends [infer R3 extends ParserMonad, infer Ast, infer _UpdatedEnv]
+							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+									infer R3 extends ParserMonad,
+									infer Ast,
+									infer _UpdatedEnv,
+								]
 								? Ast extends DbtyperErrorShape
 									? [R3, Db, Ast]
 									: Ast extends ScalarExprAst

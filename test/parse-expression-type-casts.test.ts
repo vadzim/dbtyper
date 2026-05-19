@@ -14,7 +14,6 @@ type TestEnvForExprParse = {
 	db: DbEmpty
 	params: EmptyExpressionParams
 	outerScope: {}
-	positionalParamIndex: 0
 }
 
 // Test basic type casts
