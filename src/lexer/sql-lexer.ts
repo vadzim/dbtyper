@@ -502,5 +502,5 @@ type SomeSymbols<Text extends string> = Text extends `${infer Result}${SkipSymbo
 type SkipSymbols<Text extends string, Count extends number> = Count extends 0
 	? Text
 	: Text extends `${string}${infer Rest}`
-		? SkipSymbols<Rest, Dec[Count]>
+		? SkipSymbols<Rest, Dec<Count>>
 		: Text

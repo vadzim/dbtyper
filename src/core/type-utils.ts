@@ -6,8 +6,11 @@ type Repeat<X, N extends number, Acc extends unknown[] = []> = Acc["length"] ext
 
 type Numbers = Counting<200>
 
-export type Inc = Numbers extends [0, ...infer Rest] ? [...Rest, number] : never
-export type Dec = [never, ...Numbers]
+type IncData = Numbers extends [0, ...infer Rest] ? [...Rest, number] : never
+type DecData = [never, ...Numbers]
+
+export type Inc<N extends number> = IncData[N]
+export type Dec<N extends number> = DecData[N]
 
 type Diag<
 	Left extends unknown[] = [],
@@ -22,10 +25,15 @@ type Diag<
 
 type NN = 100
 
-export type LT = Diag<Repeat<false, NN>, Repeat<true, NN>>
-export type LTE = [Repeat<true, NN>, ...LT]
-export type GT = Diag<Repeat<true, NN>, Repeat<false, NN>>
-export type GTE = [Repeat<false, NN>, ...GT]
+type LTData = Diag<Repeat<false, NN>, Repeat<true, NN>>
+type LTEData = [Repeat<true, NN>, ...LTData]
+type GTData = Diag<Repeat<true, NN>, Repeat<false, NN>>
+type GTEData = [Repeat<false, NN>, ...GTData]
+
+export type LT<A extends number, B extends number> = LTData[A][B]
+export type LTE<A extends number, B extends number> = LTEData[A][B]
+export type GT<A extends number, B extends number> = GTData[A][B]
+export type GTE<A extends number, B extends number> = GTEData[A][B]
 
 export type HasKey<T, K extends string> = K extends keyof T ? true : false
 
@@ -45,7 +53,7 @@ export type LastOf<T> = UnionToIntersection<T extends unknown ? () => T : never>
 
 export type TupleSize = Counting<21>[number]
 
-export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec[N]>]
+export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec<N>>]
 
 export type ExpectTrue<T extends true> = T
 

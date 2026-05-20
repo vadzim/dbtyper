@@ -24,7 +24,7 @@ type ReadToken<_Rest extends string, Syntax extends string, PositionalIndex exte
 	ReadTokenFromString<_Rest, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
 		? "question-params" extends Syntax
 			? Token extends QuestionKey
-				? Buffer<TokenIndexedParam<`${Inc[PositionalIndex]}`>, Rest, Syntax, Inc[PositionalIndex]>
+				? Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>>
 				: Buffer<Token, Rest, Syntax, PositionalIndex>
 			: Buffer<Token, Rest, Syntax, PositionalIndex>
 		: never

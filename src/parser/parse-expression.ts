@@ -2440,7 +2440,7 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 														SkipToken<Tokens>,
 														{
 															kind: "positional-param"
-															index: Dec[ParseNumber<Index>]
+															index: Dec<ParseNumber<Index>>
 														},
 														Env,
 													]

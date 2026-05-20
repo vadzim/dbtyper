@@ -69,7 +69,7 @@ type ApplyParsedStatements<
 					infer NewError extends DbtyperErrorShape | null,
 					infer NewResult,
 			  ]
-			? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc[BatchDepth]>
+			? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc<BatchDepth>>
 			: never
 
 type ApplyParsedStatementsInner<
@@ -94,7 +94,7 @@ type ApplyParsedStatementsInner<
 					Params,
 					NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
 					NewResult extends DbtyperErrorShape ? null : NewResult,
-					Inc[Depth]
+					Inc<Depth>
 				>
 			: never
 

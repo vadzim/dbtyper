@@ -1526,7 +1526,7 @@ export const errors = {
 
 type ErrorArgs<ED extends ErrorDescription> = Tuple<
 	string | number | boolean,
-	Dec[ED["msg"]["length"]] extends infer N extends TupleSize ? N : never
+	Dec<ED["msg"]["length"]> extends infer N extends TupleSize ? N : never
 >
 
 type JoinWithArgs<Msg extends readonly string[], Args extends (string | number | boolean)[]> = Msg extends readonly [
