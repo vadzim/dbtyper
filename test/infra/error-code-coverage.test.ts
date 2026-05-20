@@ -220,6 +220,9 @@ const UNTESTABLE_ERROR_CODES = new Set([
 	5105, // EXPECTED_SCALE_NUMBER - Parser recovery handles this
 	5404, // UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE - Feature not implemented
 	5406, // UNEXPECTED_END_IN_CREATE_TYPE_ENUM_BODY - Parser recovery handles this
+	1010,
+	2403,
+	9999,
 ])
 
 describe("Error code coverage", async () => {

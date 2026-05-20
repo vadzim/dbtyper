@@ -1,11 +1,7 @@
 // Integration Test: DELETE
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
-import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
-import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
-import type { SqlDatabase } from "../../../src/core/sql-database.ts"
-
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
@@ -19,9 +15,6 @@ const query = `delete users where id = 'u';` as const
 // @ts-expect-error
 await db.query(query)
 
-// Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text);`>[0]
+type ReturnedError = GetQueryError<typeof db, typeof query>
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<1400, "Expected FROM after DELETE">>
->
+expectType<ReturnedError>(toBe<DbtyperError<1400, "Expected FROM after DELETE">>())

@@ -1,11 +1,8 @@
 // Integration Test: Expected ROW or ROWS in FETCH (5301)
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
-import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
-import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
-import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
@@ -18,8 +15,6 @@ const query = `select id from items fetch first 10 invalid only;` as const
 // @ts-expect-error
 await db.query(query)
 
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table items (id text not null);`>[0]
+type ReturnedError = GetQueryError<typeof db, typeof query>
 
-type _errorCheck = Expect<
-	Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<5301, "Expected ROW or ROWS in FETCH">>
->
+expectType<ReturnedError>(toBe<DbtyperError<5301, "Expected ROW or ROWS in FETCH">>())

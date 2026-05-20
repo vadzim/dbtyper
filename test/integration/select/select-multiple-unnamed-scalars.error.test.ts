@@ -2,13 +2,10 @@
 // Integration Test: SELECT syntax validation
 // Tests that multiple scalar expressions require AS aliases
 
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
-import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
-import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
-import type { SqlDatabase } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
@@ -21,12 +18,6 @@ const query = `select 1, 2 from users;` as const
 // @ts-expect-error
 await db.query(query)
 
-// Type-level database shape for error checking
-type DbShape = ApplyStatements<SqlDatabase, `create schema public; create table users (id text, name text);`>[0]
+type ReturnedError = GetQueryError<typeof db, typeof query>
 
-type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query>,
-		DbtyperError<3402, "Scalar expression in SELECT requires AS alias">
-	>
->
+expectType<ReturnedError>(toBe<DbtyperError<3402, "Scalar expression in SELECT requires AS alias">>())

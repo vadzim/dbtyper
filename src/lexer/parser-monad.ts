@@ -20,8 +20,8 @@ export type SkipToken<M extends ParserMonad> = ReadToken<M[typeof restKey], M["s
 
 type QuestionKey = TokenKey<"?">
 
-type ReadToken<Rest extends string, Syntax extends string, PositionalIndex extends number> =
-	ReadTokenFromString<Rest, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
+type ReadToken<_Rest extends string, Syntax extends string, PositionalIndex extends number> =
+	ReadTokenFromString<_Rest, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
 		? "question-params" extends Syntax
 			? Token extends QuestionKey
 				? Buffer<TokenIndexedParam<`${Inc[PositionalIndex]}`>, Rest, Syntax, Inc[PositionalIndex]>
@@ -29,9 +29,9 @@ type ReadToken<Rest extends string, Syntax extends string, PositionalIndex exten
 			: Buffer<Token, Rest, Syntax, PositionalIndex>
 		: never
 
-const tokenKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
+declare const tokenKey: unique symbol // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 
-const restKey = Symbol() // it's denied to export this symbol and use it outside this module in any directional or indirectional way
+declare const restKey: unique symbol // it's denied to export this symbol and use it outside this module in any directional or indirectional way
 
 type Buffer<
 	Token extends TokenStreamHead,

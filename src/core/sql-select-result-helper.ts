@@ -18,7 +18,7 @@ type ExpectedRowSetResult = FormatError<Errors["STREAM_REQUIRES_A_ROW_RETURNING_
 type SqlSelectResult<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
-	Params extends ExpressionParamsShape,
+	Params extends ExpressionParamsShape | null,
 	Syntax extends LexerFeatures,
 > =
 	ApplyStatements<Db, Text, Params, Syntax> extends [unknown, infer Error, infer Result]
@@ -37,5 +37,5 @@ export type SqlSelectResultTs<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Text extends string,
-	Params extends ExpressionParamsShape,
+	Params extends ExpressionParamsShape | null,
 > = ApplySqlToTsConversion<Config, SqlSelectResult<Db, Text, Params, Config["syntax"]>>

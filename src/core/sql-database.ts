@@ -9,7 +9,6 @@ import type {
 	LexerFeatures,
 	LexerIndexedQueryParams,
 	LexerNamedQueryParams,
-	LexerQueryParams,
 } from "../lexer/sql-lexer.ts"
 
 /**
@@ -239,7 +238,7 @@ type CheckSqlValidForStream<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape,
+	Params extends ExpressionParamsShape | null,
 > =
 	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
@@ -249,7 +248,7 @@ type CheckSqlValid<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape,
+	Params extends ExpressionParamsShape | null,
 > =
 	ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1] extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
@@ -265,6 +264,17 @@ type QueryReturnType<
 	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
 		? unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
+
+export type GetApplyError<D, Stmt extends string> =
+	D extends SqlMigrations<infer Db, infer Config>
+		? CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, null> extends infer Ret
+			? Stmt extends Ret
+				? null
+				: Ret extends FormatErrorText<infer Code, infer Msg>
+					? DbtyperError<Code, Msg>
+					: never
+			: never
+		: never
 
 export type GetQueryError<
 	D,

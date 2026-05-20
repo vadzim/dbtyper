@@ -9,6 +9,10 @@ async function* getIntegrationTestFiles(dir: string, substr: string = ""): Async
 	const entries = await readdir(dir)
 
 	for (const entry of entries) {
+		if (entry.endsWith(".md")) {
+			continue
+		}
+
 		const fullPath = join(dir, entry)
 		const stats = await stat(fullPath)
 
@@ -36,6 +40,7 @@ describe("Integration test files correctness", async () => {
 			})
 
 			const content = await readFile(fullPath, "utf-8")
+			const noSpaceContent = content.replaceAll(/\s|\n|\r/g, "")
 
 			await it(`the file ${file} should call sqlMigrations exactly once`, async () => {
 				const matches = content.match(/\bsqlMigrations\(/g)
@@ -109,11 +114,11 @@ describe("Integration test files correctness", async () => {
 
 				await it(`the file ${file} should have @ts-expect-error right before query call`, async () => {
 					const pattern =
-						/\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*(await\s+db\.(query|stream)\(query[^)]*\)|await\s+migrations\.apply\(query[^)]*\))/
+						/\/[/*]\s*@ts-expect-error\s*(\n|\*\/)\s*(await\s+db\.(query|stream)\(query[^)]*\)|migrations\.apply\(query[^)]*\))/
 
 					assert.ok(
 						pattern.test(content),
-						"@ts-expect-error should be immediately before 'await db.query(query)' or 'await db.stream(query)' or 'await migrations.apply(query)'.",
+						"@ts-expect-error should be immediately before 'await db.query(query)' or 'await db.stream(query)' or 'migrations.apply(query)'.",
 					)
 				})
 
@@ -124,12 +129,12 @@ describe("Integration test files correctness", async () => {
 
 				await it(`the file ${file} must have error message check`, async () => {
 					const hasErrorCheck =
-						/\btype\s+\w+\s*=\s*Expect<\s*(Matches|Extends)<\s*(ExtractQueryError|ExtractStreamError)</.test(
-							content,
+						/typeReturnedError=Get(Query|Stream|Apply)Error<typeof(db|migrations),typeofquery.*?>;?expectType<ReturnedError>\(toBe<\|?DbtyperError</.test(
+							noSpaceContent,
 						)
 					assert.ok(
 						hasErrorCheck,
-						"Error test files must include: type _errorCheck = Expect<Matches<ExtractQueryError<DbShape, typeof query>, DbtyperError<...>>> or Expect<Extends<...>> for union types, or SqlSelectRow for stream tests",
+						"Error test files must include: type ReturnedError = Get(Query|Stream|Apply)Error<typeof (db|migrations), typeof query>; expectType<ReturnedError>(toBe<DbtyperError<",
 					)
 				})
 

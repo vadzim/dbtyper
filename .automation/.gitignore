@@ -19,3 +19,4 @@ logs/*.log
 
 # Smee.io configuration (contains webhook URL)
 smee-config.json
+folder_context.md

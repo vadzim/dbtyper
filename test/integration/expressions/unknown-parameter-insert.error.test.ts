@@ -1,12 +1,8 @@
 // Integration Test: Expressions
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
-import type { ExtractQueryError } from "../../test-utils/error-test-utils.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
-import type { ApplyStatements } from "../../../src/parser/parse-sql-statement.ts"
-import type { SqlDatabase } from "../../../src/core/sql-database.ts"
-import type { InferParamsFromValues } from "../../../src/core/infer-param-types.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
@@ -19,14 +15,6 @@ const query = `insert into users (id, name) values (:id, :name);` as const
 // @ts-expect-error
 await db.query(query, { id: "id" })
 
-type DbShape = ApplyStatements<
-	SqlDatabase,
-	`create schema public; create table users (id text not null, name text not null);`
->[0]
+type ReturnedError = GetQueryError<typeof db, typeof query, { id: string }>
 
-type _errorCheck = Expect<
-	Matches<
-		ExtractQueryError<DbShape, typeof query, InferParamsFromValues<{ id: string }>>,
-		DbtyperError<2400, "Unknown query parameter: name">
-	>
->
+expectType<ReturnedError>(toBe<DbtyperError<2400, "Unknown query parameter: name">>())

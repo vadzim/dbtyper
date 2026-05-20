@@ -1,5 +1,5 @@
 import type { TokenIndexedParam, TokenKey, TokenNumber, TokenParam, TokenString } from "../src/lexer/sql-lexer.ts"
-import type { CreateParserMonad, PeekToken, SkipToken } from "../src/lexer/parser-monad.ts"
+import type { CreateParserMonad, PeekToken } from "../src/lexer/parser-monad.ts"
 import type { TestTokensL } from "./test-utils/lexer-test-utils.ts"
 import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
 
