@@ -16,7 +16,11 @@ export type EmptyTokenList = Buffer<TokenEot, "", string, number>
 
 export type PeekToken<M extends ParserMonad> = M[typeof tokenKey]
 
-export type SkipToken<M extends ParserMonad> = ReadToken<M[typeof restKey], M["syntax"], M["positionalIndex"]>
+export type SkipToken<M extends ParserMonad> = ReadToken<
+	M[typeof restKey],
+	M[typeof syntaxKey],
+	M[typeof positionalIndexKey]
+>
 
 type QuestionKey = TokenKey<"?">
 
@@ -29,10 +33,6 @@ type ReadToken<_Rest extends string, Syntax extends string, PositionalIndex exte
 			: Buffer<Token, Rest, Syntax, PositionalIndex>
 		: never
 
-declare const tokenKey: unique symbol // it's denied to export this symbol and use it outside this module in any directional or indirectional way
-
-declare const restKey: unique symbol // it's denied to export this symbol and use it outside this module in any directional or indirectional way
-
 type Buffer<
 	Token extends TokenStreamHead,
 	Rest extends string,
@@ -41,6 +41,12 @@ type Buffer<
 > = {
 	[tokenKey]: Token
 	[restKey]: Rest
-	syntax: Syntax
-	positionalIndex: PositionalIndex
+	[syntaxKey]: Syntax
+	[positionalIndexKey]: PositionalIndex
 }
+
+// it's denied to export one of these symbols and use then outside this module in any directional or indirectional way:
+declare const tokenKey: unique symbol
+declare const restKey: unique symbol
+declare const syntaxKey: unique symbol
+declare const positionalIndexKey: unique symbol
