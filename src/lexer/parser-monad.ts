@@ -45,7 +45,7 @@ type Buffer<
 	[positionalIndexKey]: PositionalIndex
 }
 
-// it's denied to export one of these symbols and use then outside this module in any directional or indirectional way:
+// it's denied to export one of these symbols and use them outside of this module in any directional or indirectional way:
 declare const tokenKey: unique symbol
 declare const restKey: unique symbol
 declare const syntaxKey: unique symbol
