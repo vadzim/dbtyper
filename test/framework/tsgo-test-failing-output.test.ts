@@ -3,7 +3,7 @@ import { describe, it } from "node:test"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
+const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const tsgoBin = path.join(repoRoot, "node_modules", ".bin", process.platform === "win32" ? "tsgo.cmd" : "tsgo")
 
 /**
