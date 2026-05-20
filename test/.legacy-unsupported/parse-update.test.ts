@@ -1,0 +1,72 @@
+import { describe, it } from "node:test"
+import type { JsqlUpdateStatementResult } from "../../src/core/jsql-shapes.ts"
+import type { CreateParserMonad } from "../../src/lexer/parser-monad.ts"
+
+import type { TText } from "../test-utils/sql-type-helpers.ts"
+import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
+
+type DbUsers = {
+	defaultSchema: "public"
+	schemas: {
+		public: {
+			sets: {
+				users: {
+					kind: "table"
+					columns: { id: TText; name: TText }
+				}
+			}
+		}
+	}
+}
+
+type UpOk = ParseSqlStatement<CreateParserMonad<`update users set name = 'x' where users.id = 'u';`>, DbUsers>
+type _upOk = Expect<Matches<UpOk[2], JsqlUpdateStatementResult>>
+
+type UpSetParam = ParseSqlStatement<
+	CreateParserMonad<`update users set name = :n where id = 'u';`>,
+	DbUsers,
+	{ n: TText }
+>
+type _upSetParam = Expect<Matches<UpSetParam[2], JsqlUpdateStatementResult>>
+
+type UpMultiOk = ParseSqlStatement<
+	CreateParserMonad<`update users set name = 'x', id = 'y' where users.id = 'u';`>,
+	DbUsers
+>
+type _upMultiOk = Expect<Matches<UpMultiOk[2], JsqlUpdateStatementResult>>
+
+type DbAppDefaultPublicUsers = {
+	defaultSchema: "app"
+	schemas: {
+		app: { sets: unknown }
+		public: {
+			sets: {
+				users: {
+					kind: "table"
+					columns: { id: TText; name: TText }
+				}
+			}
+		}
+	}
+}
+
+type UpMultiQualified = ParseSqlStatement<
+	CreateParserMonad<`update public.users set name = 'x', id = 'y' where public.users.id = 'u';`>,
+	DbAppDefaultPublicUsers
+>
+type _upMultiQualified = Expect<Matches<UpMultiQualified[2], JsqlUpdateStatementResult>>
+
+type UpReturning = ParseSqlStatement<CreateParserMonad<`update users set name = 'x' returning id;`>, DbUsers>
+type _upReturning = Expect<Matches<UpReturning[2], { kind: "select"; returning: { id: TText } }>>
+
+type UpWithoutWhereReturning = ParseSqlStatement<
+	CreateParserMonad<`update users set name = 'Everyone' returning *;`>,
+	DbUsers
+>
+type _upWithoutWhereReturning = Expect<
+	Matches<UpWithoutWhereReturning[2], { kind: "select"; returning: { id: TText; name: TText } }>
+>
+
+describe("parse-update (type tests)", () => {
+	it("compile-time assertions above", () => {})
+})

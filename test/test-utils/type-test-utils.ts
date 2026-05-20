@@ -35,22 +35,6 @@ export function toBe<X>(): HasNeverOrAnyDeep<X> extends true ? InvalidToBeType<X
 	return undefined as never
 }
 
-export type Expect<T extends true> = T
-
-export type Extends<Actual, Expected> =
-	HasNeverOrAnyDeep<Actual> extends true
-		? false
-		: HasNeverOrAnyDeep<Expected> extends true
-			? false
-			: Actual extends Expected
-				? true
-				: false
-
-/**
- * Type testing utilities for compile-time assertions.
- * Use direct tuple indexing [1] or [2] for ParseSqlStatement / ParseWhereExpression results.
- */
-
 /** `unknown` must not count as `any` (`[0] extends [1 & unknown]` is wrongly true). */
 type IsAny<T> = 0 extends 1 & T ? true : false
 type IsNeverOrAny<T> = [T] extends [never] ? true : IsAny<T>

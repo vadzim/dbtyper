@@ -1,0 +1,49 @@
+import { describe, it } from "node:test"
+import type { JsqlSchemaShape } from "../../src/core/jsql-shapes.ts"
+import type { CreateParserMonad } from "../../src/lexer/parser-monad.ts"
+import { expectType, toBe } from "../test-utils/type-test-utils.ts"
+import type { TInteger } from "../test-utils/sql-type-helpers.ts"
+import type { ApplyStatements } from "../../src/parser/parse-sql-statement.ts"
+import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
+
+/** `public` with one table so **`CREATE VIEW … AS SELECT`** can resolve `FROM`. */
+type DbDefaultPublic = {
+	defaultSchema: "public"
+	schemas: {
+		public: JsqlSchemaShape & {
+			sets: {
+				t: {
+					kind: "table"
+					columns: { id: TInteger }
+				}
+			}
+		}
+	}
+}
+
+type ApplyCreateThenSelect = ApplyStatements<DbDefaultPublic, `create table s ( id int not null ); select id from s;`>
+
+type _applyMergedTable = Expect<
+	Extends<ApplyCreateThenSelect[0]["schemas"]["public"]["sets"]["s"], { kind: "table"; columns: { id: TInteger } }>
+>
+type _applyMergedNoErr = Expect<Extends<ApplyCreateThenSelect[1], null>>
+
+/** First statement errors → **`ApplyParsedStatements`** returns **`[Rest, Db, Error]`** and does not apply the second `CREATE`. */
+type ApplyStopOnFirstError = ApplyStatements<
+	DbDefaultPublic,
+	`create table ghost.m ( id int not null ); create table t ( id int not null );`
+>[0]
+
+expectType<ApplyStopOnFirstError>(toBe<DbDefaultPublic>())
+
+type TCreateView = ParseSqlStatement<CreateParserMonad<`create view v as select t.id from t;`>, DbDefaultPublic>
+type _createViewMerged = Expect<Extends<TCreateView[2], null>>
+type _createViewDb = Expect<Extends<TCreateView[1]["schemas"]["public"]["sets"]["v"], { kind: "view" }>>
+
+type TGrantSkip = ParseSqlStatement<CreateParserMonad<`grant select on public.t to anon;`>, DbDefaultPublic>
+type _grantSkipped = Expect<Extends<TGrantSkip[2], { kind: "skipped-statement" }>>
+expectType<TGrantSkip[1]>(toBe<DbDefaultPublic>())
+
+describe("apply-statements (type tests)", () => {
+	it("compile-time assertions above", () => {})
+})
