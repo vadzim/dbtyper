@@ -1,5 +1,5 @@
 {
 	"extends": "./tsconfig.json",
 	"include": ["test/**/*.ts"],
-	"exclude": ["test/fail-to-compile.ts", "**/*.test.skip.ts"]
+	"exclude": ["test/fail-to-compile.ts", "**/*.test-d.skip.ts"]
 }
