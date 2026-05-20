@@ -1,6 +1,6 @@
 // Integration Test: SELECT
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -20,12 +20,11 @@ const _result = await _db.query(
      left join posts on active_users.id = posts.user_id;`,
 )
 
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		{
 			name: string
 			id: string
 		}[]
-	>
->
+	>(),
+)

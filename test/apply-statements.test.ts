@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type { TInteger } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -34,7 +34,7 @@ type ApplyStopOnFirstError = ApplyStatements<
 	`create table ghost.m ( id int not null ); create table t ( id int not null );`
 >[0]
 
-type _applyStopDb = Expect<Matches<ApplyStopOnFirstError, DbDefaultPublic>>
+expectType<ApplyStopOnFirstError>(toBe<DbDefaultPublic>())
 
 type TCreateView = ParseSqlStatement<CreateParserMonad<`create view v as select t.id from t;`>, DbDefaultPublic>
 type _createViewMerged = Expect<Extends<TCreateView[2], null>>
@@ -42,7 +42,7 @@ type _createViewDb = Expect<Extends<TCreateView[1]["schemas"]["public"]["sets"][
 
 type TGrantSkip = ParseSqlStatement<CreateParserMonad<`grant select on public.t to anon;`>, DbDefaultPublic>
 type _grantSkipped = Expect<Extends<TGrantSkip[2], { kind: "skipped-statement" }>>
-type _grantDb = Expect<Matches<TGrantSkip[1], DbDefaultPublic>>
+expectType<TGrantSkip[1]>(toBe<DbDefaultPublic>())
 
 describe("apply-statements (type tests)", () => {
 	it("compile-time assertions above", () => {})

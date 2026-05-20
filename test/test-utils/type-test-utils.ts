@@ -37,22 +37,6 @@ export function toBe<X>(): HasNeverOrAnyDeep<X> extends true ? InvalidToBeType<X
 
 export type Expect<T extends true> = T
 
-/**
- * Strict equality for type tests.
- * Deliberately returns `false` if either side contains `any` to avoid false-positive assertions.
- * The second parameter is the expected type, it always should be inlined in tests, except error types. It is allowed to use DbtyperError as opaque type. The first parameter should be the actual type.
- */
-export type Matches<Actual, Expected> =
-	HasNeverOrAnyDeep<Actual> extends true
-		? false
-		: HasNeverOrAnyDeep<Expected> extends true
-			? false
-			: Actual extends Expected
-				? Expected extends Actual
-					? true
-					: false
-				: false
-
 export type Extends<Actual, Expected> =
 	HasNeverOrAnyDeep<Actual> extends true
 		? false

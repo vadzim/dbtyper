@@ -2,7 +2,6 @@ import type { CreateParserMonad } from "../../src/lexer/parser-monad.ts"
 import type { ParseSqlStatement } from "../../src/parser/parse-sql-statement.ts"
 import type { DbtyperError, DbtyperErrorShape, ErrorCodes } from "../../src/dbtyper-error.ts"
 import type { DbPublicUsers } from "./test-databases.ts"
-import type { Matches } from "./type-test-utils.ts"
 import type { JsqlDatabaseShape } from "../../src/core/jsql-shapes.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../../src/parser/parse-expression.ts"
 import type { DriverConfig } from "../../src/core/sql-database.ts"
@@ -14,10 +13,11 @@ export type ParseErrorneousText<S extends string> = ParseSqlStatement<CreatePars
 type Rest = "select 42;"
 type TokensRest = CreateParserMonad<Rest>
 
-export type CheckErrorneousResult<Result, Code extends ErrorCodes, Message extends string> = Matches<
-	Result,
-	[TokensRest, DbPublicUsers, DbtyperError<Code, Message>]
->
+export type ErrorneousResult<Code extends ErrorCodes, Message extends string> = [
+	TokensRest,
+	DbPublicUsers,
+	DbtyperError<Code, Message>,
+]
 
 /**	@deprecated */
 export type ExtractStreamError<

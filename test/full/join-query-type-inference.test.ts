@@ -1,6 +1,6 @@
 import { createTestDatabase } from "./migrations.data.1/index.ts"
 import { describe, it } from "node:test"
-import type { Expect, Matches } from "../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
 describe("migration query type inference", () => {
 	it("infers row types for joined queries after applying migrations", async () => {
@@ -25,20 +25,17 @@ describe("migration query type inference", () => {
 		})
 
 		type RowType = (typeof _rows)[number]
-		type _expected = Expect<
-			Matches<
-				RowType,
-				{
-					agenda: string
-					created_at: Date
-					display_name: string
-					email: string
-					id: string
-					login_count: number
-					title: string
-					user_id: string
-				}
-			>
-		>
+		expectType<RowType>(
+			toBe<{
+				agenda: string
+				created_at: Date
+				display_name: string
+				email: string
+				id: string
+				login_count: number
+				title: string
+				user_id: string
+			}>(),
+		)
 	})
 })

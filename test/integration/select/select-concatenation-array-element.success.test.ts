@@ -1,5 +1,5 @@
 // Integration Test: SELECT || array concatenation with element (success)
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
@@ -10,4 +10,5 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 // ✅ array || element → array
 const _result = await _db.query(`select array[2,3] || 4 as _result from users;`)
-type _check = Expect<Matches<typeof _result, Array<{ _result: readonly number[] }>>>
+
+expectType<typeof _result>(toBe<Array<{ _result: readonly number[] }>>())

@@ -1,6 +1,6 @@
 // Integration Test: SELECT with enum types - ✅ SUCCESS: Select enum columns
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -20,13 +20,12 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`select id, task_status, task_priority from tasks;`)
 
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		{
 			id: number
 			task_status: unknown
 			task_priority: unknown
 		}[]
-	>
->
+	>(),
+)

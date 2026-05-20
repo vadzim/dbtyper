@@ -5,7 +5,7 @@ import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../src/parser/parse-expression.ts"
 import type { JsqlDatabaseShape } from "../src/core/jsql-shapes.ts"
-import type { Expect, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe } from "./test-utils/type-test-utils.ts"
 import type { TInteger } from "./test-utils/sql-type-helpers.ts"
 
 /**
@@ -30,7 +30,7 @@ create table billing.subs ( id uuid not null, user_id uuid not null, plan_code t
 >[0]
 
 type ChkGood = CheckSqlValid<DbJoinUsersBilling, `select users.id from users;`>
-type _chkGood = Expect<Matches<ChkGood, `select users.id from users;`>>
+expectType<ChkGood>(toBe<`select users.id from users;`>())
 
 type _DbDefaultPublic = {
 	defaultSchema: "public"

@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type {
 	TInteger,
 	TSerial,
@@ -29,7 +29,7 @@ type TSerialStmt = ParseSqlStatement<
 	DbPublic
 >
 type TSerialTable = TSerialStmt[1]["schemas"]["public"]["sets"]["counters"]
-type _tSerialNull = Expect<Matches<TSerialStmt[2], null>>
+expectType<TSerialStmt[2]>(toBe<null>())
 type _tSerialShape = Expect<
 	Extends<
 		TSerialTable,
@@ -55,7 +55,7 @@ type TTimestampAliases = ParseSqlStatement<
 	DbPublic
 >
 type TTimestampAliasesTable = TTimestampAliases[1]["schemas"]["public"]["sets"]["events"]
-type _tTimestampAliasesNull = Expect<Matches<TTimestampAliases[2], null>>
+expectType<TTimestampAliases[2]>(toBe<null>())
 type _tTimestampAliasesShape = Expect<
 	Extends<
 		TTimestampAliasesTable,
@@ -76,7 +76,7 @@ type TByteaStmt = ParseSqlStatement<
 	DbPublic
 >
 type TByteaTable = TByteaStmt[1]["schemas"]["public"]["sets"]["files"]
-type _tByteaNull = Expect<Matches<TByteaStmt[2], null>>
+expectType<TByteaStmt[2]>(toBe<null>())
 type _tByteaShape = Expect<
 	Extends<
 		TByteaTable,
@@ -94,7 +94,7 @@ type TIntervalStmt = ParseSqlStatement<
 	DbPublic
 >
 type TIntervalTable = TIntervalStmt[1]["schemas"]["public"]["sets"]["durations"]
-type _tIntervalNull = Expect<Matches<TIntervalStmt[2], null>>
+expectType<TIntervalStmt[2]>(toBe<null>())
 type _tIntervalShape = Expect<
 	Extends<
 		TIntervalTable,
@@ -112,7 +112,7 @@ type TNetwork = ParseSqlStatement<
 	DbPublic
 >
 type TNetworkTable = TNetwork[1]["schemas"]["public"]["sets"]["hosts"]
-type _tNetworkNull = Expect<Matches<TNetwork[2], null>>
+expectType<TNetwork[2]>(toBe<null>())
 type _tNetworkShape = Expect<
 	Extends<
 		TNetworkTable,
@@ -138,7 +138,7 @@ type TFulltext = ParseSqlStatement<
 	DbPublic
 >
 type TFulltextTable = TFulltext[1]["schemas"]["public"]["sets"]["documents"]
-type _tFulltextNull = Expect<Matches<TFulltext[2], null>>
+expectType<TFulltext[2]>(toBe<null>())
 type _tFulltextShape = Expect<
 	Extends<
 		TFulltextTable,
@@ -171,7 +171,7 @@ type TMixed = ParseSqlStatement<
 	DbPublic
 >
 type TMixedTable = TMixed[1]["schemas"]["public"]["sets"]["mixed"]
-type _tMixedNull = Expect<Matches<TMixed[2], null>>
+expectType<TMixed[2]>(toBe<null>())
 type _tMixedShape = Expect<
 	Extends<
 		TMixedTable,

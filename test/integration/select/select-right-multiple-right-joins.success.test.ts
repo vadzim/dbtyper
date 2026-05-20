@@ -1,7 +1,7 @@
 // Integration Test: SELECT with RIGHT JOIN - Multiple RIGHT JOINs
 // Integration Test: RIGHT JOIN
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -16,11 +16,10 @@ const _result = await _db.query(
 	`select * from users right join orders on users.id = orders.user_id right join users as u2 on orders.user_id = u2.id;`,
 )
 
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		{
 			id: number
 		}[]
-	>
->
+	>(),
+)

@@ -1,6 +1,6 @@
 // Integration Test: Named Parameters - INSERT with RETURNING
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -15,13 +15,12 @@ const _result = await _db.query(`insert into users (id, age, active) values (:id
 	active: true,
 })
 
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		Array<{
 			id: string
 			age: number
 			active: boolean
 		}>
-	>
->
+	>(),
+)

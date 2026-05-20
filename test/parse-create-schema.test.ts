@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { DbtyperError } from "../src/dbtyper-error.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
 type EmptyDb = {
@@ -16,15 +16,15 @@ type DbWithAuth = {
 }
 
 type NewSchema = ParseSqlStatement<CreateParserMonad<"create schema bar;">, EmptyDb>
-type _newAddsSchema = Expect<Matches<NewSchema[2], null>>
+expectType<NewSchema[2]>(toBe<null>())
 type _newDbHasBar = Expect<Extends<NewSchema[1], { schemas: Record<"bar", JsqlSchemaShape> }>>
 
 type IfNotDup = ParseSqlStatement<CreateParserMonad<"create schema if not exists auth;">, DbWithAuth>
-type _ifNotDupNoop = Expect<Matches<IfNotDup[2], null>>
-type _ifNotDupDb = Expect<Matches<IfNotDup[1], DbWithAuth>>
+expectType<IfNotDup[2]>(toBe<null>())
+expectType<IfNotDup[1]>(toBe<DbWithAuth>())
 
 type IfNotNew = ParseSqlStatement<CreateParserMonad<"create schema if not exists other;">, EmptyDb>
-type _ifNotNewAdds = Expect<Matches<IfNotNew[2], null>>
+expectType<IfNotNew[2]>(toBe<null>())
 type _ifNotNewHasOther = Expect<Extends<IfNotNew[1], { schemas: Record<"other", JsqlSchemaShape> }>>
 
 type TIfExistsWrong = ParseSqlStatement<CreateParserMonad<"create schema if exists should_fail;">, EmptyDb>

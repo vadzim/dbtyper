@@ -1,6 +1,6 @@
 // Integration Test: Window functions - RANK() with PARTITION BY and multiple ORDER BY columns
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -16,13 +16,12 @@ const _result = await _db.query(
 	`select id, product, rank() over (partition by product order by amount desc, sale_date) as rank_num from sales;`,
 )
 
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		{
 			id: number
 			product: string
 			rank_num: bigint
 		}[]
-	>
->
+	>(),
+)

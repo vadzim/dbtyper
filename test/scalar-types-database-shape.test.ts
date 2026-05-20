@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TUuid, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
@@ -92,7 +92,7 @@ create table base ( id uuid not null );
 create view v as select id from base;
 `
 >
-type _applyNoErr = Expect<Matches<MultiStmtDb[1], null>>
+expectType<MultiStmtDb[1]>(toBe<null>())
 
 describe("scalar types + database shape (type tests)", () => {
 	it("compile-time assertions above", () => {})

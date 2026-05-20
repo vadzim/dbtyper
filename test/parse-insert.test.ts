@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import type { JsqlDatabaseShape, JsqlInsertStatementResult } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type { TText } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
@@ -152,7 +152,7 @@ type SeedUsers = ApplyStatements<
 `
 >
 type _seedUsersDbStillOk = Expect<Extends<SeedUsers[0], JsqlDatabaseShape>>
-type _seedUsersNoError = Expect<Matches<SeedUsers[1], null>>
+expectType<SeedUsers[1]>(toBe<null>())
 
 type SeedUsersOneRowCast = ApplyStatements<
 	SeedDb3,
@@ -162,7 +162,7 @@ type SeedUsersOneRowCast = ApplyStatements<
     ('11111111-1111-1111-1111-111111111111'::uuid, 'alice@example.com', 'Alice', 0);
 `
 >
-type _seedUsersOneRowCast = Expect<Matches<SeedUsersOneRowCast[1], null>>
+expectType<SeedUsersOneRowCast[1]>(toBe<null>())
 
 describe("parse-insert (type tests)", () => {
 	it("compile-time assertions above", () => {})

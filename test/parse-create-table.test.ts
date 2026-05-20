@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { DbtyperError } from "../src/dbtyper-error.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid, TTimestamp, TNull } from "./test-utils/sql-type-helpers.ts"
 import type { ApplyStatements } from "../src/parser/parse-sql-statement.ts"
 import type { SqlDatabase } from "../src/core/sql-database.ts"
@@ -32,7 +32,7 @@ type T1 = ParseSqlStatement<
 	DbAuth
 >
 type T1Table = T1[1]["schemas"]["auth"]["sets"]["items"]
-type _t1null = Expect<Matches<T1[2], null>>
+expectType<T1[2]>(toBe<null>())
 type _t1shape = Expect<
 	Extends<
 		T1Table,
@@ -45,7 +45,7 @@ type _t1shape = Expect<
 >
 
 type T2 = ParseSqlStatement<CreateParserMonad<`create table if not exists auth.users ( id uuid not null );`>, DbUsers>
-type _t2noop = Expect<Matches<T2[2], null>>
+expectType<T2[2]>(toBe<null>())
 type _t2db = Expect<Extends<T2[1], DbUsers>>
 
 type DbWithDup = {
@@ -68,7 +68,7 @@ type T4 = ApplyStatements<
 >
 
 type T4Table = T4[0]["schemas"]["logs"]["sets"]["events"]
-type _t4null = Expect<Matches<T4[1], null>>
+expectType<T4[1]>(toBe<null>())
 type _t4shape = Expect<
 	Extends<
 		T4Table,
@@ -94,7 +94,7 @@ type TExplicit = ParseSqlStatement<
 	DbBillingAndPublic
 >
 type TExplicitTable = TExplicit[1]["schemas"]["billing"]["sets"]["invoices"]
-type _tExplicitNull = Expect<Matches<TExplicit[2], null>>
+expectType<TExplicit[2]>(toBe<null>())
 type _tExplicitShape = Expect<
 	Extends<
 		TExplicitTable,
@@ -111,7 +111,7 @@ type TExplicitIfNot = ParseSqlStatement<
 	DbBillingAndPublic
 >
 type TExplicitIfNotTable = TExplicitIfNot[1]["schemas"]["billing"]["sets"]["credits"]
-type _tExplicitIfNotNull = Expect<Matches<TExplicitIfNot[2], null>>
+expectType<TExplicitIfNot[2]>(toBe<null>())
 type _tExplicitIfNotShape = Expect<
 	Extends<
 		TExplicitIfNotTable,
@@ -140,7 +140,7 @@ type T5 = ParseSqlStatement<
 	DbDefaultPublic
 >
 type T5Table = T5[1]["schemas"]["public"]["sets"]["notifications"]
-type _t5null = Expect<Matches<T5[2], null>>
+expectType<T5[2]>(toBe<null>())
 type _t5shape = Expect<
 	Extends<
 		T5Table,
@@ -157,7 +157,7 @@ type T6 = ParseSqlStatement<
 	DbDefaultPublic
 >
 type T6Table = T6[1]["schemas"]["public"]["sets"]["notifications"]
-type _t6null = Expect<Matches<T6[2], null>>
+expectType<T6[2]>(toBe<null>())
 type _t6shape = Expect<
 	Extends<
 		T6Table,
@@ -170,9 +170,7 @@ type _t6shape = Expect<
 >
 
 type TExpectedTableName = ParseSqlStatement<CreateParserMonad<`create table( id int not null );`>, DbDefaultPublic>
-type _expectedTableName = Expect<
-	Matches<TExpectedTableName[2], DbtyperError<1120, "Expected table name in CREATE TABLE">>
->
+expectType<TExpectedTableName[2]>(toBe<DbtyperError<1120, "Expected table name in CREATE TABLE">>())
 
 type TUnknownQualifiedSchema = ParseSqlStatement<
 	CreateParserMonad<`create table zzz.ghost ( id int not null );`>,
@@ -201,7 +199,7 @@ type TQualifiedStillOkWhenDefaultMissing = ParseSqlStatement<
 	DbDefaultPublicButOnlyAuth
 >
 type TQualifiedWidgets = TQualifiedStillOkWhenDefaultMissing[1]["schemas"]["auth"]["sets"]["widgets"]
-type _qualWhenDefaultMissingOk = Expect<Matches<TQualifiedStillOkWhenDefaultMissing[2], null>>
+expectType<TQualifiedStillOkWhenDefaultMissing[2]>(toBe<null>())
 type _qualWhenDefaultMissingShape = Expect<
 	Extends<
 		TQualifiedWidgets,
@@ -214,9 +212,7 @@ type _qualWhenDefaultMissingShape = Expect<
 >
 
 type TMissingOpenParen = ParseSqlStatement<CreateParserMonad<`create table t id int not null);`>, DbDefaultPublic>
-type _missingOpenParen = Expect<
-	Matches<TMissingOpenParen[2], DbtyperError<4107, "Expected `.` or `(` after table name">>
->
+expectType<TMissingOpenParen[2]>(toBe<DbtyperError<4107, "Expected `.` or `(` after table name">>())
 
 describe("parse-create-table (type tests)", () => {
 	it("compile-time assertions above", () => {})

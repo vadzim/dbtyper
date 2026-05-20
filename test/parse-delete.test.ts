@@ -1,7 +1,6 @@
 import { describe, it } from "node:test"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
-
-import type { Expect, Extends as _Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger } from "./test-utils/sql-type-helpers.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
 
@@ -22,39 +21,39 @@ type DbUsers = {
 
 /** Tokens after `delete` (i.e. start with `from`). */
 type T1 = ParseSqlStatement<CreateParserMonad<`delete from users where users.id = 'u';`>, DbUsers>
-type _t1null = Expect<Matches<T1[2], null>>
+expectType<T1[2]>(toBe<null>())
 
 type T2 = ParseSqlStatement<CreateParserMonad<`delete from users where id = 'u';`>, DbUsers>
-type _t2null = Expect<Matches<T2[2], null>>
+expectType<T2[2]>(toBe<null>())
 
 type T3 = ParseSqlStatement<CreateParserMonad<`delete from public.users where public.users.id = 'u';`>, DbUsers>
-type _t3null = Expect<Matches<T3[2], null>>
+expectType<T3[2]>(toBe<null>())
 
 /** End-of-input without `;` is accepted (same as `TokenEot` terminator elsewhere). */
 type TNoSemi = ParseSqlStatement<CreateParserMonad<`delete from users where id = 'u'`>, DbUsers>
-type _tNoSemi = Expect<Matches<TNoSemi[2], null>>
+expectType<TNoSemi[2]>(toBe<null>())
 
 type TAnd = ParseSqlStatement<
 	CreateParserMonad<`delete from users where users.id = 'u' and users.name = 'a';`>,
 	DbUsers
 >
-type _tAnd = Expect<Matches<TAnd[2], null>>
+expectType<TAnd[2]>(toBe<null>())
 
 type TIsNull = ParseSqlStatement<CreateParserMonad<`delete from users where users.name is null;`>, DbUsers>
-type _tIsNull = Expect<Matches<TIsNull[2], null>>
+expectType<TIsNull[2]>(toBe<null>())
 
 type TIsNotNull = ParseSqlStatement<CreateParserMonad<`delete from users where users.name is not null;`>, DbUsers>
-type _tIsNotNull = Expect<Matches<TIsNotNull[2], null>>
+expectType<TIsNotNull[2]>(toBe<null>())
 
 /** End-to-end `ParseSqlStatement`: `BETWEEN` / `LIKE` (not only `ParseWhereExpression`). */
 type TDelBetween = ParseSqlStatement<
 	CreateParserMonad<`delete from users where users.name between 'a' and 'z';`>,
 	DbUsers
 >
-type _tDelBetween = Expect<Matches<TDelBetween[2], null>>
+expectType<TDelBetween[2]>(toBe<null>())
 
 type TDelLike = ParseSqlStatement<CreateParserMonad<`delete from users where users.name like 'x%';`>, DbUsers>
-type _tDelLike = Expect<Matches<TDelLike[2], null>>
+expectType<TDelLike[2]>(toBe<null>())
 
 describe("parse-delete (type tests)", () => {
 	it("compile-time assertions above", () => {})

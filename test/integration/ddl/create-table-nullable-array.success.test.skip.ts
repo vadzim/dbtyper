@@ -1,6 +1,7 @@
 // Integration Test: CREATE TABLE with array types
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 
 // ✅ SUCCESS: nullable array
 
@@ -11,15 +12,11 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`select id, tags from optional;`)
 
-// TODO: Fix nullable array type matching after refactoring TS types out of parsers
-/*
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		{
 			id: number
 			tags: readonly string[] | null
 		}[]
-	>
->
-*/
+	>(),
+)

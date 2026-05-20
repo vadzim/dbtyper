@@ -1,9 +1,9 @@
 // Integration Test: Enum type casting and complex scenarios
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const _db = sqlMigrations({ driver: mockDriver })
+const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
 	.apply(`create type priority as enum ('low', 'medium', 'high');`)
@@ -18,11 +18,9 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Enum with BETWEEN (works because enums have ordering)
 
-const _result = await _db.query(`
-		select * from tasks
-		where task_status between 'active' and 'pending';
-	`)
+const _result = await db.query(`
+	select * from tasks
+	where task_status between 'active' and 'pending';
+`)
 
-type _check = Expect<
-	Matches<typeof _result, { name: string; id: number; task_status: unknown; task_priority: unknown }[]>
->
+expectType<typeof _result>(toBe<{ name: string; id: number; task_status: unknown; task_priority: unknown }[]>())

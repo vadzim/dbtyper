@@ -1,6 +1,6 @@
 // Integration Test: Window functions - LEAD() with PARTITION BY and ORDER BY
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import type { Expect, Matches } from "../../test-utils/type-test-utils.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -16,14 +16,13 @@ const _result = await _db.query(
 	`select id, product, amount, lead(amount) over (partition by product order by sale_date) as next_amount from sales;`,
 )
 
-type _check = Expect<
-	Matches<
-		typeof _result,
+expectType<typeof _result>(
+	toBe<
 		{
 			id: number
 			amount: number
 			product: string
 			next_amount: number
 		}[]
-	>
->
+	>(),
+)

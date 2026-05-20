@@ -40,7 +40,7 @@ describe("Integration test files correctness", async () => {
 			})
 
 			const content = await readFile(fullPath, "utf-8")
-			const noSpaceContent = content.replaceAll(/\s|\n|\r/g, "")
+			const noSpacesContent = content.replaceAll(/\s|\n|\r/g, "")
 
 			await it(`the file ${file} should call sqlMigrations exactly once`, async () => {
 				const matches = content.match(/\bsqlMigrations\(/g)
@@ -87,15 +87,19 @@ describe("Integration test files correctness", async () => {
 					)
 				})
 
-				if (content.includes(".query(") || content.includes(".stream(")) {
-					await it(`the file ${file} must have a type check for the result because it tests success and uses .query() or .stream()`, async () => {
-						// Accept both single-line and multi-line formats (prettier may format differently)
-						const hasTypeCheck = /\btype _check = Expect<\s*Matches<\s*typeof _?result,/.test(content)
-						assert.ok(
-							hasTypeCheck,
-							"Success test files must have a type check in the form (`type _check = Expect<Matches<typeof result, ...`). For testing .stream(..) use `const result /* or _result */ = await Array.fromAsync(await db.stream(`",
-						)
-					})
+				if (noSpacesContent.includes(".query(") || content.includes(".stream(")) {
+					const hasTypeCheck =
+						/\btype _check = Expect<\s*Matches<\s*typeof _?result,/.test(content) ||
+						/expectType<typeof_?result>\(toBe</.test(noSpacesContent)
+
+					if (!hasTypeCheck) {
+						it(`the file ${file} must have a type check for the result because it tests success and uses .query() or .stream()`, () => {
+							assert.ok(
+								false,
+								"Success test files must have a type check in the form (`expectType<typeof _?result>(toBe< ...`). For testing .stream(..) use `const result /* or _result */ = await Array.fromAsync(await db.stream(`",
+							)
+						})
+					}
 				}
 			}
 
@@ -130,7 +134,7 @@ describe("Integration test files correctness", async () => {
 				await it(`the file ${file} must have error message check`, async () => {
 					const hasErrorCheck =
 						/typeReturnedError=Get(Query|Stream|Apply)Error<typeof(db|migrations),typeofquery.*?>;?expectType<ReturnedError>\(toBe<\|?DbtyperError</.test(
-							noSpaceContent,
+							noSpacesContent,
 						)
 					assert.ok(
 						hasErrorCheck,

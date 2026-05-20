@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 
 import type { MergeScope } from "../src/parser/parser-scope.ts"
-import type { Expect, Extends, Matches as _Matches } from "./test-utils/type-test-utils.ts"
+import type { Expect, Extends } from "./test-utils/type-test-utils.ts"
 import type { TText, TInteger, TNumeric, TUuid } from "./test-utils/sql-type-helpers.ts"
 import type { ParseWhereExpression } from "../src/parser/parse-where-expression.ts"
 import type { HasAmbiguousUnqualifiedColumn } from "../src/parser/scope-unqualified-helpers.ts"

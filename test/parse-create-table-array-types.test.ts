@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import type { JsqlSchemaShape } from "../src/core/jsql-shapes.ts"
 import type { CreateParserMonad } from "../src/lexer/parser-monad.ts"
 import type { ParseSqlStatement } from "../src/parser/parse-sql-statement.ts"
-import type { Expect, Extends, Matches } from "./test-utils/type-test-utils.ts"
+import { expectType, toBe, type Expect, type Extends } from "./test-utils/type-test-utils.ts"
 import type {
 	TText,
 	TInteger,
@@ -25,7 +25,7 @@ type TTextArrayStmt = ParseSqlStatement<
 	DbPublic
 >
 type TTextArrayTable = TTextArrayStmt[1]["schemas"]["public"]["sets"]["tags"]
-type _tTextArrayNull = Expect<Matches<TTextArrayStmt[2], null>>
+expectType<TTextArrayStmt[2]>(toBe<null>())
 type _tTextArrayShape = Expect<
 	Extends<
 		TTextArrayTable,
@@ -43,7 +43,7 @@ type TIntArray = ParseSqlStatement<
 	DbPublic
 >
 type TIntArrayTable = TIntArray[1]["schemas"]["public"]["sets"]["scores"]
-type _tIntArrayNull = Expect<Matches<TIntArray[2], null>>
+expectType<TIntArray[2]>(toBe<null>())
 type _tIntArrayShape = Expect<
 	Extends<
 		TIntArrayTable,
@@ -61,7 +61,7 @@ type TUuidArrayStmt = ParseSqlStatement<
 	DbPublic
 >
 type TUuidArrayTable = TUuidArrayStmt[1]["schemas"]["public"]["sets"]["refs"]
-type _tUuidArrayNull = Expect<Matches<TUuidArrayStmt[2], null>>
+expectType<TUuidArrayStmt[2]>(toBe<null>())
 type _tUuidArrayShape = Expect<
 	Extends<
 		TUuidArrayTable,
@@ -79,7 +79,7 @@ type TNullableArray = ParseSqlStatement<
 	DbPublic
 >
 type TNullableArrayTable = TNullableArray[1]["schemas"]["public"]["sets"]["optional"]
-type _tNullableArrayNull = Expect<Matches<TNullableArray[2], null>>
+expectType<TNullableArray[2]>(toBe<null>())
 type _tNullableArrayShape = Expect<
 	Extends<
 		TNullableArrayTable,
@@ -97,7 +97,7 @@ type TMultipleArrays = ParseSqlStatement<
 	DbPublic
 >
 type TMultipleArraysTable = TMultipleArrays[1]["schemas"]["public"]["sets"]["multi"]
-type _tMultipleArraysNull = Expect<Matches<TMultipleArrays[2], null>>
+expectType<TMultipleArrays[2]>(toBe<null>())
 type _tMultipleArraysShape = Expect<
 	Extends<
 		TMultipleArraysTable,
@@ -120,7 +120,7 @@ type TBigintArrayStmt = ParseSqlStatement<
 	DbPublic
 >
 type TBigintArrayTable = TBigintArrayStmt[1]["schemas"]["public"]["sets"]["big_nums"]
-type _tBigintArrayNull = Expect<Matches<TBigintArrayStmt[2], null>>
+expectType<TBigintArrayStmt[2]>(toBe<null>())
 type _tBigintArrayShape = Expect<
 	Extends<
 		TBigintArrayTable,
