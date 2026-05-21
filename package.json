@@ -76,7 +76,9 @@
 		"find-unused": "ts-prune --project tsconfig.json --ignore 'src/index.ts|dist/'",
 		"monadcheck": "check-monad './src/**/*.ts' --monad ./src/lexer/parser-monad.ts ParserMonad:CreateParserMonad:PeekToken:SkipToken --snippet-lines 6:4 --max-show-errors 5 --off conditional.monadRelatedNeverNotAllowed",
 		"monadcheck-log": "bash -c 'mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'\"'\"'node:fs/promises'\"'\"';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||process.env.CI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC'",
-		"monitor": "node .automation/monitor-github-labels.ts"
+		"monitor": "node .automation/monitor-github-labels.ts",
+		"gram:xml": "cd src/gram && bison --xml gram.y",
+		"gram:json": "cd src/gram && node -e 'console.log(JSON.stringify(new((await import(`fast-xml-parser`)).XMLParser)({ignoreAttributes:false,attributeNamePrefix:`@`}).parse((await Array.fromAsync(process.stdin)).join(``)),null,2))'<gram.xml>gram.json"
 	},
 	"peerDependencies": {
 		"postgres": "^3.4.0"
@@ -92,6 +94,7 @@
 		"@typescript-eslint/parser": "^8.59.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
 		"eslint": "^10.3.0",
+		"fast-xml-parser": "^5.8.0",
 		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#27e646620fb51651642fa8fb135a66479384cc14",
 		"nodemon": "^3.1.14",
 		"postgres": "^3.4.5",

@@ -11,14 +11,16 @@ export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryPa
 	| Exclude<Syntax, LexerQueryParams>
 	| Extract<Syntax, AllowedQueryParams>
 
-export type TokenKind = "ident" | "string" | "number" | "key" | "param" | "indexed_param" | "eot"
+export type TokenKind = "ident" | "string" | "int" | "float" | "key" | "param" | "indexed_param" | "eot"
 
 export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
 
 export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
 export type TokenString<String extends string> = TokenType<"string", String>
-export type TokenNumber<Num extends string> = TokenType<"number", Num>
+export type TokenInteger<Num extends string> = TokenType<"int", Num>
+export type TokenFloat<Num extends string> = TokenType<"float", Num>
+export type TokenNumber<Num extends string> = TokenInteger<Num> | TokenFloat<Num>
 export type TokenParam<Param extends string> = TokenType<"param", Param>
 export type TokenIndexedParam<Index extends string> = TokenType<"indexed_param", Index>
 export type TokenEot = TokenType<"eot">
@@ -114,7 +116,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 type Return<Result, Rest> = [Result, Rest]
 
 type ReadIndexedParam<Head extends string, Rest extends string> =
-	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenNumber<string>, infer Rest2 extends string>
+	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenInteger<string>, infer Rest2 extends string>
 		? Return<TokenIndexedParam<Index["value"]>, Rest2>
 		: Return<
 				FormatError<
@@ -125,27 +127,17 @@ type ReadIndexedParam<Head extends string, Rest extends string> =
 			>
 
 type GetIndexingNumber<Head extends string, Rest extends string> =
-	GetNumber<Rest, Head> extends Return<infer Number extends TokenNumber<string>, infer Rest2 extends string>
+	GetNumber<Rest, Head> extends Return<infer Number extends TokenInteger<string>, infer Rest2 extends string>
 		? IsIndexingNumber<Number["value"]> extends true
 			? Return<Number, Rest2>
 			: Return<FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<Rest>]>, Rest>
 		: Return<FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<Rest>]>, Rest>
 
-type IsIndexingNumber<S extends string> = S extends `${string}.${string}`
+type IsIndexingNumber<S extends string> = S extends `${string}_${string}`
 	? false
-	: S extends `${string}+${string}`
+	: S extends `0${string}`
 		? false
-		: S extends `${string}-${string}`
-			? false
-			: S extends `${string}e${string}`
-				? false
-				: S extends `${string}E${string}`
-					? false
-					: S extends `${string}_${string}`
-						? false
-						: S extends `0${string}`
-							? false
-							: true
+		: true
 
 type ReadDollarString<S extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends "$"
@@ -462,8 +454,8 @@ type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${i
 				? GetNumberExpStart<Rest, `${Num}${D1}`>
 				: D1 extends Letter
 					? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-					: Return<TokenNumber<Num>, S>
-	: Return<TokenNumber<Num>, S>
+					: Return<TokenInteger<Num>, S>
+	: Return<TokenInteger<Num>, S>
 
 type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
@@ -472,8 +464,8 @@ type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1
 			? GetNumberExpStart<Rest, `${Buf}${D1}`>
 			: D1 extends Letter
 				? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-				: Return<TokenNumber<Buf>, S>
-	: Return<TokenNumber<Buf>, S>
+				: Return<TokenFloat<Buf>, S>
+	: Return<TokenFloat<Buf>, S>
 
 type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends "+" | "-"
@@ -494,8 +486,8 @@ type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer 
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
 		: D1 extends Letter
 			? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-			: Return<TokenNumber<Buf>, S>
-	: Return<TokenNumber<Buf>, S>
+			: Return<TokenFloat<Buf>, S>
+	: Return<TokenFloat<Buf>, S>
 
 type SomeSymbols<Text extends string> = Text extends `${infer Result}${SkipSymbols<Text, 15>}` ? Result : never
 

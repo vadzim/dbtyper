@@ -1,4 +1,11 @@
-import type { TokenIndexedParam, TokenKey, TokenNumber, TokenParam, TokenString } from "../../src/lexer/sql-lexer.ts"
+import type {
+	TokenIndexedParam,
+	TokenKey,
+	TokenFloat,
+	TokenInteger,
+	TokenParam,
+	TokenString,
+} from "../../src/lexer/sql-lexer.ts"
 import type { CreateParserMonad, PeekToken } from "../../src/lexer/parser-monad.ts"
 import type { TestTokensL } from "../test-utils/lexer-test-utils.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
@@ -18,37 +25,37 @@ import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 {
 	// numbers
 	type test = PeekToken<CreateParserMonad<`123.1e56,`>>
-	expectType<test>(toBe<TokenNumber<"123.1e56">>())
+	expectType<test>(toBe<TokenFloat<"123.1e56">>())
 }
 
 {
 	// numbers
 	type test = PeekToken<CreateParserMonad<`123.e3,`>>
-	expectType<test>(toBe<TokenNumber<"123.e3">>())
+	expectType<test>(toBe<TokenFloat<"123.e3">>())
 }
 
 {
 	// numbers
 	type test = PeekToken<CreateParserMonad<`123.,`>>
-	expectType<test>(toBe<TokenNumber<"123.">>())
+	expectType<test>(toBe<TokenFloat<"123.">>())
 }
 
 {
 	// numbers
 	type test = PeekToken<CreateParserMonad<`123.e+1,`>>
-	expectType<test>(toBe<TokenNumber<"123.e+1">>())
+	expectType<test>(toBe<TokenFloat<"123.e+1">>())
 }
 
 {
 	// numbers
 	type test = PeekToken<CreateParserMonad<`123.e-1,`>>
-	expectType<test>(toBe<TokenNumber<"123.e-1">>())
+	expectType<test>(toBe<TokenFloat<"123.e-1">>())
 }
 
 {
 	// numbers
 	type test = PeekToken<CreateParserMonad<`   123,`>>
-	expectType<test>(toBe<TokenNumber<"123">>())
+	expectType<test>(toBe<TokenInteger<"123">>())
 }
 
 {

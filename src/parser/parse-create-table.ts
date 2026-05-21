@@ -241,7 +241,7 @@ type SqlTypeClass<T extends SqlTypeShape> = T["type"] extends "array"
 									: "unknown"
 
 type ParseDefaultValue<Tokens extends ParserMonad, ColumnType extends SqlTypeShape> =
-	PeekToken<Tokens> extends TokenNumber<infer _Raw>
+	PeekToken<Tokens> extends TokenNumber<string>
 		? SkipToken<Tokens> extends infer R extends ParserMonad
 			? SqlTypeClass<ColumnType> extends "numeric"
 				? [R, null]
