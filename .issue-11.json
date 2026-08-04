@@ -1,0 +1,13 @@
+{
+	"body": "Please create a file named `goodbye.txt` in the project root directory.\n\nThe file should contain:\n- A farewell message: \"Goodbye, World!\"\n- Current timestamp\n- A note: \"Testing automation with proper test validation\"\n\nThis tests that the automation system properly validates tests and formatting before creating PRs.",
+	"labels": [
+		{
+			"id": "LA_kwDOR_c-qs8AAAACiXD2dA",
+			"name": "approved",
+			"description": "Approved by maintainer for automated implementation",
+			"color": "0e8a16"
+		}
+	],
+	"state": "OPEN",
+	"title": "Add goodbye.txt file"
+}
