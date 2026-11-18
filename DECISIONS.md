@@ -224,6 +224,21 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **COLLATE** ends the type-word scan (`CollectSqlTypeWords`), so `text COLLATE "C"` is the type `text`.
 - **STMT-16:** the 500-statement migration compiles as is; test added.
 
+## 2026-11-18 PostgreSQL scalar type map (#79, track A; PGT-1..11, PGT-35)
+
+- **The map is what `postgres` returns by default** (src/postgres/postgres-type-map.ts, data only, no alias layer in the
+  parser): `int8`/`numeric`/`decimal` and `count(*)` are `string`; dates and timestamps `Date`; `time`, `interval`, `inet`,
+  `cidr`, `macaddr`, `money`, `xml`, `tsvector`, `tsquery`, `bit` `string`; `bytea` `Uint8Array`; `json`/`jsonb` the exported
+  `JsonValue`. This replaces the explicit `unknown` rows of #54 (CORE-14). Aliases are still folded by `NormalizeSqlTypeName`.
+- **PGT-3: the driver parsers of #43 are removed** (base commit 6b587ab): dbtyper never touches `sql.options.parsers`.
+- **PGT-4**: `PostgresDriverConfig<Bigint>`, switched by `postgresSqlDriver({ sql, bigint: true })` (overload), mirrors the
+  SQLite config; it is type-level only: the user's client must parse int8 to BigInt itself.
+- **Parameters**: `PostgresParamTypeMap` (the existing `paramTypes` field) keeps `bigint`/`numeric`/`decimal` values accepting
+  `string | number | bigint`, so existing inserts keep compiling; the other PGT-17 widenings stay with the params issue.
+- **Not done / notes**: PGT-35's run against a real PostgreSQL (no Docker here) and the README note are left; the
+  recursive `JsonValue` is compared by assignability in tests (the invariant check is too deep). Cost: +0.03% instantiations
+  (9.825M -> 9.828M); the new type test adds 0.13M.
+
 ## 2026-11-18 Dialect seam in the type-level parser (#51, track A; DSEL-1, DSEL-3, DSEL-5…DSEL-8, DSEL-11)
 
 - **Where the dialect lives.** `DriverConfig["dialect"]` (`"postgres" | "sqlite"`), declared by the driver's

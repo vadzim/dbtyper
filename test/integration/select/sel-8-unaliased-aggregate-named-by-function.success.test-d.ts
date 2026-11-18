@@ -12,4 +12,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: SEL-8 unaliased aggregate is named by the function name
 const _result = await _db.query(`select count(*) from users;`)
 
-expectType<typeof _result>(toBe<{ count: bigint }[]>())
+expectType<typeof _result>(toBe<{ count: string }[]>())

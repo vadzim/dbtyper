@@ -16,7 +16,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
-			nums: readonly bigint[]
+			nums: readonly string[]
 		}[]
 	>(),
 )

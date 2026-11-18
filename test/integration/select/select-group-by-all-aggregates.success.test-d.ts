@@ -28,12 +28,12 @@ expectType<typeof _result>(
 	toBe<
 		{
 			region: string | null
-			total_count: bigint
-			amount_count: bigint
-			total_amount: number | null
-			avg_amount: number | null
-			min_amount: number | null
-			max_amount: number | null
+			total_count: string
+			amount_count: string
+			total_amount: string | null
+			avg_amount: string | null
+			min_amount: string | null
+			max_amount: string | null
 			min_qty: number | null
 			max_qty: number | null
 		}[]

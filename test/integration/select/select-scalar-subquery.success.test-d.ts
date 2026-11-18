@@ -17,7 +17,7 @@ expectType<typeof _result>(
 		{
 			name: string | null
 			id: string | null
-			post_count: bigint | null
+			post_count: string | null
 		}[]
 	>(),
 )

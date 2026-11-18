@@ -12,4 +12,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: CORE-8
 const _result = await _db.query(`select score from posts union select id from users;`)
 
-expectType<typeof _result>(toBe<{ score: bigint | null }[]>())
+expectType<typeof _result>(toBe<{ score: string | null }[]>())

@@ -21,4 +21,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`select id, created, data, duration, ip from mixed_types;`)
 
-expectType<typeof _result>(toBe<{ id: number; created: Date; data: unknown; duration: unknown; ip: unknown }[]>())
+expectType<typeof _result>(toBe<{ id: number; created: Date; data: Uint8Array; duration: string; ip: string }[]>())

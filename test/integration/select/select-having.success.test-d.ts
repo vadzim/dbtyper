@@ -14,7 +14,7 @@ const _result = await _db.query(`select user_id, count(*) as count from posts gr
 expectType<typeof _result>(
 	toBe<
 		{
-			count: bigint
+			count: string
 			user_id: string | null
 		}[]
 	>(),

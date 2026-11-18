@@ -12,4 +12,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: SEL-28 GROUP BY key may be an output-column position
 const _result = await _db.query(`select id, count(*) as c from users group by 1;`)
 
-expectType<typeof _result>(toBe<{ id: number; c: bigint }[]>())
+expectType<typeof _result>(toBe<{ id: number; c: string }[]>())

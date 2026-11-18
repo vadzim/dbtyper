@@ -28,7 +28,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			task_status: unknown
-			cnt: bigint
+			cnt: string
 		}[]
 	>(),
 )

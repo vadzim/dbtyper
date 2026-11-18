@@ -1,7 +1,7 @@
 import { createDriver } from "../../src/core/sql-database.ts"
 import { betterSqlite3Driver } from "../../src/sqlite/index.ts"
 import { type LexerFeatures } from "../../src/lexer/sql-lexer.ts"
-import { type PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
+import { type PostgresTypeMap, type PostgresParamTypeMap } from "../../src/postgres/postgres-type-map.ts"
 import type { TText, TInteger } from "./sql-type-helpers.ts"
 
 export type DbPublicUsers = {
@@ -24,6 +24,7 @@ export type DbPublicUsers = {
 export type MockDriverConfig = {
 	dialect: "postgres"
 	scalarTypes: PostgresTypeMap
+	paramTypes: PostgresParamTypeMap
 	syntax: LexerFeatures
 }
 
