@@ -13,17 +13,30 @@ import type {
 	ExpressionParamsShape,
 	ParseExpressionAST,
 	ResolveExpressionAST,
-	SameComparisonClass,
 	ScalarExprAst,
 	ScalarIdentParts,
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { FromItemsOnly, MarkOuterScope, MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
-import type { ResolveColumnRefValue, WithErrorClause } from "./resolve-column-ref.ts"
+import type {
+	FromItemsOnly,
+	MarkOuterScope,
+	MergeScope,
+	ScopeEntry,
+	ScopeMap,
+	VisibleColumnsOf,
+	HiddenColumnsOf,
+} from "./parser-scope.ts"
+import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
+import type {
+	FirstDuplicateName,
+	MergeSetOperation,
+	RenameOutputColumns,
+	UnionToStringTuple,
+} from "./set-operation-types.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
 type TokenKeyOn = TokenKey<"on">
@@ -53,12 +66,113 @@ export type ParseSelectExpression<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	OuterScope extends ScopeMap = {},
+	CteBase extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends TokenIdent<"with">
-		? ParseSelectWithCtes<SkipToken<Tokens>, Db, Params, {}, OuterScope>
-		: PeekToken<Tokens> extends TokenKey<"distinct">
-			? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, {}, OuterScope>
-			: ParseSelectAfterDistinct<Tokens, Db, Params, {}, OuterScope>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenIdent<"recursive">
+				? SkipToken<R1> extends infer R2 extends ParserMonad
+					? ParseSelectWithCtes<R2, Db, Params, {}, OuterScope, CteBase, true>
+					: never
+				: ParseSelectWithCtes<R1, Db, Params, {}, OuterScope, CteBase, false>
+			: never
+		: ParseSelectCompound<Tokens, Db, Params, CteBase, OuterScope>
+
+/** One SELECT (after the `SELECT` keyword), then any `UNION` / `INTERSECT` / `EXCEPT` arms (CORE-8). */
+type ParseSelectCompound<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	CteBase extends ScopeMap,
+	OuterScope extends ScopeMap,
+> =
+	ParseSelectArm<Tokens, Db, Params, CteBase, OuterScope> extends [
+		infer R extends ParserMonad,
+		infer Db2 extends JsqlDatabaseShape,
+		infer Res,
+	]
+		? Res extends JsqlSelectStatementResult
+			? ParseSetOperationTail<R, Db2, Res, Params, CteBase, OuterScope>
+			: [R, Db2, Res]
+		: never
+
+/** One SELECT arm after the `SELECT` keyword, with its optional `DISTINCT`. */
+type ParseSelectArm<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	CteBase extends ScopeMap,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"distinct">
+		? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, CteBase, OuterScope>
+		: ParseSelectAfterDistinct<Tokens, Db, Params, CteBase, OuterScope>
+
+type SetOperationKeyword<T> =
+	T extends TokenKey<"union">
+		? "UNION"
+		: T extends TokenKey<"intersect">
+			? "INTERSECT"
+			: T extends TokenKey<"except">
+				? "EXCEPT"
+				: never
+
+type ParseSetOperationTail<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Left extends JsqlSelectStatementResult,
+	Params extends ExpressionParamsShape,
+	CteBase extends ScopeMap,
+	OuterScope extends ScopeMap,
+> = [SetOperationKeyword<PeekToken<Tokens>>] extends [never]
+	? [Tokens, Db, Left]
+	: ParseSetOperationRightArm<SkipToken<Tokens>, Db, Params, CteBase, OuterScope> extends [
+				infer R extends ParserMonad,
+				infer Right,
+		  ]
+		? Right extends DbtyperErrorShape
+			? [R, Db, Right]
+			: Right extends JsqlSelectStatementResult
+				? MergeSetOperation<Left, Right, SetOperationKeyword<PeekToken<Tokens>>> extends infer Merged
+					? Merged extends JsqlSelectStatementResult
+						? ParseSetOperationTail<R, Db, Merged, Params, CteBase, OuterScope>
+						: [R, Db, Merged]
+					: never
+				: never
+		: never
+
+/** After the set operator keyword: optional `ALL` / `DISTINCT`, then `SELECT …`. Returns `[Tokens, Result | error]`. */
+type ParseSetOperationRightArm<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	CteBase extends ScopeMap,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"all"> | TokenKey<"distinct">
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? ParseSetOperationSelect<R0, Db, Params, CteBase, OuterScope>
+			: never
+		: ParseSetOperationSelect<Tokens, Db, Params, CteBase, OuterScope>
+
+type ParseSetOperationSelect<
+	R0 extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	CteBase extends ScopeMap,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<R0> extends TokenKey<"select">
+		? SkipToken<R0> extends infer R1 extends ParserMonad
+			? ParseSelectArm<R1, Db, Params, CteBase, OuterScope> extends [
+					infer R extends ParserMonad,
+					infer _Db2,
+					infer Res,
+				]
+				? [R, Res]
+				: never
+			: never
+		: SkipFailedExpression<R0, FormatError<Errors["EXPECTED_SELECT_AFTER_SET_OPERATOR"], []>>
 
 /**
  * Parse SELECT statement (consumes terminator `;`).
@@ -97,22 +211,101 @@ type ParseSelectWithCtesAfterSubquery<
 	Acc extends ScopeMap,
 	CteName extends string,
 	SubOut extends JsqlSelectStatementResult,
-	OuterScope extends ScopeMap = {},
+	OuterScope extends ScopeMap,
+	CteBase extends ScopeMap,
+	Recursive extends boolean,
 > =
 	SelectResultToCteScopeEntry<SubOut> extends infer Entry extends ScopeEntry
 		? MergeScope<Record<CteName, Entry>, Acc> extends infer NextAcc
 			? NextAcc extends ScopeMap
 				? PeekToken<R4> extends TokenKey<",">
-					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
+					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope, CteBase, Recursive>
 					: PeekToken<R4> extends TokenKey<"select">
-						? SkipToken<R4> extends infer R5 extends ParserMonad
-							? PeekToken<R5> extends TokenKey<"distinct">
-								? ParseSelectAfterDistinct<SkipToken<R5>, Db, Params, NextAcc, OuterScope>
-								: ParseSelectAfterDistinct<R5, Db, Params, NextAcc, OuterScope>
-							: never
+						? ParseSelectCompound<SkipToken<R4>, Db, Params, MergeScope<NextAcc, CteBase>, OuterScope>
 						: SkipFailedStatement<R4, Db, FormatError<Errors["EXPECTED_SELECT_AFTER_WITH"], []>>
 				: never
 			: never
+		: never
+
+/** Optional `(col, …)` after a CTE name. Returns `[Tokens, names | error]`. */
+type ParseCteColumnList<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<"("> ? ParseCteColumnNames<SkipToken<Tokens>, []> : [Tokens, null]
+
+type ParseCteColumnNames<Tokens extends ParserMonad, Acc extends readonly string[]> =
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N extends string>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<",">
+				? ParseCteColumnNames<SkipToken<R1>, [...Acc, N]>
+				: PeekToken<R1> extends TokenKey<")">
+					? [SkipToken<R1>, [...Acc, N]]
+					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
+			: never
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
+
+/** Apply the CTE column list (names by position); no list keeps the query's own names. */
+type ApplyCteColumnList<Res extends JsqlSelectStatementResult, Cols> = Cols extends readonly string[]
+	? RenameOutputColumns<Res, Cols>
+	: Res
+
+/**
+ * The parenthesised body of a CTE after `(`. A `WITH RECURSIVE` body may be `non-recursive UNION [ALL] recursive`:
+ * the recursive arm sees the CTE under its own name with the non-recursive arm's columns (CORE-12).
+ * Returns `[Tokens, Result | error]` after the closing `)`.
+ */
+type ParseCteBody<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	CteName extends string,
+	Cols,
+	Visible extends ScopeMap,
+	Recursive extends boolean,
+> = Recursive extends true
+	? PeekToken<Tokens> extends TokenKey<"select">
+		? ParseSelectArm<SkipToken<Tokens>, Db, Params, Visible, {}> extends [
+				infer Ra extends ParserMonad,
+				infer _Db2,
+				infer Res1,
+			]
+			? Res1 extends DbtyperErrorShape
+				? SkipFailedExpression<Ra, Res1>
+				: Res1 extends JsqlSelectStatementResult
+					? ApplyCteColumnList<Res1, Cols> extends infer Named
+						? Named extends DbtyperErrorShape
+							? SkipFailedExpression<Ra, Named>
+							: Named extends JsqlSelectStatementResult
+								? PeekToken<Ra> extends TokenKey<"union">
+									? ParseSetOperationRightArm<
+											SkipToken<Ra>,
+											Db,
+											Params,
+											MergeScope<Record<CteName, SelectResultToCteScopeEntry<Named>>, Visible>,
+											{}
+										> extends [infer Rb extends ParserMonad, infer Res2]
+										? Res2 extends DbtyperErrorShape
+											? SkipFailedExpression<Rb, Res2>
+											: Res2 extends JsqlSelectStatementResult
+												? MergeSetOperation<Named, Res2, "UNION"> extends infer Merged
+													? Merged extends DbtyperErrorShape
+														? SkipFailedExpression<Rb, Merged>
+														: ConsumeClosingParen<Rb, Merged>
+													: never
+												: never
+										: never
+									: ConsumeClosingParen<Ra, Named>
+								: never
+						: never
+					: never
+			: never
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
+	: ParseParenEnclosedSelect<Tokens, Db, Params, {}, Visible> extends [infer R4 extends ParserMonad, infer SubOut]
+		? SubOut extends JsqlSelectStatementResult
+			? ApplyCteColumnList<SubOut, Cols> extends infer Named
+				? Named extends DbtyperErrorShape
+					? SkipFailedExpression<R4, Named>
+					: [R4, Named]
+				: never
+			: [R4, SubOut]
 		: never
 
 type ParseSelectWithCtes<
@@ -120,43 +313,56 @@ type ParseSelectWithCtes<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Acc extends ScopeMap,
-	OuterScope extends ScopeMap = {},
+	OuterScope extends ScopeMap,
+	CteBase extends ScopeMap,
+	Recursive extends boolean,
 > =
 	PeekToken<Tokens> extends infer TokCteName
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? TokCteName extends TokenIdent<infer CteName extends string>
 				? CteName extends keyof Acc
 					? [R1, Db, FormatError<Errors["DUPLICATE_WITH_CLAUSE_NAME"], []>]
-					: PeekToken<R1> extends TokenKey<"as">
-						? SkipToken<R1> extends infer R2 extends ParserMonad
-							? PeekToken<R2> extends TokenKey<"(">
-								? SkipToken<R2> extends infer R3 extends ParserMonad
-									? ParseParenEnclosedSelect<R3, Db, Params> extends [
-											infer R4 extends ParserMonad,
-											infer SubOut,
-										]
-										? SubOut extends DbtyperErrorShape
-											? [R4, Db, SubOut]
-											: SubOut extends JsqlSelectStatementResult
-												? ParseSelectWithCtesAfterSubquery<
-														R4,
-														Db,
-														Params,
-														Acc,
-														CteName,
-														SubOut,
-														OuterScope
-													>
+					: ParseCteColumnList<R1> extends [infer R1b extends ParserMonad, infer Cols]
+						? Cols extends DbtyperErrorShape
+							? [R1b, Db, Cols]
+							: PeekToken<R1b> extends TokenKey<"as">
+								? SkipToken<R1b> extends infer R2 extends ParserMonad
+									? PeekToken<R2> extends TokenKey<"(">
+										? SkipToken<R2> extends infer R3 extends ParserMonad
+											? ParseCteBody<
+													R3,
+													Db,
+													Params,
+													CteName,
+													Cols,
+													MergeScope<Acc, CteBase>,
+													Recursive
+												> extends [infer R4 extends ParserMonad, infer SubOut]
+												? SubOut extends DbtyperErrorShape
+													? [R4, Db, SubOut]
+													: SubOut extends JsqlSelectStatementResult
+														? ParseSelectWithCtesAfterSubquery<
+																R4,
+																Db,
+																Params,
+																Acc,
+																CteName,
+																SubOut,
+																OuterScope,
+																CteBase,
+																Recursive
+															>
+														: never
 												: never
-										: never
+											: never
+										: SkipFailedExpression<
+													R2,
+													FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH"], []>
+											  > extends [infer Rest extends ParserMonad, infer Err]
+											? [Rest, Db, Err]
+											: never
 									: never
-								: SkipFailedExpression<
-											R2,
-											FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH"], []>
-									  > extends [infer Rest extends ParserMonad, infer Err]
-									? [Rest, Db, Err]
-									: never
-							: never
+								: never
 						: never
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
 			: never
@@ -225,7 +431,13 @@ type ParseSelectAfterDistinct<
 											: never
 									: never
 								: never
-							: PeekToken<AfterList> extends TokenKey<";"> | TokenKey<")"> | TokenEot
+							: PeekToken<AfterList> extends
+										| TokenKey<";">
+										| TokenKey<")">
+										| TokenKey<"union">
+										| TokenKey<"intersect">
+										| TokenKey<"except">
+										| TokenEot
 								? MergeScope<{}, MarkOuterScope<OuterScope>> extends infer MergedScope extends ScopeMap
 									? ResolveSelectListFrom<Items, Db, {}, MergedScope, Params> extends infer Res
 										? Res extends DbtyperErrorShape
@@ -1460,9 +1672,10 @@ export type ParseParenEnclosedSelect<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap = {},
+	CteBase extends ScopeMap = {},
 > =
 	PeekToken<R1> extends TokenKey<"select">
-		? ParseSelectExpression<SkipToken<R1>, Db, Params, OuterScope> extends [
+		? ParseSelectExpression<SkipToken<R1>, Db, Params, OuterScope, CteBase> extends [
 				infer R2 extends ParserMonad,
 				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,
@@ -1598,30 +1811,38 @@ type ParseFromTableAfterLeadingIdent<
 				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
 				: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
+/** Tokens that end a FROM item without an alias. */
+type FromItemEndToken =
+	| TokenKey<"inner">
+	| TokenKey<"left">
+	| TokenKey<"right">
+	| TokenKey<"full">
+	| TokenKey<"cross">
+	| TokenKey<"natural">
+	| TokenKey<"join">
+	| TokenKey<"on">
+	| TokenKey<"using">
+	| TokenKey<"where">
+	| TokenKey<"order">
+	| TokenKey<"limit">
+	| TokenKey<"offset">
+	| TokenKey<"fetch">
+	| TokenKey<"group">
+	| TokenKey<"having">
+	| TokenKey<"union">
+	| TokenKey<"intersect">
+	| TokenKey<"except">
+	| TokenKey<")">
+	| TokenKey<";">
+	| TokenEot
+
 type ParseAliasAfterCTE<
 	Tokens extends ParserMonad,
 	CteName extends string,
 	CteEntry extends ScopeEntry,
 	Scope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends
-		| TokenKey<"inner">
-		| TokenKey<"left">
-		| TokenKey<"right">
-		| TokenKey<"full">
-		| TokenKey<"cross">
-		| TokenKey<"join">
-		| TokenKey<"on">
-		| TokenKey<"where">
-		| TokenKey<"order">
-		| TokenKey<"limit">
-		| TokenKey<"offset">
-		| TokenKey<"fetch">
-		| TokenKey<"group">
-		| TokenKey<"having">
-		| TokenKey<")">
-		| TokenKey<";">
-		| TokenEot
+	PeekToken<Tokens> extends FromItemEndToken
 		? [Tokens, null, MergeScope<Record<CteName, CteEntry>, Scope>]
 		: PeekToken<Tokens> extends TokenKey<"as">
 			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
@@ -1648,24 +1869,7 @@ type ParseAliasAfterTable<
 	Tbl extends JsqlDataShape,
 	Scope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends
-		| TokenKey<"inner">
-		| TokenKey<"left">
-		| TokenKey<"right">
-		| TokenKey<"full">
-		| TokenKey<"cross">
-		| TokenKey<"join">
-		| TokenKey<"on">
-		| TokenKey<"where">
-		| TokenKey<"order">
-		| TokenKey<"limit">
-		| TokenKey<"offset">
-		| TokenKey<"fetch">
-		| TokenKey<"group">
-		| TokenKey<"having">
-		| TokenKey<")">
-		| TokenKey<";">
-		| TokenEot
+	PeekToken<Tokens> extends FromItemEndToken
 		? [
 				Tokens,
 				null,
@@ -1745,11 +1949,45 @@ type ParseJoinChain<
 				? ParseJoinAfterRight<SkipToken<Tokens>, Db, Scope, Params>
 				: PeekToken<Tokens> extends TokenKey<"full">
 					? ParseJoinAfterFull<SkipToken<Tokens>, Db, Scope, Params>
-					: PeekToken<Tokens> extends TokenKey<"cross">
-						? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
-						: PeekToken<Tokens> extends TokenKey<"join">
-							? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
-							: [Tokens, null, Scope]
+					: PeekToken<Tokens> extends TokenKey<"natural">
+						? ParseJoinAfterNatural<SkipToken<Tokens>, Db, Scope, Params>
+						: PeekToken<Tokens> extends TokenKey<"cross">
+							? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
+							: PeekToken<Tokens> extends TokenKey<"join">
+								? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
+								: [Tokens, null, Scope]
+
+type NaturalJoinKind<T> =
+	T extends TokenKey<"inner">
+		? "inner"
+		: T extends TokenKey<"left">
+			? "left"
+			: T extends TokenKey<"right">
+				? "right"
+				: T extends TokenKey<"full">
+					? "full"
+					: "none"
+
+/** CORE-9: `NATURAL [INNER | LEFT | RIGHT | FULL [OUTER]] JOIN t`, after `NATURAL`. */
+type ParseJoinAfterNatural<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	NaturalJoinKind<PeekToken<Tokens>> extends infer K extends JoinKind | "none"
+		? K extends "none"
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner", true>
+			: SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? K extends JoinKind
+					? PeekToken<R1> extends TokenKey<"outer">
+						? SkipToken<R1> extends infer R2 extends ParserMonad
+							? ParseJoinAfterJoinKw<R2, Db, Scope, Params, K, true>
+							: never
+						: ParseJoinAfterJoinKw<R1, Db, Scope, Params, K, true>
+					: never
+				: never
+		: never
 
 type ParseJoinAfterCross<
 	Tokens extends ParserMonad,
@@ -1863,6 +2101,7 @@ type NullableScopeEntry<E extends ScopeEntry> = {
 	columns: {
 		[C in keyof E["columns"]]: { type: E["columns"][C]["type"]; arg: E["columns"][C]["arg"]; nullable: true }
 	}
+	hidden?: HiddenColumnsOf<E>
 }
 
 /** SEL-18: columns of the optional side of an outer join are nullable (right of LEFT, left of RIGHT, both of FULL). */
@@ -1884,6 +2123,7 @@ type ParseJoinAfterJoinKw<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Kind extends JoinKind,
+	Natural extends boolean = false,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? SkipToken<Tokens> extends infer AfterJ extends ParserMonad
@@ -1900,13 +2140,47 @@ type ParseJoinAfterJoinKw<
 						? [JoinScopeOnly<Third>] extends [never]
 							? never
 							: JoinScopeOnly<Third> extends ScopeMap
-								? PeekToken<R0> extends TokenKeyOn
-									? ParseJoinOn<R0, Db, MarkJoinNullable<Kind, Scope, JoinScopeOnly<Third>>, Params>
-									: [
+								? Natural extends true
+									? ParseJoinUsingChain<
 											R0,
-											FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>,
-											ParserRefErrorThirdSentinel,
-										]
+											Db,
+											Scope,
+											JoinScopeOnly<Third>,
+											Kind,
+											NaturalJoinColumns<Scope, JoinScopeOnly<Third>>,
+											Params
+										>
+									: PeekToken<R0> extends TokenKey<"using">
+										? ParseUsingColumnList<SkipToken<R0>> extends [
+												infer R1 extends ParserMonad,
+												infer Cols,
+											]
+											? Cols extends DbtyperErrorShape
+												? [R1, Cols, ParserRefErrorThirdSentinel]
+												: Cols extends readonly string[]
+													? ParseJoinUsingChain<
+															R1,
+															Db,
+															Scope,
+															JoinScopeOnly<Third>,
+															Kind,
+															Cols[number],
+															Params
+														>
+													: never
+											: never
+										: PeekToken<R0> extends TokenKeyOn
+											? ParseJoinOn<
+													R0,
+													Db,
+													MarkJoinNullable<Kind, Scope, JoinScopeOnly<Third>>,
+													Params
+												>
+											: [
+													R0,
+													FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>,
+													ParserRefErrorThirdSentinel,
+												]
 								: [
 										R0,
 										FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>,
@@ -1917,173 +2191,128 @@ type ParseJoinAfterJoinKw<
 			: never
 		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], [""]>, ParserRefErrorThirdSentinel]
 
+/** `USING (a, b)` column list after `USING`. Returns `[Tokens, names | error]`. */
+type ParseUsingColumnList<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<"(">
+		? ParseCteColumnNames<SkipToken<Tokens>, []>
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>>
+
+type NewJoinKey<Old extends ScopeMap, Merged extends ScopeMap> = Exclude<keyof Merged, keyof Old>
+
+/** Scope keys (FROM items of the left side) that expose `Col` as a visible column. */
+type LeftKeysWithColumn<Old extends ScopeMap, Col extends string> = {
+	[K in keyof FromItemsOnly<Old>]: Col extends keyof Old[K]["columns"]
+		? Col extends HiddenColumnsOf<Old[K]>
+			? never
+			: K
+		: never
+}[keyof FromItemsOnly<Old>]
+
+/** CORE-9: the columns the new join table shares by name with the visible columns of the left side. */
+type NaturalJoinColumns<Old extends ScopeMap, Merged extends ScopeMap> =
+	NewJoinKey<Old, Merged> extends infer NK extends string
+		? [NK] extends [never]
+			? never
+			: keyof Merged[NK]["columns"] extends infer C
+				? C extends string
+					? [LeftKeysWithColumn<Old, C>] extends [never]
+						? never
+						: C
+					: never
+				: never
+		: never
+
+/** Nullability of a merged USING column (CORE-9, SEL-18): FULL is nullable only if both sides are. */
+type UsingColumnNullable<Kind extends JoinKind, L extends SqlTypeShape, R extends SqlTypeShape> = Kind extends "right"
+	? R["nullable"]
+	: Kind extends "full"
+		? L["nullable"] extends true
+			? R["nullable"]
+			: false
+		: L["nullable"]
+
+type FirstUsingColumnError<
+	Old extends ScopeMap,
+	NK extends string,
+	Merged extends ScopeMap,
+	Cols extends string,
+> = Cols extends string
+	? [LeftKeysWithColumn<Old, Cols>] extends [never]
+		? Cols
+		: Cols extends keyof Merged[NK]["columns"]
+			? never
+			: Cols
+	: never
+
+/** The scope after `JOIN … USING (Cols)`: the left column carries the merged nullability, the right one is hidden. */
+type ApplyJoinUsing<Kind extends JoinKind, Old extends ScopeMap, Merged extends ScopeMap, Cols extends string> =
+	NewJoinKey<Old, Merged> extends infer NK extends string
+		? [NK] extends [never]
+			? MarkJoinNullable<Kind, Old, Merged>
+			: [FirstUsingColumnError<Old, NK, Merged, Cols>] extends [never]
+				? MarkJoinNullable<Kind, Old, Merged> extends infer Marked extends ScopeMap
+					? {
+							[K in keyof Marked]: K extends NK
+								? {
+										schema: Marked[K]["schema"]
+										table: Marked[K]["table"]
+										columns: Marked[K]["columns"]
+										hidden: Cols | HiddenColumnsOf<Marked[K]>
+									}
+								: {
+										schema: Marked[K]["schema"]
+										table: Marked[K]["table"]
+										columns: {
+											[C in keyof Marked[K]["columns"]]: C extends Cols
+												? [LeftKeysWithColumn<Old, C>] extends [K]
+													? {
+															type: Marked[K]["columns"][C]["type"]
+															arg: Marked[K]["columns"][C]["arg"]
+															nullable: UsingColumnNullable<
+																Kind,
+																Old[K & keyof Old]["columns"][C],
+																Merged[NK]["columns"][C & keyof Merged[NK]["columns"]]
+															>
+														}
+													: Marked[K]["columns"][C]
+												: Marked[K]["columns"][C]
+										}
+										hidden?: HiddenColumnsOf<Marked[K]>
+									}
+						}
+					: never
+				: FormatError<Errors["JOIN_USING_COLUMN_NOT_FOUND"], [FirstUsingColumnError<Old, NK, Merged, Cols>]>
+		: never
+
+type ParseJoinUsingChain<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Old extends ScopeMap,
+	Merged extends ScopeMap,
+	Kind extends JoinKind,
+	Cols extends string,
+	Params extends ExpressionParamsShape,
+> =
+	ApplyJoinUsing<Kind, Old, Merged, Cols> extends infer Next
+		? Next extends DbtyperErrorShape
+			? [Tokens, Next, ParserRefErrorThirdSentinel]
+			: Next extends ScopeMap
+				? ParseJoinChain<Tokens, Db, Next, Params>
+				: never
+		: never
+
+/** CORE-10: the ON condition is any boolean expression, checked like a WHERE condition. */
 type ParseJoinOn<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends infer TokOn
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? TokOn extends TokenKeyOn
-				? ParseJoinEqPair<R1, Db, Scope> extends [infer R2 extends ParserMonad, infer Tag]
-					? Tag extends DbtyperErrorShape
-						? [R2, Tag, ParserRefErrorThirdSentinel]
-						: Tag extends true
-							? ParseJoinChain<R2, Db, Scope, Params>
-							: never
-					: never
-				: [R1, FormatError<Errors["EXPECTED_ON_KEYWORD"], []>, ParserRefErrorThirdSentinel]
-			: never
-		: never
-
-/** Both sides of `ON` are `schema.table.column`; validate against catalog. */
-type JoinOnQualifiedEqOk<
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	L extends readonly [string, string, string],
-	R extends readonly [string, string, string],
-> =
-	ResolveColumnRefValue<Db, Scope, L> extends DbtyperErrorShape
-		? FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [L[0], L[1], L[2]]>
-		: ResolveColumnRefValue<Db, Scope, R> extends DbtyperErrorShape
-			? FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [R[0], R[1], R[2]]>
-			: ResolveColumnRefValue<Db, Scope, L> extends { sql: infer Ls extends SqlTypeShape }
-				? ResolveColumnRefValue<Db, Scope, R> extends { sql: infer Rs extends SqlTypeShape }
-					? SameComparisonClass<Ls, Rs> extends true
-						? true
-						: FormatError<Errors["INCOMPATIBLE_TYPES_IN_JOIN_ON"], []>
-					: FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [R[0], R[1], R[2]]>
-				: FormatError<Errors["UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN"], [L[0], L[1], L[2]]>
-
-type JoinOnAliasEqOk<
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	LeftAlias extends string,
-	LeftCol extends string,
-	RightAlias extends string,
-	RightCol extends string,
-> =
-	ResolveColumnRefValue<Db, Scope, readonly [LeftAlias, LeftCol]> extends infer LeftRefValue
-		? LeftRefValue extends DbtyperErrorShape
-			? FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [LeftAlias, LeftCol]>
-			: ResolveColumnRefValue<Db, Scope, readonly [RightAlias, RightCol]> extends infer RightLeftValue
-				? RightLeftValue extends DbtyperErrorShape
-					? FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [RightAlias, RightCol]>
-					: LeftRefValue extends { sql: infer Ls extends SqlTypeShape }
-						? RightLeftValue extends { sql: infer Rs extends SqlTypeShape }
-							? SameComparisonClass<Ls, Rs> extends true
-								? true
-								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_JOIN_ON"], []>
-							: FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [RightAlias, RightCol]>
-						: FormatError<Errors["UNKNOWN_QUALIFIED_COLUMN"], [LeftAlias, LeftCol]>
-				: never
-		: never
-
-/** After `=` when the join predicate uses `alias.col = alias.col`. */
-type ParseJoinEqPairAliasRightTail<
-	R4 extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	LeftAlias extends string,
-	LeftCol extends string,
-> =
-	AsIdent<PeekToken<R4>> extends TokenIdent<infer RightAlias extends string>
-		? SkipToken<R4> extends infer R5 extends ParserMonad
-			? PeekToken<R5> extends TokenKey<".">
-				? SkipToken<R5> extends infer R6 extends ParserMonad
-					? AsIdent<PeekToken<R6>> extends TokenIdent<infer RightCol extends string>
-						? SkipToken<R6> extends infer R7 extends ParserMonad
-							? JoinOnAliasEqOk<Db, Scope, LeftAlias, LeftCol, RightAlias, RightCol> extends infer Ok
-								? Ok extends true
-									? [R7, true]
-									: Ok extends DbtyperErrorShape
-										? [R7, Ok]
-										: never
-								: never
-							: never
-						: never
-					: never
-				: never
-			: never
-		: never
-
-/** After `=` when the join predicate uses `schema.table.column = schema.table.column`. */
-type ParseJoinEqPairQualifiedRightTail<
-	R6 extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	LeftParts extends readonly [string, string, string],
-> =
-	AsIdent<PeekToken<R6>> extends TokenIdent<infer S2 extends string>
-		? SkipToken<R6> extends infer R7 extends ParserMonad
-			? PeekToken<R7> extends TokenKey<".">
-				? SkipToken<R7> extends infer R8 extends ParserMonad
-					? AsIdent<PeekToken<R8>> extends TokenIdent<infer T2 extends string>
-						? SkipToken<R8> extends infer R9 extends ParserMonad
-							? PeekToken<R9> extends TokenKey<".">
-								? SkipToken<R9> extends infer R10 extends ParserMonad
-									? AsIdent<PeekToken<R10>> extends TokenIdent<infer C2 extends string>
-										? SkipToken<R10> extends infer R11 extends ParserMonad
-											? JoinOnQualifiedEqOk<
-													Db,
-													Scope,
-													LeftParts,
-													readonly [S2, T2, C2]
-												> extends infer Ok
-												? Ok extends true
-													? [R11, true]
-													: Ok extends DbtyperErrorShape
-														? [R11, Ok]
-														: never
-												: never
-											: never
-										: never
-									: never
-								: never
-							: never
-						: never
-					: never
-				: never
-			: never
-		: never
-
-/** After the second identifier in the left column ref: qualified `… . … . …` vs `alias.col`. */
-type ParseJoinEqPairAfterSecondIdent<
-	R4 extends ParserMonad,
-	TokAfterP2,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	P1 extends string,
-	P2 extends string,
-> =
-	TokAfterP2 extends TokenKey<".">
-		? AsIdent<PeekToken<R4>> extends TokenIdent<infer P3 extends string>
-			? SkipToken<R4> extends infer R5 extends ParserMonad
-				? PeekToken<R5> extends TokenKey<"=">
-					? ParseJoinEqPairQualifiedRightTail<SkipToken<R5>, Db, Scope, readonly [P1, P2, P3]>
-					: never
-				: never
-			: never
-		: TokAfterP2 extends TokenKey<"=">
-			? ParseJoinEqPairAliasRightTail<R4, Db, Scope, P1, P2>
-			: never
-
-/** `ON` equality: `alias.col = alias.col` or `schema.table.column = schema.table.column`. */
-type ParseJoinEqPair<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer P1 extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<".">
-				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? AsIdent<PeekToken<R2>> extends TokenIdent<infer P2 extends string>
-						? SkipToken<R2> extends infer R3 extends ParserMonad
-							? PeekToken<R3> extends infer TokAfterP2
-								? ParseJoinEqPairAfterSecondIdent<SkipToken<R3>, TokAfterP2, Db, Scope, P1, P2>
-								: never
-							: never
-						: never
-					: never
-				: never
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? ParseWhereExpression<R1, Db, Scope, Params, "JOIN ON"> extends [infer R2 extends ParserMonad, infer Err]
+			? Err extends DbtyperErrorShape
+				? [R2, Err, ParserRefErrorThirdSentinel]
+				: ParseJoinChain<R2, Db, Scope, Params>
 			: never
 		: never
 
@@ -2100,10 +2329,60 @@ type ResolveSelectListFrom<
 > = Items extends readonly [{ kind: "star" }]
 	? SingleAliasScope<FromScope> extends true
 		? ScopeEntryOfSingle<FromScope> extends infer E extends ScopeEntry
-			? { kind: "select"; returning: E["columns"] }
+			? {
+					kind: "select"
+					returning: VisibleColumnsOf<E>
+					order: UnionToStringTuple<keyof VisibleColumnsOf<E> & string>
+				}
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
-	: ResolveSelectList<Items, Db, Scope, Params>
+	: ResolveSelectList<Items, Db, Scope, Params> extends infer Res
+		? Res extends DbtyperErrorShape
+			? Res
+			: Res extends JsqlSelectStatementResult
+				? SelectItemNames<Items, Scope> extends infer Names extends readonly string[]
+					? FirstDuplicateName<Names> extends infer Dup
+						? [Dup] extends [never]
+							? Res & { order: Names }
+							: FormatError<Errors["DUPLICATE_OUTPUT_COLUMN"], [`\`${Dup & string}\``]>
+						: never
+					: never
+				: never
+		: never
+
+/** Output column names of a select list in position order (CORE-8 matches set-operation arms by position, CORE-11). */
+type StarNames<E extends ScopeEntry> = UnionToStringTuple<keyof VisibleColumnsOf<E> & string>
+
+type SelectItemNames<
+	Items extends readonly RawSelectItem[],
+	Scope extends ScopeMap,
+	AllItems extends readonly RawSelectItem[] = Items,
+	Acc extends readonly string[] = [],
+> = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
+	? H extends { kind: "param"; param: infer P extends string; as?: infer As }
+		? SelectItemNames<R, Scope, AllItems, [...Acc, As extends string ? As : P]>
+		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }
+			? Ast extends {
+					kind: "qualified_table_star"
+					schema: infer Sch extends string
+					table: infer Tab extends string
+				}
+				? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E extends ScopeEntry
+					? StarNames<E> extends infer T extends readonly string[]
+						? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
+						: Acc
+					: Acc
+				: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
+					? Al extends keyof Scope
+						? StarNames<Scope[Al]> extends infer T extends readonly string[]
+							? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
+							: Acc
+						: Acc
+					: OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
+						? SelectItemNames<R, Scope, AllItems, [...Acc, O]>
+						: Acc
+			: Acc
+	: Acc
 
 type ResolveSelectList<
 	Items extends readonly RawSelectItem[],
@@ -2154,13 +2433,13 @@ type ResolveSelectListExprItem<
 > = Ast extends { kind: "qualified_table_star"; schema: infer Sch extends string; table: infer Tab extends string }
 	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
 		? E extends ScopeEntry
-			? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, E["columns"]>, AllItems>
+			? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
 			: FormatError<Errors["UNKNOWN_TABLE"], [Sch, "SELECT ... *"]>
 		: FormatError<Errors["UNKNOWN_TABLE"], [Tab, "SELECT ... *"]>
 	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
 		? Al extends keyof Scope
 			? Scope[Al] extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, E["columns"]>, AllItems>
+				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
 				: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 			: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
@@ -2216,7 +2495,7 @@ type ResolveSelectListAcc<
 	? H extends { kind: "star" }
 		? SingleAliasScope<Scope> extends true
 			? ScopeEntryOfSingle<Scope> extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, E["columns"]>, AllItems>
+				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
 				: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }

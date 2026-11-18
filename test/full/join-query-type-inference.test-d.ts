@@ -8,7 +8,7 @@ const statement = `
 		public.agenda.*,
 		email,
 		display_name,
-		auth.users.created_at,
+		auth.users.created_at as user_created_at,
 		auth.users.login_count
 	from auth.users
 		left join public.agenda
@@ -21,12 +21,14 @@ const _rows = await db.query(statement, {
 	email_domain: "@example\\.com$",
 })
 
+// CORE-11: duplicate output names need an alias
 // TYPE-7: nullable columns (display_name, created_at, agenda) are `T | null`
 expectType<typeof _rows>(
 	toBe<
 		{
 			agenda: string | null
 			created_at: Date | null
+			user_created_at: Date | null
 			display_name: string | null
 			email: string
 			id: string | null
