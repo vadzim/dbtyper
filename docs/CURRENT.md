@@ -22,7 +22,7 @@
 5. **Subqueries / CTEs / views** — **Derived tables** in `**FROM` / `JOIN`**, scalar / `**IN (SELECT …)`**/`**EXISTS**`, leading `**WITH**`CTEs, and`**CREATE VIEW**`are covered in`**SUPPORTED-SQL.md**`. Correlation in `**SELECT**`list subqueries remains limited (see`**docs/TODO.md**`). `**LATERAL**` joins are **explicitly deferred** past the v1 correlation milestone (`\*\*docs/ROADMAP.md`). CTE cycle detection is not implemented.
 6. `**ALTER TABLE` / `CREATE INDEX`\*\* — Still skipped at statement level.
 7. **Runtime query execution** — Explicitly out of scope per README; no change.
-8. `**SELECT … ORDER BY` — Typed row inference for some `ORDER BY` forms can degrade to `never` (see `examples/typed-postgres`: avoid `ORDER BY` in the SQL string and sort in JS). Full `ORDER BY` typing for arbitrary projections is still open.
+8. **`SELECT … ORDER BY`** — Typed (ORDER BY no longer degrades row inference to `never`); full typing for arbitrary projections may still have gaps, see `docs/TODO.md`.
 
 ## Performance note
 

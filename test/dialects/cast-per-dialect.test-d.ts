@@ -23,3 +23,13 @@ const _pg = await pgDb.query(
 	`select cast(age as text) as a, cast(name as int4) as b, cast(age as bigint) as c, cast(ok as bool) as d from t`,
 )
 expectType<typeof _pg>(toBe<Array<{ a: string; b: number; c: string; d: boolean }>>())
+
+// #119 (EXPR-22, PGT-2): casts to the floating-point names are number in PostgreSQL; numeric stays string
+const _pgf = await pgDb.query(
+	`select cast(age as real) as a, age::float4 as b, cast(age as float8) as c, age::double precision as d, cast(age as numeric) as e from t`,
+)
+expectType<typeof _pgf>(toBe<Array<{ a: number; b: number; c: number; d: number; e: string }>>())
+const _sqf = await sqliteDb.query(
+	`select cast(age as real) as a, cast(age as float4) as b, cast(age as float8) as c, cast(age as double precision) as d from t`,
+)
+expectType<typeof _sqf>(toBe<Array<{ a: number; b: number; c: number; d: number }>>())
