@@ -2452,13 +2452,25 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 														},
 														Env,
 													]
-												: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
-													? SkipFailedExpressionWithEnv<
-															Tokens,
-															FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
-															Env
-														>
-													: never
+												: PeekToken<Tokens> extends TokenIdent<string>
+													? TryColumnOperandScalarUntyped<Tokens, Env>
+													: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
+														? SkipFailedExpressionWithEnv<
+																Tokens,
+																FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
+																Env
+															>
+														: never
+
+/** EXPR-2, EXPR-5, EXPR-6: a column reference as a right operand or unary-minus operand. */
+type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
+	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts]
+		? Parts extends ScalarIdentParts
+			? PeekToken<Rm> extends TokenKey<"(">
+				? SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["("]>, Env>
+				: [Rm, { kind: "col"; parts: Parts }, Env]
+			: SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["*"]>, Env>
+		: never
 
 type ParseUnaryScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"-">
@@ -2739,6 +2751,38 @@ type ParseAddLoopAfterFirstScalarUntyped<
 			? ParseAddLoopAfterMinusScalarUntyped<Tokens, Acc, Env>
 			: [Tokens, Acc, Env]
 
+type ArithOpToken =
+	| TokenKey<"+">
+	| TokenKey<"-">
+	| TokenKey<"*">
+	| TokenKey<"/">
+	| TokenKey<"%">
+	| TokenKey<"^">
+
+/** After a leftmost operand: `^`, then `* / %`, then `+ -` (EXPR-5 precedence). */
+type ParseArithTailAfterFirstScalarUntyped<
+	Tokens extends ParserMonad,
+	Acc extends ScalarExprAst,
+	Env extends ExprParseEnv,
+> =
+	ParseExpLoop<Tokens, Acc, Env> extends [infer R1 extends ParserMonad, infer E1, infer Env1 extends ExprParseEnv]
+		? E1 extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<R1, E1, Env1>
+			: E1 extends ScalarExprAst
+				? ParseMulLoopAfterFirstScalarUntyped<R1, E1, Env1> extends [
+						infer R2 extends ParserMonad,
+						infer E2,
+						infer Env2 extends ExprParseEnv,
+					]
+					? E2 extends DbtyperErrorShape
+						? SkipFailedExpressionWithEnv<R2, E2, Env2>
+						: E2 extends ScalarExprAst
+							? ParseAddLoopAfterFirstScalarUntyped<R2, E2, Env2>
+							: never
+					: never
+				: never
+		: never
+
 type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts]
 		? Parts extends readonly ["__ats__", infer Al extends string]
@@ -2793,12 +2837,12 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 										infer Rcast extends ParserMonad,
 										infer Casted extends ScalarExprAst,
 									]
-									? PeekToken<Rcast> extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-										? ParseAddLoopAfterFirstScalarUntyped<Rcast, Casted, Env>
+									? PeekToken<Rcast> extends ArithOpToken
+										? ParseArithTailAfterFirstScalarUntyped<Rcast, Casted, Env>
 										: [Rcast, Casted, Env]
 									: never
-								: Pa extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
-									? ParseAddLoopAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
+								: Pa extends ArithOpToken
+									? ParseArithTailAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
 									: [Rm, { kind: "col"; parts: Parts }, Env]
 							: never
 					: never
