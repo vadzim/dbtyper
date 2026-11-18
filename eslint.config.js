@@ -28,7 +28,7 @@ export default [
 	},
 	{
 		files: ["test/**/*.ts"],
-		ignores: ["test/**/*.test-d.skip.ts", "test/.legacy-unsupported/*"],
+		ignores: ["test/**/*.test-d.skip.ts"],
 		languageOptions: {
 			parser: tsparser,
 			parserOptions: {
@@ -52,6 +52,6 @@ export default [
 		},
 	},
 	{
-		ignores: ["dist/", "node_modules/", "**/*.js", "test/fail-to-compile.ts"],
+		ignores: ["dist/", "node_modules/", "**/*.js"],
 	},
 ]

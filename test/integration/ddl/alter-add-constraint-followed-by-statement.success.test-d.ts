@@ -1,4 +1,4 @@
-// Integration Test: SCHEMA-22 ALTER TABLE ADD CONSTRAINT / SET DEFAULT / DROP DEFAULT may be followed by statements
+// Integration Test: PGT-19 ALTER TABLE ADD CONSTRAINT / SET DEFAULT / DROP DEFAULT may be followed by statements
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
