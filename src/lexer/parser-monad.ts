@@ -75,15 +75,20 @@ type TokenDialectError<
 	: Token extends TokenKey<infer K extends DialectPhraseHeads>
 		? NextWord<Rest, Syntax> extends [infer W2 extends string, infer Rest2 extends string]
 			? NextWord<Rest2, Syntax> extends [infer W3 extends string, infer Rest3 extends string]
-				? MatchDialectPhrase<K, W2, W3> extends [infer C extends DialectConstruct, infer Length extends number]
-					? DialectOnlyError<Syntax, C> extends null
-						? null
-						: DialectOnlyError<
-								Syntax,
-								C,
-								Length extends 1 ? W2 : Length extends 2 ? W3 : NextWord<Rest3, Syntax>[0]
-							>
-					: null
+				? [MatchDialectPhrase<K, W2, W3>] extends [never]
+					? null
+					: MatchDialectPhrase<K, W2, W3> extends [
+								infer C extends DialectConstruct,
+								infer Length extends number,
+						  ]
+						? DialectOnlyError<Syntax, C> extends null
+							? null
+							: DialectOnlyError<
+									Syntax,
+									C,
+									Length extends 1 ? W2 : Length extends 2 ? W3 : NextWord<Rest3, Syntax>[0]
+								>
+						: null
 				: null
 			: null
 		: null
