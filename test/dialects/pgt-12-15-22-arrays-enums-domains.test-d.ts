@@ -54,7 +54,7 @@ await db.query(`insert into t (tags, grid, moods, v, o, p, q, vec) values ('{}',
 // PGT-14: a parameter is typed as the label union
 await db.query(`select v from t where v = $1`, ["ok" as const])
 
-// PGT-14: errors
+// PGT-14, EXPR-26: errors (an enum is a class of its own)
 const unknownLabel = `select v from t where v = 'bad'` as const
 // @ts-expect-error
 await db.query(unknownLabel)
@@ -65,12 +65,12 @@ expectType<GetQueryError<typeof db, typeof unknownLabel>>(
 const numberCmp = `select v from t where v = 1` as const
 // @ts-expect-error
 await db.query(numberCmp)
-expectType<GetQueryError<typeof db, typeof numberCmp>>(toBe<DbtyperError<2512, "Incompatible value for enum mood">>())
+expectType<GetQueryError<typeof db, typeof numberCmp>>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())
 
 const twoEnums = `select v from t where v = o` as const
 // @ts-expect-error
 await db.query(twoEnums)
-expectType<GetQueryError<typeof db, typeof twoEnums>>(toBe<DbtyperError<2512, "Incompatible value for enum mood">>())
+expectType<GetQueryError<typeof db, typeof twoEnums>>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())
 
 const badIn = `select v from t where v in ('ok', 'nope')` as const
 // @ts-expect-error

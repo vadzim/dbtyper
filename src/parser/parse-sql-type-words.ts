@@ -188,7 +188,31 @@ export type ParseSqlType<
 	KeepDeclared extends boolean = false,
 	Schema extends string = Db extends { defaultSchema: infer D extends string } ? D : "",
 > =
-	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends ParserMonad, infer Words extends readonly string[]]
+	DialectFact<Db, "typeNames"> extends "named"
+		? PeekToken<Tokens> extends TokenIdent<infer Q extends string>
+			? Lowercase<Q> extends "collate"
+				? ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
+				: SkipToken<Tokens> extends infer R1 extends ParserMonad
+					? PeekToken<R1> extends TokenKey<".">
+						? // PGT-13: `schema.type` (`app.status`): the schema says where a named type is looked up
+							ParseSqlType<SkipToken<R1>, Db, KeepDeclared, Q>
+						: ParseUnqualifiedSqlType<R1, Db, KeepDeclared, Schema, [Q]>
+					: never
+			: ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
+		: ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
+
+/** The type words (the first ones may be read already, `Words0`) and what follows them. */
+type ParseUnqualifiedSqlType<
+	Tokens extends ParserMonad,
+	Db,
+	KeepDeclared extends boolean,
+	Schema extends string,
+	Words0 extends readonly string[] = [],
+> =
+	CollectSqlTypeWords<Tokens, Words0> extends [
+		infer AfterWords extends ParserMonad,
+		infer Words extends readonly string[],
+	]
 		? Words extends readonly []
 			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string

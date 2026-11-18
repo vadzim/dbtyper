@@ -894,17 +894,13 @@ export const errors = {
 		code: 2505,
 		msg: ["Incompatible types in IN subquery"],
 	},
-	INCOMPATIBLE_TYPES_IN_JOIN_ON: {
+	OBSOLETE_2506_INCOMPATIBLE_TYPES_IN_JOIN_ON: {
 		code: 2506,
-		msg: ["Incompatible types in JOIN ON"],
+		msg: ["Obsolete, no longer reported: Incompatible types in JOIN ON"],
 	},
 	VALUE_NOT_IN_ENUM: {
 		code: 2511,
 		msg: ["'", "' is not a value of enum ", ""],
-	},
-	INCOMPATIBLE_VALUE_FOR_ENUM: {
-		code: 2512,
-		msg: ["Incompatible value for enum ", ""],
 	},
 	COLUMN_TYPE_MISMATCH: {
 		code: 2510,
@@ -1005,9 +1001,9 @@ export const errors = {
 		code: 2806,
 		msg: ["LIKE pattern must be text"],
 	},
-	FUNCTION_EXPECTS_TEXT_ARGUMENT: {
+	OBSOLETE_2807_FUNCTION_EXPECTS_TEXT_ARGUMENT: {
 		code: 2807,
-		msg: ["Function expects text argument"],
+		msg: ["Obsolete, no longer reported: Function expects text argument"],
 	},
 
 	// Numeric Operations
@@ -1247,9 +1243,9 @@ export const errors = {
 		code: 3605,
 		msg: ["LAG/LEAD requires at least 1 argument"],
 	},
-	INVALID_LAG_LEAD_ARGUMENTS: {
+	OBSOLETE_3606_INVALID_LAG_LEAD_ARGUMENTS: {
 		code: 3606,
-		msg: ["Invalid LAG/LEAD arguments"],
+		msg: ["Obsolete, no longer reported: Invalid LAG/LEAD arguments"],
 	},
 	COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT: {
 		code: 3607,
@@ -1455,9 +1451,9 @@ export const errors = {
 		code: 4209,
 		msg: ["Expected ON after JOIN table"],
 	},
-	EXPECTED_ON_KEYWORD: {
+	OBSOLETE_4210_EXPECTED_ON_KEYWORD: {
 		code: 4210,
-		msg: ["Expected ON keyword"],
+		msg: ["Obsolete, no longer reported: Expected ON keyword"],
 	},
 
 	// CASE Expression

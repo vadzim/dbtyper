@@ -26,8 +26,8 @@ export type ValidateMutationValueForColumn<
 > =
 	JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends SqlTypeShape
 		? WithEnumCheck<
-				EnumAssignmentCheck<Db, ColSql, Val, ValAst>,
-				ValidateMutationValueBySql<Tbl, Col, Val, ColSql, Db>
+				EnumAssignmentCheck<Db, ColSql, ValAst>,
+				ValidateMutationValueBySql<Tbl, Col, Val, ColSql, Db, ValAst>
 			>
 		: FormatError<Errors["UNKNOWN_COLUMN"], [Col, "INSERT"]>
 
@@ -37,6 +37,7 @@ type ValidateMutationValueBySql<
 	Val extends SqlTypeShape,
 	ColSql extends SqlTypeShape,
 	Db,
+	ValAst,
 > = Val["type"] extends "param-probe"
 	? // CORE-6: the column gives an untyped parameter its type (`null` too for a nullable column)
 		ParamProbeFound<ProbeKeyOf<Val>, ColSql>
@@ -44,7 +45,7 @@ type ValidateMutationValueBySql<
 		? InsertColNotNull<Tbl, Col> extends true
 			? FormatError<Errors["NULL_NOT_ALLOWED_NOT_NULL_COLUMN"], [Col]>
 			: true
-		: SameComparisonClass<Val, ColSql> extends true
+		: SameComparisonClass<Val, ColSql, ValAst> extends true
 			? true
 			: DialectFact<Db, "typeNames"> extends "affinity"
 				? // SQLT-43: SQLite would coerce; dbtyper names the column's storage class instead

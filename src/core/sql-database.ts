@@ -360,7 +360,7 @@ type CheckSqlValid<
 				? FormatErrorText<Code, Msg>
 				: // CORE-14: a result column with no TypeScript mapping is an error, never `unknown`
 					SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
-					? Code extends 3501
+					? Code extends Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"]
 						? Stmt
 						: FormatErrorText<Code, Msg>
 					: Stmt
@@ -374,7 +374,10 @@ type QueryReturnType<
 	Params extends ExpressionParamsShape | DbtyperErrorShape,
 > = Params extends ExpressionParamsShape
 	? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
-		? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<3501, string>
+		? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<
+				Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"],
+				string
+			>
 			? []
 			: unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
