@@ -27,7 +27,8 @@ import type {
 	ScalarExprAst,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
-import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
+import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
+import type { ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, UnqualifiedSchema, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
