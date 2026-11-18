@@ -25,27 +25,27 @@ const pgDb = pgMigrations.database()
 type NotOtherDialect<E> = E extends DbtyperError<1900 | 1901, string> ? false : true
 
 test("DSEL-11: the same SQL is typed identically in both dialects", async () => {
-	const a1 = await sqliteDb.query("select 1 as x")
-	const b1 = await pgDb.query("select 1 as x")
-	expectType<typeof a1>(toBe<Array<{ x: number }>>())
-	expectType<typeof b1>(toBe<Array<{ x: number }>>())
+	const _a1 = await sqliteDb.query("select 1 as x")
+	const _b1 = await pgDb.query("select 1 as x")
+	expectType<typeof _a1>(toBe<Array<{ x: number }>>())
+	expectType<typeof _b1>(toBe<Array<{ x: number }>>())
 	// a join and a where, over derived tables (the SQLite chain has no tables yet)
 	const join = "select a.x, b.y from (select 1 as x) a join (select 2 as y) b on a.x = b.y where a.x > 0"
-	const a2 = await sqliteDb.query(join)
-	const b2 = await pgDb.query(join)
-	expectType<typeof a2>(toBe<Array<{ x: number; y: number }>>())
-	expectType<typeof b2>(toBe<Array<{ x: number; y: number }>>())
+	const _a2 = await sqliteDb.query(join)
+	const _b2 = await pgDb.query(join)
+	expectType<typeof _a2>(toBe<Array<{ x: number; y: number }>>())
+	expectType<typeof _b2>(toBe<Array<{ x: number; y: number }>>())
 	// and over a real table where the chain has one
-	const b3 = await pgDb.query(
+	const _b3 = await pgDb.query(
 		"select u.id, o.id as order_id from users u join orders o on o.user_id = u.id where u.id > 1",
 	)
-	expectType<typeof b3>(toBe<Array<{ id: number; order_id: number }>>())
+	expectType<typeof _b3>(toBe<Array<{ id: number; order_id: number }>>())
 	assert.ok(true)
 })
 
 test("DSEL-4: select ?1 is accepted by SQLite and rejected as SQLite-only by PostgreSQL", async () => {
-	const rows = await sqliteDb.query("select ?1 as p", [1])
-	expectType<typeof rows>(toBe<Array<{ p: unknown }>>())
+	const _rows = await sqliteDb.query("select ?1 as p", [1])
+	expectType<typeof _rows>(toBe<Array<{ p: unknown }>>())
 	type PgError = GetQueryError<typeof pgDb, "select ?1", [1]>
 	expectType<PgError>(
 		toBe<DbtyperError<1901, "`?NNN` parameter is SQLite-only; this database is PostgreSQL. Use $1, $2, …">>(),

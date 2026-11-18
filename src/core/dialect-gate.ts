@@ -160,15 +160,13 @@ type BothReject<
 
 /** The raw lexer token number `N` (0-based) of the text, read with the same `Syntax` as its terminals. */
 type NthToken<M extends ParserMonad, N extends number, Count extends unknown[] = []> = Count["length"] extends N
-	? PeekToken<M>
+	? [M, PeekToken<M>]
 	: SkipToken<M> extends infer Next extends ParserMonad
 		? NthToken<Next, N, [...Count, 0]>
 		: never
 
-type TokenAt<Stmt extends string, Syntax extends string, At extends number> = NthToken<
-	CreateParserMonad<Stmt, Syntax>,
-	At
->
+type TokenAt<Stmt extends string, Syntax extends string, At extends number> =
+	NthToken<CreateParserMonad<Stmt, Syntax>, At> extends [infer _M extends ParserMonad, infer Tok] ? Tok : never
 
 type TokenText<Tok> = Tok extends { value: infer V extends string } ? V : "end of statement"
 

@@ -243,10 +243,10 @@ const query = `SELECT "unclosed FROM users` as const
 
 ### 1900-1999: Dialect Errors (DSEL-5, DSEL-6, DSEL-7)
 
-| Code | ID                                      | Message                                                         |
-| ---- | --------------------------------------- | --------------------------------------------------------------- |
-| 1900 | POSTGRES_ONLY_SYNTAX_WITH_SQLITE_DRIVER | `X` is PostgreSQL-only; this database is SQLite. Use ...        |
-| 1901 | SQLITE_ONLY_SYNTAX_WITH_POSTGRES_DRIVER | `X` is SQLite-only; this database is PostgreSQL. Use ...        |
+| Code | ID                                      | Message                                                  |
+| ---- | --------------------------------------- | -------------------------------------------------------- |
+| 1900 | POSTGRES_ONLY_SYNTAX_WITH_SQLITE_DRIVER | `X` is PostgreSQL-only; this database is SQLite. Use ... |
+| 1901 | SQLITE_ONLY_SYNTAX_WITH_POSTGRES_DRIVER | `X` is SQLite-only; this database is PostgreSQL. Use ... |
 
 Raised by the grammar gate (`src/core/dialect-gate.ts`) when the driver's own grammar rejects a statement and the other dialect's grammar accepts it.
 A statement both grammars reject is an ordinary syntax error. The message names the construct (`::` cast, INSERT OR REPLACE, backtick-quoted identifiers, ...) and, where there is one, the equivalent to use.
