@@ -34,3 +34,9 @@ folder_context.md
 project_context.md
 POLYCODE.md
 report.*.json
+
+# bison/flex generated (track B import)
+src/gram/gram.output
+src/gram/gram.xml
+src/gram/gram.tab.c
+src/gram/parser.c

@@ -24,14 +24,28 @@ export type SkipToken<M extends ParserMonad> = ReadToken<
 
 type QuestionKey = TokenKey<"?">
 
-type ReadToken<_Rest extends string, Syntax extends string, PositionalIndex extends number> =
-	ReadTokenFromString<_Rest, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
-		? "question-params" extends Syntax
-			? Token extends QuestionKey
-				? Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>>
+type ReadToken<Text extends string, Syntax extends string, PositionalIndex extends number> =
+	ReadTokenFromString<Text, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
+		? Token extends TokenKey<"with">
+			? Buffer<
+					CheckLA<Token, TokenKey<"time"> | TokenKey<"ordinality">, Rest, Syntax>,
+					Rest,
+					Syntax,
+					PositionalIndex
+				>
+			: "question-params" extends Syntax
+				? Token extends QuestionKey
+					? Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>>
+					: Buffer<Token, Rest, Syntax, PositionalIndex>
 				: Buffer<Token, Rest, Syntax, PositionalIndex>
-			: Buffer<Token, Rest, Syntax, PositionalIndex>
 		: never
+
+type CheckLA<
+	Token extends TokenKey<string>,
+	NextToken extends TokenStreamHead,
+	Text extends string,
+	Syntax extends string,
+> = ReadTokenFromString<Text, Syntax>[0] extends NextToken ? TokenKey<`${Token["kind"]}_la`> : Token
 
 type Buffer<
 	Token extends TokenStreamHead,
