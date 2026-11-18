@@ -12,19 +12,20 @@ import type { LexerFeatures } from "../../lexer/sql-lexer.ts"
 import type { Keywords } from "./keywords.ts"
 
 /** Terminals of the query text, without `$end`. A lexer error becomes the terminal `$error`, which no state accepts. */
-export type PgTerminals<Query extends string, Syntax extends string = LexerFeatures> = Collect<
-	CreateParserMonad<Query, Syntax>
->
+export type PgTerminals<Query extends string, Syntax extends string = LexerFeatures> =
+	Collect<CreateParserMonad<Query, Syntax>> extends [infer _M extends ParserMonad, infer Terminals extends string[]]
+		? Terminals
+		: never
 
 type Collect<M extends ParserMonad, Acc extends string[] = []> =
 	PeekToken<M> extends infer Tok
 		? Tok extends { kind: "eot" }
-			? Acc
-			: Tok extends { kind: infer K extends string; value: infer V extends string }
-				? PeekToken<SkipToken<M>> extends infer Next
-					? Collect<SkipToken<M>, [...Acc, Terminal<K, V, Next>]>
-					: never
-				: Collect<SkipToken<M>, [...Acc, "$error"]>
+			? [M, Acc]
+			: SkipToken<M> extends infer Rest extends ParserMonad
+				? Tok extends { kind: infer K extends string; value: infer V extends string }
+					? Collect<Rest, [...Acc, Terminal<K, V, PeekToken<Rest>>]>
+					: Collect<Rest, [...Acc, "$error"]>
+				: never
 		: never
 
 type NextWord<Next> = Next extends { kind: "key" | "ident"; value: infer V extends string } ? V : never
