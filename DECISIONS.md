@@ -35,6 +35,36 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
   union of all errors; guarded in parser-monad.ts.
 - **Cost.** Existing tests 7.95M -> 8.05M instantiations (+1.2%); the new tests add 0.39M (8.43M in all).
 
+## 2026-11-18 SQLite DDL and names (#70, track A; SQLT-18…SQLT-29)
+
+- **One flag, `ddl`, in the `Dialects` row** gates every SQLite DDL rule through `DialectFact<Db, "ddl">`; no parser says
+  `if sqlite`. A PostgreSQL chain pays at most one conditional per statement or constraint keyword.
+- **Schemas (SQLT-25/26).** A SQLite chain starts with `main` (the default schema, whatever the config says) and
+  `temp`. `main.t` / `temp.t` are ordinary qualifiers; any other qualifier is the existing unknown-schema error.
+  `UnqualifiedSchema<Db, Name>` (jsql-utils) is the one place that asks "temp first, then main"; every FROM / INSERT /
+  UPDATE / DELETE / DROP / ALTER site uses it instead of `Db["defaultSchema"]`. `CREATE TEMP TABLE|VIEW` pass a `Temp`
+  flag. `CREATE SCHEMA` is the SQLT-53 PostgreSQL-only error (hint "SQLite has no schemas"), `DROP SCHEMA` is 1915.
+- **CREATE TABLE (SQLT-18/19).** Short `AS (…)`, `ON CONFLICT` after NOT NULL / UNIQUE / PRIMARY KEY (the type parser
+  already swallows `NOT NULL`, so `ON` is also handled where a constraint is expected) and after table constraints,
+  `ASC|DESC` after PRIMARY KEY, WITHOUT ROWID needs a PRIMARY KEY (1913). `DEFAULT CURRENT_*` is accepted for any column.
+- **ALTER TABLE (SQLT-20/21).** ADD COLUMN in a SQLite chain reuses the CREATE TABLE column parser (`ColumnCtx.alter`):
+  the definition ends at `;`; PRIMARY KEY / UNIQUE (1914), NOT NULL without DEFAULT (1914) are errors. `RENAME TO` moves
+  the table (both dialects). `ALTER COLUMN`, `ADD CONSTRAINT|PRIMARY KEY|UNIQUE|FOREIGN KEY|CHECK` are phrase rows
+  (`pg-alter-column`, `pg-add-constraint`): the PostgreSQL-only error of DSEL-5.
+- **Statements (SQLT-22/23/24).** `CREATE VIEW [IF NOT EXISTS] v (cols) AS` (column list reuses the CTE one);
+  `CREATE TRIGGER` is skipped to the `END` that does not close a `CASE`; other unknown statements were already skipped.
+  `CREATE VIRTUAL TABLE`, `ATTACH`, `DETACH` are 1916.
+- **Names (SQLT-27/28/29).** In a SQLite chain the lexer lower-cases quoted identifiers too (`"x"`, `` `x` ``, `[x]`;
+  `[…]` stays brackets when empty or holding `,` `'` or a leading digit, so `text[]` and `array[1, 2]` keep SQLT-53) and
+  an identifier written with capitals carries `written`; a column reference and an `AS` alias use it as the result key.
+  Adjacent string literals are not concatenated; `X'…'` is a blob literal (`blob: true` on the string token and AST).
+  Not done: the expression-text key (`count(*)`); parsers cannot read the source text (the monad hides it), and the
+  bare-column-with-aggregate query of the SQLT-28 Check is rejected by the GROUP BY rule.
+- **Fixed on the way.** INSERT … SELECT never checked its columns and returned `never` (the Db was lost, so a rebuild
+  migration could not continue): the select is parsed after its keyword and compared by the select's `order`.
+- **Cost.** Existing tests (test config, without the four new files) 8.43M → 9.57M instantiations; the PostgreSQL path
+  is about +1.5%, the SQLite tests double (1.06M → 2.06M, not yet attributed). New tests add 0.9M.
+
 ## 2026-11-18 SQLite type names, affinity, keys and rowid (#67, track A; SQLT-6…SQLT-17)
 
 - **Dialect facts for parsers come from the database state, not from the monad.** The monad checker lets parsers read

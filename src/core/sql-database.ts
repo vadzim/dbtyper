@@ -113,8 +113,9 @@ type InitialDatabase<
 	DS extends string,
 > = Dialects[Config["dialect"]]["defaultSchemaExists"] extends true
 	? {
-			defaultSchema: DS
-			schemas: { [K in DS]: JsqlCreateSchema }
+			// SQLT-25: SQLite has no schemas, only `main` (the default) and `temp`
+			defaultSchema: "main"
+			schemas: { main: JsqlCreateSchema; temp: JsqlCreateSchema }
 			functions?: Record<string, never>
 			dialect: Config["dialect"]
 		}

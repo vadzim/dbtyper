@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetTable, JsqlDbGetData, JsqlDbReplaceData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
@@ -34,7 +34,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends ParserMonad, A extends strin
 /** After first identifier (table or schema). */
 type ParseDropAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<";"> | TokenEot
-		? [AfterFirst, null, Db["defaultSchema"], A]
+		? [AfterFirst, null, UnqualifiedSchema<Db, A>, A]
 		: PeekToken<AfterFirst> extends TokenKey<".">
 			? ParseDropQualifiedSecondIdent<SkipToken<AfterFirst>, A>
 			: SkipFailedQualifiedName<

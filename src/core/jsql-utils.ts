@@ -5,6 +5,7 @@ import type {
 	JsqlTypeShape,
 	JsqlColumnFactsEntry,
 } from "./jsql-shapes.ts"
+import type { DialectFact } from "./dialect.ts"
 import type { ReplaceProp } from "./type-utils.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 
@@ -447,3 +448,14 @@ export type JsqlDbReplaceColumnDefault<
 	Name extends string,
 	HasDefault extends true | null,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumnDefault<JsqlDbGetSchema<Db, Sch>, Tab, Name, HasDefault>>
+
+/**
+ * The schema an UNQUALIFIED table or view name is looked up in: the default schema, except in a SQLite chain, where
+ * `temp` is searched first (SQLT-25). A PostgreSQL chain pays one conditional.
+ */
+export type UnqualifiedSchema<Db extends JsqlDatabaseShape, Name extends string> =
+	DialectFact<Db, "ddl"> extends true
+		? JsqlDbGetData<Db, "temp", Name> extends null
+			? Db["defaultSchema"]
+			: "temp"
+		: Db["defaultSchema"]

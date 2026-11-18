@@ -22,7 +22,7 @@ import type {
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData, UnqualifiedSchema, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -127,11 +127,11 @@ type ParseUpdateFromTableRef<Tokens extends ParserMonad, Db extends JsqlDatabase
 								: never
 							: never
 						: never
-					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
+					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
 							: TblTry extends JsqlDataShape
-								? ParseUpdateAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry>
+								? ParseUpdateAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry>
 								: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
 						: never
 				: [R1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in UPDATE"]>, ParserRefErrorThirdSentinel]
@@ -334,7 +334,7 @@ type ParseUpdateFromClauseTableRef<
 								: never
 							: never
 						: never
-					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
+					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry2
 						? [TblTry2] extends [never]
 							? [
 									R1,
@@ -342,7 +342,7 @@ type ParseUpdateFromClauseTableRef<
 									ParserRefErrorThirdSentinel,
 								]
 							: TblTry2 extends JsqlDataShape
-								? ParseUpdateFromClauseTableAlias<R1, Db["defaultSchema"], A, TblTry2>
+								? ParseUpdateFromClauseTableAlias<R1, UnqualifiedSchema<Db, A>, A, TblTry2>
 								: [R1, never, ParserRefErrorThirdSentinel]
 						: never
 				: [R1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in UPDATE FROM"]>, ParserRefErrorThirdSentinel]

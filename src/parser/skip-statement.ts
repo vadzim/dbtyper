@@ -17,6 +17,33 @@ export type ParseSkipStatement<Tokens extends ParserMonad, DB extends JsqlDataba
 		? [SkipToken<Rest>, DB, Result]
 		: never
 
+/**
+ * `CREATE TRIGGER …` (SQLite, SQLT-23), at the token after `TRIGGER`: skipped as ONE statement although its body
+ * `BEGIN stmt; stmt; END` holds `;`. The body ends at the first `END` that is not the end of a `CASE`.
+ */
+export type ParseSkipTrigger<Tokens extends ParserMonad, DB extends JsqlDatabaseShape> =
+	SkipBracketedUntil<Tokens, TokenKey<"begin" | ";"> | TokenEot> extends [
+		infer Rest extends ParserMonad,
+		infer Result,
+	]
+		? Result extends DbtyperErrorShape
+			? [SkipToken<Rest>, DB, Result]
+			: PeekToken<Rest> extends TokenKey<"begin">
+				? SkipTriggerBody<SkipToken<Rest>, DB, []>
+				: [SkipToken<Rest>, DB, Result]
+		: never
+
+type SkipTriggerBody<Tokens extends ParserMonad, DB extends JsqlDatabaseShape, CaseDepth extends unknown[]> =
+	PeekToken<Tokens> extends TokenEot
+		? [Tokens, DB, FormatError<Errors["TOKEN_NOT_FOUND"], []>]
+		: PeekToken<Tokens> extends TokenKey<"case">
+			? SkipTriggerBody<SkipToken<Tokens>, DB, [...CaseDepth, 0]>
+			: PeekToken<Tokens> extends TokenKey<"end">
+				? CaseDepth extends [unknown, ...infer Tail]
+					? SkipTriggerBody<SkipToken<Tokens>, DB, Tail>
+					: ParseSkipStatement<SkipToken<Tokens>, DB>
+				: SkipTriggerBody<SkipToken<Tokens>, DB, CaseDepth>
+
 export type SkipFailedExpression<
 	Tokens extends ParserMonad,
 	Error extends DbtyperErrorShape,

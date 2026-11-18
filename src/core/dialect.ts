@@ -40,6 +40,9 @@ export type DialectName = keyof Dialects
  * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
+ * SQLite DDL facts (SQLT-18…SQLT-26, #70), one flag: `ddl`: `main`/`temp` instead of schemas, CREATE TEMP, short `AS (…)`
+ * generated columns, `ON CONFLICT` on constraints, full column definitions in ADD COLUMN with its restrictions, trigger
+ * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "builtin" = the PostgreSQL built-ins of the expression
  * parser plus the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  */
@@ -52,6 +55,7 @@ export type Dialects = {
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
+		ddl: false
 		functionCatalog: "builtin"
 	}
 	sqlite: {
@@ -62,6 +66,7 @@ export type Dialects = {
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
+		ddl: true
 		functionCatalog: "sqlite"
 	}
 }
@@ -99,6 +104,12 @@ export type DialectOnlyConstructs = {
 	"sqlite-insert-or": { only: "sqlite"; name: "INSERT OR <conflict action>"; hint: "Use ON CONFLICT" }
 	"sqlite-replace-into": { only: "sqlite"; name: "REPLACE INTO"; hint: "Use INSERT … ON CONFLICT … DO UPDATE" }
 	"pg-serial": { only: "postgres"; name: "SERIAL type"; hint: "Use INTEGER PRIMARY KEY" }
+	"pg-alter-column": {
+		only: "postgres"
+		name: "ALTER COLUMN"
+		hint: "Rebuild the table (create, copy, drop, rename)"
+	}
+	"pg-add-constraint": { only: "postgres"; name: "ADD CONSTRAINT"; hint: "Declare it in CREATE TABLE" }
 	// SQLT-53 (#76)
 	"pg-array-ctor": { only: "postgres"; name: "`ARRAY[…]`"; hint: "Use json_array(…)" }
 	"pg-array-type": { only: "postgres"; name: "Array type `T[]`"; hint: "Use a JSON TEXT column" }
@@ -114,7 +125,7 @@ export type DialectOnlyConstructs = {
 	"pg-array-overlap": { only: "postgres"; name: "`&&` operator"; hint: "Use json_each(…)" }
 	"pg-lateral": { only: "postgres"; name: "LATERAL"; hint: "Use a correlated subquery" }
 	"pg-create-type": { only: "postgres"; name: "CREATE TYPE"; hint: "Use TEXT with a CHECK constraint" }
-	"pg-create-schema": { only: "postgres"; name: "CREATE SCHEMA"; hint: "Use ATTACH DATABASE" }
+	"pg-create-schema": { only: "postgres"; name: "CREATE SCHEMA"; hint: "SQLite has no schemas" }
 	"pg-create-extension": { only: "postgres"; name: "CREATE EXTENSION"; hint: "" }
 	"pg-grant": { only: "postgres"; name: "GRANT"; hint: "SQLite has no users or privileges" }
 	"pg-on-conflict-constraint": {
@@ -157,6 +168,12 @@ export type DialectPhrases = {
 	"insert or ignore": "sqlite-insert-or-ignore"
 	"insert or": "sqlite-insert-or"
 	"replace into": "sqlite-replace-into"
+	"alter column": "pg-alter-column"
+	"add constraint": "pg-add-constraint"
+	"add primary key": "pg-add-constraint"
+	"add unique": "pg-add-constraint"
+	"add foreign key": "pg-add-constraint"
+	"add check": "pg-add-constraint"
 	// SQLT-53 (#76). Constructs that need parser context (`ANY`, `DISTINCT ON`, `DELETE … USING`, type names) are checked by their parsers.
 	"array [": "pg-array-ctor"
 	"[ ]": "pg-array-type"

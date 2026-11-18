@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetData, JsqlDbGetView, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData, JsqlDbGetView, JsqlDbReplaceData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenIdent, TokenKey, AsIdent } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -25,7 +25,7 @@ type ParseDropViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape,
 						? DropViewTarget<SkipToken<R2>, Db, IfExists, A, B>
 						: SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_VIEW_NAME_IN_DROP_VIEW"], []>>
 					: never
-				: DropViewTarget<R1, Db, IfExists, Db["defaultSchema"], A>
+				: DropViewTarget<R1, Db, IfExists, UnqualifiedSchema<Db, A>, A>
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_VIEW_NAME_IN_DROP_VIEW"], []>>
 

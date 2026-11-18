@@ -1,16 +1,18 @@
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
 import type {
 	JsqlDbGetTable,
+	UnqualifiedSchema,
 	JsqlDbGetData,
 	JsqlDbReplaceColumn,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
 	JsqlDbGetColumn,
 	JsqlDbGetColumnType,
+	JsqlDbReplaceData,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -18,6 +20,8 @@ import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { DialectFact } from "../core/dialect.ts"
+import type { ParseOneColumnAfterColName } from "./parse-create-table.ts"
 
 type SkipUntilCommaOrSemi<Tokens extends ParserMonad> = SkipBracketedUntil<
 	Tokens,
@@ -31,7 +35,7 @@ type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDa
 				? [SkipToken<Rd1>, null, A, B]
 				: [Rd1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>, null, null]
 			: never
-		: [AfterFirst, null, Db["defaultSchema"], A]
+		: [AfterFirst, null, UnqualifiedSchema<Db, A>, A]
 
 type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenIdent<infer A extends string>
@@ -55,7 +59,7 @@ type ParseAlterAddColumnAfterColName<
 			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>]
 		: never
 
-type FinishAlterStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+export type FinishAlterStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["ALTER TABLE"]>>
@@ -93,7 +97,11 @@ type ParseAlterAddColumn<
 					: never
 				: ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
 					? PeekToken<R1> extends TokenIdent<infer Col extends string>
-						? ParseAlterAddColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, Col>
+						? DialectFact<Db, "ddl"> extends true
+							? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+								? ParseOneColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, readonly [], Col, true>
+								: SkipFailedStatement<R1, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [Col]>>
+							: ParseAlterAddColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, Col>
 						: SkipFailedExpression<
 									R1,
 									FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after ADD in ALTER TABLE"]>
@@ -172,6 +180,24 @@ type ParseAlterRenameAfterOldName<
 			: SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_TO_IN_RENAME_COLUMN"], []>>
 		: SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_OLD_COLUMN_NAME_IN_RENAME_COLUMN"], []>>
 
+/** `RENAME TO new_name` after TO: the table keeps its schema (SQLT-20). */
+type ParseAlterRenameTable<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+> =
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer New extends string>
+		? JsqlDbGetData<Db, Sch, New> extends null
+			? JsqlDbGetData<Db, Sch, Tab> extends infer Data extends JsqlDataShape
+				? FinishAlterStatement<
+						SkipToken<Tokens>,
+						JsqlDbReplaceData<JsqlDbReplaceData<Db, Sch, Tab, null>, Sch, New, Data>
+					>
+				: never
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA"], []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_TABLE_NAME"], ["after RENAME TO"]>>
+
 type ParseAlterRenameColumn<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -180,11 +206,13 @@ type ParseAlterRenameColumn<
 > =
 	PeekToken<Tokens> extends TokenKey<"rename">
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
-			? ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
-				? PeekToken<R1> extends infer Told
-					? ParseAlterRenameAfterOldName<SkipToken<R1>, Told, Db, Sch, Tab>
+			? PeekToken<R0> extends TokenKey<"to">
+				? ParseAlterRenameTable<SkipToken<R0>, Db, Sch, Tab>
+				: ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
+					? PeekToken<R1> extends infer Told
+						? ParseAlterRenameAfterOldName<SkipToken<R1>, Told, Db, Sch, Tab>
+						: never
 					: never
-				: never
 			: never
 		: never
 

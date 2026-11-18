@@ -29,7 +29,7 @@ import type {
 	HiddenColumnsOf,
 } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
-import type { JsqlDbGetData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -237,7 +237,7 @@ type ParseSelectWithCtesAfterSubquery<
 		: never
 
 /** Optional `(col, …)` after a CTE name. Returns `[Tokens, names | error]`. */
-type ParseCteColumnList<Tokens extends ParserMonad> =
+export type ParseCteColumnList<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"("> ? ParseCteColumnNames<SkipToken<Tokens>, []> : [Tokens, null]
 
 type ParseCteColumnNames<Tokens extends ParserMonad, Acc extends readonly string[]> =
@@ -252,7 +252,7 @@ type ParseCteColumnNames<Tokens extends ParserMonad, Acc extends readonly string
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
 
 /** Apply the CTE column list (names by position); no list keeps the query's own names. */
-type ApplyCteColumnList<Res extends JsqlSelectStatementResult, Cols> = Cols extends readonly string[]
+export type ApplyCteColumnList<Res extends JsqlSelectStatementResult, Cols> = Cols extends readonly string[]
 	? RenameOutputColumns<Res, Cols>
 	: Res
 
@@ -1633,7 +1633,8 @@ type ParseOptionalAs<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? AsIdent<PeekToken<R1>> extends TokenIdent<infer N extends string>
-				? [SkipToken<R1>, N]
+				? // SQLT-28: a SQLite result key is the alias as written
+					[SkipToken<R1>, PeekToken<R1> extends { written: infer W extends string } ? W : N]
 				: [R1, undefined]
 			: never
 		: [Tokens, undefined]
@@ -1835,8 +1836,8 @@ type ParseFromTableAfterLeadingIdent<
 			: never
 		: A extends keyof Scope
 			? ParseAliasAfterCTE<R1, A, CteAsFromEntry<Scope[A]>, Scope>
-			: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer Tbl extends JsqlDataShape
-				? ParseAliasAfterTable<R1, Db["defaultSchema"], A, Tbl, Scope>
+			: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer Tbl extends JsqlDataShape
+				? ParseAliasAfterTable<R1, UnqualifiedSchema<Db, A>, A, Tbl, Scope>
 				: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
 /** Tokens that end a FROM item without an alias. */
@@ -2432,17 +2433,22 @@ type ParamSelectOut<As, P extends string, Sql extends SqlTypeShape> = As extends
 
 type OutNameFromExprAst<Ast extends ScalarExprAst, As, AllItems extends readonly RawSelectItem[]> = As extends string
 	? As
-	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
-		? OutNameFromParts<P, undefined>
-		: Ast extends { kind: "function_call" | "window_function"; name: infer N extends string }
-			? // SEL-8: PostgreSQL names an unaliased function call (aggregate included) by the function name.
-				Lowercase<N>
-			: Ast extends { kind: "pg_cast" | "sql_cast"; expr: infer Inner extends ScalarExprAst }
-				? // EXPR-24: an unaliased cast is named after the cast operand (`id::uuid` -> `id`).
-					OutNameFromExprAst<Inner, undefined, AllItems>
-				: AllItems extends readonly [RawSelectItem]
-					? "?column?"
-					: "__invalid_select_expr_alias__"
+	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts; written: infer W extends string }
+		? // SQLT-28: a SQLite result key is the column name as written in the query
+			W extends ""
+			? OutNameFromParts<P, undefined>
+			: W
+		: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+			? OutNameFromParts<P, undefined>
+			: Ast extends { kind: "function_call" | "window_function"; name: infer N extends string }
+				? // SEL-8: PostgreSQL names an unaliased function call (aggregate included) by the function name.
+					Lowercase<N>
+				: Ast extends { kind: "pg_cast" | "sql_cast"; expr: infer Inner extends ScalarExprAst }
+					? // EXPR-24: an unaliased cast is named after the cast operand (`id::uuid` -> `id`).
+						OutNameFromExprAst<Inner, undefined, AllItems>
+					: AllItems extends readonly [RawSelectItem]
+						? "?column?"
+						: "__invalid_select_expr_alias__"
 
 /** First scope entry whose bound table matches `schema.table`. */
 type ScopeEntryForQualifiedName<Scope extends ScopeMap, Sch extends string, Tab extends string> = {

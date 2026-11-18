@@ -35,7 +35,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 				token: infer Word extends string
 				rest: infer Tail extends string
 			}
-			? Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+			? ReadWord<Head, Word, Tail, Syntax>
 			: never
 		: Head extends "/"
 			? Rest extends `*${string}`
@@ -47,70 +47,117 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 					: ReadOperator<S>
 				: Head extends "`"
 					? Rest extends `${infer Name}\`${infer Rest2}`
-						? Tagged<Return<TokenIdent<Name>, Rest2>, "sqlite-backtick-ident">
+						? Tagged<QuotedIdent<Name, Rest2, Syntax>, "sqlite-backtick-ident">
 						: ReadOperator<S>
-					: Head extends "@" | "?"
-						? ReadSqliteParamOrOperator<S, Head, Rest, Syntax>
-						: Head extends OperatorChars
-							? ReadOperator<S>
-							: Head extends Digit
-								? GetNumber<Rest, Head>
-								: Head extends "."
-									? Rest extends `${infer Second}${infer Rest2}`
-										? Second extends Digit
-											? GetNumberFrac<Rest2, `${Head}${Second}`>
+					: Head extends "["
+						? "dialect:sqlite" extends Syntax
+							? Rest extends `${infer Name}]${infer Rest2}`
+								? // `text[]`, `array[1, 2]`, `array['a']`, `a[1]` keep their brackets (SQLT-53)
+									Name extends
+										| ""
+										| `${string},${string}`
+										| `${string}'${string}`
+										| `${Digit}${string}`
+									? Return<TokenKey<Head>, Rest>
+									: QuotedIdent<Name, Rest2, Syntax>
+								: Return<TokenKey<Head>, Rest>
+							: Return<TokenKey<Head>, Rest>
+						: Head extends "@" | "?"
+							? ReadSqliteParamOrOperator<S, Head, Rest, Syntax>
+							: Head extends OperatorChars
+								? ReadOperator<S>
+								: Head extends Digit
+									? GetNumber<Rest, Head>
+									: Head extends "."
+										? Rest extends `${infer Second}${infer Rest2}`
+											? Second extends Digit
+												? GetNumberFrac<Rest2, `${Head}${Second}`>
+												: Return<TokenKey<".">, Rest>
 											: Return<TokenKey<".">, Rest>
-										: Return<TokenKey<".">, Rest>
-									: Head extends '"'
-										? Rest extends `${infer String}"${infer Rest}`
-											? Return<TokenIdent<String>, Rest>
-											: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
-										: Head extends "\x20" | "\n" | "\r" | "\t"
-											? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
-											: Head extends "'"
-												? ReadSingleQuotedString<Rest>
-												: Head extends ":"
-													? Rest extends `${infer Next}${infer Rest2}`
-														? Next extends ":"
-															? Return<TokenKey<"::">, Rest2>
-															: Next extends TokenChar
-																? "named-params" extends Syntax
-																	? ReadTokenChars<Rest2> extends {
-																			token: infer Token extends string
-																			rest: infer Rest3 extends string
-																		}
-																		? Return<TokenParam<`${Next}${Token}`>, Rest3>
-																		: never
-																	: Return<TokenKey<":">, Rest>
-																: Return<TokenKey<":">, Rest>
-														: Return<TokenKey<":">, Rest>
-													: Head extends "$"
+										: Head extends '"'
+											? Rest extends `${infer String}"${infer Rest}`
+												? QuotedIdent<String, Rest, Syntax>
+												: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
+											: Head extends "\x20" | "\n" | "\r" | "\t"
+												? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
+												: Head extends "'"
+													? ReadSingleQuotedString<Rest, Syntax>
+													: Head extends ":"
 														? Rest extends `${infer Next}${infer Rest2}`
-															? Next extends "$" | StartTokenChar
-																? IsSqliteNamedParam<Syntax, Next> extends true
-																	? ReadTokenChars<Rest2> extends {
-																			token: infer Token extends string
-																			rest: infer Rest3 extends string
-																		}
-																		? Return<TokenParam<`${Next}${Token}`>, Rest3>
-																		: never
-																	: "dollar-strings" extends Syntax
-																		? Tagged<
-																				ReadDollarString<Rest>,
-																				"pg-dollar-string"
-																			>
-																		: IsDialectForbidden<
-																					Syntax,
-																					"pg-dollar-string"
-																			  > extends true
-																			? ReadDollarString<Rest> extends Return<
-																					infer Str extends
-																						TokenString<string>,
-																					infer Rest3 extends string
+															? Next extends ":"
+																? Return<TokenKey<"::">, Rest2>
+																: Next extends TokenChar
+																	? "named-params" extends Syntax
+																		? ReadTokenChars<Rest2> extends {
+																				token: infer Token extends string
+																				rest: infer Rest3 extends string
+																			}
+																			? Return<
+																					TokenParam<`${Next}${Token}`>,
+																					Rest3
 																				>
-																				? Tagged<
-																						Return<Str, Rest3>,
+																			: never
+																		: Return<TokenKey<":">, Rest>
+																	: Return<TokenKey<":">, Rest>
+															: Return<TokenKey<":">, Rest>
+														: Head extends "$"
+															? Rest extends `${infer Next}${infer Rest2}`
+																? Next extends "$" | StartTokenChar
+																	? IsSqliteNamedParam<Syntax, Next> extends true
+																		? ReadTokenChars<Rest2> extends {
+																				token: infer Token extends string
+																				rest: infer Rest3 extends string
+																			}
+																			? Return<
+																					TokenParam<`${Next}${Token}`>,
+																					Rest3
+																				>
+																			: never
+																		: "dollar-strings" extends Syntax
+																			? Tagged<
+																					ReadDollarString<Rest>,
+																					"pg-dollar-string"
+																				>
+																			: IsDialectForbidden<
+																						Syntax,
 																						"pg-dollar-string"
+																				  > extends true
+																				? ReadDollarString<Rest> extends Return<
+																						infer Str extends
+																							TokenString<string>,
+																						infer Rest3 extends string
+																					>
+																					? Tagged<
+																							Return<Str, Rest3>,
+																							"pg-dollar-string"
+																						>
+																					: Return<
+																							FormatError<
+																								Errors["UNEXPECTED_TOKEN"],
+																								[SomeSymbols<S>]
+																							>,
+																							S
+																						>
+																				: Return<
+																						FormatError<
+																							Errors["UNEXPECTED_TOKEN"],
+																							[SomeSymbols<S>]
+																						>,
+																						S
+																					>
+																	: Next extends NonZeroDigit
+																		? "indexed-params" extends Syntax
+																			? Tagged<
+																					ReadIndexedParam<Next, Rest2>,
+																					"pg-positional-param"
+																				>
+																			: IsDialectForbidden<
+																						Syntax,
+																						"pg-positional-param"
+																				  > extends true
+																				? Tagged<
+																						ReadIndexedParam<Next, Rest2>,
+																						"pg-positional-param"
 																					>
 																				: Return<
 																						FormatError<
@@ -119,49 +166,21 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 																						>,
 																						S
 																					>
-																			: Return<
-																					FormatError<
-																						Errors["UNEXPECTED_TOKEN"],
-																						[SomeSymbols<S>]
-																					>,
-																					S
-																				>
-																: Next extends NonZeroDigit
-																	? "indexed-params" extends Syntax
-																		? Tagged<
-																				ReadIndexedParam<Next, Rest2>,
-																				"pg-positional-param"
+																		: Return<
+																				FormatError<
+																					Errors["UNEXPECTED_TOKEN"],
+																					[SomeSymbols<S>]
+																				>,
+																				S
 																			>
-																		: IsDialectForbidden<
-																					Syntax,
-																					"pg-positional-param"
-																			  > extends true
-																			? Tagged<
-																					ReadIndexedParam<Next, Rest2>,
-																					"pg-positional-param"
-																				>
-																			: Return<
-																					FormatError<
-																						Errors["UNEXPECTED_TOKEN"],
-																						[SomeSymbols<S>]
-																					>,
-																					S
-																				>
-																	: Return<
-																			FormatError<
-																				Errors["UNEXPECTED_TOKEN"],
-																				[SomeSymbols<S>]
-																			>,
-																			S
-																		>
-															: Return<
-																	FormatError<
-																		Errors["UNEXPECTED_TOKEN"],
-																		[SomeSymbols<S>]
-																	>,
-																	S
-																>
-														: Return<TokenKey<Head>, Rest>
+																: Return<
+																		FormatError<
+																			Errors["UNEXPECTED_TOKEN"],
+																			[SomeSymbols<S>]
+																		>,
+																		S
+																	>
+															: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
 
 type Return<Result, Rest> = [Result, Rest]
@@ -257,19 +276,59 @@ type ReadDollarString<S extends string> = S extends `${infer Head}${infer Rest}`
 			: Return<FormatError<Errors["WRONG_STRING_TAG"], []>, S>
 	: Return<FormatError<Errors["WRONG_STRING_TAG"], []>, S>
 
-type ReadSingleQuotedString<S extends string> = S extends `${infer P1}'${infer R1}`
+/**
+ * A word: identifier or keyword, lower-cased. In a SQLite chain (SQLT-27, SQLT-28) an identifier also remembers how it
+ * was written (`written`), because a result key is named as written in the query; `X'…'` is a blob literal (SQLT-29).
+ */
+type ReadWord<
+	Head extends string,
+	Word extends string,
+	Tail extends string,
+	Syntax extends string,
+> = "dialect:sqlite" extends Syntax
+	? Word extends ""
+		? Head extends "x" | "X"
+			? Tail extends `'${infer Body}'${infer Rest2}`
+				? Return<TokenString<Body> & { blob: true }, Rest2>
+				: ReadSqliteWord<Head, Word, Tail>
+			: ReadSqliteWord<Head, Word, Tail>
+		: ReadSqliteWord<Head, Word, Tail>
+	: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+
+type ReadSqliteWord<Head extends string, Word extends string, Tail extends string> =
+	CheckIdentOrKey<Lowercase<`${Head}${Word}`>> extends infer T
+		? T extends TokenIdent<string>
+			? WithWritten<T, `${Head}${Word}`, Tail>
+			: Return<T, Tail>
+		: never
+
+/** A quoted identifier (`"x"`, and in SQLite `` `x` `` and `[x]`): its case is kept, except in SQLite, where names match case-insensitively (SQLT-27). */
+type QuotedIdent<Name extends string, Rest extends string, Syntax extends string> = "dialect:sqlite" extends Syntax
+	? WithWritten<TokenIdent<Lowercase<Name>>, Name, Rest>
+	: Return<TokenIdent<Name>, Rest>
+
+/** The identifier token remembers how it was written, only when that differs from its lower-case value (cheaper tokens). */
+type WithWritten<T extends TokenIdent<string>, Written extends string, Rest extends string> =
+	Lowercase<Written> extends Written ? Return<T, Rest> : Return<T & { written: Written }, Rest>
+
+type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`
-		? ReadSingleQuotedString<R2> extends Return<TokenString<infer P2 extends string>, infer R3 extends string>
+		? ReadSingleQuotedString<R2, Syntax> extends Return<
+				TokenString<infer P2 extends string>,
+				infer R3 extends string
+			>
 			? Return<TokenString<`${P1}'${P2}`>, R3>
 			: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
 		: SkipSpaces<R1> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
-				? ReadSingleQuotedString<R5> extends Return<
-						TokenString<infer P6 extends string>,
-						infer R6 extends string
-					>
-					? Return<TokenString<`${P1}${P6}`>, R6>
-					: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
+				? "dialect:sqlite" extends Syntax
+					? Return<TokenString<P1>, R4>
+					: ReadSingleQuotedString<R5, Syntax> extends Return<
+								TokenString<infer P6 extends string>,
+								infer R6 extends string
+						  >
+						? Return<TokenString<`${P1}${P6}`>, R6>
+						: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
 				: Return<TokenString<P1>, R4>
 			: never
 	: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
