@@ -3,11 +3,12 @@ import postgres from "postgres"
 import { createDriver, type SqlDriver, type SqlDriverParams } from "../core/sql-database.ts"
 import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
 import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
-import type { PostgresTypeMap } from "./postgres-type-map.ts"
+import type { PostgresParamTypeMap, PostgresTypeMap } from "./postgres-type-map.ts"
 
-export type PostgresDriverConfig = {
+export type PostgresDriverConfig<Bigint extends boolean = false> = {
 	dialect: "postgres"
-	scalarTypes: PostgresTypeMap
+	scalarTypes: PostgresTypeMap<Bigint>
+	paramTypes: PostgresParamTypeMap<Bigint>
 	syntax: "dollar-strings" | "named-params" | "indexed-params"
 }
 
@@ -19,6 +20,12 @@ export type PostgresSqlDriverConfig = {
 	 * @default 50
 	 */
 	pageSize?: number
+	/**
+	 * PGT-4: type-level switch for `int8` → `bigint`. Set it only when your `postgres` client parses int8 to BigInt
+	 * (dbtyper never changes the client's parsers, PGT-3).
+	 * @default false
+	 */
+	bigint?: boolean
 }
 
 function pgQueryArgs(text: string, params?: SqlDriverParams): { text: string; values: readonly unknown[] } {
@@ -75,7 +82,13 @@ function createConnectedPostgresDriver(
  * Accepts positional parameter arrays or `:name` maps; `:name` tokens are rewritten to `$1`, `$2`, … (skipping
  * PostgreSQL `::` casts and `:name` inside single-quoted literals).
  */
-export function postgresSqlDriver(config: PostgresSqlDriverConfig): SqlDriver<PostgresDriverConfig> {
+export function postgresSqlDriver(
+	config: PostgresSqlDriverConfig & { bigint: true },
+): SqlDriver<PostgresDriverConfig<true>>
+export function postgresSqlDriver(config: PostgresSqlDriverConfig): SqlDriver<PostgresDriverConfig>
+export function postgresSqlDriver(
+	config: PostgresSqlDriverConfig,
+): SqlDriver<PostgresDriverConfig> | SqlDriver<PostgresDriverConfig<true>> {
 	const pageSize = config.pageSize ?? 50
 	return createConnectedPostgresDriver(config.sql, pageSize)
 }

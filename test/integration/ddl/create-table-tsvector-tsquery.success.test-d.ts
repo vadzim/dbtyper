@@ -18,8 +18,8 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
-			search_vector: unknown
-			search_query: unknown
+			search_vector: string
+			search_query: string
 		}[]
 	>(),
 )

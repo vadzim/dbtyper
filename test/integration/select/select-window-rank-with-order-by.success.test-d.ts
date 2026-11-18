@@ -18,7 +18,7 @@ expectType<typeof _result>(
 		{
 			id: number
 			product: string
-			rank_num: bigint
+			rank_num: string
 		}[]
 	>(),
 )

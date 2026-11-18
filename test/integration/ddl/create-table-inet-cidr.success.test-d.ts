@@ -16,8 +16,8 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
-			ip: unknown
-			subnet: unknown
+			ip: string
+			subnet: string
 		}[]
 	>(),
 )

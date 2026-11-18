@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: CORE-6 bigint parameter against bigint column
 const _result = await _db.query(`select * from t where n = :x;`, { x: 1n })
 
-expectType<typeof _result>(toBe<Array<{ n: bigint }>>())
+expectType<typeof _result>(toBe<Array<{ n: string }>>())

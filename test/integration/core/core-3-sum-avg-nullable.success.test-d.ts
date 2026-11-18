@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: CORE-3: sum and avg are nullable
 const _result = await _db.query(`select sum(id) as s, avg(id) as v from users;`)
 
-expectType<typeof _result>(toBe<{ s: number | null; v: number | null }[]>())
+expectType<typeof _result>(toBe<{ s: string | null; v: string | null }[]>())

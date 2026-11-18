@@ -17,7 +17,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			small: number
-			count: bigint
+			count: string
 			id: number
 		}[]
 	>(),

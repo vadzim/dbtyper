@@ -51,7 +51,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - Optional **`IF NOT EXISTS`**.
 - **Qualified** `schema.table` or **unqualified** `table` (uses `defaultSchema`); schema must exist in the shape.
 - **`(` … `)`** column list, then **`;`** or end.
-- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`SqlDatabase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). Unlisted spellings map to **`unknown`** at the TS level.
+- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`SqlDatabase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). PostgreSQL (PGT-2…PGT-11): `int8`/`numeric` → `string` (`int8` → `bigint` with `postgresSqlDriver({ sql, bigint: true })`), `date`/`timestamp[tz]` → `Date`, `bytea` → `Uint8Array`, `json[b]` → `JsonValue`; dbtyper never changes the client parsers. A spelling not in the map is error 3506 (CORE-14).
 - Optional **`NULL`** / **`NOT NULL`** after the type.
 - **`CONSTRAINT` …** lines: enough structure to **skip** a typical `CONSTRAINT name PRIMARY KEY ( … )` (balanced parens); constraints are **not** merged into `JsqlTableShape` from this path.
 - With **`IF NOT EXISTS`** when the table **already** exists: table body is **skipped to `;`** without merging.

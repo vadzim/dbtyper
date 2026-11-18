@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: CORE-3: count is non-null
 const _result = await _db.query(`select count(*) as c, count(email) as d from users;`)
 
-expectType<typeof _result>(toBe<{ c: bigint; d: bigint }[]>())
+expectType<typeof _result>(toBe<{ c: string; d: string }[]>())
