@@ -461,6 +461,3 @@ type FinishSelectStatement<
 				: never
 			: never
 		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params, Items>
-
-// parse-expression.ts (batch G's area, #116) still imports these from here.
-export type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select-subquery.ts"

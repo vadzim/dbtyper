@@ -9,7 +9,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select.ts"
+import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select-subquery.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type {
