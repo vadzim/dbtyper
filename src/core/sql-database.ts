@@ -36,13 +36,13 @@ export type DriverConfig = {
 }
 
 /** What `createDriver` accepts: a config that may lack `dialect`; `sqlMigrations` then rejects the driver (DSEL-8). */
-export type DriverConfigDraft = Omit<DriverConfig, "dialect"> & { dialect?: DialectName }
+type DriverConfigDraft = Omit<DriverConfig, "dialect"> & { dialect?: DialectName }
 
 /**
  * The driver config with only the parameter style the call's values allow. `syntax` is replaced, not intersected:
  * a driver whose syntax is only parameter styles (SQLite) would otherwise reduce the whole config to `never`.
  */
-export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = {
+type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = {
 	dialect: Config["dialect"]
 	scalarTypes: Config["scalarTypes"]
 	syntax: ApplyAllowedQueryParams<
@@ -64,8 +64,7 @@ type GetDriverConfig<S extends SqlDriver<DriverConfigDraft>> =
 	S extends SqlDriver<infer Driver> ? (Driver extends DriverConfig ? Driver : never) : never
 
 /**
- * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`
- * (lead, for now 2026-11-18).
+ * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`.
  */
 type RequireDriverDialect<D> =
 	D extends SqlDriver<infer Config>
@@ -90,17 +89,12 @@ export function createDriver<Config extends DriverConfigDraft>(methods: {
 }
 
 /** Configuration for {@link sqlMigrations}: logical schema name (default `public`) plus the runtime {@link SqlDriver}. */
-export type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfigDraft> = SqlDriver<DriverConfig>> = {
+type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfigDraft> = SqlDriver<DriverConfig>> = {
 	defaultSchema?: string
 	driver: Driver
 }
 
-/** Values object matching `:name` slots implied by {@link ExpressionParamsShape}. */
-export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
-	[K in keyof Params]: Params[K] extends { ts: infer T } ? T : never
-}
-
-export type SqlDatabase<DefaultSchema extends string = "public"> = {
+type SqlDatabase<DefaultSchema extends string = "public"> = {
 	defaultSchema: DefaultSchema
 	schemas: {}
 }
@@ -122,7 +116,7 @@ type InitialDatabase<
 		}
 	: SqlDatabase<DS>
 
-export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
+interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
 		statement: Source extends CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>
 			? Source
@@ -150,7 +144,7 @@ export function sqlMigrations<D extends SqlDriver<DriverConfigDraft>, const DS e
 	return result
 }
 
-export type MigrationExport = {
+type MigrationExport = {
 	source: string
 	path: string
 }
@@ -180,7 +174,7 @@ type NonIndexKey<K extends PropertyKey> = string extends K
  * Pretty-printed `JsqlDatabaseShape` for IDE hints: homomorphic mapped types keep index keys from
  * `schemas` / `sets` / `columns`; remapping with {@link NonIndexKey} drops those keys.
  */
-export type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
+type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 	defaultSchema: Db["defaultSchema"]
 	schemas: Db["schemas"] extends infer Schemas
 		? {
@@ -233,7 +227,7 @@ type Migrations = {
 	prev: Migrations | null
 }
 
-export class DBMigrations {
+class DBMigrations {
 	constructor(defaultSchema: string, migrations: Migrations | null = null, driver: SqlDriver<DriverConfig>) {
 		this.#migrations = migrations
 		this.#defaultSchema = defaultSchema
@@ -524,7 +518,7 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 	defaultSchema: string
 }
 
-export class DataBaseImpl {
+class DataBaseImpl {
 	constructor(migrations: readonly MigrationExport[], defaultSchema: string, dbInterface: SqlDriver<DriverConfig>) {
 		this.migrations = migrations
 		this.defaultSchema = defaultSchema

@@ -40,11 +40,6 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	constraints?: unknown
 }
 
-export type JsqlConstraintEntry =
-	| { kind: "primary_key"; columns: string[] }
-	| { kind: "unique"; columns: string[] }
-	| { kind: "foreign_key"; refs: JsqlForeignKeyRef }
-
 export type JsqlColumnFactsEntry = {
 	default?: true | undefined
 	check?: true | undefined
@@ -54,16 +49,7 @@ export type JsqlColumnFactsEntry = {
 	nullability?: "not_null" | "nullable" | undefined
 }
 
-export type JsqlForeignKeyRef = {
-	from: string
-	columnPairs: JsqlFkColumnPair[]
-	toSchema: string | undefined
-	toTable: string
-}
-
-export type JsqlFkColumnPair = [local: string, referenced: string]
-
-export type JsqlReturningResult = {
+type JsqlReturningResult = {
 	returning: Record<string, SqlTypeShape> | null
 }
 

@@ -8,7 +8,7 @@ export type Errors = {
 	}
 }
 
-export type ErrorIds = keyof Errors
+type ErrorIds = keyof Errors
 
 export type ErrorCodes = Errors[ErrorIds]["code"]
 
@@ -102,7 +102,7 @@ type ErrorDescription = {
  * 6. Ensure no duplicate messages (compile-time check will catch this)
  * 7. Never reuse error code. If you delete error, mark that as OBSOLETE_<CODE>. The codes are used in online project help.
  */
-export const errors = {
+const errors = {
 	// Lexer/Tokenization Errors
 	UNCLOSED_QUOTED_IDENTIFIER: {
 		code: 1001,
@@ -185,6 +185,10 @@ export const errors = {
 	REGEXP_NEEDS_FUNCTION: {
 		code: 1917,
 		msg: ["REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB"],
+	},
+	TOO_MANY_STATEMENTS: {
+		code: 1919,
+		msg: ["A script may have at most 2500 statements; split it into several migrations"],
 	},
 	EXPECTED_CONFLICT_ACTION_AFTER_OR: {
 		code: 1918,
@@ -805,11 +809,6 @@ export const errors = {
 	UNKNOWN_COLUMN: {
 		code: 2300,
 		msg: ["Unknown column ", " in ", ""],
-	},
-	// Same code 2300 when the clause is not known at the point of resolution (ERR-8: no dangling " in ").
-	UNKNOWN_COLUMN_NO_CLAUSE: {
-		code: 2300,
-		msg: ["Unknown column ", ""],
 	},
 	OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET: {
 		code: 2301,

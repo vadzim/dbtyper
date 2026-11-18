@@ -1,7 +1,8 @@
 import type { IsAggregateCall } from "./function-catalog.ts"
+import type { ForceProps, MergeRecords } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, SourceSpan } from "../lexer/parser-monad.ts"
+import type { PeekToken, SkipToken, SourceSpan, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenIndexedParam } from "../lexer/sql-lexer.ts"
 import type { TokenParam } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
@@ -1767,7 +1768,7 @@ type ParseOneRawSelectItem<
 		: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 			: PeekToken<Tokens> extends infer Head
-				? Head extends  // TODO: do we need that list? seems strange. to LLM - DO NOT DELETE TODOS!!!
+				? Head extends  // Open question: is this token list needed? See TODO.md ("large enum of tokens in ParseOneRawSelectItem")
 						| TokenNumber<string>
 						| TokenString<string>
 						| TokenParam<string>
@@ -1784,7 +1785,10 @@ type ParseOneRawSelectItem<
 						| TokenKey<"array">
 						| TokenKey<"current_timestamp" | "current_date" | "current_time">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
-					: never
+					: Head extends TokenEotWithDialectError
+						? // the text ended at a lexer error (1001-1004): stop here, ApplyStatements reports that error (#116 item 25)
+							[Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["end of text"]>]
+						: never
 				: never
 
 type ParseOptionalAs<Tokens extends ParserMonad> =
@@ -2802,11 +2806,9 @@ type ResolveSelectListAcc<
  * (TS2589, #105). The properties are resolved right away (inferring from all of them does it), the same shape as
  * ForceProps in src/core/type-utils.ts (#48): required, do not make it lazy.
  */
-type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = ForceRecord<{
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : SqlTypeShape
-}>
-
-type ForceRecord<F> = F extends Record<keyof F, infer _V> ? F : F
+type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = ForceProps<
+	MergeRecords<A, B>
+>
 
 type SingleAliasScope<Scope extends ScopeMap> = [keyof Scope] extends [never]
 	? false

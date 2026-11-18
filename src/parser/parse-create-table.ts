@@ -1,3 +1,4 @@
+import type { MergeRecords } from "../core/type-utils.ts"
 import type {
 	JsqlDatabaseShape,
 	JsqlDataShape,
@@ -1305,16 +1306,16 @@ type OneCol<C extends ColumnDef> = C extends readonly [
 		}
 	: never
 
-type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
-}
-
 type MergeColPair<A extends ColPair, B extends ColPair> = {
 	cols: MergeRecords<A["cols"], B["cols"]>
 	facts: MergeRecords<A["facts"], B["facts"]>
 }
 
-/** Batched merge (chunks of 4) to keep conditional-type depth bounded on wide tables. */
+/**
+ * Batched merge (chunks of 4) to keep conditional-type depth bounded on wide tables. Found by trial: merging one
+ * column at a time made the recursion too deep ("Type instantiation is excessively deep") at about 100 columns;
+ * the 4 comes from the unrolled shapes below, a bigger chunk only repeats more code (#105, #48).
+ */
 type ColumnsFromStack<S extends readonly ColumnDef[]> = S extends readonly []
 	? { cols: {}; facts: {} }
 	: S extends readonly [infer C0 extends ColumnDef]

@@ -52,7 +52,7 @@ export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlT
 export type EmptyExpressionParams = Record<never, never>
 
 /** Threaded through scalar parse for subqueries: catalog, `:param` bindings, outer aliases visible inside `(SELECT …)`. */
-export type ExprParseEnv = {
+type ExprParseEnv = {
 	db: JsqlDatabaseShape
 	params: ExpressionParamsShape
 	outerScope: ScopeMap
@@ -60,14 +60,11 @@ export type ExprParseEnv = {
 	noPostfixNot?: true
 }
 
-/** True when `T` is `unknown` or `any` (not other types). */
-export type IsUnknownOrAny<T> = 0 extends 1 & T ? true : unknown extends T ? (T extends unknown ? true : false) : false
-
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
 export type ScalarIdentParts = readonly [string] | readonly [string, string] | readonly [string, string, string]
 
 /** Comparison operator in {@link ScalarExprAst} `cmp` (resolved like PostgreSQL class rules). */
-export type ScalarCmpOp = "eq" | "ne" | "lt" | "le" | "gt" | "ge"
+type ScalarCmpOp = "eq" | "ne" | "lt" | "le" | "gt" | "ge"
 
 /**
  * Expression AST for SELECT-list parsing (arithmetic, boolean `AND`/`OR`/`NOT`, comparisons, `IS [NOT] NULL`, `IN (...)`, simple and searched `CASE`, etc.).
@@ -168,7 +165,7 @@ type EnumBetweenCheck<
 			: C1
 		: never
 
-export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
+type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 	infer H extends string,
 	...infer T extends readonly string[],
 ]
@@ -2812,7 +2809,7 @@ type CastToNamedType<Db, Ev extends SqlTypeShape, Schema extends string, N exten
 
 type DefaultSchemaOf<Db> = Db extends { defaultSchema: infer D extends string } ? D : ""
 
-export type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
+type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
 	? SqlNull
 	: N extends "text" | "varchar" | "character varying" | "char"
 		? SqlText

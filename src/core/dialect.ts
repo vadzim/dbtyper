@@ -25,7 +25,7 @@
  *   both flags, nothing is gated: that is dialect-neutral parsing, never reachable through `sqlMigrations`, which
  *   requires a driver with exactly one declared dialect.
  */
-import type { DbtyperErrorShape, Errors, FormatErrorOf } from "../dbtyper-error.ts"
+import type { Errors, FormatErrorOf } from "../dbtyper-error.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 
 /** The engines dbtyper types SQL for (DSEL-1). */
@@ -54,6 +54,12 @@ export type DialectName = keyof Dialects
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
+ * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
+ * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
+ * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
+ * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
+ * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
+ * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28).
  */
 export type Dialects = {
 	postgres: {
@@ -74,6 +80,15 @@ export type Dialects = {
 		exprKeys: "name"
 		castHint: "`::text`"
 		dmlInCte: true
+		lexer: {
+			bracketIdents: false
+			atParams: false
+			blobLiterals: false
+			foldQuoted: false
+			joinStrings: true
+			keepWritten: false
+			callableJoinWords: true
+		}
 	}
 	sqlite: {
 		title: "SQLite"
@@ -93,13 +108,41 @@ export type Dialects = {
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
 		dmlInCte: false
+		lexer: {
+			bracketIdents: true
+			atParams: true
+			blobLiterals: true
+			foldQuoted: true
+			joinStrings: false
+			keepWritten: true
+			callableJoinWords: false
+		}
 	}
 }
 
 /** The `Syntax` flag that names a chain's dialect. */
-export type DialectFlag<D extends DialectName> = `dialect:${D}`
+type DialectFlag<D extends DialectName> = `dialect:${D}`
 
-export type DialectFlags = DialectFlag<DialectName>
+type DialectFlags = DialectFlag<DialectName>
+
+/** The dialect a lexer `Syntax` names; without a dialect flag (low-level tests) the lexer reads PostgreSQL. */
+type LexerDialectOf<Syntax extends string> = [Extract<Syntax, DialectFlags>] extends [never]
+	? "postgres"
+	: Extract<Syntax, DialectFlags> extends DialectFlag<infer D>
+		? D
+		: never
+
+/** One lexer fact (see {@link Dialects}) of the dialect named by `Syntax`. The only place the lexer reads a dialect. */
+export type LexerFact<
+	Syntax extends string,
+	K extends keyof Dialects["postgres"]["lexer"],
+> = Dialects[LexerDialectOf<Syntax>]["lexer"][K]
+
+/** `Syntax` without the flags of the dialects whose lexer fact `K` is true (to read a text as another dialect would). */
+export type SyntaxWithoutLexerFact<Syntax extends string, K extends keyof Dialects["postgres"]["lexer"]> = Exclude<
+	Syntax,
+	DialectFlag<{ [D in DialectName]: Dialects[D]["lexer"][K] extends true ? D : never }[DialectName]>
+>
 
 /** Everything the lexer/parser `Syntax` union may hold: driver lexer features plus the dialect flag. */
 export type ParserSyntax = LexerFeatures | DialectFlags
@@ -115,7 +158,7 @@ export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: Dial
  * word of the SQL, upper-cased (`id::text` → `Use CAST(x AS TEXT)`).
  * The full PostgreSQL-only list is SQLT-53; rows are added by the issues that own them.
  */
-export type DialectOnlyConstructs = {
+type DialectOnlyConstructs = {
 	"pg-cast": { only: "postgres"; name: "`::` cast"; hint: "Use CAST(x AS <next>)" }
 	"pg-positional-param": { only: "postgres"; name: "`$n` positional parameter"; hint: "Use ? or ?NNN" }
 	"pg-dollar-string": { only: "postgres"; name: "Dollar-quoted string"; hint: "Use a single-quoted string" }
@@ -190,7 +233,7 @@ export type DialectConstruct = keyof DialectOnlyConstructs
  * Keyword phrases (1–3 lower-case words) that are a one-dialect construct, checked by the parser monad when it reads
  * the phrase's first token; the longest phrase wins. `<next>` in a hint is the word after the phrase.
  */
-export type DialectPhrases = {
+type DialectPhrases = {
 	"::": "pg-cast"
 	"insert or replace": "sqlite-insert-or-replace"
 	"insert or ignore": "sqlite-insert-or-ignore"
@@ -327,9 +370,3 @@ type FormatHint<Hint extends string, NextWord extends string> = Hint extends ""
 	: Hint extends `${infer Before}<next>${infer After}`
 		? `. ${Before}${NextWord extends "" ? "type" : Uppercase<NextWord>}${After}`
 		: `. ${Hint}`
-
-/** First recorded error wins; a later one is dropped. */
-export type KeepFirstDialectError<
-	Recorded extends DbtyperErrorShape | null,
-	New extends DbtyperErrorShape | null,
-> = Recorded extends DbtyperErrorShape ? Recorded : New

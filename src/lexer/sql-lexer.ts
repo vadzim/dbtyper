@@ -1,10 +1,10 @@
 import type { Dec } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { DialectConstruct, DialectOnlyError } from "../core/dialect.ts"
+import type { DialectConstruct, DialectOnlyError, LexerFact } from "../core/dialect.ts"
 
 export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"
-export type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
+type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 
 export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
 
@@ -50,7 +50,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 						? Tagged<QuotedIdent<Name, Rest2, Syntax>, "sqlite-backtick-ident">
 						: ReadOperator<S>
 					: Head extends "["
-						? "dialect:sqlite" extends Syntax
+						? LexerFact<Syntax, "bracketIdents"> extends true
 							? Rest extends `${infer Name}]${infer Rest2}`
 								? // `text[]`, `array[1, 2]`, `array['a']`, `a[1]` keep their brackets (SQLT-53)
 									Name extends
@@ -202,39 +202,36 @@ type IsDialectForbidden<Syntax extends string, Construct extends DialectConstruc
  * SQLite parameter forms beyond `:name` and `?` (SQLT-30, #65): `@name` and `$name` are named like `:name`, `?NNN`
  * is the numbered form of `?`. They exist in a SQLite chain only; elsewhere `@`, `$name` and `?` are what they were.
  */
-type IsSqliteNamedParam<Syntax extends string, Next extends string> = "dialect:sqlite" extends Syntax
-	? "named-params" extends Syntax
-		? Next extends "$"
-			? false
-			: true
+type IsSqliteNamedParam<Syntax extends string, Next extends string> =
+	LexerFact<Syntax, "atParams"> extends true
+		? "named-params" extends Syntax
+			? Next extends "$"
+				? false
+				: true
+			: false
 		: false
-	: false
 
-type ReadSqliteParamOrOperator<
-	S extends string,
-	Head extends string,
-	Rest extends string,
-	Syntax extends string,
-> = "dialect:sqlite" extends Syntax
-	? Rest extends `${infer Next}${infer Rest2}`
-		? Head extends "@"
-			? Next extends StartTokenChar
-				? "named-params" extends Syntax
-					? ReadTokenChars<Rest2> extends {
-							token: infer Token extends string
-							rest: infer Rest3 extends string
-						}
-						? Return<TokenParam<`${Next}${Token}`>, Rest3>
-						: never
+type ReadSqliteParamOrOperator<S extends string, Head extends string, Rest extends string, Syntax extends string> =
+	LexerFact<Syntax, "atParams"> extends true
+		? Rest extends `${infer Next}${infer Rest2}`
+			? Head extends "@"
+				? Next extends StartTokenChar
+					? "named-params" extends Syntax
+						? ReadTokenChars<Rest2> extends {
+								token: infer Token extends string
+								rest: infer Rest3 extends string
+							}
+							? Return<TokenParam<`${Next}${Token}`>, Rest3>
+							: never
+						: ReadOperator<S>
 					: ReadOperator<S>
-				: ReadOperator<S>
-			: Next extends NonZeroDigit
-				? "question-params" extends Syntax
-					? ReadIndexedParam<Next, Rest2>
+				: Next extends NonZeroDigit
+					? "question-params" extends Syntax
+						? ReadIndexedParam<Next, Rest2>
+						: ReadOperator<S>
 					: ReadOperator<S>
-				: ReadOperator<S>
+			: ReadOperator<S>
 		: ReadOperator<S>
-	: ReadOperator<S>
 
 type ReadIndexedParam<Head extends string, Rest extends string> =
 	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenInteger<string>, infer Rest2 extends string>
@@ -280,25 +277,27 @@ type ReadDollarString<S extends string> = S extends `${infer Head}${infer Rest}`
  * A word: identifier or keyword, lower-cased. In a SQLite chain (SQLT-27, SQLT-28) an identifier also remembers how it
  * was written (`written`), because a result key is named as written in the query; `X'…'` is a blob literal (SQLT-29).
  */
-type ReadWord<
-	Head extends string,
-	Word extends string,
-	Tail extends string,
-	Syntax extends string,
-> = "dialect:sqlite" extends Syntax
-	? Word extends ""
-		? Head extends "x" | "X"
+type ReadWord<Head extends string, Word extends string, Tail extends string, Syntax extends string> = Word extends ""
+	? Head extends "x" | "X"
+		? LexerFact<Syntax, "blobLiterals"> extends true
 			? Tail extends `'${infer Body}'${infer Rest2}`
 				? Return<TokenString<Body> & { blob: true }, Rest2>
-				: ReadSqliteWord<Head, Word, Tail>
-			: ReadSqliteWord<Head, Word, Tail>
-		: ReadSqliteWord<Head, Word, Tail>
-	: Lowercase<`${Head}${Word}`> extends "left" | "right"
-		? // `left(s, n)` and `right(s, n)` are functions (PGT-28); the join keywords are never followed by `(`
-			Tail extends `(${string}`
-			? Return<TokenIdent<Lowercase<`${Head}${Word}`>>, Tail>
+				: ReadPlainWord<Head, Word, Tail, Syntax>
+			: ReadPlainWord<Head, Word, Tail, Syntax>
+		: ReadPlainWord<Head, Word, Tail, Syntax>
+	: ReadPlainWord<Head, Word, Tail, Syntax>
+
+type ReadPlainWord<Head extends string, Word extends string, Tail extends string, Syntax extends string> =
+	LexerFact<Syntax, "keepWritten"> extends true
+		? ReadSqliteWord<Head, Word, Tail>
+		: LexerFact<Syntax, "callableJoinWords"> extends true
+			? Lowercase<`${Head}${Word}`> extends "left" | "right"
+				? // `left(s, n)` and `right(s, n)` are functions (PGT-28); the join keywords are never followed by `(`
+					Tail extends `(${string}`
+					? Return<TokenIdent<Lowercase<`${Head}${Word}`>>, Tail>
+					: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+				: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
 			: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
-		: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
 
 type ReadSqliteWord<Head extends string, Word extends string, Tail extends string> =
 	CheckIdentOrKey<Lowercase<`${Head}${Word}`>> extends infer T
@@ -308,9 +307,10 @@ type ReadSqliteWord<Head extends string, Word extends string, Tail extends strin
 		: never
 
 /** A quoted identifier (`"x"`, and in SQLite `` `x` `` and `[x]`): its case is kept, except in SQLite, where names match case-insensitively (SQLT-27). */
-type QuotedIdent<Name extends string, Rest extends string, Syntax extends string> = "dialect:sqlite" extends Syntax
-	? WithWritten<TokenIdent<Lowercase<Name>>, Name, Rest>
-	: Return<TokenIdent<Name>, Rest>
+type QuotedIdent<Name extends string, Rest extends string, Syntax extends string> =
+	LexerFact<Syntax, "foldQuoted"> extends true
+		? WithWritten<TokenIdent<Lowercase<Name>>, Name, Rest>
+		: Return<TokenIdent<Name>, Rest>
 
 /** The identifier token remembers how it was written, only when that differs from its lower-case value (cheaper tokens). */
 type WithWritten<T extends TokenIdent<string>, Written extends string, Rest extends string> =
@@ -326,7 +326,7 @@ type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S ex
 			: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
 		: SkipSpaces<R1> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
-				? "dialect:sqlite" extends Syntax
+				? LexerFact<Syntax, "joinStrings"> extends false
 					? Return<TokenString<P1>, R4>
 					: ReadSingleQuotedString<R5, Syntax> extends Return<
 								TokenString<infer P6 extends string>,
@@ -430,6 +430,11 @@ type SkipSpaces<S> =
 			: R
 		: never
 
+/**
+ * Skips up to 100 spaces per call; `SkipSpaces` calls it again while more are left. The bound keeps the recursion
+ * depth of one call under TypeScript's instantiation depth limit (found by trial on long indented SQL, #48, #105);
+ * it is a depth bound, not a limit on the number of spaces.
+ */
 type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
 	? [S, true]
 	: S extends `\x20${infer Rest}`
@@ -599,10 +604,10 @@ const serviceWordsMap = {
 	where: true,
 }
 
-export type ServiceWords = keyof typeof serviceWordsMap
+type ServiceWords = keyof typeof serviceWordsMap
 
 /** Words in {@link serviceWordsMap} that PostgreSQL does not reserve: accepted as unquoted names (STMT-3). */
-export type NonReservedWords =
+type NonReservedWords =
 	| "alter"
 	| "always"
 	| "begin"

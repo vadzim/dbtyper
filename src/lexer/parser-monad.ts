@@ -1,5 +1,12 @@
 import type { Inc } from "../core/type-utils.ts"
-import type { DialectConstruct, DialectOnlyError, DialectPhraseHeads, MatchDialectPhrase } from "../core/dialect.ts"
+import type {
+	DialectConstruct,
+	DialectOnlyError,
+	DialectPhraseHeads,
+	LexerFact,
+	MatchDialectPhrase,
+	SyntaxWithoutLexerFact,
+} from "../core/dialect.ts"
 import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	LexerFeatures,
@@ -56,22 +63,39 @@ type ReadToken<
 	Recorded extends DbtyperErrorShape | null = null,
 > =
 	ReadTokenFromString<_Rest, Syntax> extends [
-		infer Token extends TokenStreamHead,
-		infer Rest extends string,
+		infer Token0 extends TokenStreamHead,
+		infer Rest0 extends string,
 		...infer Tag extends DialectConstruct[],
 	]
-		? (
-				Recorded extends DbtyperErrorShape ? Recorded : TokenDialectError<Token, Tag, Rest, Syntax>
-			) extends infer Rec extends DbtyperErrorShape | null
-			? "question-params" extends Syntax
-				? Token extends QuestionKey
-					? Buffer<
-							WithSource<TokenIndexedParam<`${Inc<PositionalIndex>}`>, _Rest, Syntax>,
-							Rest,
-							Syntax,
-							Inc<PositionalIndex>,
-							Rec
-						>
+		? // after a lexer error the rest of the text is dropped and the token is end-of-text, which carries the error
+			// (parsers see a truncated text; ApplyStatements reports the lexer error as the root cause)
+			(Token0 extends DbtyperErrorShape ? [TokenEot, ""] : [Token0, Rest0]) extends [
+				infer Token extends TokenStreamHead,
+				infer Rest extends string,
+			]
+			? (
+					Recorded extends DbtyperErrorShape
+						? Recorded
+						: Token0 extends DbtyperErrorShape
+							? Token0 // a lexer error (1001-1004, 1008, 1009) is recorded like a dialect error: the root cause
+							: TokenDialectError<Token, Tag, Rest, Syntax>
+				) extends infer Rec extends DbtyperErrorShape | null
+				? "question-params" extends Syntax
+					? Token extends QuestionKey
+						? Buffer<
+								WithSource<TokenIndexedParam<`${Inc<PositionalIndex>}`>, _Rest, Syntax>,
+								Rest,
+								Syntax,
+								Inc<PositionalIndex>,
+								Rec
+							>
+						: Buffer<
+								WithSource<WithDialectError<Token, Rec>, _Rest, Syntax>,
+								Rest,
+								Syntax,
+								PositionalIndex,
+								Rec
+							>
 					: Buffer<
 							WithSource<WithDialectError<Token, Rec>, _Rest, Syntax>,
 							Rest,
@@ -79,18 +103,17 @@ type ReadToken<
 							PositionalIndex,
 							Rec
 						>
-				: Buffer<WithSource<WithDialectError<Token, Rec>, _Rest, Syntax>, Rest, Syntax, PositionalIndex, Rec>
+				: never
 			: never
 		: never
 
 /** SQLite chains only: the token remembers the text it was read from (see {@link SourceSpan}). */
-type WithSource<Token, From extends string, Syntax extends string> = "dialect:sqlite" extends Syntax
-	? Token & { from: From }
-	: Token
+type WithSource<Token, From extends string, Syntax extends string> =
+	LexerFact<Syntax, "keepWritten"> extends true ? Token & { from: From } : Token
 
 /**
  * The end-of-text token carries the first other-dialect error met in the text (DSEL-5, DSEL-6), so that
- * `ApplyStatements` can report it (`TokenEotWithDialectError`) through the one reader, {@link PeekToken}.
+ * `ApplyStatements` can report it (lexer errors travel the same way, #116 item 25) (`TokenEotWithDialectError`) through the one reader, {@link PeekToken}.
  */
 type WithDialectError<Token, Rec> = Rec extends DbtyperErrorShape
 	? Token extends TokenEot
@@ -135,7 +158,7 @@ type TokenDialectError<
 /** The next word (keyword or identifier value, "" for anything else) and the text after it. */
 type NextWord<Rest extends string, Syntax extends string> =
 	// the phrase check reads plain tokens: `array[1, 2]` is not a `[quoted name]`
-	ReadTokenFromString<Rest, Exclude<Syntax, "dialect:sqlite">> extends [
+	ReadTokenFromString<Rest, SyntaxWithoutLexerFact<Syntax, "bracketIdents">> extends [
 		infer Token,
 		infer Rest2 extends string,
 		...unknown[],

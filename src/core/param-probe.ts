@@ -16,7 +16,7 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { Inc, LastOf } from "./type-utils.ts"
 
 /** The type of a parameter that no position has given a type yet; `arg` is its key (name, or 0-based index). */
-export type SqlParamProbe<Key extends string | number> = { type: "param-probe"; arg: Key; nullable: false }
+type SqlParamProbe<Key extends string | number> = { type: "param-probe"; arg: Key; nullable: false }
 
 /** The probe key of a resolved parameter type, `never` for a real type. */
 export type ProbeKeyOf<S> = S extends { type: "param-probe"; arg: infer K extends string | number } ? K : never
@@ -50,6 +50,13 @@ type LeftoverProbe<Params> = Params extends readonly unknown[]
 		: never
 	: LastOf<ProbeKeyOf<Params[keyof Params]>>
 
+/**
+ * The retry loop (DECISIONS.md, "Parameter types from the expression parser"). Each round runs the whole
+ * `ApplyStatements` again and types one more parameter, so a statement with N parameters that all get their type
+ * from a position is parsed N+1 times: the cost grows with N times the size of the statement. The loop stops by
+ * itself (every round binds a probe or ends), the limit is the instantiation budget; test/stress has a statement
+ * with 30 parameters.
+ */
 type Derive<
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
