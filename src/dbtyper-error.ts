@@ -773,6 +773,11 @@ export const errors = {
 		msg: ["Positional parameter index ", " is out of bounds"],
 	},
 
+	CANNOT_INFER_PARAMETER_TYPE: {
+		code: 2405,
+		msg: ["cannot infer the type of parameter ", "; use CAST(", " AS …)"],
+	},
+
 	// Type System Errors
 	// Type Compatibility
 	INCOMPATIBLE_TYPES_IN_COMPARISON: {
@@ -810,6 +815,11 @@ export const errors = {
 	INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN: {
 		code: 2508,
 		msg: ["INSERT...SELECT type mismatch for column ", ""],
+	},
+
+	INCOMPATIBLE_PARAMETER_VALUE_TYPE: {
+		code: 2509,
+		msg: ["Incompatible value type for parameter ", ""],
 	},
 
 	// Boolean Type Errors
