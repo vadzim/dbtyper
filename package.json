@@ -84,6 +84,9 @@
 		"gram:xml": "cd src/gram && bison --xml gram.y",
 		"gram:json": "cd src/gram && node -e 'console.log(JSON.stringify(new((await import(`fast-xml-parser`)).XMLParser)({ignoreAttributes:false,attributeNamePrefix:`@`}).parse((await Array.fromAsync(process.stdin)).join(``)),null,2))'<gram.xml>gram.json"
 	},
+	"engines": {
+		"node": ">=22.13"
+	},
 	"peerDependencies": {
 		"better-sqlite3": ">=11.0.0",
 		"postgres": "^3.4.0"
