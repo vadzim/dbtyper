@@ -19,7 +19,7 @@ import type {
 } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { FromItemsOnly, MarkOuterScope, MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
-import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
+import type { ResolveColumnRefValue, WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -210,7 +210,7 @@ type ParseSelectAfterDistinct<
 																Params
 															> extends infer Res
 															? Res extends DbtyperErrorShape
-																? [R, Db, Res]
+																? [R, Db, WithErrorClause<Res, "SELECT list">]
 																: FinishSelectStatement<
 																		R,
 																		Db,
@@ -229,7 +229,7 @@ type ParseSelectAfterDistinct<
 								? MergeScope<{}, MarkOuterScope<OuterScope>> extends infer MergedScope extends ScopeMap
 									? ResolveSelectListFrom<Items, Db, {}, MergedScope, Params> extends infer Res
 										? Res extends DbtyperErrorShape
-											? [AfterList, Db, Res]
+											? [AfterList, Db, WithErrorClause<Res, "SELECT list">]
 											: FinishSelectStatement<AfterList, Db, Res, MergedScope, Params, Items>
 										: never
 									: never
@@ -248,6 +248,7 @@ type ParseOrderByScalarExpr<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Clause extends string = "ORDER BY",
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 		infer Rw extends ParserMonad,
@@ -258,7 +259,7 @@ type ParseOrderByScalarExpr<
 			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends DbtyperErrorShape
-					? SkipFailedExpression<Rw, R>
+					? SkipFailedExpression<Rw, WithErrorClause<R, Clause>>
 					: R extends SqlTypeShape
 						? [Rw, null]
 						: SkipFailedExpression<Rw, never>
@@ -284,7 +285,7 @@ type ParseOrderByTermExpr<
 				? [Rw, null]
 				: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 					? R extends DbtyperErrorShape
-						? SkipFailedExpression<Rw, R>
+						? SkipFailedExpression<Rw, WithErrorClause<R, "ORDER BY">>
 						: R extends SqlTypeShape
 							? [Rw, null]
 							: SkipFailedExpression<Rw, never>
@@ -357,7 +358,7 @@ type LimitExprThenOptionalOffset<
 > =
 	PeekToken<Rl1> extends TokenKey<"offset">
 		? SkipToken<Rl1> extends infer Ro0 extends ParserMonad
-			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends ParserMonad, infer Oe]
+			? ParseOrderByScalarExpr<Ro0, Db, Scope, Params, "OFFSET"> extends [infer Ro1 extends ParserMonad, infer Oe]
 				? Oe extends DbtyperErrorShape
 					? SkipFailedExpression<Ro1, Oe>
 					: [Ro1, null]
@@ -374,7 +375,7 @@ type OffsetExprThenOptionalLimit<
 > =
 	PeekToken<Ro1> extends TokenKey<"limit">
 		? SkipToken<Ro1> extends infer Rl0 extends ParserMonad
-			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends ParserMonad, infer Le]
+			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params, "LIMIT"> extends [infer Rl1 extends ParserMonad, infer Le]
 				? Le extends DbtyperErrorShape
 					? SkipFailedExpression<Rl1, Le>
 					: [Rl1, null]
@@ -405,7 +406,7 @@ type ParseFetchFirstAfterFetchKw<
 > =
 	PeekToken<R1> extends TokenKey<"first">
 		? SkipToken<R1> extends infer R2 extends ParserMonad
-			? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends ParserMonad, infer E]
+			? ParseOrderByScalarExpr<R2, Db, Scope, Params, "FETCH"> extends [infer R3 extends ParserMonad, infer E]
 				? E extends DbtyperErrorShape
 					? SkipFailedExpression<R3, E>
 					: ExpectRowOrRowsThenOnly<R3>
@@ -413,7 +414,7 @@ type ParseFetchFirstAfterFetchKw<
 			: never
 		: PeekToken<R1> extends TokenKey<"next">
 			? SkipToken<R1> extends infer R2 extends ParserMonad
-				? ParseOrderByScalarExpr<R2, Db, Scope, Params> extends [infer R3 extends ParserMonad, infer E]
+				? ParseOrderByScalarExpr<R2, Db, Scope, Params, "FETCH"> extends [infer R3 extends ParserMonad, infer E]
 					? E extends DbtyperErrorShape
 						? SkipFailedExpression<R3, E>
 						: ExpectRowOrRowsThenOnly<R3>
@@ -430,7 +431,7 @@ type ParseOptionalPagingTokens<
 > =
 	PeekToken<Tokens> extends TokenKey<"limit">
 		? SkipToken<Tokens> extends infer Rl0 extends ParserMonad
-			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params> extends [infer Rl1 extends ParserMonad, infer Le]
+			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params, "LIMIT"> extends [infer Rl1 extends ParserMonad, infer Le]
 				? Le extends DbtyperErrorShape
 					? SkipFailedExpression<Rl1, Le>
 					: LimitExprThenOptionalOffset<Rl1, Db, Scope, Params>
@@ -438,7 +439,10 @@ type ParseOptionalPagingTokens<
 			: never
 		: PeekToken<Tokens> extends TokenKey<"offset">
 			? SkipToken<Tokens> extends infer Ro0 extends ParserMonad
-				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params> extends [infer Ro1 extends ParserMonad, infer Oe]
+				? ParseOrderByScalarExpr<Ro0, Db, Scope, Params, "OFFSET"> extends [
+						infer Ro1 extends ParserMonad,
+						infer Oe,
+					]
 					? Oe extends DbtyperErrorShape
 						? SkipFailedExpression<Ro1, Oe>
 						: OffsetExprThenOptionalLimit<Ro1, Db, Scope, Params>
@@ -464,7 +468,7 @@ type GroupByAstResolution<
 > =
 	ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Rv
 		? Rv extends DbtyperErrorShape
-			? readonly [R1, { readonly error: Rv }]
+			? readonly [R1, { readonly error: WithErrorClause<Rv, "GROUP BY"> }]
 			: Rv extends SqlTypeShape
 				? PeekToken<R1> extends TokenKey<",">
 					? ParseGroupByTermsAcc<SkipToken<R1>, Db, Scope, Params, readonly [...Acc, Ast]>
@@ -501,7 +505,7 @@ type ParseOptionalHavingClauseAfterGroupTerms<
 > =
 	PeekToken<R2> extends TokenKey<"having">
 		? SkipToken<R2> extends infer Rh extends ParserMonad
-			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends ParserMonad, infer He]
+			? ParseWhereExpression<Rh, Db, Scope, Params, "HAVING"> extends [infer Rhw extends ParserMonad, infer He]
 				? He extends DbtyperErrorShape
 					? readonly [
 							Rhw,
@@ -541,7 +545,7 @@ type ParseOptionalHavingWithoutGroupClause<
 > =
 	PeekToken<Tokens> extends TokenKey<"having">
 		? SkipToken<Tokens> extends infer Rh extends ParserMonad
-			? ParseWhereExpression<Rh, Db, Scope, Params> extends [infer Rhw extends ParserMonad, infer He]
+			? ParseWhereExpression<Rh, Db, Scope, Params, "HAVING"> extends [infer Rhw extends ParserMonad, infer He]
 				? He extends DbtyperErrorShape
 					? readonly [
 							Rhw,
@@ -2266,7 +2270,7 @@ export type ParseAndResolveReturningClause<
 					? [After, Db, FormatError<Errors["SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST"], []>]
 					: ResolveSelectList<Items, Db, Scope, Params> extends infer Res
 						? Res extends DbtyperErrorShape
-							? [After, Db, Res]
+							? [After, Db, WithErrorClause<Res, "RETURNING">]
 							: Res extends JsqlSelectStatementResult
 								? [After, Db, Res]
 								: never
