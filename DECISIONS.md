@@ -2,6 +2,34 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-18 SQLite type names, affinity, keys and rowid (#67, track A; SQLT-6…SQLT-17)
+
+- **Dialect facts for parsers come from the database state, not from the monad.** The monad checker lets parsers read
+  the monad only through `PeekToken`/`SkipToken`, so `Syntax` is unreachable in them. A SQLite chain's database state
+  carries `dialect: "sqlite"` (`JsqlDatabaseShape.dialect`, set in `InitialDatabase`, kept by `FlattenedJsqlDatabase`);
+  `DialectFact<Db, Fact>` (src/core/dialect.ts) reads a row of the `Dialects` table, and a state without the field is
+  PostgreSQL (unchanged behaviour and cost). New rows: `typeNames` ("named" | "affinity"), `pkImpliesNotNull`,
+  `rowidTables`, `typelessColumns`. No parser file says `if sqlite`.
+- **A declared type becomes its affinity key** (`SqliteTypeKey`, data in dialect.ts): `integer | real | text | numeric |
+blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integer mode, and comparisons already
+  give `boolean`), `any` (no type or `ANY`, SQLT-10) and text for DATE/DATETIME/TIMESTAMP/TIME/JSON (SQLT-8). The shape
+  type names are keys of `SqliteTypeMap` (extended with numeric, boolean, any, bigint). `CAST(x AS t)` is mapped to the
+  same key when the AST is built (`CastTypeParts`), so `ResolveCastFromShape` is unchanged.
+- **Columns remember what SQLite decides at the end of the table.** `ColumnDef` got `pk` (`single`/`composite`) and the
+  declared type name; `ParseSqliteTableEnd` reads the table options (`STRICT`, `WITHOUT ROWID`), checks STRICT type
+  names (1910), then sets NOT NULL for primary keys of STRICT/WITHOUT ROWID tables and for the rowid alias (a single
+  column declared exactly `integer`, also optional in INSERT through the `default` fact). `ParseSqlType` returns the
+  declared name only when asked (`KeepDeclared`), to keep it out of column types.
+- **rowid** (`rowid`/`oid`/`_rowid_`): a SQLite table with a rowid has `rowid_table: true` (`JsqlCreateRowidTable`,
+  also for CREATE TABLE AS). FROM items of SELECT/UPDATE/DELETE expose the names through `TableScopeColumns` (a
+  real column of that name wins); the shapes carry `pseudo: true`, which `VisibleColumnsOf` drops from `*` and `t.*`.
+  INSERT does not see them.
+- **Codes.** 1910 `STRICT_TABLE_TYPE_NOT_ALLOWED`, 1911 `AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY`, 1912
+  `EXPECTED_TABLE_OPTION_IN_CREATE_TABLE`. SERIAL (SQLT-17) is the 1900 other-dialect error (construct `pg-serial`,
+  hint "Use INTEGER PRIMARY KEY").
+- **Cost.** Check of the existing tests +1.8% instantiations (7.31M → 7.44M); the new SQLite tests add 0.25M.
+  Statement-loop depth is limited (60/500-statement tests): keep the PostgreSQL path free of extra alias layers.
+
 ## 2026-11-18 Parameter types from the expression parser (#99, track A; CORE-6, CORE-7)
 
 - **Replaces the token scan** of #57 (`InferSqlParams`, infer-param-types.ts is gone). The parser itself gives a

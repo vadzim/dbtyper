@@ -12,9 +12,11 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
+import type { DialectFact, SqliteStrictTypeNames } from "../core/dialect.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type {
 	JsqlCreateTable,
+	JsqlCreateRowidTable,
 	JsqlDbGetSchema,
 	JsqlDbGetData,
 	JsqlDbGetTable,
@@ -57,7 +59,16 @@ export type ParseCreateTable<
  * One column while it is being parsed (CORE-15): name, type (its `nullable` is the declared NULL / NOT NULL),
  * NOT NULL by any constraint (NOT NULL, PRIMARY KEY; CORE-1), has a DEFAULT, is a generated column (CORE-18).
  */
-type ColumnDef = readonly [string, SqlTypeShape, boolean, boolean, boolean]
+type ColumnDef = readonly [string, SqlTypeShape, boolean, boolean, boolean, PkKind, string]
+
+/**
+ * How a column is part of the PRIMARY KEY: alone (`single`: inline, or a one-column table constraint) or with others.
+ * SQLite decides NOT NULL and the rowid alias from it at the end of the table (SQLT-13, SQLT-14).
+ */
+type PkKind = false | "single" | "composite"
+
+/** The table options of a SQLite CREATE TABLE after `)` (SQLT-11, SQLT-14, SQLT-18). */
+type TableOptions = { strict: boolean; withoutRowid: boolean }
 
 type ParseCreateTableQualifiedWhenSchKnown<
 	R extends ParserMonad,
@@ -151,7 +162,9 @@ type ParseCreateTableAsSelectRun<
 						Db,
 						Schema,
 						Table,
-						JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
+						DialectFact<Db, "rowidTables"> extends true
+							? JsqlCreateRowidTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
+							: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
 					> extends infer NewDb extends JsqlDatabaseShape
 					? PeekToken<R> extends TokenKey<";"> | TokenEot
 						? [SkipToken<R>, NewDb, null]
@@ -226,6 +239,108 @@ type TableConstraintStart =
 	| TokenKey<"check">
 	| TokenKey<"foreign">
 
+/**
+ * SQLite: after the column list `)`: the table options (`STRICT`, `WITHOUT ROWID`, comma separated, SQLT-18), the
+ * STRICT type check (SQLT-11), then NOT NULL of the primary key and the rowid alias per table kind (SQLT-13, SQLT-14).
+ */
+type ParseSqliteTableEnd<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? ParseTableOptions<R1, { strict: false; withoutRowid: false }> extends [
+				infer R2 extends ParserMonad,
+				infer Opts,
+			]
+			? Opts extends DbtyperErrorShape
+				? SkipFailedStatement<R2, Db, Opts>
+				: Opts extends TableOptions
+					? Opts["strict"] extends true
+						? StrictViolation<Stack> extends false
+							? SqliteTableBuilt<R2, Db, Schema, Table, Stack, Opts>
+							: SkipFailedStatement<R2, Db, FormatError<Errors["STRICT_TABLE_TYPE_NOT_ALLOWED"], []>>
+						: SqliteTableBuilt<R2, Db, Schema, Table, Stack, Opts>
+					: never
+			: never
+		: never
+
+/** `true` when a column of a STRICT table has a declared type name that STRICT does not allow (SQLT-11). */
+type StrictViolation<Stack extends readonly ColumnDef[]> = true extends {
+	[I in keyof Stack]: Stack[I][6] extends "" | SqliteStrictTypeNames ? false : true
+}[number]
+	? true
+	: false
+
+/** `STRICT`, `WITHOUT ROWID`, in any order, comma separated; `[rest, options | error]`. */
+type ParseTableOptions<Tokens extends ParserMonad, Acc extends TableOptions> =
+	PeekToken<Tokens> extends TokenIdent<"strict">
+		? AfterTableOption<SkipToken<Tokens>, { strict: true; withoutRowid: Acc["withoutRowid"] }>
+		: PeekToken<Tokens> extends TokenIdent<"without">
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenIdent<"rowid">
+					? AfterTableOption<SkipToken<R1>, { strict: Acc["strict"]; withoutRowid: true }>
+					: [R1, FormatError<Errors["EXPECTED_TABLE_OPTION_IN_CREATE_TABLE"], []>]
+				: never
+			: [Tokens, Acc]
+
+type AfterTableOption<Tokens extends ParserMonad, Acc extends TableOptions> =
+	PeekToken<Tokens> extends TokenKey<","> ? ParseTableOptions<SkipToken<Tokens>, Acc> : [Tokens, Acc]
+
+type SqliteTableBuilt<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+	Opts extends TableOptions,
+> =
+	ColumnsFromStack<SqlitePrimaryKeys<Stack, Opts>> extends infer M extends {
+		cols: Record<string, SqlTypeShape>
+		facts: Record<string, unknown>
+	}
+		? JsqlDbReplaceData<
+				Db,
+				Schema,
+				Table,
+				Opts["withoutRowid"] extends true
+					? JsqlCreateTable<M["cols"], M["facts"]>
+					: JsqlCreateRowidTable<M["cols"], M["facts"]>
+			> extends infer NewDb extends JsqlDatabaseShape
+			? PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+				? [SkipToken<Tokens>, NewDb, null]
+				: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE TABLE"]>>
+			: never
+		: never
+
+/**
+ * SQLT-13, SQLT-14: a primary key column is NOT NULL in a STRICT or WITHOUT ROWID table, or when it is the rowid
+ * (alone, declared exactly INTEGER; it is then also optional in INSERT, DML-4); else it stays as declared.
+ */
+type SqlitePrimaryKeys<Stack extends readonly ColumnDef[], Opts extends TableOptions> = {
+	[I in keyof Stack]: Stack[I] extends readonly [
+		infer N extends string,
+		infer T extends SqlTypeShape,
+		infer Nn extends boolean,
+		infer D extends boolean,
+		infer G extends boolean,
+		infer Pk extends PkKind,
+		infer Decl extends string,
+	]
+		? Pk extends false
+			? Stack[I]
+			: Opts["withoutRowid"] extends true
+				? readonly [N, T, true, D, G, Pk, Decl]
+				: Opts["strict"] extends true
+					? readonly [N, T, true, D, G, Pk, Decl]
+					: [Pk, Decl] extends ["single", "integer"]
+						? readonly [N, T, true, true, G, Pk, Decl]
+						: readonly [N, T, Nn, D, G, Pk, Decl]
+		: never
+}
+
 type ParseCreateTableBody<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -234,16 +349,18 @@ type ParseCreateTableBody<
 	Stack extends readonly ColumnDef[],
 > =
 	PeekToken<Tokens> extends TokenKey<")">
-		? ColumnsFromStack<Stack> extends infer M extends {
-				cols: Record<string, SqlTypeShape>
-				facts: Record<string, unknown>
-			}
-			? JsqlDbReplaceData<Db, Schema, Table, JsqlCreateTable<M["cols"], M["facts"]>> extends infer NewDb
-				? NewDb extends JsqlDatabaseShape
-					? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
+		? DialectFact<Db, "rowidTables"> extends true
+			? ParseSqliteTableEnd<Tokens, Db, Schema, Table, Stack>
+			: ColumnsFromStack<Stack> extends infer M extends {
+						cols: Record<string, SqlTypeShape>
+						facts: Record<string, unknown>
+				  }
+				? JsqlDbReplaceData<Db, Schema, Table, JsqlCreateTable<M["cols"], M["facts"]>> extends infer NewDb
+					? NewDb extends JsqlDatabaseShape
+						? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
+						: never
 					: never
 				: never
-			: never
 		: PeekToken<Tokens> extends TableConstraintStart
 			? ParseTableConstraint<Tokens, Db, Schema, Table, Stack>
 			: ParseOneColumn<Tokens, Db, Schema, Table, Stack>
@@ -269,18 +386,74 @@ type ParseOneColumnAfterColName<
 	Stack extends readonly ColumnDef[],
 	ColName extends string,
 > =
-	ParseSqlType<AfterColName> extends [infer AfterType extends ParserMonad, infer TypeShape]
+	// SQLT-10: a SQLite column may have no type: the next token is not a type word (`ANY` is a keyword, `COLLATE` a name)
+	DialectFact<Db, "typelessColumns"> extends true
+		? PeekToken<AfterColName> extends TokenKey<"any">
+			? ParseColumnConstraints<
+					SkipToken<AfterColName>,
+					{
+						db: Db
+						schema: Schema
+						table: Table
+						stack: Stack
+						name: ColName
+						type: AnyTypeShape
+						declared: "any"
+					},
+					{ nn: false; def: false; gen: false; afterDefault: false; pk: false }
+				>
+			: PeekToken<AfterColName> extends TokenIdent<"collate">
+				? ParseOneColumnTypeless<AfterColName, Db, Schema, Table, Stack, ColName>
+				: PeekToken<AfterColName> extends TokenIdent<string>
+					? ParseOneColumnTyped<AfterColName, Db, Schema, Table, Stack, ColName>
+					: ParseOneColumnTypeless<AfterColName, Db, Schema, Table, Stack, ColName>
+		: ParseOneColumnTyped<AfterColName, Db, Schema, Table, Stack, ColName>
+
+/** SQLT-10: the type of a column declared without one (or as `ANY`). */
+type AnyTypeShape = { type: "any"; arg: null; nullable: true }
+
+type ParseOneColumnTypeless<
+	AfterColName extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+	ColName extends string,
+> = ParseColumnConstraints<
+	AfterColName,
+	{ db: Db; schema: Schema; table: Table; stack: Stack; name: ColName; type: AnyTypeShape; declared: "" },
+	{ nn: false; def: false; gen: false; afterDefault: false; pk: false }
+>
+
+type ParseOneColumnTyped<
+	AfterColName extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+	ColName extends string,
+> =
+	ParseSqlType<AfterColName, Db, true> extends [infer AfterType extends ParserMonad, infer TypeShape]
 		? TypeShape extends DbtyperErrorShape
 			? [AfterType, Db, TypeShape]
 			: TypeShape extends SqlTypeShape
 				? ParseColumnConstraints<
 						AfterType,
-						{ db: Db; schema: Schema; table: Table; stack: Stack; name: ColName; type: TypeShape },
+						{
+							db: Db
+							schema: Schema
+							table: Table
+							stack: Stack
+							name: ColName
+							type: { type: TypeShape["type"]; arg: TypeShape["arg"]; nullable: TypeShape["nullable"] }
+							declared: TypeShape extends { declared: infer Declared extends string } ? Declared : ""
+						},
 						{
 							nn: TypeShape["nullable"] extends false ? true : false
 							def: false
 							gen: false
 							afterDefault: false
+							pk: false
 						}
 					>
 				: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
@@ -294,10 +467,12 @@ type ColumnCtx = {
 	stack: readonly ColumnDef[]
 	name: string
 	type: SqlTypeShape
+	/** The declared type name, lower-case (SQLite only, see {@link DeclaredTypeName}). */
+	declared: string
 }
 
 /** What the constraints seen so far say about the column; `afterDefault` is true right after a DEFAULT (error text). */
-type ColumnState = { nn: boolean; def: boolean; gen: boolean; afterDefault: boolean }
+type ColumnState = { nn: boolean; def: boolean; gen: boolean; afterDefault: boolean; pk: PkKind }
 
 /**
  * Column constraints in any order after the type (CORE-15): NOT NULL, NULL, DEFAULT, PRIMARY KEY, UNIQUE, CHECK,
@@ -353,19 +528,28 @@ type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnCtx, S e
 												? ColumnCollate<Tokens, C, S>
 												: PeekToken<Tokens> extends TokenKey<"generated">
 													? ParseColumnGenerated<SkipToken<Tokens>, C, S>
-													: ColumnFail<
-															Tokens,
-															C,
-															S["afterDefault"] extends true
-																? FormatError<
-																		Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE"],
-																		[]
-																	>
-																: FormatError<
-																		Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"],
-																		[]
-																	>
-														>
+													: PeekToken<Tokens> extends TokenIdent<"autoincrement">
+														? ColumnAutoincrement<Tokens, C, S>
+														: ColumnGenericFail<Tokens, C, S>
+
+/** The error for a token that no column constraint starts with. */
+type ColumnGenericFail<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = ColumnFail<
+	Tokens,
+	C,
+	S["afterDefault"] extends true
+		? FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE"], []>
+		: FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
+>
+
+/** At `AUTOINCREMENT` (SQLite, SQLT-16): only on a column declared exactly `INTEGER PRIMARY KEY`. */
+type ColumnAutoincrement<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	DialectFact<C["db"], "rowidTables"> extends true
+		? S["pk"] extends "single"
+			? C["declared"] extends "integer"
+				? ParseColumnConstraints<SkipToken<Tokens>, C, ColumnStateWith<S, {}>>
+				: ColumnFail<Tokens, C, FormatError<Errors["AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY"], []>>
+			: ColumnFail<Tokens, C, FormatError<Errors["AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY"], []>>
+		: ColumnGenericFail<Tokens, C, S>
 
 /** At `CONSTRAINT`: skip it and its name. */
 type ColumnConstraintName<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
@@ -387,7 +571,13 @@ type ColumnNotNull<Tokens extends ParserMonad, C extends ColumnCtx, S extends Co
 type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	SkipToken<Tokens> extends infer R1 extends ParserMonad
 		? PeekToken<R1> extends TokenKey<"key">
-			? ParseColumnConstraints<SkipToken<R1>, C, ColumnStateWith<S, { nn: true }>>
+			? ParseColumnConstraints<
+					SkipToken<R1>,
+					C,
+					DialectFact<C["db"], "pkImpliesNotNull"> extends true
+						? ColumnStateWith<S, { nn: true; pk: "single" }>
+						: ColumnStateWith<S, { pk: "single" }>
+				>
 			: ColumnFail<R1, C, FormatError<Errors["EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE"], []>>
 		: never
 
@@ -409,6 +599,7 @@ type ColumnStateWith<S extends ColumnState, Patch extends Partial<ColumnState>> 
 	def: Patch extends { def: infer V extends boolean } ? V : S["def"]
 	gen: Patch extends { gen: infer V extends boolean } ? V : S["gen"]
 	afterDefault: Patch extends { afterDefault: infer V extends boolean } ? V : false
+	pk: Patch extends { pk: infer V extends PkKind } ? V : S["pk"]
 }
 
 type ColumnEntry<C extends ColumnCtx, S extends ColumnState> = readonly [
@@ -417,6 +608,8 @@ type ColumnEntry<C extends ColumnCtx, S extends ColumnState> = readonly [
 	S["nn"],
 	S["def"],
 	S["gen"],
+	S["pk"],
+	C["declared"],
 ]
 
 type ColumnFail<Tokens extends ParserMonad, C extends ColumnCtx, Err extends DbtyperErrorShape> = SkipFailedStatement<
@@ -708,7 +901,16 @@ type TableConstraintColumns<
 				: Names extends readonly string[]
 					? Exclude<Names[number], Stack[number][0]> extends infer Missing extends string
 						? [Missing] extends [never]
-							? TableConstraintAfterColumns<R, Db, Schema, Table, Stack, Kind, Names[number]>
+							? TableConstraintAfterColumns<
+									R,
+									Db,
+									Schema,
+									Table,
+									Stack,
+									Kind,
+									Names[number],
+									Names["length"] extends 1 ? true : false
+								>
 							: SkipFailedStatement<R, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Missing, Kind]>>
 						: never
 					: never
@@ -724,6 +926,7 @@ type TableConstraintAfterColumns<
 	Stack extends readonly ColumnDef[],
 	Kind extends string,
 	Names extends string,
+	Single extends boolean,
 > = Kind extends "FOREIGN KEY"
 	? PeekToken<Tokens> extends TokenKey<"references">
 		? ParseReferences<SkipToken<Tokens>, Db, Schema, Table> extends [infer R2 extends ParserMonad, infer E]
@@ -732,7 +935,13 @@ type TableConstraintAfterColumns<
 				: AfterTableConstraint<R2, Db, Schema, Table, Stack>
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_REFERENCES_AFTER_FOREIGN_KEY"], []>>
-	: AfterTableConstraint<Tokens, Db, Schema, Table, Kind extends "PRIMARY KEY" ? MarkNotNull<Stack, Names> : Stack>
+	: AfterTableConstraint<
+			Tokens,
+			Db,
+			Schema,
+			Table,
+			Kind extends "PRIMARY KEY" ? MarkNotNull<Stack, Names, DialectFact<Db, "pkImpliesNotNull">, Single> : Stack
+		>
 
 type AfterTableConstraint<
 	Tokens extends ParserMonad,
@@ -751,16 +960,31 @@ type AfterTableConstraint<
 					FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
 				>
 
-type MarkNotNull<Stack extends readonly ColumnDef[], Names extends string> = {
+type MarkNotNull<
+	Stack extends readonly ColumnDef[],
+	Names extends string,
+	Implies extends boolean,
+	Single extends boolean,
+> = {
 	[I in keyof Stack]: Stack[I] extends readonly [
 		infer N extends string,
 		infer T extends SqlTypeShape,
-		boolean,
+		infer Nn extends boolean,
 		infer D extends boolean,
 		infer G extends boolean,
+		infer _Pk extends PkKind,
+		infer Decl extends string,
 	]
 		? N extends Names
-			? readonly [N, T, true, D, G]
+			? readonly [
+					N,
+					T,
+					Implies extends true ? true : Nn,
+					D,
+					G,
+					Single extends true ? "single" : "composite",
+					Decl,
+				]
 			: Stack[I]
 		: never
 }
@@ -773,6 +997,8 @@ type OneCol<C extends ColumnDef> = C extends readonly [
 	infer NotNull extends boolean,
 	infer HasDefault extends boolean,
 	infer Generated extends boolean,
+	infer _Pk extends PkKind,
+	infer _Decl extends string,
 ]
 	? {
 			cols: Record<N, NotNull extends true ? (Sql["nullable"] extends false ? Sql : NotNullType<Sql>) : Sql>

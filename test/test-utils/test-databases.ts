@@ -1,4 +1,5 @@
 import { createDriver } from "../../src/core/sql-database.ts"
+import { betterSqlite3Driver } from "../../src/sqlite/index.ts"
 import { type LexerFeatures } from "../../src/lexer/sql-lexer.ts"
 import { type PostgresTypeMap } from "../../src/postgres/postgres-type-map.ts"
 import type { TText, TInteger } from "./sql-type-helpers.ts"
@@ -39,3 +40,8 @@ export type SqliteMockDriverConfig = {
 }
 
 export const sqliteMockDriver = createDriver<SqliteMockDriverConfig>({ query: async () => [] })
+
+/** SQLite drivers with the real type map (#65, #67): integers as `number`, and in big-integer mode as `bigint`. */
+declare const sqliteDbHandle: { prepare(sql: string): unknown }
+export const sqliteDriver = betterSqlite3Driver(sqliteDbHandle)
+export const sqliteBigintDriver = betterSqlite3Driver(sqliteDbHandle, { bigint: true })

@@ -45,7 +45,7 @@ type ParseAlterAddColumnAfterColName<
 	Tab extends string,
 	Col extends string,
 > =
-	ParseSqlType<R2> extends [infer AfterType extends ParserMonad, infer TypeShape]
+	ParseSqlType<R2, Db> extends [infer AfterType extends ParserMonad, infer TypeShape]
 		? TypeShape extends SqlTypeShape
 			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]
@@ -195,7 +195,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 	Tab extends string,
 	Col extends string,
 > =
-	ParseSqlType<R3> extends [infer AfterType extends ParserMonad, infer TypeShape]
+	ParseSqlType<R3, Db> extends [infer AfterType extends ParserMonad, infer TypeShape]
 		? TypeShape extends SqlTypeShape
 			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]

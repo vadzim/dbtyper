@@ -13,7 +13,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -52,7 +52,7 @@ type ParseUpdateAliasAfterTable<
 							{
 								schema: Sch
 								table: Tab
-								columns: Tbl["columns"]
+								columns: TableScopeColumns<Tbl>
 							}
 						>,
 						{}
@@ -76,7 +76,7 @@ type ParseUpdateAliasAfterTable<
 											{
 												schema: Sch
 												table: Tab
-												columns: Tbl["columns"]
+												columns: TableScopeColumns<Tbl>
 											}
 										>,
 										{}
@@ -365,7 +365,7 @@ type ParseUpdateFromClauseTableAlias<
 						{
 							schema: Sch
 							table: Tab
-							columns: Tbl["columns"]
+							columns: TableScopeColumns<Tbl>
 						}
 					>,
 					{}
@@ -383,7 +383,7 @@ type ParseUpdateFromClauseTableAlias<
 									{
 										schema: Sch
 										table: Tab
-										columns: Tbl["columns"]
+										columns: TableScopeColumns<Tbl>
 									}
 								>,
 								{}
@@ -398,7 +398,7 @@ type ParseUpdateFromClauseTableAlias<
 									{
 										schema: Sch
 										table: Tab
-										columns: Tbl["columns"]
+										columns: TableScopeColumns<Tbl>
 									}
 								>,
 								{}

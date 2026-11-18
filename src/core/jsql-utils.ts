@@ -28,6 +28,18 @@ export type JsqlCreateTable<
 	constraints: Constraints
 }
 
+/** A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). */
+export type JsqlCreateRowidTable<
+	Columns extends Record<string, SqlTypeShape>,
+	Facts extends Record<string, unknown> | null = null,
+> = {
+	kind: "table"
+	columns: Columns
+	column_facts: Facts
+	constraints: null
+	rowid_table: true
+}
+
 export type JsqlCreateColumn<SqlType extends string, Nullability extends "not_null" | "nullable" = "nullable"> = {
 	type: SqlType
 	nullability: Nullability

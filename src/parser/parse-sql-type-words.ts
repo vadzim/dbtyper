@@ -3,9 +3,10 @@ import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError, Errors } from "../dbtyper-error.ts"
+import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { DialectFact, DialectOnlyError, SqliteTypeKey } from "../core/dialect.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
 export type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
@@ -51,6 +52,18 @@ export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
 											: T extends "character varying"
 												? "varchar"
 												: T
+
+/**
+ * The type name a declared name gets in this chain's dialect: PostgreSQL normalizes aliases, SQLite derives the
+ * affinity key from the name (SQLT-6…SQLT-9, dialect facts of src/core/dialect.ts). SQLT-17: a SERIAL name in a
+ * SQLite chain gives the other-dialect error instead (with a hint) .
+ */
+export type DialectTypeName<Db, T extends string> =
+	DialectFact<Db, "typeNames"> extends "affinity"
+		? T extends "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
+			? DialectOnlyError<"dialect:sqlite", "pg-serial">
+			: SqliteTypeKey<T>
+		: NormalizeSqlTypeName<T>
 
 /** Parse numeric literal from token string */
 type ParseNumericLiteral<S extends string> = S extends `${infer N extends number}` ? N : never
@@ -160,13 +173,17 @@ type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string> 
 			: [R, Shape]
 		: never
 
-/** Main entry point: parse SQL type and return SqlTypeShape */
-export type ParseSqlType<Tokens extends ParserMonad> =
+/**
+ * Main entry point: parse SQL type and return SqlTypeShape. With `KeepDeclared` the shape also says the lower-case
+ * declared type name (`declared`; STRICT and the rowid alias of SQLite need it, SQLT-11, SQLT-13), which the caller
+ * strips again: it is not part of a column type.
+ */
+export type ParseSqlType<Tokens extends ParserMonad, Db, KeepDeclared extends boolean = false> =
 	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends ParserMonad, infer Words extends readonly string[]]
 		? Words extends readonly []
 			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
-				? NormalizeSqlTypeName<TypeName> extends infer NormalizedName extends string
+				? DialectTypeName<Db, TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiersAndZone<AfterWords, NormalizedName> extends [
 							infer AfterMods extends ParserMonad,
 							infer BaseShape extends SqlTypeShape,
@@ -175,9 +192,20 @@ export type ParseSqlType<Tokens extends ParserMonad> =
 								infer AfterArray extends ParserMonad,
 								infer ArrayShape extends SqlTypeShape,
 							]
-							? ParseNullability<AfterArray, ArrayShape>
+							? KeepDeclared extends true
+								? ParseNullability<AfterArray, ArrayShape> extends [
+										infer R extends ParserMonad,
+										infer Shaped,
+									]
+									? Shaped extends SqlTypeShape
+										? [R, Shaped & { declared: TypeName }]
+										: [R, Shaped]
+									: never
+								: ParseNullability<AfterArray, ArrayShape>
 							: never
 						: never
-					: never
+					: DialectTypeName<Db, TypeName> extends infer TypeErr extends DbtyperErrorShape
+						? SkipFailedExpression<AfterWords, TypeErr>
+						: never
 				: never
 		: never
