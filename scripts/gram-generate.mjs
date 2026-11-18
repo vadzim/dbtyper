@@ -1,5 +1,5 @@
 // Regenerates the LR tables of one dialect: `npm run gram:generate [-- <dialect>]` (default: postgres).
-//   src/gram/<dialect>/gram.y --bison --xml--> gram.xml --scripts/gram/xml2ts.ts--> tables.ts (+ keywords.ts)
+//   src/gram/<dialect>/gram.y --bison --xml--> gram.xml --scripts/gram/xml2ts.ts--> tables.d.ts (+ keywords.ts)
 // Only GNU bison is required (flex is not used). See src/gram/README.md and DECISIONS.md (#52, #93).
 import { spawnSync } from "node:child_process"
 import { readFileSync, rmSync, writeFileSync } from "node:fs"

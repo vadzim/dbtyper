@@ -70,6 +70,7 @@
 		"test": "mkdir -p .logs; npm run --silent test:verbose 1>.logs/test.log 2>&1; RC=$?; [ $RC -ne 0 ] && tail -n 100 .logs/test.log || echo 'Ok.'; exit $RC",
 		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w dbtyper-nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
 		"gram:generate": "node scripts/gram-generate.mjs",
+		"gram:bench": "node scripts/bench-gram.mjs",
 		"gram:check": "tsgo --noEmit -p tsconfig.gram.json",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",

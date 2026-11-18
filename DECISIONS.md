@@ -43,3 +43,49 @@ Sub-issues of #52: see the issue. #21 (hygiene) and #22 (driver performance) are
   `with_la`, `without_la`, `format_la`) are computed there, so the `with_la` hack is removed from `parser-monad.ts`.
   An ident whose text is a PG keyword (not in the lexer's keyword list) is read as that keyword, because the lexer
   cannot tell `"analyze"` from `analyze`; accepted limitation of the recogniser.
+
+## 2026-11-18 — LR driver performance (#95, #22, track B)
+
+Benchmark: `npm run gram:bench` (`scripts/bench-gram.mjs`): `Recognize<Tables, [terminals]>` for statements `select a + 1 , b + 1 , ... from t`
+of 100...3900 terminals, median of 3-5 runs, CPU time and `--extendedDiagnostics`. The measuring machine was loaded
+(load average 40-60 on 16 cores, other agents), so wall times are inflated 2-3x; instantiations are exact, CPU time is
+the steadier figure. Before = #93 (origin/sqlite-pg/bison-track 3b08a14), after = this change, PostgreSQL tables, tsgo 7.0.0-dev.20260514.1:
+
+|                                                                      | before                       | after                                                   |
+| -------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------- |
+| fixed load (4 terminals, check time wall / cpu incl. compiler start) | 0.45-1.3 s / 1.0-1.4 s       | 0.06-0.12 s / 0.40 s                                    |
+| per terminal (cpu slope)                                             | ~4.7 ms (680 instantiations) | ~0.22 ms (176 instantiations)                           |
+| longest statement without TS2589                                     | 260 terminals (280 fails)    | 3900 (limit is the `Inc` table, 4000, then `$too-long`) |
+| memory at 200 terminals                                              | 122 MB                       | 56 MB (59 MB at 1000, 68 MB at 3900)                    |
+| tsc 6.0.3: fixed load check / cpu                                    | 2.6 s / 4.2 s                | 0.25 s / 1.7 s                                          |
+| tsc: per terminal (cpu slope)                                        | ~1.7 ms\* (502 inst)         | 0.72 ms (176 inst)                                      |
+
+(\*) two-point estimate under load. Targets of #22 (1000 terminals without TS2589, <= 1 ms/token, fixed load <= 0.3 s on
+tsgo) are met on tsgo; on tsc the fixed load check is 0.25 s but parse+bind of the 660 KB tables dominates the rest.
+The statement shape matters: real statements with deep nesting need more steps per token than this flat select list.
+
+What changed and what each part bought (measured, in order):
+
+1. **Two-level tail loop.** TypeScript stops a tail-recursive conditional type after 1000 iterations, a step per
+   iteration capped statements at ~300 tokens. `Chunk` runs 100 steps tail-recursively and returns `{ index, stack }`, `Run` restarts it.
+2. **Token index instead of `Rest` tuple.** Taking the tail of the token tuple at each shift (and `Seen` growth) was
+   O(n) per step: 1000 tokens cost 1.25 M instantiations and 718 MB, 2000 tokens 2.5 GB. Tokens are read as `All[Index]`
+   with an increment table (`counters.d.ts`, 4000 entries: this is the length limit); fuel is a table too (a tuple counter is O(length)).
+3. **Flat rows.** `Actions` (shifts and reductions merged: number = shift, `R<k> = [pops, nonterminal]` = reduce,
+   `"accept"`) and `Gotos` are rows shared through `interface X extends Part1, Part2` (an interface is resolved once to a flat
+   member table; intersections of 727 helper types were resolved at every lookup). `Rules` is gone (the reduce action carries pops and nonterminal).
+4. **Unit-rule chains.** A state whose only action is the default reduction of a one-symbol rule is lookahead-independent
+   and leaves the states below alone, so a whole run (`Iconst -> AexprConst -> c_expr -> a_expr ...`) is a function of the
+   state below it: `Actions[q].$default = { stateBelow: endState }`, one step instead of 3-8. (Precomputed in `xml2ts.ts`;
+   instantiations per token 230 -> 165 with these.) The 500 k entries are shared as interface parts (tables 478 -> 614 KB).
+5. **`tables.d.ts`.** With `skipLibCheck` the checker does not check the 600 KB of types (it did: 0.2-0.7 s fixed load);
+   `export {}` is needed because a .d.ts exports every declaration otherwise and importing it then resolves all 14 k symbols (0.65 s).
+6. **No `keyof` on tables; lookups as `Table extends Record<Key, infer V>`.** tsc recomputes `keyof` of a 7000-key object
+   at every use (10 s for 400 tokens before this); `Record` probes are O(1) in both compilers (tsgo: +35% instantiations, tsc: 25 ms/token -> 0.7).
+7. The lookahead `Tok` is carried and recomputed on shift only (`Peek` per step was a third of the time in tsgo).
+
+Not done: collapsing runs that start in states with explicit shifts (a lookahead-dependent default reduce), non-unit
+default reductions, a pure `%fallback`-free fast path (the fallback probe costs one conditional on default-reduce steps).
+Correctness check (not committed): 685 mutated token sequences (deletions, substitutions, insertions, truncations of 8
+statements) give identical results with the #93 driver/tables and the new ones. Tests: `test/gram/` (+ toy tables in `driver.test.ts`, 2000-terminal statements).
+Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts"`. Other files kept: counters in `src/gram/counters.d.ts` (hand-generated, see its header).
