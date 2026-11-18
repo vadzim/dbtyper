@@ -26,7 +26,7 @@ const _db = sqlMigrations({ driver: mockDriver })
 // Comparing enums from different schemas (runtime failure)
 
 const _result = await _db.query(`
-		select * from public.tasks t
+		select t.id, a.id as article_id from public.tasks t
 		join app.articles a on t.task_status = a.article_status;
 	`)
 
@@ -34,6 +34,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
+			article_id: number
 		}[]
 	>(),
 )

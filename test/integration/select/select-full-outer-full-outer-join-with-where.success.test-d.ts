@@ -12,13 +12,14 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: FULL OUTER JOIN with WHERE
 
 const _result = await _db.query(
-	`select * from users full outer join orders on users.id = orders.user_id where orders.total > 100;`,
+	`select users.name, orders.total from users full outer join orders on users.id = orders.user_id where orders.total > 100;`,
 )
 
 expectType<typeof _result>(
 	toBe<
 		{
-			id: number
+			name: string
+			total: number
 		}[]
 	>(),
 )
