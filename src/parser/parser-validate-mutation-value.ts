@@ -1,3 +1,4 @@
+import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SameComparisonClass } from "./parse-expression.ts"
@@ -24,10 +25,13 @@ type ValidateMutationValueBySql<
 	Col extends string,
 	Val extends SqlTypeShape,
 	ColSql extends SqlTypeShape,
-> = Val["type"] extends "null"
-	? InsertColNotNull<Tbl, Col> extends true
-		? FormatError<Errors["NULL_NOT_ALLOWED_NOT_NULL_COLUMN"], [Col]>
-		: true
-	: SameComparisonClass<Val, ColSql> extends true
-		? true
-		: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
+> = Val["type"] extends "param-probe"
+	? // CORE-6: the column gives an untyped parameter its type (`null` too for a nullable column)
+		ParamProbeFound<ProbeKeyOf<Val>, ColSql>
+	: Val["type"] extends "null"
+		? InsertColNotNull<Tbl, Col> extends true
+			? FormatError<Errors["NULL_NOT_ALLOWED_NOT_NULL_COLUMN"], [Col]>
+			: true
+		: SameComparisonClass<Val, ColSql> extends true
+			? true
+			: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>

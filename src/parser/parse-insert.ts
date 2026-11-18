@@ -1,3 +1,4 @@
+import type { UnionToStringTuple } from "./set-operation-types.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type {
 	JsqlDatabaseShape,
@@ -46,7 +47,7 @@ type ParseInsertAliasAfterTable<
 	Tbl extends JsqlDataShape,
 	_Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends TokenKey<"(">
+	PeekToken<Tokens> extends TokenKey<"(" | "values" | "select">
 		? [
 				Tokens,
 				null,
@@ -224,17 +225,32 @@ type ParseInsertAfterOpenParenCols<
 	Sch extends string,
 	Tab extends string,
 > =
-	PeekToken<Tokens> extends TokenKey<"(">
-		? SkipToken<Tokens> extends infer R0 extends ParserMonad
-			? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [infer R1 extends ParserMonad, infer ColsOrErr]
-				? ColsOrErr extends DbtyperErrorShape
-					? [R1, Db, ColsOrErr]
-					: ColsOrErr extends readonly string[]
-						? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
-						: never
+	PeekToken<Tokens> extends TokenKey<"values" | "select">
+		? // no column list: every column of the table, in declaration order
+			ParseInsertAfterColumnNames<
+				Tokens,
+				Db,
+				Scope,
+				Params,
+				Tbl,
+				Sch,
+				Tab,
+				UnionToStringTuple<Extract<keyof Tbl["columns"], string>>
+			>
+		: PeekToken<Tokens> extends TokenKey<"(">
+			? SkipToken<Tokens> extends infer R0 extends ParserMonad
+				? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [
+						infer R1 extends ParserMonad,
+						infer ColsOrErr,
+					]
+					? ColsOrErr extends DbtyperErrorShape
+						? [R1, Db, ColsOrErr]
+						: ColsOrErr extends readonly string[]
+							? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
+							: never
+					: never
 				: never
 			: never
-		: never
 
 type ParseInsertAfterColumnNames<
 	R1 extends ParserMonad,

@@ -6,7 +6,7 @@ import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
-import type { InferSqlParams } from "./infer-param-types.ts"
+import type { DeriveQueryParams } from "./param-probe.ts"
 import type {
 	ApplyAllowedQueryParams,
 	LexerFeatures,
@@ -302,7 +302,7 @@ type CheckParamValues<Config extends DriverConfig, Params extends ExpressionPara
  * derivable type or a value of another type than the SQL's.
  */
 type QueryParams<Config extends DriverConfig, Db extends JsqlDatabaseShape, Stmt extends string, Values> =
-	InferSqlParams<Db, Stmt, ParserSyntaxOf<ParamsDriverConfig<Config, Values>>, Values> extends infer P
+	DeriveQueryParams<Db, Stmt, ParserSyntaxOf<ParamsDriverConfig<Config, Values>>, Values> extends infer P
 		? P extends DbtyperErrorShape
 			? P
 			: P extends ExpressionParamsShape
