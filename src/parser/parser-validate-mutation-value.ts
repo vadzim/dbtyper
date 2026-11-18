@@ -3,7 +3,7 @@ import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"
-import type { SameComparisonClass } from "./parse-expression.ts"
+import type { SameComparisonClass } from "./resolve-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 

@@ -5,18 +5,14 @@ import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type {
-	EmptyExpressionParams,
-	ExpressionParamsShape,
-	ParseCallArgs,
-	ResolveExpressionAST,
-	ScalarExprAst,
-} from "./parse-expression.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
+import type { ParseCallArgs } from "./parse-function-call.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { CteAsFromEntry, ParseParenDerivedSelect } from "./parse-select-subquery.ts"
 import type { JoinScopeOnly } from "./parse-select.ts"
 import type { ParseJoinChain } from "./parse-select-join.ts"
@@ -78,12 +74,7 @@ type ParseFromFunction<
 					? V extends DbtyperErrorShape
 						? [R, WithErrorClause<V, "FROM">, ParserRefErrorThirdSentinel]
 						: V extends SqlTypeShape
-							? ParseFromFunctionAlias<
-									R,
-									Name,
-									{ type: V["type"]; arg: V["arg"]; nullable: false },
-									Scope
-								>
+							? ParseFromFunctionAlias<R, Name, NonNull<V>, Scope>
 							: never
 					: never
 				: never

@@ -10,13 +10,8 @@ import type { DialectFact } from "../core/dialect.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { JsqlDbReplaceColumn } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type {
-	EmptyExpressionParams,
-	ParseExpressionAST,
-	ResolveExpressionAST,
-	SameComparisonClass,
-	ScalarExprAst,
-} from "./parse-expression.ts"
+import type { EmptyExpressionParams, ParseExpressionAST, ScalarExprAst } from "./parse-expression.ts"
+import type { ResolveExpressionAST, SameComparisonClass } from "./resolve-expression.ts"
 import type { FinishAlterStatement, ParseAlterActions } from "./parse-alter-table.ts"
 import type { ColumnDef, PkKind, WithPendingConstraint } from "./parse-create-table.ts"
 import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"

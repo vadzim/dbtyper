@@ -1,7 +1,7 @@
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { LastOf } from "../core/type-utils.ts"
 import type { Nullable, SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { SameComparisonClass } from "./parse-expression.ts"
+import type { SameComparisonClass } from "./resolve-expression.ts"
 
 /** Keys of a union as a tuple (declaration order in practice; best effort, the type system gives no guarantee). */
 export type UnionToStringTuple<U extends string, Acc extends readonly string[] = []> = [U] extends [never]

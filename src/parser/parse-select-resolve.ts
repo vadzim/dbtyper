@@ -1,11 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type {
-	ExpressionParamsShape,
-	ResolveExpressionAST,
-	ScalarExprAst,
-	ScalarIdentParts,
-} from "./parse-expression.ts"
+import type { ExpressionParamsShape, ScalarExprAst, ScalarIdentParts } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ScopeEntry, ScopeMap, VisibleColumnsOf } from "./parser-scope.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FirstDuplicateName, UnionToStringTuple } from "./set-operation-types.ts"

@@ -8,7 +8,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 import type { SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
@@ -36,14 +36,7 @@ export type ParseCreateDomain<Tokens extends ParserMonad, Db extends JsqlDatabas
 type DomainBase<R extends ParserMonad, Db extends JsqlDatabaseShape, Sch extends string, Name extends string> =
 	ParseSqlType<R, Db, false, Sch> extends [infer After extends ParserMonad, infer Base]
 		? Base extends SqlTypeShape
-			? DomainRest<
-					After,
-					Db,
-					Sch,
-					Name,
-					{ type: Base["type"]; arg: Base["arg"]; nullable: false },
-					Base["nullable"] extends false ? true : false
-				>
+			? DomainRest<After, Db, Sch, Name, NonNull<Base>, Base["nullable"] extends false ? true : false>
 			: [After, Db, Base extends DbtyperErrorShape ? Base : FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>]
 		: never
 

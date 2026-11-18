@@ -11,12 +11,8 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
-import type {
-	ExpressionParamsShape,
-	ParseExpressionAST,
-	ScalarExprAst,
-	ResolveExpressionAST,
-} from "./parse-expression.ts"
+import type { ExpressionParamsShape, ParseExpressionAST, ScalarExprAst } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FinishInsertSemicolon, InsertValuesRowCellsParsedMarker } from "./parse-insert.ts"

@@ -44,7 +44,7 @@ export type DialectName = keyof Dialects
  * generated columns, `ON CONFLICT` on constraints, full column definitions in ADD COLUMN with its restrictions, trigger
  * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "postgres" = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
- * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "builtin" = the PostgreSQL operator typing of the
+ * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "postgres" = the PostgreSQL operator typing of the
  * expression parser, "sqlite" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
  * operators exist (`REGEXP` is always error 1917 until users can declare functions, SQLT-34, FN-Q1); `isOperand`: what may follow `IS [NOT]`
  * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
@@ -72,8 +72,11 @@ export type Dialects = {
 		typelessColumns: false
 		ddl: false
 		functionCatalog: "postgres"
-		operators: "builtin"
+		operators: "postgres"
 		globRegexp: false
+		windowFrames: false
+		numberTyping: "uniform"
+		datetimeArithmetic: true
 		isOperand: "null"
 		limitComma: false
 		groupByRule: true
@@ -102,6 +105,9 @@ export type Dialects = {
 		functionCatalog: "sqlite"
 		operators: "sqlite"
 		globRegexp: true
+		windowFrames: true
+		numberTyping: "affinity"
+		datetimeArithmetic: false
 		isOperand: "value"
 		limitComma: true
 		groupByRule: false
@@ -287,6 +293,9 @@ export type MatchDialectPhrase<
 /** The dialect(s) `Syntax` names: one name, a union of both, or `never` for none. */
 type SyntaxDialect<Syntax extends string> =
 	Extract<Syntax, DialectFlags> extends `dialect:${infer D extends DialectName}` ? D : never
+
+/** The dialect of a database state; PostgreSQL when the state names none (see {@link DialectFact}). */
+export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : "postgres"
 
 /**
  * One fact of the dialect row (see {@link Dialects}) of a database state: the state of a chain carries its dialect

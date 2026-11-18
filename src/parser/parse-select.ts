@@ -1,3 +1,4 @@
+import type { DialectOf } from "../core/dialect.ts"
 import type { IsAggregateCall } from "./function-catalog.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
@@ -10,9 +11,9 @@ import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
 	ParseExpressionAST,
-	ResolveExpressionAST,
 	ScalarExprAst,
 } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { FromItemsOnly, MarkOuterScope, MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
@@ -369,7 +370,8 @@ type ParseSelectAfterDistinct<
 		: never
 
 /** An aggregate call: the `"aggregate"` kind of the function's row in the catalog (src/parser/function-catalog.ts). */
-export type KnownAggregateName<N extends string, Args extends readonly unknown[]> = IsAggregateCall<
+export type KnownAggregateName<Db, N extends string, Args extends readonly unknown[]> = IsAggregateCall<
+	DialectOf<Db>,
 	Lowercase<N>,
 	Args["length"]
 >

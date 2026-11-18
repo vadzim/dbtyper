@@ -166,11 +166,9 @@ Many error codes have been consolidated to use context parameters instead of hav
 - **Format:** `["Expected JOIN after ", ""]`
 - **Example:** `Expected JOIN after INNER`
 
-**EXPECTED_ON_KEYWORD (4210)**
+**OBSOLETE_4210_EXPECTED_ON_KEYWORD (4210)**
 
-- **Replaces:** Consolidates ON-related expectations
-- **Format:** `["Expected ON keyword"]`
-- **Example:** `Expected ON keyword`
+- **Status:** obsolete, no parser emits it; the code stays reserved (never reuse a code).
 
 ## Migration Guide
 

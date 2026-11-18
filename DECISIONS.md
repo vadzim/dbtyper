@@ -185,7 +185,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   `DeriveQueryParams` binds that type and parses again, until no probe is found. A probe left over, or one that
   only meets other parameters, is CORE-7 (2405). The parser's own error stops the loop and is the result.
   Cost: one extra parse per parameter that is typed this way (test config 4.70M -> 4.97M instantiations with the new tests).
-- **Where positions type a probe.** `ParamProbeAt` in `ResolveExpressionAST` (parse-expression.ts): operands
+- **Where positions type a probe.** `ParamProbeAt` in `ResolveExpressionAST` (resolve-expression-params.ts): operands
   that share a type (comparison, arithmetic (numeric peer only), LIKE / `~`, BETWEEN, IN list; the peer is the first
   operand that is not a parameter and resolves to a type; a literal counts, so `:x + 1` is an integer), `CAST` and `::`,
   function arguments (table `FunctionArgTypes` in function-param-types.ts; `coalesce`, `nullif`, `greatest`, `least`
@@ -258,7 +258,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 ## 2026-11-18 Result nullability and shapes (#54, track A; CORE-2..5, CORE-13, CORE-14, DML-13, FN-24)
 
 - **Operator nullability in one place.** `ResolveExpressionAST` wraps every resolver in `ApplyOperandNullability`
-  (parse-expression.ts): for the kinds listed in `NullPropagatingOperands` (arithmetic, comparison, AND/OR/NOT,
+  (resolve-expression-params.ts): for the kinds listed in `NullPropagatingOperands` (arithmetic, comparison, AND/OR/NOT,
   casts, BETWEEN, LIKE, IN list, ANY/ALL/SOME, custom operators) the result is `Nullable` when any operand
   resolves nullable. Operands are re-resolved, which is a type-alias cache hit, not a second evaluation.
   Null-aware forms (`IS [NOT] NULL`, `EXISTS`) are not in the list, so they stay non-null.

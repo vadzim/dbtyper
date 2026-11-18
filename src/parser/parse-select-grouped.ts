@@ -27,20 +27,22 @@ type GroupKeySetContainsColParts<
 	: false
 
 type FnArgsGroupedCheck<
+	Db,
 	Args extends readonly (ScalarExprAst | { kind: "star" })[],
 	GroupKeys extends readonly ScalarExprAst[],
 	InsideAgg extends boolean,
 > = Args extends readonly [infer A, ...infer R extends readonly (ScalarExprAst | { kind: "star" })[]]
 	? A extends { kind: "star" }
-		? FnArgsGroupedCheck<R, GroupKeys, InsideAgg>
+		? FnArgsGroupedCheck<Db, R, GroupKeys, InsideAgg>
 		: A extends ScalarExprAst
-			? ExprValidInsideGroupedSelection<A, GroupKeys, InsideAgg> extends true
-				? FnArgsGroupedCheck<R, GroupKeys, InsideAgg>
+			? ExprValidInsideGroupedSelection<Db, A, GroupKeys, InsideAgg> extends true
+				? FnArgsGroupedCheck<Db, R, GroupKeys, InsideAgg>
 				: false
-			: FnArgsGroupedCheck<R, GroupKeys, InsideAgg>
+			: FnArgsGroupedCheck<Db, R, GroupKeys, InsideAgg>
 	: true
 
 type ExprValidInsideGroupedSelection<
+	Db,
 	Ast extends ScalarExprAst,
 	GroupKeys extends readonly ScalarExprAst[],
 	InsideAgg extends boolean,
@@ -64,19 +66,19 @@ type ExprValidInsideGroupedSelection<
 								name: infer N extends string
 								args: infer Args extends readonly (ScalarExprAst | { kind: "star" })[]
 						  }
-						? KnownAggregateName<N, Args> extends true
-							? FnArgsGroupedCheck<Args, GroupKeys, true>
-							: FnArgsGroupedCheck<Args, GroupKeys, false>
+						? KnownAggregateName<Db, N, Args> extends true
+							? FnArgsGroupedCheck<Db, Args, GroupKeys, true>
+							: FnArgsGroupedCheck<Db, Args, GroupKeys, false>
 						: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
-							? ExprValidInsideGroupedSelection<I, GroupKeys, false>
+							? ExprValidInsideGroupedSelection<Db, I, GroupKeys, false>
 							: Ast extends {
 										kind: "add"
 										left: infer L extends ScalarExprAst
 										right: infer R extends ScalarExprAst
 								  }
 								? TypeBoolAnd<
-										ExprValidInsideGroupedSelection<L, GroupKeys, false>,
-										ExprValidInsideGroupedSelection<R, GroupKeys, false>
+										ExprValidInsideGroupedSelection<Db, L, GroupKeys, false>,
+										ExprValidInsideGroupedSelection<Db, R, GroupKeys, false>
 									>
 								: Ast extends {
 											kind: "sub"
@@ -84,8 +86,8 @@ type ExprValidInsideGroupedSelection<
 											right: infer Rs extends ScalarExprAst
 									  }
 									? TypeBoolAnd<
-											ExprValidInsideGroupedSelection<Ls, GroupKeys, false>,
-											ExprValidInsideGroupedSelection<Rs, GroupKeys, false>
+											ExprValidInsideGroupedSelection<Db, Ls, GroupKeys, false>,
+											ExprValidInsideGroupedSelection<Db, Rs, GroupKeys, false>
 										>
 									: Ast extends {
 												kind: "mul"
@@ -93,8 +95,8 @@ type ExprValidInsideGroupedSelection<
 												right: infer Rm extends ScalarExprAst
 										  }
 										? TypeBoolAnd<
-												ExprValidInsideGroupedSelection<Lm, GroupKeys, false>,
-												ExprValidInsideGroupedSelection<Rm, GroupKeys, false>
+												ExprValidInsideGroupedSelection<Db, Lm, GroupKeys, false>,
+												ExprValidInsideGroupedSelection<Db, Rm, GroupKeys, false>
 											>
 										: Ast extends {
 													kind: "exp" | "mod"
@@ -102,19 +104,19 @@ type ExprValidInsideGroupedSelection<
 													right: infer Re extends ScalarExprAst
 											  }
 											? TypeBoolAnd<
-													ExprValidInsideGroupedSelection<Le, GroupKeys, false>,
-													ExprValidInsideGroupedSelection<Re, GroupKeys, false>
+													ExprValidInsideGroupedSelection<Db, Le, GroupKeys, false>,
+													ExprValidInsideGroupedSelection<Db, Re, GroupKeys, false>
 												>
 											: Ast extends { kind: "not"; inner: infer In extends ScalarExprAst }
-												? ExprValidInsideGroupedSelection<In, GroupKeys, false>
+												? ExprValidInsideGroupedSelection<Db, In, GroupKeys, false>
 												: Ast extends {
 															kind: "and" | "or"
 															left: infer La extends ScalarExprAst
 															right: infer Ra extends ScalarExprAst
 													  }
 													? TypeBoolAnd<
-															ExprValidInsideGroupedSelection<La, GroupKeys, false>,
-															ExprValidInsideGroupedSelection<Ra, GroupKeys, false>
+															ExprValidInsideGroupedSelection<Db, La, GroupKeys, false>,
+															ExprValidInsideGroupedSelection<Db, Ra, GroupKeys, false>
 														>
 													: Ast extends {
 																kind: "cmp" | "is_cmp"
@@ -122,8 +124,18 @@ type ExprValidInsideGroupedSelection<
 																right: infer Rc extends ScalarExprAst
 														  }
 														? TypeBoolAnd<
-																ExprValidInsideGroupedSelection<Lc, GroupKeys, false>,
-																ExprValidInsideGroupedSelection<Rc, GroupKeys, false>
+																ExprValidInsideGroupedSelection<
+																	Db,
+																	Lc,
+																	GroupKeys,
+																	false
+																>,
+																ExprValidInsideGroupedSelection<
+																	Db,
+																	Rc,
+																	GroupKeys,
+																	false
+																>
 															>
 														: Ast extends {
 																	kind: "between"
@@ -133,17 +145,20 @@ type ExprValidInsideGroupedSelection<
 															  }
 															? TypeBoolAnd<
 																	ExprValidInsideGroupedSelection<
+																		Db,
 																		Eb,
 																		GroupKeys,
 																		false
 																	>,
 																	TypeBoolAnd<
 																		ExprValidInsideGroupedSelection<
+																			Db,
 																			Lb,
 																			GroupKeys,
 																			false
 																		>,
 																		ExprValidInsideGroupedSelection<
+																			Db,
 																			Hb,
 																			GroupKeys,
 																			false
@@ -157,11 +172,13 @@ type ExprValidInsideGroupedSelection<
 																  }
 																? TypeBoolAnd<
 																		ExprValidInsideGroupedSelection<
+																			Db,
 																			Ex,
 																			GroupKeys,
 																			false
 																		>,
 																		ExprValidInsideGroupedSelection<
+																			Db,
 																			Pat,
 																			GroupKeys,
 																			false
@@ -172,6 +189,7 @@ type ExprValidInsideGroupedSelection<
 																			expr: infer En extends ScalarExprAst
 																	  }
 																	? ExprValidInsideGroupedSelection<
+																			Db,
 																			En,
 																			GroupKeys,
 																			false
@@ -183,6 +201,7 @@ type ExprValidInsideGroupedSelection<
 																					readonly ScalarExprAst[]
 																		  }
 																		? ExprValidInsideGroupedSelection<
+																				Db,
 																				El,
 																				GroupKeys,
 																				false
@@ -193,6 +212,7 @@ type ExprValidInsideGroupedSelection<
 																						readonly ScalarExprAst[],
 																				]
 																				? ExprValidInsideGroupedSelection<
+																						Db,
 																						HIn,
 																						GroupKeys,
 																						false
@@ -200,6 +220,7 @@ type ExprValidInsideGroupedSelection<
 																					? TIn extends readonly []
 																						? true
 																						: ExprValidInsideGroupedSelection<
+																								Db,
 																								{
 																									kind: "in_list"
 																									expr: El
@@ -216,6 +237,7 @@ type ExprValidInsideGroupedSelection<
 																					expr: infer Xc extends ScalarExprAst
 																			  }
 																			? ExprValidInsideGroupedSelection<
+																					Db,
 																					Xc,
 																					GroupKeys,
 																					false
@@ -233,16 +255,19 @@ type ExprValidInsideGroupedSelection<
 																							ScalarExprAst | null
 																				  }
 																				? CaseArmsGroupedValid<
+																						Db,
 																						Arms,
 																						GroupKeys
 																					> extends true
 																					? ExprValidInsideGroupedSelection<
+																							Db,
 																							Dsc,
 																							GroupKeys,
 																							false
 																						> extends true
 																						? El extends ScalarExprAst
 																							? ExprValidInsideGroupedSelection<
+																									Db,
 																									El,
 																									GroupKeys,
 																									false
@@ -261,11 +286,13 @@ type ExprValidInsideGroupedSelection<
 																								ScalarExprAst | null
 																					  }
 																					? CaseArmsGroupedValid<
+																							Db,
 																							Arms2,
 																							GroupKeys
 																						> extends true
 																						? El2 extends ScalarExprAst
 																							? ExprValidInsideGroupedSelection<
+																									Db,
 																									El2,
 																									GroupKeys,
 																									false
@@ -281,11 +308,13 @@ type ExprValidInsideGroupedSelection<
 																						  }
 																						? TypeBoolAnd<
 																								ExprValidInsideGroupedSelection<
+																									Db,
 																									B,
 																									GroupKeys,
 																									false
 																								>,
 																								ExprValidInsideGroupedSelection<
+																									Db,
 																									Id,
 																									GroupKeys,
 																									false
@@ -297,6 +326,7 @@ type ExprValidInsideGroupedSelection<
 																										readonly ScalarExprAst[]
 																							  }
 																							? ArrayCtorEltsGroupedValid<
+																									Db,
 																									Els,
 																									GroupKeys
 																								>
@@ -309,11 +339,13 @@ type ExprValidInsideGroupedSelection<
 																								  }
 																								? TypeBoolAnd<
 																										ExprValidInsideGroupedSelection<
+																											Db,
 																											Lc,
 																											GroupKeys,
 																											false
 																										>,
 																										ExprValidInsideGroupedSelection<
+																											Db,
 																											Rc,
 																											GroupKeys,
 																											false
@@ -325,6 +357,7 @@ type ExprValidInsideGroupedSelection<
 																												ScalarExprAst
 																									  }
 																									? ExprValidInsideGroupedSelection<
+																											Db,
 																											Ie,
 																											GroupKeys,
 																											false
@@ -338,6 +371,7 @@ type ExprValidInsideGroupedSelection<
 																										: false
 
 type CaseArmsGroupedValid<
+	Db,
 	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
 	GroupKeys extends readonly ScalarExprAst[],
 > = Arms extends readonly [
@@ -349,30 +383,31 @@ type CaseArmsGroupedValid<
 ]
 	? TypeBoolAnd<
 			TypeBoolAnd<
-				ExprValidInsideGroupedSelection<Arm["when"], GroupKeys, false>,
-				ExprValidInsideGroupedSelection<Arm["then"], GroupKeys, false>
+				ExprValidInsideGroupedSelection<Db, Arm["when"], GroupKeys, false>,
+				ExprValidInsideGroupedSelection<Db, Arm["then"], GroupKeys, false>
 			>,
-			Rest extends readonly [] ? true : CaseArmsGroupedValid<Rest, GroupKeys>
+			Rest extends readonly [] ? true : CaseArmsGroupedValid<Db, Rest, GroupKeys>
 		>
 	: true
 
 type ArrayCtorEltsGroupedValid<
+	Db,
 	Els extends readonly ScalarExprAst[],
 	GroupKeys extends readonly ScalarExprAst[],
 > = Els extends readonly [infer H extends ScalarExprAst, ...infer T extends readonly ScalarExprAst[]]
-	? ExprValidInsideGroupedSelection<H, GroupKeys, false> extends true
+	? ExprValidInsideGroupedSelection<Db, H, GroupKeys, false> extends true
 		? T extends readonly []
 			? true
-			: ArrayCtorEltsGroupedValid<T, GroupKeys>
+			: ArrayCtorEltsGroupedValid<Db, T, GroupKeys>
 		: false
 	: true
 
-type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
+type AstContainsAggregateCall<Db, Ast extends ScalarExprAst> = Ast extends {
 	kind: "function_call"
 	name: infer N extends string
 	args: infer Args extends readonly unknown[]
 }
-	? KnownAggregateName<N, Args> extends true
+	? KnownAggregateName<Db, N, Args> extends true
 		? true
 		: false
 	: Ast extends {
@@ -380,64 +415,67 @@ type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
 				left: infer L extends ScalarExprAst
 				right: infer R extends ScalarExprAst
 		  }
-		? AstContainsAggregateCall<L> extends true
+		? AstContainsAggregateCall<Db, L> extends true
 			? true
-			: AstContainsAggregateCall<R>
+			: AstContainsAggregateCall<Db, R>
 		: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
-			? AstContainsAggregateCall<I>
+			? AstContainsAggregateCall<Db, I>
 			: Ast extends { kind: "not"; inner: infer In extends ScalarExprAst }
-				? AstContainsAggregateCall<In>
+				? AstContainsAggregateCall<Db, In>
 				: Ast extends {
 							kind: "and" | "or" | "cmp" | "is_cmp"
 							left: infer La extends ScalarExprAst
 							right: infer Ra extends ScalarExprAst
 					  }
-					? AstContainsAggregateCall<La> extends true
+					? AstContainsAggregateCall<Db, La> extends true
 						? true
-						: AstContainsAggregateCall<Ra>
+						: AstContainsAggregateCall<Db, Ra>
 					: Ast extends {
 								kind: "between"
 								expr: infer Eb extends ScalarExprAst
 								low: infer Lb extends ScalarExprAst
 								high: infer Hb extends ScalarExprAst
 						  }
-						? AstContainsAggregateCall<Eb> extends true
+						? AstContainsAggregateCall<Db, Eb> extends true
 							? true
-							: AstContainsAggregateCall<Lb> extends true
+							: AstContainsAggregateCall<Db, Lb> extends true
 								? true
-								: AstContainsAggregateCall<Hb>
+								: AstContainsAggregateCall<Db, Hb>
 						: Ast extends {
 									kind: "like" | "pg_regex_match"
 									expr: infer Ex extends ScalarExprAst
 									pattern: infer Pat extends ScalarExprAst
 							  }
-							? AstContainsAggregateCall<Ex> extends true
+							? AstContainsAggregateCall<Db, Ex> extends true
 								? true
-								: AstContainsAggregateCall<Pat>
+								: AstContainsAggregateCall<Db, Pat>
 							: Ast extends { kind: "is_null" | "is_not_null"; expr: infer En extends ScalarExprAst }
-								? AstContainsAggregateCall<En>
+								? AstContainsAggregateCall<Db, En>
 								: Ast extends {
 											kind: "in_list"
 											expr: infer El extends ScalarExprAst
 											items: infer Ins extends readonly ScalarExprAst[]
 									  }
-									? AstContainsAggregateCall<El> extends true
+									? AstContainsAggregateCall<Db, El> extends true
 										? true
 										: Ins extends readonly [
 													infer H extends ScalarExprAst,
 													...infer T extends readonly ScalarExprAst[],
 											  ]
-											? AstContainsAggregateCall<H> extends true
+											? AstContainsAggregateCall<Db, H> extends true
 												? true
 												: T extends readonly []
 													? false
-													: AstContainsAggregateCall<{ kind: "in_list"; expr: El; items: T }>
+													: AstContainsAggregateCall<
+															Db,
+															{ kind: "in_list"; expr: El; items: T }
+														>
 											: false
 									: Ast extends {
 												kind: "pg_cast" | "sql_cast"
 												expr: infer Ex2 extends ScalarExprAst
 										  }
-										? AstContainsAggregateCall<Ex2>
+										? AstContainsAggregateCall<Db, Ex2>
 										: Ast extends {
 													kind: "case_simple"
 													discriminant: infer D extends ScalarExprAst
@@ -447,12 +485,12 @@ type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
 													}[]
 													else_: infer Elc extends ScalarExprAst | null
 											  }
-											? AstContainsAggregateCall<D> extends true
+											? AstContainsAggregateCall<Db, D> extends true
 												? true
-												: CaseArmsContainAgg<Arms> extends true
+												: CaseArmsContainAgg<Db, Arms> extends true
 													? true
 													: Elc extends ScalarExprAst
-														? AstContainsAggregateCall<Elc>
+														? AstContainsAggregateCall<Db, Elc>
 														: false
 											: Ast extends {
 														kind: "case_searched"
@@ -462,86 +500,90 @@ type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
 														}[]
 														else_: infer Elc2 extends ScalarExprAst | null
 												  }
-												? CaseArmsContainAgg<Arms2> extends true
+												? CaseArmsContainAgg<Db, Arms2> extends true
 													? true
 													: Elc2 extends ScalarExprAst
-														? AstContainsAggregateCall<Elc2>
+														? AstContainsAggregateCall<Db, Elc2>
 														: false
 												: Ast extends {
 															kind: "array_index"
 															base: infer B extends ScalarExprAst
 															index: infer Id extends ScalarExprAst
 													  }
-													? AstContainsAggregateCall<B> extends true
+													? AstContainsAggregateCall<Db, B> extends true
 														? true
-														: AstContainsAggregateCall<Id>
+														: AstContainsAggregateCall<Db, Id>
 													: Ast extends {
 																kind: "array_ctor"
 																elements: infer Els extends readonly ScalarExprAst[]
 														  }
-														? ArrayCtorContainsAgg<Els>
+														? ArrayCtorContainsAgg<Db, Els>
 														: Ast extends {
 																	kind: "custom_op"
 																	left: infer Lc extends ScalarExprAst
 																	right: infer Rc extends ScalarExprAst
 															  }
-															? AstContainsAggregateCall<Lc> extends true
+															? AstContainsAggregateCall<Db, Lc> extends true
 																? true
-																: AstContainsAggregateCall<Rc>
+																: AstContainsAggregateCall<Db, Rc>
 															: Ast extends {
 																		kind: "in_subquery"
 																		expr?: infer Lex extends ScalarExprAst
 																  }
 																? Lex extends ScalarExprAst
-																	? AstContainsAggregateCall<Lex>
+																	? AstContainsAggregateCall<Db, Lex>
 																	: false
 																: false
 
-type CaseArmsContainAgg<Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[]> = Arms extends readonly [
+type CaseArmsContainAgg<
+	Db,
+	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
+> = Arms extends readonly [
 	infer Arm extends { when: ScalarExprAst; then: ScalarExprAst },
 	...infer Rest extends readonly {
 		when: ScalarExprAst
 		then: ScalarExprAst
 	}[],
 ]
-	? AstContainsAggregateCall<Arm["when"]> extends true
+	? AstContainsAggregateCall<Db, Arm["when"]> extends true
 		? true
-		: AstContainsAggregateCall<Arm["then"]> extends true
+		: AstContainsAggregateCall<Db, Arm["then"]> extends true
 			? true
 			: Rest extends readonly []
 				? false
-				: CaseArmsContainAgg<Rest>
+				: CaseArmsContainAgg<Db, Rest>
 	: false
 
-type ArrayCtorContainsAgg<Els extends readonly ScalarExprAst[]> = Els extends readonly [
+type ArrayCtorContainsAgg<Db, Els extends readonly ScalarExprAst[]> = Els extends readonly [
 	infer H extends ScalarExprAst,
 	...infer T extends readonly ScalarExprAst[],
 ]
-	? AstContainsAggregateCall<H> extends true
+	? AstContainsAggregateCall<Db, H> extends true
 		? true
 		: T extends readonly []
 			? false
-			: ArrayCtorContainsAgg<T>
+			: ArrayCtorContainsAgg<Db, T>
 	: false
 
 type SelectItemsNeedGroupedProjRules<
+	Db,
 	Meta extends SelectGroupClauseMeta,
 	Items extends readonly RawSelectItem[],
 > = Meta["has_having_clause"] extends true
 	? true
 	: Meta["have_explicit_group_by"] extends true
 		? true
-		: RawSelectItemsHaveAggregateCall<Items>
+		: RawSelectItemsHaveAggregateCall<Db, Items>
 
-type RawSelectItemsHaveAggregateCall<Items extends readonly RawSelectItem[]> = Items extends readonly [
+type RawSelectItemsHaveAggregateCall<Db, Items extends readonly RawSelectItem[]> = Items extends readonly [
 	infer H extends RawSelectItem,
 	...infer R extends readonly RawSelectItem[],
 ]
 	? H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
-		? AstContainsAggregateCall<Ast> extends true
+		? AstContainsAggregateCall<Db, Ast> extends true
 			? true
-			: RawSelectItemsHaveAggregateCall<R>
-		: RawSelectItemsHaveAggregateCall<R>
+			: RawSelectItemsHaveAggregateCall<Db, R>
+		: RawSelectItemsHaveAggregateCall<Db, R>
 	: false
 
 /** SEL-28: output-column position of an expression select item (`1` is the first item), `never` otherwise. */
@@ -586,15 +628,16 @@ type AstEqualsGroupKey<Ast extends ScalarExprAst, Keys extends readonly ScalarEx
 	: false
 
 type ValidateGroupedSelectItemsAgainstKeys<
+	Db,
 	Items extends readonly RawSelectItem[],
 	GroupKeys extends readonly ScalarExprAst[],
 > = Items extends readonly [infer H extends RawSelectItem, ...infer Rest extends readonly RawSelectItem[]]
 	? H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
-		? ExprValidInsideGroupedSelection<Ast, GroupKeys, false> extends true
-			? ValidateGroupedSelectItemsAgainstKeys<Rest, GroupKeys>
+		? ExprValidInsideGroupedSelection<Db, Ast, GroupKeys, false> extends true
+			? ValidateGroupedSelectItemsAgainstKeys<Db, Rest, GroupKeys>
 			: FormatError<Errors["GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE"], []>
 		: H extends { kind: "star" } | { kind: "param" }
-			? ValidateGroupedSelectItemsAgainstKeys<Rest, GroupKeys>
+			? ValidateGroupedSelectItemsAgainstKeys<Db, Rest, GroupKeys>
 			: never
 	: true
 
@@ -605,9 +648,9 @@ export type GroupedProjValidationOutcome<
 > =
 	DialectFact<Db, "groupByRule"> extends false
 		? true // SQLT-28: SQLite allows bare columns next to an aggregate
-		: SelectItemsNeedGroupedProjRules<Meta, Items> extends true
+		: SelectItemsNeedGroupedProjRules<Db, Meta, Items> extends true
 			? GroupKeysWithPositionsResolved<Meta["group_key_asts"], Items> extends infer Keys extends
 					readonly ScalarExprAst[]
-				? ValidateGroupedSelectItemsAgainstKeys<Items, Keys>
+				? ValidateGroupedSelectItemsAgainstKeys<Db, Items, Keys>
 				: never
 			: true

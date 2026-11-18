@@ -23,6 +23,13 @@ export type SqlType<T extends string, A = null> = {
 	nullable: false
 }
 
+/** Make a type NOT NULL (the counterpart of {@link Nullable}) */
+export type NonNull<T extends SqlTypeShape> = {
+	type: T["type"]
+	arg: T["arg"]
+	nullable: false
+}
+
 /** Make a type nullable */
 export type Nullable<T extends SqlTypeShape> = {
 	type: T["type"]
