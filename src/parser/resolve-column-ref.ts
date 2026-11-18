@@ -2,7 +2,7 @@ import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
-import type { HasAmbiguousUnqualifiedColumn, ScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
+import type { HasAmbiguousUnqualifiedColumn, NearestScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 type GetColMeta3Shared<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, Col extends string> = [
@@ -34,7 +34,7 @@ type ValidateColumnPartsShared<
 		: Parts extends readonly [infer C0 extends string]
 			? true extends HasAmbiguousUnqualifiedColumn<Scope, C0>
 				? FormatError<Errors["AMBIGUOUS_UNQUALIFIED_COLUMN"], [C0]>
-				: ScopeKeysWithColumn<Scope, C0> extends infer U
+				: NearestScopeKeysWithColumn<Scope, C0> extends infer U
 					? [U] extends [never]
 						? FormatError<Errors["UNKNOWN_COLUMN_NO_CLAUSE"], [C0]>
 						: U extends keyof Scope
