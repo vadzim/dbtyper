@@ -1,10 +1,10 @@
 import type { PeekToken, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
-import type { ParserSyntax } from "../core/dialect.ts"
+import type { DialectFact, ParserSyntax } from "../core/dialect.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
@@ -20,7 +20,7 @@ import type { ParseDropView } from "./parse-drop-view.ts"
 import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseSelectStatement } from "./parse-select.ts"
 import type { ParseUpdate } from "./parse-update.ts"
-import type { ParseSkipStatement } from "./skip-statement.ts"
+import type { ParseSkipStatement, ParseSkipTrigger, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { Inc } from "../core/type-utils.ts"
 
@@ -126,7 +126,19 @@ export type ParseSqlStatement<
 									? ParseSelectStatement<SkipToken<Tokens>, Db, Params>
 									: PeekToken<Tokens> extends TokenKey<"update">
 										? ParseUpdate<SkipToken<Tokens>, Db, Params>
-										: ParseSkipStatement<Tokens, Db>
+										: ParseOtherStatement<Tokens, Db>
+
+/** A statement no parser knows: skipped; but ATTACH / DETACH are errors in a SQLite chain (SQLT-24). */
+type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+	DialectFact<Db, "ddl"> extends true
+		? PeekToken<Tokens> extends TokenIdent<"attach" | "detach">
+			? SkipFailedStatement<
+					Tokens,
+					Db,
+					FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], [Uppercase<PeekToken<Tokens>["value"]>]>
+				>
+			: ParseSkipStatement<Tokens, Db>
+		: ParseSkipStatement<Tokens, Db>
 
 type ConcatErrors<
 	Errors extends DbtyperErrorShape | null,
@@ -148,18 +160,46 @@ type ParseCreate<
 	PeekToken<Tokens> extends TokenKey<"table">
 		? ParseCreateTable<SkipToken<Tokens>, Db, Params>
 		: PeekToken<Tokens> extends TokenKey<"schema">
-			? ParseCreateSchema<SkipToken<Tokens>, Db>
+			? DialectFact<Db, "ddl"> extends true
+				? SkipFailedStatement<Tokens, Db, FormatError<Errors["SQLITE_NO_SCHEMAS"], []>>
+				: ParseCreateSchema<SkipToken<Tokens>, Db>
 			: PeekToken<Tokens> extends TokenKey<"type">
 				? ParseCreateType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">
 					? ParseCreateView<SkipToken<Tokens>, Db, Params>
-					: ParseSkipStatement<Tokens, Db>
+					: DialectFact<Db, "ddl"> extends true
+						? ParseSqliteCreate<Tokens, Db, Params>
+						: ParseSkipStatement<Tokens, Db>
+
+/** SQLite: `CREATE [TEMP|TEMPORARY] TABLE|VIEW|TRIGGER`, `CREATE VIRTUAL TABLE`; the rest (INDEX…) is skipped (SQLT-22…SQLT-24). */
+type ParseSqliteCreate<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
+	PeekToken<Tokens> extends TokenIdent<"temp" | "temporary">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"table">
+				? ParseCreateTable<SkipToken<R1>, Db, Params, true>
+				: PeekToken<R1> extends TokenKey<"view">
+					? ParseCreateView<SkipToken<R1>, Db, Params, true>
+					: PeekToken<R1> extends TokenIdent<"trigger">
+						? ParseSkipTrigger<SkipToken<R1>, Db>
+						: ParseSkipStatement<R1, Db>
+			: never
+		: PeekToken<Tokens> extends TokenIdent<"trigger">
+			? ParseSkipTrigger<SkipToken<Tokens>, Db>
+			: PeekToken<Tokens> extends TokenKey<"virtual"> | TokenIdent<"virtual">
+				? SkipFailedStatement<
+						Tokens,
+						Db,
+						FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], ["CREATE VIRTUAL TABLE"]>
+					>
+				: ParseSkipStatement<Tokens, Db>
 
 type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">
 		? ParseDropTable<SkipToken<Tokens>, Db>
 		: PeekToken<Tokens> extends TokenKey<"schema">
-			? ParseDropSchema<SkipToken<Tokens>, Db>
+			? DialectFact<Db, "ddl"> extends true
+				? SkipFailedStatement<Tokens, Db, FormatError<Errors["SQLITE_NO_SCHEMAS"], []>>
+				: ParseDropSchema<SkipToken<Tokens>, Db>
 			: PeekToken<Tokens> extends TokenKey<"type">
 				? ParseDropType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">

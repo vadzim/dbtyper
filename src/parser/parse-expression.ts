@@ -64,7 +64,7 @@ export type ScalarExprAst =
 	| { kind: "number"; raw: string }
 	| { kind: "param"; name: string }
 	| { kind: "positional-param"; index: number }
-	| { kind: "col"; parts: ScalarIdentParts }
+	| { kind: "col"; parts: ScalarIdentParts; written?: string }
 	/** `alias.*` in a SELECT list item (resolved against JOIN scope). */
 	| { kind: "alias_table_star"; alias: string }
 	/** `schema.table.*` in a SELECT list item (resolved against catalog + JOIN scope). */
@@ -1222,7 +1222,11 @@ type ExpressionResolvers<
 	true: SqlBoolean
 	false: SqlBoolean
 	sql_null: SqlNull
-	string: Ast extends { kind: "string"; value: string } ? SqlText : never
+	string: Ast extends { kind: "string"; value: string }
+		? Ast extends { blob: true }
+			? { type: "blob"; arg: null; nullable: false } // SQLT-29
+			: SqlText
+		: never
 	number: Ast extends { kind: "number"; raw: string } ? SqlInteger : never
 	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
 	"positional-param": Ast extends { kind: "positional-param"; index: infer I extends number }
@@ -1794,35 +1798,44 @@ type ApplyOperandNullability<
  * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
  */
 type MaximalIdentChain<Tokens extends ParserMonad> =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<".">
-				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? PeekToken<R2> extends TokenKey<"*">
-						? SkipToken<R2> extends infer R3 extends ParserMonad
-							? [R3, readonly ["__ats__", A]]
-							: never
-						: AsIdent<PeekToken<R2>> extends TokenIdent<infer B extends string>
+	PeekToken<Tokens> extends infer T1
+		? AsIdent<T1> extends TokenIdent<infer A extends string>
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends ParserMonad
+						? PeekToken<R2> extends TokenKey<"*">
 							? SkipToken<R2> extends infer R3 extends ParserMonad
-								? PeekToken<R3> extends TokenKey<".">
-									? SkipToken<R3> extends infer R4 extends ParserMonad
-										? PeekToken<R4> extends TokenKey<"*">
-											? SkipToken<R4> extends infer R5 extends ParserMonad
-												? [R5, readonly ["__qts__", A, B]]
-												: never
-											: AsIdent<PeekToken<R4>> extends TokenIdent<infer C extends string>
-												? SkipToken<R4> extends infer R5 extends ParserMonad
-													? [R5, readonly [A, B, C]]
-													: never
-												: never
-										: never
-									: [R3, readonly [A, B]]
+								? [R3, readonly ["__ats__", A], ""]
 								: never
-							: never
-					: never
-				: [R1, readonly [A]]
+							: PeekToken<R2> extends infer T2
+								? AsIdent<T2> extends TokenIdent<infer B extends string>
+									? SkipToken<R2> extends infer R3 extends ParserMonad
+										? PeekToken<R3> extends TokenKey<".">
+											? SkipToken<R3> extends infer R4 extends ParserMonad
+												? PeekToken<R4> extends TokenKey<"*">
+													? SkipToken<R4> extends infer R5 extends ParserMonad
+														? [R5, readonly ["__qts__", A, B], ""]
+														: never
+													: PeekToken<R4> extends infer T4
+														? AsIdent<T4> extends TokenIdent<infer C extends string>
+															? SkipToken<R4> extends infer R5 extends ParserMonad
+																? [R5, readonly [A, B, C], WrittenOf<T4>]
+																: never
+															: never
+														: never
+												: never
+											: [R3, readonly [A, B], WrittenOf<T2>]
+										: never
+									: never
+								: never
+						: never
+					: [R1, readonly [A], WrittenOf<T1>]
+				: never
 			: never
 		: never
+
+/** SQLite (SQLT-28): how an identifier token was written in the query; "" when the token does not say. */
+type WrittenOf<T> = T extends { written: infer W extends string } ? W : ""
 
 type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? Params[Name]
@@ -2763,7 +2776,13 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 							: PeekToken<Tokens> extends TokenKey<"null">
 								? [SkipToken<Tokens>, { kind: "sql_null" }, Env]
 								: PeekToken<Tokens> extends TokenString<infer Str>
-									? [SkipToken<Tokens>, { kind: "string"; value: Str }, Env]
+									? [
+											SkipToken<Tokens>,
+											PeekToken<Tokens> extends { blob: true }
+												? { kind: "string"; value: Str; blob: true }
+												: { kind: "string"; value: Str },
+											Env,
+										]
 									: PeekToken<Tokens> extends TokenNumber<infer Raw>
 										? [SkipToken<Tokens>, { kind: "number"; raw: Raw }, Env]
 										: PeekToken<Tokens> extends TokenParam<infer P>
@@ -2789,11 +2808,11 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 
 /** EXPR-2, EXPR-5, EXPR-6: a column reference as a right operand or unary-minus operand. */
 type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts]
+	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts, infer W extends string]
 		? Parts extends ScalarIdentParts
 			? PeekToken<Rm> extends TokenKey<"(">
 				? SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["("]>, Env>
-				: [Rm, { kind: "col"; parts: Parts }, Env]
+				: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
 			: SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["*"]>, Env>
 		: never
 
@@ -3103,7 +3122,7 @@ type ParseArithTailAfterFirstScalarUntyped<
 		: never
 
 type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts]
+	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts, infer W extends string]
 		? Parts extends readonly ["__ats__", infer Al extends string]
 			? PeekToken<Rm> extends TokenKey<"(">
 				? SkipBracketedUntil<SkipToken<Rm>, TokenKey<")">> extends [infer After extends ParserMonad, infer Rs]
@@ -3152,7 +3171,7 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 							: never
 						: PeekToken<Rm> extends infer Pa
 							? Pa extends TokenKey<"::">
-								? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts }> extends [
+								? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts; written: W }> extends [
 										infer Rcast extends ParserMonad,
 										infer Casted extends ScalarExprAst,
 									]
@@ -3161,8 +3180,12 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 										: [Rcast, Casted, Env]
 									: never
 								: Pa extends ArithOpToken
-									? ParseArithTailAfterFirstScalarUntyped<Rm, { kind: "col"; parts: Parts }, Env>
-									: [Rm, { kind: "col"; parts: Parts }, Env]
+									? ParseArithTailAfterFirstScalarUntyped<
+											Rm,
+											{ kind: "col"; parts: Parts; written: W },
+											Env
+										>
+									: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
 							: never
 					: never
 		: never

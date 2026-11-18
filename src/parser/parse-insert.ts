@@ -25,7 +25,7 @@ import type {
 } from "./parse-expression.ts"
 import type { ParseAndResolveReturningClause, ParseSelectExpression } from "./parse-select.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetData, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData, UnqualifiedSchema, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
@@ -144,7 +144,7 @@ type ParseInsertFromTableRef<
 								: never
 							: never
 						: never
-					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
+					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [
 									R1,
@@ -152,7 +152,7 @@ type ParseInsertFromTableRef<
 									ParserRefErrorThirdSentinel,
 								]
 							: TblTry extends JsqlDataShape
-								? ParseInsertAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Params>
+								? ParseInsertAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry, Params>
 								: [
 										R1,
 										FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
@@ -296,18 +296,18 @@ type ParseInsertWithSelect<
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseSelectExpression<Tokens, Db, Params> extends [infer RSelect extends ParserMonad, infer Db2, infer SelectRes]
+	ParseSelectExpression<Tokens, Db, Params> extends [infer RSelect extends ParserMonad, infer _Db2, infer SelectRes]
 		? SelectRes extends DbtyperErrorShape
-			? [RSelect, Db2, SelectRes]
+			? [RSelect, Db, SelectRes]
 			: SelectRes extends JsqlSelectStatementResult
 				? ValidateInsertSelectColumns<Tbl, Cols, SelectRes> extends infer ValidationRes
 					? ValidationRes extends DbtyperErrorShape
-						? [RSelect, Db2, ValidationRes]
+						? [RSelect, Db, ValidationRes]
 						: ValidationRes extends true
-							? Db2 extends JsqlDatabaseShape
+							? Db extends JsqlDatabaseShape
 								? FinishInsertSemicolon<
 										RSelect,
-										Db2,
+										Db,
 										{
 											kind: "insert"
 											table: Tab

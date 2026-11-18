@@ -9,7 +9,7 @@ import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
-import type { JsqlDbGetData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 
@@ -125,7 +125,7 @@ type ParseDeleteUsingTableRef<
 								: never
 							: never
 						: never
-					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry2
+					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry2
 						? [TblTry2] extends [never]
 							? [
 									R1,
@@ -133,7 +133,7 @@ type ParseDeleteUsingTableRef<
 									ParserRefErrorThirdSentinel,
 								]
 							: TblTry2 extends JsqlDataShape
-								? ParseDeleteUsingTableAlias<R1, Db["defaultSchema"], A, TblTry2>
+								? ParseDeleteUsingTableAlias<R1, UnqualifiedSchema<Db, A>, A, TblTry2>
 								: [
 										R1,
 										FormatError<Errors["UNKNOWN_TABLE"], [A, "DELETE USING"]>,
@@ -273,7 +273,7 @@ type ParseDeleteFromTableRef<
 								: never
 							: never
 						: never
-					: JsqlDbGetData<Db, Db["defaultSchema"], A> extends infer TblTry
+					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
 						? [TblTry] extends [never]
 							? [
 									R1,
@@ -281,7 +281,7 @@ type ParseDeleteFromTableRef<
 									ParserRefErrorThirdSentinel,
 								]
 							: TblTry extends JsqlDataShape
-								? ParseDeleteAliasAfterTable<R1, Db, Db["defaultSchema"], A, TblTry, Scope, Params>
+								? ParseDeleteAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry, Scope, Params>
 								: [
 										R1,
 										FormatError<Errors["UNKNOWN_TABLE"], [A, "DELETE FROM"]>,

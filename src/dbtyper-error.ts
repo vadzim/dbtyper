@@ -169,6 +169,24 @@ export const errors = {
 		msg: ["Expected STRICT or WITHOUT ROWID"],
 	},
 
+	// SQLite DDL and names (SQLT-18, SQLT-21, SQLT-24, SQLT-26; #70)
+	WITHOUT_ROWID_NEEDS_PRIMARY_KEY: {
+		code: 1913,
+		msg: ["WITHOUT ROWID tables need a PRIMARY KEY"],
+	},
+	SQLITE_ADD_COLUMN_RESTRICTED: {
+		code: 1914,
+		msg: ["SQLite cannot ADD COLUMN with ", ""],
+	},
+	SQLITE_NO_SCHEMAS: {
+		code: 1915,
+		msg: ["SQLite has no schemas"],
+	},
+	SQLITE_UNSUPPORTED_STATEMENT: {
+		code: 1916,
+		msg: ["", " is not supported in migrations"],
+	},
+
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {
