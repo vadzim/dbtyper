@@ -5,7 +5,10 @@ export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"
 export type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 
-export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
+/** DSEL-1: the dialect of the chain, carried in the lexer `syntax` so every parser can read it (`"dialect-sqlite" extends Syntax`). */
+export type LexerDialect = "dialect-postgres" | "dialect-sqlite"
+
+export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams | LexerDialect
 
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
 	| Exclude<Syntax, LexerQueryParams>

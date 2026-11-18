@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { FormatError, Errors } from "../dbtyper-error.ts"
+import type { DbtyperError, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { HasAmbiguousUnqualifiedColumn, NearestScopeKeysWithColumn } from "./scope-unqualified-helpers.ts"
@@ -56,3 +56,13 @@ export type ResolveColumnRefValue<
 	Scope extends ScopeMap,
 	Parts extends readonly [string] | readonly [string, string] | readonly [string, string, string],
 > = ValidateColumnPartsShared<Db, Scope, Parts>
+
+/** ERR-8: name the clause in an "Unknown column" error that does not carry one yet. */
+export type WithErrorClause<E, Clause extends string> =
+	E extends DbtyperError<2300, infer M extends string>
+		? M extends `Unknown column ${infer C}`
+			? C extends `${string} in ${string}`
+				? E
+				: FormatError<Errors["UNKNOWN_COLUMN"], [C, Clause]>
+			: E
+		: E

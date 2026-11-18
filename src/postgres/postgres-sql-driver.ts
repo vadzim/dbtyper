@@ -6,6 +6,7 @@ import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
 import type { PostgresTypeMap } from "./postgres-type-map.ts"
 
 export type PostgresDriverConfig = {
+	dialect: "postgres"
 	scalarTypes: PostgresTypeMap
 	syntax: "dollar-strings" | "named-params" | "indexed-params"
 }
