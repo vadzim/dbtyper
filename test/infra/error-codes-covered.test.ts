@@ -9,7 +9,7 @@ import { UNTESTED_ERROR_CODES } from "./untested-error-codes.ts"
 // Codes that have no such test yet are listed in untested-error-codes.ts. That list may only shrink:
 // a listed code that is tested now fails here, so remove it from the list.
 // 9999 (INTERNAL_ERROR) is excluded: it must never be reachable.
-// The registry is read as text: importing src/dbtyper-error.ts would throw while two ids share a code (2300).
+// The registry is read as text (its `errors` object is not exported; the module checks for duplicate codes itself).
 
 async function readActiveErrors() {
 	const text = await readFile(join(process.cwd(), "src", "dbtyper-error.ts"), "utf-8")
