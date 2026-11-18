@@ -5,7 +5,7 @@ import type {
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { TokenEot, TokenNumber, TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -458,34 +458,73 @@ type ParseColumnGenerated<Tokens extends ParserMonad, C extends ColumnCtx, S ext
 type ParseColumnDefault<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	PeekToken<Tokens> extends TokenKey<"," | ")" | ";"> | TokenEot
 		? ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_DEFAULT_VALUE"], []>>
-		: PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
-			? DefaultFits<DateTimeKeywordType<PeekToken<Tokens>["value"]>, C> extends infer Err
-				? Err extends DbtyperErrorShape
-					? ColumnFail<SkipToken<Tokens>, C, Err>
-					: ParseColumnConstraints<
-							SkipToken<Tokens>,
-							C,
-							ColumnStateWith<S, { def: true; afterDefault: true }>
-						>
-				: never
-			: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
-						infer R extends ParserMonad,
-						infer Ast,
-						infer _Env,
-				  ]
-				? Ast extends DbtyperErrorShape
-					? ColumnFail<R, C, DefaultSyntaxError<Tokens, Ast>>
-					: Ast extends ScalarExprAst
-						? DefaultFits<
-								ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>,
-								C
-							> extends infer Err
-							? Err extends DbtyperErrorShape
-								? ColumnFail<R, C, DefaultSyntaxError<Tokens, Err>>
-								: ParseColumnConstraints<R, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
-							: never
+		: PeekToken<Tokens> extends LiteralDefaultToken
+			? DefaultLiteralEnds<PeekToken<SkipToken<Tokens>>> extends true
+				? DefaultFits<LiteralDefaultType<PeekToken<Tokens>>, C> extends infer Err
+					? Err extends DbtyperErrorShape
+						? ColumnFail<SkipToken<Tokens>, C, Err>
+						: ParseColumnConstraints<
+								SkipToken<Tokens>,
+								C,
+								ColumnStateWith<S, { def: true; afterDefault: true }>
+							>
+					: never
+				: ParseColumnDefaultExpression<Tokens, C, S>
+			: ParseColumnDefaultExpression<Tokens, C, S>
+
+/** The cheap path of {@link ParseColumnDefault}: a lone literal costs no expression parsing. */
+type LiteralDefaultToken = TokenString<string> | TokenNumber<string> | TokenKey<"true" | "false" | "null">
+
+type LiteralDefaultType<Tok> =
+	Tok extends TokenString<string>
+		? { type: "text"; arg: null; nullable: false }
+		: Tok extends TokenNumber<string>
+			? { type: "integer"; arg: null; nullable: false }
+			: Tok extends TokenKey<"null">
+				? { type: "null"; arg: null; nullable: false }
+				: { type: "boolean"; arg: null; nullable: false }
+
+/** The literal is the whole default expression when a constraint, `,` or `)` follows it. */
+type DefaultLiteralEnds<Next> = Next extends
+	| TokenKey<
+			| ","
+			| ")"
+			| "not"
+			| "null"
+			| "primary"
+			| "unique"
+			| "check"
+			| "references"
+			| "constraint"
+			| "generated"
+			| "default"
+	  >
+	| TokenIdent<"collate">
+	? true
+	: false
+
+type ParseColumnDefaultExpression<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
+		? DefaultFits<DateTimeKeywordType<PeekToken<Tokens>["value"]>, C> extends infer Err
+			? Err extends DbtyperErrorShape
+				? ColumnFail<SkipToken<Tokens>, C, Err>
+				: ParseColumnConstraints<SkipToken<Tokens>, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
+			: never
+		: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
+					infer R extends ParserMonad,
+					infer Ast,
+					infer _Env,
+			  ]
+			? Ast extends DbtyperErrorShape
+				? ColumnFail<R, C, DefaultSyntaxError<Tokens, Ast>>
+				: Ast extends ScalarExprAst
+					? DefaultFits<ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>, C> extends infer Err
+						? Err extends DbtyperErrorShape
+							? ColumnFail<R, C, DefaultSyntaxError<Tokens, Err>>
+							: ParseColumnConstraints<R, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
 						: never
-				: never
+					: never
+			: never
 
 /** The type of `CURRENT_TIMESTAMP`, `CURRENT_DATE`, `CURRENT_TIME` (the expression parser has no such keywords). */
 type DateTimeKeywordType<K extends string> = {
@@ -771,27 +810,20 @@ type OneCol<C extends ColumnDef> = C extends readonly [
 	infer Generated extends boolean,
 ]
 	? {
-			cols: Record<N, NotNull extends true ? NotNullType<Sql> : Sql>
-			facts: ColumnFacts<N, NotNull, HasDefault, Generated>
+			cols: Record<N, NotNull extends true ? (Sql["nullable"] extends false ? Sql : NotNullType<Sql>) : Sql>
+			facts: Generated extends true
+				? NotNull extends true
+					? Record<N, { nullability: "not_null"; generated: true }>
+					: Record<N, { generated: true }>
+				: NotNull extends true
+					? HasDefault extends true
+						? Record<N, { nullability: "not_null"; default: true }>
+						: Record<N, { nullability: "not_null" }>
+					: HasDefault extends true
+						? Record<N, { default: true }>
+						: {}
 		}
 	: never
-
-type ColumnFacts<
-	N extends string,
-	NotNull extends boolean,
-	HasDefault extends boolean,
-	Generated extends boolean,
-> = Generated extends true
-	? NotNull extends true
-		? Record<N, { nullability: "not_null"; generated: true }>
-		: Record<N, { generated: true }>
-	: NotNull extends true
-		? HasDefault extends true
-			? Record<N, { nullability: "not_null"; default: true }>
-			: Record<N, { nullability: "not_null" }>
-		: HasDefault extends true
-			? Record<N, { default: true }>
-			: {}
 
 type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
 	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
