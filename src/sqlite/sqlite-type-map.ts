@@ -20,6 +20,18 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
 	bigint: Integer
 }
 
+/**
+ * SQLT-32: what a parameter VALUE may be, per SQL type. Both drivers bind `number`, `bigint`, `string`, `Uint8Array`
+ * and `null`; an integer position accepts `number` and `bigint` (in either mode); `boolean`, `Date` and objects are not
+ * bindable, so no row accepts them. `null` is added by the nullability of the position.
+ */
+export type SqliteParamTypeMap = Omit<SqliteTypeMap, "integer" | "boolean" | "bigint" | "any"> & {
+	integer: number | bigint
+	boolean: number | bigint
+	bigint: number | bigint
+	any: number | bigint | string | Uint8Array
+}
+
 /** Options of `betterSqlite3Driver` / `nodeSqliteDriver` (SQLT-4). */
 export type SqliteDriverOptions = {
 	/** Big-integer mode: every INTEGER value is a `bigint` (`safeIntegers` / `readBigInts`). @default false */
@@ -33,5 +45,6 @@ export type SqliteDriverOptions = {
 export type SqliteDriverConfig<Bigint extends boolean = false> = {
 	dialect: "sqlite"
 	scalarTypes: SqliteTypeMap<Bigint extends true ? bigint : number>
+	paramTypes: SqliteParamTypeMap
 	syntax: "question-params" | "named-params"
 }

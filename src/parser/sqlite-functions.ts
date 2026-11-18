@@ -118,6 +118,16 @@ export type SqliteFunctions = {
 }
 
 /**
+ * SQLT-35, SQLT-36: SQLite operators whose result is not that of the shared parser, as function rows (see
+ * {@link SqliteFunctions}) over `[left, right]`: `||` is TEXT for any operands, `->` is TEXT (JSON), `->>` any storage class.
+ */
+export type SqliteOperators = {
+	"||": ["text", "args"]
+	"->": ["text", "args"]
+	"->>": ["any", "null"]
+}
+
+/**
  * SQLT-52: PostgreSQL functions that SQLite lacks, with the hint of the SQLite replacement ("" for none). Anything
  * else that is not in {@link SqliteFunctions} is the plain unknown-function error.
  */

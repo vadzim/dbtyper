@@ -596,7 +596,20 @@ type LimitExprThenOptionalOffset<
 					: [Ro1, null]
 				: never
 			: never
-		: [Rl1, null]
+		: PeekToken<Rl1> extends TokenKey<",">
+			? DialectFact<Db, "limitComma"> extends true
+				? SkipToken<Rl1> extends infer Rc extends ParserMonad
+					? ParseOrderByScalarExpr<Rc, Db, Scope, Params, "LIMIT"> extends [
+							infer Rc1 extends ParserMonad,
+							infer Ce,
+						]
+						? Ce extends DbtyperErrorShape
+							? SkipFailedExpression<Rc1, Ce>
+							: [Rc1, null]
+						: never
+					: never
+				: [Rl1, null]
+			: [Rl1, null]
 
 /** After `OFFSET` expr: optional `LIMIT` expr (PostgreSQL allows `OFFSET … LIMIT …`). */
 type OffsetExprThenOptionalLimit<
@@ -987,7 +1000,7 @@ type ExprValidInsideGroupedSelection<
 															ExprValidInsideGroupedSelection<Ra, GroupKeys, false>
 														>
 													: Ast extends {
-																kind: "cmp"
+																kind: "cmp" | "is_cmp"
 																left: infer Lc extends ScalarExprAst
 																right: infer Rc extends ScalarExprAst
 														  }
@@ -1258,7 +1271,7 @@ type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
 			: Ast extends { kind: "not"; inner: infer In extends ScalarExprAst }
 				? AstContainsAggregateCall<In>
 				: Ast extends {
-							kind: "and" | "or" | "cmp"
+							kind: "and" | "or" | "cmp" | "is_cmp"
 							left: infer La extends ScalarExprAst
 							right: infer Ra extends ScalarExprAst
 					  }
@@ -1809,7 +1822,8 @@ type ParseFromTableRef<
 			: never
 		: never
 
-type ParseFromJoinScope<
+/** A FROM clause with joins as `[rest, error | null, scope]`; also the source list of `UPDATE … FROM` (SQLT-42). */
+export type ParseFromJoinScope<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -1863,6 +1877,7 @@ type ParseFromTableAfterLeadingIdent<
 
 /** Tokens that end a FROM item without an alias. */
 type FromItemEndToken =
+	| TokenKey<"returning">
 	| TokenKey<"inner">
 	| TokenKey<"left">
 	| TokenKey<"right">

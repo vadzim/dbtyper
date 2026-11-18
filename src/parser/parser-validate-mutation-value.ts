@@ -1,4 +1,5 @@
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
+import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SameComparisonClass } from "./parse-expression.ts"
@@ -15,9 +16,14 @@ type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl exten
 		: false
 	: false
 
-export type ValidateMutationValueForColumn<Tbl extends JsqlDataShape, Col extends string, Val extends SqlTypeShape> =
+export type ValidateMutationValueForColumn<
+	Tbl extends JsqlDataShape,
+	Col extends string,
+	Val extends SqlTypeShape,
+	Db = never,
+> =
 	JsqlDataGetColumnType<Tbl, Col> extends infer ColSql extends SqlTypeShape
-		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql>
+		? ValidateMutationValueBySql<Tbl, Col, Val, ColSql, Db>
 		: FormatError<Errors["UNKNOWN_COLUMN"], [Col, "INSERT"]>
 
 type ValidateMutationValueBySql<
@@ -25,6 +31,7 @@ type ValidateMutationValueBySql<
 	Col extends string,
 	Val extends SqlTypeShape,
 	ColSql extends SqlTypeShape,
+	Db,
 > = Val["type"] extends "param-probe"
 	? // CORE-6: the column gives an untyped parameter its type (`null` too for a nullable column)
 		ParamProbeFound<ProbeKeyOf<Val>, ColSql>
@@ -34,7 +41,10 @@ type ValidateMutationValueBySql<
 			: true
 		: SameComparisonClass<Val, ColSql> extends true
 			? true
-			: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
+			: DialectFact<Db, "typeNames"> extends "affinity"
+				? // SQLT-43: SQLite would coerce; dbtyper names the column's storage class instead
+					FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColSql["type"]>]>
+				: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
 
 /** A generated column (CORE-18) can be read, but never written. */
 export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {

@@ -252,6 +252,34 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **SQLite default schema.** A SQLite chain starts with its default schema present (SQLT-25's "no create schema");
   naming it `main`/`temp` is left to the SQLite names issue.
 
+## 2026-11-18 SQLite parameters, operators, joins and DML (#73, track A; SQLT-30…SQLT-43)
+
+- **Dialect rows** (src/core/dialect.ts), no `if sqlite` in a parser: `operators` ("sqlite" = `||` TEXT for any operands, `->`
+  TEXT, `->>` any/nullable, from the data table `SqliteOperators` next to `SqliteFunctions`), `isOperand` (`IS [NOT] value`
+  and `IS [NOT] DISTINCT FROM`, null-safe, never NULL), `globRegexp` (`GLOB`, `REGEXP`), `limitComma` (`LIMIT m, n`). Existing
+  facts reused: `typeNames: "affinity"` now also decides that a CAST gives the affinity's type (any value, boolean included)
+  and that a literal with `.`/exponent is REAL and arithmetic with a REAL operand is REAL (bigint mode shows it).
+- **Parameter values (SQLT-32).** `DriverConfig.paramTypes` (optional) is the TS type per SQL type that a VALUE may have; the
+  SQLite config sets `SqliteParamTypeMap` (integer position: `number | bigint`, no boolean/Date/object). Postgres has none, so
+  its values are still checked against `scalarTypes`. Mixing `?` and `:n` is the existing lexer error 1007; `:a`/`@a`/`$a` were
+  already one key; disagreeing types are 2500.
+- **Expressions.** New AST kind `is_cmp`. Postfix `NOT LIKE/GLOB/REGEXP/IN/BETWEEN` is the negated positive form (also for
+  PostgreSQL); the unparenthesized column DEFAULT parses with `noPostfixNot` so `DEFAULT 18 NOT NULL` still ends the
+  expression (the monad cannot un-skip a token). `ESCAPE x` is parsed and dropped. `GLOB`/`REGEXP` are plain identifiers
+  in the token stream (no new keywords). `REGEXP` is allowed only when `Db["functions"]` has `regexp`.
+- **INSERT.** `[OR action]` after INSERT/UPDATE, `REPLACE INTO` as a statement head, `DEFAULT VALUES`, conflict target
+  `WHERE`, any number of chained `ON CONFLICT` clauses (only the last DO UPDATE's column list is kept in the result),
+  `RETURNING` after DO UPDATE with `*` meaning the target's columns (no `excluded`). INSERT sees the rowid names: the target
+  scope and column list use `TableScopeColumns`; the no-column-list default stays the real columns. (#67 leftover.)
+- **UPDATE … FROM.** SET values are parsed first (kept as `pending`) and resolved after FROM/WHERE scope exists, so they may
+  name FROM sources; FROM reuses the SELECT FROM/JOIN parser (`ParseFromJoinScope`), so joins work.
+- **Not changed (already met).** RIGHT/FULL joins and their nullability, DML in a CTE/subquery (1101/1102 syntax errors),
+  `FETCH FIRST` and `DELETE … USING` (1900), non-STRICT value checks (2507).
+- **Codes.** 2510 `COLUMN_TYPE_MISMATCH` ("column `name` is TEXT", SQLite chains; PostgreSQL keeps 2507), 1917 `REGEXP_NEEDS_FUNCTION`, 1918 `EXPECTED_CONFLICT_ACTION_AFTER_OR`, 1226 `EXPECTED_VALUES_AFTER_DEFAULT_IN_INSERT`,
+  5008 `EXPECTED_FROM_AFTER_IS_DISTINCT`, 5009 `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`.
+- **Cost.** SQLite test files before this issue 2,791,410 instantiations, same files after 2,803,379 (+0.4%); the three new
+  test files add ~1.5M by themselves (whole `tsconfig.test.json`: 9.18M → 11.96M).
+
 ## SQLT-28: result key as written (#101, track A)
 
 - **Source text for parsers.** Parsers cannot read the query text (monad checker: only `PeekToken`/`SkipToken`).

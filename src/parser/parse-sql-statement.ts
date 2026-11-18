@@ -126,7 +126,10 @@ export type ParseSqlStatement<
 									? ParseSelectStatement<SkipToken<Tokens>, Db, Params>
 									: PeekToken<Tokens> extends TokenKey<"update">
 										? ParseUpdate<SkipToken<Tokens>, Db, Params>
-										: ParseOtherStatement<Tokens, Db>
+										: PeekToken<Tokens> extends TokenKey<"replace">
+											? // SQLT-39: `REPLACE INTO` is `INSERT OR REPLACE INTO`
+												ParseInsert<SkipToken<Tokens>, Db, Params>
+											: ParseOtherStatement<Tokens, Db>
 
 /** A statement no parser knows: skipped; but ATTACH / DETACH are errors in a SQLite chain (SQLT-24). */
 type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
