@@ -385,7 +385,33 @@ type ParseAlterAfterQualified<
 		: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_DOES_NOT_EXIST"], []>>
 	: [R, Db, Err extends DbtyperErrorShape ? Err : FormatError<Errors["INVALID_ALTER_TABLE_NAME"], []>]
 
+/** `ALTER TABLE IF EXISTS t …`: a no-op (skipped to `;`) when `t` does not exist. */
+type ParseAlterIfExists<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+	ParseQualifiedAlterTableName<Tokens, Db> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Sch extends string,
+		infer Tab extends string,
+	]
+		? E extends null
+			? JsqlDbGetTable<Db, Sch, Tab> extends object
+				? ParseAlterAfterQualified<R, Db, E, Sch, Tab>
+				: SkipBracketedUntil<R> extends [infer Rest extends ParserMonad, unknown]
+					? [SkipToken<Rest>, Db, null]
+					: never
+			: ParseAlterAfterQualified<R, Db, E, Sch, Tab>
+		: never
+
 type ParseAlterAfterTableKeyword<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+	PeekToken<Tokens> extends TokenKey<"if">
+		? SkipToken<Tokens> extends infer A0 extends ParserMonad
+			? PeekToken<A0> extends TokenKey<"exists">
+				? ParseAlterIfExists<SkipToken<A0>, Db>
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE"], []>>
+			: never
+		: ParseAlterPlain<Tokens, Db>
+
+type ParseAlterPlain<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	ParseQualifiedAlterTableName<Tokens, Db> extends [
 		infer R extends ParserMonad,
 		infer E,

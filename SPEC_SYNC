@@ -7,5 +7,5 @@
 # Existing project: both start at the first (as-built) spec commit.
 # Customer-visible code repo: a local file excluded in .git/info/exclude, mirrored in a pinned issue (METHOD §7.4).
 spec: https://github.com/vadzim/dbtyper-spec
-planned: 280b653
+planned: e25f80e
 done: 280b653

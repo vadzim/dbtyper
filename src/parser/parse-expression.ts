@@ -931,7 +931,7 @@ type ResolveFunctionCall<
 																SqlTypeShape,
 															]
 															? S1["type"] extends "array" | "unknown"
-																? SqlUnknown
+																? S1
 																: FormatError<
 																		Errors["ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT"],
 																		[]
@@ -946,7 +946,7 @@ type ResolveFunctionCall<
 																	infer S2 extends SqlTypeShape,
 																]
 																? S2["type"] extends "array" | "unknown"
-																	? SqlUnknown
+																	? S2
 																	: FormatError<
 																			Errors["ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY"],
 																			[]
@@ -959,12 +959,17 @@ type ResolveFunctionCall<
 																? ArgsRes extends readonly [
 																		infer S1 extends SqlTypeShape,
 																	]
-																	? S1["type"] extends "array" | "unknown"
-																		? SqlUnknown
-																		: FormatError<
-																				Errors["UNNEST_EXPECTS_AN_ARRAY"],
-																				[]
-																			>
+																	? S1 extends {
+																			type: "array"
+																			arg: infer E extends SqlTypeShape
+																		}
+																		? E
+																		: S1["type"] extends "array" | "unknown"
+																			? SqlUnknown
+																			: FormatError<
+																					Errors["UNNEST_EXPECTS_AN_ARRAY"],
+																					[]
+																				>
 																	: FormatError<
 																			Errors["UNNEST_REQUIRES_1_ARGUMENT"],
 																			[]
@@ -1505,9 +1510,12 @@ type LookupPositionalParam<
 	Params extends ExpressionParamsShape,
 	Index extends number,
 > = Params extends readonly SqlTypeShape[]
-	? Index extends keyof Params
-		? Params[Index]
-		: FormatError<Errors["POSITIONAL_PARAMETER_OUT_OF_BOUNDS"], [Index]>
+	? // PARAM-13: for a tuple (`["a"]`) an index beyond its length is out of bounds; a plain array has no known length
+		number extends Params["length"]
+		? Params[number]
+		: `${Index}` extends keyof Params
+			? Params[Index]
+			: FormatError<Errors["POSITIONAL_PARAMETER_OUT_OF_BOUNDS"], [Index]>
 	: FormatError<Errors["POSITIONAL_PARAMETER_REQUIRES_ARRAY"], []>
 
 type ResolveIdentChainValue<
