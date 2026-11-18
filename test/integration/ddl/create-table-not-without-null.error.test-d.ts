@@ -4,9 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
 // ❌ ERROR (SCHEMA-10 only NOT NULL or NULL; SCHEMA-11)
 const query = `create table t (a int not xyz);` as const
