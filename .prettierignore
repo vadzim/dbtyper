@@ -8,3 +8,4 @@ test/.legacy-unsupported/
 # generated bison tables (committed; see src/gram/README.md)
 src/gram/*/tables.d.ts
 src/gram/*/keywords.ts
+src/gram/*/fallback.json

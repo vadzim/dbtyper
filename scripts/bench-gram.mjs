@@ -28,8 +28,11 @@ writeFileSync(resolve(work, "package.json"), '{"type":"module"}')
 function terminals(n) {
 	const k = Math.max(0, Math.floor((n - 4) / 4))
 	const t = ["select"]
-	for (let i = 0; i < k; i++) t.push("ident", "+", "iconst", ",")
-	t.push("ident", "from", "ident")
+	// SQLite: terminal names of parse.y, and the statement ends with `semi`
+	const sq = dialect === "sqlite"
+	for (let i = 0; i < k; i++) t.push(sq ? "id" : "ident", sq ? "plus" : "+", sq ? "integer" : "iconst", sq ? "comma" : ",")
+	t.push(sq ? "id" : "ident", "from", sq ? "id" : "ident")
+	if (sq) t.push("semi")
 	return t
 }
 

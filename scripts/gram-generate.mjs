@@ -2,7 +2,7 @@
 //   src/gram/<dialect>/gram.y --bison --xml--> gram.xml --scripts/gram/xml2ts.ts--> tables.d.ts (+ keywords.ts)
 // Only GNU bison is required (flex is not used). See src/gram/README.md and DECISIONS.md (#52, #93).
 import { spawnSync } from "node:child_process"
-import { readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 const dialect = process.argv[2] ?? "postgres"
@@ -22,8 +22,20 @@ function run(cmd, args) {
 	if (r.status !== 0) process.exit(r.status ?? 1)
 }
 
+// lemon grammars (sqlite: parse.y) are converted to gram.y first (+ fallback.json, keywords.ts)
+const lemon = existsSync(resolve(dir, "parse.y"))
+if (lemon) run("node", [resolve(import.meta.dirname, "gram/lemon2bison.mjs"), dir])
+
 try {
-	run("bison", ["--xml", "-Wno-deprecated", "-Wno-other", "-o", "gram.tab.c", "gram.y"])
+	run("bison", [
+		"--xml",
+		"-Wno-deprecated",
+		"-Wno-other",
+		...(lemon ? ["-Wno-conflicts-rr"] : []),
+		"-o",
+		"gram.tab.c",
+		"gram.y",
+	])
 	run("node", [resolve(import.meta.dirname, "gram/xml2ts.ts"), dir])
 } finally {
 	for (const f of ["gram.xml", "gram.tab.c", "gram.output"]) rmSync(resolve(dir, f), { force: true })

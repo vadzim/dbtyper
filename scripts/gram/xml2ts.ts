@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises"
+import { existsSync } from "node:fs"
 
 // usage: node scripts/gram/xml2ts.ts <dialect dir>   (reads <dir>/gram.xml, writes <dir>/tables.d.ts)
 const dialectDir = process.argv[2] ?? never("usage: xml2ts.ts <dialect dir>")
@@ -271,6 +272,13 @@ const A = emit("A", actionSharer, actionRows)
 const G = emit("G", gotoSharer, gotoRows)
 const C = emit("C", chainSharer, chainRows, true)
 
+// lemon %fallback (lemon2bison.mjs): { terminal: fallback terminal }, emitted as `Fallback` for the driver
+const fallbackFile = dialectDir + "/fallback.json"
+const fallback: Record<string, string> = existsSync(fallbackFile)
+	? JSON.parse(await readFile(fallbackFile, "utf8"))
+	: {}
+const hasFallback = Object.keys(fallback).length > 0
+
 console.log("writing file")
 
 await writeFile(
@@ -286,7 +294,13 @@ export type Actions = ${A.table}
 
 export type Gotos = ${G.table}
 
-export type Tables = { Actions: Actions; Gotos: Gotos }
+${
+	hasFallback
+		? `export type Fallback = {\n${Object.entries(fallback)
+				.map(([k, v]) => `${key(k)}: ${JSON.stringify(v)}`)
+				.join("\n")}\n}\n\n`
+		: ""
+}export type Tables = { Actions: Actions; Gotos: Gotos${hasFallback ? "; Fallback: Fallback" : ""} }
 
 export {}
 

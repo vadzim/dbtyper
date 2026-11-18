@@ -3,16 +3,17 @@
  * Replaces the former `with_la` hack in parser-monad.ts: the one-token lookaheads of PostgreSQL's parser.c
  * (`base_yylex`) live here.
  *
- * Limits: the lexer yields a quoted and an unquoted non-service word alike as an ident, so an ident whose text is a
- * PostgreSQL keyword is taken as that keyword (`"analyze"` in quotes is read as the keyword). Words of the lexer's
- * keyword list that PostgreSQL has no keyword for (`use`, `virtual`, ...) are plain identifiers here.
+ * A quoted identifier is a `quoted_ident` token (lexer feature `quoted-ident-kind`, on in the default syntax here) and
+ * always `ident`: `"analyze"` is not the keyword (#96; before, #93, it was). A bare word whose text is a PostgreSQL
+ * keyword is that keyword. Words of the lexer's keyword list that PostgreSQL has no keyword for (`use`, `virtual`, ...)
+ * are plain identifiers here.
  */
 import type { CreateParserMonad, ParserMonad, PeekToken, SkipToken } from "../../lexer/parser-monad.ts"
 import type { LexerFeatures } from "../../lexer/sql-lexer.ts"
 import type { Keywords } from "./keywords.ts"
 
 /** Terminals of the query text, without `$end`. A lexer error becomes the terminal `$error`, which no state accepts. */
-export type PgTerminals<Query extends string, Syntax extends string = LexerFeatures> =
+export type PgTerminals<Query extends string, Syntax extends string = LexerFeatures | "quoted-ident-kind"> =
 	Collect<CreateParserMonad<Query, Syntax>> extends [infer _M extends ParserMonad, infer Terminals extends string[]]
 		? Terminals
 		: never
@@ -24,7 +25,7 @@ type Collect<M extends ParserMonad, Acc extends string[] = []> =
 			: SkipToken<M> extends infer Rest extends ParserMonad
 				? Tok extends { kind: infer K extends string; value: infer V extends string }
 					? Collect<Rest, [...Acc, Terminal<K, V, PeekToken<Rest>>]>
-					: Collect<Rest, [...Acc, "$error"]>
+					: [M, [...Acc, "$error"]] /* a lexer error does not advance: stop */
 				: never
 		: never
 
@@ -38,13 +39,15 @@ type Terminal<Kind extends string, Value extends string, Next> = Kind extends "i
 			? "sconst"
 			: Kind extends "param" | "indexed_param"
 				? "param"
-				: Kind extends "ident"
-					? WordTerminal<Value, Next>
-					: Kind extends "key"
-						? Value extends `${Letter}${string}`
-							? WordTerminal<Value, Next>
-							: SymbolTerminal<Value>
-						: "$error"
+				: Kind extends "quoted_ident"
+					? "ident"
+					: Kind extends "ident"
+						? WordTerminal<Value, Next>
+						: Kind extends "key"
+							? Value extends `${Letter}${string}`
+								? WordTerminal<Value, Next>
+								: SymbolTerminal<Value>
+							: "$error"
 
 type Letter =
 	| Lowercase<"a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m">

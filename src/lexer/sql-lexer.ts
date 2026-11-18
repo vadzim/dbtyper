@@ -8,18 +8,36 @@ export type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 /** DSEL-1: the dialect of the chain, carried in the lexer `syntax` so every parser can read it (`"dialect-sqlite" extends Syntax`). */
 export type LexerDialect = "dialect-postgres" | "dialect-sqlite"
 
+/**
+ * Additive features read by the grammar token mappings (src/gram, #96); not part of {@link LexerFeatures}, so the
+ * default syntax never has them: `"quoted-ident-kind"` makes a double-quoted identifier a `quoted_ident` token (a bare
+ * word and `"word"` become distinguishable); `"sqlite-lexemes"` adds backtick and `[bracket]` identifiers (also
+ * `quoted_ident`), `?NNN`, `@name` and `$name` parameters (a `param` token whose value keeps its sigil).
+ */
+export type LexerGramFeatures = "quoted-ident-kind" | "sqlite-lexemes"
+
 export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams | LexerDialect
 
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
 	| Exclude<Syntax, LexerQueryParams>
 	| Extract<Syntax, AllowedQueryParams>
 
-export type TokenKind = "ident" | "string" | "int" | "float" | "key" | "param" | "indexed_param" | "eot"
+export type TokenKind =
+	| "ident"
+	| "string"
+	| "int"
+	| "float"
+	| "key"
+	| "param"
+	| "indexed_param"
+	| "quoted_ident"
+	| "eot"
 
 export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
 
 export type TokenKey<Key extends string> = TokenType<"key", Key>
 export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
+export type TokenQuotedIdent<Ident extends string> = TokenType<"quoted_ident", Ident>
 export type TokenString<String extends string> = TokenType<"string", String>
 export type TokenInteger<Num extends string> = TokenType<"int", Num>
 export type TokenFloat<Num extends string> = TokenType<"float", Num>
@@ -48,7 +66,11 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 					? ReadTokenFromString<SkipSpaces<S>, Syntax>
 					: ReadOperator<S>
 				: Head extends OperatorChars
-					? ReadOperator<S>
+					? Head extends "`" | "?" | "@"
+						? "sqlite-lexemes" extends Syntax
+							? ReadSqliteLexeme<S>
+							: ReadOperator<S>
+						: ReadOperator<S>
 					: Head extends Digit
 						? GetNumber<Rest, Head>
 						: Head extends "."
@@ -59,7 +81,12 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 								: Return<TokenKey<".">, Rest>
 							: Head extends '"'
 								? Rest extends `${infer String}"${infer Rest}`
-									? Return<TokenIdent<String>, Rest>
+									? Return<
+											"quoted-ident-kind" extends Syntax
+												? TokenQuotedIdent<String>
+												: TokenIdent<String>,
+											Rest
+										>
 									: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
 								: Head extends "\x20" | "\n" | "\r" | "\t"
 									? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
@@ -83,15 +110,17 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 											: Head extends "$"
 												? Rest extends `${infer Next}${infer Rest2}`
 													? Next extends "$" | StartTokenChar
-														? "dollar-strings" extends Syntax
-															? ReadDollarString<Rest>
-															: Return<
-																	FormatError<
-																		Errors["UNEXPECTED_TOKEN"],
-																		[SomeSymbols<S>]
-																	>,
-																	S
-																>
+														? "sqlite-lexemes" extends Syntax
+															? ReadSqliteParam<S>
+															: "dollar-strings" extends Syntax
+																? ReadDollarString<Rest>
+																: Return<
+																		FormatError<
+																			Errors["UNEXPECTED_TOKEN"],
+																			[SomeSymbols<S>]
+																		>,
+																		S
+																	>
 														: Next extends NonZeroDigit
 															? "indexed-params" extends Syntax
 																? ReadIndexedParam<Next, Rest2>
@@ -113,8 +142,45 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 															FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<S>]>,
 															S
 														>
-												: Return<TokenKey<Head>, Rest>
+												: Head extends "["
+													? "sqlite-lexemes" extends Syntax
+														? ReadQuotedUntil<Rest, "]", S>
+														: Return<TokenKey<Head>, Rest>
+													: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
+
+/** `sqlite-lexemes`: a name up to the closing character (`` `x` ``, `[x]`) is a quoted identifier. */
+type ReadQuotedUntil<
+	Rest extends string,
+	Close extends string,
+	S extends string,
+> = Rest extends `${infer Name}${Close}${infer Tail}`
+	? Return<TokenQuotedIdent<Name>, Tail>
+	: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
+
+/** `sqlite-lexemes`: S starts with a backtick, `?` or `@` */
+type ReadSqliteLexeme<S extends string> = S extends `\`${infer Rest}`
+	? ReadQuotedUntil<Rest, "`", S>
+	: S extends `?${infer Rest}`
+		? ReadTokenChars<Rest, Digit> extends { token: infer Digits extends string; rest: infer Tail extends string }
+			? Digits extends ""
+				? Return<TokenKey<"?">, Rest>
+				: Return<TokenParam<`?${Digits}`>, Tail>
+			: never
+		: S extends `@${infer Next}${string}`
+			? Next extends StartTokenChar
+				? ReadSqliteParam<S>
+				: ReadOperator<S>
+			: ReadOperator<S>
+
+/** `sqlite-lexemes`: `@name` or `$name` */
+type ReadSqliteParam<S extends string> = S extends `${infer Sigil}${infer Rest}`
+	? ReadTokenChars<Rest> extends { token: infer Name extends string; rest: infer Tail extends string }
+		? Name extends ""
+			? Return<FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<S>]>, S>
+			: Return<TokenParam<`${Sigil}${Name}`>, Tail>
+		: never
+	: never
 
 type Return<Result, Rest> = [Result, Rest]
 
