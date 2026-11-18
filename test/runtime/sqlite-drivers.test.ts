@@ -6,6 +6,7 @@ import { describe, test } from "node:test"
 
 import type { SqlDriver } from "../../src/core/sql-database.ts"
 import { betterSqlite3Driver, nodeSqliteDriver } from "../../src/sqlite/index.ts"
+import { usesNumberedParams } from "../../src/sqlite/sqlite-sql-driver.ts"
 
 const require = createRequire(import.meta.url)
 const BetterSqlite3 = require("better-sqlite3") as new (path: string) => {
@@ -111,4 +112,14 @@ test("DSEL-2: dbtyper/sqlite entry does not import the postgres package", async 
 		const src = await readFile(new URL(`../../src/sqlite/${f}`, import.meta.url), "utf8")
 		assert.doesNotMatch(src, /from "postgres"|postgres\//)
 	}
+})
+
+describe("usesNumberedParams (SQLT-30, #65)", () => {
+	test("is decided from the SQL text: ?NNN outside strings, names and comments only", () => {
+		assert.equal(usesNumberedParams("select ?1, ?2"), true)
+		assert.equal(usesNumberedParams("select ? from t"), false)
+		assert.equal(usesNumberedParams("select '?1', \"?2\" from t where a = ?"), false)
+		assert.equal(usesNumberedParams("select 1 -- ?1\n, ?"), false)
+		assert.equal(usesNumberedParams("select a /* ?1 */ from t where b = ?3"), true)
+	})
 })

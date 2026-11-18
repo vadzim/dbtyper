@@ -32,50 +32,48 @@ function bindArgs(params?: SqlDriverParams): unknown[] {
 }
 
 /**
- * better-sqlite3 treats `?NNN` as a named parameter "NNN", so an array does not bind to it positionally;
- * retry once with the array as an object keyed 1, 2, ….
+ * True when the SQL text has a numbered parameter `?NNN` outside string literals, quoted names and comments.
+ * better-sqlite3 treats `?NNN` as a named parameter "NNN", so an array must be bound to it as {1: …, 2: …}.
  */
-function withNumberedFallback<T>(
-	params: SqlDriverParams | undefined,
-	args: unknown[],
-	call: (args: unknown[]) => T,
-): T {
-	try {
-		return call(args)
-	} catch (error) {
-		if (!Array.isArray(params) || !(error instanceof RangeError)) {
-			throw error
+export function usesNumberedParams(sql: string): boolean {
+	const token = /'(?:[^']|'')*'|"(?:[^"]|"")*"|`[^`]*`|\[[^\]]*\]|--[^\n]*|\/\*[\s\S]*?\*\/|\?[0-9]/g
+	for (const match of sql.matchAll(token)) {
+		if (match[0].startsWith("?")) {
+			return true
 		}
-		return call([Object.fromEntries(args.map((value, i) => [String(i + 1), value]))])
 	}
+	return false
+}
+
+function numberedArgs(args: unknown[]): unknown[] {
+	return [Object.fromEntries(args.map((value, i) => [String(i + 1), value]))]
 }
 
 function adapt<Stmt extends StatementLike, Big extends boolean>(
 	prepare: (sql: string) => Stmt,
 	reads: (stmt: Stmt) => boolean,
 	run: (stmt: Stmt, args: unknown[]) => void,
-	retry: <T>(params: SqlDriverParams | undefined, args: unknown[], call: (args: unknown[]) => T) => T = (_p, a, c) =>
-		c(a),
+	bindNumbered: (sql: string, params: SqlDriverParams | undefined, args: unknown[]) => unknown[] = (_s, _p, a) => a,
 ): SqlDriver<SqliteDriverConfig<Big>> {
 	// SQLT-5: both drivers are synchronous underneath; query returns a promise, stream an async iterable.
 	return createDriver<SqliteDriverConfig<Big>>({
 		async query(text, params) {
 			const stmt = prepare(text)
-			const args = bindArgs(params)
+			const args = bindNumbered(text, params, bindArgs(params))
 			if (!reads(stmt)) {
-				retry(params, args, a => run(stmt, a))
+				run(stmt, args)
 				return []
 			}
-			return retry(params, args, a => stmt.all(...a))
+			return stmt.all(...args)
 		},
 		async stream(text, params): Promise<AsyncIterable<unknown>> {
 			const stmt = prepare(text)
-			const args = bindArgs(params)
+			const args = bindNumbered(text, params, bindArgs(params))
 			if (!reads(stmt)) {
 				throw new Error("stream() requires a row-returning statement (SELECT or RETURNING clause)")
 			}
 			return (async function* () {
-				yield* retry(params, args, a => stmt.iterate(...a))
+				yield* stmt.iterate(...args)
 			})()
 		},
 	})
@@ -105,7 +103,7 @@ export function betterSqlite3Driver(
 		},
 		stmt => stmt.reader,
 		(stmt, args) => void stmt.run(...args),
-		withNumberedFallback,
+		(sql, params, args) => (Array.isArray(params) && usesNumberedParams(sql) ? numberedArgs(args) : args),
 	)
 }
 
