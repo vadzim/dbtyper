@@ -517,6 +517,41 @@ export type JsqlDbReplaceColumnDefault<
 	HasDefault extends true | null,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumnDefault<JsqlDbGetSchema<Db, Sch>, Tab, Name, HasDefault>>
 
+/** PGT-25: the names of a table's named constraints (`constraints: { names }`), or `never`. */
+type ConstraintNames<Tbl> = Tbl extends { constraints: { names: infer N extends string } } ? N : never
+
+/** PGT-25: `ALTER TABLE … ADD CONSTRAINT name`: the name is known to `ON CONFLICT ON CONSTRAINT`. */
+export type JsqlDbAddConstraintName<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Name extends string,
+> =
+	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+		? JsqlDbReplaceData<
+				Db,
+				Sch,
+				Tab,
+				Omit<Tbl, "constraints"> & { constraints: { names: ConstraintNames<Tbl> | Name } }
+			>
+		: Db
+
+/** PGT-25: `ALTER TABLE … DROP CONSTRAINT name`. */
+export type JsqlDbDropConstraintName<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Name extends string,
+> =
+	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+		? JsqlDbReplaceData<
+				Db,
+				Sch,
+				Tab,
+				Omit<Tbl, "constraints"> & { constraints: { names: Exclude<ConstraintNames<Tbl>, Name> } }
+			>
+		: Db
+
 /**
  * The schema an UNQUALIFIED table or view name is looked up in: the default schema, except in a SQLite chain, where
  * `temp` is searched first (SQLT-25). A PostgreSQL chain pays one conditional.

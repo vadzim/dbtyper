@@ -23,7 +23,6 @@ import type {
 	SqlUuid,
 	SqlNull,
 	SqlUnknown,
-	SqlTimestamp,
 	Nullable,
 } from "../core/sql-type-shape.ts"
 import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -2105,12 +2104,16 @@ type ParseFunctionArgsAccum<
  * The arguments of a call after `(`: the SQL forms `extract(<field> FROM <expr>)` (the field becomes a string
  * argument) and `position(<substring> IN <string>)` (PGT-28, PGT-30), else the plain list.
  */
-type ParseCallArgs<Tokens extends ParserMonad, Parts, Env extends ExprParseEnv> = Parts extends readonly ["extract"]
+export type ParseCallArgs<Tokens extends ParserMonad, Parts, Env extends ExprParseEnv> = Parts extends readonly [
+	"extract",
+]
 	? AsIdent<PeekToken<Tokens>> extends TokenIdent<infer Field extends string>
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<"from">
-			? ParseCallArgsTail<SkipToken<SkipToken<Tokens>>, Env, readonly [{ kind: "string"; value: Field }], "from">
-			: ParseFunctionArgs<Tokens, Env>
-		: ParseFunctionArgs<Tokens, Env>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"from">
+				? ParseCallArgsTail<SkipToken<R1>, Env, readonly [{ kind: "string"; value: Field }], "from">
+				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["UNEXPECTED_TOKEN"], ["EXTRACT"]>, Env>
+			: never
+		: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["EXTRACT"]>, Env>
 	: Parts extends readonly ["position"]
 		? ParseOtherOpScalarUntyped<Tokens, Env> extends [
 				infer R1 extends ParserMonad,
@@ -3175,46 +3178,35 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 															},
 															Env,
 														]
-													: PeekToken<Tokens> extends TokenIdent<
-																| "interval"
-																| "date"
-																| "timestamp"
-																| "timestamptz"
-																| "time"
-														  >
-														? PeekToken<SkipToken<Tokens>> extends TokenString<
-																infer Lit extends string
-															>
-															? PeekToken<Tokens> extends TokenIdent<
-																	infer TypeName extends string
+													: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
+														? TryColumnOperandScalarUntyped<Tokens, Env>
+														: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
+															? SkipFailedExpressionWithEnv<
+																	Tokens,
+																	FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
+																	Env
 																>
-																? // `interval '1 day'`, `date '2020-01-01'`: a typed literal is a cast (PGT-30)
-																	[
-																		SkipToken<SkipToken<Tokens>>,
-																		{
-																			kind: "pg_cast"
-																			expr: { kind: "string"; value: Lit }
-																			type_parts: readonly [TypeName]
-																		},
-																		Env,
-																	]
-																: never
-															: TryColumnOperandScalarUntyped<Tokens, Env>
-														: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
-															? TryColumnOperandScalarUntyped<Tokens, Env>
-															: PeekToken<Tokens> extends TokenType<
-																		infer _Kind,
-																		infer Value
-																  >
-																? SkipFailedExpressionWithEnv<
-																		Tokens,
-																		FormatError<
-																			Errors["UNEXPECTED_TOKEN"],
-																			[Value]
-																		>,
-																		Env
-																	>
-																: never
+															: never
+
+/** PGT-30: type names that start a typed literal (`interval '1 day'`, `date '2020-01-01'`). */
+type TypedLiteralName = "interval" | "date" | "timestamp" | "timestamptz" | "time"
+
+type TypedLiteralCast<TypeName extends string, Lit extends string> = {
+	kind: "pg_cast"
+	expr: { kind: "string"; value: Lit }
+	type_parts: readonly [TypeName]
+}
+
+/** After a typed literal: the cast, and the arithmetic that follows it. */
+type TypedLiteralTail<
+	Tokens extends ParserMonad,
+	TypeName extends string,
+	Lit extends string,
+	Env extends ExprParseEnv,
+> =
+	PeekToken<Tokens> extends ArithOpToken
+		? ParseArithTailAfterFirstScalarUntyped<Tokens, TypedLiteralCast<TypeName, Lit>, Env>
+		: [Tokens, TypedLiteralCast<TypeName, Lit>, Env]
 
 /** EXPR-2, EXPR-5, EXPR-6: a column reference as a right operand or unary-minus operand. */
 type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
@@ -3222,7 +3214,11 @@ type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprP
 		? Parts extends ScalarIdentParts
 			? PeekToken<Rm> extends TokenKey<"(">
 				? SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["("]>, Env>
-				: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
+				: PeekToken<Rm> extends TokenString<infer Lit extends string>
+					? Parts extends readonly [infer TypeName extends TypedLiteralName]
+						? [SkipToken<Rm>, TypedLiteralCast<TypeName, Lit>, Env]
+						: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
+					: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
 			: SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["*"]>, Env>
 		: never
 
@@ -3530,37 +3526,7 @@ type ParseArithTailAfterFirstScalarUntyped<
 				: never
 		: never
 
-/** `interval '1 day'`, `date '2020-01-01'` (PGT-30): a typed literal is a cast; then the arithmetic that follows. */
 type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	PeekToken<Tokens> extends TokenIdent<"interval" | "date" | "timestamp" | "timestamptz" | "time">
-		? PeekToken<SkipToken<Tokens>> extends TokenString<infer Lit extends string>
-			? PeekToken<Tokens> extends TokenIdent<infer TypeName extends string>
-				? SkipToken<SkipToken<Tokens>> extends infer Rl extends ParserMonad
-					? PeekToken<Rl> extends ArithOpToken
-						? ParseArithTailAfterFirstScalarUntyped<
-								Rl,
-								{
-									kind: "pg_cast"
-									expr: { kind: "string"; value: Lit }
-									type_parts: readonly [TypeName]
-								},
-								Env
-							>
-						: [
-								Rl,
-								{
-									kind: "pg_cast"
-									expr: { kind: "string"; value: Lit }
-									type_parts: readonly [TypeName]
-								},
-								Env,
-							]
-					: never
-				: never
-			: ParseScalarExprUntypedFromIdentChain<Tokens, Env>
-		: ParseScalarExprUntypedFromIdentChain<Tokens, Env>
-
-type ParseScalarExprUntypedFromIdentChain<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts, infer W extends string]
 		? Parts extends readonly ["__ats__", infer Al extends string]
 			? PeekToken<Rm> extends TokenKey<"(">
@@ -3619,22 +3585,26 @@ type ParseScalarExprUntypedFromIdentChain<Tokens extends ParserMonad, Env extend
 									: never
 							: never
 						: PeekToken<Rm> extends infer Pa
-							? Pa extends TokenKey<"::">
-								? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts; written: W }> extends [
-										infer Rcast extends ParserMonad,
-										infer Casted extends ScalarExprAst,
-									]
-									? PeekToken<Rcast> extends ArithOpToken
-										? ParseArithTailAfterFirstScalarUntyped<Rcast, Casted, Env>
-										: [Rcast, Casted, Env]
-									: never
-								: Pa extends ArithOpToken
-									? ParseArithTailAfterFirstScalarUntyped<
-											Rm,
-											{ kind: "col"; parts: Parts; written: W },
-											Env
-										>
+							? Pa extends TokenString<infer Lit extends string>
+								? Parts extends readonly [infer TypeName extends TypedLiteralName]
+									? TypedLiteralTail<SkipToken<Rm>, TypeName, Lit, Env>
 									: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
+								: Pa extends TokenKey<"::">
+									? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts; written: W }> extends [
+											infer Rcast extends ParserMonad,
+											infer Casted extends ScalarExprAst,
+										]
+										? PeekToken<Rcast> extends ArithOpToken
+											? ParseArithTailAfterFirstScalarUntyped<Rcast, Casted, Env>
+											: [Rcast, Casted, Env]
+										: never
+									: Pa extends ArithOpToken
+										? ParseArithTailAfterFirstScalarUntyped<
+												Rm,
+												{ kind: "col"; parts: Parts; written: W },
+												Env
+											>
+										: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
 							: never
 					: never
 		: never

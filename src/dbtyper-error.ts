@@ -852,7 +852,7 @@ export const errors = {
 	},
 	OBSOLETE_2402_UNKNOWN_WINDOW_FUNCTION: {
 		code: 2402,
-		msg: ["Use UNKNOWN_FUNCTION (FN-14 is removed)"],
+		msg: ["Use UNKNOWN_FUNCTION"],
 	},
 	POSITIONAL_PARAMETER_REQUIRES_ARRAY: {
 		code: 2403,

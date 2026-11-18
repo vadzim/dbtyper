@@ -10,6 +10,8 @@ import type {
 	JsqlDbGetColumn,
 	JsqlDbGetColumnType,
 	JsqlDbReplaceData,
+	JsqlDbAddConstraintName,
+	JsqlDbDropConstraintName,
 } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
@@ -112,7 +114,9 @@ type ParseAlterAddConstraint<
 > =
 	PeekToken<Tokens> extends TokenKey<"constraint">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? ParseAlterConstraintBody<SkipToken<R1>, Db, Sch, Tab>
+			? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
+				? ParseAlterConstraintBody<SkipToken<R1>, JsqlDbAddConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
+				: ParseAlterConstraintBody<SkipToken<R1>, Db, Sch, Tab>
 			: never
 		: ParseAlterConstraintBody<Tokens, Db, Sch, Tab>
 
@@ -192,7 +196,11 @@ type ParseAlterDropColumn<
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? PeekToken<R0> extends TokenKey<"constraint">
 				? // PGT-19: dropping a constraint changes no type (a dropped primary key keeps NOT NULL: not tracked)
-					ParseAlterSkipAction<R0, Db, Sch, Tab>
+					SkipToken<R0> extends infer R1 extends ParserMonad
+					? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
+						? ParseAlterSkipAction<R1, JsqlDbDropConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
+						: ParseAlterSkipAction<R1, Db, Sch, Tab>
+					: never
 				: ParseAlterDropColumnNamed<R0, Db, Sch, Tab>
 			: never
 		: never

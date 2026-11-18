@@ -1,4 +1,4 @@
-// FN-1, PGT-33: a window call that names a function the catalog lacks is the unknown-function error (FN-14 is removed)
+// FN-1, PGT-33: a window call that names a function the catalog lacks is the unknown-function error
 import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
