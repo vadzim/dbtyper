@@ -1,3 +1,4 @@
+import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type {
 	JsqlDatabaseShape,
 	JsqlInsertStatementResult,
@@ -407,7 +408,7 @@ type ParseInsertValuesCells<
 			: Ast extends ScalarExprAst
 				? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
 					? Resolved extends DbtyperErrorShape
-						? [R1, Db, Resolved]
+						? [R1, Db, WithErrorClause<Resolved, "INSERT VALUES">]
 						: Resolved extends SqlTypeShape
 							? ValidateMutationValueForColumn<Tbl, C0, Resolved> extends infer V0
 								? V0 extends DbtyperErrorShape
@@ -733,7 +734,7 @@ type ParseInsertUpsertSetAssignments<
 									: Ast extends ScalarExprAst
 										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
 											? Resolved extends DbtyperErrorShape
-												? [R3, Db, Resolved]
+												? [R3, Db, WithErrorClause<Resolved, "ON CONFLICT DO UPDATE SET">]
 												: Resolved extends SqlTypeShape
 													? ValidateMutationValueForColumn<
 															Tbl,
