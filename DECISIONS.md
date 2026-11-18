@@ -436,3 +436,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   parser error. Checked with probes for ORDER BY, GROUP BY, LIMIT, subquery, JOIN ON, CTE, function args, CASE, UPDATE,
   DELETE, ON CONFLICT, RETURNING, INSERT ... SELECT and the three tests `lexer-error-in-*` (WHERE, INSERT VALUES,
   CREATE TABLE DEFAULT): all return 1002. No parser change was needed after batch A; only the tests and the comment.
+
+## #118: empty OVER () and window frames are one shared rule
+
+PostgreSQL accepts `OVER ()` and `ROWS|RANGE|GROUPS` frames exactly like SQLite, so the `windowFrames` dialect fact (SQLT-51) is removed and `CloseWindowOrError` (parse-function-call.ts) accepts them in every dialect. PGT-3 Check now runs through the typed `query`.

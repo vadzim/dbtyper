@@ -69,10 +69,6 @@ function check<Row extends object, const E extends { [K in keyof Row]: readonly 
 	}
 }
 
-function checkSpecOnly(rows: readonly object[], expected: Record<string, readonly string[]>) {
-	check(rows as Record<string, unknown>[], expected as never)
-}
-
 describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", { skip: url === undefined }, () => {
 	const schema = "pgt35"
 	before(async () => {
@@ -97,10 +93,8 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 		.database()
 
 	it("PGT-3: select id, balance, count(*) over () as n from users", async () => {
-		// Gap: dbtyper's alpha parser rejects `count(*) over ()` (error 4602; window functions are PGT-33, #90), so the
-		// row kinds are checked against the spec's type only and not against an inferred type.
-		const rows = await users.queryUntyped(`select id, balance, count(*) over () as n from users`)
-		checkSpecOnly(rows, { id: ["string"], balance: ["string", "null"], n: ["string"] })
+		const rows = await users.query(`select id, balance, count(*) over () as n from users`)
+		check(rows, { id: ["string"], balance: ["string", "null"], n: ["string"] })
 	})
 
 	it("PGT-6: insert into users (name) values ('a') returning id", async () => {
