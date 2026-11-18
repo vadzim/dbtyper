@@ -74,7 +74,6 @@ export type Dialects = {
 		functionCatalog: "postgres"
 		operators: "postgres"
 		globRegexp: false
-		windowFrames: false
 		numberTyping: "uniform"
 		datetimeArithmetic: true
 		isOperand: "null"
@@ -105,7 +104,6 @@ export type Dialects = {
 		functionCatalog: "sqlite"
 		operators: "sqlite"
 		globRegexp: true
-		windowFrames: true
 		numberTyping: "affinity"
 		datetimeArithmetic: false
 		isOperand: "value"
