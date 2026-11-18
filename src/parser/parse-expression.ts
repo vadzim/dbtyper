@@ -26,7 +26,9 @@ import type {
 	SqlTimestamp,
 	Nullable,
 } from "../core/sql-type-shape.ts"
-import type { Dec, ParseNumber } from "../core/type-utils.ts"
+import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
+import type { ParamProbeFound, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
+import type { FunctionArgType, PeerTypedFunctions } from "./function-param-types.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -1547,7 +1549,180 @@ export type ResolveExpressionAST<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Ast extends { kind: infer K extends keyof ExpressionResolvers<any, any, any, any> }
-	? ApplyOperandNullability<Ast, ExpressionResolvers<Ast, Db, Scope, Params>[K], Db, Scope, Params>
+	? ParamProbeAt<Ast, Db, Scope, Params> extends infer Probed
+		? [Probed] extends [never]
+			? ApplyOperandNullability<Ast, ExpressionResolvers<Ast, Db, Scope, Params>[K], Db, Scope, Params>
+			: Probed
+		: never
+	: never
+
+/** Operands of an operator that must have one type, and whether that type has to be numeric. */
+type SharedTypeOperands<Ast> = Ast extends {
+	kind: "add" | "sub" | "mul" | "exp" | "mod"
+	left: infer L extends ScalarExprAst
+	right: infer R extends ScalarExprAst
+}
+	? { ops: readonly [L, R]; numeric: true }
+	: Ast extends { kind: "cmp"; left: infer L extends ScalarExprAst; right: infer R extends ScalarExprAst }
+		? { ops: readonly [L, R]; numeric: false }
+		: Ast extends {
+					kind: "like" | "pg_regex_match"
+					expr: infer E extends ScalarExprAst
+					pattern: infer P extends ScalarExprAst
+			  }
+			? { ops: readonly [E, P]; numeric: false }
+			: Ast extends {
+						kind: "between"
+						expr: infer E extends ScalarExprAst
+						low: infer Lo extends ScalarExprAst
+						high: infer Hi extends ScalarExprAst
+				  }
+				? { ops: readonly [E, Lo, Hi]; numeric: false }
+				: Ast extends {
+							kind: "in_list"
+							expr: infer E extends ScalarExprAst
+							items: infer Its extends readonly ScalarExprAst[]
+					  }
+					? { ops: readonly [E, ...Its]; numeric: false }
+					: never
+
+/** The probe key of a parameter operand that has no type yet, `never` for anything else. */
+type ParamOperandProbeKey<Op, Params extends ExpressionParamsShape> = Op extends {
+	kind: "param"
+	name: infer N extends string
+}
+	? ProbeKeyOf<LookupParam<Params, N>>
+	: Op extends { kind: "positional-param"; index: infer I extends number }
+		? ProbeKeyOf<LookupPositionalParam<Params, I>>
+		: never
+
+type ParamDisplay<K extends string | number> = K extends number ? `$${Inc<K>}` : `:${K & string}`
+
+type AllParamOperands<Ops extends readonly unknown[]> = Ops extends readonly [infer H, ...infer T]
+	? IsParamOperand<H> extends true
+		? AllParamOperands<T>
+		: false
+	: true
+
+type IsParamOperand<Op> = Op extends { kind: "param" | "positional-param" } ? true : false
+
+/** The type of the first operand that is not a parameter, resolves to a real type (and a numeric one if asked). */
+type PeerOperandType<
+	Ops extends readonly unknown[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Numeric extends boolean,
+> = Ops extends readonly [infer H, ...infer T]
+	? IsParamOperand<H> extends true
+		? PeerOperandType<T, Db, Scope, Params, Numeric>
+		: H extends ScalarExprAst
+			? ResolveExpressionAST<H, Db, Scope, Params> extends infer R
+				? R extends SqlTypeShape
+					? R["type"] extends "null" | "param-probe"
+						? PeerOperandType<T, Db, Scope, Params, Numeric>
+						: Numeric extends true
+							? R["type"] extends
+									| "integer"
+									| "bigint"
+									| "smallint"
+									| "numeric"
+									| "real"
+									| "double precision"
+								? R
+								: PeerOperandType<T, Db, Scope, Params, Numeric>
+							: R
+					: PeerOperandType<T, Db, Scope, Params, Numeric>
+				: never
+			: PeerOperandType<T, Db, Scope, Params, Numeric>
+	: never
+
+type ProbeFromPeers<
+	Key,
+	Ops extends readonly unknown[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Numeric extends boolean,
+> = Key extends string | number
+	? [PeerOperandType<Ops, Db, Scope, Params, Numeric>] extends [never]
+		? // CORE-7: only parameters meet, nothing gives them a type
+			AllParamOperands<Ops> extends true
+			? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [ParamDisplay<Key>, ParamDisplay<Key>]>
+			: never
+		: PeerOperandType<Ops, Db, Scope, Params, Numeric> extends infer S extends SqlTypeShape
+			? ParamProbeFound<Key, ProbeTypeFromPeer<S>>
+			: never
+	: never
+
+/** The first argument that is a parameter without a type, resolved by the function's argument types. */
+type ProbeInFunctionArgs<
+	Name extends string,
+	Args extends readonly unknown[],
+	AllArgs extends readonly unknown[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Index extends number = 0,
+> = Args extends readonly [infer H, ...infer T]
+	? ParamOperandProbeKey<H, Params> extends infer K
+		? [K] extends [never]
+			? ProbeInFunctionArgs<Name, T, AllArgs, Db, Scope, Params, Inc<Index>>
+			: K extends string | number
+				? Name extends PeerTypedFunctions
+					? ProbeFromPeers<K, AllArgs, Db, Scope, Params, false>
+					: [FunctionArgType<Name, Index>] extends [never]
+						? never
+						: ParamProbeFound<K, FunctionArgType<Name, Index>>
+				: never
+		: never
+	: never
+
+/**
+ * CORE-6: a parameter that has no type yet (a probe, src/core/param-probe.ts) gets one from the operator, cast or
+ * function it stands in; the result is the error that carries that type to the driver. `never` for everything else.
+ */
+type ParamProbeAt<Ast, Db extends JsqlDatabaseShape, Scope extends ScopeMap, Params extends ExpressionParamsShape> = [
+	SharedTypeOperands<Ast>,
+] extends [never]
+	? Ast extends {
+			kind: "pg_cast" | "sql_cast"
+			expr: infer E
+			type_parts: infer P extends readonly string[]
+		}
+		? ParamOperandProbeKey<E, Params> extends infer K
+			? [K] extends [never]
+				? never
+				: K extends string | number
+					? ResolveCastFromShape<SqlText, SqlCastTypeNorm<P>> extends infer S extends SqlTypeShape
+						? ParamProbeFound<K, S>
+						: never
+					: never
+			: never
+		: Ast extends {
+					kind: "function_call"
+					name: infer Fn extends string
+					args: infer A extends readonly unknown[]
+			  }
+			? ProbeInFunctionArgs<Lowercase<Fn>, A, A, Db, Scope, Params>
+			: never
+	: SharedTypeOperands<Ast> extends { ops: infer Ops extends readonly unknown[]; numeric: infer N extends boolean }
+		? ProbeInOperands<Ops, Ops, Db, Scope, Params, N>
+		: never
+
+type ProbeInOperands<
+	Rest extends readonly unknown[],
+	Ops extends readonly unknown[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Numeric extends boolean,
+> = Rest extends readonly [infer H, ...infer T]
+	? ParamOperandProbeKey<H, Params> extends infer K
+		? [K] extends [never]
+			? ProbeInOperands<T, Ops, Db, Scope, Params, Numeric>
+			: ProbeFromPeers<K, Ops, Db, Scope, Params, Numeric>
+		: never
 	: never
 
 /** The operand expressions of an operator whose result is NULL when an operand is NULL (CORE-2). */

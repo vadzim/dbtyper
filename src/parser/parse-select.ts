@@ -1,3 +1,4 @@
+import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenIndexedParam } from "../lexer/sql-lexer.ts"
@@ -30,7 +31,7 @@ import type {
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type {
 	FirstDuplicateName,
@@ -474,7 +475,11 @@ type ParseOrderByScalarExpr<
 				? R extends DbtyperErrorShape
 					? SkipFailedExpression<Rw, WithErrorClause<R, Clause>>
 					: R extends SqlTypeShape
-						? [Rw, null]
+						? R["type"] extends "param-probe"
+							? Clause extends "LIMIT" | "OFFSET"
+								? SkipFailedExpression<Rw, ParamProbeFound<ProbeKeyOf<R>, SqlInteger>>
+								: [Rw, null]
+							: [Rw, null]
 						: SkipFailedExpression<Rw, never>
 				: never
 		: never
