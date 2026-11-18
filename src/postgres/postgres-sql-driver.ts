@@ -33,9 +33,12 @@ function pgQueryArgs(text: string, params?: SqlDriverParams): { text: string; va
 		return { text, values: [] }
 	}
 	if (Array.isArray(params)) {
-		// Check if SQL contains "?" - if so, bind positional params
+		// Rewrite only when the text has a real "?" token (not in a string, quoted identifier, $$ body or comment)
 		if (text.includes("?")) {
-			return bindPositionalParamsForPg(text, params)
+			const bound = bindPositionalParamsForPg(text, params)
+			if (bound.found) {
+				return { text: bound.text, values: bound.values }
+			}
 		}
 		// Otherwise, assume it's already using $1, $2, etc.
 		return { text, values: params }
