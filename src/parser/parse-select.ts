@@ -4,7 +4,7 @@ import type { TokenEot, TokenIndexedParam } from "../lexer/sql-lexer.ts"
 import type { TokenParam } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -1367,7 +1367,7 @@ type ParseOneRawSelectItem<
 				? [M2, RawSelectParamItem<P, [As] extends [string] ? As : undefined>]
 				: [M2, It]
 			: never
-		: PeekToken<Tokens> extends TokenIdent<string>
+		: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 			: PeekToken<Tokens> extends infer Head
 				? Head extends  // TODO: do we need that list? seems strange. to LLM - DO NOT DELETE TODOS!!!
@@ -1392,7 +1392,7 @@ type ParseOneRawSelectItem<
 type ParseOptionalAs<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenIdent<infer N extends string>
+			? AsIdent<PeekToken<R1>> extends TokenIdent<infer N extends string>
 				? [SkipToken<R1>, N]
 				: [R1, undefined]
 			: never
@@ -1441,7 +1441,7 @@ type ParseAliasAfterDerived<
 	SelectResultToDerivedScopeEntry<Result> extends infer Entry extends ScopeEntry
 		? PeekToken<Tokens> extends TokenKey<"as">
 			? SkipToken<Tokens> extends infer Ras extends ParserMonad
-				? PeekToken<Ras> extends TokenIdent<infer Alias extends string>
+				? AsIdent<PeekToken<Ras>> extends TokenIdent<infer Alias extends string>
 					? [SkipToken<Ras>, null, MergeScope<Record<Alias, Entry>, OuterScope>]
 					: [
 							SkipToken<Ras>,
@@ -1536,7 +1536,7 @@ type ParseFromTableRef<
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenKey<"(">
 				? ParseParenDerivedSelect<R1, Db, Scope, Params>
-				: Tok extends TokenIdent<infer A extends string>
+				: AsIdent<Tok> extends TokenIdent<infer A extends string>
 					? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
 					: [
 							R1,
@@ -1576,7 +1576,7 @@ type ParseFromTableAfterLeadingIdent<
 		? SkipToken<R1> extends infer R2 extends ParserMonad
 			? PeekToken<R2> extends infer TokB
 				? SkipToken<R2> extends infer R3 extends ParserMonad
-					? TokB extends TokenIdent<infer B extends string>
+					? AsIdent<TokB> extends TokenIdent<infer B extends string>
 						? JsqlDbGetData<Db, A, B> extends infer Tbl extends JsqlDataShape
 							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
 							: [
@@ -1627,7 +1627,7 @@ type ParseAliasAfterCTE<
 			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
 				? PeekToken<Ras0> extends infer TokName
 					? SkipToken<Ras0> extends infer Ra extends ParserMonad
-						? TokName extends TokenIdent<infer Alias extends string>
+						? AsIdent<TokName> extends TokenIdent<infer Alias extends string>
 							? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
 							: [Ra, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
 						: never
@@ -1685,7 +1685,7 @@ type ParseAliasAfterTable<
 			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
 				? PeekToken<Ras0> extends infer TokName
 					? SkipToken<Ras0> extends infer Ra extends ParserMonad
-						? TokName extends TokenIdent<infer Alias extends string>
+						? AsIdent<TokName> extends TokenIdent<infer Alias extends string>
 							? [
 									Ra,
 									null,
@@ -1988,11 +1988,11 @@ type ParseJoinEqPairAliasRightTail<
 	LeftAlias extends string,
 	LeftCol extends string,
 > =
-	PeekToken<R4> extends TokenIdent<infer RightAlias extends string>
+	AsIdent<PeekToken<R4>> extends TokenIdent<infer RightAlias extends string>
 		? SkipToken<R4> extends infer R5 extends ParserMonad
 			? PeekToken<R5> extends TokenKey<".">
 				? SkipToken<R5> extends infer R6 extends ParserMonad
-					? PeekToken<R6> extends TokenIdent<infer RightCol extends string>
+					? AsIdent<PeekToken<R6>> extends TokenIdent<infer RightCol extends string>
 						? SkipToken<R6> extends infer R7 extends ParserMonad
 							? JoinOnAliasEqOk<Db, Scope, LeftAlias, LeftCol, RightAlias, RightCol> extends infer Ok
 								? Ok extends true
@@ -2015,15 +2015,15 @@ type ParseJoinEqPairQualifiedRightTail<
 	Scope extends ScopeMap,
 	LeftParts extends readonly [string, string, string],
 > =
-	PeekToken<R6> extends TokenIdent<infer S2 extends string>
+	AsIdent<PeekToken<R6>> extends TokenIdent<infer S2 extends string>
 		? SkipToken<R6> extends infer R7 extends ParserMonad
 			? PeekToken<R7> extends TokenKey<".">
 				? SkipToken<R7> extends infer R8 extends ParserMonad
-					? PeekToken<R8> extends TokenIdent<infer T2 extends string>
+					? AsIdent<PeekToken<R8>> extends TokenIdent<infer T2 extends string>
 						? SkipToken<R8> extends infer R9 extends ParserMonad
 							? PeekToken<R9> extends TokenKey<".">
 								? SkipToken<R9> extends infer R10 extends ParserMonad
-									? PeekToken<R10> extends TokenIdent<infer C2 extends string>
+									? AsIdent<PeekToken<R10>> extends TokenIdent<infer C2 extends string>
 										? SkipToken<R10> extends infer R11 extends ParserMonad
 											? JoinOnQualifiedEqOk<
 													Db,
@@ -2058,7 +2058,7 @@ type ParseJoinEqPairAfterSecondIdent<
 	P2 extends string,
 > =
 	TokAfterP2 extends TokenKey<".">
-		? PeekToken<R4> extends TokenIdent<infer P3 extends string>
+		? AsIdent<PeekToken<R4>> extends TokenIdent<infer P3 extends string>
 			? SkipToken<R4> extends infer R5 extends ParserMonad
 				? PeekToken<R5> extends TokenKey<"=">
 					? ParseJoinEqPairQualifiedRightTail<SkipToken<R5>, Db, Scope, readonly [P1, P2, P3]>
@@ -2071,11 +2071,11 @@ type ParseJoinEqPairAfterSecondIdent<
 
 /** `ON` equality: `alias.col = alias.col` or `schema.table.column = schema.table.column`. */
 type ParseJoinEqPair<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Scope extends ScopeMap> =
-	PeekToken<Tokens> extends TokenIdent<infer P1 extends string>
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer P1 extends string>
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<".">
 				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? PeekToken<R2> extends TokenIdent<infer P2 extends string>
+					? AsIdent<PeekToken<R2>> extends TokenIdent<infer P2 extends string>
 						? SkipToken<R2> extends infer R3 extends ParserMonad
 							? PeekToken<R3> extends infer TokAfterP2
 								? ParseJoinEqPairAfterSecondIdent<SkipToken<R3>, TokAfterP2, Db, Scope, P1, P2>

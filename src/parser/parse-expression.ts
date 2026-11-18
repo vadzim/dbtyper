@@ -3,7 +3,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIndexedParam, TokenParam, TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -253,7 +253,7 @@ type ParsePgCastSuffixTail<Tokens extends ParserMonad, Acc extends ScalarExprAst
 
 /** Additive / multiplicative / unary-minus / primary (no `AND`/`OR`/`NOT`/comparisons at this level). */
 type ParseAddScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	PeekToken<Tokens> extends TokenIdent<string>
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 		? ParseScalarExprUntypedFromIdent<Tokens, Env>
 		: ParseScalarExprUntypedNonIdent<Tokens, Env>
 
@@ -1472,7 +1472,7 @@ export type ResolveExpressionAST<
  * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
  */
 type MaximalIdentChain<Tokens extends ParserMonad> =
-	PeekToken<Tokens> extends TokenIdent<infer A extends string>
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<".">
 				? SkipToken<R1> extends infer R2 extends ParserMonad
@@ -1480,7 +1480,7 @@ type MaximalIdentChain<Tokens extends ParserMonad> =
 						? SkipToken<R2> extends infer R3 extends ParserMonad
 							? [R3, readonly ["__ats__", A]]
 							: never
-						: PeekToken<R2> extends TokenIdent<infer B extends string>
+						: AsIdent<PeekToken<R2>> extends TokenIdent<infer B extends string>
 							? SkipToken<R2> extends infer R3 extends ParserMonad
 								? PeekToken<R3> extends TokenKey<".">
 									? SkipToken<R3> extends infer R4 extends ParserMonad
@@ -1488,7 +1488,7 @@ type MaximalIdentChain<Tokens extends ParserMonad> =
 											? SkipToken<R4> extends infer R5 extends ParserMonad
 												? [R5, readonly ["__qts__", A, B]]
 												: never
-											: PeekToken<R4> extends TokenIdent<infer C extends string>
+											: AsIdent<PeekToken<R4>> extends TokenIdent<infer C extends string>
 												? SkipToken<R4> extends infer R5 extends ParserMonad
 													? [R5, readonly [A, B, C]]
 													: never
@@ -2452,7 +2452,7 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 														},
 														Env,
 													]
-												: PeekToken<Tokens> extends TokenIdent<string>
+												: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 													? TryColumnOperandScalarUntyped<Tokens, Env>
 													: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
 														? SkipFailedExpressionWithEnv<
@@ -2751,13 +2751,7 @@ type ParseAddLoopAfterFirstScalarUntyped<
 			? ParseAddLoopAfterMinusScalarUntyped<Tokens, Acc, Env>
 			: [Tokens, Acc, Env]
 
-type ArithOpToken =
-	| TokenKey<"+">
-	| TokenKey<"-">
-	| TokenKey<"*">
-	| TokenKey<"/">
-	| TokenKey<"%">
-	| TokenKey<"^">
+type ArithOpToken = TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*"> | TokenKey<"/"> | TokenKey<"%"> | TokenKey<"^">
 
 /** After a leftmost operand: `^`, then `* / %`, then `+ -` (EXPR-5 precedence). */
 type ParseArithTailAfterFirstScalarUntyped<
