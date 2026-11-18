@@ -13,7 +13,7 @@ export class UsersService {
 				public.agenda.*,
 				email,
 				display_name,
-				auth.users.created_at,
+				auth.users.created_at as user_created_at,
 				auth.users.login_count
 			from auth.users
 			left join public.agenda
