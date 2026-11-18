@@ -215,9 +215,9 @@ type CommonType<Args extends readonly SqlTypeShape[], Acc extends string = never
 		? "null"
 		: Acc
 
-type Shape<T extends string> = { type: T; arg: null; nullable: false }
+export type Shape<T extends string> = { type: T; arg: null; nullable: false }
 
-type Tail<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+export type Tail<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	unknown,
 	...infer T extends readonly SqlTypeShape[],
 ]
@@ -238,7 +238,7 @@ type ResultShape<R extends string, Args extends readonly SqlTypeShape[]> = R ext
 					: Shape<"real">
 				: Shape<R>
 
-type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+export type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
 	...infer T extends readonly SqlTypeShape[],
 ]
@@ -247,7 +247,7 @@ type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 		: AnyNullable<T>
 	: false
 
-type AllNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+export type AllNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
 	...infer T extends readonly SqlTypeShape[],
 ]
@@ -257,7 +257,7 @@ type AllNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	: true
 
 /** CORE-2 for one row: is the result nullable, given the argument types. */
-type IsResultNullable<N extends string, Args extends readonly SqlTypeShape[]> = N extends "non-null"
+export type IsResultNullable<N extends string, Args extends readonly SqlTypeShape[]> = N extends "non-null"
 	? false
 	: N extends "null"
 		? true

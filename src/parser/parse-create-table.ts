@@ -60,10 +60,31 @@ export type ParseCreateTable<
 		: ParseCreateTableQualified<Tokens, Db, false, Params, Temp>
 
 /**
+ * PGT-25: the names given with `CONSTRAINT name` while a CREATE TABLE is parsed travel in the database state
+ * (`pendingConstraints`) and end up in the table's `constraints` (`{ names }`), where `ON CONFLICT ON CONSTRAINT`
+ * looks for them. Default names (`t_pkey`, `t_col_key`) are not recorded: see `ConstraintExists` (parse-insert.ts).
+ */
+type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends string> = Db extends {
+	pendingConstraints: infer P extends string
+}
+	? Omit<Db, "pendingConstraints"> & { pendingConstraints: P | Name }
+	: Db & { pendingConstraints: Name }
+
+type WithoutPendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: string }
+	? Omit<Db, "pendingConstraints"> extends infer Clean extends JsqlDatabaseShape
+		? Clean
+		: Db
+	: Db
+
+type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
+	? { names: P }
+	: null
+
+/**
  * One column while it is being parsed (CORE-15): name, type (its `nullable` is the declared NULL / NOT NULL),
  * NOT NULL by any constraint (NOT NULL, PRIMARY KEY; CORE-1), has a DEFAULT, is a generated column (CORE-18).
  */
-type ColumnDef = readonly [string, SqlTypeShape, boolean, boolean, boolean, PkKind, string]
+type ColumnDef = readonly [string, SqlTypeShape, boolean, boolean, boolean | "identity", PkKind, string]
 
 /**
  * How a column is part of the PRIMARY KEY: alone (`single`: inline, or a one-column table constraint) or with others.
@@ -344,7 +365,7 @@ type SqlitePrimaryKeys<Stack extends readonly ColumnDef[], Opts extends TableOpt
 		infer T extends SqlTypeShape,
 		infer Nn extends boolean,
 		infer D extends boolean,
-		infer G extends boolean,
+		infer G extends boolean | "identity",
 		infer Pk extends PkKind,
 		infer Decl extends string,
 	]
@@ -374,7 +395,12 @@ type ParseCreateTableBody<
 						cols: Record<string, SqlTypeShape>
 						facts: Record<string, unknown>
 				  }
-				? JsqlDbReplaceData<Db, Schema, Table, JsqlCreateTable<M["cols"], M["facts"]>> extends infer NewDb
+				? JsqlDbReplaceData<
+						WithoutPendingConstraints<Db>,
+						Schema,
+						Table,
+						JsqlCreateTable<M["cols"], M["facts"], PendingConstraints<Db>>
+					> extends infer NewDb
 					? NewDb extends JsqlDatabaseShape
 						? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
 						: never
@@ -507,7 +533,14 @@ type ColumnCtx = {
 }
 
 /** What the constraints seen so far say about the column; `afterDefault` is true right after a DEFAULT (error text). */
-type ColumnState = { nn: boolean; def: boolean; gen: boolean; afterDefault: boolean; pk: PkKind }
+type ColumnState = {
+	nn: boolean
+	def: boolean
+	/** A generated column (CORE-18), or `"identity"`: `GENERATED ALWAYS AS IDENTITY`, writable with OVERRIDING (PGT-25). */
+	gen: boolean | "identity"
+	afterDefault: boolean
+	pk: PkKind
+}
 
 /**
  * Column constraints in any order after the type (CORE-15): NOT NULL, NULL, DEFAULT, PRIMARY KEY, UNIQUE, CHECK,
@@ -659,8 +692,21 @@ type ColumnAutoincrement<Tokens extends ParserMonad, C extends ColumnCtx, S exte
 /** At `CONSTRAINT`: skip it and its name. */
 type ColumnConstraintName<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	SkipToken<Tokens> extends infer R1 extends ParserMonad
-		? AsIdent<PeekToken<R1>> extends TokenIdent<string>
-			? ParseColumnConstraints<SkipToken<R1>, C, S>
+		? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
+			? ParseColumnConstraints<
+					SkipToken<R1>,
+					{
+						db: WithPendingConstraint<C["db"], CName>
+						schema: C["schema"]
+						table: C["table"]
+						stack: C["stack"]
+						name: C["name"]
+						type: C["type"]
+						declared: C["declared"]
+						alter: C["alter"]
+					},
+					S
+				>
 			: ColumnFail<R1, C, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
 		: never
 
@@ -742,7 +788,7 @@ type ColumnCollate<Tokens extends ParserMonad, C extends ColumnCtx, S extends Co
 type ColumnStateWith<S extends ColumnState, Patch extends Partial<ColumnState>> = {
 	nn: Patch extends { nn: infer V extends boolean } ? V : S["nn"]
 	def: Patch extends { def: infer V extends boolean } ? V : S["def"]
-	gen: Patch extends { gen: infer V extends boolean } ? V : S["gen"]
+	gen: Patch extends { gen: infer V extends boolean | "identity" } ? V : S["gen"]
 	afterDefault: Patch extends { afterDefault: infer V extends boolean } ? V : false
 	pk: Patch extends { pk: infer V extends PkKind } ? V : S["pk"]
 }
@@ -823,7 +869,10 @@ type ColumnGeneratedOrIdentity<
 					: ParseColumnConstraints<
 							R2,
 							C,
-							ColumnStateWith<S, Always extends true ? { nn: true; gen: true } : { nn: true; def: true }>
+							ColumnStateWith<
+								S,
+								Always extends true ? { nn: true; gen: "identity" } : { nn: true; def: true }
+							>
 						>
 				: never
 			: never
@@ -1037,8 +1086,8 @@ type ParseTableConstraint<
 > =
 	PeekToken<Tokens> extends TokenKey<"constraint">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? AsIdent<PeekToken<R1>> extends TokenIdent<string>
-				? TableConstraintBody<SkipToken<R1>, Db, Schema, Table, Stack>
+			? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
+				? TableConstraintBody<SkipToken<R1>, WithPendingConstraint<Db, CName>, Schema, Table, Stack>
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
 			: never
 		: TableConstraintBody<Tokens, Db, Schema, Table, Stack>
@@ -1191,7 +1240,7 @@ type MarkNotNull<
 		infer T extends SqlTypeShape,
 		infer Nn extends boolean,
 		infer D extends boolean,
-		infer G extends boolean,
+		infer G extends boolean | "identity",
 		infer _Pk extends PkKind,
 		infer Decl extends string,
 	]
@@ -1216,23 +1265,25 @@ type OneCol<C extends ColumnDef> = C extends readonly [
 	infer Sql extends SqlTypeShape,
 	infer NotNull extends boolean,
 	infer HasDefault extends boolean,
-	infer Generated extends boolean,
+	infer Generated extends boolean | "identity",
 	infer _Pk extends PkKind,
 	infer _Decl extends string,
 ]
 	? {
 			cols: Record<N, NotNull extends true ? (Sql["nullable"] extends false ? Sql : NotNullType<Sql>) : Sql>
-			facts: Generated extends true
-				? NotNull extends true
-					? Record<N, { nullability: "not_null"; generated: true }>
-					: Record<N, { generated: true }>
-				: NotNull extends true
-					? HasDefault extends true
-						? Record<N, { nullability: "not_null"; default: true }>
-						: Record<N, { nullability: "not_null" }>
-					: HasDefault extends true
-						? Record<N, { default: true }>
-						: {}
+			facts: Generated extends "identity"
+				? Record<N, { nullability: "not_null"; generated: true; identity: true }>
+				: Generated extends true
+					? NotNull extends true
+						? Record<N, { nullability: "not_null"; generated: true }>
+						: Record<N, { generated: true }>
+					: NotNull extends true
+						? HasDefault extends true
+							? Record<N, { nullability: "not_null"; default: true }>
+							: Record<N, { nullability: "not_null" }>
+						: HasDefault extends true
+							? Record<N, { default: true }>
+							: {}
 		}
 	: never
 

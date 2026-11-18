@@ -43,8 +43,8 @@ export type DialectName = keyof Dialects
  * SQLite DDL facts (SQLT-18…SQLT-26, #70), one flag: `ddl`: `main`/`temp` instead of schemas, CREATE TEMP, short `AS (…)`
  * generated columns, `ON CONFLICT` on constraints, full column definitions in ADD COLUMN with its restrictions, trigger
  * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
- * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "builtin" = the PostgreSQL built-ins of the expression
- * parser plus the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
+ * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "postgres" = the data table `PostgresFunctions` (src/parser/postgres-functions.ts) plus the array functions of the expression
+ * parser and the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "builtin" = the PostgreSQL operator typing of the
  * expression parser, "sqlite" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
  * operators exist (`REGEXP` calls a user function `regexp`, SQLT-34); `isOperand`: what may follow `IS [NOT]`
@@ -53,6 +53,7 @@ export type DialectName = keyof Dialects
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
+ * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  */
 export type Dialects = {
@@ -65,7 +66,7 @@ export type Dialects = {
 		rowidTables: false
 		typelessColumns: false
 		ddl: false
-		functionCatalog: "builtin"
+		functionCatalog: "postgres"
 		operators: "builtin"
 		globRegexp: false
 		isOperand: "null"
@@ -73,6 +74,7 @@ export type Dialects = {
 		groupByRule: true
 		exprKeys: "name"
 		castHint: "`::text`"
+		dmlInCte: true
 	}
 	sqlite: {
 		title: "SQLite"
@@ -91,6 +93,7 @@ export type Dialects = {
 		groupByRule: false
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
+		dmlInCte: false
 	}
 }
 
@@ -146,6 +149,9 @@ export type DialectOnlyConstructs = {
 	"pg-array-contains": { only: "postgres"; name: "`@>` operator"; hint: "Use json_each(…)" }
 	"pg-array-contained": { only: "postgres"; name: "`<@` operator"; hint: "Use json_each(…)" }
 	"pg-array-overlap": { only: "postgres"; name: "`&&` operator"; hint: "Use json_each(…)" }
+	"pg-similar-to": { only: "postgres"; name: "SIMILAR TO"; hint: "Use LIKE or GLOB" }
+	"pg-json-path": { only: "postgres"; name: "`#>` / `#>>` operators"; hint: "Use json_extract(x, path)" }
+	"pg-limit-all": { only: "postgres"; name: "LIMIT ALL"; hint: "Omit LIMIT" }
 	"pg-lateral": { only: "postgres"; name: "LATERAL"; hint: "Use a correlated subquery" }
 	"pg-create-type": { only: "postgres"; name: "CREATE TYPE"; hint: "Use TEXT with a CHECK constraint" }
 	"pg-create-schema": { only: "postgres"; name: "CREATE SCHEMA"; hint: "SQLite has no schemas" }
@@ -204,6 +210,10 @@ export type DialectPhrases = {
 	"@>": "pg-array-contains"
 	"<@": "pg-array-contained"
 	"&&": "pg-array-overlap"
+	"similar to": "pg-similar-to"
+	"limit all": "pg-limit-all"
+	"#>": "pg-json-path"
+	"#>>": "pg-json-path"
 	lateral: "pg-lateral"
 	"create type": "pg-create-type"
 	"create schema": "pg-create-schema"

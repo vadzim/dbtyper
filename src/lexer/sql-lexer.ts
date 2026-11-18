@@ -293,7 +293,12 @@ type ReadWord<
 				: ReadSqliteWord<Head, Word, Tail>
 			: ReadSqliteWord<Head, Word, Tail>
 		: ReadSqliteWord<Head, Word, Tail>
-	: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+	: Lowercase<`${Head}${Word}`> extends "left" | "right"
+		? // `left(s, n)` and `right(s, n)` are functions (PGT-28); the join keywords are never followed by `(`
+			Tail extends `(${string}`
+			? Return<TokenIdent<Lowercase<`${Head}${Word}`>>, Tail>
+			: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+		: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
 
 type ReadSqliteWord<Head extends string, Word extends string, Tail extends string> =
 	CheckIdentOrKey<Lowercase<`${Head}${Word}`>> extends infer T
@@ -574,6 +579,7 @@ const serviceWordsMap = {
 	schema: true,
 	select: true,
 	set: true,
+	similar: true,
 	some: true,
 	stored: true,
 	table: true,

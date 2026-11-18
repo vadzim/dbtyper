@@ -2,6 +2,51 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-18 PostgreSQL function catalog, JSON and regex operators, data-modifying CTEs (#91, track A; PGT-23…PGT-34, FN-14 removed)
+
+- **Catalog as data, like SQLite's (#76).** `PostgresFunctions` (src/parser/postgres-functions.ts): one row per function,
+  `[result, nulls]`, a third item `"aggregate"` (valid before OVER / FILTER) or `"window"` (needs OVER). The dialect row
+  `functionCatalog` is now `"postgres" | "sqlite"` (was `"builtin"`); `ResolvePgFunctionCall` is the PostgreSQL path of
+  `ResolveFunctionCall` and `ResolveWindowFunction`. Result codes `arg`, `arg2` (`date_trunc`), `common` (`greatest`,
+  numeric widening), `first-value` (`coalesce`), `sum`/`avg` per argument type (PGT-27), `array-of-arg`, `text[]`; the
+  null rules are those of SQLite's catalog (`IsResultNullable`, exported). Arity errors (FN-5, FN-7…FN-10, FN-12, FN-24)
+  are data too: `PostgresFunctionArity`. Only `array_length`, `array_append`, `array_prepend`, `unnest` (FN-19…FN-21, own
+  error codes) and the chain's own `functions` stay in the old code (`ResolveLegacyFunctionCall`). This is what fixes the
+  3619 that #76 left on `current_timestamp` and `replace(...)` in a PostgreSQL chain.
+- **PGT-34.** `PostgresSqliteOnlyFunctions` (hint table, mirror of `SqlitePgOnlyFunctions`): `Unknown function: ifnull.
+ifnull() is SQLite-only; use coalesce(a, b)`, code 3619 (FN-1).
+- **FN-14 removed.** An aggregate with OVER is typed (PGT-33); any other name with OVER is 3619. The test
+  `select-unknown-window-function` became `fn-1-unknown-window-function`; code 2402 is `OBSOLETE_2402_…`.
+- **Call syntax.** `extract(field FROM x)` (field becomes a string argument), `position(a IN b)`, `substring(s FROM a FOR b)`,
+  `trim(BOTH x FROM s)`: `ParseCallArgs`. `left(` / `right(` are identifiers in the lexer when `(` follows (PostgreSQL
+  chains only). `interval '1 day'`, `date '…'` typed literals are casts. A function call may now be the left operand of
+  arithmetic (`now() - interval '1 day'`, `count(*) - 1`; it was a parse error). `timestamp ± interval`, `timestamp -
+timestamp` (interval), `date ± integer`, `date - date` (integer): `PgDatetimeArithmetic`.
+- **Operators.** `SIMILAR TO` (keyword `similar`; dialect phrase row `similar to`), `?` as an operator (a parameter `?` is
+  still PARAM-5; the lexer yields a key token only in PostgreSQL chains), `->` / `#>` give the operand's json type
+  (nullable), `->>` / `#>>` nullable text, `@> <@ ? ?| ?&` boolean (nullable when an operand is, for json operands; array
+  `@>` stays non-null as before). `LIMIT ALL` (phrase row `limit all`), `DISTINCT ON (…)`: parsed before FROM and
+  resolved against the FROM scope (`DistinctOnError`), unknown columns give 2300 "in DISTINCT ON"; the rule that the
+  ORDER BY starts with the same expressions is not checked.
+- **PGT-25.** Constraint names given with `CONSTRAINT name` while a CREATE TABLE is parsed travel in the database state
+  (`pendingConstraints`) and end in the table's `constraints: { names }`; `ALTER TABLE ADD|DROP CONSTRAINT name` update
+  them. `ON CONFLICT ON CONSTRAINT n` accepts those and the default names `<table>_pkey`, `<table>_<col>_key` (not
+  checked against the table's keys); anything else is the new error `UNKNOWN_CONSTRAINT` (2220). `OVERRIDING {SYSTEM|USER}
+VALUE` after the column list: a `GENERATED ALWAYS AS IDENTITY` column is `generated: true, identity: true` in the
+  facts (the column state `gen` is `"identity"`); it is writable only with OVERRIDING (3512 otherwise); stored generated
+  columns are never writable.
+- **PGT-26.** `WITH x AS (INSERT | UPDATE | DELETE … [RETURNING …])`: the statement's own parser runs with `cteDml` in the
+  state and its finisher accepts `)` instead of `;`; the CTE has the RETURNING columns (none without). Dialect fact
+  `dmlInCte` (SQLite: still the 1101 error). The main statement after the WITH must be a SELECT.
+- **PGT-32 FROM.** `unnest(array)` and `generate_series(a, b[, step])` are FROM items (`ParseFromFunction`): the call is
+  resolved by the expression parser in the scope of the items before it (`JOIN unnest(t.tags) AS x(v)`); the column is
+  named by the column alias, else the alias, else the function name. Comma joins in FROM do not exist in this parser
+  (as before), so use `CROSS JOIN`.
+- **Not done / limits.** `concat`, `format` are nullable when an argument is (CORE-2), PostgreSQL gives non-null. Function
+  parameter types (`FunctionArgTypes`) got no new rows (PGT-17's area).
+- **Cost.** Existing tests 8.52M -> 8.70M instantiations (+2.1%), the stress config 10.93M -> 10.98M (+0.5%); the new
+  test adds 1.23M.
+
 ## 2026-11-18 Parameter widenings and PostgreSQL DDL (#88, track A; PGT-17..21, SCHEMA-22 removed)
 
 - **PGT-17**: only the timestamp rows were new in `PostgresParamTypeMap` (`Date | string` for `timestamp[tz]` and the long
