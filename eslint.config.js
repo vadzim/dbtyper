@@ -52,6 +52,6 @@ export default [
 		},
 	},
 	{
-		ignores: ["dist/", "node_modules/", "**/*.js", "test/fail-to-compile.ts"],
+		ignores: ["dist/", "node_modules/", "src/gram/", "**/*.js", "test/fail-to-compile.ts"],
 	},
 ]
