@@ -2344,7 +2344,7 @@ type MergeBoolBinary<
 				: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
-type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
+export type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
 	? SqlNull
 	: N extends "text" | "varchar" | "character varying" | "char"
 		? SqlText
