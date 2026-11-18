@@ -17,10 +17,11 @@ export type SqliteDriverOptions = {
 }
 
 /**
- * Plain config of a SQLite driver. A dialect-aware track may extend it with its dialect field.
+ * Plain config of a SQLite driver. Declares the SQLite dialect (DSEL-1, DSEL-8).
  * `bigint` is a type-level flag mirroring {@link SqliteDriverOptions}.
  */
 export type SqliteDriverConfig<Bigint extends boolean = false> = {
 	scalarTypes: SqliteTypeMap<Bigint extends true ? bigint : number>
 	syntax: "question-params"
+	dialect: "sqlite"
 }
