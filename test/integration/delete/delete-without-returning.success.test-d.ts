@@ -1,3 +1,4 @@
+// CORE-13: no rows, so the result is an empty row list
 // Integration Test: DELETE without RETURNING
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
@@ -11,4 +12,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`delete from users where id = '1';`)
 
-expectType<typeof _result>(toBe<unknown>())
+expectType<typeof _result>(toBe<[]>())

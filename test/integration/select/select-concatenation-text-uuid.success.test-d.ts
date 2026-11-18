@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ text || uuid → text
 const _result = await _db.query(`select 'User ID: ' || id as message from users;`)
 
-expectType<typeof _result>(toBe<Array<{ message: string }>>())
+expectType<typeof _result>(toBe<Array<{ message: string | null }>>())

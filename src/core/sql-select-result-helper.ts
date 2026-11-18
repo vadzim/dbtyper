@@ -38,4 +38,11 @@ export type SqlSelectResultTs<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape | null,
-> = ApplySqlToTsConversion<Config, SqlSelectResult<Db, Text, Params, ParserSyntaxOf<Config>>>
+> = ApplySqlToTsConversion<Config, SqlSelectResult<Db, Text, Params, ParserSyntaxOf<Config>>, UserTypeNamesOf<Db>>
+
+/** Names of the enum types declared in the chain (any schema). */
+type UserTypeNamesOf<Db extends JsqlDatabaseShape> = Db["schemas"] extends infer S
+	? {
+			[K in keyof S]: S[K] extends { types: infer T } ? keyof T & string : never
+		}[keyof S]
+	: never

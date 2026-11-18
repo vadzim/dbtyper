@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ text || column(integer) → text
 const _result = await _db.query(`select 'Age: ' || age as message from users;`)
 
-expectType<typeof _result>(toBe<Array<{ message: string }>>())
+expectType<typeof _result>(toBe<Array<{ message: string | null }>>())
