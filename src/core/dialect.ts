@@ -45,6 +45,9 @@ export type DialectName = keyof Dialects
  * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "builtin" = the PostgreSQL built-ins of the expression
  * parser plus the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
+ * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
+ * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
+ * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  */
 export type Dialects = {
 	postgres: {
@@ -57,6 +60,8 @@ export type Dialects = {
 		typelessColumns: false
 		ddl: false
 		functionCatalog: "builtin"
+		groupByRule: true
+		exprKeys: "name"
 	}
 	sqlite: {
 		title: "SQLite"
@@ -68,6 +73,8 @@ export type Dialects = {
 		typelessColumns: true
 		ddl: true
 		functionCatalog: "sqlite"
+		groupByRule: false
+		exprKeys: "text"
 	}
 }
 
