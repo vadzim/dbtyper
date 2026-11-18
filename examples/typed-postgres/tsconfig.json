@@ -9,5 +9,6 @@
 		},
 		"ignoreDeprecations": "6.0"
 	},
-	"include": ["src/**/*.ts", "migrations/**/*.js", "scripts/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts", "migrations/**/*.js", "scripts/**/*.ts", "test/**/*.ts"],
+	"exclude": []
 }
