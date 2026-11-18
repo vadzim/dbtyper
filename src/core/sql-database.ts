@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-shapes.ts"
+import type { JsqlCreateSchema } from "./jsql-utils.ts"
 import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { TypedStatements } from "./grammar-typing.ts"
@@ -75,9 +76,10 @@ export type ParamRuntimeValues<Params extends ExpressionParamsShape> = {
 export type SqlDatabase<
 	DefaultSchema extends string = "public",
 	Functions extends Record<string, string> = Record<string, never>,
+	Schemas = {},
 > = {
 	defaultSchema: DefaultSchema
-	schemas: {}
+	schemas: Schemas
 	functions?: Functions
 }
 
@@ -97,13 +99,21 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends Driv
 	getDefaultSchema(): string
 }
 
-export function sqlMigrations<D extends SqlDriver<DriverConfig>, const DS extends string = "public">(
-	config: SqlDatabaseConfig<D> & { defaultSchema?: DS },
-) {
+/** SQLT-25: a SQLite chain has its default schema from the start (no `create schema`); PostgreSQL starts with none. */
+type InitialSchemas<Dialect extends SqlDialect, DS extends string> = Dialect extends "sqlite"
+	? { [K in DS]: JsqlCreateSchema }
+	: {}
+
+export function sqlMigrations<
+	D extends SqlDriver<DriverConfig>,
+	const DS extends string = GetDriverConfig<D>["dialect"] extends "sqlite" ? "main" : "public",
+>(config: SqlDatabaseConfig<D> & { defaultSchema?: DS }) {
 	const defaultSchema = config.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
-		FlattenedJsqlDatabase<SqlDatabase<DS, Record<string, never>>>,
+		FlattenedJsqlDatabase<
+			SqlDatabase<DS, Record<string, never>, InitialSchemas<GetDriverConfig<D>["dialect"], DS>>
+		>,
 		GetDriverConfig<D>
 	>
 	return result

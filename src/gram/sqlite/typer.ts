@@ -106,7 +106,7 @@ type CreateTable<Db extends JsqlDatabaseShape, H, B> = H extends { ifne: infer I
 										? C extends { columns: infer Columns; facts: infer Facts }
 											? [
 													JsqlDbReplaceData<
-														EnsureSchema<Db, Schema>,
+														Db,
 														Schema,
 														Name,
 														{
@@ -135,17 +135,6 @@ type HasTable<Db extends JsqlDatabaseShape, Schema extends string, Name extends 
 		? true
 		: false
 	: false
-
-/** The SQLite chain's default schema exists as soon as a table is created in it (until #100 creates it with the chain). */
-type EnsureSchema<Db extends JsqlDatabaseShape, Schema extends string> = Db["schemas"] extends {
-	[S in Schema]: unknown
-}
-	? Db
-	: {
-			defaultSchema: Db["defaultSchema"]
-			schemas: Db["schemas"] & { [S in Schema]: { sets: {}; types: {} } }
-			functions: Db["functions"]
-		}
 
 type TableOptions<Opts, WR extends boolean = false, ST extends boolean = false> = Opts extends [infer O, ...infer Rest]
 	? O extends { k: "without"; nm: ["id", "rowid"] }

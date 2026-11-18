@@ -59,26 +59,13 @@ type SqliteStatements<
 				: never
 			: never
 
-/**
- * The inherited typer on a SQLite chain. It finds tables only in an existing schema, so the chain's default schema is
- * created on the fly (until #100 gives SQLite chains their schema).
- */
+/** The inherited typer on a SQLite chain (its default schema exists from the start, #100). */
 type Inherited<
 	Config extends TypingConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	Params extends ExpressionParamsShape | null,
-> = ApplyStatements<EnsureDefaultSchema<Db>, Stmt, Params, Config["syntax"]>
-
-type EnsureDefaultSchema<Db extends JsqlDatabaseShape> = Db["schemas"] extends {
-	[S in Db["defaultSchema"]]: unknown
-}
-	? Db
-	: {
-			defaultSchema: Db["defaultSchema"]
-			schemas: Db["schemas"] & { [S in Db["defaultSchema"]]: { sets: {}; types: {} } }
-			functions: Db["functions"]
-		}
+> = ApplyStatements<Db, Stmt, Params, Config["syntax"]>
 
 /**
  * CORE-14: an output column whose SQL type has no TypeScript type in the driver's map is error 3506 naming the type.

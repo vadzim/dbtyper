@@ -151,6 +151,10 @@ Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts
 - **Packaging.** The gate imports `src/gram/**/*.d.ts` from `src/core`, which `tsc` does not emit: `npm run build` runs
   `scripts/copy-gram-dts.mjs` afterwards.
 
+## 2026-11-18 — SQLite default schema (#100, track B)
+
+A SQLite chain starts with the schema `main` already created (`sqlMigrations`: `InitialSchemas`, default `DS` is `"main"` when the driver's dialect is `"sqlite"`), so tables need no `create schema` (SQLT-25). Type level only; `getDefaultSchema()` at runtime still returns `"public"` (the drivers carry no runtime dialect). The DSEL tests now use `betterSqlite3Driver`/`nodeSqliteDriver` with a fake database object instead of a fake config.
+
 ## 2026-11-18 — Grammar-driven typing, first slice (#55, track B)
 
 - **Shape.** Typing on track B is driven by the grammar: `Parse` (src/gram/driver.ts) is `Recognize` plus a value stack;
@@ -170,7 +174,7 @@ Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts
     - SQLite chains, inherited typer (src/parser) on the whole text whenever the grammar typer returns `Unsupported`:
       INSERT/UPDATE/DELETE (and their RETURNING), parameters, compound selects, CTEs, views, ALTER/DROP, unnamed output
       expressions, NATURAL/USING joins, and **every error** (the grammar typer never rejects; it hands the text over, so
-      messages stay the inherited ones). The chain's default schema is created on the fly for it (until #100).
+      messages stay the inherited ones).
     - PostgreSQL chains: the inherited typer only (CORE-1…5/14 for PostgreSQL are not done on track B).
     - Shared: CORE-13 in `QueryReturnType` (no rows → `[]`, both dialects); `any` (a SQLite column without type) maps to the
       union of the driver's storage-class types (SQLT-10) in `sql-to-ts-conversion.ts`.
