@@ -94,13 +94,9 @@ type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfigDraft> = SqlDriver<D
 	driver: Driver
 }
 
-type SqlDatabase<
-	DefaultSchema extends string = "public",
-	Functions extends Record<string, string> = Record<string, never>,
-> = {
+type SqlDatabase<DefaultSchema extends string = "public"> = {
 	defaultSchema: DefaultSchema
 	schemas: {}
-	functions?: Functions
 }
 
 /** The schema a new chain starts from: empty, or with the default schema when the dialect has it built in. */
@@ -116,10 +112,9 @@ type InitialDatabase<
 			// instantiations (per-step instantiations are not cached) and 18 chained CREATE TABLEs hit TS2589.
 			// A plain literal is FORBIDDEN here; test/sqlite/sqlt-102-long-chain.test-d.ts guards it.
 			schemas: { [K in "main" | "temp" | (DS & never)]: JsqlCreateSchema }
-			functions?: Record<string, never>
 			dialect: Config["dialect"]
 		}
-	: SqlDatabase<DS, Record<string, never>>
+	: SqlDatabase<DS>
 
 interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
@@ -181,7 +176,6 @@ type NonIndexKey<K extends PropertyKey> = string extends K
  */
 type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 	defaultSchema: Db["defaultSchema"]
-	functions: Db["functions"]
 	schemas: Db["schemas"] extends infer Schemas
 		? {
 				[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends JsqlSchemaShape

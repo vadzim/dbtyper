@@ -30,23 +30,20 @@ import type { ShapeComparisonClass, SqlComparisonClass, StringLiteralClasses } f
 import type { ResolveUserType } from "./parse-sql-type-words.ts"
 import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
-import type { FunctionArgType, PeerTypedFunctions } from "./function-param-types.ts"
 import type {
-	IsSqliteFunction,
-	IsWindowOnlyRow,
-	SqliteFunctionRow,
-	SqliteOperators,
-	SqlitePgOnlyFunctions,
-	SqliteRowResult,
-} from "./sqlite-functions.ts"
-import type {
-	IsPostgresFunction,
+	CatalogArityError,
+	CatalogRow,
+	CatalogRowResult,
+	IsCatalogFunction,
+	IsPeerTypedRow,
 	IsWindowCapableRow,
-	PostgresFunctionArity,
-	PostgresFunctions,
-	PostgresRowResult,
-	PostgresSqliteOnlyFunctions,
-} from "./postgres-functions.ts"
+	IsWindowOnlyRow,
+	OtherDialectHints,
+	OtherDialectTitle,
+	RowArgType,
+} from "./function-catalog.ts"
+import type { SqliteRowResult } from "./function-catalog.ts"
+import type { SqliteOperators } from "./sqlite-functions.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -439,9 +436,8 @@ type ParseLikeAfterL<
 					? ParseLikePattern<SkipToken<R1>, L, CI, Env>
 					: SkipFailedExpressionWithEnv<R1, FormatError<Errors["UNEXPECTED_TOKEN"], ["SIMILAR"]>, Env>
 				: TokKw extends TokenIdent<"regexp">
-					? Env["db"] extends { functions: { regexp: unknown } }
-						? ParseLikePattern<R1, L, CI, Env>
-						: SkipFailedExpressionWithEnv<R1, FormatError<Errors["REGEXP_NEEDS_FUNCTION"], []>, Env>
+					? // SQLT-34: always an error until users can declare functions (FN-Q1)
+						SkipFailedExpressionWithEnv<R1, FormatError<Errors["REGEXP_NEEDS_FUNCTION"], []>, Env>
 					: ParseLikePattern<R1, L, CI, Env>
 			: never
 		: never
@@ -1079,8 +1075,10 @@ type ArgsTupleContainsStar<Args extends readonly (ScalarExprAst | { kind: "star"
 	: false
 
 /**
- * SQLT-44…SQLT-52: a call in a chain whose dialect has a function table (src/parser/sqlite-functions.ts): the row of
- * the function gives result type and nullability. `Windowed`: the call has an OVER clause.
+ * SQLT-44…SQLT-52, PGT-27…PGT-33, FN-19…FN-21: a call in a chain, typed from its row in the function catalog of the
+ * dialect (`functionCatalog`, src/parser/function-catalog.ts): argument count, window rules, result type and
+ * nullability are columns of the row. A name that is not in the catalog is FN-1 (with the other dialect's hint,
+ * SQLT-52, PGT-34). `Windowed`: the call has an OVER clause.
  */
 type ResolveCatalogFunctionCall<
 	Name extends string,
@@ -1090,35 +1088,47 @@ type ResolveCatalogFunctionCall<
 	Params extends ExpressionParamsShape,
 	Windowed extends boolean,
 	L extends string = Lowercase<Name>,
+	C extends string = DialectFact<Db, "functionCatalog">,
 > =
-	IsSqliteFunction<L> extends true
+	IsCatalogFunction<C, L> extends true
 		? ArgsTupleContainsStar<Args> extends true
 			? L extends "count"
-				? SqlInteger
+				? CatalogRowResult<C, CatalogRow<C, "count", 0>, []>
 				: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
 			: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
 				? ArgsRes extends DbtyperErrorShape
 					? ArgsRes
 					: ArgsRes extends readonly SqlTypeShape[]
-						? SqliteFunctionRow<L, ArgsRes["length"]> extends infer Row
-							? Windowed extends false
-								? IsWindowOnlyRow<Row> extends true
-									? FormatError<Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"], [Name]>
-									: SqliteRowResult<Row, ArgsRes>
-								: SqliteRowResult<Row, ArgsRes>
+						? CatalogRow<C, L, ArgsRes["length"]> extends infer Row
+							? CatalogArityError<Row, ArgsRes> extends infer Arity
+								? Arity extends DbtyperErrorShape
+									? Arity
+									: EnumPeerCheck<Db, L, ArgsRes, Args> extends infer Peer extends DbtyperErrorShape
+										? Peer
+										: Windowed extends false
+											? IsWindowOnlyRow<Row> extends true
+												? FormatError<Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"], [Name]>
+												: CatalogRowResult<C, Row, ArgsRes>
+											: IsWindowCapableRow<Row> extends true
+												? CatalogRowResult<C, Row, ArgsRes>
+												: UnknownFunction<C, Name, L>
+								: never
 							: never
 						: never
 				: never
-		: L extends keyof SqlitePgOnlyFunctions
-			? SqlitePgOnlyFunctions[L] extends infer Hint extends string
-				? FormatError<
-						Errors["UNKNOWN_FUNCTION"],
-						[Hint extends "" ? Name : `${Name}. ${Name}() is PostgreSQL-only${PgHint<Hint>}`]
-					>
-				: never
-			: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+		: UnknownFunction<C, Name, L>
 
 type PgHint<Hint extends string> = Hint extends "" ? "" : `; ${Hint}`
+
+/** FN-1; SQLT-52, PGT-34: a name of the other dialect's catalog names its replacement. */
+type UnknownFunction<C extends string, Name extends string, L extends string> = L extends keyof OtherDialectHints<C>
+	? OtherDialectHints<C>[L] extends infer Hint extends string
+		? FormatError<
+				Errors["UNKNOWN_FUNCTION"],
+				[Hint extends "" ? Name : `${Name}. ${Name}() is ${OtherDialectTitle<C>}-only${PgHint<Hint>}`]
+			>
+		: never
+	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
 
 /** CORE-2, CORE-3: nullability of a function call on top of its base result type. */
 type ResolveFunctionCall<
@@ -1128,181 +1138,7 @@ type ResolveFunctionCall<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	L extends string = Lowercase<Name>,
-> =
-	DialectFact<Db, "functionCatalog"> extends "sqlite"
-		? ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, false, L>
-		: ResolvePgFunctionCall<Name, Args, Db, Scope, Params, false, L>
-
-/**
- * PGT-27…PGT-33: a call in a PostgreSQL chain. A name in the data table `PostgresFunctions`
- * (src/parser/postgres-functions.ts) is typed from its row; the array functions with their own errors (FN-19…FN-21),
- * the chain's own `functions` and the unknown-function error (FN-1, PGT-34) are {@link ResolveLegacyFunctionCall}.
- * `Windowed`: the call has an OVER clause.
- */
-type ResolvePgFunctionCall<
-	Name extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	Windowed extends boolean,
-	L extends string = Lowercase<Name>,
-> =
-	IsPostgresFunction<L> extends true
-		? ArgsTupleContainsStar<Args> extends true
-			? L extends "count"
-				? SqlBigint
-				: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
-			: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
-				? ArgsRes extends DbtyperErrorShape
-					? ArgsRes
-					: ArgsRes extends readonly SqlTypeShape[]
-						? PgArityError<L, ArgsRes> extends infer Arity
-							? Arity extends DbtyperErrorShape
-								? Arity
-								: EnumPeerCheck<Db, L, ArgsRes, Args> extends infer Peer extends DbtyperErrorShape
-									? Peer
-									: L extends keyof PostgresFunctions
-										? PostgresFunctions[L] extends infer Row
-											? Windowed extends false
-												? IsWindowOnlyRow<Row> extends true
-													? FormatError<
-															Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"],
-															[Name]
-														>
-													: PostgresRowResult<Row, ArgsRes>
-												: IsWindowCapableRow<Row> extends true
-													? PostgresRowResult<Row, ArgsRes>
-													: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
-											: never
-										: never
-							: never
-						: never
-				: never
-		: Windowed extends false
-			? ResolveLegacyFunctionCall<Name, Args, Db, Scope, Params, L>
-			: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
-
-/** The errors of {@link PostgresFunctionArity} by key (FN-5, FN-7…FN-10, FN-12, FN-24). */
-type PgArityErrors = {
-	FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT: FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-	COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT: FormatError<Errors["COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-	SUM_REQUIRES_AN_ARGUMENT: FormatError<Errors["SUM_REQUIRES_AN_ARGUMENT"], []>
-	NOW_TAKES_NO_ARGUMENTS: FormatError<Errors["NOW_TAKES_NO_ARGUMENTS"], []>
-	THIS_FUNCTION_TAKES_NO_ARGUMENTS: FormatError<Errors["THIS_FUNCTION_TAKES_NO_ARGUMENTS"], []>
-	ROW_NUMBER_TAKES_NO_ARGUMENTS: FormatError<Errors["ROW_NUMBER_TAKES_NO_ARGUMENTS"], []>
-	RANK_DENSE_RANK_TAKES_NO_ARGUMENTS: FormatError<Errors["RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"], []>
-	LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT: FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
-}
-
-/** The arity errors of {@link PostgresFunctionArity}; `null` when the argument count is fine. */
-type PgArityError<L extends string, ArgsRes extends readonly SqlTypeShape[]> = L extends keyof PostgresFunctionArity
-	? PostgresFunctionArity[L] extends readonly [
-			infer Min extends number,
-			infer Max extends number,
-			infer Key extends keyof PgArityErrors,
-		]
-		? ArgsRes extends readonly []
-			? Min extends 0
-				? null
-				: PgArityErrors[Key]
-			: Max extends 0
-				? PgArityErrors[Key]
-				: null
-		: null
-	: null
-
-/**
- * The array functions with their own errors (FN-19…FN-21), the chain's own `functions`, and FN-1 for the rest, with
- * the PostgreSQL hint for a SQLite-only name (PGT-34, DSEL-6). The result is nullable when any argument is (CORE-2).
- */
-type ResolveLegacyFunctionCall<
-	Name extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	L extends string = Lowercase<Name>,
-> =
-	ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
-		? ArgsRes extends DbtyperErrorShape
-			? ArgsRes
-			: ArgsRes extends readonly SqlTypeShape[]
-				? ResolveLegacyFunctionBase<Name, ArgsRes, Db, L> extends infer Base
-					? Base extends DbtyperErrorShape
-						? Base
-						: Base extends SqlTypeShape
-							? AnyShapeNullable<ArgsRes> extends true
-								? Nullable<Base>
-								: Base
-							: Base
-					: never
-				: never
-		: never
-
-type AnyShapeNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["nullable"] extends true
-		? true
-		: AnyShapeNullable<T>
-	: false
-
-type ResolveLegacyFunctionBase<
-	Name extends string,
-	ArgsRes extends readonly SqlTypeShape[],
-	Db extends JsqlDatabaseShape,
-	L extends string,
-> = L extends "array_length"
-	? ArgsRes extends readonly [infer S1 extends SqlTypeShape, SqlTypeShape]
-		? S1["type"] extends "array" | "unknown"
-			? SqlInteger
-			: FormatError<Errors["ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER"], []>
-		: FormatError<Errors["ARRAY_LENGTH_REQUIRES_2_ARGUMENTS"], []>
-	: L extends "array_append"
-		? ArgsRes extends readonly [infer S1 extends SqlTypeShape, SqlTypeShape]
-			? S1["type"] extends "array" | "unknown"
-				? S1
-				: FormatError<Errors["ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT"], []>
-			: FormatError<Errors["ARRAY_APPEND_REQUIRES_2_ARGUMENTS"], []>
-		: L extends "array_prepend"
-			? ArgsRes extends readonly [SqlTypeShape, infer S2 extends SqlTypeShape]
-				? S2["type"] extends "array" | "unknown"
-					? S2
-					: FormatError<Errors["ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY"], []>
-				: FormatError<Errors["ARRAY_PREPEND_REQUIRES_2_ARGUMENTS"], []>
-			: L extends "unnest"
-				? ArgsRes extends readonly [infer S1 extends SqlTypeShape]
-					? S1 extends { type: "array"; arg: infer E extends SqlTypeShape }
-						? E
-						: S1["type"] extends "array" | "unknown"
-							? SqlUnknown
-							: FormatError<Errors["UNNEST_EXPECTS_AN_ARRAY"], []>
-					: FormatError<Errors["UNNEST_REQUIRES_1_ARGUMENT"], []>
-				: "functions" extends keyof Db
-					? Db["functions"] extends Record<string, unknown>
-						? L extends keyof Db["functions"]
-							? Db["functions"][L & keyof Db["functions"]] extends infer FnType
-								? FnType extends SqlTypeShape
-									? FnType
-									: FnType extends string
-										? { type: FnType; arg: null; nullable: false }
-										: SqlUnknown
-								: SqlUnknown
-							: UnknownPgFunction<Name, L>
-						: UnknownPgFunction<Name, L>
-					: UnknownPgFunction<Name, L>
-
-/** FN-1; PGT-34: a SQLite-only function names its PostgreSQL replacement. */
-type UnknownPgFunction<Name extends string, L extends string> = L extends keyof PostgresSqliteOnlyFunctions
-	? PostgresSqliteOnlyFunctions[L] extends infer Hint extends string
-		? FormatError<
-				Errors["UNKNOWN_FUNCTION"],
-				[Hint extends "" ? Name : `${Name}. ${Name}() is SQLite-only${PgHint<Hint>}`]
-			>
-		: never
-	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+> = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, false, L>
 
 type ResolveWindowFunction<
 	Name extends string,
@@ -1311,10 +1147,7 @@ type ResolveWindowFunction<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	L extends string = Lowercase<Name>,
-> =
-	DialectFact<Db, "functionCatalog"> extends "sqlite"
-		? ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, L>
-		: ResolvePgFunctionCall<Name, Args, Db, Scope, Params, true, L>
+> = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, L>
 
 type ResolveCustomOp<
 	Op extends string,
@@ -1896,11 +1729,13 @@ type ProbeInFunctionArgs<
 		? [K] extends [never]
 			? ProbeInFunctionArgs<Name, T, AllArgs, Db, Scope, Params, Inc<Index>>
 			: K extends string | number
-				? Name extends PeerTypedFunctions
-					? ProbeFromPeers<K, AllArgs, Db, Scope, Params, false>
-					: [FunctionArgType<Name, Index>] extends [never]
-						? never
-						: ParamProbeFound<K, FunctionArgType<Name, Index>>
+				? CatalogRow<DialectFact<Db, "functionCatalog">, Name, AllArgs["length"]> extends infer Row
+					? IsPeerTypedRow<Row> extends true
+						? ProbeFromPeers<K, AllArgs, Db, Scope, Params, false>
+						: [RowArgType<Row, Index>] extends [never]
+							? never
+							: ParamProbeFound<K, RowArgType<Row, Index>>
+					: never
 				: never
 		: never
 	: never

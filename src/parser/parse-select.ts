@@ -1,3 +1,4 @@
+import type { IsAggregateCall } from "./function-catalog.ts"
 import type { ForceProps, MergeRecords } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
@@ -1005,33 +1006,11 @@ type ParseOptionalGroupHaving<
 			: never
 		: ParseOptionalHavingWithoutGroupClause<Tokens, Db, Scope, Params>
 
-/** `min`/`max` with several arguments is the scalar form (SQLT-46); the SQLite-only aggregates are SQLT-47 and SQLT-49, the PostgreSQL ones PGT-27. */
-type KnownAggregateName<N extends string, Args extends readonly unknown[]> =
-	Lowercase<N> extends infer L extends string
-		? L extends "min" | "max"
-			? Args["length"] extends 1
-				? true
-				: false
-			: L extends
-						| "count"
-						| "sum"
-						| "avg"
-						| "total"
-						| "group_concat"
-						| "string_agg"
-						| "json_group_array"
-						| "json_group_object"
-						| "bool_and"
-						| "bool_or"
-						| "every"
-						| "array_agg"
-						| "json_agg"
-						| "jsonb_agg"
-						| "json_object_agg"
-						| "jsonb_object_agg"
-				? true
-				: false
-		: false
+/** An aggregate call: the `"aggregate"` kind of the function's row in the catalog (src/parser/function-catalog.ts). */
+type KnownAggregateName<N extends string, Args extends readonly unknown[]> = IsAggregateCall<
+	Lowercase<N>,
+	Args["length"]
+>
 
 type TypeBoolAnd<A, B> = A extends true ? (B extends true ? true : false) : false
 
