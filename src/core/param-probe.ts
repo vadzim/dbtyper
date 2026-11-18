@@ -12,7 +12,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/par
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { ParserSyntax } from "./dialect.ts"
 import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
-import type { SqlTypeShape } from "./sql-type-shape.ts"
+import type { SqlTypeShape, NonNull } from "./sql-type-shape.ts"
 import type { Inc, LastOf } from "./type-utils.ts"
 
 /** The type of a parameter that no position has given a type yet; `arg` is its key (name, or 0-based index). */
@@ -30,7 +30,7 @@ export type ParamProbeFound<Key extends string | number, S extends SqlTypeShape>
 > & { __param_probe__: { key: Key; type: S } }
 
 /** The type a comparison-like position gives to a probe: never null (a nullable column is compared, not assigned). */
-export type ProbeTypeFromPeer<S extends SqlTypeShape> = { type: S["type"]; arg: S["arg"]; nullable: false }
+export type ProbeTypeFromPeer<S extends SqlTypeShape> = NonNull<S>
 
 type InitialProbes<V> = V extends readonly unknown[]
 	? number extends V["length"]

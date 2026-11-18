@@ -2141,7 +2141,7 @@ type ParseWindowClauseContent<
  * `OVER ()` and a frame (`ROWS|RANGE|GROUPS …`, skipped: it does not change a result type) before the closing paren.
  */
 type CloseWindowOrError<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
-	DialectFact<Env["db"], "functionCatalog"> extends "sqlite"
+	DialectFact<Env["db"], "windowFrames"> extends true
 		? PeekToken<Tokens> extends TokenKey<")">
 			? [SkipToken<Tokens>, Ast, Env]
 			: AsIdent<PeekToken<Tokens>> extends TokenIdent<"range" | "groups">
@@ -2815,15 +2815,15 @@ type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"
 		? SqlText
 		: N extends "integer" | "int" | "int4" | "smallint" | "int2" | "serial" | "smallserial"
 			? Ev["type"] extends "boolean"
-				? DbtyperError<4503, "Cannot cast boolean to integer">
+				? FormatError<Errors["CANNOT_CAST_BOOLEAN_TO_INTEGER"], []>
 				: SqlInteger
 			: N extends "bigint" | "int8" | "bigserial"
 				? Ev["type"] extends "boolean"
-					? DbtyperError<4503, "Cannot cast boolean to integer">
+					? FormatError<Errors["CANNOT_CAST_BOOLEAN_TO_INTEGER"], []>
 					: SqlBigint
 				: N extends "boolean" | "bool"
 					? Ev["type"] extends "integer" | "bigint" | "numeric"
-						? DbtyperError<4504, "Cannot cast integer to boolean">
+						? FormatError<Errors["CANNOT_CAST_INTEGER_TO_BOOLEAN"], []>
 						: SqlBoolean
 					: N extends "uuid"
 						? SqlUuid
@@ -2852,9 +2852,6 @@ type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"
 													| "decimal"
 											? SqlNumeric
 											: SqlType<N>
-
-// Old unused functions removed (ResolveCastFromAtom, MergeNumericArithmetic)
-// These were part of the legacy ExprAtom system and are no longer needed
 
 type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: "string" }
 	? true
@@ -3525,7 +3522,7 @@ type ParseScalarExprUntypedNonIdent<Tokens extends ParserMonad, Env extends Expr
 
 /** SQLT-35: in SQLite a literal with a decimal point or an exponent is REAL; elsewhere every number literal is the integer shape. */
 type NumberLiteralType<Db, Raw extends string> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "numberTyping"> extends "affinity"
 		? Raw extends `0${"x" | "X"}${string}`
 			? SqlInteger
 			: Raw extends `${string}${"." | "e" | "E"}${string}`
@@ -3538,7 +3535,7 @@ type NumberLiteralType<Db, Raw extends string> =
  * (SQLite, SQLT-35): with any REAL operand the result is REAL, else a NUMERIC operand makes it NUMERIC.
  */
 type ArithmeticResult<Db, Lv extends SqlTypeShape, Rv extends SqlTypeShape> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "numberTyping"> extends "affinity"
 		? "real" extends Lv["type"] | Rv["type"]
 			? SqlType<"real">
 			: "numeric" extends Lv["type"] | Rv["type"]
@@ -3583,7 +3580,7 @@ type ResolveScalarExprAstPair<
 type PgDatetimeArithmetic<Db, Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
 	| "add"
 	| "sub"
-	? DialectFact<Db, "typeNames"> extends "named"
+	? DialectFact<Db, "datetimeArithmetic"> extends true
 		? Lv["type"] extends "timestamp" | "timestamp with time zone" | "timestamp without time zone" | "date"
 			? Rv["type"] extends "interval"
 				? PgNullableIfEither<Lv, Rv, Lv>
@@ -3636,22 +3633,3 @@ type ResolveScalarExprAstNeg<
 					: FormatError<Errors["UNARY_MINUS_REQUIRES_A_NUMBER"], []>
 				: FormatError<Errors["UNARY_MINUS_REQUIRES_A_NUMBER"], []>
 		: never
-
-// ============================================================================
-// OLD PARSING FUNCTIONS REMOVED (2026-05-07)
-// ============================================================================
-// The following functions were part of the legacy ExprAtom system and have been removed:
-// - TryValueOperand
-// - ParseValuePgCastSuffix
-// - ParseMulLoopAfterFirst
-// - ParseMulValue
-// - ParseAddLoopAfterFirst
-// - ParseAddValue
-//
-// These functions returned ExprOk<string> (string-based types) and are no longer needed.
-// The new approach uses:
-//   1. ParseExpressionAST - builds AST (no types)
-//   2. ResolveExpressionAST - resolves AST to SqlTypeShape
-//
-// This provides better separation of concerns and consistency with SELECT parsing.
-// ============================================================================

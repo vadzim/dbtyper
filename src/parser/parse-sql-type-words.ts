@@ -5,7 +5,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
 import type { DialectFact, DialectOnlyError, PgOnlyTypeNames, SqliteTypeKey } from "../core/dialect.ts"
@@ -90,7 +90,7 @@ type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTypeShape>
 	PeekToken<Tokens> extends TokenKey<"not">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"null">
-				? [SkipToken<R1>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: false }]
+				? [SkipToken<R1>, NonNull<BaseType>]
 				: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
@@ -283,7 +283,7 @@ type ParseNullabilityOfDomain<Tokens extends ParserMonad, Shape extends SqlTypeS
 			? [R, Sh]
 			: DomainNn extends true
 				? Sh extends SqlTypeShape
-					? [R, { type: Sh["type"]; arg: Sh["arg"]; nullable: false }]
+					? [R, NonNull<Sh>]
 					: [R, Sh]
 				: [R, Sh]
 		: never

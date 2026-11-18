@@ -7,7 +7,7 @@ import type {
 } from "./jsql-shapes.ts"
 import type { DialectFact } from "./dialect.ts"
 import type { ReplaceProp } from "./type-utils.ts"
-import type { SqlTypeShape } from "./sql-type-shape.ts"
+import type { SqlTypeShape, NonNull } from "./sql-type-shape.ts"
 
 export type JsqlCreateSchema = {
 	sets: {}
@@ -241,9 +241,7 @@ type JsqlTableReplaceColumnType<
 					ReplaceProp<
 						Table["columns"],
 						Col,
-						Table["columns"][Col] extends { nullable: false }
-							? { type: SqlType["type"]; arg: SqlType["arg"]; nullable: false }
-							: SqlType
+						Table["columns"][Col] extends { nullable: false } ? NonNull<SqlType> : SqlType
 					>
 				>
 			: null

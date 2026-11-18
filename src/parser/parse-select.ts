@@ -35,7 +35,7 @@ import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 import type { DbDialectOnlyError, DialectFact, DialectOf } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
-import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { SqlInteger, SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseUpdate } from "./parse-update.ts"
@@ -2031,12 +2031,7 @@ type ParseFromFunction<
 					? V extends DbtyperErrorShape
 						? [R, WithErrorClause<V, "FROM">, ParserRefErrorThirdSentinel]
 						: V extends SqlTypeShape
-							? ParseFromFunctionAlias<
-									R,
-									Name,
-									{ type: V["type"]; arg: V["arg"]; nullable: false },
-									Scope
-								>
+							? ParseFromFunctionAlias<R, Name, NonNull<V>, Scope>
 							: never
 					: never
 				: never

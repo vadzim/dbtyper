@@ -26,7 +26,7 @@ import type {
 	UnqualifiedSchema,
 	JsqlDbReplaceData,
 } from "../core/jsql-utils.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -203,7 +203,7 @@ type ParseCreateTableAsSelectRun<
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
 
-type NotNullType<T extends SqlTypeShape> = { type: T["type"]; arg: T["arg"]; nullable: false }
+type NotNullType<T extends SqlTypeShape> = NonNull<T>
 
 type ParseCreateTableOpenParen<
 	Tokens extends ParserMonad,
