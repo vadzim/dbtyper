@@ -1,8 +1,8 @@
-import type { PeekToken, SkipToken, CreateParserMonad } from "../lexer/parser-monad.ts"
+import type { PeekToken, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
+import type { ParserSyntax } from "../core/dialect.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
-import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
@@ -27,7 +27,7 @@ export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape | null = null,
-	Syntax extends LexerFeatures = "",
+	Syntax extends ParserSyntax = "",
 > =
 	ApplyParsedStatements<
 		CreateParserMonad<Text, Syntax>,
@@ -36,14 +36,15 @@ export type ApplyStatements<
 		null,
 		null
 	> extends [
-		infer _Rest extends ParserMonad,
+		infer Rest extends ParserMonad,
 		infer NewDB extends JsqlDatabaseShape,
 		infer Error extends DbtyperErrorShape | null,
 		infer Result,
 	]
 		? [
 				NewDB,
-				Error,
+				// DSEL-5, DSEL-6: other-dialect syntax the lexer met is the root cause; it wins over parser errors.
+				PeekToken<Rest> extends TokenEotWithDialectError<infer DialectError> ? DialectError : Error,
 				Result extends { returning: unknown }
 					? [keyof Result["returning"]] extends [never]
 						? { returning: null }

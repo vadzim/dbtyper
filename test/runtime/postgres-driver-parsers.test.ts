@@ -7,9 +7,9 @@ import { postgresSqlDriver } from "../../src/postgres/postgres-sql-driver.ts"
 
 test("RUN-23: postgresSqlDriver installs parsers for int8, numeric and date", () => {
 	const parsers: Record<number, (value: string) => unknown> = {
-		20: (v) => v,
-		1700: (v) => v,
-		1082: (v) => new Date(v),
+		20: v => v,
+		1700: v => v,
+		1082: v => new Date(v),
 	}
 	const sql = { options: { parsers }, unsafe: async () => [] } as unknown as ReturnType<typeof postgres>
 	postgresSqlDriver({ sql })

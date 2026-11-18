@@ -1,0 +1,152 @@
+/**
+ * Dialect seam: which SQL engine a migration chain speaks, and which syntax belongs to one engine only.
+ * Spec DSEL-1, DSEL-3, DSEL-5, DSEL-6, DSEL-7, DSEL-11; #51 (track A).
+ *
+ * Decision (#51, also in DECISIONS.md):
+ * - The dialect is a field of the driver's type-level config (`DriverConfig["dialect"]`), never a separate setting
+ *   (DSEL-1, DSEL-8). It reaches the type-level parser as one extra flag in the lexer's `Syntax` string union
+ *   (`dialect:postgres` / `dialect:sqlite`, see {@link ParserSyntaxOf}), so no parser signature changes: every parser
+ *   already carries `Syntax` inside the parser monad.
+ * - Dialect facts are DATA in this module, not conditions spread over parser files. A construct that exists in one
+ *   engine only is one row of {@link DialectOnlyConstructs}; a dialect is one row of {@link Dialects}. Later issues
+ *   (SQLT-53 list, SQLite type names, PostgreSQL catalogs) add rows here, and ask {@link DialectOnlyError}
+ *   "is construct X allowed under this Syntax?" where the construct is recognised.
+ * - The check runs in the token stream, not in the parsers: the lexer tags one-token constructs (`$1`, `$$…$$`,
+ *   backticks), the parser monad matches keyword phrases of {@link DialectPhrases} (`::`, `INSERT OR …`) when it
+ *   reads their first word. The first other-dialect error is recorded in the monad, the token is still read
+ *   normally (parsing goes on, so the error is not lost in parser recovery, STMT-Q3), and the end-of-text token
+ *   carries the error to `ApplyStatements`, which reports it before any parser error: it is the root cause.
+ *   No parser file needs a dialect condition for this, and later rows cost nothing to the parsers.
+ *   A construct that only context can recognise (a type name, `DISTINCT ON`) is checked by its parser with
+ *   {@link DialectOnlyError} on `Syntax` and returns the error directly.
+ * - Dialect files only add or remove (DSEL-11): a construct is either accepted with the shared meaning or rejected
+ *   with an other-dialect error; there is no per-dialect reinterpretation here.
+ * - Without a dialect flag (low-level parser tests that call `CreateParserMonad`/`ApplyStatements` directly), or with
+ *   both flags, nothing is gated: that is dialect-neutral parsing, never reachable through `sqlMigrations`, which
+ *   requires a driver with exactly one declared dialect.
+ */
+import type { DbtyperErrorShape, Errors, FormatErrorOf } from "../dbtyper-error.ts"
+import type { LexerFeatures } from "../lexer/sql-lexer.ts"
+
+/** The engines dbtyper types SQL for (DSEL-1). */
+export type DialectName = keyof Dialects
+
+/**
+ * One row per dialect. `title` is how messages name the engine; `onlyError` is the error raised when SQL of a chain
+ * of ANOTHER dialect uses a construct that only this dialect has (DSEL-7: own codes, distinct from syntax errors);
+ * `defaultSchemaExists`: a new chain starts with its default schema already there (SQLite has no CREATE SCHEMA,
+ * SQLT-25; the `main`/`temp` naming is the SQLite names issue's), or must create it first (PostgreSQL, SCHEMA-4).
+ */
+export type Dialects = {
+	postgres: { title: "PostgreSQL"; onlyError: Errors["POSTGRES_ONLY_SYNTAX"]; defaultSchemaExists: false }
+	sqlite: { title: "SQLite"; onlyError: Errors["SQLITE_ONLY_SYNTAX"]; defaultSchemaExists: true }
+}
+
+/** The `Syntax` flag that names a chain's dialect. */
+export type DialectFlag<D extends DialectName> = `dialect:${D}`
+
+export type DialectFlags = DialectFlag<DialectName>
+
+/** Everything the lexer/parser `Syntax` union may hold: driver lexer features plus the dialect flag. */
+export type ParserSyntax = LexerFeatures | DialectFlags
+
+/** The parser syntax of a driver config: its lexer features plus its dialect flag (DSEL-1, DSEL-3). */
+export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: DialectName }> =
+	| Config["syntax"]
+	| DialectFlag<Config["dialect"]>
+
+/**
+ * Constructs that exist in one engine only (DSEL-5, DSEL-6). `name` is how the message names the construct, `hint`
+ * the suggested replacement in the chain's own dialect ("" for none); `<next>` in a hint is replaced by the next
+ * word of the SQL, upper-cased (`id::text` → `Use CAST(x AS TEXT)`).
+ * The full PostgreSQL-only list is SQLT-53; rows are added by the issues that own them.
+ */
+export type DialectOnlyConstructs = {
+	"pg-cast": { only: "postgres"; name: "`::` cast"; hint: "Use CAST(x AS <next>)" }
+	"pg-positional-param": { only: "postgres"; name: "`$n` positional parameter"; hint: "Use ? or ?NNN" }
+	"pg-dollar-string": { only: "postgres"; name: "Dollar-quoted string"; hint: "Use a single-quoted string" }
+	"sqlite-backtick-ident": {
+		only: "sqlite"
+		name: "Backtick-quoted identifier"
+		hint: 'Use a double-quoted identifier ("name")'
+	}
+	"sqlite-insert-or-replace": { only: "sqlite"; name: "INSERT OR REPLACE"; hint: "Use ON CONFLICT … DO UPDATE" }
+	"sqlite-insert-or-ignore": { only: "sqlite"; name: "INSERT OR IGNORE"; hint: "Use ON CONFLICT DO NOTHING" }
+	"sqlite-insert-or": { only: "sqlite"; name: "INSERT OR <conflict action>"; hint: "Use ON CONFLICT" }
+	"sqlite-replace-into": { only: "sqlite"; name: "REPLACE INTO"; hint: "Use INSERT … ON CONFLICT … DO UPDATE" }
+}
+
+export type DialectConstruct = keyof DialectOnlyConstructs
+
+/**
+ * Keyword phrases (1–3 lower-case words) that are a one-dialect construct, checked by the parser monad when it reads
+ * the phrase's first token; the longest phrase wins. `<next>` in a hint is the word after the phrase.
+ */
+export type DialectPhrases = {
+	"::": "pg-cast"
+	"insert or replace": "sqlite-insert-or-replace"
+	"insert or ignore": "sqlite-insert-or-ignore"
+	"insert or": "sqlite-insert-or"
+	"replace into": "sqlite-replace-into"
+}
+
+type PhraseHead<P> = P extends `${infer Head} ${string}` ? Head : P
+
+/** First words of {@link DialectPhrases}: only these tokens pay for the lookahead. */
+export type DialectPhraseHeads = PhraseHead<keyof DialectPhrases>
+
+/** `[construct, number of words]` of the longest phrase `W1 W2 W3` starts with, or `never`. */
+export type MatchDialectPhrase<
+	W1 extends string,
+	W2 extends string,
+	W3 extends string,
+> = `${W1} ${W2} ${W3}` extends infer P3 extends keyof DialectPhrases
+	? [DialectPhrases[P3], 3]
+	: `${W1} ${W2}` extends infer P2 extends keyof DialectPhrases
+		? [DialectPhrases[P2], 2]
+		: W1 extends keyof DialectPhrases
+			? [DialectPhrases[W1], 1]
+			: never
+
+/** The dialect(s) `Syntax` names: one name, a union of both, or `never` for none. */
+type SyntaxDialect<Syntax extends string> =
+	Extract<Syntax, DialectFlags> extends `dialect:${infer D extends DialectName}` ? D : never
+
+/** `true` for exactly one member, `false` for `never` or a union. */
+type IsSingle<U, All = U> = [U] extends [never] ? false : U extends unknown ? ([All] extends [U] ? true : false) : never
+
+/**
+ * `null` when `Construct` may be used under `Syntax`, otherwise the other-dialect error (DSEL-5, DSEL-6, DSEL-7).
+ * `NextWord` fills `<next>` in the hint.
+ */
+export type DialectOnlyError<Syntax extends string, Construct extends DialectConstruct, NextWord extends string = ""> =
+	SyntaxDialect<Syntax> extends infer Current extends DialectName
+		? IsSingle<Current> extends true
+			? DialectOnlyConstructs[Construct] extends {
+					only: infer Owner extends DialectName
+					name: infer Name extends string
+					hint: infer Hint extends string
+				}
+				? Owner extends Current
+					? null
+					: Dialects[Owner]["onlyError"] extends infer OnlyError extends OtherDialectErrors
+						? FormatErrorOf<OnlyError, [Name, Dialects[Current]["title"], FormatHint<Hint, NextWord>]>
+						: null
+				: null
+			: null
+		: null
+
+/** All other-dialect error descriptions; they share one message shape: construct, this chain's dialect, hint. */
+type OtherDialectErrors = Dialects[DialectName]["onlyError"]
+
+type FormatHint<Hint extends string, NextWord extends string> = Hint extends ""
+	? ""
+	: Hint extends `${infer Before}<next>${infer After}`
+		? `. ${Before}${NextWord extends "" ? "type" : Uppercase<NextWord>}${After}`
+		: `. ${Hint}`
+
+/** First recorded error wins; a later one is dropped. */
+export type KeepFirstDialectError<
+	Recorded extends DbtyperErrorShape | null,
+	New extends DbtyperErrorShape | null,
+> = Recorded extends DbtyperErrorShape ? Recorded : New
