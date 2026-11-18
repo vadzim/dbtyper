@@ -40,3 +40,4 @@ src/gram/gram.output
 src/gram/gram.xml
 src/gram/gram.tab.c
 src/gram/parser.c
+src/gram/gram.tab.h

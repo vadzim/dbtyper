@@ -8,5 +8,5 @@
 		"rewriteRelativeImportExtensions": true
 	},
 	"include": ["core/**/*.ts", "src/**/*.ts"],
-	"exclude": ["test", "migrations", "scripts", "examples", "node_modules", "dist"]
+	"exclude": ["src/gram", "test", "migrations", "scripts", "examples", "node_modules", "dist"]
 }

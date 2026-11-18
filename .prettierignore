@@ -4,3 +4,6 @@
 session-*.md
 folder_context.md
 test/.legacy-unsupported/
+
+# generated bison tables (committed; see src/gram/README.md)
+src/gram/gram.ts
