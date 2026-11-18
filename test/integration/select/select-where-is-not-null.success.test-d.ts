@@ -14,8 +14,8 @@ const _result = await _db.query(`select * from users where name is not null;`)
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

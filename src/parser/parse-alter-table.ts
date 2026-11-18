@@ -89,7 +89,7 @@ type ParseAlterAddColumn<
 					| TokenKey<"unique">
 					| TokenKey<"foreign">
 				? SkipUntilCommaOrSemi<R0> extends [infer Rskip extends ParserMonad, unknown]
-					? ParseAlterActions<SkipToken<Rskip>, Db, Sch, Tab>
+					? ParseAlterActions<Rskip, Db, Sch, Tab>
 					: never
 				: ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
 					? PeekToken<R1> extends TokenIdent<infer Col extends string>
@@ -245,7 +245,7 @@ type ParseAlterColumnSetBranch<
 				: PeekToken<Rs> extends TokenKey<"default">
 					? SkipToken<Rs> extends infer Rd extends ParserMonad
 						? SkipUntilCommaOrSemi<Rd> extends [infer Rsd extends ParserMonad, unknown]
-							? ParseAlterActions<SkipToken<Rsd>, Db, Sch, Tab>
+							? ParseAlterActions<Rsd, Db, Sch, Tab>
 							: never
 						: never
 					: SkipFailedStatement<Rs, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE"], []>>
@@ -284,7 +284,7 @@ type ParseAlterColumnDropDefaultNoop<
 		? SkipToken<Rd0> extends infer Rdd extends ParserMonad
 			? Tdd extends TokenKey<"default">
 				? SkipUntilCommaOrSemi<Rdd> extends [infer Rsdd extends ParserMonad, unknown]
-					? ParseAlterActions<SkipToken<Rsdd>, Db, Sch, Tab>
+					? ParseAlterActions<Rsdd, Db, Sch, Tab>
 					: never
 				: SkipFailedStatement<Rdd, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE"], []>>
 			: never
@@ -385,7 +385,33 @@ type ParseAlterAfterQualified<
 		: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_DOES_NOT_EXIST"], []>>
 	: [R, Db, Err extends DbtyperErrorShape ? Err : FormatError<Errors["INVALID_ALTER_TABLE_NAME"], []>]
 
+/** `ALTER TABLE IF EXISTS t …`: a no-op (skipped to `;`) when `t` does not exist. */
+type ParseAlterIfExists<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+	ParseQualifiedAlterTableName<Tokens, Db> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Sch extends string,
+		infer Tab extends string,
+	]
+		? E extends null
+			? JsqlDbGetTable<Db, Sch, Tab> extends object
+				? ParseAlterAfterQualified<R, Db, E, Sch, Tab>
+				: SkipBracketedUntil<R> extends [infer Rest extends ParserMonad, unknown]
+					? [SkipToken<Rest>, Db, null]
+					: never
+			: ParseAlterAfterQualified<R, Db, E, Sch, Tab>
+		: never
+
 type ParseAlterAfterTableKeyword<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
+	PeekToken<Tokens> extends TokenKey<"if">
+		? SkipToken<Tokens> extends infer A0 extends ParserMonad
+			? PeekToken<A0> extends TokenKey<"exists">
+				? ParseAlterIfExists<SkipToken<A0>, Db>
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE"], []>>
+			: never
+		: ParseAlterPlain<Tokens, Db>
+
+type ParseAlterPlain<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	ParseQualifiedAlterTableName<Tokens, Db> extends [
 		infer R extends ParserMonad,
 		infer E,

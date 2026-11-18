@@ -436,6 +436,10 @@ export const errors = {
 		code: 1509,
 		msg: ["Expected DEFAULT value"],
 	},
+	EXPECTED_NULL_AFTER_NOT: {
+		code: 1510,
+		msg: ["Expected NULL after NOT"],
+	},
 
 	// ALTER TABLE
 	OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE: {
@@ -477,6 +481,10 @@ export const errors = {
 	EXPECTED_NULL_AFTER_SET_NOT: {
 		code: 1609,
 		msg: ["Expected NULL after SET NOT"],
+	},
+	EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE: {
+		code: 1610,
+		msg: ["Expected `exists` after `IF` in ALTER TABLE"],
 	},
 
 	// DROP TABLE
@@ -687,6 +695,11 @@ export const errors = {
 	UNKNOWN_COLUMN: {
 		code: 2300,
 		msg: ["Unknown column ", " in ", ""],
+	},
+	// Same code 2300 when the clause is not known at the point of resolution (ERR-8: no dangling " in ").
+	UNKNOWN_COLUMN_NO_CLAUSE: {
+		code: 2300,
+		msg: ["Unknown column ", ""],
 	},
 	OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET: {
 		code: 2301,

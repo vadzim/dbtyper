@@ -19,8 +19,8 @@ const _result = await _db.query(
 expectType<typeof _result>(
 	toBe<
 		{
-			employee: string
-			manager: string
+			employee: string | null
+			manager: string | null
 		}[]
 	>(),
 )

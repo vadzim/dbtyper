@@ -17,9 +17,9 @@ const _result = await _db.query(
 expectType<typeof _result>(
 	toBe<
 		{
-			id: string
-			name: string
-			created_at: string
+			id: string | null
+			name: string | null
+			created_at: string | null
 		}[]
 	>(),
 )

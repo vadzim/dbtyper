@@ -40,8 +40,15 @@ export type HasKey<T, K extends string> = K extends keyof T ? true : false
 export type I<T, K extends string | number, R = {}> = K extends keyof T ? T[K] & R : R
 
 export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K, V> extends infer R
-	? { [K in keyof R]: R[K] }
+	? ForceProps<{ [K in keyof R]: R[K] }>
 	: never
+
+/**
+ * Resolves every property type of a mapped type right away (inferring from all properties does it).
+ * Without it each ReplaceProp layer keeps pointing at the previous one, and reading a property
+ * after ~50 chained updates (STMT-16: 60 statements in one migration) exceeds the instantiation depth.
+ */
+type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
 
 export type ReplaceProps<T, Props> = Omit<T, keyof Props> & Props extends infer R ? { [K in keyof R]: R[K] } : never
 

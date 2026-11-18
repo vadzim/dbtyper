@@ -15,14 +15,15 @@ const _result = await _db.query(
 	`with 
        active_users as (select * from users where id is not null),
        user_posts as (select * from posts where user_id is not null)
-     select * from active_users 
+     select active_users.id, user_posts.user_id from active_users 
      inner join user_posts on active_users.id = user_posts.user_id;`,
 )
 
 expectType<typeof _result>(
 	toBe<
 		{
-			id: string
+			id: string | null
+			user_id: string | null
 		}[]
 	>(),
 )

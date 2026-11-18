@@ -14,9 +14,9 @@ const _result = await _db.query(`select * from users order by age desc, name;`)
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
-			age: number
+			id: string | null
+			name: string | null
+			age: number | null
 		}>
 	>(),
 )

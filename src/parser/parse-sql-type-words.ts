@@ -26,19 +26,29 @@ export type TypeWordsToString<A extends readonly string[]> = A extends readonly 
 /** Normalize SQL type aliases to canonical names */
 export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
 	? "integer"
-	: T extends "int2"
-		? "smallint"
-		: T extends "int8"
-			? "bigint"
-			: T extends "float8" | "double precision"
-				? "double precision"
-				: T extends "float4"
-					? "real"
-					: T extends "bool"
-						? "boolean"
-						: T extends "character varying"
-							? "varchar"
-							: T
+	: T extends "serial" | "serial4"
+		? "integer"
+		: T extends "smallserial" | "serial2"
+			? "smallint"
+			: T extends "bigserial" | "serial8"
+				? "bigint"
+				: T extends "timestamptz"
+					? "timestamp with time zone"
+					: T extends "timetz"
+						? "time with time zone"
+						: T extends "int2"
+							? "smallint"
+							: T extends "int8"
+								? "bigint"
+								: T extends "float8" | "double precision"
+									? "double precision"
+									: T extends "float4"
+										? "real"
+										: T extends "bool"
+											? "boolean"
+											: T extends "character varying"
+												? "varchar"
+												: T
 
 /** Parse numeric literal from token string */
 type ParseNumericLiteral<S extends string> = S extends `${infer N extends number}` ? N : never
@@ -62,7 +72,7 @@ export type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTyp
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"null">
 				? [SkipToken<R1>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: false }]
-				: [R1, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]
+				: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? [SkipToken<Tokens>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]
@@ -127,10 +137,26 @@ type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string>
 						: never
 					: // Other parameterized types - skip the parens for now
 						SkipBracketedUntil<R0, TokenKey<")">> extends [infer R1 extends ParserMonad, infer _]
-						? [R1, { type: BaseTypeName; arg: null; nullable: false }]
+						? [SkipToken<R1>, { type: BaseTypeName; arg: null; nullable: false }]
 						: never
 			: never
 		: [Tokens, { type: BaseTypeName; arg: null; nullable: false }]
+
+/** `timestamp(3) with time zone`: words after the modifier of timestamp/time (TYPE-4) */
+type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string> =
+	ParseTypeModifiers<Tokens, Name> extends [infer R extends ParserMonad, infer Shape extends SqlTypeShape]
+		? Name extends "timestamp" | "time"
+			? PeekToken<Tokens> extends TokenKey<"(">
+				? CollectSqlTypeWords<R> extends [infer R2 extends ParserMonad, infer Extra extends readonly string[]]
+					? Extra extends readonly []
+						? [R2, Shape]
+						: NormalizeSqlTypeName<`${Name} ${TypeWordsToString<Extra>}`> extends infer N extends string
+							? [R2, { type: N; arg: null; nullable: false }]
+							: never
+					: never
+				: [R, Shape]
+			: [R, Shape]
+		: never
 
 /** Main entry point: parse SQL type and return SqlTypeShape */
 export type ParseSqlType<Tokens extends ParserMonad> =
@@ -139,7 +165,7 @@ export type ParseSqlType<Tokens extends ParserMonad> =
 			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
 				? NormalizeSqlTypeName<TypeName> extends infer NormalizedName extends string
-					? ParseTypeModifiers<AfterWords, NormalizedName> extends [
+					? ParseTypeModifiersAndZone<AfterWords, NormalizedName> extends [
 							infer AfterMods extends ParserMonad,
 							infer BaseShape extends SqlTypeShape,
 						]
