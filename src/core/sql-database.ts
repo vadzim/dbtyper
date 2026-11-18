@@ -10,6 +10,8 @@ import type {
 	LexerIndexedQueryParams,
 	LexerNamedQueryParams,
 } from "../lexer/sql-lexer.ts"
+import type { DialectName, Dialects, ParserSyntaxOf } from "./dialect.ts"
+import type { JsqlCreateSchema } from "./jsql-utils.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -17,12 +19,27 @@ import type {
  */
 export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
 
+/**
+ * Type-level description of a driver. `dialect` decides how every migration and query of a chain is parsed
+ * (DSEL-1, DSEL-3; src/core/dialect.ts); `syntax` lists the lexer features the driver binds (parameter styles,
+ * dollar strings); `scalarTypes` maps SQL type names to TypeScript types.
+ */
 export type DriverConfig = {
+	dialect: DialectName
 	syntax: LexerFeatures
 	scalarTypes: Record<string, unknown>
 }
 
-export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = Config & {
+/** What `createDriver` accepts: a config that may lack `dialect`; `sqlMigrations` then rejects the driver (DSEL-8). */
+export type DriverConfigDraft = Omit<DriverConfig, "dialect"> & { dialect?: DialectName }
+
+/**
+ * The driver config with only the parameter style the call's values allow. `syntax` is replaced, not intersected:
+ * a driver whose syntax is only parameter styles (SQLite) would otherwise reduce the whole config to `never`.
+ */
+export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = {
+	dialect: Config["dialect"]
+	scalarTypes: Config["scalarTypes"]
 	syntax: ApplyAllowedQueryParams<
 		Config["syntax"],
 		ParamsValues extends null | undefined
@@ -33,14 +50,34 @@ export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = Conf
 	>
 }
 
-export type SqlDriver<_Config extends DriverConfig> = {
+export type SqlDriver<_Config extends DriverConfigDraft> = {
 	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
 	stream?(sql: string, params?: SqlDriverParams): Promise<AsyncIterable<unknown>>
 }
 
-type GetDriverConfig<S extends SqlDriver<DriverConfig>> = S extends SqlDriver<infer Driver> ? Driver : never
+type GetDriverConfig<S extends SqlDriver<DriverConfigDraft>> =
+	S extends SqlDriver<infer Driver> ? (Driver extends DriverConfig ? Driver : never) : never
 
-export function createDriver<Config extends DriverConfig>(methods: {
+/**
+ * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`
+ * (lead, for now 2026-11-18).
+ */
+type RequireDriverDialect<D> =
+	D extends SqlDriver<infer Config>
+		? Config extends { dialect: infer Dialect extends DialectName }
+			? [DialectName] extends [Dialect]
+				? { driver: 'error: the driver must declare one dialect, "postgres" or "sqlite" (DSEL-8)' }
+				: {}
+			: {
+					driver: 'error: the driver declares no dialect; add dialect: "postgres" or "sqlite" to its config (DSEL-8)'
+				}
+		: {}
+
+/**
+ * Wraps query/stream functions as a {@link SqlDriver}. `Config` declares the driver's `dialect`
+ * (`"postgres"` or `"sqlite"`, DSEL-8), its lexer `syntax` features and its `scalarTypes` map.
+ */
+export function createDriver<Config extends DriverConfigDraft>(methods: {
 	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
 	stream?(sql: string, params?: SqlDriverParams): Promise<AsyncIterable<unknown>>
 }) {
@@ -48,7 +85,7 @@ export function createDriver<Config extends DriverConfig>(methods: {
 }
 
 /** Configuration for {@link sqlMigrations}: logical schema name (default `public`) plus the runtime {@link SqlDriver}. */
-export type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfig> = SqlDriver<DriverConfig>> = {
+export type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfigDraft> = SqlDriver<DriverConfig>> = {
 	defaultSchema?: string
 	driver: Driver
 }
@@ -67,6 +104,14 @@ export type SqlDatabase<
 	functions?: Functions
 }
 
+/** The schema a new chain starts from: empty, or with the default schema when the dialect has it built in. */
+type InitialDatabase<
+	Config extends DriverConfig,
+	DS extends string,
+> = Dialects[Config["dialect"]]["defaultSchemaExists"] extends true
+	? { defaultSchema: DS; schemas: { [K in DS]: JsqlCreateSchema }; functions?: Record<string, never> }
+	: SqlDatabase<DS, Record<string, never>>
+
 export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
 		statement: Source extends CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>
@@ -75,7 +120,7 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends Driv
 		name?: string,
 	): SqlMigrations<
 		FlattenedJsqlDatabase<
-			ApplyStatements<Db, Source, EmptyExpressionParams, ParamsDriverConfig<Config, null>["syntax"]>[0]
+			ApplyStatements<Db, Source, EmptyExpressionParams, ParserSyntaxOf<ParamsDriverConfig<Config, null>>>[0]
 		>,
 		Config
 	>
@@ -83,13 +128,13 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends Driv
 	getDefaultSchema(): string
 }
 
-export function sqlMigrations<D extends SqlDriver<DriverConfig>, const DS extends string = "public">(
-	config: SqlDatabaseConfig<D> & { defaultSchema?: DS },
+export function sqlMigrations<D extends SqlDriver<DriverConfigDraft>, const DS extends string = "public">(
+	config: SqlDatabaseConfig<D> & { defaultSchema?: DS } & RequireDriverDialect<D>,
 ) {
 	const defaultSchema = config.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
-		FlattenedJsqlDatabase<SqlDatabase<DS, Record<string, never>>>,
+		FlattenedJsqlDatabase<InitialDatabase<GetDriverConfig<D>, DS>>,
 		GetDriverConfig<D>
 	>
 	return result
@@ -250,7 +295,7 @@ type CheckSqlValid<
 	Stmt extends string,
 	Params extends ExpressionParamsShape | null,
 > =
-	ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1] extends DbtyperError<infer Code, infer Msg>
+	ApplyStatements<Db, Stmt, Params, ParserSyntaxOf<Config>>[1] extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
 		: Stmt
 

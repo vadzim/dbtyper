@@ -1,5 +1,6 @@
 import type { Dec } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
+import type { DialectConstruct, DialectOnlyError } from "../core/dialect.ts"
 
 export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"
@@ -44,54 +45,92 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 				? Rest extends `-${string}`
 					? ReadTokenFromString<SkipSpaces<S>, Syntax>
 					: ReadOperator<S>
-				: Head extends OperatorChars
-					? ReadOperator<S>
-					: Head extends Digit
-						? GetNumber<Rest, Head>
-						: Head extends "."
-							? Rest extends `${infer Second}${infer Rest2}`
-								? Second extends Digit
-									? GetNumberFrac<Rest2, `${Head}${Second}`>
+				: Head extends "`"
+					? Rest extends `${infer Name}\`${infer Rest2}`
+						? Tagged<Return<TokenIdent<Name>, Rest2>, "sqlite-backtick-ident">
+						: ReadOperator<S>
+					: Head extends OperatorChars
+						? ReadOperator<S>
+						: Head extends Digit
+							? GetNumber<Rest, Head>
+							: Head extends "."
+								? Rest extends `${infer Second}${infer Rest2}`
+									? Second extends Digit
+										? GetNumberFrac<Rest2, `${Head}${Second}`>
+										: Return<TokenKey<".">, Rest>
 									: Return<TokenKey<".">, Rest>
-								: Return<TokenKey<".">, Rest>
-							: Head extends '"'
-								? Rest extends `${infer String}"${infer Rest}`
-									? Return<TokenIdent<String>, Rest>
-									: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
-								: Head extends "\x20" | "\n" | "\r" | "\t"
-									? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
-									: Head extends "'"
-										? ReadSingleQuotedString<Rest>
-										: Head extends ":"
-											? Rest extends `${infer Next}${infer Rest2}`
-												? Next extends ":"
-													? Return<TokenKey<"::">, Rest2>
-													: Next extends TokenChar
-														? "named-params" extends Syntax
-															? ReadTokenChars<Rest2> extends {
-																	token: infer Token extends string
-																	rest: infer Rest3 extends string
-																}
-																? Return<TokenParam<`${Next}${Token}`>, Rest3>
-																: never
-															: Return<TokenKey<":">, Rest>
-														: Return<TokenKey<":">, Rest>
-												: Return<TokenKey<":">, Rest>
-											: Head extends "$"
+								: Head extends '"'
+									? Rest extends `${infer String}"${infer Rest}`
+										? Return<TokenIdent<String>, Rest>
+										: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
+									: Head extends "\x20" | "\n" | "\r" | "\t"
+										? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
+										: Head extends "'"
+											? ReadSingleQuotedString<Rest>
+											: Head extends ":"
 												? Rest extends `${infer Next}${infer Rest2}`
-													? Next extends "$" | StartTokenChar
-														? "dollar-strings" extends Syntax
-															? ReadDollarString<Rest>
-															: Return<
-																	FormatError<
-																		Errors["UNEXPECTED_TOKEN"],
-																		[SomeSymbols<S>]
-																	>,
-																	S
-																>
-														: Next extends NonZeroDigit
-															? "indexed-params" extends Syntax
-																? ReadIndexedParam<Next, Rest2>
+													? Next extends ":"
+														? Return<TokenKey<"::">, Rest2>
+														: Next extends TokenChar
+															? "named-params" extends Syntax
+																? ReadTokenChars<Rest2> extends {
+																		token: infer Token extends string
+																		rest: infer Rest3 extends string
+																	}
+																	? Return<TokenParam<`${Next}${Token}`>, Rest3>
+																	: never
+																: Return<TokenKey<":">, Rest>
+															: Return<TokenKey<":">, Rest>
+													: Return<TokenKey<":">, Rest>
+												: Head extends "$"
+													? Rest extends `${infer Next}${infer Rest2}`
+														? Next extends "$" | StartTokenChar
+															? "dollar-strings" extends Syntax
+																? Tagged<ReadDollarString<Rest>, "pg-dollar-string">
+																: IsDialectForbidden<
+																			Syntax,
+																			"pg-dollar-string"
+																	  > extends true
+																	? ReadDollarString<Rest> extends Return<
+																			infer Str extends TokenString<string>,
+																			infer Rest3 extends string
+																		>
+																		? Tagged<Return<Str, Rest3>, "pg-dollar-string">
+																		: Return<
+																				FormatError<
+																					Errors["UNEXPECTED_TOKEN"],
+																					[SomeSymbols<S>]
+																				>,
+																				S
+																			>
+																	: Return<
+																			FormatError<
+																				Errors["UNEXPECTED_TOKEN"],
+																				[SomeSymbols<S>]
+																			>,
+																			S
+																		>
+															: Next extends NonZeroDigit
+																? "indexed-params" extends Syntax
+																	? Tagged<
+																			ReadIndexedParam<Next, Rest2>,
+																			"pg-positional-param"
+																		>
+																	: IsDialectForbidden<
+																				Syntax,
+																				"pg-positional-param"
+																		  > extends true
+																		? Tagged<
+																				ReadIndexedParam<Next, Rest2>,
+																				"pg-positional-param"
+																			>
+																		: Return<
+																				FormatError<
+																					Errors["UNEXPECTED_TOKEN"],
+																					[SomeSymbols<S>]
+																				>,
+																				S
+																			>
 																: Return<
 																		FormatError<
 																			Errors["UNEXPECTED_TOKEN"],
@@ -99,21 +138,30 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 																		>,
 																		S
 																	>
-															: Return<
-																	FormatError<
-																		Errors["UNEXPECTED_TOKEN"],
-																		[SomeSymbols<S>]
-																	>,
-																	S
-																>
-													: Return<
-															FormatError<Errors["UNEXPECTED_TOKEN"], [SomeSymbols<S>]>,
-															S
-														>
-												: Return<TokenKey<Head>, Rest>
+														: Return<
+																FormatError<
+																	Errors["UNEXPECTED_TOKEN"],
+																	[SomeSymbols<S>]
+																>,
+																S
+															>
+													: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
 
 type Return<Result, Rest> = [Result, Rest]
+
+/**
+ * A token that is a one-dialect construct (src/core/dialect.ts). The parser monad turns the tag into the
+ * other-dialect error when the chain's dialect lacks the construct; the token itself is read normally.
+ */
+type Tagged<R, Construct extends DialectConstruct> = R extends [infer Token, infer Rest]
+	? Token extends DbtyperErrorShape
+		? R
+		: [Token, Rest, Construct]
+	: R
+
+type IsDialectForbidden<Syntax extends string, Construct extends DialectConstruct> =
+	DialectOnlyError<Syntax, Construct> extends null ? false : true
 
 type ReadIndexedParam<Head extends string, Rest extends string> =
 	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenInteger<string>, infer Rest2 extends string>

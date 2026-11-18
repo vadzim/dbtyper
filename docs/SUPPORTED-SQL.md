@@ -30,6 +30,12 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
 - **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`SqlDatabase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlDatabase({ driver: … })`**).
 
+### Dialect (DSEL-1…DSEL-11)
+
+- The driver's type-level config declares **`dialect: "postgres" | "sqlite"`** next to **`syntax`** and **`scalarTypes`**; every migration, query and stream of a chain is parsed in that dialect. A `createDriver` config without exactly one dialect is a compile error on `driver` at **`sqlMigrations`**.
+- Syntax of the other engine is a compile error with its own code: **1900** (PostgreSQL-only, in a SQLite chain), **1901** (SQLite-only, in a PostgreSQL chain). Built so far: `::`, `$n`, dollar-quoted strings (PostgreSQL); `INSERT OR …`, `REPLACE INTO`, backtick identifiers (SQLite). The list is the data table in **`src/core/dialect.ts`**.
+- A SQLite chain starts with its default schema in place (no `create schema`).
+
 ---
 
 ## `CREATE SCHEMA`

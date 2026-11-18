@@ -5,7 +5,7 @@ import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { DriverConfig } from "./sql-database.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
-import type { LexerFeatures } from "../lexer/sql-lexer.ts"
+import type { ParserSyntax, ParserSyntaxOf } from "./dialect.ts"
 
 type ExpectedRowSetResult = FormatError<Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"], []>
 
@@ -19,7 +19,7 @@ type SqlSelectResult<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape | null,
-	Syntax extends LexerFeatures,
+	Syntax extends ParserSyntax,
 > =
 	ApplyStatements<Db, Text, Params, Syntax> extends [unknown, infer Error, infer Result]
 		? Error extends DbtyperErrorShape
@@ -38,4 +38,4 @@ export type SqlSelectResultTs<
 	Db extends JsqlDatabaseShape,
 	Text extends string,
 	Params extends ExpressionParamsShape | null,
-> = ApplySqlToTsConversion<Config, SqlSelectResult<Db, Text, Params, Config["syntax"]>>
+> = ApplySqlToTsConversion<Config, SqlSelectResult<Db, Text, Params, ParserSyntaxOf<Config>>>

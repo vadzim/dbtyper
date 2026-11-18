@@ -46,6 +46,7 @@ Each category has 100 slots, providing room for future expansion.
 | 1600-1699 | Parser Syntax - ALTER TABLE  | ALTER TABLE parsing             | 4    | 96   |
 | 1700-1799 | Parser Syntax - DROP TABLE   | DROP TABLE parsing              | 2    | 98   |
 | 1800-1899 | Parser Syntax - Type DDL     | CREATE/ALTER/DROP TYPE          | 11   | 89   |
+| 1900-1999 | Other-dialect syntax         | Syntax of the other SQL engine  | 2    | 98   |
 | 2100-2199 | Validation - Statement       | Invalid statements              | 10   | 90   |
 | 2200-2299 | Resolution - Table/Schema    | Unknown tables or schemas       | 3    | 97   |
 | 2300-2399 | Resolution - Column          | Unknown columns                 | 4    | 96   |
@@ -239,6 +240,19 @@ Obsolete codes are marked in the source code as `OBSOLETE_<CODE>_<OLD_NAME>` and
 const query = `SELECT "unclosed FROM users` as const
 // Error: DbtyperError<1000, "[dbt:1000] Unclosed quoted identifier literal">
 ```
+
+### 1900-1999: Other-dialect syntax (DSEL-5, DSEL-6, DSEL-7)
+
+The chain's dialect follows its driver. Syntax that only the other engine has is reported with these codes, never as
+a plain syntax error. The constructs are rows of `DialectOnlyConstructs` in `src/core/dialect.ts`.
+
+| Code | ID                   | Message                                             |
+| ---- | -------------------- | --------------------------------------------------- |
+| 1900 | POSTGRES_ONLY_SYNTAX | X is PostgreSQL-only; this database is SQLite. Hint |
+| 1901 | SQLITE_ONLY_SYNTAX   | X is SQLite-only; this database is PostgreSQL. Hint |
+
+**Example:** SQLite chain, `select id::text from users` →
+`error [dbtyper:1900]: \`::\` cast is PostgreSQL-only; this database is SQLite. Use CAST(x AS TEXT)`
 
 ### 1100-1199: Parser Syntax - SELECT Statement
 
@@ -456,6 +470,7 @@ Error codes follow this structure:
 - 1600-1699: Parser Syntax - ALTER TABLE - 4 codes (96 slots free)
 - 1700-1799: Parser Syntax - DROP TABLE - 2 codes (98 slots free)
 - 1800-1899: Parser Syntax - Type DDL - 11 codes (89 slots free)
+- 1900-1999: Other-dialect syntax - 2 codes (98 slots free)
 - 2100-2199: Validation - Statement - 10 codes (90 slots free)
 - 2200-2299: Resolution - Table/Schema - 3 codes (97 slots free)
 - 2300-2399: Resolution - Column - 4 codes (96 slots free)

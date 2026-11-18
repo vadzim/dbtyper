@@ -17,6 +17,15 @@ export type FormatError<ED extends ErrorDescription, Args extends ErrorArgs<ED>>
 	JoinWithArgs<ED["msg"], Args>
 >
 
+/**
+ * {@link FormatError} for an error description chosen generically (e.g. from a table row, src/core/dialect.ts),
+ * where TypeScript cannot check the argument count; the caller keeps `Args` in step with the message.
+ */
+export type FormatErrorOf<ED extends ErrorDescription, Args extends (string | number | boolean)[]> = DbtyperError<
+	ED["code"],
+	JoinWithArgs<ED["msg"], Args>
+>
+
 export type DbtyperError<Code extends number, Message extends string> = {
 	__sql_parser_error_code__: Code
 	__sql_parser_error__: Message
@@ -47,6 +56,7 @@ type ErrorDescription = {
  * - 1600-1699: Parser/ALTER TABLE Errors
  * - 1700-1799: Parser/DROP TABLE Errors
  * - 1800-1899: Parser/CREATE/ALTER/DROP TYPE Errors
+ * - 1900-1999: Other-dialect syntax (PostgreSQL-only in SQLite, SQLite-only in PostgreSQL)
  * - 2000-2099: Validation/Expression Errors
  * - 2100-2199: Validation/Statement Errors
  * - 2200-2299: Resolution/Table-Schema Errors
@@ -133,6 +143,16 @@ export const errors = {
 	INVALID_INDEXED_PARAM: {
 		code: 1010,
 		msg: ["Invalid indexed parameter: ", ""],
+	},
+
+	// Other-dialect syntax (DSEL-5, DSEL-6, DSEL-7; rows of src/core/dialect.ts). Args: construct, this chain's dialect, hint.
+	POSTGRES_ONLY_SYNTAX: {
+		code: 1900,
+		msg: ["", " is PostgreSQL-only; this database is ", "", ""],
+	},
+	SQLITE_ONLY_SYNTAX: {
+		code: 1901,
+		msg: ["", " is SQLite-only; this database is ", "", ""],
 	},
 
 	// Parser Syntax Errors - Expected Keywords/Tokens

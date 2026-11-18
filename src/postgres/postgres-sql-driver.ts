@@ -6,6 +6,7 @@ import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
 import type { PostgresTypeMap } from "./postgres-type-map.ts"
 
 export type PostgresDriverConfig = {
+	dialect: "postgres"
 	scalarTypes: PostgresTypeMap
 	syntax: "dollar-strings" | "named-params" | "indexed-params"
 }
@@ -25,9 +26,9 @@ export type PostgresSqlDriverConfig = {
  * (int8 → bigint, numeric → number, date → string; the `postgres` defaults give string, string, Date).
  */
 const runtimeParsers: Readonly<Record<number, (value: string) => unknown>> = {
-	20: (value) => BigInt(value),
-	1700: (value) => Number(value),
-	1082: (value) => value,
+	20: value => BigInt(value),
+	1700: value => Number(value),
+	1082: value => value,
 }
 
 type ClientWithParsers = { options?: { parsers?: Record<number, unknown> } }
