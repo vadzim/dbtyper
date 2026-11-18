@@ -19,9 +19,11 @@ export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K
  * Without it each ReplaceProp layer keeps pointing at the previous one, and reading a property
  * after ~50 chained updates (STMT-16: 60 statements in one migration) exceeds the instantiation depth.
  */
-type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
+export type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
 
-type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void ? I : never
+export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void
+	? I
+	: never
 
 export type LastOf<T> = UnionToIntersection<T extends unknown ? () => T : never> extends () => infer R ? R : never
 
@@ -30,3 +32,8 @@ export type TupleSize = Counting<21>[number]
 export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec<N>>]
 
 export type ParseNumber<S extends string> = S extends `${infer Number extends number}` ? Number : never
+
+/** Record merge where keys of `B` win; lazy, so wrap it in `ForceProps` when it is chained (#48). */
+export type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
+	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
+}

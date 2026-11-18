@@ -1,6 +1,4 @@
-type UnionToIntersection<U> = (U extends unknown ? (x: U) => unknown : never) extends (x: infer I) => unknown
-	? I
-	: never
+import type { UnionToIntersection } from "../core/type-utils.ts"
 
 /** True when `U` is a union (two or more distinct instantiations), not a single type. */
 type IsUnion<U> = [U] extends [UnionToIntersection<U>] ? false : true

@@ -1,3 +1,4 @@
+import type { MergeRecords } from "../core/type-utils.ts"
 import type {
 	JsqlDatabaseShape,
 	JsqlDataShape,
@@ -1304,10 +1305,6 @@ type OneCol<C extends ColumnDef> = C extends readonly [
 							: {}
 		}
 	: never
-
-type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
-}
 
 type MergeColPair<A extends ColPair, B extends ColPair> = {
 	cols: MergeRecords<A["cols"], B["cols"]>
