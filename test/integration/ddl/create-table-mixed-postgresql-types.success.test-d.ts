@@ -3,6 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
+// // TYPE-3: serial -> number, timestamptz -> Date
 // ✅ SUCCESS: mixed types in one table
 
 const _db = sqlMigrations({ driver: mockDriver })
@@ -20,4 +21,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`select id, created, data, duration, ip from mixed_types;`)
 
-expectType<typeof _result>(toBe<{ id: unknown; created: unknown; data: unknown; duration: unknown; ip: unknown }[]>())
+expectType<typeof _result>(toBe<{ id: number; created: Date; data: unknown; duration: unknown; ip: unknown }[]>())

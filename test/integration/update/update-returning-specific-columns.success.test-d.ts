@@ -15,8 +15,8 @@ const _result = await _db.query(`update users set name = 'Alice' where id = '1' 
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

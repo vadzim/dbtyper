@@ -19,4 +19,4 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<2300, "Unknown column ghost in ">>())
+expectType<ReturnedError>(toBe<DbtyperError<2300, "Unknown column ghost">>())

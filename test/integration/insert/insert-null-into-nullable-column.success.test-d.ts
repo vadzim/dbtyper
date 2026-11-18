@@ -14,8 +14,8 @@ const _result = await _db.query(`insert into users (id, name) values ('1', null)
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

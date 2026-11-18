@@ -3,7 +3,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -165,11 +165,11 @@ type ParseOneColumnAfterColName<
 	ColName extends string,
 > =
 	ParseSqlType<AfterColName> extends [infer AfterType extends ParserMonad, infer TypeShape]
-		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperErrorShape
-				? [AfterType, Db, TypeShape]
-				: ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
-			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
+		? TypeShape extends DbtyperErrorShape
+			? [AfterType, Db, TypeShape]
+			: TypeShape extends SqlTypeShape
+				? ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
+				: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
 		: never
 
 type ParseOneColumn<
@@ -179,8 +179,10 @@ type ParseOneColumn<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 > =
-	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
-		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer ColName extends string>
+		? ColName extends Stack[number][0]
+			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
+			: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 
 type ContinueAfterColumnType<

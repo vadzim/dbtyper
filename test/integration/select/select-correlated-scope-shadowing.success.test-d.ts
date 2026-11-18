@@ -14,7 +14,7 @@ const _result = await _db.query(`select u.id from users u where exists (select 1
 expectType<typeof _result>(
 	toBe<
 		{
-			id: string
+			id: string | null
 		}[]
 	>(),
 )

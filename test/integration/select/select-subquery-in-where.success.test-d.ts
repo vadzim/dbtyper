@@ -15,8 +15,8 @@ const _result = await _db.query(`select * from users where id in (select user_id
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

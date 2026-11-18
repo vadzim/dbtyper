@@ -345,7 +345,7 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 			: CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>,
 	): Promise<QueryReturnType<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>>
 
-	query<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+	query<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[] | readonly []>(
 		statement: Stmt extends CheckSqlValid<
 			ParamsDriverConfig<Config, ParamsValues>,
 			Db,
@@ -373,7 +373,7 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 			: CheckSqlValidForStream<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>,
 	): Promise<AsyncIterable<SqlSelectRowObject<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>>>
 
-	stream<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
+	stream<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[] | readonly []>(
 		statement: Stmt extends CheckSqlValidForStream<
 			ParamsDriverConfig<Config, ParamsValues>,
 			Db,

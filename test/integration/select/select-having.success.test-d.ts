@@ -15,7 +15,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			count: bigint
-			user_id: string
+			user_id: string | null
 		}[]
 	>(),
 )

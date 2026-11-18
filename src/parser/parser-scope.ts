@@ -25,3 +25,24 @@ export type ValidateCol<Scope extends ScopeMap, Alias extends string, Col extend
 		? true
 		: false
 	: false
+
+/** Scope entry of an enclosing query level; `outerDepth` is a tuple whose length is the nesting distance. */
+type ScopeEntryOuterDepth<E> = E extends { outerDepth: infer D extends readonly 1[] } ? D : readonly []
+
+/**
+ * Mark every entry of `Outer` as belonging to one level further out (SEL-24), so unqualified column
+ * lookup prefers the innermost level that has the column. Qualified lookups are unaffected.
+ */
+export type MarkOuterScope<Outer extends ScopeMap> = {
+	[K in keyof Outer]: {
+		schema: Outer[K]["schema"]
+		table: Outer[K]["table"]
+		columns: Outer[K]["columns"]
+		outerDepth: readonly [...ScopeEntryOuterDepth<Outer[K]>, 1]
+	}
+}
+
+/** Drop scope entries that are CTE definitions (not FROM items): they are visible by name only. */
+export type FromItemsOnly<Scope extends ScopeMap> = {
+	[K in keyof Scope as Scope[K]["schema"] extends "__cte__" ? never : K]: Scope[K]
+}

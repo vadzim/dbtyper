@@ -13,13 +13,14 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: Multiple RIGHT JOINs
 
 const _result = await _db.query(
-	`select * from users right join orders on users.id = orders.user_id right join users as u2 on orders.user_id = u2.id;`,
+	`select users.name, orders.total from users right join orders on users.id = orders.user_id right join users as u2 on orders.user_id = u2.id;`,
 )
 
 expectType<typeof _result>(
 	toBe<
 		{
-			id: number
+			name: string
+			total: number
 		}[]
 	>(),
 )
