@@ -26,6 +26,19 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **#47 repro** (`alter table t add primary key (id); select 1 as x;`) is a test.
 - Cost: test config 9,115,079 -> 9,330,083 instantiations (`tsgo --singleThreaded`), the new test file included.
 
+## 2026-11-18 One long statement: recursion shapes (#105, track A; bug)
+
+- **Select list.** `MergeStringRecords` (parse-select.ts) forces the record's properties each step (the ForceProps shape
+  of #48); lazy layers failed with TS2589 at about 50 items. 170+ items (1,000+ tokens) now pass; 350 still do (the
+  merge is quadratic in keys, so about 400 items hit the 5M-instantiation limit).
+- **AND / OR chains.** The parser no longer builds a left-nested tree (depth = operators; TS2589 at ~40, TS2321 on
+  structural checks). Operands are collected tail-recursively in chunks of 16, each chunk and then the chunk list is
+  balanced into a tree of the same `and`/`or` nodes (depth log2 n). AND/OR are associative for typing, so results and
+  first-error order are unchanged. A plain growing tuple was quadratic in instantiations (TS2589 at ~240 operators) and
+  a cons list is itself deeper than the depth limit, hence the chunks. 400 comparisons (1,600 tokens) pass, 600 do not.
+- **Joins** already passed at 1,000 tokens (130 joins); the test pins it.
+- **Cost.** Existing tests 9.96M -> 10.49M instantiations (+5%); the new test adds 7.7M (18.2M in all).
+
 ## 2026-11-18 SQLite function catalog and PostgreSQL-only syntax (#76, track A; SQLT-44…SQLT-53)
 
 - **Catalog as data.** `SqliteFunctions` (src/parser/sqlite-functions.ts) has one row per function: `[result, nulls]`
@@ -351,3 +364,4 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **Not done**: `COALESCE` over enums is not checked for foreign labels; schema-qualified enum names in column types
   (`app.status`) still need the parser to read dotted type names; `IN` checks only a literal on the right side.
 - Cost: instantiations of the full test typecheck 9.828M -> about 10.5M including the new test file (0.13M-0.2M).
+- **CORE-14 hint per dialect** (#107): the cast spelling is the `castHint` row of `Dialects` (`::text` / `CAST(x AS TEXT)`); message 3506 takes it as its second argument. SQLite `->` is a `["text", "null"]` row (SQLT-36).

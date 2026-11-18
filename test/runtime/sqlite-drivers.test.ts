@@ -123,3 +123,57 @@ describe("usesNumberedParams (SQLT-30, #65)", () => {
 		assert.equal(usesNumberedParams("select a /* ?1 */ from t where b = ?3"), true)
 	})
 })
+
+describe("SQLT-1: version floor", () => {
+	test("SQLT-1: package.json declares Node >= 22.13 and a better-sqlite3 >= 11 peer range", async () => {
+		const { readFile } = await import("node:fs/promises")
+		const pkg = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8")) as {
+			engines?: { node?: string }
+			peerDependencies?: Record<string, string>
+		}
+		assert.equal(pkg.engines?.node, ">=22.13")
+		assert.equal(pkg.peerDependencies?.["better-sqlite3"], ">=11.0.0")
+	})
+
+	test("SQLT-1: node:sqlite (the Node floor) is available at the running Node version", () => {
+		const [major = 0, minor = 0] = process.versions.node.split(".").map(Number)
+		assert.ok(
+			major > 22 || (major === 22 && minor >= 13),
+			`Node ${process.versions.node} is below the SQLT-1 floor`,
+		)
+		assert.equal(typeof DatabaseSync, "function")
+	})
+})
+
+describe("SQLT-2, SQLT-4: the driver switches the real driver to big-integer mode", () => {
+	test("SQLT-2, SQLT-4: betterSqlite3Driver calls safeIntegers(true) with { bigint: true }, safeIntegers(false) otherwise", async () => {
+		for (const bigint of [true, false]) {
+			const calls: boolean[] = []
+			const stmt = {
+				reader: true,
+				safeIntegers: (on?: boolean) => void calls.push(on as boolean),
+				all: () => [],
+				iterate: () => [],
+				run: () => ({}),
+			}
+			const driver = betterSqlite3Driver({ prepare: () => stmt }, bigint ? { bigint: true } : undefined)
+			await (driver as unknown as SqlDriver<never>).query("select 1")
+			assert.deepEqual(calls, [bigint])
+		}
+	})
+
+	test("SQLT-2, SQLT-4: nodeSqliteDriver calls setReadBigInts(true) with { bigint: true }, setReadBigInts(false) otherwise", async () => {
+		for (const bigint of [true, false]) {
+			const calls: boolean[] = []
+			const stmt = {
+				setReadBigInts: (on: boolean) => void calls.push(on),
+				all: () => [],
+				iterate: () => [],
+				run: () => ({}),
+			}
+			const driver = nodeSqliteDriver({ prepare: () => stmt }, bigint ? { bigint: true } : undefined)
+			await (driver as unknown as SqlDriver<never>).query("select 1")
+			assert.deepEqual(calls, [bigint])
+		}
+	})
+})

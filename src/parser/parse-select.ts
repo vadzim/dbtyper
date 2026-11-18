@@ -2578,9 +2578,17 @@ type ResolveSelectListAcc<
 				: never
 	: { kind: "select"; returning: Sqls }
 
-type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = {
+/**
+ * The select-list accumulator. Every item merges into the previous record; without forcing, each layer stays a lazy
+ * mapped type pointing at the one before, and reading a property after ~50 items exceeds the instantiation depth
+ * (TS2589, #105). The properties are resolved right away (inferring from all of them does it), the same shape as
+ * ForceProps in src/core/type-utils.ts (#48): required, do not make it lazy.
+ */
+type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = ForceRecord<{
 	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : SqlTypeShape
-}
+}>
+
+type ForceRecord<F> = F extends Record<keyof F, infer _V> ? F : F
 
 type SingleAliasScope<Scope extends ScopeMap> = [keyof Scope] extends [never]
 	? false

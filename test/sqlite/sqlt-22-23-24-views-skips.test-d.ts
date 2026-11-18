@@ -70,3 +70,6 @@ expectType<GetApplyError<typeof migrations, typeof attach>>(
 const detach = `detach x;` as const
 // @ts-expect-error
 migrations.apply(detach)
+expectType<GetApplyError<typeof migrations, typeof detach>>(
+	toBe<DbtyperError<1916, "DETACH is not supported in migrations">>(),
+)
