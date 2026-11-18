@@ -18,6 +18,28 @@ export type EmptyTokenList = Buffer<TokenEot, "", string, number, DbtyperErrorSh
 
 export type PeekToken<M extends ParserMonad> = M[typeof tokenKey]
 
+/**
+ * Source spans (SQLT-28: a result key is the expression text as written). In a SQLite chain every token read carries
+ * `from`, the text it was read from (the whitespace before it included), so the monad itself stays single-pass:
+ * a parser reads the tokens with {@link PeekToken} at both ends of a span and {@link SourceSpan} subtracts them.
+ * Other dialects pay nothing (no `from`, the span is empty).
+ */
+export type SourceSpan<Start, End> = Start extends { from: infer From extends string }
+	? End extends { from: infer To extends string }
+		? From extends `${infer Text}${To}`
+			? TrimSpaces<Text>
+			: ""
+		: ""
+	: ""
+
+type Space = " " | "\n" | "\t" | "\r"
+
+type TrimSpaces<S extends string> = S extends `${Space}${infer Tail}`
+	? TrimSpaces<Tail>
+	: S extends `${infer Head}${Space}`
+		? TrimSpaces<Head>
+		: S
+
 export type SkipToken<M extends ParserMonad> = ReadToken<
 	M[typeof restKey],
 	M[typeof syntaxKey],
@@ -43,11 +65,28 @@ type ReadToken<
 			) extends infer Rec extends DbtyperErrorShape | null
 			? "question-params" extends Syntax
 				? Token extends QuestionKey
-					? Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>, Rec>
-					: Buffer<WithDialectError<Token, Rec>, Rest, Syntax, PositionalIndex, Rec>
-				: Buffer<WithDialectError<Token, Rec>, Rest, Syntax, PositionalIndex, Rec>
+					? Buffer<
+							WithSource<TokenIndexedParam<`${Inc<PositionalIndex>}`>, _Rest, Syntax>,
+							Rest,
+							Syntax,
+							Inc<PositionalIndex>,
+							Rec
+						>
+					: Buffer<
+							WithSource<WithDialectError<Token, Rec>, _Rest, Syntax>,
+							Rest,
+							Syntax,
+							PositionalIndex,
+							Rec
+						>
+				: Buffer<WithSource<WithDialectError<Token, Rec>, _Rest, Syntax>, Rest, Syntax, PositionalIndex, Rec>
 			: never
 		: never
+
+/** SQLite chains only: the token remembers the text it was read from (see {@link SourceSpan}). */
+type WithSource<Token, From extends string, Syntax extends string> = "dialect:sqlite" extends Syntax
+	? Token & { from: From }
+	: Token
 
 /**
  * The end-of-text token carries the first other-dialect error met in the text (DSEL-5, DSEL-6), so that

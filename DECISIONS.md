@@ -251,3 +251,15 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   parameter styles (SQLite) made the intersection `never` for a call without parameters.
 - **SQLite default schema.** A SQLite chain starts with its default schema present (SQLT-25's "no create schema");
   naming it `main`/`temp` is left to the SQLite names issue.
+
+## SQLT-28: result key as written (#101, track A)
+
+- **Source text for parsers.** Parsers cannot read the query text (monad checker: only `PeekToken`/`SkipToken`).
+  In a SQLite chain (`dialect:sqlite` in `Syntax`) the monad adds `from`, the text a token was read from, to every
+  token it holds; a parser reads two tokens with `PeekToken` (start and end of an expression) and `SourceSpan`
+  subtracts them. Other dialects get no `from`: zero cost. Rejected: a mark stack in the monad (needs new monad
+  primitives and changes the checker's contract); printing the AST back (second copy of the SQL syntax, loses spacing).
+- **Facts.** `exprKeys` ("name" | "text") and `groupByRule` (SQLite allows bare columns with an aggregate) are rows
+  of `Dialects`. An item without alias that is not a column or `*` keeps its text in `key`, used only for naming.
+- **Limits.** Leading comments inside the span stay in the key; SQLite itself keeps the text too. An implicit alias
+  without `AS` is not parsed by the select list (existing behaviour).
