@@ -1,0 +1,11 @@
+# SPEC_SYNC: which spec commit this code follows (spec-driven method, METHOD §4, §6.4, §6.7). Three lines.
+# Put this file in the root of the CODE repo. Only the code lead edits it, in a docs commit merged to dev at once.
+# planned: every spec change up to this SHA has been turned into issues (moved after each sync).
+# done:    the newest synced SHA with no open `spec` issue at or before it (moved in the lead's sweep).
+# New project: the skeleton issue creates this file with planned = the first synced SHA, done = the empty tree
+#              4b825dc642cb6eb9a060e54bf8d69288fbee4904 (METHOD §7.2).
+# Existing project: both start at the first (as-built) spec commit.
+# Customer-visible code repo: a local file excluded in .git/info/exclude, mirrored in a pinned issue (METHOD §7.4).
+spec: https://github.com/vadzim/dbtyper-spec
+planned: 280b653
+done: 280b653
