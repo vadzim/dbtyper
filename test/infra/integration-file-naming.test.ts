@@ -1,7 +1,4 @@
-// TODO:
-
-// ensure that all error codes except 9999 is covered by error tests.
-// to do this, fix the parser code so it does not hide underline errors.
+// Error code coverage is checked by error-codes-covered.test.ts.
 
 import { describe, it } from "node:test"
 import assert from "node:assert"
