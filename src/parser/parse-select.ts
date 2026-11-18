@@ -1,3 +1,4 @@
+import type { ForceProps, MergeRecords } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, SourceSpan, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
@@ -2826,11 +2827,9 @@ type ResolveSelectListAcc<
  * (TS2589, #105). The properties are resolved right away (inferring from all of them does it), the same shape as
  * ForceProps in src/core/type-utils.ts (#48): required, do not make it lazy.
  */
-type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = ForceRecord<{
-	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : SqlTypeShape
-}>
-
-type ForceRecord<F> = F extends Record<keyof F, infer _V> ? F : F
+type MergeStringRecords<A extends Record<string, SqlTypeShape>, B extends Record<string, SqlTypeShape>> = ForceProps<
+	MergeRecords<A, B>
+>
 
 type SingleAliasScope<Scope extends ScopeMap> = [keyof Scope] extends [never]
 	? false

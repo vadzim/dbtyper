@@ -5,7 +5,7 @@
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 
 /** The class of a (lower-case, non-array) SQL type name; a name that is not here is class "unknown" (compatible with all). */
-export type ComparisonClassOfType = {
+type ComparisonClassOfType = {
 	integer: "numeric"
 	int: "numeric"
 	int2: "numeric"
@@ -39,10 +39,7 @@ export type ComparisonClassOfType = {
 }
 
 /** One class per enum (EXPR-26): its schema and name (`arg` of an enum shape, src/parser/parse-sql-type-words.ts). */
-export type EnumClass<S extends SqlTypeShape> = S["arg"] extends readonly [
-	infer N extends string,
-	infer Sc extends string,
-]
+type EnumClass<S extends SqlTypeShape> = S["arg"] extends readonly [infer N extends string, infer Sc extends string]
 	? `enum:${Sc}.${N}`
 	: "enum:"
 

@@ -13,7 +13,7 @@ import type { Nullable, SqlTypeShape } from "../core/sql-type-shape.ts"
  *   `first` nullable only when the first argument is (`concat_ws`, `format`, `printf`; PGT-28, SQLT-44);
  *   `lag` `lag`/`lead`: nullable unless a non-null default is given.
  */
-export type SqliteFunctions = {
+type SqliteFunctions = {
 	// SQLT-44 text
 	lower: ["text", "args"]
 	upper: ["text", "args"]
@@ -218,7 +218,7 @@ type CommonType<Args extends readonly SqlTypeShape[], Acc extends string = never
 
 export type Shape<T extends string> = { type: T; arg: null; nullable: false }
 
-export type Tail<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+type Tail<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	unknown,
 	...infer T extends readonly SqlTypeShape[],
 ]
@@ -239,7 +239,7 @@ type ResultShape<R extends string, Args extends readonly SqlTypeShape[]> = R ext
 					: Shape<"real">
 				: Shape<R>
 
-export type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
 	...infer T extends readonly SqlTypeShape[],
 ]
@@ -248,7 +248,7 @@ export type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends rea
 		: AnyNullable<T>
 	: false
 
-export type AllNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+type AllNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
 	...infer T extends readonly SqlTypeShape[],
 ]

@@ -4,7 +4,7 @@ import type { DialectConstruct, DialectOnlyError, LexerFact } from "../core/dial
 
 export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"
-export type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
+type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 
 export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
 
@@ -604,10 +604,10 @@ const serviceWordsMap = {
 	where: true,
 }
 
-export type ServiceWords = keyof typeof serviceWordsMap
+type ServiceWords = keyof typeof serviceWordsMap
 
 /** Words in {@link serviceWordsMap} that PostgreSQL does not reserve: accepted as unquoted names (STMT-3). */
-export type NonReservedWords =
+type NonReservedWords =
 	| "alter"
 	| "always"
 	| "begin"

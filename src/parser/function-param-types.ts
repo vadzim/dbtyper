@@ -5,7 +5,7 @@ import type { SqlInteger, SqlText, SqlTypeShape } from "../core/sql-type-shape.t
  * A row is data: add a function here, not a condition in the resolver. Functions whose argument type follows the
  * other arguments are in {@link PeerTypedFunctions}.
  */
-export type FunctionArgTypes = {
+type FunctionArgTypes = {
 	lower: readonly [SqlText]
 	upper: readonly [SqlText]
 	initcap: readonly [SqlText]

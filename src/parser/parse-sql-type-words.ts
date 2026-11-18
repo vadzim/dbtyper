@@ -11,7 +11,7 @@ import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
 import type { DialectFact, DialectOnlyError, PgOnlyTypeNames, SqliteTypeKey } from "../core/dialect.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
-export type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
+type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
 		? Lowercase<W> extends "collate"
 			? [Tokens, Acc]
@@ -19,7 +19,7 @@ export type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly
 		: [Tokens, Acc]
 
 /** Convert type words to lowercase space-separated string */
-export type TypeWordsToString<A extends readonly string[]> = A extends readonly [
+type TypeWordsToString<A extends readonly string[]> = A extends readonly [
 	infer H extends string,
 	...infer T extends readonly string[],
 ]
@@ -29,7 +29,7 @@ export type TypeWordsToString<A extends readonly string[]> = A extends readonly 
 	: ""
 
 /** Normalize SQL type aliases to canonical names */
-export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
+type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
 	? "integer"
 	: T extends "serial" | "serial4"
 		? "integer"
@@ -60,7 +60,7 @@ export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
  * affinity key from the name (SQLT-6…SQLT-9, dialect facts of src/core/dialect.ts). SQLT-17: a SERIAL name in a
  * SQLite chain gives the other-dialect error instead (with a hint) .
  */
-export type DialectTypeName<Db, T extends string> =
+type DialectTypeName<Db, T extends string> =
 	DialectFact<Db, "typeNames"> extends "affinity"
 		? T extends "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
 			? DialectOnlyError<"dialect:sqlite", "pg-serial">
@@ -73,7 +73,7 @@ export type DialectTypeName<Db, T extends string> =
 type ParseNumericLiteral<S extends string> = S extends `${infer N extends number}` ? N : never
 
 /** Parse array suffix `[]` after a type, returning SqlTypeShape with array wrapper */
-export type ParseArraySuffix<Tokens extends ParserMonad, BaseType extends SqlTypeShape> =
+type ParseArraySuffix<Tokens extends ParserMonad, BaseType extends SqlTypeShape> =
 	PeekToken<Tokens> extends TokenKey<"[">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"]">
@@ -86,7 +86,7 @@ export type ParseArraySuffix<Tokens extends ParserMonad, BaseType extends SqlTyp
 		: [Tokens, BaseType]
 
 /** Parse NULL/NOT NULL keywords and set nullability */
-export type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTypeShape> =
+type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTypeShape> =
 	PeekToken<Tokens> extends TokenKey<"not">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"null">
