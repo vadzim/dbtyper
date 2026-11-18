@@ -22,7 +22,7 @@ expectType<typeof _result>(
 			id: number
 			amount: number
 			product: string
-			next_amount: number
+			next_amount: number | null
 		}[]
 	>(),
 )

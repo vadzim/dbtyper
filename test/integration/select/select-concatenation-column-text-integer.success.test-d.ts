@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ column(text) || column(integer) → text
 const _result = await _db.query(`select name || age as combined from users;`)
 
-expectType<typeof _result>(toBe<Array<{ combined: string }>>())
+expectType<typeof _result>(toBe<Array<{ combined: string | null }>>())

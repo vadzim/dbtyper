@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ boolean || text → text
 const _result = await _db.query(`select active || ' status' as message from users;`)
 
-expectType<typeof _result>(toBe<Array<{ message: string }>>())
+expectType<typeof _result>(toBe<Array<{ message: string | null }>>())
