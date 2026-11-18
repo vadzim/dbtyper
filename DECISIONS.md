@@ -340,3 +340,4 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **Not done**: `COALESCE` over enums is not checked for foreign labels; schema-qualified enum names in column types
   (`app.status`) still need the parser to read dotted type names; `IN` checks only a literal on the right side.
 - Cost: instantiations of the full test typecheck 9.828M -> about 10.5M including the new test file (0.13M-0.2M).
+- **CORE-14 hint per dialect** (#107): the cast spelling is the `castHint` row of `Dialects` (`::text` / `CAST(x AS TEXT)`); message 3506 takes it as its second argument. SQLite `->` is a `["text", "null"]` row (SQLT-36).

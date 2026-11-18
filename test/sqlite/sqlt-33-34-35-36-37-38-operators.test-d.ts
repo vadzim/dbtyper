@@ -47,7 +47,7 @@ expectType<typeof _arithBig>(toBe<Array<{ a: bigint; b: number; c: bigint }>>())
 
 // SQLT-36: `->` is TEXT (JSON), `->>` any storage class, both nullable
 const _json = await db.query(`select name -> '$.a' as a, name ->> '$.a' as b from users`)
-expectType<typeof _json>(toBe<Array<{ a: string; b: number | string | Uint8Array | null }>>())
+expectType<typeof _json>(toBe<Array<{ a: string | null; b: number | string | Uint8Array | null }>>())
 
 // SQLT-37: LIMIT n [OFFSET m] and LIMIT m, n; FETCH FIRST is PostgreSQL-only
 const _limit = await db.query(`select id from users order by id limit :n offset 2`, { n: 5 })
