@@ -71,6 +71,34 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **Not done here:** CORE-1 (PRIMARY KEY makes a column NOT NULL) needs the column/table constraint parser of
   CORE-15 (#63); split out as a remainder issue.
 
+## 2026-11-18 CREATE TABLE constraints, DEFAULT checks, generated columns, DROP VIEW, CREATE TABLE AS (#63, track A; CORE-15..19, DML-4, STMT-16; SCHEMA-12/13 removed)
+
+- **One constraint loop in the existing parser.** After the column type, `ParseColumnConstraints` reads constraints in any
+  order (NOT NULL, NULL, DEFAULT, PRIMARY KEY, UNIQUE, CHECK, REFERENCES, COLLATE, GENERATED ALWAYS AS, each with an
+  optional `CONSTRAINT name`) until `,` or `)`. Table constraints (PRIMARY KEY, UNIQUE, CHECK, FOREIGN KEY) are read in
+  the same body loop. A column is the tuple `[name, type, notNull, hasDefault, generated]`; a PRIMARY KEY (inline or
+  table-level, CORE-1) sets `notNull` and the type's `nullable: false`. Facts are built inline in `OneCol` (an alias
+  `ColumnFacts<...>` made type-checking 2-4x slower on chains of NOT NULL tables).
+- **Monad linearity.** The monad checker forbids reading one monad twice after a skip, and forbids helper aliases for
+  look-ahead, so each constraint keyword has its own small parser entered AT the keyword (`ColumnNotNull`,
+  `ColumnPrimaryKey`, ...), and two-token look-ahead is `SkipToken<T> extends infer R1` then `PeekToken<R1>`.
+- **DEFAULT is typed like an INSERT value (CORE-16).** The default expression goes through `ParseExpressionAST` /
+  `ResolveExpressionAST` with no columns and no parameters in scope, and is compared with `SameComparisonClass`; a
+  mismatch is 2507 naming the column. `NULL` fits any column. `CURRENT_TIMESTAMP` / `CURRENT_DATE` / `CURRENT_TIME` are
+  handled in the DEFAULT parser (the expression parser has no such keywords). An unknown function (3619) is accepted
+  unchecked: function catalogs belong to the dialect issues (PGT-18, SQLT-19). An unknown column inside a function call
+  keeps the old 5001 "Expected `)` after function name in DEFAULT" (SCHEMA-15). Codes 5200-5204 are removed with SCHEMA-12.
+- **REFERENCES (CORE-17).** The target table must exist (2200 / 2214 with context REFERENCES) and a named target column
+  must exist (2300); a self reference is accepted and its columns are not checked (the table is not built yet). The
+  referenced column is not required to be a key. Actions (`ON DELETE|UPDATE`, `MATCH`) are skipped.
+- **Generated columns (CORE-18).** `generated: true` fact; INSERT column list, UPDATE SET and ON CONFLICT DO UPDATE SET
+  naming one is 3512; a NOT NULL generated column is omittable in INSERT (DML-4). The expression is not typed.
+  `GENERATED ... AS IDENTITY` (PGT-6) and SQLite's short `AS (...)` (SQLT-18) are left to the dialect issues.
+- **CREATE TABLE AS (CORE-19)** reuses `ParseSelectExpression`; every output column is made nullable. **DROP VIEW**
+  is `parse-drop-view.ts` (3511 missing, 3510 targets a table; CASCADE/RESTRICT accepted).
+- **COLLATE** ends the type-word scan (`CollectSqlTypeWords`), so `text COLLATE "C"` is the type `text`.
+- **STMT-16:** the 500-statement migration compiles as is; test added.
+
 ## 2026-11-18 Dialect seam in the type-level parser (#51, track A; DSEL-1, DSEL-3, DSEL-5…DSEL-8, DSEL-11)
 
 - **Where the dialect lives.** `DriverConfig["dialect"]` (`"postgres" | "sqlite"`), declared by the driver's

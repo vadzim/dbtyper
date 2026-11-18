@@ -10,7 +10,9 @@ import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
 export type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
-		? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W]>
+		? Lowercase<W> extends "collate"
+			? [Tokens, Acc]
+			: CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W]>
 		: [Tokens, Acc]
 
 /** Convert type words to lowercase space-separated string */
