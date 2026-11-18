@@ -26,7 +26,7 @@ const _db = sqlMigrations({ driver: mockDriver })
 // ✅ SUCCESS: Query tables from different schemas
 
 const _result = await _db.query(`
-		select t.id, a.id
+		select t.id, a.id as article_id
 		from public.tasks t
 		join app.articles a on t.id = a.id;
 	`)
@@ -35,6 +35,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
+			article_id: number
 		}[]
 	>(),
 )

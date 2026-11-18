@@ -21,15 +21,20 @@ type IsUnion<U> = [U] extends [UnionToIntersection<U>] ? false : true
 /** Nesting depth of a scope entry: `0` for the current query level, `n` for an `n`-th enclosing level (SEL-24). */
 type ScopeEntryDepth<E> = E extends { outerDepth: infer D extends readonly unknown[] } ? D["length"] : 0
 
+/** CORE-9: a column merged away by USING / NATURAL is not visible to an unqualified reference. */
+type HiddenColumns<E> = E extends { hidden: infer H extends string } ? H : never
+
 type ScopeKeysWithColumnAtDepth<
 	Scope extends Record<string, { columns: Record<string, unknown> }>,
 	Col extends string,
 	Depth extends number,
 > = {
 	[K in keyof Scope]: Col extends keyof Scope[K]["columns"]
-		? ScopeEntryDepth<Scope[K]> extends Depth
-			? K
-			: never
+		? Col extends HiddenColumns<Scope[K]>
+			? never
+			: ScopeEntryDepth<Scope[K]> extends Depth
+				? K
+				: never
 		: never
 }[keyof Scope]
 

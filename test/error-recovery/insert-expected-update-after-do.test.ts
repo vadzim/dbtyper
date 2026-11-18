@@ -6,6 +6,6 @@ import type { ErrorneousResult, ParseErrorneousText } from "../test-utils/error-
 
 type Result = ParseErrorneousText<"insert into users (id) values (1) on conflict (id) do set id = 2">
 
-expectType<Result>(toBe<ErrorneousResult<1216, "Expected UPDATE after DO in INSERT ON CONFLICT">>())
+expectType<Result>(toBe<ErrorneousResult<1216, "Expected UPDATE or NOTHING after DO in INSERT ON CONFLICT">>())
 
-it("INSERT: Expected UPDATE after DO in INSERT ON CONFLICT", () => {})
+it("INSERT: Expected UPDATE or NOTHING after DO in INSERT ON CONFLICT", () => {})

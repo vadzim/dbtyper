@@ -577,11 +577,14 @@ type ParseInsertOnConflictDoUpdate<
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? T0 extends TokenKey<"(">
 				? ParseInsertOnConflictAfterOpenParen<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipFailedStatement<
-						R0,
-						Db,
-						FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>
-					>
+				: T0 extends TokenKey<"do">
+					? // CORE-20: the conflict target may be omitted (`ON CONFLICT DO NOTHING`).
+						ParseInsertOnConflictAfterDoKw<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+					: SkipFailedStatement<
+							R0,
+							Db,
+							FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>
+						>
 			: never
 		: never
 
@@ -642,7 +645,14 @@ type ParseInsertOnConflictAfterDoKw<
 		? SkipToken<R3> extends infer R4 extends ParserMonad
 			? TUp extends TokenKey<"update">
 				? ParseInsertOnConflictAfterUpdateKw<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: SkipFailedStatement<R4, Db, FormatError<Errors["EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT"], []>>
+				: TUp extends TokenIdent<"nothing">
+					? // CORE-20: nothing is assigned; RETURNING then yields the inserted rows only, same row type.
+						ParseInsertMaybeReturning<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols, undefined, undefined>
+					: SkipFailedStatement<
+							R4,
+							Db,
+							FormatError<Errors["EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT"], []>
+						>
 			: never
 		: never
 
