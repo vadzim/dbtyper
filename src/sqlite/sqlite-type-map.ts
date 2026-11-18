@@ -25,7 +25,7 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
  * and `null`; an integer position accepts `number` and `bigint` (in either mode); `boolean`, `Date` and objects are not
  * bindable, so no row accepts them. `null` is added by the nullability of the position.
  */
-export type SqliteParamTypeMap = Omit<SqliteTypeMap, "integer" | "boolean" | "bigint" | "any"> & {
+type SqliteParamTypeMap = Omit<SqliteTypeMap, "integer" | "boolean" | "bigint" | "any"> & {
 	integer: number | bigint
 	boolean: number | bigint
 	bigint: number | bigint

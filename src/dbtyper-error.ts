@@ -8,7 +8,7 @@ export type Errors = {
 	}
 }
 
-export type ErrorIds = keyof Errors
+type ErrorIds = keyof Errors
 
 export type ErrorCodes = Errors[ErrorIds]["code"]
 
@@ -102,7 +102,7 @@ type ErrorDescription = {
  * 6. Ensure no duplicate messages (compile-time check will catch this)
  * 7. Never reuse error code. If you delete error, mark that as OBSOLETE_<CODE>. The codes are used in online project help.
  */
-export const errors = {
+const errors = {
 	// Lexer/Tokenization Errors
 	UNCLOSED_QUOTED_IDENTIFIER: {
 		code: 1001,
