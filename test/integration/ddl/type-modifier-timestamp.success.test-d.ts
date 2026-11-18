@@ -8,5 +8,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table p (x timestamp(3) not null, y time(3) not null, z timestamp (3) with time zone not null);`)
 	.database()
 
-const result = await db.query(`select x from p;`)
-expectType<typeof result>(toBe<{ x: Date }[]>())
+const _result = await db.query(`select x from p;`)
+expectType<typeof _result>(toBe<{ x: Date }[]>())
