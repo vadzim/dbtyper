@@ -1171,19 +1171,31 @@ type ResolvePgFunctionCall<
 			? ResolveLegacyFunctionCall<Name, Args, Db, Scope, Params, L>
 			: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
 
-/** FN-5, FN-7…FN-10, FN-12, FN-24: the arity errors of {@link PostgresFunctionArity}; `null` when the count is fine. */
+/** The errors of {@link PostgresFunctionArity} by key (FN-5, FN-7…FN-10, FN-12, FN-24). */
+type PgArityErrors = {
+	FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT: FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
+	COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT: FormatError<Errors["COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
+	SUM_REQUIRES_AN_ARGUMENT: FormatError<Errors["SUM_REQUIRES_AN_ARGUMENT"], []>
+	NOW_TAKES_NO_ARGUMENTS: FormatError<Errors["NOW_TAKES_NO_ARGUMENTS"], []>
+	THIS_FUNCTION_TAKES_NO_ARGUMENTS: FormatError<Errors["THIS_FUNCTION_TAKES_NO_ARGUMENTS"], []>
+	ROW_NUMBER_TAKES_NO_ARGUMENTS: FormatError<Errors["ROW_NUMBER_TAKES_NO_ARGUMENTS"], []>
+	RANK_DENSE_RANK_TAKES_NO_ARGUMENTS: FormatError<Errors["RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"], []>
+	LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT: FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
+}
+
+/** The arity errors of {@link PostgresFunctionArity}; `null` when the argument count is fine. */
 type PgArityError<L extends string, ArgsRes extends readonly SqlTypeShape[]> = L extends keyof PostgresFunctionArity
 	? PostgresFunctionArity[L] extends readonly [
 			infer Min extends number,
 			infer Max extends number,
-			infer Key extends keyof Errors,
+			infer Key extends keyof PgArityErrors,
 		]
 		? ArgsRes extends readonly []
 			? Min extends 0
 				? null
-				: FormatError<Errors[Key], []>
+				: PgArityErrors[Key]
 			: Max extends 0
-				? FormatError<Errors[Key], []>
+				? PgArityErrors[Key]
 				: null
 		: null
 	: null

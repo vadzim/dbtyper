@@ -737,6 +737,11 @@ export const errors = {
 		code: 2200,
 		msg: ["Unknown table ", " in ", ""],
 	},
+	// PGT-25: `ON CONFLICT ON CONSTRAINT name` with a name the table does not have
+	UNKNOWN_CONSTRAINT: {
+		code: 2220,
+		msg: ["Unknown constraint ", " on table ", ""],
+	},
 	OBSOLETE_2201_UNKNOWN_TABLE_UPDATE: {
 		code: 2201,
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
@@ -845,9 +850,9 @@ export const errors = {
 		code: 2401,
 		msg: [""],
 	},
-	UNKNOWN_WINDOW_FUNCTION: {
+	OBSOLETE_2402_UNKNOWN_WINDOW_FUNCTION: {
 		code: 2402,
-		msg: ["Unknown window function"],
+		msg: ["Use UNKNOWN_FUNCTION (FN-14 is removed)"],
 	},
 	POSITIONAL_PARAMETER_REQUIRES_ARRAY: {
 		code: 2403,

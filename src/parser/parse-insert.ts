@@ -14,7 +14,11 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns, VisibleColumnsOf } from "./parser-scope.ts"
-import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
+import type {
+	IsGeneratedColumn,
+	IsIdentityAlwaysColumn,
+	ValidateMutationValueForColumn,
+} from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -186,26 +190,31 @@ type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataS
 					? JsqlDataGetColumnType<Tbl, Col> extends null
 						? SkipFailedExpression<R1, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "INSERT column list"]>>
 						: IsGeneratedColumn<Tbl, Col> extends true
-							? SkipFailedExpression<
-									R1,
-									FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "INSERT"]>
-								>
-							: PeekToken<R1> extends TokenKey<")">
-								? SkipToken<R1> extends infer R2 extends ParserMonad
-									? [R2, readonly [...Acc, Col]]
-									: never
-								: PeekToken<R1> extends TokenKey<",">
-									? ParseInsertColumnNameList<SkipToken<R1>, Tbl, readonly [...Acc, Col]>
-									: SkipFailedExpression<
-											R1,
-											FormatError<
-												Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST"],
-												[]
-											>
-										>
+							? IsIdentityAlwaysColumn<Tbl, Col> extends true
+								? InsertColumnListNext<R1, Tbl, Acc, Col> // PGT-25: needs OVERRIDING, checked after the list
+								: SkipFailedExpression<
+										R1,
+										FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "INSERT"]>
+									>
+							: InsertColumnListNext<R1, Tbl, Acc, Col>
 					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in INSERT column list"]>>
 				: never
 			: never
+
+/** After a column name of the INSERT column list: `)` ends the list, `,` goes on. */
+type InsertColumnListNext<
+	R1 extends ParserMonad,
+	Tbl extends JsqlDataShape,
+	Acc extends readonly string[],
+	Col extends string,
+> =
+	PeekToken<R1> extends TokenKey<")">
+		? SkipToken<R1> extends infer R2 extends ParserMonad
+			? [R2, readonly [...Acc, Col]]
+			: never
+		: PeekToken<R1> extends TokenKey<",">
+			? ParseInsertColumnNameList<SkipToken<R1>, Tbl, readonly [...Acc, Col]>
+			: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST"], []>>
 
 type IsNotNullInsertColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
 	column_facts: infer Facts extends Record<string, unknown>
@@ -300,6 +309,50 @@ type ParseInsertAfterOpenParenCols<
 				: never
 
 type ParseInsertAfterColumnNames<
+	R1 extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Tbl extends JsqlDataShape,
+	Sch extends string,
+	Tab extends string,
+	Cols extends readonly string[],
+	Overriding extends boolean = false,
+> =
+	PeekToken<R1> extends TokenIdent<"overriding">
+		? ParseOverridingClause<SkipToken<R1>> extends [infer R2 extends ParserMonad, infer Err]
+			? Err extends DbtyperErrorShape
+				? [R2, Db, Err]
+				: ParseInsertAfterColumnNames<R2, Db, Scope, Params, Tbl, Sch, Tab, Cols, true>
+			: never
+		: Overriding extends false
+			? IdentityAlwaysInList<Tbl, Cols> extends infer IdCol extends string
+				? [IdCol] extends [never]
+					? ParseInsertAfterColumnNamesChecked<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+					: SkipFailedStatement<
+							R1,
+							Db,
+							FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [IdCol, "INSERT"]>
+						>
+				: never
+			: ParseInsertAfterColumnNamesChecked<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+
+/** PGT-25: the first `GENERATED ALWAYS AS IDENTITY` column of the list (written without OVERRIDING), or `never`. */
+type IdentityAlwaysInList<Tbl extends JsqlDataShape, Cols extends readonly string[]> = {
+	[I in keyof Cols]: IsIdentityAlwaysColumn<Tbl, Cols[I] & string> extends true ? Cols[I] : never
+}[number]
+
+/** `OVERRIDING {SYSTEM | USER} VALUE` after `OVERRIDING`: `[rest, null | error]`. */
+type ParseOverridingClause<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenIdent<"system" | "user">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenIdent<"value">
+				? [SkipToken<R1>, null]
+				: SkipFailedExpression<R1, FormatError<Errors["UNEXPECTED_TOKEN"], ["OVERRIDING"]>>
+			: never
+		: SkipFailedExpression<Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["OVERRIDING"]>>
+
+type ParseInsertAfterColumnNamesChecked<
 	R1 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -665,16 +718,60 @@ type ParseInsertOnConflictDoUpdate<
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? T0 extends TokenKey<"(">
 				? ParseInsertOnConflictAfterOpenParen<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-				: T0 extends TokenKey<"do">
-					? // CORE-20: the conflict target may be omitted (`ON CONFLICT DO NOTHING`).
-						ParseInsertOnConflictAfterDoKw<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
-					: SkipFailedStatement<
-							R0,
-							Db,
-							FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>
-						>
+				: T0 extends TokenKey<"on">
+					? ParseInsertOnConstraint<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+					: T0 extends TokenKey<"do">
+						? // CORE-20: the conflict target may be omitted (`ON CONFLICT DO NOTHING`).
+							ParseInsertOnConflictAfterDoKw<R0, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+						: SkipFailedStatement<
+								R0,
+								Db,
+								FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>
+							>
 			: never
 		: never
+
+/**
+ * PGT-25: `ON CONFLICT ON CONSTRAINT name DO …`. The name must be one of the table's named constraints, or a default
+ * name PostgreSQL gives (`<table>_pkey`, `<table>_<column>_key`; those are not checked against the table's keys).
+ */
+type ParseInsertOnConstraint<
+	R0 extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Tbl extends JsqlDataShape,
+	Sch extends string,
+	Tab extends string,
+	Cols extends readonly string[],
+> =
+	PeekToken<R0> extends TokenKey<"constraint">
+		? SkipToken<R0> extends infer R1 extends ParserMonad
+			? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
+				? ConstraintExists<Tbl, Tab, CName> extends true
+					? SkipToken<R1> extends infer R2 extends ParserMonad
+						? PeekToken<R2> extends TokenKey<"do">
+							? ParseInsertOnConflictAfterDoKw<SkipToken<R2>, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+							: SkipFailedStatement<
+									R2,
+									Db,
+									FormatError<Errors["EXPECTED_DO_AFTER_ON_CONFLICT_COLUMNS_IN_INSERT"], []>
+								>
+						: never
+					: SkipFailedStatement<R1, Db, FormatError<Errors["UNKNOWN_CONSTRAINT"], [CName, Tab]>>
+				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
+			: never
+		: SkipFailedStatement<R0, Db, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>>
+
+type ConstraintExists<Tbl extends JsqlDataShape, Tab extends string, Name extends string> = Name extends
+	| `${Tab}_pkey`
+	| `${Tab}_${string}_key`
+	? true
+	: Tbl extends { constraints: { names: infer N extends string } }
+		? Name extends N
+			? true
+			: false
+		: false
 
 type ParseInsertOnConflictAfterOpenParen<
 	R0 extends ParserMonad,
@@ -975,7 +1072,9 @@ type FinishInsertSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Res]
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["INSERT"]>>
+		: [Db, PeekToken<Tokens>] extends [{ cteDml: true }, TokenKey<")">]
+			? [Tokens, Db, Res] // PGT-26: the INSERT of a data-modifying CTE ends at `)`
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["INSERT"]>>
 
 type ParseInsertAfterInto<
 	Tokens extends ParserMonad,

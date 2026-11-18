@@ -61,3 +61,14 @@ export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> = T
 			: false
 		: false
 	: false
+
+/** PGT-25: a `GENERATED ALWAYS AS IDENTITY` column: not insertable unless `OVERRIDING {SYSTEM|USER} VALUE`. */
+export type IsIdentityAlwaysColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
+	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
+}
+	? Col extends keyof F
+		? F[Col] extends { identity: true }
+			? true
+			: false
+		: false
+	: false

@@ -34,6 +34,9 @@ import type { DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
+import type { ParseInsert } from "./parse-insert.ts"
+import type { ParseUpdate } from "./parse-update.ts"
+import type { ParseDelete } from "./parse-delete.ts"
 import type {
 	FirstDuplicateName,
 	MergeSetOperation,
@@ -374,14 +377,46 @@ type ParseCteBody<
 					: never
 			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
-	: ParseParenEnclosedSelect<Tokens, Db, Params, {}, Visible> extends [infer R4 extends ParserMonad, infer SubOut]
-		? SubOut extends JsqlSelectStatementResult
-			? ApplyCteColumnList<SubOut, Cols> extends infer Named
-				? Named extends DbtyperErrorShape
-					? SkipFailedExpression<R4, Named>
-					: [R4, Named]
-				: never
-			: [R4, SubOut]
+	: PeekToken<Tokens> extends TokenKey<"insert" | "update" | "delete">
+		? DialectFact<Db, "dmlInCte"> extends true
+			? ParseCteDml<Tokens, Db, Params, Cols>
+			: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
+		: ParseParenEnclosedSelect<Tokens, Db, Params, {}, Visible> extends [infer R4 extends ParserMonad, infer SubOut]
+			? SubOut extends JsqlSelectStatementResult
+				? ApplyCteColumnList<SubOut, Cols> extends infer Named
+					? Named extends DbtyperErrorShape
+						? SkipFailedExpression<R4, Named>
+						: [R4, Named]
+					: never
+				: [R4, SubOut]
+			: never
+
+/**
+ * PGT-26: `WITH x AS (INSERT | UPDATE | DELETE … [RETURNING …])`: the statement is parsed by its own parser (it ends
+ * at `)` instead of `;`); the CTE has the RETURNING columns, or none. Returns `[Tokens, Result | error]` after `)`.
+ */
+type ParseCteDml<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape, Cols> =
+	SkipToken<Tokens> extends infer R0 extends ParserMonad
+		? (
+				PeekToken<Tokens> extends TokenKey<"insert">
+					? ParseInsert<R0, Db & { cteDml: true }, Params>
+					: PeekToken<Tokens> extends TokenKey<"update">
+						? ParseUpdate<R0, Db & { cteDml: true }, Params>
+						: ParseDelete<R0, Db & { cteDml: true }, Params>
+			) extends [infer R1 extends ParserMonad, infer _Db2, infer Res]
+			? Res extends DbtyperErrorShape
+				? SkipFailedExpression<R1, Res>
+				: Res extends { returning: infer Ret }
+					? ApplyCteColumnList<
+							{ kind: "select"; returning: Ret extends Record<string, SqlTypeShape> ? Ret : {} },
+							Cols
+						> extends infer Named
+						? Named extends DbtyperErrorShape
+							? SkipFailedExpression<R1, Named>
+							: ConsumeClosingParen<R1, Named>
+						: never
+					: never
+			: never
 		: never
 
 type ParseSelectWithCtes<
@@ -1907,7 +1942,11 @@ type ParseFromTableRef<
 			? Tok extends TokenKey<"(">
 				? ParseParenDerivedSelect<R1, Db, Scope, Params>
 				: AsIdent<Tok> extends TokenIdent<infer A extends string>
-					? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
+					? A extends FromFunctionName
+						? PeekToken<R1> extends TokenKey<"(">
+							? ParseFromFunction<Tokens, A, Db, Scope, Params>
+							: ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
+						: ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
 					: [
 							R1,
 							FormatError<Errors["EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM"], []>,
@@ -1915,6 +1954,85 @@ type ParseFromTableRef<
 						]
 			: never
 		: never
+
+/** PGT-32: set-returning functions that may be a FROM item. */
+type FromFunctionName = "unnest" | "generate_series"
+
+/**
+ * PGT-32: `FROM unnest(array) [AS] alias[(col)]`, `FROM generate_series(a, b[, step]) [AS] alias[(col)]`: a one-column
+ * relation of the element type. The call is parsed and resolved by the expression parser (in the scope of the items
+ * before it, so a `JOIN unnest(t.tags)` sees `t`); the column is named by the column alias, else the alias, else
+ * the function name.
+ */
+type ParseFromFunction<
+	Tokens extends ParserMonad,
+	Name extends string,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+		infer R extends ParserMonad,
+		infer Ast,
+		infer _Env,
+	]
+		? Ast extends DbtyperErrorShape
+			? [R, Ast, ParserRefErrorThirdSentinel]
+			: Ast extends ScalarExprAst
+				? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer V
+					? V extends DbtyperErrorShape
+						? [R, WithErrorClause<V, "FROM">, ParserRefErrorThirdSentinel]
+						: V extends SqlTypeShape
+							? ParseFromFunctionAlias<
+									R,
+									Name,
+									{ type: V["type"]; arg: V["arg"]; nullable: false },
+									Scope
+								>
+							: never
+					: never
+				: never
+		: never
+
+type ParseFromFunctionAlias<
+	Tokens extends ParserMonad,
+	Name extends string,
+	Col extends SqlTypeShape,
+	Scope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends FromItemEndToken
+		? [Tokens, null, MergeScope<Record<Name, FromFunctionEntry<Name, Col>>, Scope>]
+		: (PeekToken<Tokens> extends TokenKey<"as"> ? SkipToken<Tokens> : Tokens) extends infer Ra extends ParserMonad
+			? AsIdent<PeekToken<Ra>> extends TokenIdent<infer Alias extends string>
+				? SkipToken<Ra> extends infer Rn extends ParserMonad
+					? PeekToken<Rn> extends TokenKey<"(">
+						? AsIdent<PeekToken<SkipToken<Rn>>> extends TokenIdent<infer ColName extends string>
+							? PeekToken<SkipToken<SkipToken<Rn>>> extends TokenKey<")">
+								? [
+										SkipToken<SkipToken<SkipToken<Rn>>>,
+										null,
+										MergeScope<Record<Alias, FromFunctionEntry<ColName, Col>>, Scope>,
+									]
+								: [
+										SkipToken<SkipToken<Rn>>,
+										FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>,
+										ParserRefErrorThirdSentinel,
+									]
+							: [
+									SkipToken<Rn>,
+									FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in the FROM alias"]>,
+									ParserRefErrorThirdSentinel,
+								]
+						: [Rn, null, MergeScope<Record<Alias, FromFunctionEntry<Alias, Col>>, Scope>]
+					: never
+				: [Ra, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
+			: never
+
+type FromFunctionEntry<ColName extends string, Col extends SqlTypeShape> = {
+	schema: "__subquery__"
+	table: "__subquery__"
+	columns: Record<ColName, Col>
+}
 
 /** A FROM clause with joins as `[rest, error | null, scope]`; also the source list of `UPDATE … FROM` (SQLT-42). */
 export type ParseFromJoinScope<

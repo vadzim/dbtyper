@@ -53,6 +53,7 @@ export type DialectName = keyof Dialects
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
+ * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  */
 export type Dialects = {
@@ -73,6 +74,7 @@ export type Dialects = {
 		groupByRule: true
 		exprKeys: "name"
 		castHint: "`::text`"
+		dmlInCte: true
 	}
 	sqlite: {
 		title: "SQLite"
@@ -91,6 +93,7 @@ export type Dialects = {
 		groupByRule: false
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
+		dmlInCte: false
 	}
 }
 

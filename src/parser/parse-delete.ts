@@ -234,7 +234,9 @@ type FinishDeleteSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning]
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["DELETE"]>>
+		: [Db, PeekToken<Tokens>] extends [{ cteDml: true }, TokenKey<")">]
+			? [Tokens, Db, Returning] // PGT-26: the DELETE of a data-modifying CTE ends at `)`
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["DELETE"]>>
 
 type ParseDeleteFromTableRef<
 	Tokens extends ParserMonad,

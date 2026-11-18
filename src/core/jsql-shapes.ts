@@ -7,6 +7,10 @@ export type JsqlDatabaseShape = {
 	functions?: unknown
 	/** The dialect of the chain (DSEL-1), when it is not PostgreSQL: see `DialectFact` (src/core/dialect.ts). */
 	dialect?: string
+	/** Constraint names seen while a CREATE TABLE is parsed (PGT-25); never in a finished state. */
+	pendingConstraints?: string
+	/** Set while the INSERT / UPDATE / DELETE of a data-modifying CTE is parsed: it ends at `)` (PGT-26). */
+	cteDml?: true
 }
 
 export type JsqlSchemaShape = {
@@ -47,6 +51,8 @@ export type JsqlColumnFactsEntry = {
 	default?: true | undefined
 	check?: true | undefined
 	generated?: true | { mode: "stored" | "virtual" } | undefined
+	/** `GENERATED ALWAYS AS IDENTITY`: `generated` too, but writable with OVERRIDING (PGT-25). */
+	identity?: true | undefined
 	nullability?: "not_null" | "nullable" | undefined
 }
 

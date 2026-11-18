@@ -371,7 +371,9 @@ type FinishUpdateSemicolon<
 > =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, Returning extends null ? Res : Returning]
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["UPDATE"]>>
+		: [Db, PeekToken<Tokens>] extends [{ cteDml: true }, TokenKey<")">]
+			? [Tokens, Db, Returning extends null ? Res : Returning] // PGT-26: the UPDATE of a data-modifying CTE ends at `)`
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["UPDATE"]>>
 
 type ParseUpdateAfterTableRef<
 	Tokens extends ParserMonad,
