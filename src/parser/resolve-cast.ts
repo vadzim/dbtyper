@@ -97,12 +97,10 @@ export type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev
 									? SqlType<N>
 									: N extends "tsvector" | "tsquery"
 										? SqlType<N>
-										: N extends
-													| "real"
-													| "float4"
-													| "double precision"
-													| "float8"
-													| "numeric"
-													| "decimal"
-											? SqlNumeric
-											: SqlType<N>
+										: N extends "real" | "float4"
+											? SqlType<"real">
+											: N extends "double precision" | "float8"
+												? SqlType<"double precision">
+												: N extends "numeric" | "decimal"
+													? SqlNumeric
+													: SqlType<N>
