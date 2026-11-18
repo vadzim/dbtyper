@@ -11,13 +11,8 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 // ✅ SUCCESS: Basic FULL OUTER JOIN
 
-const _result = await _db.query(`select users.name, orders.total from users full outer join orders on users.id = orders.user_id;`)
-
-expectType<typeof _result>(
-	toBe<
-		{
-			name: string
-			total: number
-		}[]
-	>(),
+const _result = await _db.query(
+	`select users.name, orders.total from users full outer join orders on users.id = orders.user_id;`,
 )
+
+expectType<typeof _result>(toBe<{ name: string | null; total: number | null }[]>())

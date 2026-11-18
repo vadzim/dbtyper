@@ -1,3 +1,4 @@
+import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type {
 	JsqlDatabaseShape,
 	JsqlDataShape,
@@ -167,7 +168,7 @@ type ParseUpdateSetAssignments<
 									: Ast extends ScalarExprAst
 										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
 											? Resolved extends DbtyperErrorShape
-												? [R3, Db, Resolved]
+												? [R3, Db, WithErrorClause<Resolved, "UPDATE SET">]
 												: Resolved extends SqlTypeShape
 													? ValidateMutationValueForColumn<
 															Tbl,

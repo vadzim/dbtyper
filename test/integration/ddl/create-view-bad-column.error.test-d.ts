@@ -17,4 +17,4 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<2300, "Unknown column nope_col">>())
+expectType<ReturnedError>(toBe<DbtyperError<2300, "Unknown column nope_col in SELECT list">>())
