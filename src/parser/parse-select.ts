@@ -1,6 +1,6 @@
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { PeekToken, SkipToken, SourceSpan } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenIndexedParam } from "../lexer/sql-lexer.ts"
 import type { TokenParam } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
@@ -53,7 +53,14 @@ type JoinScopeOnly<T> = Exclude<T, ParserRefErrorThirdSentinel | DbtyperErrorSha
 type RawSelectItem =
 	| { kind: "star" }
 	| { kind: "param"; param: string; as?: string }
-	| { kind: "expr"; ast: ScalarExprAst; as?: string }
+	| { kind: "expr"; ast: ScalarExprAst; as?: string; key?: string }
+
+/** SQLT-28: an item's output name before the AST rules: the alias, else the source text kept for dialects with `exprKeys: "text"`. */
+type ItemAs<H> = H extends { as: infer A extends string }
+	? A
+	: H extends { key: infer K extends string }
+		? K
+		: undefined
 
 /** With `exactOptionalPropertyTypes`, do not set `as: undefined` — omit the key instead. */
 type RawSelectParamItem<P extends string, As extends string | undefined> = [As] extends [undefined]
@@ -1474,13 +1481,15 @@ type ValidateGroupedSelectItemsAgainstKeys<
 			: never
 	: true
 
-type GroupedProjValidationOutcome<Items extends readonly RawSelectItem[], Meta extends SelectGroupClauseMeta> =
-	SelectItemsNeedGroupedProjRules<Meta, Items> extends true
-		? GroupKeysWithPositionsResolved<Meta["group_key_asts"], Items> extends infer Keys extends
-				readonly ScalarExprAst[]
-			? ValidateGroupedSelectItemsAgainstKeys<Items, Keys>
-			: never
-		: true
+type GroupedProjValidationOutcome<Db, Items extends readonly RawSelectItem[], Meta extends SelectGroupClauseMeta> =
+	DialectFact<Db, "groupByRule"> extends false
+		? true // SQLT-28: SQLite allows bare columns next to an aggregate
+		: SelectItemsNeedGroupedProjRules<Meta, Items> extends true
+			? GroupKeysWithPositionsResolved<Meta["group_key_asts"], Items> extends infer Keys extends
+					readonly ScalarExprAst[]
+				? ValidateGroupedSelectItemsAgainstKeys<Items, Keys>
+				: never
+			: true
 
 type SelectAfterWhereAndGroupHaving<
 	Tokens extends ParserMonad,
@@ -1497,7 +1506,7 @@ type SelectAfterWhereAndGroupHaving<
 	]
 		? Gh extends DbtyperErrorShape
 			? [T1, Db, Gh]
-			: GroupedProjValidationOutcome<Items, Meta> extends infer V
+			: GroupedProjValidationOutcome<Db, Items, Meta> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
 					: ParseSelectTrailingClauses<T1, Db, Scope, Params, SelectOutputNames<Res>> extends [
@@ -1596,12 +1605,24 @@ type ParseOneRawSelectExprItem<
 		? Out extends DbtyperErrorShape
 			? [RExpr, Out]
 			: Out extends ScalarExprAst
-				? ParseOptionalAs<RExpr> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
-					? As extends string
-						? [M2, { kind: "expr"; ast: Out; as: As }]
-						: Out extends { kind: "col"; parts: ScalarIdentParts }
-							? [M2, { kind: "expr"; ast: Out }]
-							: [M2, { kind: "expr"; ast: Out }]
+				? (
+						DialectFact<Db, "exprKeys"> extends "text"
+							? SourceSpan<PeekToken<Tokens>, PeekToken<RExpr>>
+							: ""
+					) extends infer Text extends string
+					? ParseOptionalAs<RExpr> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
+						? As extends string
+							? [M2, { kind: "expr"; ast: Out; as: As }]
+							: Text extends ""
+								? [M2, { kind: "expr"; ast: Out }]
+								: Out extends
+											| { kind: "col" }
+											| { kind: "qualified_table_star" }
+											| { kind: "alias_table_star" }
+									? [M2, { kind: "expr"; ast: Out }]
+									: // SQLT-28: the result key is the expression text as written
+										[M2, { kind: "expr"; ast: Out; key: Text }]
+						: never
 					: never
 				: never
 		: never
@@ -2405,26 +2426,28 @@ type SelectItemNames<
 > = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
 	? H extends { kind: "param"; param: infer P extends string; as?: infer As }
 		? SelectItemNames<R, Scope, AllItems, [...Acc, As extends string ? As : P]>
-		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }
-			? Ast extends {
-					kind: "qualified_table_star"
-					schema: infer Sch extends string
-					table: infer Tab extends string
-				}
-				? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E extends ScopeEntry
-					? StarNames<E> extends infer T extends readonly string[]
-						? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
-						: Acc
-					: Acc
-				: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
-					? Al extends keyof Scope
-						? StarNames<Scope[Al]> extends infer T extends readonly string[]
+		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+			? ItemAs<H> extends infer As
+				? Ast extends {
+						kind: "qualified_table_star"
+						schema: infer Sch extends string
+						table: infer Tab extends string
+					}
+					? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E extends ScopeEntry
+						? StarNames<E> extends infer T extends readonly string[]
 							? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
 							: Acc
 						: Acc
-					: OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
-						? SelectItemNames<R, Scope, AllItems, [...Acc, O]>
-						: Acc
+					: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
+						? Al extends keyof Scope
+							? StarNames<Scope[Al]> extends infer T extends readonly string[]
+								? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
+								: Acc
+							: Acc
+						: OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
+							? SelectItemNames<R, Scope, AllItems, [...Acc, O]>
+							: Acc
+				: Acc
 			: Acc
 	: Acc
 
@@ -2547,8 +2570,8 @@ type ResolveSelectListAcc<
 				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
 				: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
-		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst; as?: infer As }
-			? ResolveSelectListExprItem<Ast, As, R, Db, Scope, Params, Sqls, AllItems>
+		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+			? ResolveSelectListExprItem<Ast, ItemAs<H>, R, Db, Scope, Params, Sqls, AllItems>
 			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
 				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Sqls, AllItems>
 				: never

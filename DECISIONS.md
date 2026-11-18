@@ -279,3 +279,15 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   5008 `EXPECTED_FROM_AFTER_IS_DISTINCT`, 5009 `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`.
 - **Cost.** SQLite test files before this issue 2,791,410 instantiations, same files after 2,803,379 (+0.4%); the three new
   test files add ~1.5M by themselves (whole `tsconfig.test.json`: 9.18M → 11.96M).
+
+## SQLT-28: result key as written (#101, track A)
+
+- **Source text for parsers.** Parsers cannot read the query text (monad checker: only `PeekToken`/`SkipToken`).
+  In a SQLite chain (`dialect:sqlite` in `Syntax`) the monad adds `from`, the text a token was read from, to every
+  token it holds; a parser reads two tokens with `PeekToken` (start and end of an expression) and `SourceSpan`
+  subtracts them. Other dialects get no `from`: zero cost. Rejected: a mark stack in the monad (needs new monad
+  primitives and changes the checker's contract); printing the AST back (second copy of the SQL syntax, loses spacing).
+- **Facts.** `exprKeys` ("name" | "text") and `groupByRule` (SQLite allows bare columns with an aggregate) are rows
+  of `Dialects`. An item without alias that is not a column or `*` keeps its text in `key`, used only for naming.
+- **Limits.** Leading comments inside the span stay in the key; SQLite itself keeps the text too. An implicit alias
+  without `AS` is not parsed by the select list (existing behaviour).

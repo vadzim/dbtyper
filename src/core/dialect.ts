@@ -50,6 +50,9 @@ export type DialectName = keyof Dialects
  * operators exist (`REGEXP` calls a user function `regexp`, SQLT-34); `isOperand`: what may follow `IS [NOT]`
  * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
  * `LIMIT offset, count` (SQLT-37).
+ * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
+ * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
+ * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  */
 export type Dialects = {
 	postgres: {
@@ -66,6 +69,8 @@ export type Dialects = {
 		globRegexp: false
 		isOperand: "null"
 		limitComma: false
+		groupByRule: true
+		exprKeys: "name"
 	}
 	sqlite: {
 		title: "SQLite"
@@ -81,6 +86,8 @@ export type Dialects = {
 		globRegexp: true
 		isOperand: "value"
 		limitComma: true
+		groupByRule: false
+		exprKeys: "text"
 	}
 }
 

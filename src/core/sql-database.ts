@@ -117,7 +117,11 @@ type InitialDatabase<
 	? {
 			// SQLT-25: SQLite has no schemas, only `main` (the default) and `temp`
 			defaultSchema: "main"
-			schemas: { main: JsqlCreateSchema; temp: JsqlCreateSchema }
+			// #102: the mapped form below must depend on `DS` (`DS & never` is `never`, adds no key). Compile cost:
+			// with a plain literal `{ main: ...; temp: ... }` every `.apply()` of a SQLite chain costs ~6x more
+			// instantiations (per-step instantiations are not cached) and 18 chained CREATE TABLEs hit TS2589.
+			// A plain literal is FORBIDDEN here; test/sqlite/sqlt-102-long-chain.test-d.ts guards it.
+			schemas: { [K in "main" | "temp" | (DS & never)]: JsqlCreateSchema }
 			functions?: Record<string, never>
 			dialect: Config["dialect"]
 		}
