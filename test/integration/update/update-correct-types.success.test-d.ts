@@ -14,9 +14,9 @@ const _result = await _db.query(`update users set age = 30, active = false where
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			age: number
-			active: boolean
+			id: string | null
+			age: number | null
+			active: boolean | null
 		}>
 	>(),
 )

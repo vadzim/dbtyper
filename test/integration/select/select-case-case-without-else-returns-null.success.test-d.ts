@@ -15,7 +15,7 @@ const _db = sqlMigrations({ driver: mockDriver })
 			);`,
 	)
 	.database()
-// ✅ SUCCESS: CASE without ELSE (returns NULL)
+// ✅ SUCCESS: CASE without ELSE (returns NULL): EXPR-21, TYPE-8 → `is_active: string | null`
 
 const _result = await _db.query(`
 		select
@@ -30,7 +30,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			name: string
-			is_active: string
+			is_active: string | null
 		}[]
 	>(),
 )

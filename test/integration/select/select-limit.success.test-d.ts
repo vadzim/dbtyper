@@ -14,8 +14,8 @@ const _result = await _db.query(`select * from users limit 10;`)
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

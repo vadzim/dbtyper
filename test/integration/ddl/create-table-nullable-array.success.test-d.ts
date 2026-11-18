@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 
-// ✅ SUCCESS: nullable array
+// ✅ SUCCESS: nullable array (TYPE-7: a column without NOT NULL is `T | null`, arrays included)
 
 const _db = sqlMigrations({ driver: mockDriver })
 	.apply(`create schema public;`)

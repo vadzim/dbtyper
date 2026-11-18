@@ -24,5 +24,5 @@ const _result = await _db.query(`
 	`)
 
 expectType<typeof _result>(
-	toBe<{ name: string; id: number; task_status: unknown; task_priority: unknown; is_urgent: boolean }[]>(),
+	toBe<{ name: string; id: number; task_status: unknown; task_priority: unknown; is_urgent: boolean | null }[]>(),
 )

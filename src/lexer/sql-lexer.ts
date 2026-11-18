@@ -431,6 +431,38 @@ const serviceWordsMap = {
 
 export type ServiceWords = keyof typeof serviceWordsMap
 
+/** Words in {@link serviceWordsMap} that PostgreSQL does not reserve: accepted as unquoted names (STMT-3). */
+export type NonReservedWords =
+	| "alter"
+	| "always"
+	| "begin"
+	| "conflict"
+	| "database"
+	| "declare"
+	| "delete"
+	| "enum"
+	| "exclude"
+	| "first"
+	| "function"
+	| "generated"
+	| "index"
+	| "insert"
+	| "key"
+	| "language"
+	| "next"
+	| "partition"
+	| "rename"
+	| "schema"
+	| "stored"
+	| "type"
+	| "update"
+	| "use"
+	| "view"
+	| "virtual"
+
+/** A keyword token that PostgreSQL does not reserve is seen as an identifier; everything else is unchanged. */
+export type AsIdent<Tok> = Tok extends TokenKey<infer K extends NonReservedWords> ? TokenIdent<K> : Tok
+
 export const serviceWords: ReadonlySet<string> = new Set(Object.keys(serviceWordsMap))
 
 type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`

@@ -26,7 +26,17 @@ export type TypeWordsToString<A extends readonly string[]> = A extends readonly 
 /** Normalize SQL type aliases to canonical names */
 export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
 	? "integer"
-	: T extends "int2"
+	: T extends "serial" | "serial4"
+		? "integer"
+		: T extends "smallserial" | "serial2"
+			? "smallint"
+			: T extends "bigserial" | "serial8"
+				? "bigint"
+				: T extends "timestamptz"
+					? "timestamp with time zone"
+					: T extends "timetz"
+						? "time with time zone"
+						: T extends "int2"
 		? "smallint"
 		: T extends "int8"
 			? "bigint"
@@ -62,7 +72,7 @@ export type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTyp
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"null">
 				? [SkipToken<R1>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: false }]
-				: [R1, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]
+				: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? [SkipToken<Tokens>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]

@@ -1355,11 +1355,12 @@ type ParseOneRawSelectItem<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends TokenParam<infer P extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? ParseOptionalAs<R1> extends [infer M2 extends ParserMonad, infer As extends string | undefined]
-				? [M2, RawSelectParamItem<P, As>]
-				: never
+	PeekToken<Tokens> extends TokenParam<string>
+		? // PARAM-8: parse a full expression (`:x + 1`); a bare `:x` stays a param item
+			ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope> extends [infer M2 extends ParserMonad, infer It]
+			? It extends { kind: "expr"; ast: { kind: "param"; name: infer P extends string }; as?: infer As }
+				? [M2, RawSelectParamItem<P, [As] extends [string] ? As : undefined>]
+				: [M2, It]
 			: never
 		: PeekToken<Tokens> extends TokenIdent<string>
 			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>

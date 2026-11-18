@@ -15,7 +15,7 @@ const _result = await _db.query(`select unnest(tags) as tag from items;`)
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			tag: unknown
+			tag: string
 		}>
 	>(),
 )

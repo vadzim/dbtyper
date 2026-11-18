@@ -14,9 +14,9 @@ const _result = await _db.query(`delete from users where age < 18 or name is nul
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
-			age: number
+			id: string | null
+			name: string | null
+			age: number | null
 		}>
 	>(),
 )

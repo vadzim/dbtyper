@@ -15,7 +15,7 @@ const _result = await _db.query(`select array_append(nums, 42) as nums_appended 
 expectType<typeof _result>(
 	toBe<
 		{
-			nums_appended: unknown
+			nums_appended: readonly number[]
 		}[]
 	>(),
 )

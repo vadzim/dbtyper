@@ -15,7 +15,7 @@ const _result = await _db.query(`select array_append(tags, 'new') as appended fr
 expectType<typeof _result>(
 	toBe<
 		{
-			appended: unknown
+			appended: readonly string[]
 		}[]
 	>(),
 )

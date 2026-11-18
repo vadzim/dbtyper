@@ -17,8 +17,16 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
  * SqlTypeShapeToTs<{ type: "text"; arg: null; nullable: false }, { text: string }> // => string
  * SqlTypeShapeToTs<{ type: "integer"; arg: null; nullable: false }, { integer: number }> // => number
  * SqlTypeShapeToTs<{ type: "array"; arg: { type: "text"; arg: null; nullable: false }; nullable: false }, { text: string }> // => readonly string[]
+ * SqlTypeShapeToTs<{ type: "text"; arg: null; nullable: true }, { text: string }> // => string | null
  */
-export type SqlTypeShapeToTs<
+export type SqlTypeShapeToTs<Shape extends SqlTypeShape, ScalarMap extends Record<string, unknown>> =
+	// TYPE-7, TYPE-8: a nullable shape (column without NOT NULL, or an expression the SEL/EXPR rules make
+	// nullable) is typed `T | null`; for an array the nullability is that of the whole array (`readonly X[] | null`).
+	Shape["nullable"] extends false
+		? SqlTypeShapeToTsNonNull<Shape, ScalarMap>
+		: SqlTypeShapeToTsNonNull<Shape, ScalarMap> | null
+
+type SqlTypeShapeToTsNonNull<
 	Shape extends SqlTypeShape,
 	ScalarMap extends Record<string, unknown>,
 > = Shape["type"] extends "array"

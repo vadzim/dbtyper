@@ -6,7 +6,7 @@ import type {
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -149,7 +149,7 @@ type ParseUpdateSetAssignments<
 > =
 	PeekToken<Tokens> extends infer TokCol
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? TokCol extends TokenIdent<infer Col extends string>
+			? AsIdent<TokCol> extends TokenIdent<infer Col extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "UPDATE SET"]>]
 					: PeekToken<R1> extends TokenKey<"=">
