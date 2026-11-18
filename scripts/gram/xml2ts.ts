@@ -1,5 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises"
 
+// usage: node scripts/gram/xml2ts.ts <dialect dir>   (reads <dir>/gram.xml, writes <dir>/tables.ts)
+const dialectDir = process.argv[2] ?? never("usage: xml2ts.ts <dialect dir>")
+
 /*
 <state number="5261">
 	<actions>
@@ -27,7 +30,7 @@ type Z1 = I<null, "a", undefined>
 
 console.error("reading xml")
 
-const raw = await readFile(import.meta.dirname + "/gram.xml", "utf8")
+const raw = await readFile(dialectDir + "/gram.xml", "utf8")
 
 let xml = new (await import(`fast-xml-parser`)).XMLParser({
 	ignoreAttributes: false,
@@ -221,7 +224,7 @@ const Rules = stringify(rules)
 console.log("writing file")
 
 await writeFile(
-	import.meta.dirname + "/gram.ts",
+	dialectDir + "/tables.ts",
 	`
 // Shifts ${Shifts.length}
 // Reductions ${Reductions.length}
@@ -235,6 +238,8 @@ export type Reductions = ${Reductions}
 export type Gotos = ${Gotos}
 
 export type Rules = ${Rules}
+
+export type Tables = { Shifts: Shifts; Reductions: Reductions; Gotos: Gotos; Rules: Rules }
 
 ${subsets
 	.values()

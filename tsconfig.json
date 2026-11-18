@@ -1,6 +1,6 @@
 {
 	"include": ["**/*.ts", ".automation/**/*.ts"],
-	"exclude": ["test/**/*.ts", "examples", "packages"],
+	"exclude": ["test/**/*.ts", "examples", "packages", "src/gram"],
 	"compilerOptions": {
 		"module": "nodenext",
 		"target": "esnext",

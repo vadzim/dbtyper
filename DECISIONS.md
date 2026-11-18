@@ -25,3 +25,21 @@ Track B (`sqlite-pg/bison-track`) builds dialect selection on bison-generated LR
   suite keeps its speed. If the driver gets fast enough (#22 targets), PG chains may gate always; decided by measurement.
 
 Sub-issues of #52: see the issue. #21 (hygiene) and #22 (driver performance) are folded into them.
+
+## 2026-11-18 — Grammar pipeline (#93, track B)
+
+- **Layout.** `src/gram/<dialect>/{gram.y,tables.ts,keywords.ts,tokens.ts}`, shared `src/gram/driver.ts`, one script
+  `npm run gram:generate [-- <dialect>]` (`scripts/gram-generate.mjs` → bison `--xml` → `scripts/gram/xml2ts.ts`). Only
+  bison is needed; the script prints an install hint when it is missing. See `src/gram/README.md`.
+- **Tables are committed, not generated at build.** Reason: generation takes ~20 s and needs bison, which contributors
+  and CI should not need to typecheck; the file is deterministic from `gram.y`, so a diff after `gram:generate` means a
+  stale commit. They are excluded from prettier/eslint and from `tsconfig.json`/`tsconfig.build.json` (`src/gram`), so the
+  main `typecheck` does not pay for them (nothing in `src/` outside `src/gram` imports them yet); `gram:check` and
+  `test/gram/` do.
+- **Dropped from the #21 list:** `bison-transform.ts`, `gram1.y`, `gram-transformed.txt` (exploratory, tables never came
+  from them), `example.ts` (superseded by tests), the value stack and Engine of the old `parser.ts` (recogniser only).
+  `scan.l` is kept next to `gram.y` as reference for the token mapping.
+- **Token mapping** (`postgres/tokens.ts`): lexer tokens → terminals; PG's one-token lookaheads (`not_la`, `nulls_la`,
+  `with_la`, `without_la`, `format_la`) are computed there, so the `with_la` hack is removed from `parser-monad.ts`.
+  An ident whose text is a PG keyword (not in the lexer's keyword list) is read as that keyword, because the lexer
+  cannot tell `"analyze"` from `analyze`; accepted limitation of the recogniser.
