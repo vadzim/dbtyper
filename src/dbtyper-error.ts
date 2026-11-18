@@ -902,10 +902,6 @@ export const errors = {
 		code: 2511,
 		msg: ["'", "' is not a value of enum ", ""],
 	},
-	INCOMPATIBLE_VALUE_FOR_ENUM: {
-		code: 2512,
-		msg: ["Incompatible value for enum ", ""],
-	},
 	COLUMN_TYPE_MISMATCH: {
 		code: 2510,
 		msg: ["column `", "` is ", ""],

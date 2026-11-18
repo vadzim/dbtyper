@@ -25,7 +25,8 @@ import type {
 	SqlUnknown,
 	Nullable,
 } from "../core/sql-type-shape.ts"
-import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
+import type { EnumCastCheck, EnumComparisonCheck, EnumPeerCheck, WithEnumCheck } from "./parse-enum-checks.ts"
+import type { ShapeComparisonClass, SqlComparisonClass, StringLiteralClasses } from "../core/comparison-classes.ts"
 import type { ResolveUserType } from "./parse-sql-type-words.ts"
 import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
@@ -155,10 +156,18 @@ export type ScalarExprAst =
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 /** PGT-14: both bounds of `BETWEEN` against an enum operand. */
-type EnumBetweenCheck<Db, E extends SqlTypeShape, Lo extends SqlTypeShape, LoAst, Hi extends SqlTypeShape, HiAst> =
-	EnumComparisonCheck<Db, E, never, Lo, LoAst> extends infer C1
+type EnumBetweenCheck<
+	Db,
+	E extends SqlTypeShape,
+	EAst,
+	Lo extends SqlTypeShape,
+	LoAst,
+	Hi extends SqlTypeShape,
+	HiAst,
+> =
+	EnumComparisonCheck<Db, E, EAst, Lo, LoAst> extends infer C1
 		? C1 extends true
-			? EnumComparisonCheck<Db, E, never, Hi, HiAst>
+			? EnumComparisonCheck<Db, E, EAst, Hi, HiAst>
 			: C1
 		: never
 
@@ -168,7 +177,9 @@ export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 ]
 	? T extends readonly []
 		? Lowercase<H>
-		: `${Lowercase<H>} ${SqlCastTypeNorm<T>}`
+		: H extends `${string}.`
+			? `${Lowercase<H>}${SqlCastTypeNorm<T>}` // `schema.type`: the dot joins without a space
+			: `${Lowercase<H>} ${SqlCastTypeNorm<T>}`
 	: string
 
 /** SQLT-12: in a SQLite chain `CAST(x AS t)` gets the type of a column declared `t` (its affinity key, SQLT-6…SQLT-8). */
@@ -194,7 +205,7 @@ type ParseSqlTypeName<Tokens extends ParserMonad, Acc extends readonly string[] 
 						: ParseSqlTypeName<SkipToken<R2>, readonly [...Acc, W]>
 					: never
 				: PeekToken<R1> extends TokenKey<".">
-					? ParseSqlTypeName<SkipToken<R1>, readonly [...Acc, W]>
+					? ParseSqlTypeName<SkipToken<R1>, readonly [...Acc, `${W}.`]>
 					: PeekToken<R1> extends TokenIdent<string>
 						? ParseSqlTypeName<R1, readonly [...Acc, W]>
 						: [R1, readonly [...Acc, W]]
@@ -1152,17 +1163,22 @@ type ResolvePgFunctionCall<
 						? PgArityError<L, ArgsRes> extends infer Arity
 							? Arity extends DbtyperErrorShape
 								? Arity
-								: L extends keyof PostgresFunctions
-									? PostgresFunctions[L] extends infer Row
-										? Windowed extends false
-											? IsWindowOnlyRow<Row> extends true
-												? FormatError<Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"], [Name]>
-												: PostgresRowResult<Row, ArgsRes>
-											: IsWindowCapableRow<Row> extends true
-												? PostgresRowResult<Row, ArgsRes>
-												: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+								: EnumPeerCheck<Db, L, ArgsRes, Args> extends infer Peer extends DbtyperErrorShape
+									? Peer
+									: L extends keyof PostgresFunctions
+										? PostgresFunctions[L] extends infer Row
+											? Windowed extends false
+												? IsWindowOnlyRow<Row> extends true
+													? FormatError<
+															Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"],
+															[Name]
+														>
+													: PostgresRowResult<Row, ArgsRes>
+												: IsWindowCapableRow<Row> extends true
+													? PostgresRowResult<Row, ArgsRes>
+													: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+											: never
 										: never
-									: never
 							: never
 						: never
 				: never
@@ -1541,7 +1557,10 @@ type ExpressionResolvers<
 						? RcV
 						: LcV extends SqlTypeShape
 							? RcV extends SqlTypeShape
-								? WithEnumCheck<EnumComparisonCheck<Db, LcV, Lc, RcV, Rc>, MergeComparison<LcV, RcV>>
+								? WithEnumCheck<
+										EnumComparisonCheck<Db, LcV, Lc, RcV, Rc>,
+										MergeComparison<LcV, RcV, Lc, Rc>
+									>
 								: never
 							: never
 				: never
@@ -1586,7 +1605,7 @@ type ExpressionResolvers<
 				? Evc
 				: Evc extends SqlTypeShape
 					? SqlCastTypeNorm<Ptc> extends infer Normc extends string
-						? ResolveCastForDialect<Db, Evc, Normc>
+						? WithCastLabelCheck<Db, ResolveCastForDialect<Db, Evc, Normc>, Exc>
 						: never
 					: never
 			: never
@@ -1601,7 +1620,7 @@ type ExpressionResolvers<
 				? Evs
 				: Evs extends SqlTypeShape
 					? SqlCastTypeNorm<Pts> extends infer Norms extends string
-						? ResolveCastForDialect<Db, Evs, Norms>
+						? WithCastLabelCheck<Db, ResolveCastForDialect<Db, Evs, Norms>, Exs>
 						: never
 					: never
 			: never
@@ -1625,8 +1644,8 @@ type ExpressionResolvers<
 									? LvB extends SqlTypeShape
 										? HvB extends SqlTypeShape
 											? WithEnumCheck<
-													EnumBetweenCheck<Db, EvB, LvB, Lb, HvB, Hb>,
-													MergeBetweenBounds<EvB, LvB, HvB>
+													EnumBetweenCheck<Db, EvB, Eb, LvB, Lb, HvB, Hb>,
+													MergeBetweenBounds<EvB, LvB, HvB, Eb, Lb, Hb>
 												>
 											: never
 										: never
@@ -1748,7 +1767,7 @@ type ExpressionResolvers<
 			? LvIn extends DbtyperErrorShape
 				? LvIn
 				: LvIn extends SqlTypeShape
-					? ResolveInListItemsAgainstLeft<LvIn, Ins, Db, Scope, Params>
+					? ResolveInListItemsAgainstLeft<LvIn, Eln, Ins, Db, Scope, Params>
 					: never
 			: never
 		: never
@@ -2455,39 +2474,6 @@ type ParseWindowOrderByListTail<
 	Acc extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[],
 > = PeekToken<Tokens> extends TokenKey<","> ? ParseWindowOrderByList<SkipToken<Tokens>, Env, Acc> : [Tokens, Acc, Env]
 
-type SqlComparisonClass<Sql extends string> = Sql extends `${infer Base}[]`
-	? `array_${SqlComparisonClass<Base>}`
-	: Lowercase<Sql> extends
-				| "integer"
-				| "int"
-				| "int2"
-				| "int4"
-				| "int8"
-				| "smallint"
-				| "bigint"
-				| "real"
-				| "float4"
-				| "float8"
-				| "double precision"
-				| "numeric"
-				| "decimal"
-				| "number"
-		? "numeric"
-		: Lowercase<Sql> extends "boolean" | "bool"
-			? "boolean"
-			: Lowercase<Sql> extends "text" | "varchar" | "character varying" | "char"
-				? "text"
-				: Lowercase<Sql> extends "uuid"
-					? "uuid"
-					: Lowercase<Sql> extends
-								| "date"
-								| "time"
-								| "time with time zone"
-								| "timestamp"
-								| "timestamp with time zone"
-						? "datetime"
-						: "unknown"
-
 type IsSqlNumericType<Sql extends string | SqlTypeShape> = Sql extends SqlTypeShape
 	? SqlComparisonClass<Sql["type"]> extends "numeric"
 		? true
@@ -2518,18 +2504,37 @@ type IsSqlTextType<Sql extends string | SqlTypeShape> = Sql extends SqlTypeShape
 			: false
 		: false
 
+/** PGT-16: `Ast` is an untyped string literal and `Other` is of a class that takes one without a cast. */
+type StringLiteralFits<Ast, Other extends SqlTypeShape> = [Ast] extends [never]
+	? false
+	: Ast extends { kind: "string"; blob: true }
+		? false
+		: Ast extends { kind: "string" }
+			? ShapeComparisonClass<Other> extends StringLiteralClasses
+				? true
+				: false
+			: false
+
+/**
+ * EXPR-26: two operands are compatible when their classes are equal or either is "unknown", or one is an untyped
+ * string literal (its AST, when the caller has it) and the other a class that takes one (PGT-16).
+ */
 export type SameComparisonClass<
 	SqlL extends string | SqlTypeShape,
 	SqlR extends string | SqlTypeShape,
+	AstL = never,
+	AstR = never,
 > = SqlL extends SqlTypeShape
 	? SqlR extends SqlTypeShape
-		? SqlComparisonClass<SqlL["type"]> extends "unknown"
+		? ShapeComparisonClass<SqlL> extends "unknown"
 			? true
-			: SqlComparisonClass<SqlR["type"]> extends "unknown"
+			: ShapeComparisonClass<SqlR> extends "unknown"
 				? true
-				: SqlComparisonClass<SqlL["type"]> extends SqlComparisonClass<SqlR["type"]>
+				: ShapeComparisonClass<SqlL> extends ShapeComparisonClass<SqlR>
 					? true
-					: false
+					: StringLiteralFits<AstL, SqlR> extends true
+						? true
+						: StringLiteralFits<AstR, SqlL>
 		: false
 	: SqlR extends SqlTypeShape
 		? false
@@ -2545,30 +2550,42 @@ export type SameComparisonClass<
 				: false
 			: false
 
-type MergeComparison<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"] extends "null"
+type MergeComparison<
+	L extends SqlTypeShape,
+	R extends SqlTypeShape,
+	LAst = never,
+	RAst = never,
+> = L["type"] extends "null"
 	? FormatError<Errors["USE_IS_NULL_INSTEAD_OF_EQUALS_NULL"], []>
 	: R["type"] extends "null"
 		? FormatError<Errors["USE_IS_NULL_INSTEAD_OF_EQUALS_NULL"], []>
-		: SameComparisonClass<L, R> extends true
+		: SameComparisonClass<L, R, LAst, RAst> extends true
 			? SqlBoolean
 			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_COMPARISON"], []>
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
-type ValidateCaseSimpleWhenMatch<Disc extends SqlTypeShape, WhenV extends SqlTypeShape> =
-	MergeComparison<Disc, WhenV> extends DbtyperErrorShape ? MergeComparison<Disc, WhenV> : true
+type ValidateCaseSimpleWhenMatch<
+	Disc extends SqlTypeShape,
+	WhenV extends SqlTypeShape,
+	DiscAst = never,
+	WhenAst = never,
+> = MergeComparison<Disc, WhenV, DiscAst, WhenAst> extends infer M extends DbtyperErrorShape ? M : true
 
 type MergeBetweenBounds<
 	E extends SqlTypeShape,
 	Lm extends SqlTypeShape,
 	H extends SqlTypeShape,
+	EAst = never,
+	LmAst = never,
+	HAst = never,
 > = E["type"] extends "null"
 	? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 	: Lm["type"] extends "null"
 		? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 		: H["type"] extends "null"
 			? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
-			: SameComparisonClass<E, Lm> extends true
-				? SameComparisonClass<E, H> extends true
+			: SameComparisonClass<E, Lm, EAst, LmAst> extends true
+				? SameComparisonClass<E, H, EAst, HAst> extends true
 					? SqlBoolean
 					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
 				: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
@@ -2584,7 +2601,19 @@ type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape> = Ex
 			: FormatError<Errors["LIKE_LEFT_OPERAND_MUST_BE_TEXT"], []>
 
 /** CORE-2, CORE-5: a CASE result is nullable when any branch is (a NULL literal branch included). */
-type MergeCaseThenAccum<Acc extends SqlTypeShape | null, Tv extends SqlTypeShape> = Acc extends null
+/** The AST of the branch whose type the CASE has so far: the first one that is not a NULL literal (EXPR-20). */
+type NextCaseAccAst<Acc extends SqlTypeShape | null, AccAst, TvAst> = Acc extends SqlTypeShape
+	? Acc["type"] extends "null"
+		? TvAst
+		: AccAst
+	: TvAst
+
+type MergeCaseThenAccum<
+	Acc extends SqlTypeShape | null,
+	Tv extends SqlTypeShape,
+	AccAst = never,
+	TvAst = never,
+> = Acc extends null
 	? Tv
 	: Acc extends SqlTypeShape
 		? Acc["type"] extends "null"
@@ -2593,7 +2622,7 @@ type MergeCaseThenAccum<Acc extends SqlTypeShape | null, Tv extends SqlTypeShape
 				: Nullable<Tv>
 			: Tv["type"] extends "null"
 				? Nullable<Acc>
-				: SameComparisonClass<Acc, Tv> extends true
+				: SameComparisonClass<Acc, Tv, AccAst, TvAst> extends true
 					? Tv["nullable"] extends true
 						? Nullable<Acc>
 						: Acc
@@ -2610,6 +2639,7 @@ type ResolveCaseSearchedArms<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Acc extends SqlTypeShape | null,
+	AccAst,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Arms extends readonly [
 	infer A extends { when: ScalarExprAst; then: ScalarExprAst },
@@ -2624,11 +2654,19 @@ type ResolveCaseSearchedArms<
 						? Tv extends DbtyperErrorShape
 							? Tv
 							: Tv extends SqlTypeShape
-								? MergeCaseThenAccum<Acc, Tv> extends infer Merged
+								? MergeCaseThenAccum<Acc, Tv, AccAst, A["then"]> extends infer Merged
 									? Merged extends DbtyperErrorShape
 										? Merged
 										: Merged extends SqlTypeShape
-											? ResolveCaseSearchedArms<Rest, ElseB, Db, Scope, Merged, Params>
+											? ResolveCaseSearchedArms<
+													Rest,
+													ElseB,
+													Db,
+													Scope,
+													Merged,
+													NextCaseAccAst<Acc, AccAst, A["then"]>,
+													Params
+												>
 											: never
 									: never
 								: never
@@ -2641,7 +2679,7 @@ type ResolveCaseSearchedArms<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? MergeCaseThenAccum<Acc, Ev> extends infer F
+					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB> extends infer F
 						? F extends DbtyperErrorShape
 							? F
 							: F extends SqlTypeShape
@@ -2660,7 +2698,7 @@ type ResolveCaseSearched<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
-> = ResolveCaseSearchedArms<Arms, ElseB, Db, Scope, null, Params>
+> = ResolveCaseSearchedArms<Arms, ElseB, Db, Scope, null, never, Params>
 
 type ResolveCaseSimpleArms<
 	Arms extends readonly { when: ScalarExprAst; then: ScalarExprAst }[],
@@ -2668,7 +2706,9 @@ type ResolveCaseSimpleArms<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Disc extends SqlTypeShape,
+	DiscAst,
 	Acc extends SqlTypeShape | null,
+	AccAst,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Arms extends readonly [
 	infer A extends { when: ScalarExprAst; then: ScalarExprAst },
@@ -2679,8 +2719,8 @@ type ResolveCaseSimpleArms<
 			? Wv
 			: Wv extends SqlTypeShape
 				? WithEnumCheck<
-						EnumComparisonCheck<Db, Disc, never, Wv, A["when"]>,
-						ValidateCaseSimpleWhenMatch<Disc, Wv>
+						EnumComparisonCheck<Db, Disc, DiscAst, Wv, A["when"]>,
+						ValidateCaseSimpleWhenMatch<Disc, Wv, DiscAst, A["when"]>
 					> extends infer Match
 					? Match extends DbtyperErrorShape
 						? Match
@@ -2689,7 +2729,7 @@ type ResolveCaseSimpleArms<
 								? Tv extends DbtyperErrorShape
 									? Tv
 									: Tv extends SqlTypeShape
-										? MergeCaseThenAccum<Acc, Tv> extends infer Merged
+										? MergeCaseThenAccum<Acc, Tv, AccAst, A["then"]> extends infer Merged
 											? Merged extends DbtyperErrorShape
 												? Merged
 												: Merged extends SqlTypeShape
@@ -2699,7 +2739,9 @@ type ResolveCaseSimpleArms<
 															Db,
 															Scope,
 															Disc,
+															DiscAst,
 															Merged,
+															NextCaseAccAst<Acc, AccAst, A["then"]>,
 															Params
 														>
 													: never
@@ -2715,7 +2757,7 @@ type ResolveCaseSimpleArms<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? MergeCaseThenAccum<Acc, Ev> extends infer F
+					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB> extends infer F
 						? F extends DbtyperErrorShape
 							? F
 							: F extends SqlTypeShape
@@ -2740,21 +2782,27 @@ type ResolveCaseSimple<
 		? Dv extends DbtyperErrorShape
 			? Dv
 			: Dv extends SqlTypeShape
-				? ResolveCaseSimpleArms<Arms, ElseB, Db, Scope, Dv, null, Params>
+				? ResolveCaseSimpleArms<Arms, ElseB, Db, Scope, Dv, DiscAst, null, never, Params>
 				: never
 		: never
 
 /** Per-element check for `expr IN (…)` (same class rules as `=`, but `NULL` list elements are rejected). */
-type ValidateInListElement<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"] extends "null"
+type ValidateInListElement<
+	L extends SqlTypeShape,
+	R extends SqlTypeShape,
+	LAst = never,
+	RAst = never,
+> = L["type"] extends "null"
 	? never
 	: R["type"] extends "null"
 		? FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_LIST"], []>
-		: SameComparisonClass<L, R> extends true
+		: SameComparisonClass<L, R, LAst, RAst> extends true
 			? true
 			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_LIST"], []>
 
 type ResolveInListItemsAgainstLeft<
 	Left extends SqlTypeShape,
+	LeftAst,
 	Items extends readonly ScalarExprAst[],
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -2765,15 +2813,15 @@ type ResolveInListItemsAgainstLeft<
 			? Hv
 			: Hv extends SqlTypeShape
 				? WithEnumCheck<
-						EnumComparisonCheck<Db, Left, never, Hv, H>,
-						ValidateInListElement<Left, Hv>
+						EnumComparisonCheck<Db, Left, LeftAst, Hv, H>,
+						ValidateInListElement<Left, Hv, LeftAst, H>
 					> extends infer V
 					? V extends DbtyperErrorShape
 						? V
 						: V extends true
 							? Tail extends readonly []
 								? SqlBoolean
-								: ResolveInListItemsAgainstLeft<Left, Tail, Db, Scope, Params>
+								: ResolveInListItemsAgainstLeft<Left, LeftAst, Tail, Db, Scope, Params>
 							: never
 					: never
 				: never
@@ -2903,6 +2951,11 @@ type MergeBoolBinary<
 				? FormatError<Errors["AND_OPERANDS_MUST_BE_BOOLEAN"], []>
 				: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 
+/** PGT-14: a string literal cast to an enum must be one of its labels; `Cast` otherwise. */
+type WithCastLabelCheck<Db, Cast, Ast> = Cast extends SqlTypeShape
+	? WithEnumCheck<EnumCastCheck<Db, Cast, Ast>, Cast>
+	: Cast
+
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
 /** SQLT-6: in a chain whose type names only decide an affinity (SQLite) a CAST gives the type of that affinity, from any value. */
 type ResolveCastForDialect<Db, Ev extends SqlTypeShape, N extends string> =
@@ -2910,11 +2963,17 @@ type ResolveCastForDialect<Db, Ev extends SqlTypeShape, N extends string> =
 		? Ev["type"] extends "null"
 			? SqlNull
 			: SqlType<SqliteTypeKey<N>>
-		: ResolveUserType<Db, DefaultSchemaOf<Db>, SqlType<N>> extends [infer U extends SqlTypeShape, boolean]
-			? U["type"] extends N
-				? ResolveCastFromShape<Ev, N>
-				: U // PGT-13, PGT-22: a cast to an enum or a domain of the chain
-			: ResolveCastFromShape<Ev, N>
+		: N extends `${infer Sch}.${infer Tn}`
+			? CastToNamedType<Db, Ev, Sch, Tn>
+			: CastToNamedType<Db, Ev, DefaultSchemaOf<Db>, N>
+
+/** PGT-13, PGT-22: a cast to a type name: an enum or a domain of the chain, else a built-in type. */
+type CastToNamedType<Db, Ev extends SqlTypeShape, Schema extends string, N extends string> =
+	ResolveUserType<Db, Schema, SqlType<N>> extends [infer U extends SqlTypeShape, boolean]
+		? U["type"] extends N
+			? ResolveCastFromShape<Ev, N>
+			: U
+		: ResolveCastFromShape<Ev, N>
 
 type DefaultSchemaOf<Db> = Db extends { defaultSchema: infer D extends string } ? D : ""
 

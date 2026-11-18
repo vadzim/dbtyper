@@ -10,6 +10,7 @@ import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
+import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { DialectFact, SqliteStrictTypeNames } from "../core/dialect.ts"
@@ -923,7 +924,8 @@ type ParseColumnDefault<Tokens extends ParserMonad, C extends ColumnCtx, S exten
 					: Ast extends ScalarExprAst
 						? DefaultFits<
 								ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>,
-								C
+								C,
+								Ast
 							> extends infer Err
 							? Err extends DbtyperErrorShape
 								? ColumnFail<R, C, DefaultSyntaxError<Ast, Err>>
@@ -957,16 +959,25 @@ type DefaultSyntaxError<Ast, Err extends DbtyperErrorShape> = Err extends { __sq
 	: Err
 
 /** `null` when the resolved DEFAULT expression fits the column, else the error. */
-type DefaultFits<V, C extends ColumnCtx> = V extends { __sql_parser_error_code__: Errors["UNKNOWN_FUNCTION"]["code"] }
+type DefaultFits<V, C extends ColumnCtx, Ast = never> = V extends {
+	__sql_parser_error_code__: Errors["UNKNOWN_FUNCTION"]["code"]
+}
 	? null
 	: V extends DbtyperErrorShape
 		? V
 		: V extends SqlTypeShape
 			? V["type"] extends "null"
 				? null
-				: SameComparisonClass<V, C["type"]> extends true
-					? null
-					: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [C["name"]]>
+				: WithEnumCheck<
+							EnumAssignmentCheck<C["db"], C["type"], Ast>,
+							SameComparisonClass<V, C["type"], Ast>
+					  > extends infer Fit
+					? Fit extends DbtyperErrorShape
+						? Fit
+						: Fit extends true
+							? null
+							: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [C["name"]]>
+					: never
 			: never
 
 /**
