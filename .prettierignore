@@ -6,5 +6,5 @@ folder_context.md
 test/.legacy-unsupported/
 
 # generated bison tables (committed; see src/gram/README.md)
-src/gram/*/tables.ts
+src/gram/*/tables.d.ts
 src/gram/*/keywords.ts

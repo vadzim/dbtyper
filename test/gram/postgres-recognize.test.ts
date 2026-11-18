@@ -1,5 +1,5 @@
 import type { Recognize } from "../../src/gram/driver.ts"
-import type { Tables } from "../../src/gram/postgres/tables.ts"
+import type { Tables } from "../../src/gram/postgres/tables.d.ts"
 import type { PgTerminals } from "../../src/gram/postgres/tokens.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
@@ -88,4 +88,17 @@ type Pg<Query extends string> = Recognize<Tables, PgTerminals<Query>>
 {
 	type test = Pg<`insert t values (1)`>
 	expectType<test>(toBe<{ ok: false; at: 1; token: "ident" }>())
+}
+
+// long statements (#95, #22): one chunk of the driver is 100 steps, a run restarts chunks, so these cross many chunks
+type Times10<T extends string[]> = [...T, ...T, ...T, ...T, ...T, ...T, ...T, ...T, ...T, ...T]
+
+{
+	// 1 + 2000 + 3 terminals: select ident, ident, ... , ident from t
+	type test = Recognize<Tables, ["select", ...Times10<Times10<Times10<["ident", ","]>>>, "ident", "from", "ident"]>
+	expectType<test>(toBe<{ ok: true }>())
+}
+{
+	type test = Recognize<Tables, ["select", ...Times10<Times10<Times10<["ident", ","]>>>, "ident", "from", "from"]>
+	expectType<test>(toBe<{ ok: false; at: 2003; token: "from" }>())
 }
