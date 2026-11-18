@@ -20,9 +20,9 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: CORE-15 / CORE-1 / CORE-18 constraints in any order; PRIMARY KEY and NOT NULL give non-null columns
-const _rows = await _db.query(`select * from a;`)
+const _result = await _db.query(`select * from a;`)
 
-expectType<typeof _rows>(
+expectType<typeof _result>(
 	toBe<
 		{
 			id: number

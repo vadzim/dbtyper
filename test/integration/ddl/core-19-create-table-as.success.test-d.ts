@@ -10,6 +10,6 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: CORE-19 every column is nullable, names come from the SELECT
-const _rows = await _db.query(`select * from names;`)
+const _result = await _db.query(`select * from names;`)
 
-expectType<typeof _rows>(toBe<{ id: number | null; name: string | null; mail: string | null }[]>())
+expectType<typeof _result>(toBe<{ id: number | null; name: string | null; mail: string | null }[]>())

@@ -22,6 +22,6 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: CORE-16 applied
-const _rows = await _db.query(`select age from t;`)
+const _result = await _db.query(`select age from t;`)
 
-expectType<typeof _rows>(toBe<{ age: number }[]>())
+expectType<typeof _result>(toBe<{ age: number }[]>())
