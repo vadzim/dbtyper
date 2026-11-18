@@ -7,6 +7,7 @@ import type {
 	ParseExpressionAST,
 	ResolveExpressionAST,
 } from "./parse-expression.ts"
+import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -17,6 +18,7 @@ export type ParseWhereExpression<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Clause extends string = "WHERE",
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 		infer Rw extends ParserMonad,
@@ -27,7 +29,7 @@ export type ParseWhereExpression<
 			? SkipFailedExpression<Rw, Ast>
 			: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 				? R extends DbtyperErrorShape
-					? SkipFailedExpression<Rw, R>
+					? SkipFailedExpression<Rw, WithErrorClause<R, Clause>>
 					: R extends SqlTypeShape
 						? R["type"] extends "boolean"
 							? [Rw, null]
