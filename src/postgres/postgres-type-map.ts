@@ -59,12 +59,25 @@ export type PostgresTypeMap<Bigint extends boolean = false> = {
 	jsonb: JsonValue
 }
 
-/** Parameter values per SQL type (PGT-17 widenings are the params issue's; `bigint`/`numeric` accept all numeric forms). */
+/**
+ * Parameter values per SQL type (PGT-17 input widenings): `bigint`/`numeric` accept `string | number | bigint`,
+ * timestamp types accept `Date | string`, `json[b]` accept `JsonValue` (the result type already is).
+ */
 export type PostgresParamTypeMap<Bigint extends boolean = false> = Omit<
 	PostgresTypeMap<Bigint>,
-	"bigint" | "numeric" | "decimal"
+	| "bigint"
+	| "numeric"
+	| "decimal"
+	| "timestamp"
+	| "timestamptz"
+	| "timestamp without time zone"
+	| "timestamp with time zone"
 > & {
 	bigint: string | number | bigint
 	numeric: string | number | bigint
 	decimal: string | number | bigint
+	timestamp: Date | string
+	timestamptz: Date | string
+	"timestamp without time zone": Date | string
+	"timestamp with time zone": Date | string
 }

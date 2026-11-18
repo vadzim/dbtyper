@@ -274,11 +274,48 @@ export type JsqlTableReplaceColumnType<
 > =
 	Table extends JsqlDataShape<"table">
 		? Col extends keyof Table["columns"]
-			? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, SqlType>>
+			? // `ALTER COLUMN … TYPE` keeps NOT NULL (PGT-19)
+				ReplaceProp<
+					Table,
+					"columns",
+					ReplaceProp<
+						Table["columns"],
+						Col,
+						Table["columns"][Col] extends { nullable: false }
+							? { type: SqlType["type"]; arg: SqlType["arg"]; nullable: false }
+							: SqlType
+					>
+				>
 			: null
 		: null
 
+/** The column's own type changes with NOT NULL (SET NOT NULL, a primary key added later: PGT-19), and the fact is kept for INSERT. */
 export type JsqlTableReplaceColumnNullability<
+	Table extends JsqlDataShape<"table"> | null,
+	Col extends string,
+	Nullability extends "not_null" | "nullable" | null,
+> =
+	JsqlTableReplaceColumnNullabilityFact<Table, Col, Nullability> extends infer T extends JsqlDataShape<"table">
+		? Nullability extends "not_null" | "nullable"
+			? ReplaceProp<
+					T,
+					"columns",
+					ReplaceProp<
+						T["columns"],
+						Col,
+						T["columns"][Col & keyof T["columns"]] extends infer Ty extends SqlTypeShape
+							? {
+									type: Ty["type"]
+									arg: Ty["arg"]
+									nullable: Nullability extends "not_null" ? false : true
+								}
+							: never
+					>
+				>
+			: T
+		: null
+
+type JsqlTableReplaceColumnNullabilityFact<
 	Table extends JsqlDataShape<"table"> | null,
 	Col extends string,
 	Nullability extends "not_null" | "nullable" | null,

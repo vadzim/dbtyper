@@ -1897,6 +1897,7 @@ type FromItemEndToken =
 	| TokenKey<"union">
 	| TokenKey<"intersect">
 	| TokenKey<"except">
+	| TokenIdent<"with"> // `WITH [NO] DATA` after a materialized view's query (PGT-20)
 	| TokenKey<")">
 	| TokenKey<";">
 	| TokenEot

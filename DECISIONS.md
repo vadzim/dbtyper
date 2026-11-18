@@ -2,6 +2,30 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-18 Parameter widenings and PostgreSQL DDL (#88, track A; PGT-17..21, SCHEMA-22 removed)
+
+- **PGT-17**: only the timestamp rows were new in `PostgresParamTypeMap` (`Date | string` for `timestamp[tz]` and the long
+  names); `bigint`/`numeric` (#79) and `json[b]` (`JsonValue` in both maps) were already there.
+- **ADD COLUMN in PostgreSQL** now uses the CREATE TABLE column parser (as SQLite did): the full definition is accepted
+  (DEFAULT, NOT NULL, identity, REFERENCES, ...), and `, <next action>` may follow. The SQLite-only restrictions (no
+  PRIMARY KEY/UNIQUE, NOT NULL needs DEFAULT, statement ends) are gated by `DialectFact<Db, "ddl">`. A missing type is
+  still 1607.
+- **Identity columns**: `GENERATED ALWAYS | BY DEFAULT AS IDENTITY [(options)]` is NOT NULL; ALWAYS is `generated`
+  (not insertable; PGT-25's OVERRIDING is not done), BY DEFAULT is optional in INSERT. `DEFERRABLE`, `NOT DEFERRABLE`,
+  `INITIALLY ...` are skipped in column and table constraints.
+- **ALTER TABLE**: `SET DEFAULT` / `DROP DEFAULT` change the `default` fact; `ADD [CONSTRAINT n] PRIMARY KEY (cols)` marks
+  the columns NOT NULL; other constraints and `DROP CONSTRAINT`, `ENABLE|DISABLE|FORCE ROW LEVEL SECURITY`, `OWNER TO`,
+  `ALTER COLUMN ... ADD GENERATED / DROP IDENTITY` are skipped (a dropped primary key keeps NOT NULL: not tracked).
+  `TYPE t USING expr` and `SET DATA TYPE` work.
+- **Root fix**: `SET NOT NULL`, `DROP NOT NULL` and an added primary key only set the `nullability` fact (read by INSERT);
+  SELECT reads the column's own type, so they changed nothing. `JsqlTableReplaceColumnNullability` now also sets
+  `nullable` on the column type, and `ALTER COLUMN TYPE` keeps NOT NULL.
+- **Views**: `CREATE OR REPLACE VIEW` (replaces a view, not a table) and `CREATE MATERIALIZED VIEW ... [WITH [NO] DATA]`
+  are views; `DROP MATERIALIZED VIEW` is `DROP VIEW`. `with` ends a FROM item (it cannot be an alias).
+- **Skip list (PGT-21)** was already the behaviour of unknown statements; the new test pins it.
+- **#47 repro** (`alter table t add primary key (id); select 1 as x;`) is a test.
+- Cost: test config 9,115,079 -> 9,330,083 instantiations (`tsgo --singleThreaded`), the new test file included.
+
 ## 2026-11-18 One long statement: recursion shapes (#105, track A; bug)
 
 - **Select list.** `MergeStringRecords` (parse-select.ts) forces the record's properties each step (the ForceProps shape
