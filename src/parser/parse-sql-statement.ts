@@ -175,7 +175,27 @@ type ParseCreate<
 						? ParseSqliteCreate<Tokens, Db, Params>
 						: PeekToken<Tokens> extends TokenIdent<"domain"> | TokenKey<"domain">
 							? ParseCreateDomain<SkipToken<Tokens>, Db>
-							: ParseSkipStatement<Tokens, Db>
+							: ParsePgCreateView<Tokens, Db, Params>
+
+/** PostgreSQL (PGT-20): `CREATE OR REPLACE VIEW`, `CREATE MATERIALIZED VIEW` (typed as a view); other statements are skipped. */
+type ParsePgCreateView<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
+	PeekToken<Tokens> extends TokenKey<"or">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"replace">
+				? SkipToken<R1> extends infer R2 extends ParserMonad
+					? PeekToken<R2> extends TokenKey<"view">
+						? ParseCreateView<SkipToken<R2>, Db, Params, false, true>
+						: ParseSkipStatement<R2, Db>
+					: never
+				: ParseSkipStatement<R1, Db>
+			: never
+		: PeekToken<Tokens> extends TokenIdent<"materialized">
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<"view">
+					? ParseCreateView<SkipToken<R1>, Db, Params>
+					: ParseSkipStatement<R1, Db>
+				: never
+			: ParseSkipStatement<Tokens, Db>
 
 /** SQLite: `CREATE [TEMP|TEMPORARY] TABLE|VIEW|TRIGGER`, `CREATE VIRTUAL TABLE`; the rest (INDEX…) is skipped (SQLT-22…SQLT-24). */
 type ParseSqliteCreate<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
@@ -210,4 +230,10 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 				? ParseDropType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">
 					? ParseDropView<SkipToken<Tokens>, Db>
-					: ParseSkipStatement<Tokens, Db>
+					: PeekToken<Tokens> extends TokenIdent<"materialized"> // PGT-20
+						? SkipToken<Tokens> extends infer R1 extends ParserMonad
+							? PeekToken<R1> extends TokenKey<"view">
+								? ParseDropView<SkipToken<R1>, Db>
+								: ParseSkipStatement<R1, Db>
+							: never
+						: ParseSkipStatement<Tokens, Db>

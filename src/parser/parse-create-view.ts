@@ -1,4 +1,9 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type {
+	JsqlDatabaseShape,
+	JsqlDataShape,
+	JsqlSchemaShape,
+	JsqlSelectStatementResult,
+} from "../core/jsql-shapes.ts"
 import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
@@ -72,13 +77,22 @@ type ParseCreateViewStore<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 > =
-	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
-		? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["returning"]>> extends infer NewDb
-			? NewDb extends JsqlDatabaseShape
-				? [SkipToken<Tokens>, NewDb, null]
-				: never
+	PeekToken<Tokens> extends TokenIdent<"with">
+		? // PGT-20: `CREATE MATERIALIZED VIEW … WITH [NO] DATA`
+			SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenIdent<"no"> | TokenKey<"no">
+				? SkipToken<R1> extends infer R2 extends ParserMonad
+					? ParseCreateViewStore<SkipToken<R2>, Db, Schema, Name, Sel>
+					: never
+				: ParseCreateViewStore<SkipToken<R1>, Db, Schema, Name, Sel>
 			: never
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE VIEW"]>>
+		: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+			? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["returning"]>> extends infer NewDb
+				? NewDb extends JsqlDatabaseShape
+					? [SkipToken<Tokens>, NewDb, null]
+					: never
+				: never
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE VIEW"]>>
 
 type ParseCreateViewSelectAndSemi<
 	R2 extends ParserMonad,
@@ -87,21 +101,28 @@ type ParseCreateViewSelectAndSemi<
 	Vname extends string,
 	Params extends ExpressionParamsShape,
 	Cols,
-	IfNotExists extends boolean,
-> =
+	IfNotExists extends boolean | "replace",
+> = (
 	JsqlDbGetData<Db, Sch, Vname> extends null
-		? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends ParserMonad, infer _Db2, infer Res]
-			? Res extends DbtyperErrorShape
-				? [R3, Db, Res]
-				: Res extends JsqlSelectStatementResult
-					? ParseCreateViewAfterSelect<R3, Db, Sch, Vname, Res, Cols>
-					: never
-			: never
-		: IfNotExists extends true
-			? SkipBracketedUntil<R2> extends [infer Rest extends ParserMonad, unknown]
-				? [SkipToken<Rest>, Db, null]
+		? true
+		: IfNotExists extends "replace"
+			? JsqlDbGetData<Db, Sch, Vname> extends JsqlDataShape<"view">
+				? true
+				: false
+			: false
+) extends true
+	? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends ParserMonad, infer _Db2, infer Res]
+		? Res extends DbtyperErrorShape
+			? [R3, Db, Res]
+			: Res extends JsqlSelectStatementResult
+				? ParseCreateViewAfterSelect<R3, Db, Sch, Vname, Res, Cols>
 				: never
-			: SkipFailedStatement<R2, Db, FormatError<Errors["VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA"], []>>
+		: never
+	: IfNotExists extends true
+		? SkipBracketedUntil<R2> extends [infer Rest extends ParserMonad, unknown]
+			? [SkipToken<Rest>, Db, null]
+			: never
+		: SkipFailedStatement<R2, Db, FormatError<Errors["VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA"], []>>
 
 type ParseCreateViewAfterAs<
 	R1 extends ParserMonad,
@@ -110,7 +131,7 @@ type ParseCreateViewAfterAs<
 	Vname extends string,
 	Params extends ExpressionParamsShape,
 	Cols,
-	IfNotExists extends boolean,
+	IfNotExists extends boolean | "replace",
 > =
 	PeekToken<R1> extends TokenIdent<"with">
 		? ParseCreateViewSelectAndSemi<R1, Db, Sch, Vname, Params, Cols, IfNotExists>
@@ -127,6 +148,7 @@ export type ParseCreateView<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	Temp extends boolean = false,
+	Replace extends boolean = false,
 > =
 	PeekToken<Tokens> extends TokenKey<"if">
 		? DialectFact<Db, "ddl"> extends true
@@ -143,15 +165,15 @@ export type ParseCreateView<
 						: never
 					: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE"], []>>
 				: never
-			: ParseCreateViewNamed<Tokens, Db, Params, Temp, false>
-		: ParseCreateViewNamed<Tokens, Db, Params, Temp, false>
+			: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
+		: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
 
 type ParseCreateViewNamed<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 	Temp extends boolean,
-	IfNotExists extends boolean,
+	IfNotExists extends boolean | "replace",
 > =
 	ParseQualifiedViewName<Tokens, Db> extends [
 		infer R0 extends ParserMonad,
@@ -170,7 +192,7 @@ type ParseCreateViewColumns<
 	Params extends ExpressionParamsShape,
 	Sch extends string,
 	Vname extends string,
-	IfNotExists extends boolean,
+	IfNotExists extends boolean | "replace",
 > =
 	JsqlDbGetSchema<Db, Sch> extends JsqlSchemaShape
 		? ParseCteColumnList<R0> extends [infer R0b extends ParserMonad, infer Cols]

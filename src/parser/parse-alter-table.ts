@@ -6,6 +6,7 @@ import type {
 	JsqlDbReplaceColumn,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
+	JsqlDbReplaceColumnDefault,
 	JsqlDbGetColumn,
 	JsqlDbGetColumnType,
 	JsqlDbReplaceData,
@@ -21,7 +22,7 @@ import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { DialectFact } from "../core/dialect.ts"
-import type { ParseOneColumnAfterColName } from "./parse-create-table.ts"
+import type { ParseOneColumnAfterColName, ParseNameList } from "./parse-create-table.ts"
 
 type SkipUntilCommaOrSemi<Tokens extends ParserMonad> = SkipBracketedUntil<
 	Tokens,
@@ -42,29 +43,12 @@ type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDat
 		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
 		: [SkipToken<Tokens>, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>, null, null]
 
-type ParseAlterAddColumnAfterColName<
-	R2 extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	Col extends string,
-> =
-	ParseSqlType<R2, Db, false, Sch> extends [infer AfterType extends ParserMonad, infer TypeShape]
-		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperErrorShape
-				? [AfterType, Db, TypeShape]
-				: JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-					? ParseAlterActions<AfterType, JsqlDbReplaceColumn<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
-					: SkipFailedStatement<AfterType, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [Col]>>
-			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>]
-		: never
-
 export type FinishAlterStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, Db, null]
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["ALTER TABLE"]>>
 
-type ParseAlterActions<
+export type ParseAlterActions<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
@@ -92,16 +76,21 @@ type ParseAlterAddColumn<
 					| TokenKey<"primary">
 					| TokenKey<"unique">
 					| TokenKey<"foreign">
-				? SkipUntilCommaOrSemi<R0> extends [infer Rskip extends ParserMonad, unknown]
-					? ParseAlterActions<Rskip, Db, Sch, Tab>
-					: never
+					| TokenKey<"check">
+				? ParseAlterAddConstraint<R0, Db, Sch, Tab>
 				: ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
 					? PeekToken<R1> extends TokenIdent<infer Col extends string>
-						? DialectFact<Db, "ddl"> extends true
-							? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-								? ParseOneColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, readonly [], Col, true>
-								: SkipFailedStatement<R1, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [Col]>>
-							: ParseAlterAddColumnAfterColName<SkipToken<R1>, Db, Sch, Tab, Col>
+						? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+							? SkipToken<R1> extends infer R2 extends ParserMonad
+								? PeekToken<R2> extends TokenKey<";" | ","> | TokenEot
+									? SkipFailedStatement<
+											R2,
+											Db,
+											FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>
+										>
+									: ParseOneColumnAfterColName<R2, Db, Sch, Tab, readonly [], Col, true>
+								: never
+							: SkipFailedStatement<R1, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [Col]>>
 						: SkipFailedExpression<
 									R1,
 									FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after ADD in ALTER TABLE"]>
@@ -110,6 +99,85 @@ type ParseAlterAddColumn<
 							: never
 					: never
 			: never
+		: never
+
+/**
+ * `ADD [CONSTRAINT name] PRIMARY KEY | UNIQUE | FOREIGN KEY | CHECK …` (PGT-19): a primary key makes its columns
+ * NOT NULL, the other constraints change no type; the rest of the action is skipped.
+ */
+type ParseAlterAddConstraint<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+> =
+	PeekToken<Tokens> extends TokenKey<"constraint">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? ParseAlterConstraintBody<SkipToken<R1>, Db, Sch, Tab>
+			: never
+		: ParseAlterConstraintBody<Tokens, Db, Sch, Tab>
+
+type ParseAlterConstraintBody<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+> =
+	PeekToken<Tokens> extends TokenKey<"primary">
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? SkipToken<R0> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<"(">
+					? SkipToken<R1> extends infer R1b extends ParserMonad
+						? ParseNameList<R1b, readonly []> extends [infer R2 extends ParserMonad, infer Names]
+							? Names extends DbtyperErrorShape
+								? [R2, Db, Names]
+								: Names extends readonly string[]
+									? Exclude<
+											Names[number],
+											keyof JsqlTableColumns<Db, Sch, Tab>
+										> extends infer Missing extends string
+										? [Missing] extends [never]
+											? ParseAlterSkipAction<
+													R2,
+													AlterPrimaryKeyNotNull<Db, Sch, Tab, Names>,
+													Sch,
+													Tab
+												>
+											: SkipFailedStatement<
+													R2,
+													Db,
+													FormatError<Errors["UNKNOWN_COLUMN"], [Missing, "PRIMARY KEY"]>
+												>
+										: never
+									: never
+							: never
+						: never
+					: ParseAlterSkipAction<R1, Db, Sch, Tab>
+				: never
+			: never
+		: ParseAlterSkipAction<Tokens, Db, Sch, Tab>
+
+type JsqlTableColumns<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> =
+	JsqlDbGetTable<Db, Sch, Tab> extends { columns: infer C } ? C : {}
+
+type AlterPrimaryKeyNotNull<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Names extends readonly string[],
+> = Names extends readonly [infer N extends string, ...infer Rest extends readonly string[]]
+	? AlterPrimaryKeyNotNull<JsqlDbReplaceColumnNullability<Db, Sch, Tab, N, "not_null">, Sch, Tab, Rest>
+	: Db
+
+/** The rest of an action that changes no type is skipped up to `,` or `;`. */
+type ParseAlterSkipAction<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+> =
+	SkipUntilCommaOrSemi<Tokens> extends [infer R extends ParserMonad, unknown]
+		? ParseAlterActions<R, Db, Sch, Tab>
 		: never
 
 type ParseOptionalColumnKeyword<Tokens extends ParserMonad> =
@@ -122,13 +190,26 @@ type ParseAlterDropColumn<
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"drop">
-		? ParseOptionalColumnKeyword<SkipToken<Tokens>> extends [infer R1 extends ParserMonad, null]
-			? PeekToken<R1> extends TokenIdent<infer Col extends string>
-				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-					? [R1, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>]
-					: ParseAlterActions<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab>
-				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after DROP COLUMN"]>>
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? PeekToken<R0> extends TokenKey<"constraint">
+				? // PGT-19: dropping a constraint changes no type (a dropped primary key keeps NOT NULL: not tracked)
+					ParseAlterSkipAction<R0, Db, Sch, Tab>
+				: ParseAlterDropColumnNamed<R0, Db, Sch, Tab>
 			: never
+		: never
+
+type ParseAlterDropColumnNamed<
+	R0 extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+> =
+	ParseOptionalColumnKeyword<R0> extends [infer R1 extends ParserMonad, null]
+		? PeekToken<R1> extends TokenIdent<infer Col extends string>
+			? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+				? [R1, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>]
+				: ParseAlterActions<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab>
+			: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after DROP COLUMN"]>>
 		: never
 
 type ParseAlterRenameAfterToKw<
@@ -216,6 +297,17 @@ type ParseAlterRenameColumn<
 			: never
 		: never
 
+/** `ALTER COLUMN … TYPE t [USING expr]` (PGT-19): the conversion expression is not typed. */
+type ParseAlterColumnUsing<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+> =
+	PeekToken<Tokens> extends TokenKey<"using"> | TokenIdent<"using">
+		? ParseAlterSkipAction<Tokens, Db, Sch, Tab>
+		: ParseAlterActions<Tokens, Db, Sch, Tab>
+
 type ParseAlterColumnTypeAfterTypeKw<
 	R3 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -227,7 +319,7 @@ type ParseAlterColumnTypeAfterTypeKw<
 		? TypeShape extends SqlTypeShape
 			? TypeShape extends DbtyperErrorShape
 				? [AfterType, Db, TypeShape]
-				: ParseAlterActions<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
+				: ParseAlterColumnUsing<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
 			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>]
 		: never
 
@@ -273,10 +365,15 @@ type ParseAlterColumnSetBranch<
 				: PeekToken<Rs> extends TokenKey<"default">
 					? SkipToken<Rs> extends infer Rd extends ParserMonad
 						? SkipUntilCommaOrSemi<Rd> extends [infer Rsd extends ParserMonad, unknown]
-							? ParseAlterActions<Rsd, Db, Sch, Tab>
+							? ParseAlterActions<Rsd, JsqlDbReplaceColumnDefault<Db, Sch, Tab, Col, true>, Sch, Tab>
 							: never
 						: never
-					: SkipFailedStatement<Rs, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE"], []>>
+					: PeekToken<Rs> extends TokenKey<"data"> | TokenIdent<"data">
+						? // `SET DATA TYPE t`: the same as `TYPE t`
+							SkipToken<Rs> extends infer Rt extends ParserMonad
+							? ParseAlterColumnTypeBranch<Rt, Db, Sch, Tab, Col>
+							: never
+						: SkipFailedStatement<Rs, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE"], []>>
 			: never
 		: never
 
@@ -307,12 +404,13 @@ type ParseAlterColumnDropDefaultNoop<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
+	Col extends string,
 > =
 	PeekToken<Rd0> extends infer Tdd
 		? SkipToken<Rd0> extends infer Rdd extends ParserMonad
 			? Tdd extends TokenKey<"default">
 				? SkipUntilCommaOrSemi<Rdd> extends [infer Rsdd extends ParserMonad, unknown]
-					? ParseAlterActions<Rsdd, Db, Sch, Tab>
+					? ParseAlterActions<Rsdd, JsqlDbReplaceColumnDefault<Db, Sch, Tab, Col, null>, Sch, Tab>
 					: never
 				: SkipFailedStatement<Rdd, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE"], []>>
 			: never
@@ -328,8 +426,10 @@ type ParseAlterColumnDropAfterRd0<
 	PeekToken<Rd0> extends TokenKey<"not">
 		? ParseAlterColumnDropNotNullChain<Rd0, Db, Sch, Tab, Col>
 		: PeekToken<Rd0> extends TokenKey<"default">
-			? ParseAlterColumnDropDefaultNoop<Rd0, Db, Sch, Tab>
-			: SkipFailedStatement<Rd0, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE"], []>>
+			? ParseAlterColumnDropDefaultNoop<Rd0, Db, Sch, Tab, Col>
+			: PeekToken<Rd0> extends TokenIdent<"identity"> | TokenKey<"identity">
+				? ParseAlterSkipAction<Rd0, Db, Sch, Tab>
+				: SkipFailedStatement<Rd0, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE"], []>>
 
 type ParseAlterColumnDropBranch<
 	R2 extends ParserMonad,
@@ -352,7 +452,25 @@ type ParseAlterColumnAfterIdent<
 			? ParseAlterColumnSetBranch<R2, Db, Sch, Tab, Col>
 			: PeekToken<R2> extends TokenKey<"drop">
 				? ParseAlterColumnDropBranch<R2, Db, Sch, Tab, Col>
-				: SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN"], []>>
+				: PeekToken<R2> extends TokenKey<"add">
+					? // `ADD GENERATED … AS IDENTITY` (PGT-19): the column becomes NOT NULL with a default
+						ParseAlterSkipAction<
+							R2,
+							JsqlDbReplaceColumnDefault<
+								JsqlDbReplaceColumnNullability<Db, Sch, Tab, Col, "not_null">,
+								Sch,
+								Tab,
+								Col,
+								true
+							>,
+							Sch,
+							Tab
+						>
+					: SkipFailedStatement<
+							R2,
+							Db,
+							FormatError<Errors["EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN"], []>
+						>
 
 type ParseAlterColumnAfterAlterKw<
 	Tokens extends ParserMonad,
@@ -394,7 +512,12 @@ type ParseAlterOneAction<
 					? ParseAlterRenameColumn<Tokens, Db, Sch, Tab>
 					: PeekToken<Tokens> extends TokenKey<"alter">
 						? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab>
-						: SkipFailedStatement<Tokens, Db, FormatError<Errors["UNSUPPORTED_ALTER_TABLE_ACTION"], []>>
+						: PeekToken<Tokens> extends
+									| TokenIdent<"enable" | "disable" | "force" | "owner">
+									| TokenKey<"no">
+							? // PGT-21: row level security and ownership change no type
+								ParseAlterSkipAction<Tokens, Db, Sch, Tab>
+							: SkipFailedStatement<Tokens, Db, FormatError<Errors["UNSUPPORTED_ALTER_TABLE_ACTION"], []>>
 		: JsqlDbGetData<Db, Sch, Tab> extends null
 			? [Tokens, Db, FormatError<Errors["TABLE_KEY_MISMATCH_IN_ALTER_TABLE"], []>]
 			: SkipFailedStatement<Tokens, Db, FormatError<Errors["ALTER_TABLE_APPLIES_ONLY_TO_BASE_TABLES"], []>>

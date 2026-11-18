@@ -34,7 +34,7 @@ import type {
 	ScalarExprAst,
 } from "./parse-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
-import type { FinishAlterStatement } from "./parse-alter-table.ts"
+import type { FinishAlterStatement, ParseAlterActions } from "./parse-alter-table.ts"
 
 export type ParseCreateTable<
 	Tokens extends ParserMonad,
@@ -574,7 +574,22 @@ type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnCtx, S e
 															: ColumnGenericFail<Tokens, C, S>
 
 /** The error for a token that no column constraint starts with. */
-type ColumnGenericFail<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = C["alter"] extends true
+type ColumnGenericFail<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	PeekToken<Tokens> extends TokenIdent<"deferrable" | "initially">
+		? ColumnDeferrable<Tokens, C, S>
+		: ColumnGenericFailNoDefer<Tokens, C, S>
+
+/** PGT-18: `DEFERRABLE`, `INITIALLY DEFERRED | IMMEDIATE` change nothing the types see. */
+type ColumnDeferrable<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	PeekToken<Tokens> extends TokenIdent<"initially">
+		? ParseColumnConstraints<SkipToken<SkipToken<Tokens>>, C, ColumnStateWith<S, {}>>
+		: ParseColumnConstraints<SkipToken<Tokens>, C, ColumnStateWith<S, {}>>
+
+type ColumnGenericFailNoDefer<
+	Tokens extends ParserMonad,
+	C extends ColumnCtx,
+	S extends ColumnState,
+> = C["alter"] extends true
 	? PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? AlterColumnDone<Tokens, C, S>
 		: ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_SEMICOLON"], ["ALTER TABLE"]>>
@@ -596,19 +611,20 @@ type OnConflictToken<Db extends JsqlDatabaseShape> = DialectFact<Db, "ddl"> exte
  * the column joins the table with the facts a CREATE TABLE gives it.
  */
 type AlterColumnDone<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = S["nn"] extends true
-	? S["def"] extends true
-		? AlterColumnStore<Tokens, C, S>
-		: ColumnFail<
+	? [S["def"], PgAlter<C>] extends [false, never]
+		? ColumnFail<
 				Tokens,
 				C,
 				FormatError<Errors["SQLITE_ADD_COLUMN_RESTRICTED"], ["NOT NULL without a non-null DEFAULT"]>
 			>
+		: AlterColumnStore<Tokens, C, S>
 	: AlterColumnStore<Tokens, C, S>
 
 type AlterColumnStore<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	OneCol<ColumnEntry<C, S>> extends { cols: infer Cols; facts: infer Facts }
-		? FinishAlterStatement<
+		? AlterColumnFinish<
 				Tokens,
+				C,
 				JsqlDbReplaceColumn<
 					C["db"],
 					C["schema"],
@@ -620,6 +636,15 @@ type AlterColumnStore<Tokens extends ParserMonad, C extends ColumnCtx, S extends
 				>
 			>
 		: never
+
+/** PostgreSQL (PGT-19): `ADD COLUMN` takes the full column definition and may be followed by `, <action>`. */
+type PgAlter<C extends ColumnCtx> = DialectFact<C["db"], "ddl"> extends true ? never : true
+
+/** SQLite: the definition ends the statement (SQLT-21); PostgreSQL goes on with the next action. */
+type AlterColumnFinish<Tokens extends ParserMonad, C extends ColumnCtx, Db extends JsqlDatabaseShape> =
+	DialectFact<C["db"], "ddl"> extends true
+		? FinishAlterStatement<Tokens, Db>
+		: ParseAlterActions<Tokens, Db, C["schema"], C["table"]>
 
 /** At `AUTOINCREMENT` (SQLite, SQLT-16): only on a column declared exactly `INTEGER PRIMARY KEY`. */
 type ColumnAutoincrement<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
@@ -644,11 +669,16 @@ type ColumnNotNull<Tokens extends ParserMonad, C extends ColumnCtx, S extends Co
 	SkipToken<Tokens> extends infer R1 extends ParserMonad
 		? PeekToken<R1> extends TokenKey<"null">
 			? ColumnOnConflict<SkipToken<R1>, C, ColumnStateWith<S, { nn: true }>>
-			: ColumnFail<R1, C, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
+			: PeekToken<R1> extends TokenIdent<"deferrable">
+				? ParseColumnConstraints<SkipToken<R1>, C, ColumnStateWith<S, {}>>
+				: ColumnFail<R1, C, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
 		: never
 
 /** At `PRIMARY`: `PRIMARY KEY` makes the column NOT NULL (CORE-1). */
-type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = C["alter"] extends true
+type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = [
+	C["alter"],
+	PgAlter<C>,
+] extends [true, never]
 	? ColumnFail<Tokens, C, FormatError<Errors["SQLITE_ADD_COLUMN_RESTRICTED"], ["PRIMARY KEY"]>>
 	: SkipToken<Tokens> extends infer R1 extends ParserMonad
 		? PeekToken<R1> extends TokenKey<"key">
@@ -663,7 +693,10 @@ type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S extends
 		: never
 
 /** At `UNIQUE`; SQLite: an `ON CONFLICT` clause may follow (SQLT-18). */
-type ColumnUnique<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = C["alter"] extends true
+type ColumnUnique<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = [
+	C["alter"],
+	PgAlter<C>,
+] extends [true, never]
 	? ColumnFail<Tokens, C, FormatError<Errors["SQLITE_ADD_COLUMN_RESTRICTED"], ["UNIQUE"]>>
 	: ColumnOnConflict<SkipToken<Tokens>, C, ColumnStateWith<S, {}>>
 
@@ -748,15 +781,55 @@ type ColumnAfterGroup<
 	S extends ColumnState,
 > = E extends DbtyperErrorShape ? [R, C["db"], E] : ParseColumnConstraints<R, C, ColumnStateWith<S, {}>>
 
-/** After `GENERATED`: `ALWAYS AS (expr) [STORED | VIRTUAL]` (CORE-15, CORE-18); the expression is not typed. */
+/**
+ * After `GENERATED`: `ALWAYS AS (expr) [STORED | VIRTUAL]` (CORE-15, CORE-18), or an identity column
+ * `ALWAYS | BY DEFAULT AS IDENTITY [(options)]` (PGT-18); the expressions and options are not typed.
+ */
 type ParseColumnGenerated<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	PeekToken<Tokens> extends TokenKey<"always">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"as">
-				? ColumnGeneratedBody<SkipToken<R1>, C, S>
+				? ColumnGeneratedOrIdentity<SkipToken<R1>, C, S, true>
 				: ColumnFail<R1, C, FormatError<Errors["EXPECTED_AS_AFTER_GENERATED_ALWAYS"], []>>
 			: never
-		: ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_ALWAYS_AFTER_GENERATED"], []>>
+		: PeekToken<Tokens> extends TokenKey<"by">
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<"default">
+					? SkipToken<R1> extends infer R2 extends ParserMonad
+						? PeekToken<R2> extends TokenKey<"as">
+							? ColumnGeneratedOrIdentity<SkipToken<R2>, C, S, false>
+							: ColumnFail<R2, C, FormatError<Errors["EXPECTED_AS_AFTER_GENERATED_ALWAYS"], []>>
+						: never
+					: ColumnFail<R1, C, FormatError<Errors["EXPECTED_ALWAYS_AFTER_GENERATED"], []>>
+				: never
+			: ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_ALWAYS_AFTER_GENERATED"], []>>
+
+/** `[(sequence options)]` after IDENTITY: `[rest, null | error]`. */
+type IdentityOptions<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<"("> ? SkipParenGroup<Tokens> : [Tokens, null]
+
+/** After `GENERATED … AS`: `IDENTITY [(options)]` (NOT NULL; ALWAYS is not insertable, BY DEFAULT is optional) or `(expr)`. */
+type ColumnGeneratedOrIdentity<
+	Tokens extends ParserMonad,
+	C extends ColumnCtx,
+	S extends ColumnState,
+	Always extends boolean,
+> =
+	PeekToken<Tokens> extends TokenIdent<"identity">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? IdentityOptions<R1> extends [infer R2 extends ParserMonad, infer E]
+				? E extends DbtyperErrorShape
+					? [R2, C["db"], E]
+					: ParseColumnConstraints<
+							R2,
+							C,
+							ColumnStateWith<S, Always extends true ? { nn: true; gen: true } : { nn: true; def: true }>
+						>
+				: never
+			: never
+		: Always extends true
+			? ColumnGeneratedBody<Tokens, C, S>
+			: ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_AS_AFTER_GENERATED_ALWAYS"], []>>
 
 /** `(expr) [STORED | VIRTUAL]` after `AS`. */
 type ColumnGeneratedBody<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
@@ -937,7 +1010,7 @@ type ReferenceSetAction<Tokens extends ParserMonad> =
 		: never
 
 /** `a, b, c)` after `(`: `[rest after ")", names]` or `[rest, error]`. */
-type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[]> =
+export type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[]> =
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N extends string>
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<",">
@@ -1076,20 +1149,36 @@ type AfterTableConstraint<
 		? ParseCreateTableBody<SkipToken<Tokens>, Db, Schema, Table, Stack>
 		: PeekToken<Tokens> extends TokenKey<")">
 			? ParseCreateTableBody<Tokens, Db, Schema, Table, Stack>
-			: PeekToken<Tokens> extends TokenKey<"on">
-				? // SQLite (SQLT-18): `ON CONFLICT <action>` after a table constraint
-					DialectFact<Db, "ddl"> extends true
-					? AfterTableConstraint<SkipToken<SkipToken<SkipToken<Tokens>>>, Db, Schema, Table, Stack>
+			: PeekToken<Tokens> extends TokenIdent<"deferrable" | "initially"> | TokenKey<"not">
+				? // PGT-18: `[NOT] DEFERRABLE`, `INITIALLY DEFERRED | IMMEDIATE` change nothing the types see
+					TableConstraintDeferrable<Tokens, Db, Schema, Table, Stack>
+				: PeekToken<Tokens> extends TokenKey<"on">
+					? // SQLite (SQLT-18): `ON CONFLICT <action>` after a table constraint
+						DialectFact<Db, "ddl"> extends true
+						? AfterTableConstraint<SkipToken<SkipToken<SkipToken<Tokens>>>, Db, Schema, Table, Stack>
+						: SkipFailedStatement<
+								Tokens,
+								Db,
+								FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
+							>
 					: SkipFailedStatement<
 							Tokens,
 							Db,
 							FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
 						>
-				: SkipFailedStatement<
-						Tokens,
-						Db,
-						FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
-					>
+
+type TableConstraintDeferrable<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<Tokens> extends TokenIdent<"initially">
+			? AfterTableConstraint<SkipToken<R1>, Db, Schema, Table, Stack>
+			: AfterTableConstraint<R1, Db, Schema, Table, Stack>
+		: never
 
 type MarkNotNull<
 	Stack extends readonly ColumnDef[],
