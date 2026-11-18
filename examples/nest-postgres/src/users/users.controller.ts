@@ -11,7 +11,7 @@ export class UsersController {
 		return (await this.users.listUsers()).map(user => ({
 			email: user.email,
 			display_name: user.display_name,
-			created_at: user.created_at,
+			created_at: user.user_created_at,
 			login_count: user.login_count,
 		}))
 	}
