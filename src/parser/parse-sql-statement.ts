@@ -83,20 +83,23 @@ type ApplyParsedStatementsInner<
 	? [Tokens, Db, Error, Result]
 	: PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error, Result]
-		: ParseSqlStatement<Tokens, Db, Params> extends [
-					infer Rest extends ParserMonad,
-					infer NewDB extends JsqlDatabaseShape,
-					infer NewResult,
-			  ]
-			? ApplyParsedStatementsInner<
-					Rest,
-					NewDB,
-					Params,
-					NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
-					NewResult extends DbtyperErrorShape ? null : NewResult,
-					Inc<Depth>
-				>
-			: never
+		: PeekToken<Tokens> extends TokenKey<";">
+			? // STMT-8: an empty statement is ignored and does not replace the previous result
+				ApplyParsedStatementsInner<SkipToken<Tokens>, Db, Params, Error, Result, Inc<Depth>>
+			: ParseSqlStatement<Tokens, Db, Params> extends [
+						infer Rest extends ParserMonad,
+						infer NewDB extends JsqlDatabaseShape,
+						infer NewResult,
+				  ]
+				? ApplyParsedStatementsInner<
+						Rest,
+						NewDB,
+						Params,
+						NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
+						NewResult extends DbtyperErrorShape ? null : NewResult,
+						Inc<Depth>
+					>
+				: never
 
 export type ParseSqlStatement<
 	Tokens extends ParserMonad,
