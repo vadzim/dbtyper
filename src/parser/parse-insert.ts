@@ -13,7 +13,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { MergeScope, ScopeMap, TableScopeColumns, VisibleColumnsOf } from "./parser-scope.ts"
 import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
@@ -39,6 +39,18 @@ type InsertTableContext = {
 	table: string
 }
 
+/** SQLT-15: an INSERT into a SQLite table with a rowid may name `rowid`, `oid`, `_rowid_` (columns of the target, never of `*`). */
+type InsertTable<Tbl extends JsqlDataShape> = Tbl extends { rowid_table: true }
+	? Tbl & { columns: TableScopeColumns<Tbl> }
+	: Tbl
+
+/** The real columns of an INSERT target, in declaration order: what an INSERT without a column list fills. */
+type InsertRealColumns<Tbl extends JsqlDataShape> = VisibleColumnsOf<{
+	schema: string
+	table: string
+	columns: Tbl["columns"]
+}>
+
 type ParseInsertAliasAfterTable<
 	Tokens extends ParserMonad,
 	_Db extends JsqlDatabaseShape,
@@ -47,7 +59,7 @@ type ParseInsertAliasAfterTable<
 	Tbl extends JsqlDataShape,
 	_Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends TokenKey<"(" | "values" | "select">
+	PeekToken<Tokens> extends TokenKey<"(" | "values" | "select" | "default">
 		? [
 				Tokens,
 				null,
@@ -58,12 +70,12 @@ type ParseInsertAliasAfterTable<
 							{
 								schema: Sch
 								table: Tab
-								columns: Tbl["columns"]
+								columns: TableScopeColumns<Tbl>
 							}
 						>,
 						{}
 					>
-					tbl: Tbl
+					tbl: InsertTable<Tbl>
 					schema: Sch
 					table: Tab
 				},
@@ -82,12 +94,12 @@ type ParseInsertAliasAfterTable<
 											{
 												schema: Sch
 												table: Tab
-												columns: Tbl["columns"]
+												columns: TableScopeColumns<Tbl>
 											}
 										>,
 										{}
 									>
-									tbl: Tbl
+									tbl: InsertTable<Tbl>
 									schema: Sch
 									table: Tab
 								},
@@ -243,22 +255,49 @@ type ParseInsertAfterOpenParenCols<
 				Tbl,
 				Sch,
 				Tab,
-				UnionToStringTuple<Extract<keyof Tbl["columns"], string>>
+				UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
 			>
-		: PeekToken<Tokens> extends TokenKey<"(">
-			? SkipToken<Tokens> extends infer R0 extends ParserMonad
-				? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [
-						infer R1 extends ParserMonad,
-						infer ColsOrErr,
-					]
-					? ColsOrErr extends DbtyperErrorShape
-						? [R1, Db, ColsOrErr]
-						: ColsOrErr extends readonly string[]
-							? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
-							: never
+		: PeekToken<Tokens> extends TokenKey<"default">
+			? SkipToken<Tokens> extends infer Rd extends ParserMonad
+				? PeekToken<Rd> extends TokenKey<"values">
+					? ValidateInsertRequiredColumns<Tbl, readonly []> extends infer RequiredOk
+						? RequiredOk extends DbtyperErrorShape
+							? [SkipToken<Rd>, Db, RequiredOk]
+							: ParseInsertOptionalTail<
+										SkipToken<Rd>,
+										Db,
+										Scope,
+										Params,
+										Tbl,
+										Sch,
+										Tab,
+										readonly [],
+										undefined,
+										undefined
+								  > extends [
+										infer Rt extends ParserMonad,
+										infer DbT extends JsqlDatabaseShape,
+										infer ResT,
+								  ]
+								? [Rt, DbT, ResT]
+								: never
+						: never
+					: SkipFailedStatement<Rd, Db, FormatError<Errors["EXPECTED_VALUES_AFTER_DEFAULT_IN_INSERT"], []>>
+				: never
+			: PeekToken<Tokens> extends TokenKey<"(">
+				? SkipToken<Tokens> extends infer R0 extends ParserMonad
+					? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [
+							infer R1 extends ParserMonad,
+							infer ColsOrErr,
+						]
+						? ColsOrErr extends DbtyperErrorShape
+							? [R1, Db, ColsOrErr]
+							: ColsOrErr extends readonly string[]
+								? ParseInsertAfterColumnNames<R1, Db, Scope, Params, Tbl, Sch, Tab, ColsOrErr>
+								: never
+						: never
 					: never
 				: never
-			: never
 
 type ParseInsertAfterColumnNames<
 	R1 extends ParserMonad,
@@ -459,7 +498,7 @@ type ParseInsertValuesCells<
 					? Resolved extends DbtyperErrorShape
 						? [R1, Db, WithErrorClause<Resolved, "INSERT VALUES">]
 						: Resolved extends SqlTypeShape
-							? ValidateMutationValueForColumn<Tbl, C0, Resolved> extends infer V0
+							? ValidateMutationValueForColumn<Tbl, C0, Resolved, Db> extends infer V0
 								? V0 extends DbtyperErrorShape
 									? [R1, Db, V0]
 									: V0 extends true
@@ -664,8 +703,17 @@ type ParseInsertOnConflictAfterConflictCloseParen<
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
-> =
-	PeekToken<R2> extends TokenKey<"do">
+	AfterWhere extends boolean = false,
+> = [AfterWhere, PeekToken<R2>] extends [false, TokenKey<"where">]
+	? // SQLT-40: a partial-index conflict target `(cols) WHERE predicate`
+		SkipToken<R2> extends infer Rw0 extends ParserMonad
+		? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends ParserMonad, infer We]
+			? We extends DbtyperErrorShape
+				? [Rw, Db, We]
+				: ParseInsertOnConflictAfterConflictCloseParen<Rw, Db, Scope, Params, Tbl, Sch, Tab, Cols, true>
+			: never
+		: never
+	: PeekToken<R2> extends TokenKey<"do">
 		? PeekToken<R2> extends infer TDo
 			? SkipToken<R2> extends infer R3 extends ParserMonad
 				? TDo extends TokenKey<"do">
@@ -696,7 +744,7 @@ type ParseInsertOnConflictAfterDoKw<
 				? ParseInsertOnConflictAfterUpdateKw<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 				: TUp extends TokenIdent<"nothing">
 					? // CORE-20: nothing is assigned; RETURNING then yields the inserted rows only, same row type.
-						ParseInsertMaybeReturning<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols, undefined, undefined>
+						ParseInsertOptionalTail<R4, Db, Scope, Params, Tbl, Sch, Tab, Cols, undefined, undefined>
 					: SkipFailedStatement<
 							R4,
 							Db,
@@ -727,7 +775,18 @@ type ParseInsertOnConflictAfterUpdateKw<
 						? SetOut extends DbtyperErrorShape
 							? [R6, Db6, SetOut]
 							: SetOut extends readonly string[]
-								? ParseInsertAfterUpsertSet<R6, Db6, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetOut>
+								? ParseInsertAfterUpsertSet<
+										R6,
+										Db6,
+										UpsertScope,
+										Params,
+										Tbl,
+										Sch,
+										Tab,
+										Cols,
+										SetOut,
+										Scope
+									>
 								: never
 						: never
 					: never
@@ -807,7 +866,8 @@ type ParseInsertUpsertSetAssignments<
 														? ValidateMutationValueForColumn<
 																Tbl,
 																Col,
-																Resolved
+																Resolved,
+																Db
 															> extends infer V0
 															? V0 extends DbtyperErrorShape
 																? [R3, Db, V0]
@@ -823,6 +883,8 @@ type ParseInsertUpsertSetAssignments<
 																			>
 																		: PeekToken<R3> extends
 																					| TokenKey<"where">
+																					| TokenKey<"returning">
+																					| TokenKey<"on">
 																					| TokenKey<";">
 																					| TokenEot
 																			? [R3, Db, readonly [...Acc, Col]]
@@ -865,16 +927,17 @@ type ParseInsertAfterUpsertSet<
 	Tab extends string,
 	Cols extends readonly string[],
 	SetCols extends readonly string[],
+	BaseScope extends ScopeMap,
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
 		? SkipToken<Tokens> extends infer Rw0 extends ParserMonad
 			? ParseWhereExpression<Rw0, Db, UpsertScope, Params> extends [infer Rw extends ParserMonad, infer We]
 				? We extends DbtyperErrorShape
 					? [Rw, Db, We]
-					: ParseInsertMaybeReturning<Rw, Db, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
+					: ParseInsertOptionalTail<Rw, Db, BaseScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
 				: never
 			: never
-		: ParseInsertMaybeReturning<Tokens, Db, UpsertScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
+		: ParseInsertOptionalTail<Tokens, Db, BaseScope, Params, Tbl, Sch, Tab, Cols, SetCols, undefined>
 
 type ParseInsertMaybeReturning<
 	Tokens extends ParserMonad,
@@ -938,11 +1001,29 @@ type ParseInsertAfterInto<
 				: never
 		: never
 
+/** The conflict-resolution words after `INSERT OR` / `UPDATE OR` (SQLT-39). */
+export type ConflictActionToken =
+	| TokenKey<"replace">
+	| TokenIdent<"abort">
+	| TokenIdent<"fail">
+	| TokenIdent<"ignore">
+	| TokenIdent<"rollback">
+
+/** After `INSERT` (or `REPLACE`, which is `INSERT OR REPLACE`): `[OR action] INTO …`. */
 export type ParseInsert<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > =
+	PeekToken<Tokens> extends TokenKey<"or">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends ConflictActionToken
+				? ParseInsertInto<SkipToken<R1>, Db, Params>
+				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONFLICT_ACTION_AFTER_OR"], []>>
+			: never
+		: ParseInsertInto<Tokens, Db, Params>
+
+type ParseInsertInto<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
 	PeekToken<Tokens> extends TokenKey<"into">
 		? ParseInsertAfterInto<SkipToken<Tokens>, Db, Params>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_INTO_AFTER_INSERT"], []>>

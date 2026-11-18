@@ -33,6 +33,7 @@ import type {
 	IsSqliteFunction,
 	IsWindowOnlyRow,
 	SqliteFunctionRow,
+	SqliteOperators,
 	SqlitePgOnlyFunctions,
 	SqliteRowResult,
 } from "./sqlite-functions.ts"
@@ -48,6 +49,8 @@ export type ExprParseEnv = {
 	db: JsqlDatabaseShape
 	params: ExpressionParamsShape
 	outerScope: ScopeMap
+	/** Set while parsing an unparenthesized column DEFAULT: a following `NOT` is `NOT NULL`, not `NOT LIKE`. */
+	noPostfixNot?: true
 }
 
 /** True when `T` is `unknown` or `any` (not other types). */
@@ -84,6 +87,8 @@ export type ScalarExprAst =
 	| { kind: "and"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "or"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "cmp"; op: ScalarCmpOp; left: ScalarExprAst; right: ScalarExprAst }
+	/** SQLite `a IS [NOT] [DISTINCT FROM] b`: null-safe comparison (SQLT-33). */
+	| { kind: "is_cmp"; left: ScalarExprAst; right: ScalarExprAst }
 	| { kind: "is_null"; expr: ScalarExprAst }
 	| { kind: "is_not_null"; expr: ScalarExprAst }
 	| { kind: "in_list"; expr: ScalarExprAst; items: readonly ScalarExprAst[] }
@@ -404,19 +409,77 @@ type ParseLikeAfterL<
 > =
 	PeekToken<Tokens> extends infer TokKw
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? TokKw extends TokenKey<"like"> | TokenKey<"ilike">
-				? ParseOtherOpScalarUntyped<R1, Env> extends [
-						infer R2 extends ParserMonad,
-						infer Pat,
-						infer Env2 extends ExprParseEnv,
-					]
-					? Pat extends DbtyperErrorShape
-						? SkipFailedExpressionWithEnv<R2, Pat, Env2>
-						: [R2, { kind: "like"; expr: L; pattern: Pat; case_insensitive: CI }, Env2]
-					: never
-				: never
+			? TokKw extends TokenIdent<"regexp">
+				? Env["db"] extends { functions: { regexp: unknown } }
+					? ParseLikePattern<R1, L, CI, Env>
+					: SkipFailedExpressionWithEnv<R1, FormatError<Errors["REGEXP_NEEDS_FUNCTION"], []>, Env>
+				: ParseLikePattern<R1, L, CI, Env>
 			: never
 		: never
+
+type ParseLikePattern<
+	Tokens extends ParserMonad,
+	L extends ScalarExprAst,
+	CI extends boolean,
+	Env extends ExprParseEnv,
+> =
+	ParseOtherOpScalarUntyped<Tokens, Env> extends [
+		infer R2 extends ParserMonad,
+		infer Pat,
+		infer Env2 extends ExprParseEnv,
+	]
+		? Pat extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<R2, Pat, Env2>
+			: PeekToken<R2> extends TokenIdent<"escape">
+				? ParseOtherOpScalarUntyped<SkipToken<R2>, Env2> extends [
+						infer R3 extends ParserMonad,
+						infer Esc,
+						infer Env3 extends ExprParseEnv,
+					]
+					? Esc extends DbtyperErrorShape
+						? SkipFailedExpressionWithEnv<R3, Esc, Env3>
+						: [R3, { kind: "like"; expr: L; pattern: Pat; case_insensitive: CI }, Env3]
+					: never
+				: [R2, { kind: "like"; expr: L; pattern: Pat; case_insensitive: CI }, Env2]
+		: never
+
+/** `x NOT LIKE | GLOB | REGEXP | IN | BETWEEN …`: the positive form, negated. `Tokens` is at `NOT`. */
+type ParseNotPostfix<Tokens extends ParserMonad, L extends ScalarExprAst, Env extends ExprParseEnv> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<R1> extends TokenKey<"like"> | TokenIdent<"glob" | "regexp">
+			? ParseLikeAfterL<R1, L, false, Env> extends [
+					infer R2 extends ParserMonad,
+					infer Inner,
+					infer Env2 extends ExprParseEnv,
+				]
+				? NegateParsed<R2, Inner, Env2>
+				: never
+			: PeekToken<R1> extends TokenKey<"in">
+				? ParseInListUntypedAfterInKw<R1, L, Env> extends [
+						infer R2 extends ParserMonad,
+						infer Inner,
+						infer Env2 extends ExprParseEnv,
+					]
+					? NegateParsed<R2, Inner, Env2>
+					: never
+				: PeekToken<R1> extends TokenKey<"between">
+					? ParseBetweenAfterL<R1, L, Env> extends [
+							infer R2 extends ParserMonad,
+							infer Inner,
+							infer Env2 extends ExprParseEnv,
+						]
+						? NegateParsed<R2, Inner, Env2>
+						: never
+					: SkipFailedExpressionWithEnv<
+							R1,
+							FormatError<Errors["EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT"], []>,
+							Env
+						>
+		: never
+
+type NegateParsed<Tokens extends ParserMonad, Inner, Env extends ExprParseEnv> = Inner extends DbtyperErrorShape
+	? SkipFailedExpressionWithEnv<Tokens, Inner, Env>
+	: [Tokens, { kind: "not"; inner: Inner }, Env]
 
 type ParseCaseExpectEndKeyword<
 	Tokens extends ParserMonad,
@@ -533,11 +596,36 @@ type ParseAfterIsUntyped<Tokens extends ParserMonad, L extends ScalarExprAst, En
 		? SkipToken<Tokens> extends infer R5 extends ParserMonad
 			? PeekToken<R5> extends TokenKey<"null">
 				? [SkipToken<R5>, { kind: "is_not_null"; expr: L }, Env]
-				: SkipFailedExpressionWithEnv<R5, FormatError<Errors["EXPECTED_NULL_AFTER_IS_NOT"], []>, Env>
+				: DialectFact<Env["db"], "isOperand"> extends "value"
+					? ParseIsValueOperand<R5, L, Env>
+					: SkipFailedExpressionWithEnv<R5, FormatError<Errors["EXPECTED_NULL_AFTER_IS_NOT"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? [SkipToken<Tokens>, { kind: "is_null"; expr: L }, Env]
-			: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_NULL_AFTER_IS"], []>, Env>
+			: DialectFact<Env["db"], "isOperand"> extends "value"
+				? ParseIsValueOperand<Tokens, L, Env>
+				: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_NULL_AFTER_IS"], []>, Env>
+
+/** SQLT-33: `a IS [NOT] b` and `a IS [NOT] DISTINCT FROM b`: any value on the right; the result is never NULL. */
+type ParseIsValueOperand<Tokens extends ParserMonad, L extends ScalarExprAst, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenKey<"distinct">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"from">
+				? ParseIsRhs<SkipToken<R1>, L, Env>
+				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_FROM_AFTER_IS_DISTINCT"], []>, Env>
+			: never
+		: ParseIsRhs<Tokens, L, Env>
+
+type ParseIsRhs<Tokens extends ParserMonad, L extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParseOtherOpScalarUntyped<Tokens, Env> extends [
+		infer R1 extends ParserMonad,
+		infer Rhs,
+		infer Env1 extends ExprParseEnv,
+	]
+		? Rhs extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<R1, Rhs, Env1>
+			: [R1, { kind: "is_cmp"; left: L; right: Rhs }, Env1]
+		: never
 
 type IsRelOp<T> =
 	T extends TokenKey<"=">
@@ -761,7 +849,15 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends ParserMonad, L extends Sca
 											? ParseLikeAfterL<Tokens, L, false, Env>
 											: P extends TokenKey<"ilike">
 												? ParseLikeAfterL<Tokens, L, true, Env>
-												: [Tokens, L, Env]
+												: P extends TokenKey<"not">
+													? Env extends { noPostfixNot: true }
+														? [Tokens, L, Env] // `DEFAULT 18 NOT NULL`: NOT belongs to the column constraint
+														: ParseNotPostfix<Tokens, L, Env>
+													: P extends TokenIdent<"glob" | "regexp">
+														? DialectFact<Env["db"], "globRegexp"> extends true
+															? ParseLikeAfterL<Tokens, L, false, Env>
+															: [Tokens, L, Env]
+														: [Tokens, L, Env]
 		: never
 
 type ParseRelScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
@@ -1220,53 +1316,42 @@ type ResolveCustomOp<
 					? Rv
 					: Lv extends SqlTypeShape
 						? Rv extends SqlTypeShape
-							? Op extends "@>" | "&&" | "<@"
-								? SqlBoolean
-								: Op extends "||"
-									? Lv["type"] extends "array"
-										? Rv["type"] extends "text"
-											? FormatError<Errors["CANNOT_CONCATENATE_ARRAY_WITH_TEXT"], []>
-											: Rv["type"] extends "array"
-												? Lv
-												: Lv
-										: Rv["type"] extends "array"
-											? Lv["type"] extends "text"
-												? FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_ARRAY"], []>
-												: Rv
-											: Lv["type"] extends "text"
-												? Rv["type"] extends
-														| "text"
-														| "integer"
-														| "bigint"
-														| "numeric"
-														| "uuid"
-														| "boolean"
-													? SqlText
-													: FormatError<
-															Errors["CANNOT_CONCATENATE_TEXT_WITH_TYPE"],
-															[Rv["type"]]
-														>
-												: Rv["type"] extends "text"
-													? Lv["type"] extends
-															| "integer"
-															| "bigint"
-															| "numeric"
-															| "uuid"
-															| "boolean"
-														? SqlText
-														: FormatError<
-																Errors["CANNOT_CONCATENATE_TYPE_WITH_TEXT"],
-																[Lv["type"]]
-															>
-													: FormatError<
-															Errors["CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND"],
-															[]
-														>
-									: SqlUnknown
+							? DialectFact<Db, "operators"> extends "sqlite"
+								? Op extends keyof SqliteOperators
+									? SqliteRowResult<SqliteOperators[Op], [Lv, Rv]>
+									: ResolveBuiltinCustomOp<Op, Lv, Rv>
+								: ResolveBuiltinCustomOp<Op, Lv, Rv>
 							: never
 						: never
 				: never
 		: never
+
+type ResolveBuiltinCustomOp<Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
+	| "@>"
+	| "&&"
+	| "<@"
+	? SqlBoolean
+	: Op extends "||"
+		? Lv["type"] extends "array"
+			? Rv["type"] extends "text"
+				? FormatError<Errors["CANNOT_CONCATENATE_ARRAY_WITH_TEXT"], []>
+				: Rv["type"] extends "array"
+					? Lv
+					: Lv
+			: Rv["type"] extends "array"
+				? Lv["type"] extends "text"
+					? FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_ARRAY"], []>
+					: Rv
+				: Lv["type"] extends "text"
+					? Rv["type"] extends "text" | "integer" | "bigint" | "numeric" | "uuid" | "boolean"
+						? SqlText
+						: FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_TYPE"], [Rv["type"]]>
+					: Rv["type"] extends "text"
+						? Lv["type"] extends "integer" | "bigint" | "numeric" | "uuid" | "boolean"
+							? SqlText
+							: FormatError<Errors["CANNOT_CONCATENATE_TYPE_WITH_TEXT"], [Lv["type"]]>
+						: FormatError<Errors["CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND"], []>
+		: SqlUnknown
 
 type ResolveArrayCtorElements<
 	Els extends readonly ScalarExprAst[],
@@ -1319,7 +1404,7 @@ type ExpressionResolvers<
 			? { type: "blob"; arg: null; nullable: false } // SQLT-29
 			: SqlText
 		: never
-	number: Ast extends { kind: "number"; raw: string } ? SqlInteger : never
+	number: Ast extends { kind: "number"; raw: infer Raw extends string } ? NumberLiteralType<Db, Raw> : never
 	param: Ast extends { kind: "param"; name: infer N extends string } ? LookupParam<Params, N> : never
 	"positional-param": Ast extends { kind: "positional-param"; index: infer I extends number }
 		? LookupPositionalParam<Params, I>
@@ -1446,6 +1531,17 @@ type ExpressionResolvers<
 				: never
 			: never
 		: never
+	is_cmp: Ast extends { kind: "is_cmp"; left: infer Li extends ScalarExprAst; right: infer Ri extends ScalarExprAst }
+		? ResolveExpressionAST<Li, Db, Scope, Params> extends infer LiV
+			? LiV extends DbtyperErrorShape
+				? LiV
+				: ResolveExpressionAST<Ri, Db, Scope, Params> extends infer RiV
+					? RiV extends DbtyperErrorShape
+						? RiV
+						: SqlBoolean
+					: never
+			: never
+		: never
 	is_null: Ast extends { kind: "is_null"; expr: infer E0 extends ScalarExprAst }
 		? ResolveExpressionAST<E0, Db, Scope, Params> extends infer V0
 			? V0 extends DbtyperErrorShape
@@ -1474,7 +1570,7 @@ type ExpressionResolvers<
 				? Evc
 				: Evc extends SqlTypeShape
 					? SqlCastTypeNorm<Ptc> extends infer Normc extends string
-						? ResolveCastFromShape<Evc, Normc>
+						? ResolveCastForDialect<Db, Evc, Normc>
 						: never
 					: never
 			: never
@@ -1489,7 +1585,7 @@ type ExpressionResolvers<
 				? Evs
 				: Evs extends SqlTypeShape
 					? SqlCastTypeNorm<Pts> extends infer Norms extends string
-						? ResolveCastFromShape<Evs, Norms>
+						? ResolveCastForDialect<Db, Evs, Norms>
 						: never
 					: never
 			: never
@@ -1659,7 +1755,7 @@ type SharedTypeOperands<Ast> = Ast extends {
 	right: infer R extends ScalarExprAst
 }
 	? { ops: readonly [L, R]; numeric: true }
-	: Ast extends { kind: "cmp"; left: infer L extends ScalarExprAst; right: infer R extends ScalarExprAst }
+	: Ast extends { kind: "cmp" | "is_cmp"; left: infer L extends ScalarExprAst; right: infer R extends ScalarExprAst }
 		? { ops: readonly [L, R]; numeric: false }
 		: Ast extends {
 					kind: "like" | "pg_regex_match"
@@ -2722,6 +2818,14 @@ type MergeBoolBinary<
 				: FormatError<Errors["OR_OPERANDS_MUST_BE_BOOLEAN"], []>
 
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
+/** SQLT-6: in a chain whose type names only decide an affinity (SQLite) a CAST gives the type of that affinity, from any value. */
+type ResolveCastForDialect<Db, Ev extends SqlTypeShape, N extends string> =
+	DialectFact<Db, "typeNames"> extends "affinity"
+		? Ev["type"] extends "null"
+			? SqlNull
+			: SqlType<SqliteTypeKey<N>>
+		: ResolveCastFromShape<Ev, N>
+
 export type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
 	? SqlNull
 	: N extends "text" | "varchar" | "character varying" | "char"
@@ -3399,6 +3503,29 @@ type ParseScalarExprUntypedNonIdent<Tokens extends ParserMonad, Env extends Expr
 				: never
 		: never
 
+/** SQLT-35: in SQLite a literal with a decimal point or an exponent is REAL; elsewhere every number literal is the integer shape. */
+type NumberLiteralType<Db, Raw extends string> =
+	DialectFact<Db, "typeNames"> extends "affinity"
+		? Raw extends `0${"x" | "X"}${string}`
+			? SqlInteger
+			: Raw extends `${string}${"." | "e" | "E"}${string}`
+				? SqlType<"real">
+				: SqlInteger
+		: SqlInteger
+
+/**
+ * The type of `a op b` for two numeric operands: the left operand's, except where the type names are affinities
+ * (SQLite, SQLT-35): with any REAL operand the result is REAL, else a NUMERIC operand makes it NUMERIC.
+ */
+type ArithmeticResult<Db, Lv extends SqlTypeShape, Rv extends SqlTypeShape> =
+	DialectFact<Db, "typeNames"> extends "affinity"
+		? "real" extends Lv["type"] | Rv["type"]
+			? SqlType<"real">
+			: "numeric" extends Lv["type"] | Rv["type"]
+				? SqlType<"numeric">
+				: Lv
+		: Lv
+
 type ResolveScalarExprAstPair<
 	L extends ScalarExprAst,
 	R extends ScalarExprAst,
@@ -3420,7 +3547,7 @@ type ResolveScalarExprAstPair<
 									? FormatError<Errors["NULL_NOT_ALLOWED_ARITHMETIC"], []>
 									: IsSqlNumericType<Lv["type"]> extends true
 										? IsSqlNumericType<Rv["type"]> extends true
-											? Lv
+											? ArithmeticResult<Db, Lv, Rv>
 											: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
 										: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
 							: never

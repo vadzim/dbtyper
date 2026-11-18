@@ -785,11 +785,10 @@ type ParseColumnDefault<Tokens extends ParserMonad, C extends ColumnCtx, S exten
 							ColumnStateWith<S, { def: true; afterDefault: true }>
 						>
 				: never
-			: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
-						infer R extends ParserMonad,
-						infer Ast,
-						infer _Env,
-				  ]
+			: ParseExpressionAST<
+						Tokens,
+						{ db: C["db"]; params: EmptyExpressionParams; outerScope: {}; noPostfixNot: true }
+				  > extends [infer R extends ParserMonad, infer Ast, infer _Env]
 				? Ast extends DbtyperErrorShape
 					? ColumnFail<R, C, Ast>
 					: Ast extends ScalarExprAst

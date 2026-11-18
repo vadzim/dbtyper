@@ -31,6 +31,8 @@ export type DriverConfig = {
 	dialect: DialectName
 	syntax: LexerFeatures
 	scalarTypes: Record<string, unknown>
+	/** Types accepted as parameter VALUES per SQL type, where they differ from the row types (SQLT-32). */
+	paramTypes?: Record<string, unknown>
 }
 
 /** What `createDriver` accepts: a config that may lack `dialect`; `sqlMigrations` then rejects the driver (DSEL-8). */
@@ -292,7 +294,14 @@ type ParamKeyDisplay<K> = K extends `${infer I extends number}` ? `$${Inc<I>}` :
 type CheckParamValues<Config extends DriverConfig, Params extends ExpressionParamsShape, Values> = {
 	[K in keyof Params & string]: K extends keyof Values
 		? Params[K] extends infer S extends SqlTypeShape
-			? [Values[K]] extends [SqlTypeShapeToTs<S, Config["scalarTypes"]>]
+			? [Values[K]] extends [
+					SqlTypeShapeToTs<
+						S,
+						Config extends { paramTypes: infer P extends Record<string, unknown> }
+							? P
+							: Config["scalarTypes"]
+					>,
+				]
 				? never
 				: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
 			: never

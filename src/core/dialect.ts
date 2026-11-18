@@ -45,6 +45,11 @@ export type DialectName = keyof Dialects
  * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "builtin" = the PostgreSQL built-ins of the expression
  * parser plus the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
+ * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "builtin" = the PostgreSQL operator typing of the
+ * expression parser, "sqlite" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
+ * operators exist (`REGEXP` calls a user function `regexp`, SQLT-34); `isOperand`: what may follow `IS [NOT]`
+ * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
+ * `LIMIT offset, count` (SQLT-37).
  */
 export type Dialects = {
 	postgres: {
@@ -57,6 +62,10 @@ export type Dialects = {
 		typelessColumns: false
 		ddl: false
 		functionCatalog: "builtin"
+		operators: "builtin"
+		globRegexp: false
+		isOperand: "null"
+		limitComma: false
 	}
 	sqlite: {
 		title: "SQLite"
@@ -68,6 +77,10 @@ export type Dialects = {
 		typelessColumns: true
 		ddl: true
 		functionCatalog: "sqlite"
+		operators: "sqlite"
+		globRegexp: true
+		isOperand: "value"
+		limitComma: true
 	}
 }
 

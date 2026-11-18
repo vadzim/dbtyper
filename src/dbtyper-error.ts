@@ -182,6 +182,14 @@ export const errors = {
 		code: 1915,
 		msg: ["SQLite has no schemas"],
 	},
+	REGEXP_NEEDS_FUNCTION: {
+		code: 1917,
+		msg: ["REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB"],
+	},
+	EXPECTED_CONFLICT_ACTION_AFTER_OR: {
+		code: 1918,
+		msg: ["Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR"],
+	},
 	SQLITE_UNSUPPORTED_STATEMENT: {
 		code: 1916,
 		msg: ["", " is not supported in migrations"],
@@ -321,6 +329,10 @@ export const errors = {
 	EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT: {
 		code: 1209,
 		msg: ["Expected VALUES or SELECT after column list in INSERT"],
+	},
+	EXPECTED_VALUES_AFTER_DEFAULT_IN_INSERT: {
+		code: 1226,
+		msg: ["Expected VALUES after DEFAULT in INSERT"],
 	},
 	EXPECTED_CONFLICT_AFTER_ON_IN_INSERT: {
 		code: 1210,
@@ -880,6 +892,10 @@ export const errors = {
 	INCOMPATIBLE_TYPES_IN_JOIN_ON: {
 		code: 2506,
 		msg: ["Incompatible types in JOIN ON"],
+	},
+	COLUMN_TYPE_MISMATCH: {
+		code: 2510,
+		msg: ["column `", "` is ", ""],
 	},
 	INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN: {
 		code: 2507,
@@ -1553,6 +1569,14 @@ export const errors = {
 	EXPECTED_NULL_AFTER_IS: {
 		code: 5002,
 		msg: ["Expected NULL after IS"],
+	},
+	EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT: {
+		code: 5009,
+		msg: ["Expected LIKE, IN or BETWEEN after NOT"],
+	},
+	EXPECTED_FROM_AFTER_IS_DISTINCT: {
+		code: 5008,
+		msg: ["Expected FROM after IS DISTINCT"],
 	},
 	EXPECTED_NULL_AFTER_IS_NOT: {
 		code: 5003,
