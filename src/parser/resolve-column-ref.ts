@@ -36,7 +36,7 @@ type ValidateColumnPartsShared<
 				? FormatError<Errors["AMBIGUOUS_UNQUALIFIED_COLUMN"], [C0]>
 				: NearestScopeKeysWithColumn<Scope, C0> extends infer U
 					? [U] extends [never]
-						? FormatError<Errors["UNKNOWN_COLUMN_NO_CLAUSE"], [C0]>
+						? UnknownColumnNoClause<C0>
 						: U extends keyof Scope
 							? C0 extends keyof Scope[U]["columns"]
 								? {
@@ -56,6 +56,13 @@ export type ResolveColumnRefValue<
 	Scope extends ScopeMap,
 	Parts extends readonly [string] | readonly [string, string] | readonly [string, string, string],
 > = ValidateColumnPartsShared<Db, Scope, Parts>
+
+/**
+ * ERR-8: the "Unknown column" error before a clause is named (no dangling " in "). It has the code of UNKNOWN_COLUMN
+ * but no registry entry of its own: two entries with one code would fail the duplicate check in dbtyper-error.ts.
+ * `WithErrorClause` below rewrites it into the full UNKNOWN_COLUMN message.
+ */
+type UnknownColumnNoClause<Col extends string> = DbtyperError<Errors["UNKNOWN_COLUMN"]["code"], `Unknown column ${Col}`>
 
 /** ERR-8: name the clause in an "Unknown column" error that does not carry one yet. */
 export type WithErrorClause<E, Clause extends string> =

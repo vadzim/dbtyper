@@ -16,7 +16,7 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { Inc, LastOf } from "./type-utils.ts"
 
 /** The type of a parameter that no position has given a type yet; `arg` is its key (name, or 0-based index). */
-export type SqlParamProbe<Key extends string | number> = { type: "param-probe"; arg: Key; nullable: false }
+type SqlParamProbe<Key extends string | number> = { type: "param-probe"; arg: Key; nullable: false }
 
 /** The probe key of a resolved parameter type, `never` for a real type. */
 export type ProbeKeyOf<S> = S extends { type: "param-probe"; arg: infer K extends string | number } ? K : never

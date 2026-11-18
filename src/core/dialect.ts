@@ -25,7 +25,7 @@
  *   both flags, nothing is gated: that is dialect-neutral parsing, never reachable through `sqlMigrations`, which
  *   requires a driver with exactly one declared dialect.
  */
-import type { DbtyperErrorShape, Errors, FormatErrorOf } from "../dbtyper-error.ts"
+import type { Errors, FormatErrorOf } from "../dbtyper-error.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 
 /** The engines dbtyper types SQL for (DSEL-1). */
@@ -98,9 +98,9 @@ export type Dialects = {
 }
 
 /** The `Syntax` flag that names a chain's dialect. */
-export type DialectFlag<D extends DialectName> = `dialect:${D}`
+type DialectFlag<D extends DialectName> = `dialect:${D}`
 
-export type DialectFlags = DialectFlag<DialectName>
+type DialectFlags = DialectFlag<DialectName>
 
 /** Everything the lexer/parser `Syntax` union may hold: driver lexer features plus the dialect flag. */
 export type ParserSyntax = LexerFeatures | DialectFlags
@@ -116,7 +116,7 @@ export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: Dial
  * word of the SQL, upper-cased (`id::text` → `Use CAST(x AS TEXT)`).
  * The full PostgreSQL-only list is SQLT-53; rows are added by the issues that own them.
  */
-export type DialectOnlyConstructs = {
+type DialectOnlyConstructs = {
 	"pg-cast": { only: "postgres"; name: "`::` cast"; hint: "Use CAST(x AS <next>)" }
 	"pg-positional-param": { only: "postgres"; name: "`$n` positional parameter"; hint: "Use ? or ?NNN" }
 	"pg-dollar-string": { only: "postgres"; name: "Dollar-quoted string"; hint: "Use a single-quoted string" }
@@ -191,7 +191,7 @@ export type DialectConstruct = keyof DialectOnlyConstructs
  * Keyword phrases (1–3 lower-case words) that are a one-dialect construct, checked by the parser monad when it reads
  * the phrase's first token; the longest phrase wins. `<next>` in a hint is the word after the phrase.
  */
-export type DialectPhrases = {
+type DialectPhrases = {
 	"::": "pg-cast"
 	"insert or replace": "sqlite-insert-or-replace"
 	"insert or ignore": "sqlite-insert-or-ignore"
@@ -328,9 +328,3 @@ type FormatHint<Hint extends string, NextWord extends string> = Hint extends ""
 	: Hint extends `${infer Before}<next>${infer After}`
 		? `. ${Before}${NextWord extends "" ? "type" : Uppercase<NextWord>}${After}`
 		: `. ${Hint}`
-
-/** First recorded error wins; a later one is dropped. */
-export type KeepFirstDialectError<
-	Recorded extends DbtyperErrorShape | null,
-	New extends DbtyperErrorShape | null,
-> = Recorded extends DbtyperErrorShape ? Recorded : New

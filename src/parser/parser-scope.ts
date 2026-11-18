@@ -51,12 +51,6 @@ export type ScopeMap = Record<string, ScopeEntry>
  */
 export type MergeScope<Inner extends ScopeMap, Outer extends ScopeMap> = Inner & Omit<Outer, keyof Inner>
 
-export type ValidateCol<Scope extends ScopeMap, Alias extends string, Col extends string> = Alias extends keyof Scope
-	? Col extends keyof Scope[Alias]["columns"]
-		? true
-		: false
-	: false
-
 /** Scope entry of an enclosing query level; `outerDepth` is a tuple whose length is the nesting distance. */
 type ScopeEntryOuterDepth<E> = E extends { outerDepth: infer D extends readonly 1[] } ? D : readonly []
 

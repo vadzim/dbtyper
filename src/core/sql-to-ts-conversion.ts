@@ -58,7 +58,7 @@ type SqlTypeShapeToTsNonNull<
  * SqlTypeToTs<"integer", { integer: number }> // => number
  * SqlTypeToTs<"unknown_type", { text: string }> // => unknown
  */
-export type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string, unknown>> =
+type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string, unknown>> =
 	Lowercase<SqlType> extends `${infer Base}[]`
 		? Base extends keyof ScalarMap
 			? readonly ScalarMap[Base][]
@@ -82,7 +82,7 @@ export type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string,
  * >
  * // => { id: string; name: string }
  */
-export type SqlColumnsToTs<
+type SqlColumnsToTs<
 	SqlCols extends Record<string, SqlTypeShape | string>,
 	ScalarMap extends Record<string, unknown>,
 	Db = never,
@@ -130,7 +130,7 @@ export type ApplySqlToTsConversion<
  * CORE-14: the SQL type name of the first output column that has no TypeScript mapping in the driver's type map,
  * or `never` when every column maps. `null` (CORE-5) and arrays of mapped types map without a row of their own.
  */
-export type FirstUnmappedSqlType<
+type FirstUnmappedSqlType<
 	SqlColumns extends Record<string, SqlTypeShape>,
 	ScalarMap extends Record<string, unknown>,
 > = {
