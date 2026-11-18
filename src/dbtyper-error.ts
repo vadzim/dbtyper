@@ -1214,7 +1214,7 @@ export const errors = {
 
 	NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE: {
 		code: 3506,
-		msg: ["No TypeScript type for SQL type ", " in the driver's type map; select it with a cast, e.g. `::text`"],
+		msg: ["No TypeScript type for SQL type ", " in the driver's type map; select it with a cast, e.g. ", ""],
 	},
 
 	// Function Constraints

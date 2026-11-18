@@ -119,11 +119,11 @@ export type SqliteFunctions = {
 
 /**
  * SQLT-35, SQLT-36: SQLite operators whose result is not that of the shared parser, as function rows (see
- * {@link SqliteFunctions}) over `[left, right]`: `||` is TEXT for any operands, `->` is TEXT (JSON), `->>` any storage class.
+ * {@link SqliteFunctions}) over `[left, right]`: `||` is TEXT for any operands, `->` is TEXT (JSON) and nullable (SQLT-36: a missing path is NULL), `->>` any storage class.
  */
 export type SqliteOperators = {
 	"||": ["text", "args"]
-	"->": ["text", "args"]
+	"->": ["text", "null"]
 	"->>": ["any", "null"]
 }
 

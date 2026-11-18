@@ -10,6 +10,7 @@
 import type { DriverConfig } from "./sql-database.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { Errors, FormatError } from "../dbtyper-error.ts"
+import type { Dialects } from "./dialect.ts"
 import type { JsqlEnumLabelUnion } from "./jsql-utils.ts"
 
 /**
@@ -121,7 +122,7 @@ export type ApplySqlToTsConversion<
 			? SqlColumnsToTs<SqlColumns, Config["scalarTypes"], Db>
 			: FormatError<
 					Errors["NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE"],
-					[FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>]
+					[FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>, Dialects[Config["dialect"]]["castHint"]]
 				>
 		: SqlColumns
 
