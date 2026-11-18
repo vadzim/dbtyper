@@ -30,6 +30,7 @@ import type {
 } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
+import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -107,7 +108,13 @@ type ParseSelectArm<
 	OuterScope extends ScopeMap,
 > =
 	PeekToken<Tokens> extends TokenKey<"distinct">
-		? ParseSelectAfterDistinct<SkipToken<Tokens>, Db, Params, CteBase, OuterScope>
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? PeekToken<R0> extends TokenKey<"on">
+				? DbDialectOnlyError<Db, "pg-distinct-on"> extends infer OnlyErr extends DbtyperErrorShape
+					? SkipFailedStatement<R0, Db, OnlyErr>
+					: ParseSelectAfterDistinct<R0, Db, Params, CteBase, OuterScope>
+				: ParseSelectAfterDistinct<R0, Db, Params, CteBase, OuterScope>
+			: never
 		: ParseSelectAfterDistinct<Tokens, Db, Params, CteBase, OuterScope>
 
 type SetOperationKeyword<T> =
@@ -840,11 +847,24 @@ type ParseOptionalGroupHaving<
 			: never
 		: ParseOptionalHavingWithoutGroupClause<Tokens, Db, Scope, Params>
 
-type KnownAggregateName<N extends string> =
+/** `min`/`max` with several arguments is the scalar form (SQLT-46); the SQLite-only aggregates are SQLT-47 and SQLT-49. */
+type KnownAggregateName<N extends string, Args extends readonly unknown[]> =
 	Lowercase<N> extends infer L extends string
-		? L extends "count" | "sum" | "avg" | "min" | "max"
-			? true
-			: false
+		? L extends "min" | "max"
+			? Args["length"] extends 1
+				? true
+				: false
+			: L extends
+						| "count"
+						| "sum"
+						| "avg"
+						| "total"
+						| "group_concat"
+						| "string_agg"
+						| "json_group_array"
+						| "json_group_object"
+				? true
+				: false
 		: false
 
 type TypeBoolAnd<A, B> = A extends true ? (B extends true ? true : false) : false
@@ -907,7 +927,7 @@ type ExprValidInsideGroupedSelection<
 								name: infer N extends string
 								args: infer Args extends readonly (ScalarExprAst | { kind: "star" })[]
 						  }
-						? KnownAggregateName<N> extends true
+						? KnownAggregateName<N, Args> extends true
 							? FnArgsGroupedCheck<Args, GroupKeys, true>
 							: FnArgsGroupedCheck<Args, GroupKeys, false>
 						: Ast extends { kind: "neg"; inner: infer I extends ScalarExprAst }
@@ -1213,8 +1233,9 @@ type ArrayCtorEltsGroupedValid<
 type AstContainsAggregateCall<Ast extends ScalarExprAst> = Ast extends {
 	kind: "function_call"
 	name: infer N extends string
+	args: infer Args extends readonly unknown[]
 }
-	? KnownAggregateName<N> extends true
+	? KnownAggregateName<N, Args> extends true
 		? true
 		: false
 	: Ast extends {
@@ -1603,6 +1624,7 @@ type ParseOneRawSelectItem<
 						| TokenKey<"case">
 						| TokenKey<"exists">
 						| TokenKey<"array">
+						| TokenKey<"current_timestamp" | "current_date" | "current_time">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 					: never
 				: never

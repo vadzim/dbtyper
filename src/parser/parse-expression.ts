@@ -1,10 +1,10 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { DialectFact, SqliteTypeKey } from "../core/dialect.ts"
+import type { DbDialectOnlyError, DialectFact, PgOnlyTypeNames, SqliteTypeKey } from "../core/dialect.ts"
 import type { TokenIndexedParam, TokenParam, TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
+import type { AsIdent, TokenEot, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -29,6 +29,13 @@ import type {
 import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
 import type { FunctionArgType, PeerTypedFunctions } from "./function-param-types.ts"
+import type {
+	IsSqliteFunction,
+	IsWindowOnlyRow,
+	SqliteFunctionRow,
+	SqlitePgOnlyFunctions,
+	SqliteRowResult,
+} from "./sqlite-functions.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -146,6 +153,14 @@ export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 type CastTypeParts<Db, Parts extends readonly string[]> =
 	DialectFact<Db, "typeNames"> extends "affinity" ? readonly [SqliteTypeKey<SqlCastTypeNorm<Parts>>] : Parts
 
+/** SQLT-53: `CAST(x AS jsonb)` in a SQLite chain names the PostgreSQL-only type. */
+type CastPgOnlyTypeError<Db, Parts extends readonly string[]> =
+	DialectFact<Db, "typeNames"> extends "affinity"
+		? SqlCastTypeNorm<Parts> extends infer T extends keyof PgOnlyTypeNames
+			? DbDialectOnlyError<Db, PgOnlyTypeNames[T]>
+			: null
+		: null
+
 /** `AS` / `::` type list: identifiers, optional `(…)` after a name, until `)` (CAST) or non-type token (`::` chain). */
 type ParseSqlTypeName<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
@@ -210,18 +225,24 @@ type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends ExprParseEn
 														? PeekToken<R4> extends infer TokCl
 															? SkipToken<R4> extends infer R5 extends ParserMonad
 																? TokCl extends TokenKey<")">
-																	? [
-																			R5,
-																			{
-																				kind: "sql_cast"
-																				expr: Inner
-																				type_parts: CastTypeParts<
-																					Env2["db"],
-																					Parts
-																				>
-																			},
-																			Env2,
-																		]
+																	? CastPgOnlyTypeError<
+																			Env2["db"],
+																			Parts
+																		> extends infer TypeErr extends
+																			DbtyperErrorShape
+																		? [R5, TypeErr, Env2]
+																		: [
+																				R5,
+																				{
+																					kind: "sql_cast"
+																					expr: Inner
+																					type_parts: CastTypeParts<
+																						Env2["db"],
+																						Parts
+																					>
+																				},
+																				Env2,
+																			]
 																	: [
 																			R5,
 																			FormatError<
@@ -536,6 +557,11 @@ type IsRelOp<T> =
 								: false
 
 type ParseAnyAllSomeAfterOp<Tokens extends ParserMonad, L extends ScalarExprAst, OpToken, Env extends ExprParseEnv> =
+	DbDialectOnlyError<Env["db"], "pg-any-all-some"> extends infer OnlyErr extends DbtyperErrorShape
+		? SkipFailedExpressionWithEnv<Tokens, OnlyErr, Env>
+		: ParseAnyAllSomeAfterOpPg<Tokens, L, OpToken, Env>
+
+type ParseAnyAllSomeAfterOpPg<Tokens extends ParserMonad, L extends ScalarExprAst, OpToken, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends infer Kw
 		? Kw extends TokenKey<"any"> | TokenKey<"all"> | TokenKey<"some">
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -872,8 +898,62 @@ type ArgsTupleContainsStar<Args extends readonly (ScalarExprAst | { kind: "star"
 		: ArgsTupleContainsStar<Tail>
 	: false
 
+/**
+ * SQLT-44…SQLT-52: a call in a chain whose dialect has a function table (src/parser/sqlite-functions.ts): the row of
+ * the function gives result type and nullability. `Windowed`: the call has an OVER clause.
+ */
+type ResolveCatalogFunctionCall<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Windowed extends boolean,
+	L extends string = Lowercase<Name>,
+> =
+	IsSqliteFunction<L> extends true
+		? ArgsTupleContainsStar<Args> extends true
+			? L extends "count"
+				? SqlInteger
+				: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
+			: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+				? ArgsRes extends DbtyperErrorShape
+					? ArgsRes
+					: ArgsRes extends readonly SqlTypeShape[]
+						? SqliteFunctionRow<L, ArgsRes["length"]> extends infer Row
+							? Windowed extends false
+								? IsWindowOnlyRow<Row> extends true
+									? FormatError<Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"], [Name]>
+									: SqliteRowResult<Row, ArgsRes>
+								: SqliteRowResult<Row, ArgsRes>
+							: never
+						: never
+				: never
+		: L extends keyof SqlitePgOnlyFunctions
+			? SqlitePgOnlyFunctions[L] extends infer Hint extends string
+				? FormatError<
+						Errors["UNKNOWN_FUNCTION"],
+						[Hint extends "" ? Name : `${Name}. ${Name}() is PostgreSQL-only${PgHint<Hint>}`]
+					>
+				: never
+			: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+
+type PgHint<Hint extends string> = Hint extends "" ? "" : `; ${Hint}`
+
 /** CORE-2, CORE-3: nullability of a function call on top of its base result type. */
 type ResolveFunctionCall<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	L extends string = Lowercase<Name>,
+> =
+	DialectFact<Db, "functionCatalog"> extends "sqlite"
+		? ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, false, L>
+		: ResolveBuiltinFunctionCall<Name, Args, Db, Scope, Params, L>
+
+type ResolveBuiltinFunctionCall<
 	Name extends string,
 	Args extends readonly (ScalarExprAst | { kind: "star" })[],
 	Db extends JsqlDatabaseShape,
@@ -1078,6 +1158,18 @@ type ResolveFunctionCallBase<
 			: never
 
 type ResolveWindowFunction<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	L extends string = Lowercase<Name>,
+> =
+	DialectFact<Db, "functionCatalog"> extends "sqlite"
+		? ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, L>
+		: ResolveBuiltinWindowFunction<Name, Args, Db, Scope, Params, L>
+
+type ResolveBuiltinWindowFunction<
 	Name extends string,
 	Args extends readonly (ScalarExprAst | { kind: "star" })[],
 	Db extends JsqlDatabaseShape,
@@ -1910,6 +2002,24 @@ type ParseOptionalOverClause<
 	Args extends readonly (ScalarExprAst | { kind: "star" })[],
 	Env extends ExprParseEnv,
 > =
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<"filter">
+		? ParseFilterClause<Tokens, Env> extends [
+				infer RF extends ParserMonad,
+				infer FErr,
+				infer EnvF extends ExprParseEnv,
+			]
+			? FErr extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<RF, FErr, EnvF>
+				: ParseOverAfterFilter<RF, FnName, Args, EnvF>
+			: never
+		: ParseOverAfterFilter<Tokens, FnName, Args, Env>
+
+type ParseOverAfterFilter<
+	Tokens extends ParserMonad,
+	FnName extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Env extends ExprParseEnv,
+> =
 	PeekToken<Tokens> extends TokenKey<"over">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"(">
@@ -1917,6 +2027,30 @@ type ParseOptionalOverClause<
 				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env>
 			: never
 		: [Tokens, { kind: "function_call"; name: FnName; args: Args }, Env]
+
+/**
+ * SQLT-51: `FILTER (WHERE <expr>)` after an aggregate call. Returns `[rest, error or null, env]`. The condition is parsed; it does not change the result type.
+ */
+type ParseFilterClause<Tokens extends ParserMonad, Env extends ExprParseEnv> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<R1> extends TokenKey<"(">
+			? SkipToken<R1> extends infer R2 extends ParserMonad
+				? PeekToken<R2> extends TokenKey<"where">
+					? ParseOrScalarUntyped<SkipToken<R2>, Env> extends [
+							infer R3 extends ParserMonad,
+							infer Cond,
+							infer Env3 extends ExprParseEnv,
+						]
+						? Cond extends DbtyperErrorShape
+							? [R3, Cond, Env3]
+							: PeekToken<R3> extends TokenKey<")">
+								? [SkipToken<R3>, null, Env3]
+								: [R3, FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>, Env3]
+						: never
+					: [R2, FormatError<Errors["UNEXPECTED_TOKEN"], ["FILTER"]>, Env]
+				: never
+			: [R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env]
+		: never
 
 type ParseWindowClauseContent<
 	Tokens extends ParserMonad,
@@ -1948,13 +2082,19 @@ type ParseWindowClauseContent<
 											},
 											Env2,
 										]
-									: SkipFailedExpressionWithEnv<
+									: CloseWindowOrError<
 											R2,
+											{
+												kind: "window_function"
+												name: FnName
+												args: Args
+												over: { partition_by: PartitionList; order_by: readonly [] }
+											},
+											Env2,
 											FormatError<
 												Errors["EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY"],
 												[]
-											>,
-											Env2
+											>
 										>
 							: never
 					: never
@@ -1962,11 +2102,41 @@ type ParseWindowClauseContent<
 			: never
 		: PeekToken<Tokens> extends TokenKey<"order">
 			? ParseWindowOrderByWithoutPartition<Tokens, FnName, Args, Env>
-			: SkipFailedExpressionWithEnv<
+			: CloseWindowOrError<
 					Tokens,
-					FormatError<Errors["EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE"], []>,
-					Env
+					{ kind: "window_function"; name: FnName; args: Args; over: { order_by: readonly [] } },
+					Env,
+					FormatError<Errors["EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE"], []>
 				>
+
+/**
+ * SQLT-51: where the PostgreSQL window clause has an error, a chain whose dialect allows it (SQLite) accepts an empty
+ * `OVER ()` and a frame (`ROWS|RANGE|GROUPS …`, skipped: it does not change a result type) before the closing paren.
+ */
+type CloseWindowOrError<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
+	DialectFact<Env["db"], "functionCatalog"> extends "sqlite"
+		? PeekToken<Tokens> extends TokenKey<")">
+			? [SkipToken<Tokens>, Ast, Env]
+			: AsIdent<PeekToken<Tokens>> extends TokenIdent<"range" | "groups">
+				? CloseWindowFrame<Tokens, Ast, Env, Err>
+				: PeekToken<Tokens> extends TokenKey<"rows">
+					? CloseWindowFrame<Tokens, Ast, Env, Err>
+					: SkipFailedExpressionWithEnv<Tokens, Err, Env>
+		: SkipFailedExpressionWithEnv<Tokens, Err, Env>
+
+type CloseWindowFrame<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
+	SkipToCloseParen<Tokens> extends [infer Rf extends ParserMonad, unknown]
+		? PeekToken<Rf> extends TokenKey<")">
+			? [SkipToken<Rf>, Ast, Env]
+			: SkipFailedExpressionWithEnv<Rf, Err, Env>
+		: never
+
+type SkipToCloseParen<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<")"> | TokenEot
+		? [Tokens, null]
+		: SkipToken<Tokens> extends infer Next extends ParserMonad
+			? SkipToCloseParen<Next>
+			: never
 
 type ParseWindowOrderByWithoutPartition<
 	Tokens extends ParserMonad,
@@ -1995,10 +2165,16 @@ type ParseWindowOrderByWithoutPartition<
 									},
 									Env4,
 								]
-							: SkipFailedExpressionWithEnv<
+							: CloseWindowOrError<
 									R4,
-									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>,
-									Env4
+									{
+										kind: "window_function"
+										name: FnName
+										args: Args
+										over: { order_by: OrderList }
+									},
+									Env4,
+									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>
 								>
 						: never
 				: never
@@ -2033,10 +2209,16 @@ type ParseWindowOrderByAfterPartition<
 									},
 									Env4,
 								]
-							: SkipFailedExpressionWithEnv<
+							: CloseWindowOrError<
 									R4,
-									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>,
-									Env4
+									{
+										kind: "window_function"
+										name: FnName
+										args: Args
+										over: { partition_by: PartitionList; order_by: OrderList }
+									},
+									Env4,
+									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>
 								>
 						: never
 				: never
@@ -2769,42 +2951,46 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 					: never
 				: PeekToken<Tokens> extends TokenKey<"(">
 					? TryParenOperandScalarUntyped<Tokens, Env>
-					: PeekToken<Tokens> extends TokenKey<"true">
-						? [SkipToken<Tokens>, { kind: "true" }, Env]
-						: PeekToken<Tokens> extends TokenKey<"false">
-							? [SkipToken<Tokens>, { kind: "false" }, Env]
-							: PeekToken<Tokens> extends TokenKey<"null">
-								? [SkipToken<Tokens>, { kind: "sql_null" }, Env]
-								: PeekToken<Tokens> extends TokenString<infer Str>
-									? [
-											SkipToken<Tokens>,
-											PeekToken<Tokens> extends { blob: true }
-												? { kind: "string"; value: Str; blob: true }
-												: { kind: "string"; value: Str },
-											Env,
-										]
-									: PeekToken<Tokens> extends TokenNumber<infer Raw>
-										? [SkipToken<Tokens>, { kind: "number"; raw: Raw }, Env]
-										: PeekToken<Tokens> extends TokenParam<infer P>
-											? [SkipToken<Tokens>, { kind: "param"; name: P }, Env]
-											: PeekToken<Tokens> extends TokenIndexedParam<infer Index>
-												? [
-														SkipToken<Tokens>,
-														{
-															kind: "positional-param"
-															index: Dec<ParseNumber<Index>>
-														},
-														Env,
-													]
-												: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
-													? TryColumnOperandScalarUntyped<Tokens, Env>
-													: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
-														? SkipFailedExpressionWithEnv<
-																Tokens,
-																FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
-																Env
-															>
-														: never
+					: PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
+						? PeekToken<Tokens> extends TokenKey<infer Word extends string>
+							? [SkipToken<Tokens>, { kind: "function_call"; name: Word; args: readonly [] }, Env]
+							: never
+						: PeekToken<Tokens> extends TokenKey<"true">
+							? [SkipToken<Tokens>, { kind: "true" }, Env]
+							: PeekToken<Tokens> extends TokenKey<"false">
+								? [SkipToken<Tokens>, { kind: "false" }, Env]
+								: PeekToken<Tokens> extends TokenKey<"null">
+									? [SkipToken<Tokens>, { kind: "sql_null" }, Env]
+									: PeekToken<Tokens> extends TokenString<infer Str>
+										? [
+												SkipToken<Tokens>,
+												PeekToken<Tokens> extends { blob: true }
+													? { kind: "string"; value: Str; blob: true }
+													: { kind: "string"; value: Str },
+												Env,
+											]
+										: PeekToken<Tokens> extends TokenNumber<infer Raw>
+											? [SkipToken<Tokens>, { kind: "number"; raw: Raw }, Env]
+											: PeekToken<Tokens> extends TokenParam<infer P>
+												? [SkipToken<Tokens>, { kind: "param"; name: P }, Env]
+												: PeekToken<Tokens> extends TokenIndexedParam<infer Index>
+													? [
+															SkipToken<Tokens>,
+															{
+																kind: "positional-param"
+																index: Dec<ParseNumber<Index>>
+															},
+															Env,
+														]
+													: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
+														? TryColumnOperandScalarUntyped<Tokens, Env>
+														: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
+															? SkipFailedExpressionWithEnv<
+																	Tokens,
+																	FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
+																	Env
+																>
+															: never
 
 /** EXPR-2, EXPR-5, EXPR-6: a column reference as a right operand or unary-minus operand. */
 type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =

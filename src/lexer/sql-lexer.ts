@@ -508,6 +508,7 @@ const serviceWordsMap = {
 	end: true,
 	except: true,
 	exclude: true,
+	extension: true,
 	exists: true,
 	false: true,
 	fetch: true,
@@ -517,6 +518,7 @@ const serviceWordsMap = {
 	full: true,
 	function: true,
 	generated: true,
+	grant: true,
 	group: true,
 	having: true,
 	if: true,
@@ -531,6 +533,7 @@ const serviceWordsMap = {
 	key: true,
 	ilike: true,
 	language: true,
+	lateral: true,
 	left: true,
 	like: true,
 	limit: true,
@@ -592,6 +595,7 @@ export type NonReservedWords =
 	| "delete"
 	| "enum"
 	| "exclude"
+	| "extension"
 	| "first"
 	| "function"
 	| "generated"
@@ -602,6 +606,7 @@ export type NonReservedWords =
 	| "next"
 	| "partition"
 	| "rename"
+	| "replace"
 	| "schema"
 	| "stored"
 	| "type"

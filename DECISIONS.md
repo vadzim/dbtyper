@@ -2,6 +2,39 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-18 SQLite function catalog and PostgreSQL-only syntax (#76, track A; SQLT-44…SQLT-53)
+
+- **Catalog as data.** `SqliteFunctions` (src/parser/sqlite-functions.ts) has one row per function: `[result, nulls]`
+  (`[…, "window"]` for functions that need OVER); `max/1` and `min/1` are the aggregate rows, chosen by argument count.
+  The dialect row `functionCatalog` ("builtin" | "sqlite") picks the path in `ResolveFunctionCall` and
+  `ResolveWindowFunction`; the PostgreSQL path is the old code under the new names `ResolveBuiltinFunctionCall` /
+  `ResolveBuiltinWindowFunction`. Null rules per CORE-2 are names in the row (`args`, `all` for coalesce/ifnull, `tail`
+  for iif, `lag`, `null`, `non-null`). Common type of arguments: equal types stay, numbers widen to real, else `any`.
+  `typeof` is a new type name of the SQLite type map (the literal union of storage class names), non-null.
+- **Parameters.** Rows added to `FunctionArgTypes` (`instr`, `unicode`) and to `PeerTypedFunctions` (`ifnull`, `max`,
+  `min`); the table is shared by both dialects because a name has one argument type.
+- **SQLT-52.** A name outside the table is 3619; a PostgreSQL function with a SQLite replacement (table
+  `SqlitePgOnlyFunctions`) gets the hint in the message: `Unknown function: now. now() is PostgreSQL-only; use datetime('now') or CURRENT_TIMESTAMP`.
+  The 3619 code is kept because FN-1 names it; DSEL-7 codes are for syntax.
+- **CURRENT_DATE/TIME/TIMESTAMP** are operands of the expression parser (a `function_call` without parentheses) and
+  select-list items; in a PostgreSQL chain they are the unknown-function error until the PostgreSQL catalog (PGT)
+  types them. `replace`, `extension` are accepted as names (`NonReservedWords`); `grant`, `lateral`, `extension` became
+  keywords so that their phrases can be matched.
+- **Window clause.** In a SQLite chain `OVER ()` and frames (`ROWS|RANGE|GROUPS …`) are accepted (frame skipped), and
+  `FILTER (WHERE …)` after an aggregate is parsed; the PostgreSQL window grammar (FN-11) is unchanged: the new code only
+  runs where PostgreSQL had an error (`CloseWindowOrError`). The FILTER and OVER contents are not resolved (as before).
+  A window-only function without OVER is 3620. Aggregate detection for GROUP BY (`KnownAggregateName`) knows `total`,
+  `group_concat`, `string_agg`, `json_group_*` and treats `min`/`max` with 2+ arguments as scalar.
+- **SQLT-53.** One-word and phrase constructs are `DialectPhrases` rows (`array [`, `[ ]`, `ilike`, `@>`, `<@`, `&&`,
+  `lateral`, `create type|schema|extension`, `grant`, `conflict on constraint`, `fetch first|next`). Parser-context
+  ones use `DbDialectOnlyError<Db, construct>` (the state's dialect, like `DialectFact`): `ANY/ALL/SOME` after a
+  comparison, `DISTINCT ON`, `DELETE … USING`, PostgreSQL-only type names in column types and `CAST` (`PgOnlyTypeNames`
+  rows: timestamptz, timestamp/time with time zone, jsonb, uuid, bytea). `DISTINCT ON` is checked by the parser because
+  a parse error right after `DISTINCT` hid the token-stream error. A bug fixed on the way: a phrase head with no
+  matching phrase (`create table …`) made `MatchDialectPhrase` `never`, which matched the destructuring and gave a
+  union of all errors; guarded in parser-monad.ts.
+- **Cost.** Existing tests 7.95M -> 8.05M instantiations (+1.2%); the new tests add 0.39M (8.43M in all).
+
 ## 2026-11-18 SQLite type names, affinity, keys and rowid (#67, track A; SQLT-6…SQLT-17)
 
 - **Dialect facts for parsers come from the database state, not from the monad.** The monad checker lets parsers read

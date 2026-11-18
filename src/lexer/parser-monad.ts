@@ -75,8 +75,7 @@ type TokenDialectError<
 	: Token extends TokenKey<infer K extends DialectPhraseHeads>
 		? NextWord<Rest, Syntax> extends [infer W2 extends string, infer Rest2 extends string]
 			? NextWord<Rest2, Syntax> extends [infer W3 extends string, infer Rest3 extends string]
-				? // `never` (no phrase) must not match the pattern below, or every construct would be inferred
-					[MatchDialectPhrase<K, W2, W3>] extends [never]
+				? [MatchDialectPhrase<K, W2, W3>] extends [never]
 					? null
 					: MatchDialectPhrase<K, W2, W3> extends [
 								infer C extends DialectConstruct,

@@ -1,3 +1,4 @@
+import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
@@ -35,7 +36,9 @@ type ParseDeleteAfterFrom<
 			: Mid extends null
 				? Third extends ScopeMap
 					? PeekToken<R> extends TokenKey<"using">
-						? ParseDeleteUsingClause<SkipToken<R>, Db, Third, Params>
+						? DbDialectOnlyError<Db, "pg-delete-using"> extends infer OnlyErr extends DbtyperErrorShape
+							? [R, Db, OnlyErr]
+							: ParseDeleteUsingClause<SkipToken<R>, Db, Third, Params>
 						: PeekToken<R> extends TokenKey<"where">
 							? SkipToken<R> extends infer Rw0 extends ParserMonad
 								? ParseWhereExpression<Rw0, Db, Third, Params> extends [

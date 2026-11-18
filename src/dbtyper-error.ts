@@ -1274,6 +1274,10 @@ export const errors = {
 		code: 3619,
 		msg: ["Unknown function: ", ""],
 	},
+	WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE: {
+		code: 3620,
+		msg: ["Window function `", "` needs an OVER clause"],
+	},
 
 	// DDL-Specific Errors
 	// CREATE SCHEMA

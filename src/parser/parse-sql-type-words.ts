@@ -6,7 +6,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { DialectFact, DialectOnlyError, SqliteTypeKey } from "../core/dialect.ts"
+import type { DialectFact, DialectOnlyError, PgOnlyTypeNames, SqliteTypeKey } from "../core/dialect.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
 export type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
@@ -62,7 +62,9 @@ export type DialectTypeName<Db, T extends string> =
 	DialectFact<Db, "typeNames"> extends "affinity"
 		? T extends "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
 			? DialectOnlyError<"dialect:sqlite", "pg-serial">
-			: SqliteTypeKey<T>
+			: T extends keyof PgOnlyTypeNames
+				? DialectOnlyError<"dialect:sqlite", PgOnlyTypeNames[T]>
+				: SqliteTypeKey<T>
 		: NormalizeSqlTypeName<T>
 
 /** Parse numeric literal from token string */
