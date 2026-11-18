@@ -688,6 +688,11 @@ export const errors = {
 		code: 2300,
 		msg: ["Unknown column ", " in ", ""],
 	},
+	// Same code 2300 when the clause is not known at the point of resolution (ERR-8: no dangling " in ").
+	UNKNOWN_COLUMN_NO_CLAUSE: {
+		code: 2300,
+		msg: ["Unknown column ", ""],
+	},
 	OBSOLETE_2301_UNKNOWN_COLUMN_UPDATE_SET: {
 		code: 2301,
 		msg: ["Use UNKNOWN_COLUMN with context parameter"],

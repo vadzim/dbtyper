@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
@@ -11,7 +11,7 @@ import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 type ParseQualifiedSecondIdent<AfterDot extends ParserMonad, A extends string> =
 	PeekToken<AfterDot> extends infer T2
 		? SkipToken<AfterDot> extends infer R2 extends ParserMonad
-			? T2 extends TokenIdent<infer B extends string>
+			? AsIdent<T2> extends TokenIdent<infer B extends string>
 				? [R2, null, A, B]
 				: SkipFailedQualifiedName<R2, FormatError<Errors["EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME"], []>>
 			: never
@@ -33,7 +33,7 @@ type ParseAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabas
 export type ParseQualifiedName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends infer NameTok
 		? SkipToken<Tokens> extends infer AfterFirst extends ParserMonad
-			? NameTok extends TokenIdent<infer A extends string>
+			? AsIdent<NameTok> extends TokenIdent<infer A extends string>
 				? ParseAfterFirstIdent<AfterFirst, Db, A>
 				: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_NAME"], []>>
 			: never
