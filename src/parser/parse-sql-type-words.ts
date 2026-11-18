@@ -72,7 +72,7 @@ export type ParseNullability<Tokens extends ParserMonad, BaseType extends SqlTyp
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"null">
 				? [SkipToken<R1>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: false }]
-				: [R1, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]
+				: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? [SkipToken<Tokens>, { type: BaseType["type"]; arg: BaseType["arg"]; nullable: true }]

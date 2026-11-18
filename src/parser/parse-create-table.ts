@@ -165,11 +165,11 @@ type ParseOneColumnAfterColName<
 	ColName extends string,
 > =
 	ParseSqlType<AfterColName> extends [infer AfterType extends ParserMonad, infer TypeShape]
-		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperErrorShape
-				? [AfterType, Db, TypeShape]
-				: ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
-			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
+		? TypeShape extends DbtyperErrorShape
+			? [AfterType, Db, TypeShape]
+			: TypeShape extends SqlTypeShape
+				? ContinueAfterColumnType<AfterType, Db, Schema, Table, Stack, ColName, TypeShape>
+				: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
 		: never
 
 type ParseOneColumn<
@@ -180,7 +180,9 @@ type ParseOneColumn<
 	Stack extends readonly ColumnTriple[],
 > =
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer ColName extends string>
-		? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
+		? ColName extends Stack[number][0]
+			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
+			: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 
 type ContinueAfterColumnType<
