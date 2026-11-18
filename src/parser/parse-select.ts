@@ -1744,7 +1744,7 @@ type ParseJoinChain<
 					: PeekToken<Tokens> extends TokenKey<"cross">
 						? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
 						: PeekToken<Tokens> extends TokenKey<"join">
-							? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+							? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
 							: [Tokens, null, Scope]
 
 type ParseJoinAfterCross<
@@ -1782,7 +1782,7 @@ type ParseJoinAfterOptionalInner<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
 		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["INNER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterLeft<
@@ -1794,7 +1794,7 @@ type ParseJoinAfterLeft<
 	PeekToken<Tokens> extends TokenKey<"outer">
 		? ParseJoinAfterOptionalOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
-			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "left">
 			: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["LEFT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRight<
@@ -1806,7 +1806,7 @@ type ParseJoinAfterRight<
 	PeekToken<Tokens> extends TokenKey<"outer">
 		? ParseJoinAfterRightOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
-			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "right">
 			: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["RIGHT"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterRightOuter<
@@ -1816,7 +1816,7 @@ type ParseJoinAfterRightOuter<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "right">
 		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["RIGHT OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFull<
@@ -1828,7 +1828,7 @@ type ParseJoinAfterFull<
 	PeekToken<Tokens> extends TokenKey<"outer">
 		? ParseJoinAfterFullOuter<SkipToken<Tokens>, Db, Scope, Params>
 		: PeekToken<Tokens> extends TokenKey<"join">
-			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+			? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "full">
 			: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["FULL"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterFullOuter<
@@ -1838,7 +1838,7 @@ type ParseJoinAfterFullOuter<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "full">
 		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["FULL OUTER"]>, ParserRefErrorThirdSentinel]
 
 type ParseJoinAfterOptionalOuter<
@@ -1848,14 +1848,38 @@ type ParseJoinAfterOptionalOuter<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params>
+		? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "left">
 		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["LEFT OUTER"]>, ParserRefErrorThirdSentinel]
+
+type JoinKind = "inner" | "left" | "right" | "full"
+
+type NullableScopeEntry<E extends ScopeEntry> = {
+	schema: E["schema"]
+	table: E["table"]
+	columns: {
+		[C in keyof E["columns"]]: { type: E["columns"][C]["type"]; arg: E["columns"][C]["arg"]; nullable: true }
+	}
+}
+
+/** SEL-18: columns of the optional side of an outer join are nullable (right of LEFT, left of RIGHT, both of FULL). */
+type MarkJoinNullable<Kind extends JoinKind, Old extends ScopeMap, New extends ScopeMap> = Kind extends "inner"
+	? New
+	: {
+			[K in keyof New]: K extends keyof Old
+				? Kind extends "right" | "full"
+					? NullableScopeEntry<New[K]>
+					: New[K]
+				: Kind extends "left" | "full"
+					? NullableScopeEntry<New[K]>
+					: New[K]
+		}
 
 type ParseJoinAfterJoinKw<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Kind extends JoinKind,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
 		? SkipToken<Tokens> extends infer AfterJ extends ParserMonad
@@ -1873,7 +1897,7 @@ type ParseJoinAfterJoinKw<
 							? never
 							: JoinScopeOnly<Third> extends ScopeMap
 								? PeekToken<R0> extends TokenKeyOn
-									? ParseJoinOn<R0, Db, JoinScopeOnly<Third>, Params>
+									? ParseJoinOn<R0, Db, MarkJoinNullable<Kind, Scope, JoinScopeOnly<Third>>, Params>
 									: [
 											R0,
 											FormatError<Errors["EXPECTED_ON_AFTER_JOIN_TABLE"], []>,

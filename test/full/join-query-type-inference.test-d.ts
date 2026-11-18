@@ -21,7 +21,7 @@ const _rows = await db.query(statement, {
 	email_domain: "@example\\.com$",
 })
 
-// TYPE-7: nullable columns (display_name, created_at, agenda) are `T | null`; the left-join side (SEL-18) is a separate issue
+// TYPE-7: nullable columns (display_name, created_at, agenda) are `T | null`
 expectType<typeof _rows>(
 	toBe<
 		{
@@ -29,10 +29,10 @@ expectType<typeof _rows>(
 			created_at: Date | null
 			display_name: string | null
 			email: string
-			id: string
+			id: string | null
 			login_count: number
-			title: string
-			user_id: string
+			title: string | null
+			user_id: string | null
 		}[]
 	>(),
 )

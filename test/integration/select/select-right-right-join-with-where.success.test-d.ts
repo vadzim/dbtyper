@@ -15,11 +15,4 @@ const _result = await _db.query(
 	`select users.name, orders.total from users right join orders on users.id = orders.user_id where orders.total > 100;`,
 )
 
-expectType<typeof _result>(
-	toBe<
-		{
-			name: string
-			total: number
-		}[]
-	>(),
-)
+expectType<typeof _result>(toBe<{ name: string | null; total: number }[]>())

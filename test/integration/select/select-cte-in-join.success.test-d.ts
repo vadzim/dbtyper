@@ -20,11 +20,4 @@ const _result = await _db.query(
      left join posts on active_users.id = posts.user_id;`,
 )
 
-expectType<typeof _result>(
-	toBe<
-		{
-			name: string
-			id: string
-		}[]
-	>(),
-)
+expectType<typeof _result>(toBe<{ id: string | null; name: string }[]>())
