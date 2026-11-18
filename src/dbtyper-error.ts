@@ -460,6 +460,38 @@ export const errors = {
 		code: 1510,
 		msg: ["Expected NULL after NOT"],
 	},
+	EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_TABLE: {
+		code: 1511,
+		msg: ["Expected SELECT or WITH after AS in CREATE TABLE"],
+	},
+	EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE: {
+		code: 1512,
+		msg: ["Expected KEY after PRIMARY or FOREIGN in CREATE TABLE"],
+	},
+	EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT: {
+		code: 1513,
+		msg: ["Expected `(` in CREATE TABLE constraint"],
+	},
+	EXPECTED_CONSTRAINT_AFTER_NAME_IN_CREATE_TABLE: {
+		code: 1514,
+		msg: ["Expected a constraint after the constraint name in CREATE TABLE"],
+	},
+	EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE: {
+		code: 1515,
+		msg: ["Expected constraint name after CONSTRAINT in CREATE TABLE"],
+	},
+	EXPECTED_REFERENCES_AFTER_FOREIGN_KEY: {
+		code: 1516,
+		msg: ["Expected REFERENCES after FOREIGN KEY (columns) in CREATE TABLE"],
+	},
+	EXPECTED_ALWAYS_AFTER_GENERATED: {
+		code: 1517,
+		msg: ["Expected ALWAYS after GENERATED in CREATE TABLE"],
+	},
+	EXPECTED_AS_AFTER_GENERATED_ALWAYS: {
+		code: 1518,
+		msg: ["Expected AS after GENERATED ALWAYS in CREATE TABLE"],
+	},
 
 	// ALTER TABLE
 	OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE: {
@@ -527,6 +559,15 @@ export const errors = {
 	OBSOLETE_1704_EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE: {
 		code: 1704,
 		msg: ["Use EXPECTED_SEMICOLON with context parameter"],
+	},
+
+	EXPECTED_EXISTS_AFTER_IF_IN_DROP_VIEW: {
+		code: 1705,
+		msg: ["Expected `exists` after `IF` in DROP VIEW"],
+	},
+	EXPECTED_VIEW_NAME_IN_DROP_VIEW: {
+		code: 1706,
+		msg: ["Expected view name in DROP VIEW"],
 	},
 
 	// CREATE/ALTER/DROP TYPE
@@ -1067,6 +1108,18 @@ export const errors = {
 	COLUMN_RENAME_FAILED: {
 		code: 3505,
 		msg: ["Column rename failed"],
+	},
+	DROP_VIEW_TARGETS_A_TABLE_USE_DROP_TABLE: {
+		code: 3510,
+		msg: ["DROP VIEW targets a table; use DROP TABLE"],
+	},
+	VIEW_DOES_NOT_EXIST_USE_IF_EXISTS: {
+		code: 3511,
+		msg: ["View does not exist; use IF EXISTS"],
+	},
+	CANNOT_WRITE_GENERATED_COLUMN: {
+		code: 3512,
+		msg: ["Cannot write generated column ", " in ", ""],
 	},
 
 	// Function Constraints
