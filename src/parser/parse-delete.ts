@@ -12,7 +12,7 @@ import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { ParseAndResolveReturningClause } from "./parse-select.ts"
+import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
 
 export type ParseDelete<
 	Tokens extends ParserMonad,

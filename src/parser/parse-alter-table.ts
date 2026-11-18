@@ -23,7 +23,8 @@ import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { ParseOneColumnAfterColName, ParseNameList } from "./parse-create-table.ts"
+import type { ParseOneColumnAfterColName } from "./parse-create-table-columns.ts"
+import type { ParseNameList } from "./parse-table-constraints.ts"
 
 type SkipUntilCommaOrSemi<Tokens extends ParserMonad> = SkipBracketedUntil<
 	Tokens,

@@ -14,7 +14,8 @@ import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
 import type { SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
-import type { ApplyCteColumnList, ParseCteColumnList, ParseSelectExpression } from "./parse-select.ts"
+import type { ApplyCteColumnList, ParseCteColumnList } from "./parse-select-cte.ts"
+import type { ParseSelectExpression } from "./parse-select.ts"
 import type { DialectFact } from "../core/dialect.ts"
 
 /**
