@@ -115,3 +115,38 @@ Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts
   final `semi` appended. Left out: blob `x'..'`, doubled quote escapes in backtick/bracket identifiers, hex and `1_000`
   numbers, `$name(..)` tcl forms.
 - **Numbers.** Bench `gram:bench -- --dialect sqlite` (flat `select a + 1, ...` statements) in the PR report.
+
+## 2026-11-18 — Dialect gate (#97, track B)
+
+- **Where.** `src/core/dialect-gate.ts` (`GateError`), called by `CheckSqlValid` (apply, query) and `CheckSqlValidForStream`
+  (stream) in `src/core/sql-database.ts` with the shared typer's own error as the fallback. Errors 1900 (PostgreSQL-only
+  syntax, SQLite driver) and 1901 (SQLite-only syntax, PostgreSQL driver), exactly the DSEL-7 codes (spec 93361f8).
+- **Algorithm.** Own grammar rejects at token `at`, other grammar accepts => other-dialect error naming the construct,
+  from the raw lexer token at `at` (re-lexed with the same syntax) and the terminals around it: `::` cast, ILIKE, `$n`
+  parameter (SQLite chain); INSERT/UPDATE OR <word>, REPLACE INTO, PRAGMA, `?NNN` parameter, backtick identifiers (a
+  backtick in the text, because PostgreSQL reads a backtick as an operator and fails a token later) (PostgreSQL chain).
+  An unrecognised construct gives the generic "syntax near `x` is ...-only" **only when the typer has no error**; the other
+  grammar is looser in places (SQLite takes any word as a table option, drops all actions), and then the typer's message
+  ("Expected INTO after INSERT") is the better one. Both reject => the typer's error, or for SQLite (typer over-accepts)
+  `UNEXPECTED_TOKEN`.
+- **Gating decision.** SQLite chains: always (the grammar is the only SQLite syntax authority). PostgreSQL chains: error path
+  only (`PgAlwaysGate = false`, a one-line switch). Measured with tsgo (`tsgo --noEmit -p tsconfig.test.json`, whole test
+  typecheck, machine load 10-30, 3 runs each, check time):
+  baseline (before #97) 2.0-2.1 s / 4.80 M instantiations; error path 2.2 s / 6.58 M (includes the 20 new gate tests);
+  PG always gated 2.7-2.85 s / 9.34 M, memory 1.02 GB vs 0.86 GB. No TS2589 and no false reject in the whole existing
+  suite either way, but always-on costs +0.7 s (+35 %) of ~2 s for a verdict that matters only when the typer already
+  accepted a statement the PG grammar rejects. Not worth it now; revisit when the typer is replaced by grammar actions.
+- **PostgreSQL `?`.** A bare `?` is the terminal `$error` in the PG token mapping (SQLite parameter; jsonb `?` is not typed by
+  dbtyper), so `select ?1` is rejected by the PG grammar (DSEL-4). A bare `?` without a number is still the typer's 1007.
+- **Lexer.** Under `dialect-sqlite` with `question-params`, `?NNN` is the indexed parameter NNN (was `?` then `NNN`), DSEL-4.
+- **Bug fixed from #94.** `ParamsDriverConfig` was `Config & { syntax: ... | "dialect-x" }`: the intersection with the driver's
+  own `syntax` removed the dialect flag. It is now an explicit object type, so the flag reaches the lexer.
+- **False-reject guard.** The #96 grammar gaps (blob `x'..'`, hex `0x`, `1_000`, doubled quote in backtick/bracket
+  identifiers, `$name(..)`) make the SQLite token stream wrong; when the text contains one (template match
+  `SqliteLexGap`), the gate stays silent and the typer's error stays. A text with `x'`/`0x` inside a string is also skipped:
+  harmless. Not mapped, because each needs the lexer to produce a new token kind.
+- **SQLite chains in tests.** `create schema` is PostgreSQL-only (DSEL-5) and the shared typer knows no SQLite schema, so
+  SQLite chains cannot create tables until #68...#77; `test/dialect/dialect-driver.test.ts` lost its SQLite `create schema`
+  and table (SQLite typed `select 1 as id` instead). With the real `SqliteDriverConfig` a literal is typed `never` for the same reason.
+- **Packaging.** The gate imports `src/gram/**/*.d.ts` from `src/core`, which `tsc` does not emit: `npm run build` runs
+  `scripts/copy-gram-dts.mjs` afterwards.

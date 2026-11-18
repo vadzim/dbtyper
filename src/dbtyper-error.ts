@@ -47,6 +47,7 @@ type ErrorDescription = {
  * - 1600-1699: Parser/ALTER TABLE Errors
  * - 1700-1799: Parser/DROP TABLE Errors
  * - 1800-1899: Parser/CREATE/ALTER/DROP TYPE Errors
+ * - 1900-1999: Dialect Errors (syntax of the other dialect, DSEL-7)
  * - 2000-2099: Validation/Expression Errors
  * - 2100-2199: Validation/Statement Errors
  * - 2200-2299: Resolution/Table-Schema Errors
@@ -581,6 +582,16 @@ export const errors = {
 	EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE: {
 		code: 1817,
 		msg: ["Expected `exists` after `IF` in DROP TYPE"],
+	},
+
+	// Dialect errors (DSEL-5, DSEL-6, DSEL-7): rejected by the driver's grammar, accepted by the other dialect's
+	POSTGRES_ONLY_SYNTAX_WITH_SQLITE_DRIVER: {
+		code: 1900,
+		msg: ["", " is PostgreSQL-only; this database is SQLite.", ""],
+	},
+	SQLITE_ONLY_SYNTAX_WITH_POSTGRES_DRIVER: {
+		code: 1901,
+		msg: ["", " is SQLite-only; this database is PostgreSQL.", ""],
 	},
 
 	// Statement Validation

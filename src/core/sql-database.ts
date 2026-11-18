@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-s
 import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
+import type { GateError } from "./dialect-gate.ts"
 import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
 import type {
@@ -31,7 +32,9 @@ export type DriverConfig = {
 type DialectFeature<D extends SqlDialect> = Extract<LexerDialect, `dialect-${D}`>
 
 /** Config seen by the parsers: allowed query params, plus the chain's dialect as a `syntax` flag (DSEL-1, DSEL-3). */
-export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = Config & {
+export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = {
+	dialect: Config["dialect"]
+	scalarTypes: Config["scalarTypes"]
 	syntax:
 		| ApplyAllowedQueryParams<
 				Config["syntax"],
@@ -251,7 +254,12 @@ type CheckSqlValidForStream<
 	Stmt extends string,
 	Params extends ExpressionParamsShape | null,
 > =
-	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
+	GateError<
+		Config["dialect"],
+		Config["syntax"],
+		Stmt,
+		SqlSelectResultTs<Config, Db, Stmt, Params> extends infer R extends DbtyperErrorShape ? R : null
+	> extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
 		: Stmt
 
@@ -261,7 +269,12 @@ type CheckSqlValid<
 	Stmt extends string,
 	Params extends ExpressionParamsShape | null,
 > =
-	ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1] extends DbtyperError<infer Code, infer Msg>
+	GateError<
+		Config["dialect"],
+		Config["syntax"],
+		Stmt,
+		ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1]
+	> extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
 		: Stmt
 

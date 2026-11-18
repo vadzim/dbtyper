@@ -46,6 +46,7 @@ Each category has 100 slots, providing room for future expansion.
 | 1600-1699 | Parser Syntax - ALTER TABLE  | ALTER TABLE parsing             | 4    | 96   |
 | 1700-1799 | Parser Syntax - DROP TABLE   | DROP TABLE parsing              | 2    | 98   |
 | 1800-1899 | Parser Syntax - Type DDL     | CREATE/ALTER/DROP TYPE          | 11   | 89   |
+| 1900-1999 | Dialect                      | Syntax of the other dialect     | 2    | 98   |
 | 2100-2199 | Validation - Statement       | Invalid statements              | 10   | 90   |
 | 2200-2299 | Resolution - Table/Schema    | Unknown tables or schemas       | 3    | 97   |
 | 2300-2399 | Resolution - Column          | Unknown columns                 | 4    | 96   |
@@ -239,6 +240,16 @@ Obsolete codes are marked in the source code as `OBSOLETE_<CODE>_<OLD_NAME>` and
 const query = `SELECT "unclosed FROM users` as const
 // Error: DbtyperError<1000, "[dbt:1000] Unclosed quoted identifier literal">
 ```
+
+### 1900-1999: Dialect Errors (DSEL-5, DSEL-6, DSEL-7)
+
+| Code | ID                                      | Message                                                         |
+| ---- | --------------------------------------- | --------------------------------------------------------------- |
+| 1900 | POSTGRES_ONLY_SYNTAX_WITH_SQLITE_DRIVER | `X` is PostgreSQL-only; this database is SQLite. Use ...        |
+| 1901 | SQLITE_ONLY_SYNTAX_WITH_POSTGRES_DRIVER | `X` is SQLite-only; this database is PostgreSQL. Use ...        |
+
+Raised by the grammar gate (`src/core/dialect-gate.ts`) when the driver's own grammar rejects a statement and the other dialect's grammar accepts it.
+A statement both grammars reject is an ordinary syntax error. The message names the construct (`::` cast, INSERT OR REPLACE, backtick-quoted identifiers, ...) and, where there is one, the equivalent to use.
 
 ### 1100-1199: Parser Syntax - SELECT Statement
 

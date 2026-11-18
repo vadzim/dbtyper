@@ -28,10 +28,8 @@ const pgDriver = createDriver<PostgresDriverConfig>({ query: async () => [] })
 createDriver<{ syntax: ""; scalarTypes: {} }>({ query: async () => [] })
 
 // DSEL-1/3/4: two chains of different dialects in one file type independently.
-const sqliteDb = sqlMigrations({ driver: sqliteDriver })
-	.apply("create schema public;")
-	.apply("create table users (id integer not null, name text);")
-	.database()
+// No `create schema` (PostgreSQL-only, DSEL-5) and no tables: SQLite schema typing is #68…#77.
+const sqliteDb = sqlMigrations({ driver: sqliteDriver }).database()
 const pgDb = sqlMigrations({ driver: pgDriver })
 	.apply("create schema public;")
 	.apply("create table users (id integer not null, name text);")
@@ -42,7 +40,7 @@ test("DSEL-3/DSEL-4: the same select is typed in both dialects", async () => {
 	const _b = await pgDb.query("select 1 as x")
 	expectType<typeof _a>(toBe<Array<{ x: number }>>())
 	expectType<typeof _b>(toBe<Array<{ x: number }>>())
-	const _c = await sqliteDb.stream("select id from users")
+	const _c = await sqliteDb.stream("select 1 as id")
 	expectType<typeof _c>(toBe<AsyncIterable<{ id: number }>>())
 })
 
