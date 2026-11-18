@@ -950,7 +950,7 @@ type DefaultSyntaxError<Ast, Err extends DbtyperErrorShape> = Err extends { __sq
 	: Err
 
 /** `null` when the resolved DEFAULT expression fits the column, else the error. */
-type DefaultFits<V, C extends ColumnCtx> = V extends { __sql_parser_error_code__: 3619 }
+type DefaultFits<V, C extends ColumnCtx> = V extends { __sql_parser_error_code__: Errors["UNKNOWN_FUNCTION"]["code"] }
 	? null
 	: V extends DbtyperErrorShape
 		? V
