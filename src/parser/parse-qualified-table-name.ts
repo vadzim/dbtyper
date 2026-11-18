@@ -11,7 +11,7 @@ type ParseQualifiedSecondIdent<AfterDot extends ParserMonad, _Db extends JsqlDat
 	PeekToken<AfterDot> extends infer Tok2
 		? SkipToken<AfterDot> extends infer R2 extends ParserMonad
 			? AsIdent<Tok2> extends TokenIdent<infer B extends string>
-				? PeekToken<R2> extends TokenKey<"(">
+				? PeekToken<R2> extends TokenKey<"(" | "as">
 					? [R2, null, A, B]
 					: SkipFailedQualifiedName<
 							R2,
@@ -23,7 +23,7 @@ type ParseQualifiedSecondIdent<AfterDot extends ParserMonad, _Db extends JsqlDat
 
 /** After first ident `A` (unqualified or `A.`…). Unqualified names use {@link JsqlDatabaseShape["defaultSchema"]} as the schema key. */
 type ParseQualifiedAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<"(">
+	PeekToken<AfterFirst> extends TokenKey<"(" | "as">
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends infer Tdot
 			? SkipToken<AfterFirst> extends infer AfterDot extends ParserMonad

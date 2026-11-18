@@ -23,7 +23,7 @@ import type {
 } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
-import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
+import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
@@ -153,90 +153,96 @@ type ParseUpdateSetAssignments<
 			? AsIdent<TokCol> extends TokenIdent<infer Col extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "UPDATE SET"]>]
-					: PeekToken<R1> extends TokenKey<"=">
-						? SkipToken<R1> extends infer R2 extends ParserMonad
-							? ParseExpressionAST<
-									R2,
-									{
-										db: Db
-										params: Params
-										outerScope: Scope
-									}
-								> extends [infer R3 extends ParserMonad, infer Ast, infer _UpdatedEnv]
-								? Ast extends DbtyperErrorShape
-									? [R3, Db, Ast]
-									: Ast extends ScalarExprAst
-										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-											? Resolved extends DbtyperErrorShape
-												? [R3, Db, WithErrorClause<Resolved, "UPDATE SET">]
-												: Resolved extends SqlTypeShape
-													? ValidateMutationValueForColumn<
-															Tbl,
-															Col,
-															Resolved
-														> extends infer V0
-														? V0 extends DbtyperErrorShape
-															? [R3, Db, V0]
-															: V0 extends true
-																? PeekToken<R3> extends TokenKey<",">
-																	? SkipToken<R3> extends infer R4 extends ParserMonad
-																		? ParseUpdateSetAssignments<
-																				R4,
-																				Db,
-																				Scope,
-																				Params,
-																				Tbl,
-																				Sch,
-																				Tab,
-																				readonly [...Acc, Col]
-																			>
-																		: never
-																	: PeekToken<R3> extends
-																				| TokenKey<"from">
-																				| TokenKey<"where">
-																				| TokenKey<"returning">
-																				| TokenKey<";">
-																				| TokenEot
-																		? [
-																				R3,
-																				Db,
-																				{
-																					kind: "update"
-																					table: Tab
-																					schema: Sch
-																					set_columns: readonly [...Acc, Col]
-																				},
-																			]
-																		: [
-																				R3,
-																				Db,
-																				FormatError<
-																					Errors["EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT"],
-																					[]
-																				>,
-																			]
-																: never
-														: never
-													: SkipFailedExpression<R3, never> extends [
-																infer Rest extends ParserMonad,
-																infer Err,
-														  ]
-														? [Rest, Db, Err]
-														: never
-											: never
-										: SkipFailedExpression<R3, never> extends [
-													infer Rest extends ParserMonad,
-													infer Err,
-											  ]
-											? [Rest, Db, Err]
-											: never
+					: IsGeneratedColumn<Tbl, Col> extends true
+						? [R1, Db, FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "UPDATE SET"]>]
+						: PeekToken<R1> extends TokenKey<"=">
+							? SkipToken<R1> extends infer R2 extends ParserMonad
+								? ParseExpressionAST<
+										R2,
+										{
+											db: Db
+											params: Params
+											outerScope: Scope
+										}
+									> extends [infer R3 extends ParserMonad, infer Ast, infer _UpdatedEnv]
+									? Ast extends DbtyperErrorShape
+										? [R3, Db, Ast]
+										: Ast extends ScalarExprAst
+											? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
+												? Resolved extends DbtyperErrorShape
+													? [R3, Db, WithErrorClause<Resolved, "UPDATE SET">]
+													: Resolved extends SqlTypeShape
+														? ValidateMutationValueForColumn<
+																Tbl,
+																Col,
+																Resolved
+															> extends infer V0
+															? V0 extends DbtyperErrorShape
+																? [R3, Db, V0]
+																: V0 extends true
+																	? PeekToken<R3> extends TokenKey<",">
+																		? SkipToken<R3> extends infer R4 extends
+																				ParserMonad
+																			? ParseUpdateSetAssignments<
+																					R4,
+																					Db,
+																					Scope,
+																					Params,
+																					Tbl,
+																					Sch,
+																					Tab,
+																					readonly [...Acc, Col]
+																				>
+																			: never
+																		: PeekToken<R3> extends
+																					| TokenKey<"from">
+																					| TokenKey<"where">
+																					| TokenKey<"returning">
+																					| TokenKey<";">
+																					| TokenEot
+																			? [
+																					R3,
+																					Db,
+																					{
+																						kind: "update"
+																						table: Tab
+																						schema: Sch
+																						set_columns: readonly [
+																							...Acc,
+																							Col,
+																						]
+																					},
+																				]
+																			: [
+																					R3,
+																					Db,
+																					FormatError<
+																						Errors["EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT"],
+																						[]
+																					>,
+																				]
+																	: never
+															: never
+														: SkipFailedExpression<R3, never> extends [
+																	infer Rest extends ParserMonad,
+																	infer Err,
+															  ]
+															? [Rest, Db, Err]
+															: never
+												: never
+											: SkipFailedExpression<R3, never> extends [
+														infer Rest extends ParserMonad,
+														infer Err,
+												  ]
+												? [Rest, Db, Err]
+												: never
+									: never
 								: never
-							: never
-						: SkipFailedStatement<
-								R1,
-								Db,
-								FormatError<Errors["EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET"], []>
-							>
+							: SkipFailedStatement<
+									R1,
+									Db,
+									FormatError<Errors["EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET"], []>
+								>
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in UPDATE SET"]>>
 			: never
 		: never
