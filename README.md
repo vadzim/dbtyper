@@ -50,6 +50,21 @@ const rows = await db.query(`
 `)
 ```
 
+### SQLite
+
+The same chain works for SQLite: pass a SQLite driver and the chain is parsed as SQLite (type affinity names, `?` parameters, `INSERT OR …`, the SQLite function catalog).
+
+```typescript
+import Database from "better-sqlite3"
+import { betterSqlite3Driver } from "dbtyper/sqlite"
+
+const db = sqlMigrations({ driver: betterSqlite3Driver(new Database("app.db")) })
+	.apply(`create table users (id integer primary key, email text not null)`)
+	.database()
+```
+
+`nodeSqliteDriver` does the same for `node:sqlite`. Syntax of the other engine is a compile error with its own code (1900, 1901). See [Supported SQL](./docs/SUPPORTED-SQL.md) and [Architecture](./ARCHITECTURE.md).
+
 ## Why
 
 The database boundary is usually a hole in TypeScript's type system. Migrations run, columns change, and string SQL only fails at runtime unless you have enough tests. With `dbtyper`, the schema lives in the type system, so migration changes propagate into query errors during the normal TypeScript feedback loop.
@@ -58,6 +73,7 @@ This keeps raw SQL readable while avoiding the usual abstraction stack around it
 
 ## More
 
+- [Architecture and the dialect seam](./ARCHITECTURE.md)
 - [Plain Postgres example](./examples/typed-postgres/README.md)
 - [NestJS example](./examples/nest-postgres/README.md)
 

@@ -251,6 +251,17 @@ a plain syntax error. The constructs are rows of `DialectOnlyConstructs` in `src
 | 1900 | POSTGRES_ONLY_SYNTAX | X is PostgreSQL-only; this database is SQLite. Hint |
 | 1901 | SQLITE_ONLY_SYNTAX   | X is SQLite-only; this database is PostgreSQL. Hint |
 
+SQLite-specific codes (SQLT-18, SQLT-21, SQLT-24, SQLT-26; #70):
+
+| Code | ID                                | Message                                                                              |
+| ---- | --------------------------------- | ------------------------------------------------------------------------------------ |
+| 1913 | WITHOUT_ROWID_NEEDS_PRIMARY_KEY   | WITHOUT ROWID tables need a PRIMARY KEY                                              |
+| 1914 | SQLITE_ADD_COLUMN_RESTRICTED      | SQLite cannot ADD COLUMN with {restriction}                                          |
+| 1915 | SQLITE_NO_SCHEMAS                 | SQLite has no schemas                                                                |
+| 1916 | SQLITE_UNSUPPORTED_STATEMENT      | {statement} is not supported in migrations                                           |
+| 1917 | REGEXP_NEEDS_FUNCTION             | REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB |
+| 1918 | EXPECTED_CONFLICT_ACTION_AFTER_OR | Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR                           |
+
 **Example:** SQLite chain, `select id::text from users` →
 `error [dbtyper:1900]: \`::\` cast is PostgreSQL-only; this database is SQLite. Use CAST(x AS TEXT)`
 
@@ -339,6 +350,15 @@ const query2 = `UPDATE users SET nonexistent = 1` as const
 const query3 = `SELECT users.nonexistent FROM users` as const
 // Error: DbtyperError<2307, "[dbt:2307] Unknown qualified column \"users.nonexistent\"">
 ```
+
+### Codes added with the SQLite and PostgreSQL work (#63, #91)
+
+| Code | ID                                   | Message                                             |
+| ---- | ------------------------------------ | --------------------------------------------------- |
+| 2220 | UNKNOWN_CONSTRAINT                   | Unknown constraint {name} on table {table}          |
+| 3512 | CANNOT_WRITE_GENERATED_COLUMN        | Cannot write generated column {column} in {context} |
+| 3619 | UNKNOWN_FUNCTION                     | Unknown function: {name}                            |
+| 3620 | WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE | Window function `{name}` needs an OVER clause       |
 
 ### 2600-2699: Type System - Boolean Type Errors
 

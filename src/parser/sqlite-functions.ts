@@ -10,6 +10,7 @@ import type { Nullable, SqlTypeShape } from "../core/sql-type-shape.ts"
  *   all but the first, `sum` integer over integer arguments, else real.
  * `nulls` (CORE-2): `args` nullable when any argument is; `non-null`; `null` always nullable; `all` nullable only
  *   when every argument is (`coalesce`, `ifnull`); `tail` nullable when any argument but the first is (`iif`);
+ *   `first` nullable only when the first argument is (`concat_ws`, `format`, `printf`; PGT-28, SQLT-44);
  *   `lag` `lag`/`lead`: nullable unless a non-null default is given.
  */
 export type SqliteFunctions = {
@@ -22,13 +23,13 @@ export type SqliteFunctions = {
 	replace: ["text", "args"]
 	substr: ["text", "args"]
 	substring: ["text", "args"]
-	printf: ["text", "args"]
-	format: ["text", "args"]
+	printf: ["text", "first"]
+	format: ["text", "first"]
 	quote: ["text", "args"]
 	hex: ["text", "args"]
 	char: ["text", "args"]
-	concat: ["text", "args"]
-	concat_ws: ["text", "args"]
+	concat: ["text", "non-null"]
+	concat_ws: ["text", "first"]
 	length: ["integer", "args"]
 	instr: ["integer", "args"]
 	unicode: ["integer", "args"]
@@ -267,13 +268,17 @@ export type IsResultNullable<N extends string, Args extends readonly SqlTypeShap
 				: AllNullable<Args>
 			: N extends "tail"
 				? AnyNullable<Tail<Args>>
-				: N extends "lag"
-					? Args extends readonly [SqlTypeShape, SqlTypeShape, infer D extends SqlTypeShape]
-						? D["nullable"] extends true
-							? true
-							: AnyNullable<Args>
-						: true
-					: AnyNullable<Args>
+				: N extends "first"
+					? Args extends readonly [infer F extends SqlTypeShape, ...unknown[]]
+						? F["nullable"]
+						: false
+					: N extends "lag"
+						? Args extends readonly [SqlTypeShape, SqlTypeShape, infer D extends SqlTypeShape]
+							? D["nullable"] extends true
+								? true
+								: AnyNullable<Args>
+							: true
+						: AnyNullable<Args>
 
 /** Result of a SQLite function row for resolved argument types. */
 export type SqliteRowResult<Row, Args extends readonly SqlTypeShape[]> = Row extends readonly [
