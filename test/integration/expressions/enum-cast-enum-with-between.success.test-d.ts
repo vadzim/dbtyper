@@ -23,4 +23,13 @@ const _result = await db.query(`
 	where task_status between 'active' and 'pending';
 `)
 
-expectType<typeof _result>(toBe<{ name: string; id: number; task_status: unknown; task_priority: unknown }[]>())
+expectType<typeof _result>(
+	toBe<
+		{
+			name: string
+			id: number
+			task_status: "active" | "inactive" | "pending"
+			task_priority: ("low" | "medium" | "high") | null
+		}[]
+	>(),
+)

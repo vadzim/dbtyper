@@ -244,7 +244,7 @@ type ResolveUpdateAssignments<
 		? Resolved extends DbtyperErrorShape
 			? WithErrorClause<Resolved, "UPDATE SET">
 			: Resolved extends SqlTypeShape
-				? ValidateMutationValueForColumn<Tbl, Col, Resolved, Db> extends infer V0
+				? ValidateMutationValueForColumn<Tbl, Col, Resolved, Db, Ast> extends infer V0
 					? V0 extends DbtyperErrorShape
 						? V0
 						: Rest extends PendingAssignments

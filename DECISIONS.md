@@ -306,3 +306,24 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   of `Dialects`. An item without alias that is not a column or `*` keeps its text in `key`, used only for naming.
 - **Limits.** Leading comments inside the span stay in the key; SQLite itself keeps the text too. An implicit alias
   without `AS` is not parsed by the select list (existing behaviour).
+
+## 2026-11-18 Arrays, enums, domains, unmapped types (#82, track A; PGT-12..15, PGT-22; TYPE-5/6/14/16 removed)
+
+- **Enum columns are shapes `{ type: "enum", arg: [name, schema] }`**, resolved when the column type is parsed
+  (`ResolveUserType` in parse-sql-type-words.ts: the table's schema, then the default schema, then any schema). The
+  labels are NOT copied into the shape: `JsqlEnumLabelUnion` reads them from the chain when a result or parameter is
+  typed, so `ALTER TYPE ... ADD VALUE` changes the union (PGT-13). `SqlTypeShapeToTs`/`ApplySqlToTsConversion` take the
+  chain as an extra argument; the old "user type names are not unmapped" exemption is gone.
+- **Domains** are `{ kind: "domain", base, notNull }` in the schema's `types` (src/parser/parse-create-domain.ts); a
+  column of a domain gets the base shape, NOT NULL when the domain says so (not for arrays of it). DEFAULT/CHECK are skipped.
+  `DROP DOMAIN` and `ALTER DOMAIN` are still skipped statements; not done.
+- **Arrays** nest per dimension in `SqlTypeShapeToTs`; an unmapped element type is CORE-14 (the check already recursed).
+- **PGT-14** lives in src/parser/parse-enum-checks.ts, called from `=`/`<>`/..., `IN`, `BETWEEN`, simple `CASE` and
+  INSERT/UPDATE assignment (the literal's AST is needed, shapes alone cannot tell a label). Codes: VALUE_NOT_IN_ENUM 2511
+  "'x' is not a value of enum mood"; INCOMPATIBLE_VALUE_FOR_ENUM 2512 "Incompatible value for enum mood" (number,
+  boolean, another enum). A non-literal text operand is accepted. Casts `'x'::mood` give the enum shape; the label of a
+  cast literal is not checked. Parameters compared with or assigned to an enum are typed as the label union.
+- **CORE-14 message** now ends with "; select it with a cast, e.g. `::text`" (PGT-15 hint).
+- **Not done**: `COALESCE` over enums is not checked for foreign labels; schema-qualified enum names in column types
+  (`app.status`) still need the parser to read dotted type names; `IN` checks only a literal on the right side.
+- Cost: instantiations of the full test typecheck 9.828M -> about 10.5M including the new test file (0.13M-0.2M).

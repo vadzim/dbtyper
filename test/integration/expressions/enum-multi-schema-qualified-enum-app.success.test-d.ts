@@ -34,8 +34,8 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
-			article_status: unknown
-			article_priority: unknown
+			article_status: "draft" | "published"
+			article_priority: ("low" | "high") | null
 		}[]
 	>(),
 )

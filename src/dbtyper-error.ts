@@ -893,6 +893,14 @@ export const errors = {
 		code: 2506,
 		msg: ["Incompatible types in JOIN ON"],
 	},
+	VALUE_NOT_IN_ENUM: {
+		code: 2511,
+		msg: ["'", "' is not a value of enum ", ""],
+	},
+	INCOMPATIBLE_VALUE_FOR_ENUM: {
+		code: 2512,
+		msg: ["Incompatible value for enum ", ""],
+	},
 	COLUMN_TYPE_MISMATCH: {
 		code: 2510,
 		msg: ["column `", "` is ", ""],
@@ -1206,7 +1214,7 @@ export const errors = {
 
 	NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE: {
 		code: 3506,
-		msg: ["No TypeScript type for SQL type ", " in the driver's type map"],
+		msg: ["No TypeScript type for SQL type ", " in the driver's type map; select it with a cast, e.g. `::text`"],
 	},
 
 	// Function Constraints

@@ -25,5 +25,10 @@ await db.query(query)
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
 expectType<ReturnedError>(
-	toBe<DbtyperError<3506, "No TypeScript type for SQL type boolean in the driver's type map">>(),
+	toBe<
+		DbtyperError<
+			3506,
+			"No TypeScript type for SQL type boolean in the driver's type map; select it with a cast, e.g. `::text`"
+		>
+	>(),
 )

@@ -498,7 +498,7 @@ type ParseInsertValuesCells<
 					? Resolved extends DbtyperErrorShape
 						? [R1, Db, WithErrorClause<Resolved, "INSERT VALUES">]
 						: Resolved extends SqlTypeShape
-							? ValidateMutationValueForColumn<Tbl, C0, Resolved, Db> extends infer V0
+							? ValidateMutationValueForColumn<Tbl, C0, Resolved, Db, Ast> extends infer V0
 								? V0 extends DbtyperErrorShape
 									? [R1, Db, V0]
 									: V0 extends true
@@ -867,7 +867,8 @@ type ParseInsertUpsertSetAssignments<
 																Tbl,
 																Col,
 																Resolved,
-																Db
+																Db,
+																Ast
 															> extends infer V0
 															? V0 extends DbtyperErrorShape
 																? [R3, Db, V0]
