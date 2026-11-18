@@ -21,28 +21,6 @@ export type PostgresSqlDriverConfig = {
 	pageSize?: number
 }
 
-/**
- * RUN-23: value parsers so rows hold what `PostgresTypeMap` promises
- * (int8 → bigint, numeric → number, date → string; the `postgres` defaults give string, string, Date).
- */
-const runtimeParsers: Readonly<Record<number, (value: string) => unknown>> = {
-	20: value => BigInt(value),
-	1700: value => Number(value),
-	1082: value => value,
-}
-
-type ClientWithParsers = { options?: { parsers?: Record<number, unknown> } }
-
-function installRuntimeParsers(sql: ReturnType<typeof postgres>): void {
-	const parsers = (sql as unknown as ClientWithParsers).options?.parsers
-	if (parsers === undefined) {
-		return
-	}
-	for (const [oid, parse] of Object.entries(runtimeParsers)) {
-		parsers[Number(oid)] = parse
-	}
-}
-
 function pgQueryArgs(text: string, params?: SqlDriverParams): { text: string; values: readonly unknown[] } {
 	if (params === undefined) {
 		return { text, values: [] }
@@ -62,7 +40,6 @@ function createConnectedPostgresDriver(
 	sql: ReturnType<typeof postgres>,
 	pageSize: number,
 ): SqlDriver<PostgresDriverConfig> {
-	installRuntimeParsers(sql)
 	return createDriver<PostgresDriverConfig>({
 		async query(text: string, params?: SqlDriverParams) {
 			const { text: sqlText, values } = pgQueryArgs(text, params)

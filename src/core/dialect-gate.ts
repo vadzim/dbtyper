@@ -6,7 +6,8 @@
  * other dialect's grammar: an other-dialect error (1900: PostgreSQL-only syntax with a SQLite driver, 1901: SQLite-only
  * syntax with a PostgreSQL driver) naming the construct. Rejected by both: the ordinary syntax error.
  *
- * - SQLite chains always run the gate (the shared typer is PostgreSQL-shaped and over-accepts).
+ * - SQLite chains always run the gate (the shared typer is PostgreSQL-shaped and over-accepts): the statement is parsed
+ *   once by the value-carrying driver in `src/core/grammar-typing.ts`, which calls `SqliteGateError` with its result.
  * - PostgreSQL chains run it when `PgAlwaysGate` is true, otherwise only when the typer already reported an error.
  */
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -37,32 +38,30 @@ export type GateError<
 > = string extends Stmt
 	? TyperError
 	: [Dialect] extends ["sqlite"]
-		? SqliteGate<Stmt, TyperError>
+		? TyperError // already gated in grammar-typing.ts (SqliteGateError)
 		: PgAlwaysGate extends true
 			? PgGate<Syntax, Stmt, TyperError>
 			: TyperError extends DbtyperErrorShape
 				? PgGate<Syntax, Stmt, TyperError>
 				: null
 
-type SqliteGate<Stmt extends string, TyperError extends DbtyperErrorShape | null> =
-	SqliteTerminals<Stmt> extends infer Own extends string[]
-		? Recognize<SqliteTables, Own> extends infer R
-			? R extends { ok: true }
-				? TyperError
-				: R extends { ok: false; at: infer At extends number; token: infer Token extends string }
-					? Stmt extends SqliteLexGap
-						? TyperError
-						: PgTerminals<Stmt, PgOtherSyntax> extends infer Other extends string[]
-							? Recognize<PgTables, Other> extends { ok: true }
-								? Report<
-										"POSTGRES_ONLY_SYNTAX_WITH_SQLITE_DRIVER",
-										PgOnly<Stmt, Own, Other, At>,
-										TyperError
-									>
-								: BothReject<TyperError, Token>
-							: TyperError
-					: TyperError
-			: TyperError
+/** The SQLite gate, given the SQLite grammar's verdict `R` on `Stmt` (`Recognize` or `Parse` result). */
+export type SqliteGateError<Stmt extends string, R, TyperError extends DbtyperErrorShape | null> = R extends {
+	ok: true
+}
+	? TyperError
+	: R extends { ok: false; at: infer At extends number; token: infer Token extends string }
+		? Stmt extends SqliteLexGap
+			? TyperError
+			: PgTerminals<Stmt, PgOtherSyntax> extends infer Other extends string[]
+				? Recognize<PgTables, Other> extends { ok: true }
+					? Report<
+							"POSTGRES_ONLY_SYNTAX_WITH_SQLITE_DRIVER",
+							PgOnly<Stmt, SqliteTerminals<Stmt>, Other, At>,
+							TyperError
+						>
+					: BothReject<TyperError, Token>
+				: TyperError
 		: TyperError
 
 type PgGate<Syntax extends string, Stmt extends string, TyperError extends DbtyperErrorShape | null> =
@@ -92,7 +91,7 @@ type PgGate<Syntax extends string, Stmt extends string, TyperError extends Dbtyp
  * of such a text is wrong, so a verdict that rests on it could be a false error: the gate stays silent (the typer's
  * error stays).
  */
-type SqliteLexGap =
+export type SqliteLexGap =
 	| `${string}${"x'" | "X'" | "0x" | "0X" | "``" | "]]" | `${Digit}_${Digit}`}${string}`
 	| `${string}$${Letter | Uppercase<Letter>}${string}(${string}`
 type Letter =

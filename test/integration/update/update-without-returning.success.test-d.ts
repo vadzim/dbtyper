@@ -1,4 +1,4 @@
-// Integration Test: UPDATE without RETURNING
+// Integration Test: CORE-13, DML-9: UPDATE without RETURNING
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
@@ -11,4 +11,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`update users set name = 'Bob' where id = '1';`)
 
-expectType<typeof _result>(toBe<unknown>())
+expectType<typeof _result>(toBe<[]>())

@@ -39,3 +39,7 @@ is hand-written; terminal names are parse.y's, lower case. To update SQLite: rep
 line, regenerate, run the tests. Bench: `npm run gram:bench -- --dialect sqlite`.
 Lemon grammars (`%fallback`): a table set may export `Fallback` (terminal -> terminal tried when the state has no
 explicit action for the first one); the driver is otherwise unchanged. `test/gram/driver.test.ts` shows the table encoding on toy tables.
+Typing (#55): `Parse<Tables, Terminals, Texts, Actions>` in `driver.ts` carries a value stack; a dialect with
+`<dialect>/actions.ts` (rule key `"lhs: RHS"` -> semantic action) gets rule keys in its reduce actions on `gram:generate`.
+SQLite: `sqlite/actions.ts` builds the AST, `sqlite/typer.ts` types it, `src/core/grammar-typing.ts` decides which typer
+runs (DECISIONS.md, "Grammar-driven typing (#55)"). After editing the keys of `actions.ts`, run `npm run gram:generate -- sqlite`.
