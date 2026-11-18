@@ -1311,7 +1311,11 @@ type MergeColPair<A extends ColPair, B extends ColPair> = {
 	facts: MergeRecords<A["facts"], B["facts"]>
 }
 
-/** Batched merge (chunks of 4) to keep conditional-type depth bounded on wide tables. */
+/**
+ * Batched merge (chunks of 4) to keep conditional-type depth bounded on wide tables. Found by trial: merging one
+ * column at a time made the recursion too deep ("Type instantiation is excessively deep") at about 100 columns;
+ * the 4 comes from the unrolled shapes below, a bigger chunk only repeats more code (#105, #48).
+ */
 type ColumnsFromStack<S extends readonly ColumnDef[]> = S extends readonly []
 	? { cols: {}; facts: {} }
 	: S extends readonly [infer C0 extends ColumnDef]

@@ -186,6 +186,10 @@ const errors = {
 		code: 1917,
 		msg: ["REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB"],
 	},
+	TOO_MANY_STATEMENTS: {
+		code: 1919,
+		msg: ["A script may have at most 2500 statements; split it into several migrations"],
+	},
 	EXPECTED_CONFLICT_ACTION_AFTER_OR: {
 		code: 1918,
 		msg: ["Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR"],
