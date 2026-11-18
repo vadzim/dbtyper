@@ -1,5 +1,4 @@
-import type { Nullable, SqlArray, SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { IsResultNullable, Shape } from "./sqlite-functions.ts"
+import type { SqlInteger, SqlText } from "../core/sql-type-shape.ts"
 
 /**
  * PGT-27…PGT-33: the result of every PostgreSQL function, as data (a row per function, like `SqliteFunctions`).
@@ -16,136 +15,119 @@ import type { IsResultNullable, Shape } from "./sqlite-functions.ts"
  */
 export type PostgresFunctions = {
 	// PGT-27 aggregates
-	count: ["bigint", "non-null", "aggregate"]
-	sum: ["sum", "null", "aggregate"]
-	avg: ["avg", "null", "aggregate"]
-	min: ["arg", "null", "aggregate"]
-	max: ["arg", "null", "aggregate"]
-	bool_and: ["boolean", "null", "aggregate"]
-	bool_or: ["boolean", "null", "aggregate"]
-	every: ["boolean", "null", "aggregate"]
-	string_agg: ["text", "null", "aggregate"]
-	array_agg: ["array-of-arg", "null", "aggregate"]
-	json_agg: ["json", "null", "aggregate"]
-	jsonb_agg: ["jsonb", "null", "aggregate"]
-	json_object_agg: ["json", "null", "aggregate"]
-	jsonb_object_agg: ["jsonb", "null", "aggregate"]
+	count: ["bigint", "non-null", "aggregate", null, null]
+	sum: ["sum", "null", "aggregate", "sum", null]
+	avg: ["avg", "null", "aggregate", "sum", null]
+	min: ["arg", "null", "aggregate", "atLeastOne", "peer"]
+	max: ["arg", "null", "aggregate", "atLeastOne", "peer"]
+	bool_and: ["boolean", "null", "aggregate", null, null]
+	bool_or: ["boolean", "null", "aggregate", null, null]
+	every: ["boolean", "null", "aggregate", null, null]
+	string_agg: ["text", "null", "aggregate", null, null]
+	array_agg: ["array-of-arg", "null", "aggregate", null, null]
+	json_agg: ["json", "null", "aggregate", null, null]
+	jsonb_agg: ["jsonb", "null", "aggregate", null, null]
+	json_object_agg: ["json", "null", "aggregate", null, null]
+	jsonb_object_agg: ["jsonb", "null", "aggregate", null, null]
 	// PGT-28 text
-	length: ["integer", "args"]
-	char_length: ["integer", "args"]
-	octet_length: ["integer", "args"]
-	position: ["integer", "args"]
-	strpos: ["integer", "args"]
-	lower: ["text", "args"]
-	upper: ["text", "args"]
-	initcap: ["text", "args"]
-	trim: ["text", "args"]
-	btrim: ["text", "args"]
-	ltrim: ["text", "args"]
-	rtrim: ["text", "args"]
-	substr: ["text", "args"]
-	substring: ["text", "args"]
-	replace: ["text", "args"]
-	left: ["text", "args"]
-	right: ["text", "args"]
-	lpad: ["text", "args"]
-	rpad: ["text", "args"]
-	split_part: ["text", "args"]
-	repeat: ["text", "args"]
-	reverse: ["text", "args"]
-	concat: ["text", "non-null"]
-	concat_ws: ["text", "first"]
-	format: ["text", "first"]
-	md5: ["text", "args"]
-	to_char: ["text", "args"]
-	regexp_replace: ["text", "args"]
+	length: ["integer", "args", "scalar", null, [SqlText]]
+	char_length: ["integer", "args", "scalar", null, [SqlText]]
+	octet_length: ["integer", "args", "scalar", null, null]
+	position: ["integer", "args", "scalar", null, null]
+	strpos: ["integer", "args", "scalar", null, [SqlText, SqlText]]
+	lower: ["text", "args", "scalar", "atLeastOne", [SqlText]]
+	upper: ["text", "args", "scalar", "atLeastOne", [SqlText]]
+	initcap: ["text", "args", "scalar", null, [SqlText]]
+	trim: ["text", "args", "scalar", null, [SqlText]]
+	btrim: ["text", "args", "scalar", null, [SqlText, SqlText]]
+	ltrim: ["text", "args", "scalar", null, [SqlText, SqlText]]
+	rtrim: ["text", "args", "scalar", null, [SqlText, SqlText]]
+	substr: ["text", "args", "scalar", null, [SqlText, SqlInteger, SqlInteger]]
+	substring: ["text", "args", "scalar", null, [SqlText, SqlInteger, SqlInteger]]
+	replace: ["text", "args", "scalar", null, [SqlText, SqlText, SqlText]]
+	left: ["text", "args", "scalar", null, [SqlText, SqlInteger]]
+	right: ["text", "args", "scalar", null, [SqlText, SqlInteger]]
+	lpad: ["text", "args", "scalar", null, [SqlText, SqlInteger, SqlText]]
+	rpad: ["text", "args", "scalar", null, [SqlText, SqlInteger, SqlText]]
+	split_part: ["text", "args", "scalar", null, null]
+	repeat: ["text", "args", "scalar", null, [SqlText, SqlInteger]]
+	reverse: ["text", "args", "scalar", null, [SqlText]]
+	concat: ["text", "non-null", "scalar", null, null]
+	concat_ws: ["text", "first", "scalar", null, null]
+	format: ["text", "first", "scalar", null, null]
+	md5: ["text", "args", "scalar", null, [SqlText]]
+	to_char: ["text", "args", "scalar", null, null]
+	regexp_replace: ["text", "args", "scalar", null, null]
 	// PGT-29 math
-	abs: ["arg", "args"]
-	ceil: ["arg", "args"]
-	floor: ["arg", "args"]
-	round: ["arg", "args"]
-	trunc: ["arg", "args"]
-	mod: ["arg", "args"]
-	power: ["double precision", "args"]
-	sqrt: ["double precision", "args"]
-	random: ["double precision", "non-null"]
-	greatest: ["common", "all"]
-	least: ["common", "all"]
+	abs: ["arg", "args", "scalar", null, null]
+	ceil: ["arg", "args", "scalar", null, null]
+	floor: ["arg", "args", "scalar", null, null]
+	round: ["arg", "args", "scalar", null, null]
+	trunc: ["arg", "args", "scalar", null, null]
+	mod: ["arg", "args", "scalar", null, null]
+	power: ["double precision", "args", "scalar", null, null]
+	sqrt: ["double precision", "args", "scalar", null, null]
+	random: ["double precision", "non-null", "scalar", null, null]
+	greatest: ["common", "all", "scalar", null, "peer"]
+	least: ["common", "all", "scalar", null, "peer"]
 	// FN-8
-	coalesce: ["first-value", "all"]
+	coalesce: ["first-value", "all", "scalar", "coalesce", "peer"]
 	// PGT-30 date and time (FN-10)
-	now: ["timestamp with time zone", "non-null"]
-	current_timestamp: ["timestamp with time zone", "non-null"]
-	clock_timestamp: ["timestamp with time zone", "non-null"]
-	statement_timestamp: ["timestamp with time zone", "non-null"]
-	transaction_timestamp: ["timestamp with time zone", "non-null"]
-	current_date: ["date", "non-null"]
-	current_time: ["time with time zone", "non-null"]
-	date_trunc: ["arg2", "args"]
-	extract: ["numeric", "args"]
-	date_part: ["double precision", "args"]
-	age: ["interval", "args"]
-	to_timestamp: ["timestamp with time zone", "args"]
-	make_date: ["date", "args"]
-	make_interval: ["interval", "args"]
-	gen_random_uuid: ["uuid", "non-null"]
-	uuid_generate_v4: ["uuid", "non-null"]
+	now: ["timestamp with time zone", "non-null", "scalar", "now", null]
+	current_timestamp: ["timestamp with time zone", "non-null", "scalar", null, null]
+	clock_timestamp: ["timestamp with time zone", "non-null", "scalar", null, null]
+	statement_timestamp: ["timestamp with time zone", "non-null", "scalar", null, null]
+	transaction_timestamp: ["timestamp with time zone", "non-null", "scalar", null, null]
+	current_date: ["date", "non-null", "scalar", null, null]
+	current_time: ["time with time zone", "non-null", "scalar", null, null]
+	date_trunc: ["arg2", "args", "scalar", null, null]
+	extract: ["numeric", "args", "scalar", null, null]
+	date_part: ["double precision", "args", "scalar", null, null]
+	age: ["interval", "args", "scalar", null, null]
+	to_timestamp: ["timestamp with time zone", "args", "scalar", null, null]
+	make_date: ["date", "args", "scalar", null, null]
+	make_interval: ["interval", "args", "scalar", null, null]
+	gen_random_uuid: ["uuid", "non-null", "scalar", "noArgs", null]
+	uuid_generate_v4: ["uuid", "non-null", "scalar", "noArgs", null]
 	// PGT-31 JSON
-	to_json: ["json", "args"]
-	to_jsonb: ["jsonb", "args"]
-	json_build_object: ["json", "non-null"]
-	jsonb_build_object: ["jsonb", "non-null"]
-	json_build_array: ["json", "non-null"]
-	jsonb_build_array: ["jsonb", "non-null"]
-	jsonb_set: ["jsonb", "args"]
-	jsonb_strip_nulls: ["jsonb", "args"]
-	json_array_length: ["integer", "args"]
-	jsonb_array_length: ["integer", "args"]
-	json_typeof: ["text", "args"]
-	jsonb_typeof: ["text", "args"]
-	jsonb_extract_path_text: ["text", "null"]
+	to_json: ["json", "args", "scalar", null, null]
+	to_jsonb: ["jsonb", "args", "scalar", null, null]
+	json_build_object: ["json", "non-null", "scalar", null, null]
+	jsonb_build_object: ["jsonb", "non-null", "scalar", null, null]
+	json_build_array: ["json", "non-null", "scalar", null, null]
+	jsonb_build_array: ["jsonb", "non-null", "scalar", null, null]
+	jsonb_set: ["jsonb", "args", "scalar", null, null]
+	jsonb_strip_nulls: ["jsonb", "args", "scalar", null, null]
+	json_array_length: ["integer", "args", "scalar", null, null]
+	jsonb_array_length: ["integer", "args", "scalar", null, null]
+	json_typeof: ["text", "args", "scalar", null, null]
+	jsonb_typeof: ["text", "args", "scalar", null, null]
+	jsonb_extract_path_text: ["text", "null", "scalar", null, null]
 	// PGT-32 other (array_length, array_append, array_prepend, unnest: FN-19…FN-21, kept in the expression parser)
-	cardinality: ["integer", "args"]
-	array_position: ["integer", "null"]
-	array_cat: ["arg", "args"]
-	array_remove: ["arg", "args"]
-	string_to_array: ["text[]", "args"]
-	array_to_string: ["text", "args"]
-	generate_series: ["arg", "args"]
+	cardinality: ["integer", "args", "scalar", null, null]
+	array_position: ["integer", "null", "scalar", null, null]
+	array_cat: ["arg", "args", "scalar", null, null]
+	array_remove: ["arg", "args", "scalar", null, null]
+	string_to_array: ["text[]", "args", "scalar", null, null]
+	array_to_string: ["text", "args", "scalar", null, null]
+	generate_series: ["arg", "args", "scalar", null, null]
+	// FN-19…FN-21: own errors in the result and the arity
+	array_length: ["array-length", "args", "scalar", "arrayLength", null]
+	array_append: ["array-append", "args", "scalar", "arrayAppend", null]
+	array_prepend: ["array-prepend", "args", "scalar", "arrayPrepend", null]
+	unnest: ["unnest", "args", "scalar", "unnest", null]
 	// PGT-33 window functions (aggregates with OVER are the rows above)
-	row_number: ["bigint", "non-null", "window"]
-	rank: ["bigint", "non-null", "window"]
-	dense_rank: ["bigint", "non-null", "window"]
-	ntile: ["integer", "non-null", "window"]
-	percent_rank: ["double precision", "non-null", "window"]
-	cume_dist: ["double precision", "non-null", "window"]
-	lag: ["arg", "lag", "window"]
-	lead: ["arg", "lag", "window"]
-	first_value: ["arg", "args", "window"]
-	last_value: ["arg", "args", "window"]
-	nth_value: ["arg", "null", "window"]
-}
-
-/**
- * Arity rules that are compile errors (FN-5, FN-7…FN-10, FN-12, FN-24): `[min, max, error key]`, `-1` = no limit.
- * A name not in this table accepts any number of arguments.
- */
-export type PostgresFunctionArity = {
-	lower: [1, -1, "FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"]
-	upper: [1, -1, "FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"]
-	min: [1, -1, "FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"]
-	max: [1, -1, "FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"]
-	coalesce: [1, -1, "COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT"]
-	sum: [1, -1, "SUM_REQUIRES_AN_ARGUMENT"]
-	avg: [1, -1, "SUM_REQUIRES_AN_ARGUMENT"]
-	now: [0, 0, "NOW_TAKES_NO_ARGUMENTS"]
-	gen_random_uuid: [0, 0, "THIS_FUNCTION_TAKES_NO_ARGUMENTS"]
-	uuid_generate_v4: [0, 0, "THIS_FUNCTION_TAKES_NO_ARGUMENTS"]
-	row_number: [0, 0, "ROW_NUMBER_TAKES_NO_ARGUMENTS"]
-	rank: [0, 0, "RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"]
-	dense_rank: [0, 0, "RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"]
-	lag: [1, -1, "LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"]
-	lead: [1, -1, "LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"]
+	row_number: ["bigint", "non-null", "window", "rowNumber", null]
+	rank: ["bigint", "non-null", "window", "rankDenseRank", null]
+	dense_rank: ["bigint", "non-null", "window", "rankDenseRank", null]
+	ntile: ["integer", "non-null", "window", null, null]
+	percent_rank: ["double precision", "non-null", "window", null, null]
+	cume_dist: ["double precision", "non-null", "window", null, null]
+	lag: ["arg", "lag", "window", "lagLead", null]
+	lead: ["arg", "lag", "window", "lagLead", null]
+	first_value: ["arg", "args", "window", null, null]
+	last_value: ["arg", "args", "window", null, null]
+	nth_value: ["arg", "null", "window", null, null]
 }
 
 /** PGT-34: SQLite functions that PostgreSQL lacks, with the hint of the PostgreSQL replacement ("" for none). */
@@ -180,102 +162,3 @@ export type PostgresSqliteOnlyFunctions = {
 	pi: ""
 	log2: ""
 }
-
-/** The widest numeric type among the two (PostgreSQL's numeric hierarchy); other types keep the first. */
-type PgCommon2<A extends string, B extends string> = A extends B
-	? A
-	: [A | B] extends [PgNumeric]
-		? "double precision" extends A | B
-			? "double precision"
-			: "real" extends A | B
-				? "real"
-				: "numeric" extends A | B
-					? "numeric"
-					: "bigint" extends A | B
-						? "bigint"
-						: "integer"
-		: A
-
-type PgNumeric = "smallint" | "integer" | "bigint" | "numeric" | "real" | "double precision"
-
-/** Common type of `greatest`/`least` arguments: NULL literals are ignored, numbers widen, else the first type. */
-type PgCommonType<Args extends readonly SqlTypeShape[], Acc extends string = never> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["type"] extends "null"
-		? PgCommonType<T, Acc>
-		: [Acc] extends [never]
-			? PgCommonType<T, H["type"]>
-			: PgCommonType<T, PgCommon2<Acc, H["type"]>>
-	: [Acc] extends [never]
-		? "null"
-		: Acc
-
-type FirstValue<Args extends readonly SqlTypeShape[]> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["type"] extends "null"
-		? FirstValue<T>
-		: H
-	: { type: "null"; arg: null; nullable: true }
-
-/** PGT-27: `sum` over smallint/integer is bigint, over bigint/numeric numeric, over floats the same type. */
-type PgSumType<T extends string> = T extends "smallint" | "integer"
-	? "bigint"
-	: T extends "real" | "double precision"
-		? T
-		: "numeric"
-
-/** PGT-27: `avg` over integers and numeric is numeric, over floats double precision. */
-type PgAvgType<T extends string> = T extends "real" | "double precision" ? "double precision" : "numeric"
-
-type PgResultShape<R extends string, Args extends readonly SqlTypeShape[]> = R extends "arg"
-	? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-		? { type: A["type"]; arg: A["arg"]; nullable: false }
-		: Shape<"unknown">
-	: R extends "arg2"
-		? Args extends readonly [unknown, infer A extends SqlTypeShape, ...unknown[]]
-			? { type: A["type"]; arg: A["arg"]; nullable: false }
-			: Shape<"unknown">
-		: R extends "common"
-			? Shape<PgCommonType<Args>>
-			: R extends "first-value"
-				? FirstValue<Args> extends infer F extends SqlTypeShape
-					? { type: F["type"]; arg: F["arg"]; nullable: false }
-					: never
-				: R extends "sum"
-					? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-						? Shape<PgSumType<A["type"]>>
-						: Shape<"numeric">
-					: R extends "avg"
-						? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-							? Shape<PgAvgType<A["type"]>>
-							: Shape<"numeric">
-						: R extends "array-of-arg"
-							? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-								? SqlArray<{ type: A["type"]; arg: A["arg"]; nullable: false }>
-								: Shape<"unknown">
-							: R extends "text[]"
-								? SqlArray<Shape<"text">>
-								: Shape<R>
-
-/** Whether `L` is a PostgreSQL catalog function. */
-export type IsPostgresFunction<L extends string> = L extends keyof PostgresFunctions ? true : false
-
-/** Result of a PostgreSQL function row for resolved argument types (CORE-2 per the row). */
-export type PostgresRowResult<Row, Args extends readonly SqlTypeShape[]> = Row extends readonly [
-	infer R extends string,
-	infer N extends string,
-	...unknown[],
-]
-	? PgResultShape<R, Args> extends infer S extends SqlTypeShape
-		? IsResultNullable<N, Args> extends true
-			? Nullable<S>
-			: S
-		: never
-	: never
-
-/** Whether the row may be used before OVER (an aggregate or a window function). */
-export type IsWindowCapableRow<Row> = Row extends readonly [string, string, "aggregate" | "window"] ? true : false
