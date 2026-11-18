@@ -281,7 +281,7 @@ type ParseOrderByTermExpr<
 	]
 		? Ast extends DbtyperErrorShape
 			? SkipFailedExpression<Rw, Ast>
-			: Ast extends { kind: "col"; parts: readonly [infer N extends OutNames] }
+			: Ast extends { kind: "col"; parts: readonly [infer _N extends OutNames] }
 				? [Rw, null]
 				: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
 					? R extends DbtyperErrorShape

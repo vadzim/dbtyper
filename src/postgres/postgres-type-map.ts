@@ -27,4 +27,11 @@ export type PostgresTypeMap = {
 	"character varying": string
 	varchar: string
 	char: string
+	// No precise TypeScript type yet (PostgreSQL type issues); `unknown` keeps today's result and is an explicit mapping (CORE-14).
+	bytea: unknown
+	inet: unknown
+	cidr: unknown
+	interval: unknown
+	tsvector: unknown
+	tsquery: unknown
 }

@@ -30,8 +30,8 @@ expectType<typeof _result>(
 			region: string | null
 			total_count: bigint
 			amount_count: bigint
-			total_amount: number
-			avg_amount: number
+			total_amount: number | null
+			avg_amount: number | null
 			min_amount: number | null
 			max_amount: number | null
 			min_qty: number | null

@@ -1122,6 +1122,11 @@ export const errors = {
 		msg: ["Cannot write generated column ", " in ", ""],
 	},
 
+	NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE: {
+		code: 3506,
+		msg: ["No TypeScript type for SQL type ", " in the driver's type map"],
+	},
+
 	// Function Constraints
 	THIS_FUNCTION_TAKES_NO_ARGUMENTS: {
 		code: 3600,
