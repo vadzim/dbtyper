@@ -436,6 +436,10 @@ export const errors = {
 		code: 1509,
 		msg: ["Expected DEFAULT value"],
 	},
+	EXPECTED_NULL_AFTER_NOT: {
+		code: 1510,
+		msg: ["Expected NULL after NOT"],
+	},
 
 	// ALTER TABLE
 	OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE: {
@@ -477,6 +481,10 @@ export const errors = {
 	EXPECTED_NULL_AFTER_SET_NOT: {
 		code: 1609,
 		msg: ["Expected NULL after SET NOT"],
+	},
+	EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE: {
+		code: 1610,
+		msg: ["Expected `exists` after `IF` in ALTER TABLE"],
 	},
 
 	// DROP TABLE

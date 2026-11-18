@@ -23,7 +23,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends ParserMonad, A extends strin
 	PeekToken<AfterDot> extends TokenIdent<infer B extends string>
 		? SkipToken<AfterDot> extends infer R2 extends ParserMonad
 			? PeekToken<R2> extends TokenKey<";"> | TokenEot
-				? [SkipToken<R2>, null, A, B]
+				? [R2, null, A, B]
 				: SkipFailedQualifiedName<
 						R2,
 						FormatError<Errors["EXPECTED_SEMICOLON"], ["qualified table name in DROP TABLE"]>
@@ -34,7 +34,7 @@ type ParseDropQualifiedSecondIdent<AfterDot extends ParserMonad, A extends strin
 /** After first identifier (table or schema). */
 type ParseDropAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<AfterFirst> extends TokenKey<";"> | TokenEot
-		? [SkipToken<AfterFirst>, null, Db["defaultSchema"], A]
+		? [AfterFirst, null, Db["defaultSchema"], A]
 		: PeekToken<AfterFirst> extends TokenKey<".">
 			? ParseDropQualifiedSecondIdent<SkipToken<AfterFirst>, A>
 			: SkipFailedQualifiedName<
