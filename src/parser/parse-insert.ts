@@ -13,7 +13,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type { ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
+import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
 import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
@@ -172,16 +172,24 @@ type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataS
 				? AsIdent<Tok> extends TokenIdent<infer Col extends string>
 					? JsqlDataGetColumnType<Tbl, Col> extends null
 						? SkipFailedExpression<R1, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "INSERT column list"]>>
-						: PeekToken<R1> extends TokenKey<")">
-							? SkipToken<R1> extends infer R2 extends ParserMonad
-								? [R2, readonly [...Acc, Col]]
-								: never
-							: PeekToken<R1> extends TokenKey<",">
-								? ParseInsertColumnNameList<SkipToken<R1>, Tbl, readonly [...Acc, Col]>
-								: SkipFailedExpression<
-										R1,
-										FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST"], []>
-									>
+						: IsGeneratedColumn<Tbl, Col> extends true
+							? SkipFailedExpression<
+									R1,
+									FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "INSERT"]>
+								>
+							: PeekToken<R1> extends TokenKey<")">
+								? SkipToken<R1> extends infer R2 extends ParserMonad
+									? [R2, readonly [...Acc, Col]]
+									: never
+								: PeekToken<R1> extends TokenKey<",">
+									? ParseInsertColumnNameList<SkipToken<R1>, Tbl, readonly [...Acc, Col]>
+									: SkipFailedExpression<
+											R1,
+											FormatError<
+												Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST"],
+												[]
+											>
+										>
 					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in INSERT column list"]>>
 				: never
 			: never
@@ -191,7 +199,7 @@ type IsNotNullInsertColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl 
 }
 	? Col extends keyof Facts
 		? Facts[Col] extends { nullability: "not_null" }
-			? Facts[Col] extends { default: true }
+			? Facts[Col] extends { default: true } | { generated: true | { mode: "stored" | "virtual" } }
 				? false
 				: true
 			: false
@@ -722,67 +730,76 @@ type ParseInsertUpsertSetAssignments<
 			? TokCol extends TokenIdent<infer Col extends string>
 				? JsqlDataGetColumnType<Tbl, Col> extends null
 					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "ON CONFLICT DO UPDATE SET"]>]
-					: PeekToken<R1> extends TokenKey<"=">
-						? SkipToken<R1> extends infer R2 extends ParserMonad
-							? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
-									infer R3 extends ParserMonad,
-									infer Ast,
-									infer _UpdatedEnv,
-								]
-								? Ast extends DbtyperErrorShape
-									? [R3, Db, Ast]
-									: Ast extends ScalarExprAst
-										? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-											? Resolved extends DbtyperErrorShape
-												? [R3, Db, WithErrorClause<Resolved, "ON CONFLICT DO UPDATE SET">]
-												: Resolved extends SqlTypeShape
-													? ValidateMutationValueForColumn<
-															Tbl,
-															Col,
-															Resolved
-														> extends infer V0
-														? V0 extends DbtyperErrorShape
-															? [R3, Db, V0]
-															: V0 extends true
-																? PeekToken<R3> extends TokenKey<",">
-																	? ParseInsertUpsertSetAssignments<
-																			SkipToken<R3>,
-																			Db,
-																			Scope,
-																			Params,
-																			Tbl,
-																			readonly [...Acc, Col]
-																		>
-																	: PeekToken<R3> extends
-																				| TokenKey<"where">
-																				| TokenKey<";">
-																				| TokenEot
-																		? [R3, Db, readonly [...Acc, Col]]
-																		: [
-																				R3,
-																				Db,
-																				FormatError<
-																					Errors["EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET"],
-																					[]
-																				>,
-																			]
-																: never
-														: never
-													: never
-											: never
-										: SkipFailedExpression<R3, never> extends [
-													infer Rest extends ParserMonad,
-													infer Err,
-											  ]
-											? [Rest, Db, Err]
-											: never
-								: never
-							: never
-						: SkipFailedStatement<
+					: IsGeneratedColumn<Tbl, Col> extends true
+						? [
 								R1,
 								Db,
-								FormatError<Errors["EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE"], []>
-							>
+								FormatError<
+									Errors["CANNOT_WRITE_GENERATED_COLUMN"],
+									[Col, "ON CONFLICT DO UPDATE SET"]
+								>,
+							]
+						: PeekToken<R1> extends TokenKey<"=">
+							? SkipToken<R1> extends infer R2 extends ParserMonad
+								? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+										infer R3 extends ParserMonad,
+										infer Ast,
+										infer _UpdatedEnv,
+									]
+									? Ast extends DbtyperErrorShape
+										? [R3, Db, Ast]
+										: Ast extends ScalarExprAst
+											? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
+												? Resolved extends DbtyperErrorShape
+													? [R3, Db, WithErrorClause<Resolved, "ON CONFLICT DO UPDATE SET">]
+													: Resolved extends SqlTypeShape
+														? ValidateMutationValueForColumn<
+																Tbl,
+																Col,
+																Resolved
+															> extends infer V0
+															? V0 extends DbtyperErrorShape
+																? [R3, Db, V0]
+																: V0 extends true
+																	? PeekToken<R3> extends TokenKey<",">
+																		? ParseInsertUpsertSetAssignments<
+																				SkipToken<R3>,
+																				Db,
+																				Scope,
+																				Params,
+																				Tbl,
+																				readonly [...Acc, Col]
+																			>
+																		: PeekToken<R3> extends
+																					| TokenKey<"where">
+																					| TokenKey<";">
+																					| TokenEot
+																			? [R3, Db, readonly [...Acc, Col]]
+																			: [
+																					R3,
+																					Db,
+																					FormatError<
+																						Errors["EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET"],
+																						[]
+																					>,
+																				]
+																	: never
+															: never
+														: never
+												: never
+											: SkipFailedExpression<R3, never> extends [
+														infer Rest extends ParserMonad,
+														infer Err,
+												  ]
+												? [Rest, Db, Err]
+												: never
+									: never
+								: never
+							: SkipFailedStatement<
+									R1,
+									Db,
+									FormatError<Errors["EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE"], []>
+								>
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in ON CONFLICT UPDATE"]>>
 			: never
 		: never

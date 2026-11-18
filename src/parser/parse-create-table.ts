@@ -431,21 +431,13 @@ type ParseColumnAfterGroup<G, C extends ColumnCtx, S extends ColumnState> = G ex
 
 type ParseColumnAfterReferences<G, C extends ColumnCtx, S extends ColumnState> = ParseColumnAfterGroup<G, C, S>
 
-/** `COLLATE name`, the name possibly qualified or quoted as a string. */
+/** The name after `COLLATE` (quoted or not), possibly qualified: `[rest]`. */
 type SkipCollationName<Tokens extends ParserMonad> =
-	PeekToken<SkipToken<Tokens>> extends infer T extends { kind: string }
-		? PeekToken<SkipToken<SkipToken<Tokens>>> extends TokenKey<".">
-			? SkipToken<SkipToken<SkipToken<SkipToken<Tokens>>>>
-			: SkipToken<SkipToken<Tokens>> extends infer R extends ParserMonad
-				? T extends never
-					? never
-					: R
-				: never
-		: never
+	PeekToken<SkipToken<Tokens>> extends TokenKey<"."> ? SkipToken<SkipToken<SkipToken<Tokens>>> : SkipToken<Tokens>
 
 /** `GENERATED ALWAYS AS (expr) [STORED | VIRTUAL]` (CORE-15, CORE-18); the expression is not typed. */
 type ParseColumnGenerated<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
-	PeekToken<Tokens> extends TokenIdent<"always">
+	PeekToken<Tokens> extends TokenKey<"always">
 		? PeekToken<SkipToken<Tokens>> extends TokenKey<"as">
 			? SkipParenGroup<SkipToken<SkipToken<Tokens>>> extends [infer R extends ParserMonad, infer E]
 				? E extends DbtyperErrorShape
@@ -466,21 +458,41 @@ type ParseColumnGenerated<Tokens extends ParserMonad, C extends ColumnCtx, S ext
 type ParseColumnDefault<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	PeekToken<Tokens> extends TokenKey<"," | ")" | ";"> | TokenEot
 		? ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_DEFAULT_VALUE"], []>>
-		: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
-					infer R extends ParserMonad,
-					infer Ast,
-					infer _Env,
-			  ]
-			? Ast extends DbtyperErrorShape
-				? ColumnFail<R, C, DefaultSyntaxError<Tokens, Ast>>
-				: Ast extends ScalarExprAst
-					? DefaultFits<ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>, C> extends infer Err
-						? Err extends DbtyperErrorShape
-							? ColumnFail<R, C, DefaultSyntaxError<Tokens, Err>>
-							: ParseColumnConstraints<R, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
+		: PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
+			? DefaultFits<DateTimeKeywordType<PeekToken<Tokens>["value"]>, C> extends infer Err
+				? Err extends DbtyperErrorShape
+					? ColumnFail<SkipToken<Tokens>, C, Err>
+					: ParseColumnConstraints<
+							SkipToken<Tokens>,
+							C,
+							ColumnStateWith<S, { def: true; afterDefault: true }>
+						>
+				: never
+			: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
+						infer R extends ParserMonad,
+						infer Ast,
+						infer _Env,
+				  ]
+				? Ast extends DbtyperErrorShape
+					? ColumnFail<R, C, DefaultSyntaxError<Tokens, Ast>>
+					: Ast extends ScalarExprAst
+						? DefaultFits<
+								ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>,
+								C
+							> extends infer Err
+							? Err extends DbtyperErrorShape
+								? ColumnFail<R, C, DefaultSyntaxError<Tokens, Err>>
+								: ParseColumnConstraints<R, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
+							: never
 						: never
-					: never
-			: never
+				: never
+
+/** The type of `CURRENT_TIMESTAMP`, `CURRENT_DATE`, `CURRENT_TIME` (the expression parser has no such keywords). */
+type DateTimeKeywordType<K extends string> = {
+	type: K extends "current_date" ? "date" : K extends "current_time" ? "time" : "timestamp"
+	arg: null
+	nullable: false
+}
 
 /**
  * A column name inside a function call of a DEFAULT (`now( invalid)`) keeps its old error (SCHEMA-15):

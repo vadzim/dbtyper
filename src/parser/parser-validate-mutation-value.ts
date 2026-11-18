@@ -31,3 +31,14 @@ type ValidateMutationValueBySql<
 	: SameComparisonClass<Val, ColSql> extends true
 		? true
 		: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
+
+/** A generated column (CORE-18) can be read, but never written. */
+export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
+	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
+}
+	? Col extends keyof F
+		? F[Col] extends { generated: true | { mode: "stored" | "virtual" } }
+			? true
+			: false
+		: false
+	: false

@@ -1532,28 +1532,6 @@ export const errors = {
 		msg: ["Expected scale number"],
 	},
 
-	// DEFAULT Values
-	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_BOOLEAN: {
-		code: 5200,
-		msg: ["DEFAULT value type mismatch: expected boolean column for boolean literal"],
-	},
-	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_NUMERIC: {
-		code: 5201,
-		msg: ["DEFAULT value type mismatch: expected numeric column for numeric literal"],
-	},
-	DEFAULT_VALUE_TYPE_MISMATCH_EXPECTED_TEXT_UUID: {
-		code: 5202,
-		msg: ["DEFAULT value type mismatch: expected text/uuid column for string literal"],
-	},
-	DEFAULT_VALUE_TYPE_MISMATCH_NOW_REQUIRES_TIMESTAMP_COLUMN: {
-		code: 5203,
-		msg: ["DEFAULT value type mismatch: now() requires timestamp column"],
-	},
-	DEFAULT_VALUE_TYPE_MISMATCH_UUID_FUNCTION_REQUIRES_UUID_COLUMN: {
-		code: 5204,
-		msg: ["DEFAULT value type mismatch: UUID function requires uuid column"],
-	},
-
 	// FETCH/LIMIT
 	EXPECTED_FIRST_OR_NEXT_AFTER_FETCH: {
 		code: 5300,

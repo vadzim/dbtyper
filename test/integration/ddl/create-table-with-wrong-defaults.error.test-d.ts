@@ -1,4 +1,4 @@
-// Integration Test: CREATE TABLE with DEFAULT values
+// Integration Test: CORE-16 CREATE TABLE with a DEFAULT that does not fit its column
 import { sqlMigrations, type GetApplyError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
@@ -22,5 +22,5 @@ migrations.apply(query)
 type ReturnedError = GetApplyError<typeof migrations, typeof query>
 
 expectType<ReturnedError>(
-	toBe<DbtyperError<5202, "DEFAULT value type mismatch: expected text/uuid column for string literal">>(),
+	toBe<DbtyperError<2507, "Incompatible value type for column age">>(),
 )
