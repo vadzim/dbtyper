@@ -9,5 +9,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`alter table if exists missing add column q int;`)
 	.database()
 
-const result = await db.query(`select * from t;`)
-expectType<typeof result>(toBe<{ id: number; q: number | null }[]>())
+const _result = await db.query(`select * from t;`)
+expectType<typeof _result>(toBe<{ id: number; q: number | null }[]>())
