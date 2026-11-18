@@ -122,6 +122,35 @@ describe("usesNumberedParams (SQLT-30, #65)", () => {
 		assert.equal(usesNumberedParams("select 1 -- ?1\n, ?"), false)
 		assert.equal(usesNumberedParams("select a /* ?1 */ from t where b = ?3"), true)
 	})
+
+	// The lexer's rules for text that hides a ?NNN (src/lexer/sql-lexer.ts): quote doubling, the three quoted-name
+	// forms, X'..' blobs, line and block comments (also over several lines), and a quote inside another kind of text.
+	test("follows the lexer: where a ?NNN is hidden and where it is not", () => {
+		const hidden = [
+			"select 'it''s ?1' from t",
+			'select "a""?1" from t',
+			"select `?1` from t",
+			"select [?1] from t",
+			"select X'3F31', '?1'",
+			"select 1 /* line one\n ?1 \n line three */",
+			"select 1 -- it's ?1",
+			'select "it\'s" , ?',
+			"select '\"', ?",
+		]
+		for (const sql of hidden) {
+			assert.equal(usesNumberedParams(sql), false, sql)
+		}
+		const visible = [
+			"select 'a' || ?1",
+			"select 'it''s', ?2",
+			'select "x" = ?10',
+			"select 1 /* c */ + ?1",
+			"select ?1 -- c",
+		]
+		for (const sql of visible) {
+			assert.equal(usesNumberedParams(sql), true, sql)
+		}
+	})
 })
 
 describe("SQLT-1: version floor", () => {

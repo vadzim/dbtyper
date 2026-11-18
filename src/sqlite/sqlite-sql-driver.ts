@@ -34,6 +34,9 @@ function bindArgs(params?: SqlDriverParams): unknown[] {
 /**
  * True when the SQL text has a numbered parameter `?NNN` outside string literals, quoted names and comments.
  * better-sqlite3 treats `?NNN` as a named parameter "NNN", so an array must be bound to it as {1: …, 2: …}.
+ * This is a run-time scan because the lexer works on types only; it repeats the lexer's rules for the text that hides
+ * a `?` (strings, the three quoted-name forms, comments), and test/runtime/sqlite-drivers.test.ts checks it against
+ * the lexer's cases. A new quoting rule in src/lexer/sql-lexer.ts needs a branch here and a case there (#116 item 9).
  */
 export function usesNumberedParams(sql: string): boolean {
 	const token = /'(?:[^']|'')*'|"(?:[^"]|"")*"|`[^`]*`|\[[^\]]*\]|--[^\n]*|\/\*[\s\S]*?\*\/|\?[0-9]/g

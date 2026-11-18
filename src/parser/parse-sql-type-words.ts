@@ -154,7 +154,7 @@ type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string>
 						]
 						? [R1, { type: BaseTypeName; arg: Arg; nullable: false }]
 						: never
-					: // Other parameterized types - skip the parens for now
+					: // Other parameterized types, e.g. time(3): the argument does not change the TypeScript type, so it is skipped (arg: null)
 						SkipBracketedUntil<R0, TokenKey<")">> extends [infer R1 extends ParserMonad, infer _]
 						? [SkipToken<R1>, { type: BaseTypeName; arg: null; nullable: false }]
 						: never
