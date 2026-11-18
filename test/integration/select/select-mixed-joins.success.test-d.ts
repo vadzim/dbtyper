@@ -22,9 +22,9 @@ const _result = await _db.query(
 expectType<typeof _result>(
 	toBe<
 		{
-			name: string
-			title: string
-			content: string
+			name: string | null
+			title: string | null
+			content: string | null
 		}[]
 	>(),
 )

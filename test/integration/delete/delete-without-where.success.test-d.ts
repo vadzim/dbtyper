@@ -14,8 +14,8 @@ const _result = await _db.query(`delete from users returning *;`)
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )
