@@ -64,8 +64,7 @@ type GetDriverConfig<S extends SqlDriver<DriverConfigDraft>> =
 	S extends SqlDriver<infer Driver> ? (Driver extends DriverConfig ? Driver : never) : never
 
 /**
- * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`
- * (lead, for now 2026-11-18).
+ * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`.
  */
 type RequireDriverDialect<D> =
 	D extends SqlDriver<infer Config>

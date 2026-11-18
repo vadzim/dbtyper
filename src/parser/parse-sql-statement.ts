@@ -55,6 +55,12 @@ export type ApplyStatements<
 			]
 		: never
 
+/**
+ * Two nested loops of 50 (BatchDepth outside, Depth inside) apply at most 2,500 statements per script. One
+ * recursion over all statements ends in "Type instantiation is excessively deep" (commit 438cd53, #48), so the
+ * loop is cut into batches; the 50 is TypeScript's instantiation depth in practice, not a rule of the product.
+ * A longer script gets TOO_MANY_STATEMENTS (STMT-16).
+ */
 type ApplyParsedStatements<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -62,18 +68,20 @@ type ApplyParsedStatements<
 	Error extends DbtyperErrorShape | null,
 	Result,
 	BatchDepth extends number = 0,
-> = BatchDepth extends 50
-	? [Tokens, Db, Error, Result]
-	: PeekToken<Tokens> extends TokenEot
+> =
+	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error, Result]
-		: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
-					infer Rest extends ParserMonad,
-					infer NewDb extends JsqlDatabaseShape,
-					infer NewError extends DbtyperErrorShape | null,
-					infer NewResult,
-			  ]
-			? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc<BatchDepth>>
-			: never
+		: BatchDepth extends 50
+			? // STMT-16: the script is too long to apply; say so instead of dropping the tail.
+				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], []>>, Result]
+			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
+						infer Rest extends ParserMonad,
+						infer NewDb extends JsqlDatabaseShape,
+						infer NewError extends DbtyperErrorShape | null,
+						infer NewResult,
+				  ]
+				? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc<BatchDepth>>
+				: never
 
 type ApplyParsedStatementsInner<
 	Tokens extends ParserMonad,

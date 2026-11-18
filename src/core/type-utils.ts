@@ -2,6 +2,12 @@ type Counting<N extends number, Acc extends unknown[] = []> = Acc["length"] exte
 	? Acc
 	: Counting<N, [...Acc, Acc["length"]]>
 
+/**
+ * The numbers 0..199 as a tuple. Found by trial: `Inc`/`Dec` are table lookups (cheap), a longer tuple costs more on
+ * every use and 200 is enough for the callers, which count statement batches (50) and positional parameters.
+ * `Inc<200>` is `undefined`: a caller that may pass a bigger number must check it (param-probe.ts shows `$n` with
+ * it, so a statement with 200 or more positional parameters shows no number there).
+ */
 type Numbers = Counting<200>
 
 type IncData = Numbers extends [0, ...infer Rest] ? [...Rest, number] : never

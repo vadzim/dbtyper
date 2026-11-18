@@ -50,6 +50,13 @@ type LeftoverProbe<Params> = Params extends readonly unknown[]
 		: never
 	: LastOf<ProbeKeyOf<Params[keyof Params]>>
 
+/**
+ * The retry loop (DECISIONS.md, "Parameter types from the expression parser"). Each round runs the whole
+ * `ApplyStatements` again and types one more parameter, so a statement with N parameters that all get their type
+ * from a position is parsed N+1 times: the cost grows with N times the size of the statement. The loop stops by
+ * itself (every round binds a probe or ends), the limit is the instantiation budget; test/stress has a statement
+ * with 30 parameters.
+ */
 type Derive<
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,

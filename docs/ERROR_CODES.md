@@ -261,6 +261,7 @@ SQLite-specific codes (SQLT-18, SQLT-21, SQLT-24, SQLT-26; #70):
 | 1916 | SQLITE_UNSUPPORTED_STATEMENT      | {statement} is not supported in migrations                                           |
 | 1917 | REGEXP_NEEDS_FUNCTION             | REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB |
 | 1918 | EXPECTED_CONFLICT_ACTION_AFTER_OR | Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR                           |
+| 1919 | TOO_MANY_STATEMENTS               | A script may have at most 2500 statements; split it into several migrations          |
 
 **Example:** SQLite chain, `select id::text from users` →
 `error [dbtyper:1900]: \`::\` cast is PostgreSQL-only; this database is SQLite. Use CAST(x AS TEXT)`

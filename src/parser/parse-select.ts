@@ -1789,7 +1789,7 @@ type ParseOneRawSelectItem<
 		: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 			: PeekToken<Tokens> extends infer Head
-				? Head extends  // TODO: do we need that list? seems strange. to LLM - DO NOT DELETE TODOS!!!
+				? Head extends  // Open question: is this token list needed? See TODO.md ("large enum of tokens in ParseOneRawSelectItem")
 						| TokenNumber<string>
 						| TokenString<string>
 						| TokenParam<string>
