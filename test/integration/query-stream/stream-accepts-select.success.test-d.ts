@@ -15,8 +15,8 @@ const _result = await Array.fromAsync(await _db.stream(`select id, name from use
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

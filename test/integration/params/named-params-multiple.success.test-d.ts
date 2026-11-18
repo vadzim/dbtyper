@@ -17,9 +17,9 @@ const _result = await _db.query(`select * from users where id = :userId and age 
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			age: number
-			active: boolean
+			id: string | null
+			age: number | null
+			active: boolean | null
 		}>
 	>(),
 )

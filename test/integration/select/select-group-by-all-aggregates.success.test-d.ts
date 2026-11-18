@@ -27,15 +27,15 @@ const _result = await _db.query(`
 expectType<typeof _result>(
 	toBe<
 		{
-			region: string
+			region: string | null
 			total_count: bigint
 			amount_count: bigint
 			total_amount: number
 			avg_amount: number
-			min_amount: number
-			max_amount: number
-			min_qty: number
-			max_qty: number
+			min_amount: number | null
+			max_amount: number | null
+			min_qty: number | null
+			max_qty: number | null
 		}[]
 	>(),
 )

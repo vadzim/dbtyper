@@ -20,4 +20,6 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`insert into users (id, name, age, active) values ('2', 'Bob', 25, false) returning *;`)
 
-expectType<typeof _result>(toBe<{ name: string; id: string; active: boolean; created_at: Date; age: number }[]>())
+expectType<typeof _result>(
+	toBe<{ name: string; id: string; active: boolean; created_at: Date | null; age: number }[]>(),
+)

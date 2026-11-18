@@ -15,8 +15,8 @@ const _result = await Array.fromAsync(await _db.stream(`delete from users where 
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
+			id: string | null
+			name: string | null
 		}>
 	>(),
 )

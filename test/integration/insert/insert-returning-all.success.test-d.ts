@@ -17,9 +17,9 @@ const _result = await _db.query(
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			id: string
-			name: string
-			email: string
+			id: string | null
+			name: string | null
+			email: string | null
 		}>
 	>(),
 )
