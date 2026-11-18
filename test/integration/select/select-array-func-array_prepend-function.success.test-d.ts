@@ -15,7 +15,7 @@ const _result = await _db.query(`select array_prepend('first', tags) as prepende
 expectType<typeof _result>(
 	toBe<
 		Array<{
-			prepended: unknown
+			prepended: readonly string[]
 		}>
 	>(),
 )
