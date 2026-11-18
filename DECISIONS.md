@@ -150,3 +150,7 @@ Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts
   and table (SQLite typed `select 1 as id` instead). With the real `SqliteDriverConfig` a literal is typed `never` for the same reason.
 - **Packaging.** The gate imports `src/gram/**/*.d.ts` from `src/core`, which `tsc` does not emit: `npm run build` runs
   `scripts/copy-gram-dts.mjs` afterwards.
+
+## 2026-11-18 — SQLite default schema (#100, track B)
+
+A SQLite chain starts with the schema `main` already created (`sqlMigrations`: `InitialSchemas`, default `DS` is `"main"` when the driver's dialect is `"sqlite"`), so tables need no `create schema` (SQLT-25). Type level only; `getDefaultSchema()` at runtime still returns `"public"` (the drivers carry no runtime dialect). The DSEL tests now use `betterSqlite3Driver`/`nodeSqliteDriver` with a fake database object instead of a fake config.
