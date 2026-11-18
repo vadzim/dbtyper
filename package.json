@@ -34,6 +34,10 @@
 		"./postgres": {
 			"types": "./dist/src/postgres/index.d.ts",
 			"import": "./dist/src/postgres/index.js"
+		},
+		"./sqlite": {
+			"types": "./dist/src/sqlite/index.d.ts",
+			"import": "./dist/src/sqlite/index.js"
 		}
 	},
 	"files": [
@@ -82,10 +86,14 @@
 		"monitor": "node .automation/monitor-github-labels.ts"
 	},
 	"peerDependencies": {
+		"better-sqlite3": ">=11.0.0",
 		"postgres": "^3.4.0"
 	},
 	"peerDependenciesMeta": {
 		"postgres": {
+			"optional": true
+		},
+		"better-sqlite3": {
 			"optional": true
 		}
 	},
@@ -94,6 +102,7 @@
 		"@typescript-eslint/eslint-plugin": "^8.59.2",
 		"@typescript-eslint/parser": "^8.59.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
+		"better-sqlite3": "^13.2.0",
 		"eslint": "^10.3.0",
 		"fast-xml-parser": "^5.8.0",
 		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#27e646620fb51651642fa8fb135a66479384cc14",
