@@ -27,7 +27,7 @@ expectType<typeof _result>(
 	toBe<
 		Array<{
 			id: number
-			effective_priority: unknown
+			effective_priority: "low" | "medium" | "high"
 		}>
 	>(),
 )

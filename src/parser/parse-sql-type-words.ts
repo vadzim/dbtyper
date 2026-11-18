@@ -6,6 +6,8 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
 import type { DialectFact, DialectOnlyError, PgOnlyTypeNames, SqliteTypeKey } from "../core/dialect.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
@@ -180,7 +182,12 @@ type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string> 
  * declared type name (`declared`; STRICT and the rowid alias of SQLite need it, SQLT-11, SQLT-13), which the caller
  * strips again: it is not part of a column type.
  */
-export type ParseSqlType<Tokens extends ParserMonad, Db, KeepDeclared extends boolean = false> =
+export type ParseSqlType<
+	Tokens extends ParserMonad,
+	Db,
+	KeepDeclared extends boolean = false,
+	Schema extends string = Db extends { defaultSchema: infer D extends string } ? D : "",
+> =
 	CollectSqlTypeWords<Tokens> extends [infer AfterWords extends ParserMonad, infer Words extends readonly string[]]
 		? Words extends readonly []
 			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
@@ -188,26 +195,71 @@ export type ParseSqlType<Tokens extends ParserMonad, Db, KeepDeclared extends bo
 				? DialectTypeName<Db, TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiersAndZone<AfterWords, NormalizedName> extends [
 							infer AfterMods extends ParserMonad,
-							infer BaseShape extends SqlTypeShape,
+							infer BaseShape0 extends SqlTypeShape,
 						]
-						? ParseArraySuffix<AfterMods, BaseShape> extends [
-								infer AfterArray extends ParserMonad,
-								infer ArrayShape extends SqlTypeShape,
+						? ResolveUserType<Db, Schema, BaseShape0> extends [
+								infer BaseShape extends SqlTypeShape,
+								infer DomainNn extends boolean,
 							]
-							? KeepDeclared extends true
-								? ParseNullability<AfterArray, ArrayShape> extends [
-										infer R extends ParserMonad,
-										infer Shaped,
-									]
-									? Shaped extends SqlTypeShape
-										? [R, Shaped & { declared: TypeName }]
-										: [R, Shaped]
-									: never
-								: ParseNullability<AfterArray, ArrayShape>
+							? ParseArraySuffix<AfterMods, BaseShape> extends [
+									infer AfterArray extends ParserMonad,
+									infer ArrayShape extends SqlTypeShape,
+								]
+								? KeepDeclared extends true
+									? ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn> extends [
+											infer R extends ParserMonad,
+											infer Shaped,
+										]
+										? Shaped extends SqlTypeShape
+											? [R, Shaped & { declared: TypeName }]
+											: [R, Shaped]
+										: never
+									: ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn>
+								: never
 							: never
 						: never
 					: DialectTypeName<Db, TypeName> extends infer TypeErr extends DbtyperErrorShape
 						? SkipFailedExpression<AfterWords, TypeErr>
 						: never
 				: never
+		: never
+
+/**
+ * PGT-13, PGT-22: a declared name that is a type of the chain is its enum shape (labels are looked up when the shape is
+ * used, so ALTER TYPE changes them) or its domain's base type; the second item says a domain NOT NULL applies.
+ * Only PostgreSQL chains have named types; a name with parameters or no match stays as parsed.
+ */
+export type ResolveUserType<Db, Schema extends string, Base extends SqlTypeShape> =
+	DialectFact<Db, "typeNames"> extends "affinity"
+		? [Base, false]
+		: Db extends JsqlDatabaseShape
+			? Base["arg"] extends null
+				? JsqlDbFindUserType<Db, Schema, Base["type"]> extends infer Found
+					? [Found] extends [never]
+						? [Base, false]
+						: Found extends { schema: infer S extends string; type: infer T }
+							? T extends { kind: "enum" }
+								? [{ type: "enum"; arg: readonly [Base["type"], S]; nullable: false }, false]
+								: T extends {
+											kind: "domain"
+											base: infer B extends SqlTypeShape
+											notNull: infer N extends boolean
+									  }
+									? [B, N]
+									: [Base, false]
+							: [Base, false]
+					: never
+				: [Base, false]
+			: [Base, false]
+
+/** {@link ParseNullability}, and a domain's NOT NULL makes the column NOT NULL (not for arrays: it is about the elements). */
+type ParseNullabilityOfDomain<Tokens extends ParserMonad, Shape extends SqlTypeShape, DomainNn extends boolean> =
+	ParseNullability<Tokens, Shape> extends [infer R extends ParserMonad, infer Sh]
+		? Shape["type"] extends "array"
+			? [R, Sh]
+			: DomainNn extends true
+				? Sh extends SqlTypeShape
+					? [R, { type: Sh["type"]; arg: Sh["arg"]; nullable: false }]
+					: [R, Sh]
+				: [R, Sh]
 		: never
