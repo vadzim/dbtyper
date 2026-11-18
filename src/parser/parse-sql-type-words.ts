@@ -149,7 +149,7 @@ type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string> 
 			? PeekToken<Tokens> extends TokenKey<"(">
 				? CollectSqlTypeWords<R> extends [infer R2 extends ParserMonad, infer Extra extends readonly string[]]
 					? Extra extends readonly []
-						? [R, Shape]
+						? [R2, Shape]
 						: NormalizeSqlTypeName<`${Name} ${TypeWordsToString<Extra>}`> extends infer N extends string
 							? [R2, { type: N; arg: null; nullable: false }]
 							: never
