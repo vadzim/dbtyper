@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id integer, user_id text, title text);`)
 	.database()
 
-// CORE-10 (SEL-16 replaced): JOIN condition type mismatch (text vs integer)
+// CORE-10: JOIN condition type mismatch (text vs integer)
 const query = `select * from users inner join posts on users.id = posts.id;` as const
 
 // @ts-expect-error

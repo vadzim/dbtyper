@@ -70,7 +70,7 @@ await d19b.query(`insert into k (id, a) values (1, 'z')`)
 const _k = await d19b.query(`select id from k`)
 expectType<typeof _k>(toBe<{ id: number }[]>())
 
-// #47 (via SCHEMA-22's repro): a statement after ALTER … ADD PRIMARY KEY still works
+// #47 (PGT-19): a statement after ALTER … ADD PRIMARY KEY still works
 const d47 = base.apply(`create table t (id integer); alter table t add primary key (id); select 1 as x;`).database()
 const _x = await d47.query(`select id from t`)
 expectType<typeof _x>(toBe<{ id: number }[]>())
