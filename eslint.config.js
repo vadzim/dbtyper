@@ -34,7 +34,7 @@ export default [
 			parserOptions: {
 				ecmaVersion: 2022,
 				sourceType: "module",
-				project: "./tsconfig.test.json",
+				project: ["./tsconfig.test.json", "./tsconfig.test-stress.json"],
 			},
 		},
 		plugins: {
