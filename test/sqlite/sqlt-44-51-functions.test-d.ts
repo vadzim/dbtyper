@@ -13,9 +13,14 @@ const _text = await db.query(
 	`select lower(name) as a, upper(nick) as b, trim(name) as c, replace(name, 'a', 'b') as d, substr(name, 1, 2) as e, quote(name) as f, hex(name) as g, printf('%d', age) as h from t`,
 )
 expectType<typeof _text>(
-	toBe<
-		Array<{ a: string; b: string | null; c: string; d: string; e: string; f: string; g: string; h: string | null }>
-	>(),
+	toBe<Array<{ a: string; b: string | null; c: string; d: string; e: string; f: string; g: string; h: string }>>(),
+)
+// SQLT-44: concat is never null; concat_ws, format and printf are nullable only through their first argument
+const _cat = await db.query(
+	`select concat(nick, age) as a, concat_ws(',', nick, age) as b, concat_ws(nick, name) as c, format(nick, name) as d, format('%s', nick) as e, printf(nick, name) as f, printf('%s', nick) as g from t`,
+)
+expectType<typeof _cat>(
+	toBe<Array<{ a: string; b: string; c: string | null; d: string | null; e: string; f: string | null; g: string }>>(),
 )
 const _len = await db.query(
 	`select length(name) as a, length(nick) as b, instr(name, 'x') as c, unicode(name) as d from t`,
