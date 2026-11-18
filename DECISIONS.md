@@ -2,7 +2,7 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
-## 2026-11-18 PostgreSQL function catalog, JSON and regex operators, data-modifying CTEs (#91, track A; PGT-23…PGT-34, FN-14 removed)
+## 2026-11-18 PostgreSQL function catalog, JSON and regex operators, data-modifying CTEs (#91, track A; PGT-23…PGT-34; one function requirement removed)
 
 - **Catalog as data, like SQLite's (#76).** `PostgresFunctions` (src/parser/postgres-functions.ts): one row per function,
   `[result, nulls]`, a third item `"aggregate"` (valid before OVER / FILTER) or `"window"` (needs OVER). The dialect row
@@ -15,7 +15,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
   3619 that #76 left on `current_timestamp` and `replace(...)` in a PostgreSQL chain.
 - **PGT-34.** `PostgresSqliteOnlyFunctions` (hint table, mirror of `SqlitePgOnlyFunctions`): `Unknown function: ifnull.
 ifnull() is SQLite-only; use coalesce(a, b)`, code 3619 (FN-1).
-- **FN-14 removed.** An aggregate with OVER is typed (PGT-33); any other name with OVER is 3619. The test
+- **Old "no OVER on functions" requirement removed (was FN 14).** An aggregate with OVER is typed (PGT-33); any other name with OVER is 3619. The test
   `select-unknown-window-function` became `fn-1-unknown-window-function`; code 2402 is `OBSOLETE_2402_…`.
 - **Call syntax.** `extract(field FROM x)` (field becomes a string argument), `position(a IN b)`, `substring(s FROM a FOR b)`,
   `trim(BOTH x FROM s)`: `ParseCallArgs`. `left(` / `right(` are identifiers in the lexer when `(` follows (PostgreSQL
@@ -47,7 +47,7 @@ VALUE` after the column list: a `GENERATED ALWAYS AS IDENTITY` column is `genera
 - **Cost.** Existing tests 8.52M -> 8.70M instantiations (+2.1%), the stress config 10.93M -> 10.98M (+0.5%); the new
   test adds 1.23M.
 
-## 2026-11-18 Parameter widenings and PostgreSQL DDL (#88, track A; PGT-17..21, SCHEMA-22 removed)
+## 2026-11-18 Parameter widenings and PostgreSQL DDL (#88, track A; PGT-17..21; one schema requirement removed)
 
 - **PGT-17**: only the timestamp rows were new in `PostgresParamTypeMap` (`Date | string` for `timestamp[tz]` and the long
   names); `bigint`/`numeric` (#79) and `json[b]` (`JsonValue` in both maps) were already there.
@@ -222,7 +222,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   shared columns are hidden from unqualified lookup and from `alias.*`; the left column carries the merged
   nullability (inner/left: left; right: right; full: nullable only if both are). `a.id`/`b.id` stay valid.
   A `USING` column missing on either side is 3411. `NATURAL` with no common column is a cross join.
-- **ON** is `ParseWhereExpression` (clause name "JOIN ON"). SEL-16's 2506 is retired (code never reused); a
+- **ON** is `ParseWhereExpression` (clause name "JOIN ON"). Code 2506 (the old join-on type mismatch) is retired and never reused; a
   type mismatch is now 2500 like in WHERE.
 - **Duplicate output names** (CORE-11, 3410) are checked from the same `order` tuple, so `a.*, b.*` with a shared
   name is also rejected. RETURNING lists are not checked yet.
@@ -232,7 +232,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **ON CONFLICT DO NOTHING** accepts an optional target; no assigned columns; RETURNING is unchanged.
 - Unaliased expressions in multi-item select lists still need `AS`, also in union arms.
 
-## 2026-11-18 Parameter types come from the SQL (#57, track A; CORE-6, CORE-7; PARAM-8…PARAM-11 removed)
+## 2026-11-18 Parameter types come from the SQL (#57, track A; CORE-6, CORE-7; four parameter requirements removed)
 
 - **What replaced the value-derived types.** `InferParamsFromValues`, `TsTypeToSqlType` and `ParamNullable<V>` (#39,
   e594dec) are gone. The values now only say which parameters are given and are checked at the call site; the types
@@ -278,7 +278,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **Not done here:** CORE-1 (PRIMARY KEY makes a column NOT NULL) needs the column/table constraint parser of
   CORE-15 (#63); split out as a remainder issue.
 
-## 2026-11-18 CREATE TABLE constraints, DEFAULT checks, generated columns, DROP VIEW, CREATE TABLE AS (#63, track A; CORE-15..19, DML-4, STMT-16; SCHEMA-12/13 removed)
+## 2026-11-18 CREATE TABLE constraints, DEFAULT checks, generated columns, DROP VIEW, CREATE TABLE AS (#63, track A; CORE-15..19, DML-4, STMT-16; two schema requirements removed)
 
 - **One constraint loop in the existing parser.** After the column type, `ParseColumnConstraints` reads constraints in any
   order (NOT NULL, NULL, DEFAULT, PRIMARY KEY, UNIQUE, CHECK, REFERENCES, COLLATE, GENERATED ALWAYS AS, each with an
@@ -294,7 +294,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   mismatch is 2507 naming the column. `NULL` fits any column. `CURRENT_TIMESTAMP` / `CURRENT_DATE` / `CURRENT_TIME` are
   handled in the DEFAULT parser (the expression parser has no such keywords). An unknown function (3619) is accepted
   unchecked: function catalogs belong to the dialect issues (PGT-18, SQLT-19). An unknown column inside a function call
-  keeps the old 5001 "Expected `)` after function name in DEFAULT" (SCHEMA-15). Codes 5200-5204 are removed with SCHEMA-12.
+  keeps the old 5001 "Expected `)` after function name in DEFAULT" (SCHEMA-15). Codes 5200-5204 are removed with the removed schema requirement.
 - **REFERENCES (CORE-17).** The target table must exist (2200 / 2214 with context REFERENCES) and a named target column
   must exist (2300); a self reference is accepted and its columns are not checked (the table is not built yet). The
   referenced column is not required to be a key. Actions (`ON DELETE|UPDATE`, `MATCH`) are skipped.
@@ -389,7 +389,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **Limits.** Leading comments inside the span stay in the key; SQLite itself keeps the text too. An implicit alias
   without `AS` is not parsed by the select list (existing behaviour).
 
-## 2026-11-18 Arrays, enums, domains, unmapped types (#82, track A; PGT-12..15, PGT-22; TYPE-5/6/14/16 removed)
+## 2026-11-18 Arrays, enums, domains, unmapped types (#82, track A; PGT-12..15, PGT-22; four type requirements removed)
 
 - **Enum columns are shapes `{ type: "enum", arg: [name, schema] }`**, resolved when the column type is parsed
   (`ResolveUserType` in parse-sql-type-words.ts: the table's schema, then the default schema, then any schema). The

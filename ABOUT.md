@@ -297,3 +297,9 @@ Not at all. It's still alpha.
 ---
 
 _SQL already was the right abstraction. It just needed types._
+
+---
+
+## Dialects: PostgreSQL and SQLite
+
+A migration chain targets exactly one engine, chosen by its driver: `dbtyper/postgres` (`postgresSqlDriver`) or `dbtyper/sqlite` (`betterSqlite3Driver`, `nodeSqliteDriver`). Every migration, query and stream of the chain is parsed in that dialect: PostgreSQL type names, casts and functions in one, type affinity, `?` parameters and SQLite functions in the other. SQL that only the other engine has fails with its own error code (1900, 1901). How dialect facts are kept is described in [ARCHITECTURE.md](./ARCHITECTURE.md).
