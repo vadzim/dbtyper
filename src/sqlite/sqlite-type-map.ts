@@ -17,10 +17,11 @@ export type SqliteDriverOptions = {
 }
 
 /**
- * Plain config of a SQLite driver. A dialect-aware track may extend it with its dialect field.
- * `bigint` is a type-level flag mirroring {@link SqliteDriverOptions}.
+ * Config of a SQLite driver: its dialect (DSEL-1) and every SQLite parameter form (`?`, `?NNN`, `:n`, `@n`, `$n`;
+ * `indexed-params` is PostgreSQL's `$1`, not SQLite's). `bigint` is a type-level flag mirroring {@link SqliteDriverOptions}.
  */
 export type SqliteDriverConfig<Bigint extends boolean = false> = {
+	dialect: "sqlite"
 	scalarTypes: SqliteTypeMap<Bigint extends true ? bigint : number>
-	syntax: "question-params"
+	syntax: "question-params" | "named-params"
 }
