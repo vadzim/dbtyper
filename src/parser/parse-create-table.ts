@@ -508,8 +508,13 @@ type ParseOneColumnTyped<
 							alter: Alter
 						},
 						{
-							nn: TypeShape["nullable"] extends false ? true : false
-							def: false
+							// PGT-6: a serial column is NOT NULL and has an implicit DEFAULT nextval(...): optional in INSERT
+							nn: TypeShape extends { declared: SerialName }
+								? true
+								: TypeShape["nullable"] extends false
+									? true
+									: false
+							def: TypeShape extends { declared: SerialName } ? true : false
 							gen: false
 							afterDefault: false
 							pk: false
@@ -517,6 +522,8 @@ type ParseOneColumnTyped<
 					>
 				: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE"], []>]
 		: never
+
+type SerialName = "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
 
 /** The column being parsed (see {@link ParseColumnConstraints}). */
 type ColumnCtx = {
@@ -950,7 +957,7 @@ type DefaultSyntaxError<Ast, Err extends DbtyperErrorShape> = Err extends { __sq
 	: Err
 
 /** `null` when the resolved DEFAULT expression fits the column, else the error. */
-type DefaultFits<V, C extends ColumnCtx> = V extends { __sql_parser_error_code__: 3619 }
+type DefaultFits<V, C extends ColumnCtx> = V extends { __sql_parser_error_code__: Errors["UNKNOWN_FUNCTION"]["code"] }
 	? null
 	: V extends DbtyperErrorShape
 		? V

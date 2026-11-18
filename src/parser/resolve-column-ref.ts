@@ -59,7 +59,7 @@ export type ResolveColumnRefValue<
 
 /** ERR-8: name the clause in an "Unknown column" error that does not carry one yet. */
 export type WithErrorClause<E, Clause extends string> =
-	E extends DbtyperError<2300, infer M extends string>
+	E extends DbtyperError<Errors["UNKNOWN_COLUMN"]["code"], infer M extends string>
 		? M extends `Unknown column ${infer C}`
 			? C extends `${string} in ${string}`
 				? E

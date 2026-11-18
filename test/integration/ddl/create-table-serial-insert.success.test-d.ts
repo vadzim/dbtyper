@@ -1,6 +1,4 @@
 // PGT-6: a serial/smallserial/bigserial column is NOT NULL and optional in INSERT.
-// SKIPPED (excluded by tsconfig.test.json): library bug, the INSERT below reports
-// "Missing NOT NULL column id in INSERT" (dbtyper:3300). See the bug issue linked in the report of #114.
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
