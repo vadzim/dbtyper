@@ -1,7 +1,7 @@
 // Integration Test: STMT-16 — a migration of 60 statements is applied completely
-import { sqlMigrations } from "../../../src/core/sql-database.ts"
-import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
-import { mockDriver } from "../../test-utils/test-databases.ts"
+import { sqlMigrations } from "../../src/core/sql-database.ts"
+import { expectType, toBe } from "../test-utils/type-test-utils.ts"
+import { mockDriver } from "../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: STMT-16 one apply with 60 statements; every table is queryable
 const db = sqlMigrations({ driver: mockDriver })
