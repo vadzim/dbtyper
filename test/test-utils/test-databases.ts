@@ -36,7 +36,7 @@ export const mockDriver = createDriver<MockDriverConfig>({ query: async () => []
  */
 export type SqliteMockDriverConfig = {
 	dialect: "sqlite"
-	scalarTypes: { integer: number; int: number; text: string; real: number }
+	scalarTypes: { integer: number; int: number; text: string; real: number; boolean: number }
 	syntax: "named-params" | "question-params"
 }
 
