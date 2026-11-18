@@ -23,35 +23,64 @@ import type { Keywords } from "./keywords.ts"
 export type SqliteSyntax = "named-params" | LexerGramFeatures | Extract<LexerFeatures, "dialect-sqlite">
 
 /** Terminals of the query text, without `$end`. A lexer error becomes the terminal `$error`, which no state accepts. */
-export type SqliteTerminals<Query extends string, Syntax extends string = SqliteSyntax> =
-	Collect<CreateParserMonad<Query, Syntax>> extends [infer _M extends ParserMonad, infer Terminals extends string[]]
+export type SqliteTerminals<Query extends string, Syntax extends string = SqliteSyntax> = SqliteTokens<Query, Syntax>[0]
+
+/**
+ * `[terminals, texts]`: the terminals (as `SqliteTerminals`) and, at the same index, each token's text (the lexer value:
+ * lower-cased word, unquoted identifier or string, number text; `";"` for the appended `semi`). The texts are the token
+ * values of the value-carrying driver (`Parse`, track B typing #55).
+ */
+export type SqliteTokens<Query extends string, Syntax extends string = SqliteSyntax> =
+	Collect<CreateParserMonad<Query, Syntax>> extends [
+		infer _M extends ParserMonad,
+		infer Terminals extends string[],
+		infer Texts extends string[],
+	]
 		? Terminals extends [...string[], "semi"] | []
-			? Terminals
-			: [...Terminals, "semi"]
+			? [Terminals, Texts]
+			: [[...Terminals, "semi"], [...Texts, ";"]]
 		: never
 
 /**
  * `Prev` = the previous terminal; `Pend` = "w1" after a tentative `window` (a window name must follow), "w2" after
  * `window <id>` (`as` must follow): when the context fails, the tentative `window` is patched to `id` (rare path).
  */
-type Collect<M extends ParserMonad, Acc extends string[] = [], Prev extends string = "", Pend extends string = ""> =
+type Collect<
+	M extends ParserMonad,
+	Acc extends string[] = [],
+	Prev extends string = "",
+	Pend extends string = "",
+	Texts extends string[] = [],
+> =
 	PeekToken<M> extends infer Tok
 		? Tok extends { kind: "eot" }
-			? [M, Patch<Acc, Pend>]
+			? [M, Patch<Acc, Pend>, Texts]
 			: SkipToken<M> extends infer Rest extends ParserMonad
 				? Tok extends { kind: infer K extends string; value: infer V extends string }
 					? Terminal<K, V, Prev, PeekToken<Rest>> extends infer T extends string
 						? Pend extends "w1"
 							? IsPlainId<Tok> extends true
-								? Collect<Rest, [...Acc, T], T, "w2">
-								: Collect<Rest, [...Patch<Acc, Pend>, T], T, T extends "window" ? "w1" : "">
+								? Collect<Rest, [...Acc, T], T, "w2", [...Texts, V]>
+								: Collect<
+										Rest,
+										[...Patch<Acc, Pend>, T],
+										T,
+										T extends "window" ? "w1" : "",
+										[...Texts, V]
+									>
 							: Pend extends "w2"
 								? T extends "as"
-									? Collect<Rest, [...Acc, T], T>
-									: Collect<Rest, [...Patch<Acc, Pend>, T], T, T extends "window" ? "w1" : "">
-								: Collect<Rest, [...Acc, T], T, T extends "window" ? "w1" : "">
+									? Collect<Rest, [...Acc, T], T, "", [...Texts, V]>
+									: Collect<
+											Rest,
+											[...Patch<Acc, Pend>, T],
+											T,
+											T extends "window" ? "w1" : "",
+											[...Texts, V]
+										>
+								: Collect<Rest, [...Acc, T], T, T extends "window" ? "w1" : "", [...Texts, V]>
 						: never
-					: [Rest, [...Patch<Acc, Pend>, "$error"]] // a lexer error does not advance the monad: stop
+					: [Rest, [...Patch<Acc, Pend>, "$error"], [...Texts, ""]] // a lexer error does not advance the monad: stop
 				: never
 		: never
 

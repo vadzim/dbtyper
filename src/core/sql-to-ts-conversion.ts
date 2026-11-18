@@ -40,7 +40,9 @@ type SqlTypeShapeToTsNonNull<
 	: Lowercase<Shape["type"]> extends infer K extends string
 		? K extends keyof ScalarMap
 			? ScalarMap[K]
-			: unknown
+			: K extends "any"
+				? ScalarMap[Exclude<keyof ScalarMap, "null">] // SQLT-10: a SQLite column without a declared type
+				: unknown
 		: unknown
 
 /**

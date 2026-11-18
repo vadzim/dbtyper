@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-shapes.ts"
 import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
-import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
+import type { TypedStatements } from "./grammar-typing.ts"
 import type { GateError } from "./dialect-gate.ts"
 import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
@@ -89,7 +89,7 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends Driv
 		name?: string,
 	): SqlMigrations<
 		FlattenedJsqlDatabase<
-			ApplyStatements<Db, Source, EmptyExpressionParams, ParamsDriverConfig<Config, null>["syntax"]>[0]
+			TypedStatements<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>[0] & JsqlDatabaseShape
 		>,
 		Config
 	>
@@ -273,21 +273,30 @@ type CheckSqlValid<
 		Config["dialect"],
 		Config["syntax"],
 		Stmt,
-		ApplyStatements<Db, Stmt, Params, Config["syntax"]>[1]
+		TypedStatements<Config, Db, Stmt, Params>[1] & (DbtyperErrorShape | null)
 	> extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
 		: Stmt
 
-/** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
+/**
+ * Return type for .query(): a typed row array for SELECT/RETURNING; CORE-13: an empty row list for a statement that
+ * returns no rows (CORE-Q1 A); ERR-9: `unknown` when the statement has an error.
+ */
 type QueryReturnType<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
 	Params extends ExpressionParamsShape,
 > =
-	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
-		? unknown
-		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
+	TypedStatements<Config, Db, Stmt, Params> extends [unknown, infer Error, infer Result]
+		? Error extends DbtyperErrorShape
+			? unknown
+			: Result extends { returning: Record<string, unknown> }
+				? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
+					? unknown
+					: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
+				: []
+		: unknown
 
 export type GetApplyError<D, Stmt extends string> =
 	D extends SqlMigrations<infer Db, infer Config>

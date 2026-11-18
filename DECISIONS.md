@@ -150,3 +150,42 @@ Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts
   and table (SQLite typed `select 1 as id` instead). With the real `SqliteDriverConfig` a literal is typed `never` for the same reason.
 - **Packaging.** The gate imports `src/gram/**/*.d.ts` from `src/core`, which `tsc` does not emit: `npm run build` runs
   `scripts/copy-gram-dts.mjs` afterwards.
+
+## 2026-11-18 — Grammar-driven typing, first slice (#55, track B)
+
+- **Shape.** Typing on track B is driven by the grammar: `Parse` (src/gram/driver.ts) is `Recognize` plus a value stack;
+  on each reduction it calls the rule's semantic action (`src/gram/sqlite/actions.ts`, keyed by the rule text `"lhs: RHS"`,
+  higher-kinded through `this`), which builds a typed AST; `src/gram/sqlite/typer.ts` types the AST (CREATE TABLE changes
+  the database type, SELECT gives the row). One parse per statement text: the SQLite dialect gate reads the same parse
+  result (`SqliteGateError`). Terminals push `[terminal, text]` (`SqliteTokens` returns texts beside terminals); one-symbol
+  rules pass their value through (unit chains stay collapsed); other rules without action push their key, which the typer
+  reads as "not covered". `xml2ts.ts` emits the rule key as a third element of a reduce action only for a dialect with an
+  `actions.ts`, and never collapses a unit rule that has an action. PostgreSQL tables are unchanged.
+- **Which path types what** (`src/core/grammar-typing.ts`, `TypedStatements`):
+    - SQLite chains, grammar typer: CREATE TABLE (affinity SQLT-6/7/8, NOT NULL, PRIMARY KEY nullability CORE-1/SQLT-13/14,
+      WITHOUT ROWID, STRICT, IF NOT EXISTS, DEFAULT as a column fact) and one SELECT over tables (FROM with `,`/JOIN/LEFT/
+      RIGHT/FULL + ON, `*` over one table, `t.*`, aliases, WHERE/GROUP BY/HAVING/ORDER BY/LIMIT checked, scalar
+      subqueries, EXISTS, IN) with CORE-2…CORE-5 nullability, aggregates per SQLT-47, CAST, CASE, COALESCE/IFNULL/NULLIF and
+      a few scalar functions; CORE-14 (error 3506) on its results.
+    - SQLite chains, inherited typer (src/parser) on the whole text whenever the grammar typer returns `Unsupported`:
+      INSERT/UPDATE/DELETE (and their RETURNING), parameters, compound selects, CTEs, views, ALTER/DROP, unnamed output
+      expressions, NATURAL/USING joins, and **every error** (the grammar typer never rejects; it hands the text over, so
+      messages stay the inherited ones). The chain's default schema is created on the fly for it (until #100).
+    - PostgreSQL chains: the inherited typer only (CORE-1…5/14 for PostgreSQL are not done on track B).
+    - Shared: CORE-13 in `QueryReturnType` (no rows → `[]`, both dialects); `any` (a SQLite column without type) maps to the
+      union of the driver's storage-class types (SQLT-10) in `sql-to-ts-conversion.ts`.
+- **Stop-gate numbers** (tsgo 7.0.0-dev, machine load 10-15, best of 5-6 runs; track A = sqlite-pg/main-track 1fcb139):
+    - Same realistic query (2-table join, 4 expressions, WHERE; ~50 tokens), 20 distinct copies in one file: track B
+      47.4 k instantiations and 48 ms per query, track A 21.0 k and 13.7 ms: **2.3x instantiations, 3.5x time**.
+    - Flat `select a + 1 as cN, ...` (6 tokens per column): B ~524 inst and ~0.62 ms per token, A ~670 inst and ~0.34 ms per
+      token (1.8x time); fixed load B +0.09 s (0.29 s vs 0.19 s).
+    - Longest statement: B types 160 columns (~970 tokens) and hits TS2589 at 200 (~1200; the 1000-step limit of the
+      token mapping `Collect`); A hits TS2589 between 40 and 50 columns (~250-300 tokens).
+    - CORE test files: B 24 SQLite files 1.36 M instantiations / 0.62 s (marginal ~40.5 k and ~12 ms per file); A 21
+      PostgreSQL files 0.43 M / 0.26 s (~8.2 k, ~3.5 ms per file); B's files carry ~1.6x more SQL tokens.
+    - Whole test config: 6.57 M instantiations before, 7.80 M after (24 new CORE test files ~0.93 M).
+    - Where the cost is (20 copies of the query above): token mapping 0.155 s, + recogniser 0.02 s, + value stack without
+      actions 0.23 s, + actions 0.42 s, + typer 0.19 s. A single `[state, value]` stack hit TS2589; pushing bare terminals
+      instead of `[terminal, text]` saves nothing.
+    - Verdict against the lead's gate (> ~3x slower or TS2589 below ~400 tokens: stop): time on realistic queries is 3.5x,
+      so widening stopped after this slice; the track comparison is the lead's call.

@@ -1,4 +1,4 @@
-// Integration Test: _db․query() accepts non-RETURNING statements
+// Integration Test: CORE-13, DML-1: _db․query() accepts non-RETURNING statements
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
@@ -14,4 +14,4 @@ const _result = await _db.query(`insert into users (id, name) values ('1', 'Alic
 
 // Result type should be unknown
 
-expectType<typeof _result>(toBe<unknown>())
+expectType<typeof _result>(toBe<[]>())
