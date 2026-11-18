@@ -25,7 +25,7 @@ type Collect<M extends ParserMonad, Acc extends string[] = []> =
 			: SkipToken<M> extends infer Rest extends ParserMonad
 				? Tok extends { kind: infer K extends string; value: infer V extends string }
 					? Collect<Rest, [...Acc, Terminal<K, V, PeekToken<Rest>>]>
-					: [M, [...Acc, "$error"]] /* a lexer error does not advance: stop */
+					: [Rest, [...Acc, "$error"]] /* a lexer error does not advance: stop */
 				: never
 		: never
 

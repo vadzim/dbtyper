@@ -30,7 +30,8 @@ function terminals(n) {
 	const t = ["select"]
 	// SQLite: terminal names of parse.y, and the statement ends with `semi`
 	const sq = dialect === "sqlite"
-	for (let i = 0; i < k; i++) t.push(sq ? "id" : "ident", sq ? "plus" : "+", sq ? "integer" : "iconst", sq ? "comma" : ",")
+	for (let i = 0; i < k; i++)
+		t.push(sq ? "id" : "ident", sq ? "plus" : "+", sq ? "integer" : "iconst", sq ? "comma" : ",")
 	t.push(sq ? "id" : "ident", "from", sq ? "id" : "ident")
 	if (sq) t.push("semi")
 	return t

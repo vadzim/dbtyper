@@ -30,25 +30,42 @@ export type SqliteTerminals<Query extends string, Syntax extends string = Sqlite
 			: [...Terminals, "semi"]
 		: never
 
-type Collect<M extends ParserMonad, Acc extends string[] = [], Prev extends string = ""> =
+/**
+ * `Prev` = the previous terminal; `Pend` = "w1" after a tentative `window` (a window name must follow), "w2" after
+ * `window <id>` (`as` must follow): when the context fails, the tentative `window` is patched to `id` (rare path).
+ */
+type Collect<M extends ParserMonad, Acc extends string[] = [], Prev extends string = "", Pend extends string = ""> =
 	PeekToken<M> extends infer Tok
 		? Tok extends { kind: "eot" }
-			? [M, Acc]
+			? [M, Patch<Acc, Pend>]
 			: SkipToken<M> extends infer Rest extends ParserMonad
 				? Tok extends { kind: infer K extends string; value: infer V extends string }
-					? Terminal<K, V, Prev, Rest> extends infer T extends string
-						? Collect<Rest, [...Acc, T], T>
+					? Terminal<K, V, Prev, PeekToken<Rest>> extends infer T extends string
+						? Pend extends "w1"
+							? IsPlainId<Tok> extends true
+								? Collect<Rest, [...Acc, T], T, "w2">
+								: Collect<Rest, [...Patch<Acc, Pend>, T], T, T extends "window" ? "w1" : "">
+							: Pend extends "w2"
+								? T extends "as"
+									? Collect<Rest, [...Acc, T], T>
+									: Collect<Rest, [...Patch<Acc, Pend>, T], T, T extends "window" ? "w1" : "">
+								: Collect<Rest, [...Acc, T], T, T extends "window" ? "w1" : "">
 						: never
-					: [M, [...Acc, "$error"]] /* a lexer error does not advance: stop */
+					: [Rest, [...Patch<Acc, Pend>, "$error"]] // a lexer error does not advance the monad: stop
 				: never
 		: never
 
-type Terminal<
-	Kind extends string,
-	Value extends string,
-	Prev extends string,
-	Rest extends ParserMonad,
-> = Kind extends "int"
+type Patch<Acc extends string[], Pend extends string> = Pend extends "w1"
+	? Acc extends [...infer Init extends string[], "window"]
+		? [...Init, "id"]
+		: Acc
+	: Pend extends "w2"
+		? Acc extends [...infer Init extends string[], "window", infer Name extends string]
+			? [...Init, "id", Name]
+			: Acc
+		: Acc
+
+type Terminal<Kind extends string, Value extends string, Prev extends string, Next> = Kind extends "int"
 	? "integer"
 	: Kind extends "float"
 		? "float"
@@ -59,10 +76,10 @@ type Terminal<
 				: Kind extends "quoted_ident"
 					? "id"
 					: Kind extends "ident"
-						? WordTerminal<Value, Prev, Rest>
+						? WordTerminal<Value, Prev, Next>
 						: Kind extends "key"
 							? Value extends `${Letter}${string}`
-								? WordTerminal<Value, Prev, Rest>
+								? WordTerminal<Value, Prev, Next>
 								: SymbolTerminal<Value>
 							: "$error"
 
@@ -70,31 +87,24 @@ type Letter =
 	| Lowercase<"a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m">
 	| Lowercase<"n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "_">
 
-type WordTerminal<Word extends string, Prev extends string, Rest extends ParserMonad> = Word extends keyof Keywords
+/** WINDOW is tentative here (see `Collect`); OVER and FILTER are keywords only after `)` (tokenize.c analyze*Keyword) */
+type WordTerminal<Word extends string, Prev extends string, Next> = Word extends keyof Keywords
 	? Keywords[Word] extends infer Term extends string
-		? Term extends "window"
-			? IsPlainId<PeekToken<Rest>> extends true
-				? SkipToken<Rest> extends infer R2 extends ParserMonad
-					? PeekToken<R2> extends { kind: "key"; value: "as" }
+		? Term extends "over"
+			? Prev extends "rp"
+				? Next extends { kind: "key"; value: "(" }
+					? Term
+					: IsPlainId<Next> extends true
 						? Term
 						: "id"
-					: "id"
 				: "id"
-			: Term extends "over"
+			: Term extends "filter"
 				? Prev extends "rp"
-					? PeekToken<Rest> extends { kind: "key"; value: "(" }
+					? Next extends { kind: "key"; value: "(" }
 						? Term
-						: IsPlainId<PeekToken<Rest>> extends true
-							? Term
-							: "id"
-					: "id"
-				: Term extends "filter"
-					? Prev extends "rp"
-						? PeekToken<Rest> extends { kind: "key"; value: "(" }
-							? Term
-							: "id"
 						: "id"
-					: Term
+					: "id"
+				: Term
 		: never
 	: "id"
 
