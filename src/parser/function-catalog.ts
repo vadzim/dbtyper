@@ -50,13 +50,10 @@ export type IsWindowCapableRow<Row> = Row extends readonly [string, string, "agg
 	: false
 
 /**
- * Whether a call `L(...N arguments)` is an aggregate (the `"aggregate"` kind of its row). The GROUP BY checks have no
- * dialect at hand, so a name that SQLite has decides by SQLite's row (only SQLite overloads by argument count:
- * `max(a, b)` is the scalar), any other name by the PostgreSQL row.
+ * Whether a call `L(...N arguments)` is an aggregate (the `"aggregate"` kind of its row in the catalog of the
+ * chain's dialect: only SQLite overloads by argument count, `max(a, b)` is the scalar there).
  */
-export type IsAggregateCall<L extends string, N extends number> = [CatalogRow<"sqlite", L, N>] extends [never]
-	? IsAggregateRow<CatalogRow<"postgres", L, N>>
-	: IsAggregateRow<CatalogRow<"sqlite", L, N>>
+export type IsAggregateCall<D extends string, L extends string, N extends number> = IsAggregateRow<CatalogRow<D, L, N>>
 
 type IsAggregateRow<Row> = [Row] extends [never]
 	? false
