@@ -89,3 +89,29 @@ default reductions, a pure `%fallback`-free fast path (the fallback probe costs 
 Correctness check (not committed): 685 mutated token sequences (deletions, substitutions, insertions, truncations of 8
 statements) give identical results with the #93 driver/tables and the new ones. Tests: `test/gram/` (+ toy tables in `driver.test.ts`, 2000-terminal statements).
 Tables are now `tables.d.ts`: import with `import type ... from ".../tables.d.ts"`. Other files kept: counters in `src/gram/counters.d.ts` (hand-generated, see its header).
+
+## 2026-11-18 — SQLite grammar (#96, track B)
+
+- **Source.** SQLite `version-3.54.1` `src/parse.y` and `tool/mkkeywordhash.c`, vendored in `src/gram/sqlite/` (header line
+  records the tag). `scripts/gram/lemon2bison.mjs` converts (run by `gram:generate` when a dialect has `parse.y`):
+  actions/aliases dropped; `%if*` evaluated with only `SQLITE_UDL_CAPABLE_PARSER` defined (so no `SQLITE_OMIT_*`, and
+  `DELETE/UPDATE ... ORDER BY/LIMIT` parse); `%token_class` and `A|B` in a rule body expand to one rule per member (kept
+  equal to lemon's multiterminal, no extra nonterminal that could add conflicts); `%wildcard ANY` becomes the nonterminal
+  `any_token` (all terminals except LP, RP, COMMA, the only use being the virtual-table argument list); `%fallback` goes to
+  `fallback.json`, which `xml2ts.ts` emits as `Fallback` in `tables.d.ts` (driver unchanged).
+- **Precedence differences lemon vs bison, handled in the converter.** A rule's precedence is its FIRST precedence terminal in
+  lemon (last in bison): every rule gets an explicit `%prec`. Reduce/reduce conflicts: lemon takes the higher-precedence
+  rule, bison the earlier one: precedence-carrying rules of a nonterminal are reordered (higher first). The remaining 62
+  bison R/R warnings (`IS NOT expr` vs `NOT expr`, `BETWEEN .. AND` vs `AND`) are resolved like lemon and silenced
+  (`-Wno-conflicts-rr`, only for lemon grammars); no shift/reduce conflicts.
+- **Known deviation.** Lemon's fallback is tried when the lookahead has no action; with bison's default reductions
+  (most common reduce, no explicit lookahead list) a keyword that legally follows a default reduction but where the state also
+  shifts `ID` is read as `ID` first. Lemon makes the same compression, so results should agree; not checked beyond the tests.
+- **Lexer (additive, behind flags not in the default `LexerFeatures`).** `sqlite-lexemes`: backtick and `[bracket]` identifiers,
+  `?NNN`, `@name`, `$name`. `quoted-ident-kind`: `"x"` is a `quoted_ident` token. PG's default token syntax now has
+  `quoted-ident-kind`, so PG's `"analyze"` is an `ident`, not the keyword (fixes the #93 limitation; PG tests unchanged).
+  Both token mappings now stop at a lexer error (the former loop did not advance on an error token: TS2589).
+- **Token mapping.** `sqlite/tokens.ts`: keyword text from mkkeywordhash.c, WINDOW/OVER/FILTER only in their tokenize.c context,
+  final `semi` appended. Left out: blob `x'..'`, doubled quote escapes in backtick/bracket identifiers, hex and `1_000`
+  numbers, `$name(..)` tcl forms.
+- **Numbers.** Bench `gram:bench -- --dialect sqlite` (flat `select a + 1, ...` statements) in the PR report.

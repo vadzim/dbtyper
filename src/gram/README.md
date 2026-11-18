@@ -31,5 +31,11 @@ Performance (#95, #22): `npm run gram:bench [-- --compiler tsc]` measures fixed 
 encoding and the driver shape: `DECISIONS.md`, "LR driver performance (#95)". Rules to keep when changing the driver:
 no `keyof` on table types (use `Table extends Record<Key, infer V>`), no O(n) tuple operations per step, one automaton
 step costs ~50 type instantiations so count them.
+SQLite (#96): `src/gram/sqlite/parse.y` is SQLite's lemon grammar, vendored from release tag `version-3.54.1`
+(`src/parse.y`, plus `tool/mkkeywordhash.c` for the keyword table; both public domain, a header line records the tag).
+`npm run gram:generate -- sqlite` first runs `scripts/gram/lemon2bison.mjs` (parse.y -> `gram.y`, `fallback.json`,
+`keywords.ts`; its header lists what it expands), then the usual bison + `xml2ts.ts` path. `tokens.ts` (`SqliteTerminals`)
+is hand-written; terminal names are parse.y's, lower case. To update SQLite: replace the two vendored files, re-add the header
+line, regenerate, run the tests. Bench: `npm run gram:bench -- --dialect sqlite`.
 Lemon grammars (`%fallback`): a table set may export `Fallback` (terminal -> terminal tried when the state has no
 explicit action for the first one); the driver is otherwise unchanged. `test/gram/driver.test.ts` shows the table encoding on toy tables.
