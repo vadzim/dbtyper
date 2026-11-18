@@ -21,6 +21,7 @@ export type DbPublicUsers = {
 }
 
 export type MockDriverConfig = {
+	dialect: "postgres"
 	scalarTypes: PostgresTypeMap
 	syntax: LexerFeatures
 }

@@ -6,6 +6,7 @@ import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
 import type { InferParamsFromValues } from "./infer-param-types.ts"
 import type {
 	ApplyAllowedQueryParams,
+	LexerDialect,
 	LexerFeatures,
 	LexerIndexedQueryParams,
 	LexerNamedQueryParams,
@@ -17,20 +18,30 @@ import type {
  */
 export type SqlDriverParams = readonly unknown[] | Record<string, unknown>
 
+/** The SQL dialect a driver speaks (DSEL-1, DSEL-8). */
+export type SqlDialect = "postgres" | "sqlite"
+
 export type DriverConfig = {
+	/** DSEL-8: every driver declares its dialect; a config without one is a compile error. */
+	dialect: SqlDialect
 	syntax: LexerFeatures
 	scalarTypes: Record<string, unknown>
 }
 
+type DialectFeature<D extends SqlDialect> = Extract<LexerDialect, `dialect-${D}`>
+
+/** Config seen by the parsers: allowed query params, plus the chain's dialect as a `syntax` flag (DSEL-1, DSEL-3). */
 export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = Config & {
-	syntax: ApplyAllowedQueryParams<
-		Config["syntax"],
-		ParamsValues extends null | undefined
-			? never
-			: ParamsValues extends readonly unknown[]
-				? LexerIndexedQueryParams
-				: LexerNamedQueryParams
-	>
+	syntax:
+		| ApplyAllowedQueryParams<
+				Config["syntax"],
+				ParamsValues extends null | undefined
+					? never
+					: ParamsValues extends readonly unknown[]
+						? LexerIndexedQueryParams
+						: LexerNamedQueryParams
+		  >
+		| DialectFeature<Config["dialect"]>
 }
 
 export type SqlDriver<_Config extends DriverConfig> = {

@@ -37,3 +37,10 @@ Parsers must work directly on `ParserMonad` and report errors as soon as they ar
 - Do not collect inner SQL text into a string or `string[]` buffer and then parse that buffer later.
 - Do not delay parse errors until after a matching closing bracket is found if the error can be detected earlier while traversing tokens.
 - When parsing bracketed structures like column lists, value lists, or `CREATE TABLE` bodies, build the target structure directly during token traversal and return the remaining token tail.
+
+## Custom drivers and the dialect
+
+A driver config declares its SQL dialect: `createDriver<{ dialect: "postgres" | "sqlite"; syntax: …; scalarTypes: … }>(…)`.
+The dialect of a migration chain is the dialect of the driver passed to `sqlMigrations({ driver })` (DSEL-1); a config
+without `dialect` is a compile error (DSEL-8). `postgresSqlDriver` declares `"postgres"`. The untyped `queryUntyped` /
+`streamUntyped` never check syntax, and SQL text is sent to the driver unchanged.
