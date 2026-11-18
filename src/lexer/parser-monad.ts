@@ -24,11 +24,28 @@ export type SkipToken<M extends ParserMonad> = ReadToken<
 
 type QuestionKey = TokenKey<"?">
 
+/** SQLite `?NNN` (DSEL-4): the digits right after the `?`, or null when there are none. */
+type ReadNumberedParam<S extends string, Acc extends string = ""> = S extends `${infer D}${infer Tail}`
+	? D extends "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+		? ReadNumberedParam<Tail, `${Acc}${D}`>
+		: Acc extends ""
+			? null
+			: [Acc, S]
+	: Acc extends ""
+		? null
+		: [Acc, ""]
+
 type ReadToken<_Rest extends string, Syntax extends string, PositionalIndex extends number> =
 	ReadTokenFromString<_Rest, Syntax> extends [infer Token extends TokenStreamHead, infer Rest extends string]
 		? "question-params" extends Syntax
 			? Token extends QuestionKey
-				? Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>>
+				? "dialect-sqlite" extends Syntax
+					? ReadNumberedParam<Rest> extends [infer Digits extends string, infer After extends string]
+						? Digits extends `${infer Index extends number}`
+							? Buffer<TokenIndexedParam<Digits>, After, Syntax, Index>
+							: never
+						: Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>>
+					: Buffer<TokenIndexedParam<`${Inc<PositionalIndex>}`>, Rest, Syntax, Inc<PositionalIndex>>
 				: Buffer<Token, Rest, Syntax, PositionalIndex>
 			: Buffer<Token, Rest, Syntax, PositionalIndex>
 		: never
