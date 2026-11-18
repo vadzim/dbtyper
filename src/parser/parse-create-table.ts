@@ -3,7 +3,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -179,7 +179,7 @@ type ParseOneColumn<
 	Table extends string,
 	Stack extends readonly ColumnTriple[],
 > =
-	PeekToken<Tokens> extends TokenIdent<infer ColName extends string>
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer ColName extends string>
 		? ColName extends Stack[number][0]
 			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
 			: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>

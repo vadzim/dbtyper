@@ -36,7 +36,7 @@ type ValidateColumnPartsShared<
 				? FormatError<Errors["AMBIGUOUS_UNQUALIFIED_COLUMN"], [C0]>
 				: ScopeKeysWithColumn<Scope, C0> extends infer U
 					? [U] extends [never]
-						? FormatError<Errors["UNKNOWN_COLUMN"], [C0, ""]>
+						? FormatError<Errors["UNKNOWN_COLUMN_NO_CLAUSE"], [C0]>
 						: U extends keyof Scope
 							? C0 extends keyof Scope[U]["columns"]
 								? {
