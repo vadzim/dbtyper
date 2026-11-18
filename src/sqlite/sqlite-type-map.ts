@@ -8,6 +8,14 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
 	text: string
 	blob: Uint8Array
 	null: null
+	/** NUMERIC affinity (SQLT-7): `number` (SQLT-6, SQLT-8). */
+	numeric: number
+	/** BOOLEAN columns and comparison results are integers 0/1 (SQLT-9): `number` (`bigint` in big-integer mode). */
+	boolean: Integer
+	/** A column with no type, or `ANY`: any storage class (SQLT-10); `null` is added when the column is nullable. */
+	any: Integer | number | string | Uint8Array
+	/** `count(*)` and similar shared-parser results that are integers. */
+	bigint: Integer
 }
 
 /** Options of `betterSqlite3Driver` / `nodeSqliteDriver` (SQLT-4). */

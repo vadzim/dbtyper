@@ -112,7 +112,12 @@ type InitialDatabase<
 	Config extends DriverConfig,
 	DS extends string,
 > = Dialects[Config["dialect"]]["defaultSchemaExists"] extends true
-	? { defaultSchema: DS; schemas: { [K in DS]: JsqlCreateSchema }; functions?: Record<string, never> }
+	? {
+			defaultSchema: DS
+			schemas: { [K in DS]: JsqlCreateSchema }
+			functions?: Record<string, never>
+			dialect: Config["dialect"]
+		}
 	: SqlDatabase<DS, Record<string, never>>
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
@@ -205,7 +210,7 @@ export type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 																	[CKe in keyof Constraints as NonIndexKey<CKe>]: Constraints[CKe]
 																}
 														: never
-												}
+												} & (Table extends { rowid_table: true } ? { rowid_table: true } : {})
 											: never
 									}
 								: never
@@ -218,7 +223,7 @@ export type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 					: never
 			}
 		: never
-}
+} & (Db extends { dialect: infer D } ? { dialect: D } : {})
 
 // use SqlStatementsRecovering instead of SqlStatements to run checks and find errors on syntactically correct sqls, like absent tables
 

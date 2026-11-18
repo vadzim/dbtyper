@@ -5,6 +5,8 @@ export type JsqlDatabaseShape = {
 	schemas: unknown
 	/** Typed SQL function names → SQL return type strings (e.g., "integer", "text"). Keys as used in SQL after identifier normalization, typically lowercase. */
 	functions?: unknown
+	/** The dialect of the chain (DSEL-1), when it is not PostgreSQL: see `DialectFact` (src/core/dialect.ts). */
+	dialect?: string
 }
 
 export type JsqlSchemaShape = {

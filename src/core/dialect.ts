@@ -36,10 +36,30 @@ export type DialectName = keyof Dialects
  * of ANOTHER dialect uses a construct that only this dialect has (DSEL-7: own codes, distinct from syntax errors);
  * `defaultSchemaExists`: a new chain starts with its default schema already there (SQLite has no CREATE SCHEMA,
  * SQLT-25; the `main`/`temp` naming is the SQLite names issue's), or must create it first (PostgreSQL, SCHEMA-4).
+ * Type facts (SQLT-6…SQLT-17, #67): `typeNames` "named" = a declared type name is the type (PostgreSQL), "affinity" =
+ * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
+ * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
+ * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
  */
 export type Dialects = {
-	postgres: { title: "PostgreSQL"; onlyError: Errors["POSTGRES_ONLY_SYNTAX"]; defaultSchemaExists: false }
-	sqlite: { title: "SQLite"; onlyError: Errors["SQLITE_ONLY_SYNTAX"]; defaultSchemaExists: true }
+	postgres: {
+		title: "PostgreSQL"
+		onlyError: Errors["POSTGRES_ONLY_SYNTAX"]
+		defaultSchemaExists: false
+		typeNames: "named"
+		pkImpliesNotNull: true
+		rowidTables: false
+		typelessColumns: false
+	}
+	sqlite: {
+		title: "SQLite"
+		onlyError: Errors["SQLITE_ONLY_SYNTAX"]
+		defaultSchemaExists: true
+		typeNames: "affinity"
+		pkImpliesNotNull: false
+		rowidTables: true
+		typelessColumns: true
+	}
 }
 
 /** The `Syntax` flag that names a chain's dialect. */
@@ -74,6 +94,7 @@ export type DialectOnlyConstructs = {
 	"sqlite-insert-or-ignore": { only: "sqlite"; name: "INSERT OR IGNORE"; hint: "Use ON CONFLICT DO NOTHING" }
 	"sqlite-insert-or": { only: "sqlite"; name: "INSERT OR <conflict action>"; hint: "Use ON CONFLICT" }
 	"sqlite-replace-into": { only: "sqlite"; name: "REPLACE INTO"; hint: "Use INSERT … ON CONFLICT … DO UPDATE" }
+	"pg-serial": { only: "postgres"; name: "SERIAL type"; hint: "Use INTEGER PRIMARY KEY" }
 }
 
 export type DialectConstruct = keyof DialectOnlyConstructs
@@ -111,6 +132,46 @@ export type MatchDialectPhrase<
 /** The dialect(s) `Syntax` names: one name, a union of both, or `never` for none. */
 type SyntaxDialect<Syntax extends string> =
 	Extract<Syntax, DialectFlags> extends `dialect:${infer D extends DialectName}` ? D : never
+
+/**
+ * One fact of the dialect row (see {@link Dialects}) of a database state: the state of a chain carries its dialect
+ * (`dialect` of {@link JsqlDatabaseShape}), which every parser already receives; the parser monad's own state is
+ * not readable by parsers (monad checker). A state without one (PostgreSQL chains, dialect-neutral low-level
+ * parsing) answers with the PostgreSQL row, which is what the parser did before dialects.
+ */
+export type DialectFact<Db, Fact extends keyof Dialects[DialectName]> = Db extends {
+	dialect: infer D extends DialectName
+}
+	? Dialects[D][Fact]
+	: Dialects["postgres"][Fact]
+
+/**
+ * SQLT-6: the affinity SQLite derives from a declared type name (lower-case, words joined by one space), by its
+ * five rules in order; SQLT-8 / SQLT-9 / SQLT-11 name exceptions that keep a name apart. The result is the type name
+ * of the column's shape: a key of the SQLite driver's type map (`integer`, `real`, `text`, `numeric`, `blob`,
+ * `boolean`, `any`).
+ */
+export type SqliteTypeKey<Name extends string> = Name extends "any"
+	? "any"
+	: Name extends "boolean" | "bool"
+		? "boolean"
+		: Name extends "date" | "datetime" | "timestamp" | "time" | "json"
+			? "text"
+			: Name extends `${string}int${string}`
+				? "integer"
+				: Name extends `${string}char${string}` | `${string}clob${string}` | `${string}text${string}`
+					? "text"
+					: Name extends `${string}blob${string}`
+						? "blob"
+						: Name extends `${string}real${string}` | `${string}floa${string}` | `${string}doub${string}`
+							? "real"
+							: "numeric"
+
+/** SQLT-11: the only type names a STRICT table allows. */
+export type SqliteStrictTypeNames = "int" | "integer" | "real" | "text" | "blob" | "any"
+
+/** SQLT-15: the names of the rowid pseudo-columns. */
+export type SqliteRowidNames = "rowid" | "oid" | "_rowid_"
 
 /** `true` for exactly one member, `false` for `never` or a union. */
 type IsSingle<U, All = U> = [U] extends [never] ? false : U extends unknown ? ([All] extends [U] ? true : false) : never

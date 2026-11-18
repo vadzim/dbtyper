@@ -7,7 +7,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
@@ -160,7 +160,7 @@ type ParseDeleteUsingTableAlias<
 						{
 							schema: Sch
 							table: Tab
-							columns: Tbl["columns"]
+							columns: TableScopeColumns<Tbl>
 						}
 					>,
 					{}
@@ -178,7 +178,7 @@ type ParseDeleteUsingTableAlias<
 									{
 										schema: Sch
 										table: Tab
-										columns: Tbl["columns"]
+										columns: TableScopeColumns<Tbl>
 									}
 								>,
 								{}
@@ -193,7 +193,7 @@ type ParseDeleteUsingTableAlias<
 									{
 										schema: Sch
 										table: Tab
-										columns: Tbl["columns"]
+										columns: TableScopeColumns<Tbl>
 									}
 								>,
 								{}
@@ -311,7 +311,7 @@ type ParseDeleteAliasAfterTable<
 						{
 							schema: Sch
 							table: Tab
-							columns: Tbl["columns"]
+							columns: TableScopeColumns<Tbl>
 						}
 					>,
 					Scope
@@ -329,7 +329,7 @@ type ParseDeleteAliasAfterTable<
 									{
 										schema: Sch
 										table: Tab
-										columns: Tbl["columns"]
+										columns: TableScopeColumns<Tbl>
 									}
 								>,
 								Scope

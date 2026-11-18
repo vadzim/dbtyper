@@ -155,6 +155,20 @@ export const errors = {
 		msg: ["", " is SQLite-only; this database is ", "", ""],
 	},
 
+	// SQLite types and keys (SQLT-11, SQLT-16, SQLT-18; #67)
+	STRICT_TABLE_TYPE_NOT_ALLOWED: {
+		code: 1910,
+		msg: ["STRICT tables allow only INT, INTEGER, REAL, TEXT, BLOB, ANY"],
+	},
+	AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY: {
+		code: 1911,
+		msg: ["AUTOINCREMENT is allowed only on a column declared INTEGER PRIMARY KEY"],
+	},
+	EXPECTED_TABLE_OPTION_IN_CREATE_TABLE: {
+		code: 1912,
+		msg: ["Expected STRICT or WITHOUT ROWID"],
+	},
+
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {

@@ -1,5 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { DialectFact, SqliteTypeKey } from "../core/dialect.ts"
 import type { TokenIndexedParam, TokenParam, TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
@@ -139,6 +140,10 @@ export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 		: `${Lowercase<H>} ${SqlCastTypeNorm<T>}`
 	: string
 
+/** SQLT-12: in a SQLite chain `CAST(x AS t)` gets the type of a column declared `t` (its affinity key, SQLT-6…SQLT-8). */
+type CastTypeParts<Db, Parts extends readonly string[]> =
+	DialectFact<Db, "typeNames"> extends "affinity" ? readonly [SqliteTypeKey<SqlCastTypeNorm<Parts>>] : Parts
+
 /** `AS` / `::` type list: identifiers, optional `(…)` after a name, until `)` (CAST) or non-type token (`::` chain). */
 type ParseSqlTypeName<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
 	PeekToken<Tokens> extends TokenIdent<infer W extends string>
@@ -208,7 +213,10 @@ type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends ExprParseEn
 																			{
 																				kind: "sql_cast"
 																				expr: Inner
-																				type_parts: Parts
+																				type_parts: CastTypeParts<
+																					Env2["db"],
+																					Parts
+																				>
 																			},
 																			Env2,
 																		]

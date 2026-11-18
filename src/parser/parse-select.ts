@@ -24,6 +24,7 @@ import type {
 	ScopeEntry,
 	ScopeMap,
 	VisibleColumnsOf,
+	TableScopeColumns,
 	HiddenColumnsOf,
 } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
@@ -1879,7 +1880,7 @@ type ParseAliasAfterTable<
 						{
 							schema: Sch
 							table: Tab
-							columns: Tbl["columns"]
+							columns: TableScopeColumns<Tbl>
 						}
 					>,
 					Scope
@@ -1899,7 +1900,7 @@ type ParseAliasAfterTable<
 											{
 												schema: Sch
 												table: Tab
-												columns: Tbl["columns"]
+												columns: TableScopeColumns<Tbl>
 											}
 										>,
 										Scope
@@ -1921,7 +1922,7 @@ type ParseAliasAfterTable<
 										{
 											schema: Sch
 											table: Tab
-											columns: Tbl["columns"]
+											columns: TableScopeColumns<Tbl>
 										}
 									>,
 									Scope
