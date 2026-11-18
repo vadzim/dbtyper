@@ -24,7 +24,8 @@ import type {
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, UnqualifiedSchema, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
-import type { ParseAndResolveReturningClause, ParseFromJoinScope } from "./parse-select.ts"
+import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
+import type { ParseFromJoinScope } from "./parse-select-from.ts"
 import type { ConflictActionToken } from "./parse-insert.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
