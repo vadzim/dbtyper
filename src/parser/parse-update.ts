@@ -19,8 +19,8 @@ import type {
 	ExpressionParamsShape,
 	ParseExpressionAST,
 	ScalarExprAst,
-	ResolveExpressionAST,
 } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetData, UnqualifiedSchema, JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"

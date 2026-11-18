@@ -3,12 +3,8 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type {
-	ExpressionParamsShape,
-	ParseExpressionAST,
-	ResolveExpressionAST,
-	ScalarExprAst,
-} from "./parse-expression.ts"
+import type { ExpressionParamsShape, ParseExpressionAST, ScalarExprAst } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"

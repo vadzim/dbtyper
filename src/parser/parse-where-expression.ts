@@ -1,12 +1,8 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type {
-	EmptyExpressionParams,
-	ExpressionParamsShape,
-	ParseExpressionAST,
-	ResolveExpressionAST,
-} from "./parse-expression.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape, ParseExpressionAST } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"

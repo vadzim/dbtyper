@@ -11,9 +11,9 @@ import type {
 	EmptyExpressionParams,
 	ExpressionParamsShape,
 	ParseExpressionAST,
-	ResolveExpressionAST,
 	ScalarExprAst,
 } from "./parse-expression.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { FromItemsOnly, MarkOuterScope, MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"

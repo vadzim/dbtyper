@@ -5,13 +5,9 @@ import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type {
-	EmptyExpressionParams,
-	ExpressionParamsShape,
-	ParseCallArgs,
-	ResolveExpressionAST,
-	ScalarExprAst,
-} from "./parse-expression.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
+import type { ParseCallArgs } from "./parse-function-call.ts"
+import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"

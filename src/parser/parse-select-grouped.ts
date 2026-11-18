@@ -1,6 +1,6 @@
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { ScalarExprAst, ScalarIdentParts } from "./parse-expression.ts"
-import type { DialectFact, DialectOf } from "../core/dialect.ts"
+import type { DialectFact } from "../core/dialect.ts"
 import type { KnownAggregateName, RawSelectItem } from "./parse-select.ts"
 import type { SelectGroupClauseMeta } from "./parse-select-group-by.ts"
 
