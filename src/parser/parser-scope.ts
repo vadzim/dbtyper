@@ -5,7 +5,17 @@ export type ScopeEntry = {
 	schema: string
 	table: string
 	columns: JsqlDataShape["columns"]
+	/** CORE-9: columns merged away by `JOIN … USING` / `NATURAL JOIN`: hidden from unqualified lookup and `alias.*`. */
+	hidden?: string
 }
+
+/** Union of the hidden column names of a scope entry (`never` when none). */
+export type HiddenColumnsOf<E> = E extends { hidden: infer H extends string } ? H : never
+
+/** Columns of an entry as `alias.*` and a bare `*` expand them (CORE-9: merged join columns appear once). */
+export type VisibleColumnsOf<E extends ScopeEntry> = [HiddenColumnsOf<E>] extends [never]
+	? E["columns"]
+	: { [C in keyof E["columns"] as C extends HiddenColumnsOf<E> ? never : C]: E["columns"][C] }
 
 /**
  * Map alias → scope entry (one lexical layer: merge scopes as parsing descends).
@@ -39,6 +49,7 @@ export type MarkOuterScope<Outer extends ScopeMap> = {
 		table: Outer[K]["table"]
 		columns: Outer[K]["columns"]
 		outerDepth: readonly [...ScopeEntryOuterDepth<Outer[K]>, 1]
+		hidden?: HiddenColumnsOf<Outer[K]>
 	}
 }
 

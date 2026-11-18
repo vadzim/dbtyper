@@ -10,7 +10,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table posts (id integer, user_id text, title text);`)
 	.database()
 
-// ❌ ERROR: JOIN condition type mismatch (text vs integer)
+// CORE-10 (SEL-16 replaced): JOIN condition type mismatch (text vs integer)
 const query = `select * from users inner join posts on users.id = posts.id;` as const
 
 // @ts-expect-error
@@ -18,4 +18,4 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<2506, "Incompatible types in JOIN ON">>())
+expectType<ReturnedError>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())

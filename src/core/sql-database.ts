@@ -1,9 +1,12 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-shapes.ts"
-import type { DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { DbtyperError, DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { Inc } from "./type-utils.ts"
+import type { SqlTypeShape } from "./sql-type-shape.ts"
+import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
-import type { InferParamsFromValues } from "./infer-param-types.ts"
+import type { InferSqlParams } from "./infer-param-types.ts"
 import type {
 	ApplyAllowedQueryParams,
 	LexerFeatures,
@@ -268,12 +271,43 @@ type SqlSelectRowObject<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape,
-> =
-	SqlSelectResultTs<Config, Db, Stmt, Params> extends infer R
+	Params extends ExpressionParamsShape | DbtyperErrorShape,
+> = Params extends ExpressionParamsShape
+	? SqlSelectResultTs<Config, Db, Stmt, Params> extends infer R
 		? R extends DbtyperErrorShape
 			? never
 			: { [K in keyof R]: R[K] }
+		: never
+	: never
+
+type ParamKeyDisplay<K> = K extends `${infer I extends number}` ? `$${Inc<I>}` : K extends string ? `:${K}` : never
+
+/** CORE-6: the first value that is not of the TypeScript type the SQL gives its parameter, as an error. */
+type CheckParamValues<Config extends DriverConfig, Params extends ExpressionParamsShape, Values> = {
+	[K in keyof Params & string]: K extends keyof Values
+		? Params[K] extends infer S extends SqlTypeShape
+			? [Values[K]] extends [SqlTypeShapeToTs<S, Config["scalarTypes"]>]
+				? never
+				: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
+			: never
+		: never
+}[keyof Params & string] extends infer E
+	? [E] extends [never]
+		? Params
+		: E
+	: never
+
+/**
+ * The parameter types of a query, derived from the SQL (CORE-6, CORE-7), or the error for a parameter without a
+ * derivable type or a value of another type than the SQL's.
+ */
+type QueryParams<Config extends DriverConfig, Db extends JsqlDatabaseShape, Stmt extends string, Values> =
+	InferSqlParams<Db, Stmt, ParserSyntaxOf<ParamsDriverConfig<Config, Values>>, Values> extends infer P
+		? P extends DbtyperErrorShape
+			? P
+			: P extends ExpressionParamsShape
+				? CheckParamValues<Config, P, Values>
+				: never
 		: never
 
 type FormatErrorText<Code extends number, Msg extends string> = `error [dbtyper:${Code}]: ${Msg}`
@@ -283,39 +317,48 @@ type CheckSqlValidForStream<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape | null,
+	Params extends ExpressionParamsShape | DbtyperErrorShape | null,
 > =
-	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
-		? FormatErrorText<Code, Msg>
-		: Stmt
+	Params extends DbtyperError<infer PCode, infer PMsg>
+		? FormatErrorText<PCode, PMsg>
+		: Params extends ExpressionParamsShape | null
+			? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
+				? FormatErrorText<Code, Msg>
+				: Stmt
+			: never
 
 type CheckSqlValid<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape | null,
+	Params extends ExpressionParamsShape | DbtyperErrorShape | null,
 > =
-	ApplyStatements<Db, Stmt, Params, ParserSyntaxOf<Config>>[1] extends DbtyperError<infer Code, infer Msg>
-		? FormatErrorText<Code, Msg>
-		: // CORE-14: a result column with no TypeScript mapping is an error, never `unknown`
-			SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
-			? Code extends 3501
-				? Stmt
-				: FormatErrorText<Code, Msg>
-			: Stmt
+	Params extends DbtyperError<infer PCode, infer PMsg>
+		? FormatErrorText<PCode, PMsg>
+		: Params extends ExpressionParamsShape | null
+			? ApplyStatements<Db, Stmt, Params, ParserSyntaxOf<Config>>[1] extends DbtyperError<infer Code, infer Msg>
+				? FormatErrorText<Code, Msg>
+				: // CORE-14: a result column with no TypeScript mapping is an error, never `unknown`
+					SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
+					? Code extends 3501
+						? Stmt
+						: FormatErrorText<Code, Msg>
+					: Stmt
+			: never
 
 /** Return type for .query() - typed array for SELECT/RETURNING, an empty row list for statements without rows (CORE-13) */
 type QueryReturnType<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
 	Stmt extends string,
-	Params extends ExpressionParamsShape,
-> =
-	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
+	Params extends ExpressionParamsShape | DbtyperErrorShape,
+> = Params extends ExpressionParamsShape
+	? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
 		? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<3501, string>
 			? []
 			: unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
+	: unknown
 
 export type GetApplyError<D, Stmt extends string> =
 	D extends SqlMigrations<infer Db, infer Config>
@@ -338,7 +381,7 @@ export type GetQueryError<
 				ParamsDriverConfig<Config, ParamsValues>,
 				Db,
 				Stmt,
-				InferParamsFromValues<ParamsValues>
+				QueryParams<Config, Db, Stmt, ParamsValues>
 			> extends infer Ret
 			? Stmt extends Ret
 				? null
@@ -358,7 +401,7 @@ export type GetStreamError<
 				ParamsDriverConfig<Config, ParamsValues>,
 				Db,
 				Stmt,
-				InferParamsFromValues<ParamsValues>
+				QueryParams<Config, Db, Stmt, ParamsValues>
 			> extends infer Ret
 			? Stmt extends Ret
 				? null
@@ -382,11 +425,11 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 	// _params<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
 	// 	statement: Stmt,
 	// 	params: ParamsValues,
-	// ): CheckSqlValid<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>
+	// ): CheckSqlValid<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, QueryParams<Config, Db, Stmt, ParamsValues>>
 	// _params_any<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
 	// 	statement: Stmt,
 	// 	params: ParamsValues,
-	// ): CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
+	// ): CheckSqlValid<Config, Db, Stmt, QueryParams<Config, Db, Stmt, ParamsValues>>
 
 	/**
 	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, `[]` for other statements (CORE-13).
@@ -402,12 +445,19 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 			ParamsDriverConfig<Config, ParamsValues>,
 			Db,
 			Stmt,
-			InferParamsFromValues<ParamsValues>
+			QueryParams<Config, Db, Stmt, ParamsValues>
 		>
 			? Stmt
-			: CheckSqlValid<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>,
+			: CheckSqlValid<
+					ParamsDriverConfig<Config, ParamsValues>,
+					Db,
+					Stmt,
+					QueryParams<Config, Db, Stmt, ParamsValues>
+				>,
 		params: ParamsValues,
-	): Promise<QueryReturnType<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>>
+	): Promise<
+		QueryReturnType<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, QueryParams<Config, Db, Stmt, ParamsValues>>
+	>
 
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
@@ -430,19 +480,24 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 			ParamsDriverConfig<Config, ParamsValues>,
 			Db,
 			Stmt,
-			InferParamsFromValues<ParamsValues>
+			QueryParams<Config, Db, Stmt, ParamsValues>
 		>
 			? Stmt
 			: CheckSqlValidForStream<
 					ParamsDriverConfig<Config, ParamsValues>,
 					Db,
 					Stmt,
-					InferParamsFromValues<ParamsValues>
+					QueryParams<Config, Db, Stmt, ParamsValues>
 				>,
 		params: ParamsValues,
 	): Promise<
 		AsyncIterable<
-			SqlSelectRowObject<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, InferParamsFromValues<ParamsValues>>
+			SqlSelectRowObject<
+				ParamsDriverConfig<Config, ParamsValues>,
+				Db,
+				Stmt,
+				QueryParams<Config, Db, Stmt, ParamsValues>
+			>
 		>
 	>
 

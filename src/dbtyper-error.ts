@@ -316,7 +316,7 @@ export const errors = {
 	},
 	EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT: {
 		code: 1216,
-		msg: ["Expected UPDATE after DO in INSERT ON CONFLICT"],
+		msg: ["Expected UPDATE or NOTHING after DO in INSERT ON CONFLICT"],
 	},
 	EXPECTED_SET_AFTER_UPDATE_IN_INSERT_ON_CONFLICT: {
 		code: 1217,
@@ -814,6 +814,11 @@ export const errors = {
 		msg: ["Positional parameter index ", " is out of bounds"],
 	},
 
+	CANNOT_INFER_PARAMETER_TYPE: {
+		code: 2405,
+		msg: ["cannot infer the type of parameter ", "; use CAST(", " AS …)"],
+	},
+
 	// Type System Errors
 	// Type Compatibility
 	INCOMPATIBLE_TYPES_IN_COMPARISON: {
@@ -851,6 +856,11 @@ export const errors = {
 	INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN: {
 		code: 2508,
 		msg: ["INSERT...SELECT type mismatch for column ", ""],
+	},
+
+	INCOMPATIBLE_PARAMETER_VALUE_TYPE: {
+		code: 2509,
+		msg: ["Incompatible value type for parameter ", ""],
 	},
 
 	// Boolean Type Errors
@@ -1082,6 +1092,30 @@ export const errors = {
 	SELECT_RESULT_MISSING_COLUMN: {
 		code: 3407,
 		msg: ["SELECT result missing column"],
+	},
+	SET_OPERATION_COLUMN_COUNT_MISMATCH: {
+		code: 3408,
+		msg: ["Each ", " query must have the same number of columns"],
+	},
+	SET_OPERATION_INCOMPATIBLE_TYPES: {
+		code: 3409,
+		msg: ["Incompatible types in ", " for column ", ""],
+	},
+	DUPLICATE_OUTPUT_COLUMN: {
+		code: 3410,
+		msg: ["Duplicate output column ", "; use AS to give one of them an alias"],
+	},
+	JOIN_USING_COLUMN_NOT_FOUND: {
+		code: 3411,
+		msg: ["Column ", " specified in USING clause does not exist in both join sides"],
+	},
+	EXPECTED_SELECT_AFTER_SET_OPERATOR: {
+		code: 3412,
+		msg: ["Expected SELECT after UNION, INTERSECT or EXCEPT"],
+	},
+	CTE_COLUMN_LIST_MISMATCH: {
+		code: 3413,
+		msg: ["WITH query ", " has a different number of columns than its column list"],
 	},
 
 	// Statement Constraints
