@@ -52,7 +52,14 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 					: Head extends "["
 						? "dialect:sqlite" extends Syntax
 							? Rest extends `${infer Name}]${infer Rest2}`
-								? QuotedIdent<Name, Rest2, Syntax>
+								? // `text[]`, `array[1, 2]`, `array['a']`, `a[1]` keep their brackets (SQLT-53)
+									Name extends
+										| ""
+										| `${string},${string}`
+										| `${string}'${string}`
+										| `${Digit}${string}`
+									? Return<TokenKey<Head>, Rest>
+									: QuotedIdent<Name, Rest2, Syntax>
 								: Return<TokenKey<Head>, Rest>
 							: Return<TokenKey<Head>, Rest>
 						: Head extends "@" | "?"
@@ -291,14 +298,18 @@ type ReadWord<
 type ReadSqliteWord<Head extends string, Word extends string, Tail extends string> =
 	CheckIdentOrKey<Lowercase<`${Head}${Word}`>> extends infer T
 		? T extends TokenIdent<string>
-			? Return<T & { written: `${Head}${Word}` }, Tail>
+			? WithWritten<T, `${Head}${Word}`, Tail>
 			: Return<T, Tail>
 		: never
 
 /** A quoted identifier (`"x"`, and in SQLite `` `x` `` and `[x]`): its case is kept, except in SQLite, where names match case-insensitively (SQLT-27). */
 type QuotedIdent<Name extends string, Rest extends string, Syntax extends string> = "dialect:sqlite" extends Syntax
-	? Return<TokenIdent<Lowercase<Name>> & { written: Name }, Rest>
+	? WithWritten<TokenIdent<Lowercase<Name>>, Name, Rest>
 	: Return<TokenIdent<Name>, Rest>
+
+/** The identifier token remembers how it was written, only when that differs from its lower-case value (cheaper tokens). */
+type WithWritten<T extends TokenIdent<string>, Written extends string, Rest extends string> =
+	Lowercase<Written> extends Written ? Return<T, Rest> : Return<T & { written: Written }, Rest>
 
 type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`

@@ -27,10 +27,13 @@ expectType<typeof _only>(toBe<Array<{ x: number }>>())
 const createSchema = `create schema auth;` as const
 // @ts-expect-error
 migrations.apply(createSchema)
-expectType<GetApplyError<typeof migrations, typeof createSchema>>(toBe<DbtyperError<1915, "SQLite has no schemas">>())
+expectType<GetApplyError<typeof migrations, typeof createSchema>>(
+	toBe<DbtyperError<1900, "CREATE SCHEMA is PostgreSQL-only; this database is SQLite. SQLite has no schemas">>(),
+)
 const dropSchema = `drop schema auth;` as const
 // @ts-expect-error
 migrations.apply(dropSchema)
+expectType<GetApplyError<typeof migrations, typeof dropSchema>>(toBe<DbtyperError<1915, "SQLite has no schemas">>())
 const otherQualifier = `create table auth.t (a int);` as const
 // @ts-expect-error
 migrations.apply(otherQualifier)

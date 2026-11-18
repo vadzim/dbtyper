@@ -125,6 +125,7 @@ export type DialectOnlyConstructs = {
 	"pg-array-overlap": { only: "postgres"; name: "`&&` operator"; hint: "Use json_each(…)" }
 	"pg-lateral": { only: "postgres"; name: "LATERAL"; hint: "Use a correlated subquery" }
 	"pg-create-type": { only: "postgres"; name: "CREATE TYPE"; hint: "Use TEXT with a CHECK constraint" }
+	"pg-create-schema": { only: "postgres"; name: "CREATE SCHEMA"; hint: "SQLite has no schemas" }
 	"pg-create-extension": { only: "postgres"; name: "CREATE EXTENSION"; hint: "" }
 	"pg-grant": { only: "postgres"; name: "GRANT"; hint: "SQLite has no users or privileges" }
 	"pg-on-conflict-constraint": {
@@ -182,6 +183,7 @@ export type DialectPhrases = {
 	"&&": "pg-array-overlap"
 	lateral: "pg-lateral"
 	"create type": "pg-create-type"
+	"create schema": "pg-create-schema"
 	"create extension": "pg-create-extension"
 	grant: "pg-grant"
 	"conflict on constraint": "pg-on-conflict-constraint"

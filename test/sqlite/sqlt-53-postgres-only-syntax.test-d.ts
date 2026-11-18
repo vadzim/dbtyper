@@ -45,7 +45,7 @@ expectType<Q<`delete from users using users u2 where users.id = u2.id`>>(toBe<E<
 
 // migrations
 expectType<M<`create type mood as enum ('a');`>>(toBe<E<"CREATE TYPE", "Use TEXT with a CHECK constraint">>())
-expectType<M<`create schema s;`>>(toBe<E<"CREATE SCHEMA", "Use ATTACH DATABASE">>())
+expectType<M<`create schema s;`>>(toBe<E<"CREATE SCHEMA", "SQLite has no schemas">>())
 expectType<M<`create extension pgcrypto;`>>(toBe<E<"CREATE EXTENSION">>())
 expectType<M<`grant select on users to bob;`>>(toBe<E<"GRANT", "SQLite has no users or privileges">>())
 expectType<M<`create table a (id integer primary key, v timestamptz);`>>(

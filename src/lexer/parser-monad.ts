@@ -95,7 +95,12 @@ type TokenDialectError<
 
 /** The next word (keyword or identifier value, "" for anything else) and the text after it. */
 type NextWord<Rest extends string, Syntax extends string> =
-	ReadTokenFromString<Rest, Syntax> extends [infer Token, infer Rest2 extends string, ...unknown[]]
+	// the phrase check reads plain tokens: `array[1, 2]` is not a `[quoted name]`
+	ReadTokenFromString<Rest, Exclude<Syntax, "dialect:sqlite">> extends [
+		infer Token,
+		infer Rest2 extends string,
+		...unknown[],
+	]
 		? [Token extends { kind: "ident" | "key"; value: infer W extends string } ? W : "", Rest2]
 		: ["", ""]
 
