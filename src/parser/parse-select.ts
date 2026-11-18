@@ -1,7 +1,7 @@
 import type { ForceProps, MergeRecords } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken, SourceSpan } from "../lexer/parser-monad.ts"
+import type { PeekToken, SkipToken, SourceSpan, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenIndexedParam } from "../lexer/sql-lexer.ts"
 import type { TokenParam } from "../lexer/sql-lexer.ts"
 import type { TokenNumber } from "../lexer/sql-lexer.ts"
@@ -1806,7 +1806,10 @@ type ParseOneRawSelectItem<
 						| TokenKey<"array">
 						| TokenKey<"current_timestamp" | "current_date" | "current_time">
 					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
-					: never
+					: Head extends TokenEotWithDialectError
+						? // the text ended at a lexer error (1001-1004): stop here, ApplyStatements reports that error (#116 item 25)
+							[Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["end of text"]>]
+						: never
 				: never
 
 type ParseOptionalAs<Tokens extends ParserMonad> =

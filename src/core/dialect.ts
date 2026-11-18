@@ -55,6 +55,12 @@ export type DialectName = keyof Dialects
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
+ * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
+ * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
+ * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
+ * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
+ * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
+ * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28).
  */
 export type Dialects = {
 	postgres: {
@@ -75,6 +81,15 @@ export type Dialects = {
 		exprKeys: "name"
 		castHint: "`::text`"
 		dmlInCte: true
+		lexer: {
+			bracketIdents: false
+			atParams: false
+			blobLiterals: false
+			foldQuoted: false
+			joinStrings: true
+			keepWritten: false
+			callableJoinWords: true
+		}
 	}
 	sqlite: {
 		title: "SQLite"
@@ -94,6 +109,15 @@ export type Dialects = {
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
 		dmlInCte: false
+		lexer: {
+			bracketIdents: true
+			atParams: true
+			blobLiterals: true
+			foldQuoted: true
+			joinStrings: false
+			keepWritten: true
+			callableJoinWords: false
+		}
 	}
 }
 
@@ -101,6 +125,25 @@ export type Dialects = {
 type DialectFlag<D extends DialectName> = `dialect:${D}`
 
 type DialectFlags = DialectFlag<DialectName>
+
+/** The dialect a lexer `Syntax` names; without a dialect flag (low-level tests) the lexer reads PostgreSQL. */
+type LexerDialectOf<Syntax extends string> = [Extract<Syntax, DialectFlags>] extends [never]
+	? "postgres"
+	: Extract<Syntax, DialectFlags> extends DialectFlag<infer D>
+		? D
+		: never
+
+/** One lexer fact (see {@link Dialects}) of the dialect named by `Syntax`. The only place the lexer reads a dialect. */
+export type LexerFact<
+	Syntax extends string,
+	K extends keyof Dialects["postgres"]["lexer"],
+> = Dialects[LexerDialectOf<Syntax>]["lexer"][K]
+
+/** `Syntax` without the flags of the dialects whose lexer fact `K` is true (to read a text as another dialect would). */
+export type SyntaxWithoutLexerFact<Syntax extends string, K extends keyof Dialects["postgres"]["lexer"]> = Exclude<
+	Syntax,
+	DialectFlag<{ [D in DialectName]: Dialects[D]["lexer"][K] extends true ? D : never }[DialectName]>
+>
 
 /** Everything the lexer/parser `Syntax` union may hold: driver lexer features plus the dialect flag. */
 export type ParserSyntax = LexerFeatures | DialectFlags

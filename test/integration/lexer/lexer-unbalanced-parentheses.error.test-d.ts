@@ -1,4 +1,4 @@
-// Integration Test: Lexer - wrong string tag
+// Integration Test: Lexer - unbalanced parentheses
 import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
@@ -6,12 +6,12 @@ import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
 
-// ❌ ERROR: wrong string tag
-const query = `SELECT $123$invalid'` as const
+// ❌ ERROR: unbalanced parentheses (a parser error, not a lexer one)
+const query = `SELECT (1` as const
 
 // @ts-expect-error
 await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<1004, "Wrong string tag">>())
+expectType<ReturnedError>(toBe<DbtyperError<5006, "Expected `)`">>())
