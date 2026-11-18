@@ -2,8 +2,7 @@
 
 Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
-- [ ] make it work with sqlite and e.g. with omniroute
-    - [ ] add support of ? for parameters
+- [ ] make it work with omniroute (SQLite is supported: `dbtyper/sqlite`)
 - [ ] try to reorganize errors - use first index by id, not by numbers to be able to cclick in IDE on FormatError<E<"here_to_click">> and navigate to error
 - [ ] deal with large enum of tokens in ParseOneRawSelectItem - why it's needed?
 - [ ] remove Expects and replace with Matches in all the tests
@@ -14,7 +13,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 - [ ] define if task is simple and make it with fresh context and exit to preserve tokens
 - [x] add a test that all the error codes are tested in .error.tests.ts files
-- [x] add infra test that checks for every error code there's at least one integration test
+- [ ] add infra test that checks for every error code there's at least one integration test (#116 item 24; not done)
 - [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
 - [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
 - [x] in every migration test wich has @ts-expect-error directive add a way to check the text of message.
