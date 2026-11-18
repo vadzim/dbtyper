@@ -18,13 +18,9 @@ export type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfigDraft> = SqlD
 	driver: Driver
 }
 
-type SqlDatabase<
-	DefaultSchema extends string = "public",
-	Functions extends Record<string, string> = Record<string, never>,
-> = {
+type SqlDatabase<DefaultSchema extends string = "public"> = {
 	defaultSchema: DefaultSchema
 	schemas: {}
-	functions?: Functions
 }
 
 /** The schema a new chain starts from: empty, or with the default schema when the dialect has it built in. */
@@ -40,10 +36,9 @@ export type InitialDatabase<
 			// instantiations (per-step instantiations are not cached) and 18 chained CREATE TABLEs hit TS2589.
 			// A plain literal is FORBIDDEN here; test/sqlite/sqlt-102-long-chain.test-d.ts guards it.
 			schemas: { [K in "main" | "temp" | (DS & never)]: JsqlCreateSchema }
-			functions?: Record<string, never>
 			dialect: Config["dialect"]
 		}
-	: SqlDatabase<DS, Record<string, never>>
+	: SqlDatabase<DS>
 
 export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> = {
 	__db(): { [K in keyof Db]: Db[K] }

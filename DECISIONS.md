@@ -10,8 +10,8 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
   `ResolveFunctionCall` and `ResolveWindowFunction`. Result codes `arg`, `arg2` (`date_trunc`), `common` (`greatest`,
   numeric widening), `first-value` (`coalesce`), `sum`/`avg` per argument type (PGT-27), `array-of-arg`, `text[]`; the
   null rules are those of SQLite's catalog (`IsResultNullable`, exported). Arity errors (FN-5, FN-7…FN-10, FN-12, FN-24)
-  are data too: `PostgresFunctionArity`. Only `array_length`, `array_append`, `array_prepend`, `unnest` (FN-19…FN-21, own
-  error codes) and the chain's own `functions` stay in the old code (`ResolveLegacyFunctionCall`). This is what fixes the
+  are data too (since batch G a column of the row: `ArityRules` in src/parser/function-catalog.ts, which holds the shared grammar and the one resolver's helpers). `array_length`, `array_append`, `array_prepend`, `unnest` (FN-19…FN-21, own
+  error codes) are rows too (#116 batch G: result codes `array-length` … `unnest`). This is what fixes the
   3619 that #76 left on `current_timestamp` and `replace(...)` in a PostgreSQL chain.
 - **PGT-34.** `PostgresSqliteOnlyFunctions` (hint table, mirror of `SqlitePgOnlyFunctions`): `Unknown function: ifnull.
 ifnull() is SQLite-only; use coalesce(a, b)`, code 3619 (FN-1).
@@ -42,8 +42,8 @@ VALUE` after the column list: a `GENERATED ALWAYS AS IDENTITY` column is `genera
   resolved by the expression parser in the scope of the items before it (`JOIN unnest(t.tags) AS x(v)`); the column is
   named by the column alias, else the alias, else the function name. Comma joins in FROM do not exist in this parser
   (as before), so use `CROSS JOIN`.
-- **Not done / limits.** `concat`, `format` are nullable when an argument is (CORE-2), PostgreSQL gives non-null. Function
-  parameter types (`FunctionArgTypes`) got no new rows (PGT-17's area).
+- **Not done / limits.** Function
+  parameter types (now the `params` column of the rows) got no new rows (PGT-17's area).
 - **Cost.** Existing tests 8.52M -> 8.70M instantiations (+2.1%), the stress config 10.93M -> 10.98M (+0.5%); the new
   test adds 1.23M.
 

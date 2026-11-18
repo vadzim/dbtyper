@@ -73,7 +73,6 @@ type NonIndexKey<K extends PropertyKey> = string extends K
  */
 type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 	defaultSchema: Db["defaultSchema"]
-	functions: Db["functions"]
 	schemas: Db["schemas"] extends infer Schemas
 		? {
 				[SKey in keyof Schemas as NonIndexKey<SKey>]: Schemas[SKey] extends infer Schema extends JsqlSchemaShape

@@ -43,11 +43,10 @@ export type DialectName = keyof Dialects
  * SQLite DDL facts (SQLT-18…SQLT-26, #70), one flag: `ddl`: `main`/`temp` instead of schemas, CREATE TEMP, short `AS (…)`
  * generated columns, `ON CONFLICT` on constraints, full column definitions in ADD COLUMN with its restrictions, trigger
  * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
- * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "postgres" = the data table `PostgresFunctions` (src/parser/postgres-functions.ts) plus the array functions of the expression
- * parser and the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
+ * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "postgres" = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "builtin" = the PostgreSQL operator typing of the
  * expression parser, "sqlite" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
- * operators exist (`REGEXP` calls a user function `regexp`, SQLT-34); `isOperand`: what may follow `IS [NOT]`
+ * operators exist (`REGEXP` is always error 1917 until users can declare functions, SQLT-34, FN-Q1); `isOperand`: what may follow `IS [NOT]`
  * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
  * `LIMIT offset, count` (SQLT-37).
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
