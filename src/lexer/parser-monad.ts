@@ -67,7 +67,10 @@ type ReadToken<
 		infer Rest0 extends string,
 		...infer Tag extends DialectConstruct[],
 	]
-		? // after a lexer error the rest of the text is dropped and the token is end-of-text, which carries the error
+		? // #117: this is the one place every parser's token read goes through, so a lexer error (1001-1004, 1008, 1009)
+			// reaches ApplyStatements from any position (WHERE, DDL, INSERT, ...) without per-parser handling; parsers that
+			// hit the truncated end-of-text give their own error, which ApplyStatements drops in favour of the lexer error.
+			// After a lexer error the rest of the text is dropped and the token is end-of-text, which carries the error
 			// (parsers see a truncated text; ApplyStatements reports the lexer error as the root cause)
 			(Token0 extends DbtyperErrorShape ? [TokenEot, ""] : [Token0, Rest0]) extends [
 				infer Token extends TokenStreamHead,

@@ -430,3 +430,9 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 - **Not done**: the label check of a literal in a CASE result (`case when .. then 'bad' else enum_col end`) and
   of enum-typed function arguments other than the four above.
 - Cost (`--singleThreaded`): tsconfig.test.json 8.838M -> 9.010M (includes the new test file), stress 10.855M -> 10.884M.
+
+- **Lexer errors from every position (#117).** The monad's token read (`ReadToken`, src/lexer/parser-monad.ts) turns a
+  lexer error into an end-of-text token carrying it, so no parser handles it; `ApplyStatements` reports it before any
+  parser error. Checked with probes for ORDER BY, GROUP BY, LIMIT, subquery, JOIN ON, CTE, function args, CASE, UPDATE,
+  DELETE, ON CONFLICT, RETURNING, INSERT ... SELECT and the three tests `lexer-error-in-*` (WHERE, INSERT VALUES,
+  CREATE TABLE DEFAULT): all return 1002. No parser change was needed after batch A; only the tests and the comment.
