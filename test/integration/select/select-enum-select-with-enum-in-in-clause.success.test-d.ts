@@ -21,4 +21,13 @@ const _db = sqlMigrations({ driver: mockDriver })
 const _result = await _db.query(`select * from tasks
 		where task_status in ('active', 'pending');`)
 
-expectType<typeof _result>(toBe<{ name: string; id: number; task_status: unknown; task_priority: unknown }[]>())
+expectType<typeof _result>(
+	toBe<
+		{
+			name: string
+			id: number
+			task_status: "active" | "inactive" | "pending"
+			task_priority: ("low" | "medium" | "high") | null
+		}[]
+	>(),
+)

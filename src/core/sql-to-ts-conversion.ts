@@ -10,6 +10,7 @@
 import type { DriverConfig } from "./sql-database.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { Errors, FormatError } from "../dbtyper-error.ts"
+import type { JsqlEnumLabelUnion } from "./jsql-utils.ts"
 
 /**
  * Maps a SqlTypeShape to its corresponding TypeScript type using the scalarTypes map.
@@ -20,31 +21,32 @@ import type { Errors, FormatError } from "../dbtyper-error.ts"
  * SqlTypeShapeToTs<{ type: "array"; arg: { type: "text"; arg: null; nullable: false }; nullable: false }, { text: string }> // => readonly string[]
  * SqlTypeShapeToTs<{ type: "text"; arg: null; nullable: true }, { text: string }> // => string | null
  */
-export type SqlTypeShapeToTs<Shape extends SqlTypeShape, ScalarMap extends Record<string, unknown>> =
+export type SqlTypeShapeToTs<Shape extends SqlTypeShape, ScalarMap extends Record<string, unknown>, Db = never> =
 	// TYPE-7, TYPE-8: a nullable shape (column without NOT NULL, or an expression the SEL/EXPR rules make
 	// nullable) is typed `T | null`; for an array the nullability is that of the whole array (`readonly X[] | null`).
 	Shape["nullable"] extends false
-		? SqlTypeShapeToTsNonNull<Shape, ScalarMap>
-		: SqlTypeShapeToTsNonNull<Shape, ScalarMap> | null
+		? SqlTypeShapeToTsNonNull<Shape, ScalarMap, Db>
+		: SqlTypeShapeToTsNonNull<Shape, ScalarMap, Db> | null
 
 type SqlTypeShapeToTsNonNull<
 	Shape extends SqlTypeShape,
 	ScalarMap extends Record<string, unknown>,
+	Db,
 > = Shape["type"] extends "null" // CORE-5: the literal NULL alone is typed `null`
 	? null
 	: Shape["type"] extends "array"
-		? Shape["arg"] extends SqlTypeShape
-			? Lowercase<Shape["arg"]["type"]> extends infer K extends string
-				? K extends keyof ScalarMap
-					? readonly ScalarMap[K][]
-					: readonly unknown[]
-				: readonly unknown[]
+		? // PGT-12: nested once per dimension
+			Shape["arg"] extends SqlTypeShape
+			? readonly SqlTypeShapeToTs<Shape["arg"], ScalarMap, Db>[]
 			: readonly unknown[]
-		: Lowercase<Shape["type"]> extends infer K extends string
-			? K extends keyof ScalarMap
-				? ScalarMap[K]
+		: Shape["type"] extends "enum"
+			? // PGT-13: the union of the labels
+				JsqlEnumLabelUnion<Db, Shape["arg"]>
+			: Lowercase<Shape["type"]> extends infer K extends string
+				? K extends keyof ScalarMap
+					? ScalarMap[K]
+					: unknown
 				: unknown
-			: unknown
 
 /**
  * Maps a single SQL type string to its corresponding TypeScript type using the scalarTypes map.
@@ -82,9 +84,10 @@ export type SqlTypeToTs<SqlType extends string, ScalarMap extends Record<string,
 export type SqlColumnsToTs<
 	SqlCols extends Record<string, SqlTypeShape | string>,
 	ScalarMap extends Record<string, unknown>,
+	Db = never,
 > = {
 	[K in keyof SqlCols]: SqlCols[K] extends SqlTypeShape
-		? SqlTypeShapeToTs<SqlCols[K], ScalarMap>
+		? SqlTypeShapeToTs<SqlCols[K], ScalarMap, Db>
 		: SqlCols[K] extends string
 			? SqlTypeToTs<SqlCols[K], ScalarMap>
 			: unknown
@@ -107,18 +110,18 @@ export type SqlColumnsToTs<
 export type ApplySqlToTsConversion<
 	Config extends DriverConfig,
 	SqlColumns,
-	/** Names of the user's own types (enums, ...) in the chain: columns of these types are not unmapped (CORE-14). */
-	UserTypeNames extends string = never,
+	/** The chain: enum labels are read from it (PGT-13). */
+	Db = never,
 > = SqlColumns extends {
 	__sql_parser_error__: string
 }
 	? SqlColumns
 	: SqlColumns extends Record<string, SqlTypeShape>
-		? [Exclude<FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>, UserTypeNames>] extends [never]
-			? SqlColumnsToTs<SqlColumns, Config["scalarTypes"]>
+		? [FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>] extends [never]
+			? SqlColumnsToTs<SqlColumns, Config["scalarTypes"], Db>
 			: FormatError<
 					Errors["NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE"],
-					[Exclude<FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>, UserTypeNames>]
+					[FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>]
 				>
 		: SqlColumns
 

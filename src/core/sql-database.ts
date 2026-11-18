@@ -295,7 +295,7 @@ type SqlSelectRowObject<
 type ParamKeyDisplay<K> = K extends `${infer I extends number}` ? `$${Inc<I>}` : K extends string ? `:${K}` : never
 
 /** CORE-6: the first value that is not of the TypeScript type the SQL gives its parameter, as an error. */
-type CheckParamValues<Config extends DriverConfig, Params extends ExpressionParamsShape, Values> = {
+type CheckParamValues<Config extends DriverConfig, Db, Params extends ExpressionParamsShape, Values> = {
 	[K in keyof Params & string]: K extends keyof Values
 		? Params[K] extends infer S extends SqlTypeShape
 			? [Values[K]] extends [
@@ -303,7 +303,8 @@ type CheckParamValues<Config extends DriverConfig, Params extends ExpressionPara
 						S,
 						Config extends { paramTypes: infer P extends Record<string, unknown> }
 							? P
-							: Config["scalarTypes"]
+							: Config["scalarTypes"],
+						Db
 					>,
 				]
 				? never
@@ -325,7 +326,7 @@ type QueryParams<Config extends DriverConfig, Db extends JsqlDatabaseShape, Stmt
 		? P extends DbtyperErrorShape
 			? P
 			: P extends ExpressionParamsShape
-				? CheckParamValues<Config, P, Values>
+				? CheckParamValues<Config, Db, P, Values>
 				: never
 		: never
 

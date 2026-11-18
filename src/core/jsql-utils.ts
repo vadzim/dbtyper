@@ -153,6 +153,37 @@ export type JsqlDbGetEnum<Db extends JsqlDatabaseShape, Schema extends string, N
 	Name
 >
 
+/** A type of the chain by name (PGT-13, PGT-22): the schema given, else the default schema, else any schema. */
+export type JsqlDbFindUserType<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> =
+	JsqlDbGetType<Db, Schema, Name> extends infer A
+		? [A] extends [null]
+			? JsqlDbGetType<Db, Db["defaultSchema"], Name> extends infer B
+				? [B] extends [null]
+					? FindTypeInAnySchema<Db, Name>
+					: { schema: Db["defaultSchema"]; type: B }
+				: never
+			: { schema: Schema; type: A }
+		: never
+
+type FindTypeInAnySchema<Db extends JsqlDatabaseShape, Name extends string> = {
+	[S in keyof Db["schemas"] & string]: JsqlDbGetType<Db, S, Name> extends infer T
+		? [T] extends [null]
+			? never
+			: { schema: S; type: T }
+		: never
+}[keyof Db["schemas"] & string]
+
+/** The labels of the enum `[name, schema]` (the arg of an enum shape) as a union, `unknown` when it is gone. */
+export type JsqlEnumLabelUnion<Db, Arg> = [Db] extends [never]
+	? unknown
+	: Db extends JsqlDatabaseShape
+		? Arg extends readonly [infer N extends string, infer S extends string]
+			? JsqlDbGetEnum<Db, S, N> extends infer V extends readonly string[]
+				? V[number]
+				: unknown
+			: unknown
+		: unknown
+
 export type JsqlSchemaReplaceEnum<
 	Schema extends JsqlSchemaShape | null,
 	Name extends string,

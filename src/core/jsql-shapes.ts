@@ -16,11 +16,19 @@ export type JsqlSchemaShape = {
 	types?: unknown
 }
 
-export type JsqlTypeShape = {
-	kind: "enum"
-	/** Enum values in order. */
-	values: readonly string[]
-}
+export type JsqlTypeShape =
+	| {
+			kind: "enum"
+			/** Enum values in order. */
+			values: readonly string[]
+	  }
+	| {
+			kind: "domain"
+			/** The base type, already resolved (PGT-22). */
+			base: SqlTypeShape
+			/** The domain says NOT NULL: columns of it are NOT NULL. */
+			notNull: boolean
+	  }
 
 export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind

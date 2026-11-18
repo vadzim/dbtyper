@@ -24,8 +24,8 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
-			task_status: unknown
-			task_priority: unknown
+			task_status: "active" | "inactive" | "pending"
+			task_priority: ("low" | "medium" | "high") | null
 		}[]
 	>(),
 )

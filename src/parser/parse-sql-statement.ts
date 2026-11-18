@@ -8,6 +8,7 @@ import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
+import type { ParseCreateDomain } from "./parse-create-domain.ts"
 import type { ParseCreateSchema } from "./parse-create-schema.ts"
 import type { ParseCreateTable } from "./parse-create-table.ts"
 import type { ParseCreateType } from "./parse-create-type.ts"
@@ -172,7 +173,9 @@ type ParseCreate<
 					? ParseCreateView<SkipToken<Tokens>, Db, Params>
 					: DialectFact<Db, "ddl"> extends true
 						? ParseSqliteCreate<Tokens, Db, Params>
-						: ParseSkipStatement<Tokens, Db>
+						: PeekToken<Tokens> extends TokenIdent<"domain"> | TokenKey<"domain">
+							? ParseCreateDomain<SkipToken<Tokens>, Db>
+							: ParseSkipStatement<Tokens, Db>
 
 /** SQLite: `CREATE [TEMP|TEMPORARY] TABLE|VIEW|TRIGGER`, `CREATE VIRTUAL TABLE`; the rest (INDEX…) is skipped (SQLT-22…SQLT-24). */
 type ParseSqliteCreate<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =

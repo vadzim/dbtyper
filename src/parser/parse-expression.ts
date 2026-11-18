@@ -26,6 +26,8 @@ import type {
 	SqlTimestamp,
 	Nullable,
 } from "../core/sql-type-shape.ts"
+import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
+import type { ResolveUserType } from "./parse-sql-type-words.ts"
 import type { Dec, Inc, ParseNumber } from "../core/type-utils.ts"
 import type { ParamProbeFound, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
 import type { FunctionArgType, PeerTypedFunctions } from "./function-param-types.ts"
@@ -145,6 +147,14 @@ export type ScalarExprAst =
 	  }
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
+/** PGT-14: both bounds of `BETWEEN` against an enum operand. */
+type EnumBetweenCheck<Db, E extends SqlTypeShape, Lo extends SqlTypeShape, LoAst, Hi extends SqlTypeShape, HiAst> =
+	EnumComparisonCheck<Db, E, never, Lo, LoAst> extends infer C1
+		? C1 extends true
+			? EnumComparisonCheck<Db, E, never, Hi, HiAst>
+			: C1
+		: never
+
 export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 	infer H extends string,
 	...infer T extends readonly string[],
@@ -1580,7 +1590,7 @@ type ExpressionResolvers<
 						? RcV
 						: LcV extends SqlTypeShape
 							? RcV extends SqlTypeShape
-								? MergeComparison<LcV, RcV>
+								? WithEnumCheck<EnumComparisonCheck<Db, LcV, Lc, RcV, Rc>, MergeComparison<LcV, RcV>>
 								: never
 							: never
 				: never
@@ -1663,7 +1673,10 @@ type ExpressionResolvers<
 								: EvB extends SqlTypeShape
 									? LvB extends SqlTypeShape
 										? HvB extends SqlTypeShape
-											? MergeBetweenBounds<EvB, LvB, HvB>
+											? WithEnumCheck<
+													EnumBetweenCheck<Db, EvB, LvB, Lb, HvB, Hb>,
+													MergeBetweenBounds<EvB, LvB, HvB>
+												>
 											: never
 										: never
 									: never
@@ -2653,7 +2666,10 @@ type ResolveCaseSimpleArms<
 		? Wv extends DbtyperErrorShape
 			? Wv
 			: Wv extends SqlTypeShape
-				? ValidateCaseSimpleWhenMatch<Disc, Wv> extends infer Match
+				? WithEnumCheck<
+						EnumComparisonCheck<Db, Disc, never, Wv, A["when"]>,
+						ValidateCaseSimpleWhenMatch<Disc, Wv>
+					> extends infer Match
 					? Match extends DbtyperErrorShape
 						? Match
 						: Match extends true
@@ -2736,7 +2752,10 @@ type ResolveInListItemsAgainstLeft<
 		? Hv extends DbtyperErrorShape
 			? Hv
 			: Hv extends SqlTypeShape
-				? ValidateInListElement<Left, Hv> extends infer V
+				? WithEnumCheck<
+						EnumComparisonCheck<Db, Left, never, Hv, H>,
+						ValidateInListElement<Left, Hv>
+					> extends infer V
 					? V extends DbtyperErrorShape
 						? V
 						: V extends true
@@ -2879,7 +2898,13 @@ type ResolveCastForDialect<Db, Ev extends SqlTypeShape, N extends string> =
 		? Ev["type"] extends "null"
 			? SqlNull
 			: SqlType<SqliteTypeKey<N>>
-		: ResolveCastFromShape<Ev, N>
+		: ResolveUserType<Db, DefaultSchemaOf<Db>, SqlType<N>> extends [infer U extends SqlTypeShape, boolean]
+			? U["type"] extends N
+				? ResolveCastFromShape<Ev, N>
+				: U // PGT-13, PGT-22: a cast to an enum or a domain of the chain
+			: ResolveCastFromShape<Ev, N>
+
+type DefaultSchemaOf<Db> = Db extends { defaultSchema: infer D extends string } ? D : ""
 
 export type ResolveCastFromShape<Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
 	? SqlNull

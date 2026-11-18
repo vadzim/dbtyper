@@ -27,7 +27,7 @@ const _result = await _db.query(`
 expectType<typeof _result>(
 	toBe<
 		{
-			task_status: unknown
+			task_status: "active" | "inactive" | "pending"
 			cnt: string
 		}[]
 	>(),

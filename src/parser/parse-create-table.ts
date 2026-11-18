@@ -465,7 +465,7 @@ type ParseOneColumnTyped<
 	ColName extends string,
 	Alter extends boolean = false,
 > =
-	ParseSqlType<AfterColName, Db, true> extends [infer AfterType extends ParserMonad, infer TypeShape]
+	ParseSqlType<AfterColName, Db, true, Schema> extends [infer AfterType extends ParserMonad, infer TypeShape]
 		? TypeShape extends DbtyperErrorShape
 			? [AfterType, Db, TypeShape]
 			: TypeShape extends SqlTypeShape

@@ -34,7 +34,7 @@ expectType<typeof _result>(
 	toBe<
 		{
 			id: number
-			task_status: unknown
+			task_status: "active" | "inactive"
 		}[]
 	>(),
 )
