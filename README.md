@@ -79,4 +79,12 @@ This keeps raw SQL readable while avoiding the usual abstraction stack around it
 
 `queryUntyped` and `streamUntyped` are available for gradual adoption and SQL features the parser does not support yet.
 
-Not production ready yet. It is still alpha.
+Not production ready yet. It is still alpha. The types shown in the PostgreSQL examples are the alpha's as-built types: they are
+checked against a real PostgreSQL through the `postgres` driver (PGT-35), and the few places where the alpha does not type a
+spec example yet are marked in that test. To run it, start a PostgreSQL and set `DBTYPER_PG_URL`:
+
+```sh
+DBTYPER_PG_URL=postgres://postgres:pg@127.0.0.1:55432/postgres node --test test/runtime/pgt-35-checks-real-postgres.test.ts
+```
+
+Without the variable the test is skipped.
