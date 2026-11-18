@@ -1,9 +1,5 @@
 // Error codes with no running test yet (see error-codes-covered.test.ts). This list may only shrink.
 export const UNTESTED_ERROR_CODES: readonly number[] = [
-	1001, // UNCLOSED_QUOTED_IDENTIFIER
-	1002, // UNCLOSED_STRING_LITERAL
-	1003, // UNCLOSED_TAGGED_STRING
-	1004, // WRONG_STRING_TAG
 	1005, // UNBALANCED_PARENTHESES
 	1006, // TOKEN_NOT_FOUND
 	1008, // CLOSING_BRACKET_NOT_FOUND
