@@ -21,6 +21,4 @@ migrations.apply(query)
 
 type ReturnedError = GetApplyError<typeof migrations, typeof query>
 
-expectType<ReturnedError>(
-	toBe<DbtyperError<2507, "Incompatible value type for column age">>(),
-)
+expectType<ReturnedError>(toBe<DbtyperError<2507, "Incompatible value type for column age">>())

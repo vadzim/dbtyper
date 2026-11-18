@@ -5,7 +5,7 @@ import type {
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenEot, TokenNumber, TokenString } from "../lexer/sql-lexer.ts"
+import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -302,6 +302,7 @@ type ColumnState = { nn: boolean; def: boolean; gen: boolean; afterDefault: bool
 /**
  * Column constraints in any order after the type (CORE-15): NOT NULL, NULL, DEFAULT, PRIMARY KEY, UNIQUE, CHECK,
  * REFERENCES, COLLATE, GENERATED ALWAYS AS, each optionally named with CONSTRAINT. Ends at `,` or `)`.
+ * Each constraint has its own parser entered AT its keyword, so a monad is never consumed twice on one path.
  */
 type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	PeekToken<Tokens> extends TokenKey<",">
@@ -321,57 +322,35 @@ type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnCtx, S e
 					readonly [...C["stack"], ColumnEntry<C, S>]
 				>
 			: PeekToken<Tokens> extends TokenKey<"constraint">
-				? AsIdent<PeekToken<SkipToken<Tokens>>> extends TokenIdent<string>
-					? ParseColumnConstraints<SkipToken<SkipToken<Tokens>>, C, S>
-					: ColumnFail<
-							SkipToken<Tokens>,
-							C,
-							FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>
-						>
+				? ColumnConstraintName<Tokens, C, S>
 				: PeekToken<Tokens> extends TokenKey<"not">
-					? PeekToken<SkipToken<Tokens>> extends TokenKey<"null">
-						? ParseColumnConstraints<SkipToken<SkipToken<Tokens>>, C, ColumnStateWith<S, { nn: true }>>
-						: ColumnFail<SkipToken<Tokens>, C, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
+					? ColumnNotNull<Tokens, C, S>
 					: PeekToken<Tokens> extends TokenKey<"null">
 						? ParseColumnConstraints<SkipToken<Tokens>, C, ColumnStateWith<S, { nn: false }>>
 						: PeekToken<Tokens> extends TokenKey<"default">
 							? ParseColumnDefault<SkipToken<Tokens>, C, S>
 							: PeekToken<Tokens> extends TokenKey<"primary">
-								? PeekToken<SkipToken<Tokens>> extends TokenKey<"key">
-									? ParseColumnConstraints<
-											SkipToken<SkipToken<Tokens>>,
-											C,
-											ColumnStateWith<S, { nn: true }>
-										>
-									: ColumnFail<
-											SkipToken<Tokens>,
-											C,
-											FormatError<
-												Errors["EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE"],
-												[]
-											>
-										>
+								? ColumnPrimaryKey<Tokens, C, S>
 								: PeekToken<Tokens> extends TokenKey<"unique">
 									? ParseColumnConstraints<SkipToken<Tokens>, C, ColumnStateWith<S, {}>>
 									: PeekToken<Tokens> extends TokenKey<"check">
-										? ParseColumnAfterGroup<SkipParenGroup<SkipToken<Tokens>>, C, S>
+										? SkipParenGroup<SkipToken<Tokens>> extends [
+												infer R extends ParserMonad,
+												infer E,
+											]
+											? ColumnAfterGroup<R, E, C, S>
+											: never
 										: PeekToken<Tokens> extends TokenKey<"references">
-											? ParseColumnAfterReferences<
-													ParseReferences<
-														SkipToken<Tokens>,
-														C["db"],
-														C["schema"],
-														C["table"]
-													>,
-													C,
-													S
-												>
+											? ParseReferences<
+													SkipToken<Tokens>,
+													C["db"],
+													C["schema"],
+													C["table"]
+												> extends [infer R extends ParserMonad, infer E]
+												? ColumnAfterGroup<R, E, C, S>
+												: never
 											: PeekToken<Tokens> extends TokenIdent<"collate">
-												? ParseColumnConstraints<
-														SkipCollationName<SkipToken<Tokens>>,
-														C,
-														ColumnStateWith<S, {}>
-													>
+												? ColumnCollate<Tokens, C, S>
 												: PeekToken<Tokens> extends TokenKey<"generated">
 													? ParseColumnGenerated<SkipToken<Tokens>, C, S>
 													: ColumnFail<
@@ -387,6 +366,42 @@ type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnCtx, S e
 																		[]
 																	>
 														>
+
+/** At `CONSTRAINT`: skip it and its name. */
+type ColumnConstraintName<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? AsIdent<PeekToken<R1>> extends TokenIdent<string>
+			? ParseColumnConstraints<SkipToken<R1>, C, S>
+			: ColumnFail<R1, C, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
+		: never
+
+/** At `NOT`: `NOT NULL` after the type (CORE-15). */
+type ColumnNotNull<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<R1> extends TokenKey<"null">
+			? ParseColumnConstraints<SkipToken<R1>, C, ColumnStateWith<S, { nn: true }>>
+			: ColumnFail<R1, C, FormatError<Errors["EXPECTED_NULL_AFTER_NOT"], []>>
+		: never
+
+/** At `PRIMARY`: `PRIMARY KEY` makes the column NOT NULL (CORE-1). */
+type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<R1> extends TokenKey<"key">
+			? ParseColumnConstraints<SkipToken<R1>, C, ColumnStateWith<S, { nn: true }>>
+			: ColumnFail<R1, C, FormatError<Errors["EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE"], []>>
+		: never
+
+/** At `COLLATE`: skip it and the collation name (quoted or not, possibly qualified). */
+type ColumnCollate<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? SkipToken<R1> extends infer R2 extends ParserMonad
+			? PeekToken<R2> extends TokenKey<".">
+				? SkipToken<R2> extends infer R3 extends ParserMonad
+					? ParseColumnConstraints<SkipToken<R3>, C, ColumnStateWith<S, {}>>
+					: never
+				: ParseColumnConstraints<R2, C, ColumnStateWith<S, {}>>
+			: never
+		: never
 
 /** `S` with some fields replaced; `afterDefault` is reset unless the patch sets it. */
 type ColumnStateWith<S extends ColumnState, Patch extends Partial<ColumnState>> = {
@@ -420,111 +435,65 @@ type SkipParenGroup<Tokens extends ParserMonad> =
 			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT"], []>>
 
-type ParseColumnAfterGroup<G, C extends ColumnCtx, S extends ColumnState> = G extends [
-	infer R extends ParserMonad,
-	infer E,
-]
-	? E extends DbtyperErrorShape
-		? [R, C["db"], E]
-		: ParseColumnConstraints<R, C, ColumnStateWith<S, {}>>
-	: never
+/** After a constraint helper `[rest, null | error]`: go on with the column or fail the statement. */
+type ColumnAfterGroup<
+	R extends ParserMonad,
+	E,
+	C extends ColumnCtx,
+	S extends ColumnState,
+> = E extends DbtyperErrorShape ? [R, C["db"], E] : ParseColumnConstraints<R, C, ColumnStateWith<S, {}>>
 
-type ParseColumnAfterReferences<G, C extends ColumnCtx, S extends ColumnState> = ParseColumnAfterGroup<G, C, S>
-
-/** The name after `COLLATE` (quoted or not), possibly qualified: `[rest]`. */
-type SkipCollationName<Tokens extends ParserMonad> =
-	PeekToken<SkipToken<Tokens>> extends TokenKey<"."> ? SkipToken<SkipToken<SkipToken<Tokens>>> : SkipToken<Tokens>
-
-/** `GENERATED ALWAYS AS (expr) [STORED | VIRTUAL]` (CORE-15, CORE-18); the expression is not typed. */
+/** After `GENERATED`: `ALWAYS AS (expr) [STORED | VIRTUAL]` (CORE-15, CORE-18); the expression is not typed. */
 type ParseColumnGenerated<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	PeekToken<Tokens> extends TokenKey<"always">
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<"as">
-			? SkipParenGroup<SkipToken<SkipToken<Tokens>>> extends [infer R extends ParserMonad, infer E]
-				? E extends DbtyperErrorShape
-					? [R, C["db"], E]
-					: ParseColumnConstraints<
-							PeekToken<R> extends TokenKey<"stored" | "virtual"> ? SkipToken<R> : R,
-							C,
-							ColumnStateWith<S, { gen: true }>
-						>
-				: never
-			: ColumnFail<SkipToken<Tokens>, C, FormatError<Errors["EXPECTED_AS_AFTER_GENERATED_ALWAYS"], []>>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"as">
+				? SkipParenGroup<SkipToken<R1>> extends [infer R2 extends ParserMonad, infer E]
+					? E extends DbtyperErrorShape
+						? [R2, C["db"], E]
+						: PeekToken<R2> extends TokenKey<"stored" | "virtual">
+							? ParseColumnConstraints<SkipToken<R2>, C, ColumnStateWith<S, { gen: true }>>
+							: ParseColumnConstraints<R2, C, ColumnStateWith<S, { gen: true }>>
+					: never
+				: ColumnFail<R1, C, FormatError<Errors["EXPECTED_AS_AFTER_GENERATED_ALWAYS"], []>>
+			: never
 		: ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_ALWAYS_AFTER_GENERATED"], []>>
 
 /**
- * `DEFAULT <expr>` (CORE-15, CORE-16): the expression is typed like an INSERT value (DML-16) and must fit the column.
+ * After `DEFAULT`: the expression is typed like an INSERT value (DML-16) and must fit the column (CORE-15, CORE-16).
  * An unknown function is not checked: function catalogs are the dialects' (PGT-18, SQLT-19).
  */
 type ParseColumnDefault<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
 	PeekToken<Tokens> extends TokenKey<"," | ")" | ";"> | TokenEot
 		? ColumnFail<Tokens, C, FormatError<Errors["EXPECTED_DEFAULT_VALUE"], []>>
-		: PeekToken<Tokens> extends LiteralDefaultToken
-			? DefaultLiteralEnds<PeekToken<SkipToken<Tokens>>> extends true
-				? DefaultFits<LiteralDefaultType<PeekToken<Tokens>>, C> extends infer Err
-					? Err extends DbtyperErrorShape
-						? ColumnFail<SkipToken<Tokens>, C, Err>
-						: ParseColumnConstraints<
-								SkipToken<Tokens>,
-								C,
-								ColumnStateWith<S, { def: true; afterDefault: true }>
-							>
-					: never
-				: ParseColumnDefaultExpression<Tokens, C, S>
-			: ParseColumnDefaultExpression<Tokens, C, S>
-
-/** The cheap path of {@link ParseColumnDefault}: a lone literal costs no expression parsing. */
-type LiteralDefaultToken = TokenString<string> | TokenNumber<string> | TokenKey<"true" | "false" | "null">
-
-type LiteralDefaultType<Tok> =
-	Tok extends TokenString<string>
-		? { type: "text"; arg: null; nullable: false }
-		: Tok extends TokenNumber<string>
-			? { type: "integer"; arg: null; nullable: false }
-			: Tok extends TokenKey<"null">
-				? { type: "null"; arg: null; nullable: false }
-				: { type: "boolean"; arg: null; nullable: false }
-
-/** The literal is the whole default expression when a constraint, `,` or `)` follows it. */
-type DefaultLiteralEnds<Next> = Next extends
-	| TokenKey<
-			| ","
-			| ")"
-			| "not"
-			| "null"
-			| "primary"
-			| "unique"
-			| "check"
-			| "references"
-			| "constraint"
-			| "generated"
-			| "default"
-	  >
-	| TokenIdent<"collate">
-	? true
-	: false
-
-type ParseColumnDefaultExpression<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
-	PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
-		? DefaultFits<DateTimeKeywordType<PeekToken<Tokens>["value"]>, C> extends infer Err
-			? Err extends DbtyperErrorShape
-				? ColumnFail<SkipToken<Tokens>, C, Err>
-				: ParseColumnConstraints<SkipToken<Tokens>, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
-			: never
-		: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
-					infer R extends ParserMonad,
-					infer Ast,
-					infer _Env,
-			  ]
-			? Ast extends DbtyperErrorShape
-				? ColumnFail<R, C, DefaultSyntaxError<Tokens, Ast>>
-				: Ast extends ScalarExprAst
-					? DefaultFits<ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>, C> extends infer Err
-						? Err extends DbtyperErrorShape
-							? ColumnFail<R, C, DefaultSyntaxError<Tokens, Err>>
-							: ParseColumnConstraints<R, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
+		: PeekToken<Tokens> extends TokenKey<"current_timestamp" | "current_date" | "current_time">
+			? DefaultFits<DateTimeKeywordType<PeekToken<Tokens>["value"]>, C> extends infer Err
+				? Err extends DbtyperErrorShape
+					? ColumnFail<SkipToken<Tokens>, C, Err>
+					: ParseColumnConstraints<
+							SkipToken<Tokens>,
+							C,
+							ColumnStateWith<S, { def: true; afterDefault: true }>
+						>
+				: never
+			: ParseExpressionAST<Tokens, { db: C["db"]; params: EmptyExpressionParams; outerScope: {} }> extends [
+						infer R extends ParserMonad,
+						infer Ast,
+						infer _Env,
+				  ]
+				? Ast extends DbtyperErrorShape
+					? ColumnFail<R, C, Ast>
+					: Ast extends ScalarExprAst
+						? DefaultFits<
+								ResolveExpressionAST<Ast, C["db"], {}, EmptyExpressionParams>,
+								C
+							> extends infer Err
+							? Err extends DbtyperErrorShape
+								? ColumnFail<R, C, DefaultSyntaxError<Ast, Err>>
+								: ParseColumnConstraints<R, C, ColumnStateWith<S, { def: true; afterDefault: true }>>
+							: never
 						: never
-					: never
-			: never
+				: never
 
 /** The type of `CURRENT_TIMESTAMP`, `CURRENT_DATE`, `CURRENT_TIME` (the expression parser has no such keywords). */
 type DateTimeKeywordType<K extends string> = {
@@ -535,15 +504,11 @@ type DateTimeKeywordType<K extends string> = {
 
 /**
  * A column name inside a function call of a DEFAULT (`now( invalid)`) keeps its old error (SCHEMA-15):
- * a DEFAULT has no columns in scope, so an unknown name there is a broken call.
+ * a DEFAULT has no columns in scope, so an unknown name in a call is a broken call.
  */
-type DefaultSyntaxError<Tokens extends ParserMonad, Err extends DbtyperErrorShape> = Err extends {
-	__sql_parser_error_code__: 2300
-}
-	? PeekToken<Tokens> extends TokenIdent<string>
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<"(">
-			? FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT"], []>
-			: Err
+type DefaultSyntaxError<Ast, Err extends DbtyperErrorShape> = Err extends { __sql_parser_error_code__: 2300 }
+	? Ast extends { kind: "function_call" }
+		? FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT"], []>
 		: Err
 	: Err
 
@@ -572,14 +537,18 @@ type ParseReferences<
 	Table extends string,
 > =
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<".">
-			? AsIdent<PeekToken<SkipToken<SkipToken<Tokens>>>> extends TokenIdent<infer B extends string>
-				? ReferencesTarget<SkipToken<SkipToken<SkipToken<Tokens>>>, Db, Schema, Table, A, B>
-				: SkipFailedExpression<
-						SkipToken<SkipToken<Tokens>>,
-						FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in REFERENCES"]>
-					>
-			: ReferencesTarget<SkipToken<Tokens>, Db, Schema, Table, Db["defaultSchema"], A>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<".">
+				? SkipToken<R1> extends infer R2 extends ParserMonad
+					? AsIdent<PeekToken<R2>> extends TokenIdent<infer B extends string>
+						? ReferencesTarget<SkipToken<R2>, Db, Schema, Table, A, B>
+						: SkipFailedExpression<
+								R2,
+								FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in REFERENCES"]>
+							>
+					: never
+				: ReferencesTarget<R1, Db, Schema, Table, Db["defaultSchema"], A>
+			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in REFERENCES"]>>
 
 type ReferencesTarget<
@@ -626,37 +595,45 @@ type ReferencesColumns<
 type SkipReferenceActions<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"on">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<SkipToken<R1>> extends TokenKey<"set">
-				? SkipReferenceActions<ReferenceSetAction<SkipToken<SkipToken<R1>>>>
-				: PeekToken<SkipToken<R1>> extends TokenIdent<"no">
-					? SkipReferenceActions<SkipToken<SkipToken<SkipToken<R1>>>>
-					: SkipReferenceActions<SkipToken<SkipToken<R1>>>
+			? SkipToken<R1> extends infer R2 extends ParserMonad
+				? PeekToken<R2> extends TokenKey<"set">
+					? ReferenceSetAction<SkipToken<R2>>
+					: PeekToken<R2> extends TokenIdent<"no">
+						? SkipToken<R2> extends infer R3 extends ParserMonad
+							? SkipReferenceActions<SkipToken<R3>>
+							: never
+						: SkipReferenceActions<SkipToken<R2>>
+				: never
 			: never
 		: PeekToken<Tokens> extends TokenIdent<"match">
-			? SkipReferenceActions<SkipToken<SkipToken<Tokens>>>
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? SkipReferenceActions<SkipToken<R1>>
+				: never
 			: [Tokens, null]
 
-/** After `SET`: `NULL` or `DEFAULT`, optionally followed by a column list. */
+/** At the `NULL` or `DEFAULT` after `SET`: skip it, an optional column list, then the rest of the actions. */
 type ReferenceSetAction<Tokens extends ParserMonad> =
 	SkipToken<Tokens> extends infer R extends ParserMonad
 		? PeekToken<R> extends TokenKey<"(">
 			? SkipParenGroup<R> extends [infer R2 extends ParserMonad, infer _E]
-				? R2
+				? SkipReferenceActions<R2>
 				: never
-			: R
+			: SkipReferenceActions<R>
 		: never
 
 /** `a, b, c)` after `(`: `[rest after ")", names]` or `[rest, error]`. */
 type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[]> =
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N extends string>
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<",">
-			? ParseNameList<SkipToken<SkipToken<Tokens>>, readonly [...Acc, N]>
-			: PeekToken<SkipToken<Tokens>> extends TokenKey<")">
-				? [SkipToken<SkipToken<Tokens>>, readonly [...Acc, N]]
-				: SkipFailedExpression<
-						SkipToken<Tokens>,
-						FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
-					>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<",">
+				? ParseNameList<SkipToken<R1>, readonly [...Acc, N]>
+				: PeekToken<R1> extends TokenKey<")">
+					? [SkipToken<R1>, readonly [...Acc, N]]
+					: SkipFailedExpression<
+							R1,
+							FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
+						>
+			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE constraint"]>>
 
 /**
@@ -671,13 +648,11 @@ type ParseTableConstraint<
 	Stack extends readonly ColumnDef[],
 > =
 	PeekToken<Tokens> extends TokenKey<"constraint">
-		? AsIdent<PeekToken<SkipToken<Tokens>>> extends TokenIdent<string>
-			? TableConstraintBody<SkipToken<SkipToken<Tokens>>, Db, Schema, Table, Stack>
-			: SkipFailedStatement<
-					SkipToken<Tokens>,
-					Db,
-					FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>
-				>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? AsIdent<PeekToken<R1>> extends TokenIdent<string>
+				? TableConstraintBody<SkipToken<R1>, Db, Schema, Table, Stack>
+				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
+			: never
 		: TableConstraintBody<Tokens, Db, Schema, Table, Stack>
 
 type TableConstraintBody<
@@ -687,43 +662,36 @@ type TableConstraintBody<
 	Table extends string,
 	Stack extends readonly ColumnDef[],
 > =
-	PeekToken<Tokens> extends TokenKey<"primary">
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<"key">
-			? TableConstraintColumns<SkipToken<SkipToken<Tokens>>, Db, Schema, Table, Stack, "PRIMARY KEY", true>
-			: SkipFailedStatement<
-					SkipToken<Tokens>,
-					Db,
-					FormatError<Errors["EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE"], []>
-				>
+	PeekToken<Tokens> extends TokenKey<"primary" | "foreign">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"key">
+				? TableConstraintColumns<
+						SkipToken<R1>,
+						Db,
+						Schema,
+						Table,
+						Stack,
+						PeekToken<Tokens> extends TokenKey<"primary"> ? "PRIMARY KEY" : "FOREIGN KEY"
+					>
+				: SkipFailedStatement<
+						R1,
+						Db,
+						FormatError<Errors["EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE"], []>
+					>
+			: never
 		: PeekToken<Tokens> extends TokenKey<"unique">
-			? TableConstraintColumns<SkipToken<Tokens>, Db, Schema, Table, Stack, "UNIQUE", false>
+			? TableConstraintColumns<SkipToken<Tokens>, Db, Schema, Table, Stack, "UNIQUE">
 			: PeekToken<Tokens> extends TokenKey<"check">
 				? SkipParenGroup<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
 					? E extends DbtyperErrorShape
 						? [R, Db, E]
 						: AfterTableConstraint<R, Db, Schema, Table, Stack>
 					: never
-				: PeekToken<Tokens> extends TokenKey<"foreign">
-					? PeekToken<SkipToken<Tokens>> extends TokenKey<"key">
-						? TableConstraintColumns<
-								SkipToken<SkipToken<Tokens>>,
-								Db,
-								Schema,
-								Table,
-								Stack,
-								"FOREIGN KEY",
-								false
-							>
-						: SkipFailedStatement<
-								SkipToken<Tokens>,
-								Db,
-								FormatError<Errors["EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE"], []>
-							>
-					: SkipFailedStatement<
-							Tokens,
-							Db,
-							FormatError<Errors["EXPECTED_CONSTRAINT_AFTER_NAME_IN_CREATE_TABLE"], []>
-						>
+				: SkipFailedStatement<
+						Tokens,
+						Db,
+						FormatError<Errors["EXPECTED_CONSTRAINT_AFTER_NAME_IN_CREATE_TABLE"], []>
+					>
 
 type TableConstraintColumns<
 	Tokens extends ParserMonad,
@@ -732,7 +700,6 @@ type TableConstraintColumns<
 	Table extends string,
 	Stack extends readonly ColumnDef[],
 	Kind extends string,
-	IsPrimary extends boolean,
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
 		? ParseNameList<SkipToken<Tokens>, readonly []> extends [infer R extends ParserMonad, infer Names]
@@ -741,33 +708,31 @@ type TableConstraintColumns<
 				: Names extends readonly string[]
 					? Exclude<Names[number], Stack[number][0]> extends infer Missing extends string
 						? [Missing] extends [never]
-							? Kind extends "FOREIGN KEY"
-								? PeekToken<R> extends TokenKey<"references">
-									? ParseReferences<SkipToken<R>, Db, Schema, Table> extends [
-											infer R2 extends ParserMonad,
-											infer E,
-										]
-										? E extends DbtyperErrorShape
-											? [R2, Db, E]
-											: AfterTableConstraint<R2, Db, Schema, Table, Stack>
-										: never
-									: SkipFailedStatement<
-											R,
-											Db,
-											FormatError<Errors["EXPECTED_REFERENCES_AFTER_FOREIGN_KEY"], []>
-										>
-								: AfterTableConstraint<
-										R,
-										Db,
-										Schema,
-										Table,
-										IsPrimary extends true ? MarkNotNull<Stack, Names[number]> : Stack
-									>
+							? TableConstraintAfterColumns<R, Db, Schema, Table, Stack, Kind, Names[number]>
 							: SkipFailedStatement<R, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Missing, Kind]>>
 						: never
 					: never
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT"], []>>
+
+/** After the column list: a FOREIGN KEY needs REFERENCES; a PRIMARY KEY marks its columns NOT NULL (CORE-1). */
+type TableConstraintAfterColumns<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+	Kind extends string,
+	Names extends string,
+> = Kind extends "FOREIGN KEY"
+	? PeekToken<Tokens> extends TokenKey<"references">
+		? ParseReferences<SkipToken<Tokens>, Db, Schema, Table> extends [infer R2 extends ParserMonad, infer E]
+			? E extends DbtyperErrorShape
+				? [R2, Db, E]
+				: AfterTableConstraint<R2, Db, Schema, Table, Stack>
+			: never
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_REFERENCES_AFTER_FOREIGN_KEY"], []>>
+	: AfterTableConstraint<Tokens, Db, Schema, Table, Kind extends "PRIMARY KEY" ? MarkNotNull<Stack, Names> : Stack>
 
 type AfterTableConstraint<
 	Tokens extends ParserMonad,

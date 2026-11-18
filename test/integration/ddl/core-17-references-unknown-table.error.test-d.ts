@@ -1,5 +1,5 @@
 // Integration Test: CORE-17 a REFERENCES target table that does not exist
-import { sqlMigrations, type GetQueryError, type GetApplyError } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetApplyError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"

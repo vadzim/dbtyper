@@ -1,5 +1,5 @@
 // Integration Test: CORE-16 DEFAULT without a value
-import { sqlMigrations, type GetQueryError, type GetApplyError } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetApplyError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"

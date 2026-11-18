@@ -1,5 +1,5 @@
 // Integration Test: CORE-18 a generated column is readable, writing it is an error; DML-4 it may be omitted in INSERT
-import { sqlMigrations, type GetQueryError, type GetApplyError } from "../../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
