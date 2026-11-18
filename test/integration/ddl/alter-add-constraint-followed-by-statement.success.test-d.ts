@@ -13,5 +13,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 
-const result = await db.query(`select id from t;`)
-expectType<typeof result>(toBe<{ id: number }[]>())
+const _result = await db.query(`select id from t;`)
+expectType<typeof _result>(toBe<{ id: number }[]>())
