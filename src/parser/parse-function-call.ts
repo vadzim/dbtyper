@@ -1,4 +1,3 @@
-import type { DialectFact } from "../core/dialect.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
@@ -223,19 +222,17 @@ type ParseWindowClauseContent<
 				>
 
 /**
- * SQLT-51: where the PostgreSQL window clause has an error, a chain whose dialect allows it (SQLite) accepts an empty
- * `OVER ()` and a frame (`ROWS|RANGE|GROUPS …`, skipped: it does not change a result type) before the closing paren.
+ * An empty `OVER ()` and a frame (`ROWS|RANGE|GROUPS …`, skipped: it does not change a result type) before the closing
+ * paren. One rule for every dialect (SQLT-51, PGT-3, #118): PostgreSQL and SQLite both accept them.
  */
 type CloseWindowOrError<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
-	DialectFact<Env["db"], "windowFrames"> extends true
-		? PeekToken<Tokens> extends TokenKey<")">
-			? [SkipToken<Tokens>, Ast, Env]
-			: AsIdent<PeekToken<Tokens>> extends TokenIdent<"range" | "groups">
+	PeekToken<Tokens> extends TokenKey<")">
+		? [SkipToken<Tokens>, Ast, Env]
+		: AsIdent<PeekToken<Tokens>> extends TokenIdent<"range" | "groups">
+			? CloseWindowFrame<Tokens, Ast, Env, Err>
+			: PeekToken<Tokens> extends TokenKey<"rows">
 				? CloseWindowFrame<Tokens, Ast, Env, Err>
-				: PeekToken<Tokens> extends TokenKey<"rows">
-					? CloseWindowFrame<Tokens, Ast, Env, Err>
-					: SkipFailedExpressionWithEnv<Tokens, Err, Env>
-		: SkipFailedExpressionWithEnv<Tokens, Err, Env>
+				: SkipFailedExpressionWithEnv<Tokens, Err, Env>
 
 type CloseWindowFrame<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
 	SkipToCloseParen<Tokens> extends [infer Rf extends ParserMonad, unknown]
