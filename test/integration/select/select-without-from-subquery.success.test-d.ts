@@ -9,7 +9,7 @@ it("should support SELECT with subquery", async () => {
 	const _result = await _db.query(`select (select 1) as nested;`)
 
 	type Expected = {
-		nested: number
+		nested: number | null
 	}[]
 
 	expectType<typeof _result>(toBe<Expected>())

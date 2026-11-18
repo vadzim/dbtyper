@@ -9,6 +9,7 @@
 
 import type { DriverConfig } from "./sql-database.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
+import type { Errors, FormatError } from "../dbtyper-error.ts"
 
 /**
  * Maps a SqlTypeShape to its corresponding TypeScript type using the scalarTypes map.
@@ -29,19 +30,21 @@ export type SqlTypeShapeToTs<Shape extends SqlTypeShape, ScalarMap extends Recor
 type SqlTypeShapeToTsNonNull<
 	Shape extends SqlTypeShape,
 	ScalarMap extends Record<string, unknown>,
-> = Shape["type"] extends "array"
-	? Shape["arg"] extends SqlTypeShape
-		? Lowercase<Shape["arg"]["type"]> extends infer K extends string
-			? K extends keyof ScalarMap
-				? readonly ScalarMap[K][]
+> = Shape["type"] extends "null" // CORE-5: the literal NULL alone is typed `null`
+	? null
+	: Shape["type"] extends "array"
+		? Shape["arg"] extends SqlTypeShape
+			? Lowercase<Shape["arg"]["type"]> extends infer K extends string
+				? K extends keyof ScalarMap
+					? readonly ScalarMap[K][]
+					: readonly unknown[]
 				: readonly unknown[]
 			: readonly unknown[]
-		: readonly unknown[]
-	: Lowercase<Shape["type"]> extends infer K extends string
-		? K extends keyof ScalarMap
-			? ScalarMap[K]
+		: Lowercase<Shape["type"]> extends infer K extends string
+			? K extends keyof ScalarMap
+				? ScalarMap[K]
+				: unknown
 			: unknown
-		: unknown
 
 /**
  * Maps a single SQL type string to its corresponding TypeScript type using the scalarTypes map.
@@ -101,10 +104,43 @@ export type SqlColumnsToTs<
  * >
  * // => { id: string; name: string }
  */
-export type ApplySqlToTsConversion<Config extends DriverConfig, SqlColumns> = SqlColumns extends {
+export type ApplySqlToTsConversion<
+	Config extends DriverConfig,
+	SqlColumns,
+	/** Names of the user's own types (enums, ...) in the chain: columns of these types are not unmapped (CORE-14). */
+	UserTypeNames extends string = never,
+> = SqlColumns extends {
 	__sql_parser_error__: string
 }
 	? SqlColumns
 	: SqlColumns extends Record<string, SqlTypeShape>
-		? SqlColumnsToTs<SqlColumns, Config["scalarTypes"]>
+		? [Exclude<FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>, UserTypeNames>] extends [never]
+			? SqlColumnsToTs<SqlColumns, Config["scalarTypes"]>
+			: FormatError<
+					Errors["NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE"],
+					[Exclude<FirstUnmappedSqlType<SqlColumns, Config["scalarTypes"]>, UserTypeNames>]
+				>
 		: SqlColumns
+
+/**
+ * CORE-14: the SQL type name of the first output column that has no TypeScript mapping in the driver's type map,
+ * or `never` when every column maps. `null` (CORE-5) and arrays of mapped types map without a row of their own.
+ */
+export type FirstUnmappedSqlType<
+	SqlColumns extends Record<string, SqlTypeShape>,
+	ScalarMap extends Record<string, unknown>,
+> = {
+	[K in keyof SqlColumns]: UnmappedTypeName<SqlColumns[K], ScalarMap>
+}[keyof SqlColumns]
+
+type UnmappedTypeName<Shape extends SqlTypeShape, ScalarMap extends Record<string, unknown>> = Shape["type"] extends
+	| "null"
+	| "enum"
+	? never
+	: Shape["type"] extends "array"
+		? Shape["arg"] extends SqlTypeShape
+			? UnmappedTypeName<Shape["arg"], ScalarMap>
+			: never
+		: Lowercase<Shape["type"]> extends keyof ScalarMap
+			? never
+			: Shape["type"]

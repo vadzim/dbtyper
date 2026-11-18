@@ -12,6 +12,6 @@ const _db = sqlMigrations({ driver: mockDriver })
 
 const _result = await _db.query(`update users set name = 'Bob' where id = '1';`)
 
-// Result type should be unknown
+// CORE-13: result type is an empty row list
 
-expectType<typeof _result>(toBe<unknown>())
+expectType<typeof _result>(toBe<[]>())

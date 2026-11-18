@@ -297,9 +297,14 @@ type CheckSqlValid<
 > =
 	ApplyStatements<Db, Stmt, Params, ParserSyntaxOf<Config>>[1] extends DbtyperError<infer Code, infer Msg>
 		? FormatErrorText<Code, Msg>
-		: Stmt
+		: // CORE-14: a result column with no TypeScript mapping is an error, never `unknown`
+			SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
+			? Code extends 3501
+				? Stmt
+				: FormatErrorText<Code, Msg>
+			: Stmt
 
-/** Return type for .query() - returns typed array for SELECT/RETURNING, unknown for other statements */
+/** Return type for .query() - typed array for SELECT/RETURNING, an empty row list for statements without rows (CORE-13) */
 type QueryReturnType<
 	Config extends DriverConfig,
 	Db extends JsqlDatabaseShape,
@@ -307,7 +312,9 @@ type QueryReturnType<
 	Params extends ExpressionParamsShape,
 > =
 	SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
-		? unknown
+		? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<3501, string>
+			? []
+			: unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
 
 export type GetApplyError<D, Stmt extends string> =
@@ -382,7 +389,7 @@ export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> 
 	// ): CheckSqlValid<Config, Db, Stmt, InferParamsFromValues<ParamsValues>>
 
 	/**
-	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, unknown for other statements.
+	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, `[]` for other statements (CORE-13).
 	 */
 	query<Stmt extends string>(
 		statement: Stmt extends CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, EmptyExpressionParams>

@@ -23,6 +23,7 @@ import type {
 	SqlNull,
 	SqlUnknown,
 	SqlTimestamp,
+	Nullable,
 } from "../core/sql-type-shape.ts"
 import type { Dec, ParseNumber } from "../core/type-utils.ts"
 
@@ -861,7 +862,72 @@ type ArgsTupleContainsStar<Args extends readonly (ScalarExprAst | { kind: "star"
 		: ArgsTupleContainsStar<Tail>
 	: false
 
+/** CORE-2, CORE-3: nullability of a function call on top of its base result type. */
 type ResolveFunctionCall<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	L extends string = Lowercase<Name>,
+> =
+	ResolveFunctionCallBase<Name, Args, Db, Scope, Params, L> extends infer Base
+		? Base extends DbtyperErrorShape
+			? Base
+			: Base extends SqlTypeShape
+				? L extends "count"
+					? Base
+					: L extends "sum" | "avg" | "min" | "max"
+						? Nullable<Base>
+						: ArgsTupleContainsStar<Args> extends true
+							? Base
+							: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes extends
+										readonly SqlTypeShape[]
+								? L extends "coalesce"
+									? CoalesceResult<ArgsRes, Base>
+									: AnyShapeNullable<ArgsRes> extends true
+										? Nullable<Base>
+										: Base
+								: Base
+				: Base
+		: never
+
+/** CORE-2, CORE-5: `COALESCE` is non-null when one argument is non-null; its type is that of the first non-NULL-literal argument. */
+type CoalesceResult<Args extends readonly SqlTypeShape[], Base extends SqlTypeShape> =
+	FirstNonNullLiteral<Args> extends infer First extends SqlTypeShape
+		? AllShapesNullable<Args> extends true
+			? Nullable<First>
+			: { type: First["type"]; arg: First["arg"]; nullable: false }
+		: Base
+
+type FirstNonNullLiteral<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+	infer H extends SqlTypeShape,
+	...infer T extends readonly SqlTypeShape[],
+]
+	? H["type"] extends "null"
+		? FirstNonNullLiteral<T>
+		: H
+	: SqlNull
+
+type AnyShapeNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+	infer H extends SqlTypeShape,
+	...infer T extends readonly SqlTypeShape[],
+]
+	? H["nullable"] extends true
+		? true
+		: AnyShapeNullable<T>
+	: false
+
+type AllShapesNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
+	infer H extends SqlTypeShape,
+	...infer T extends readonly SqlTypeShape[],
+]
+	? H["nullable"] extends true
+		? AllShapesNullable<T>
+		: false
+	: true
+
+type ResolveFunctionCallBase<
 	Name extends string,
 	Args extends readonly (ScalarExprAst | { kind: "star" })[],
 	Db extends JsqlDatabaseShape,
@@ -1020,11 +1086,19 @@ type ResolveWindowFunction<
 			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
 				? ArgsRes extends DbtyperErrorShape
 					? ArgsRes
-					: ArgsRes extends readonly [infer S extends SqlTypeShape, ...infer _Rest]
-						? S
-						: ArgsRes extends readonly []
-							? FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
-							: FormatError<Errors["INVALID_LAG_LEAD_ARGUMENTS"], []>
+					: ArgsRes extends readonly [
+								infer S extends SqlTypeShape,
+								SqlTypeShape,
+								infer Dflt extends SqlTypeShape,
+						  ]
+						? Dflt["nullable"] extends true // with a default the only NULLs are the argument's and the default's
+							? Nullable<S>
+							: S
+						: ArgsRes extends readonly [infer S extends SqlTypeShape, ...infer _Rest]
+							? Nullable<S> // no row before/after: NULL (CORE-2)
+							: ArgsRes extends readonly []
+								? FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
+								: FormatError<Errors["INVALID_LAG_LEAD_ARGUMENTS"], []>
 				: never
 			: FormatError<Errors["UNKNOWN_WINDOW_FUNCTION"], []>
 
@@ -1465,8 +1539,73 @@ export type ResolveExpressionAST<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 > = Ast extends { kind: infer K extends keyof ExpressionResolvers<any, any, any, any> }
-	? ExpressionResolvers<Ast, Db, Scope, Params>[K]
+	? ApplyOperandNullability<Ast, ExpressionResolvers<Ast, Db, Scope, Params>[K], Db, Scope, Params>
 	: never
+
+/** The operand expressions of an operator whose result is NULL when an operand is NULL (CORE-2). */
+type NullPropagatingOperands<Ast> = Ast extends {
+	kind: "add" | "sub" | "mul" | "exp" | "mod" | "custom_op" | "cmp" | "and" | "or"
+	left: infer L extends ScalarExprAst
+	right: infer R extends ScalarExprAst
+}
+	? readonly [L, R]
+	: Ast extends { kind: "neg" | "not"; inner: infer I extends ScalarExprAst }
+		? readonly [I]
+		: Ast extends { kind: "pg_cast" | "sql_cast"; expr: infer E extends ScalarExprAst }
+			? readonly [E]
+			: Ast extends {
+						kind: "between"
+						expr: infer E extends ScalarExprAst
+						low: infer Lo extends ScalarExprAst
+						high: infer Hi extends ScalarExprAst
+				  }
+				? readonly [E, Lo, Hi]
+				: Ast extends {
+							kind: "like" | "pg_regex_match"
+							expr: infer E extends ScalarExprAst
+							pattern: infer P extends ScalarExprAst
+					  }
+					? readonly [E, P]
+					: Ast extends {
+								kind: "in_list"
+								expr: infer E extends ScalarExprAst
+								items: infer Its extends readonly ScalarExprAst[]
+						  }
+						? readonly [E, ...Its]
+						: Ast extends {
+									kind: "any_op" | "all_op" | "some_op"
+									left: infer L extends ScalarExprAst
+							  }
+							? readonly [L]
+							: readonly []
+
+type AnyOperandNullable<
+	Ops extends readonly ScalarExprAst[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> = Ops extends readonly [infer H extends ScalarExprAst, ...infer T extends readonly ScalarExprAst[]]
+	? ResolveExpressionAST<H, Db, Scope, Params> extends { nullable: true }
+		? true
+		: AnyOperandNullable<T, Db, Scope, Params>
+	: false
+
+/** CORE-2: an operator result is nullable when any operand is. */
+type ApplyOperandNullability<
+	Ast,
+	Res,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> = Res extends DbtyperErrorShape
+	? Res
+	: Res extends SqlTypeShape
+		? Res["nullable"] extends true
+			? Res
+			: AnyOperandNullable<NullPropagatingOperands<Ast>, Db, Scope, Params> extends true
+				? Nullable<Res>
+				: Res
+		: Res
 
 /** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path).
  * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
@@ -1890,17 +2029,20 @@ type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape> = Ex
 				: FormatError<Errors["LIKE_PATTERN_MUST_BE_TEXT"], []>
 			: FormatError<Errors["LIKE_LEFT_OPERAND_MUST_BE_TEXT"], []>
 
+/** CORE-2, CORE-5: a CASE result is nullable when any branch is (a NULL literal branch included). */
 type MergeCaseThenAccum<Acc extends SqlTypeShape | null, Tv extends SqlTypeShape> = Acc extends null
 	? Tv
 	: Acc extends SqlTypeShape
 		? Acc["type"] extends "null"
 			? Tv["type"] extends "null"
 				? SqlNull
-				: Tv
+				: Nullable<Tv>
 			: Tv["type"] extends "null"
-				? Acc
+				? Nullable<Acc>
 				: SameComparisonClass<Acc, Tv> extends true
-					? Acc
+					? Tv["nullable"] extends true
+						? Nullable<Acc>
+						: Acc
 					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_CASE"], []>
 		: never
 
@@ -2082,7 +2224,7 @@ type ResolveScalarSubquerySel<S extends JsqlSelectStatementResult> =
 	SingleProjectionColumn<S["returning"]> extends true
 		? keyof S["returning"] extends infer K extends keyof S["returning"]
 			? S["returning"][K] extends infer ColType extends SqlTypeShape
-				? ColType
+				? Nullable<ColType> // CORE-4: a scalar subquery may return no row
 				: FormatError<Errors["SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED"], []>
 			: FormatError<Errors["SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED"], []>
 		: FormatError<Errors["SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN"], []>
