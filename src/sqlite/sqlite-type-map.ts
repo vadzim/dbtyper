@@ -14,6 +14,8 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
 	boolean: Integer
 	/** A column with no type, or `ANY`: any storage class (SQLT-10); `null` is added when the column is nullable. */
 	any: Integer | number | string | Uint8Array
+	/** `typeof(x)` (SQLT-50): the name of a storage class. */
+	typeof: "null" | "integer" | "real" | "text" | "blob"
 	/** `count(*)` and similar shared-parser results that are integers. */
 	bigint: Integer
 }

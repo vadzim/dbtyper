@@ -21,6 +21,8 @@ export type FunctionArgTypes = {
 	replace: readonly [SqlText, SqlText, SqlText]
 	starts_with: readonly [SqlText, SqlText]
 	strpos: readonly [SqlText, SqlText]
+	instr: readonly [SqlText, SqlText]
+	unicode: readonly [SqlText]
 	left: readonly [SqlText, SqlInteger]
 	right: readonly [SqlText, SqlInteger]
 	substr: readonly [SqlText, SqlInteger, SqlInteger]
@@ -31,7 +33,7 @@ export type FunctionArgTypes = {
 }
 
 /** Functions whose arguments all share one type: a parameter takes the type of another argument. */
-export type PeerTypedFunctions = "coalesce" | "nullif" | "greatest" | "least"
+export type PeerTypedFunctions = "coalesce" | "ifnull" | "nullif" | "greatest" | "least" | "max" | "min"
 
 /** The type of argument `Index` of function `Name`, or `never` when the position gives none. */
 export type FunctionArgType<Name extends string, Index extends number> = Name extends keyof FunctionArgTypes

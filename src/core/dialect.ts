@@ -40,6 +40,8 @@ export type DialectName = keyof Dialects
  * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
+ * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "builtin" = the PostgreSQL built-ins of the expression
+ * parser plus the chain's own `functions`, "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  */
 export type Dialects = {
 	postgres: {
@@ -50,6 +52,7 @@ export type Dialects = {
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
+		functionCatalog: "builtin"
 	}
 	sqlite: {
 		title: "SQLite"
@@ -59,6 +62,7 @@ export type Dialects = {
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
+		functionCatalog: "sqlite"
 	}
 }
 
@@ -95,6 +99,50 @@ export type DialectOnlyConstructs = {
 	"sqlite-insert-or": { only: "sqlite"; name: "INSERT OR <conflict action>"; hint: "Use ON CONFLICT" }
 	"sqlite-replace-into": { only: "sqlite"; name: "REPLACE INTO"; hint: "Use INSERT … ON CONFLICT … DO UPDATE" }
 	"pg-serial": { only: "postgres"; name: "SERIAL type"; hint: "Use INTEGER PRIMARY KEY" }
+	// SQLT-53 (#76)
+	"pg-array-ctor": { only: "postgres"; name: "`ARRAY[…]`"; hint: "Use json_array(…)" }
+	"pg-array-type": { only: "postgres"; name: "Array type `T[]`"; hint: "Use a JSON TEXT column" }
+	"pg-any-all-some": {
+		only: "postgres"
+		name: "`ANY`/`ALL`/`SOME` comparison"
+		hint: "Use IN (…) or a subquery with EXISTS"
+	}
+	"pg-ilike": { only: "postgres"; name: "ILIKE"; hint: "In SQLite LIKE is already case-insensitive" }
+	"pg-distinct-on": { only: "postgres"; name: "DISTINCT ON"; hint: "Use a window function or GROUP BY" }
+	"pg-array-contains": { only: "postgres"; name: "`@>` operator"; hint: "Use json_each(…)" }
+	"pg-array-contained": { only: "postgres"; name: "`<@` operator"; hint: "Use json_each(…)" }
+	"pg-array-overlap": { only: "postgres"; name: "`&&` operator"; hint: "Use json_each(…)" }
+	"pg-lateral": { only: "postgres"; name: "LATERAL"; hint: "Use a correlated subquery" }
+	"pg-create-type": { only: "postgres"; name: "CREATE TYPE"; hint: "Use TEXT with a CHECK constraint" }
+	"pg-create-schema": { only: "postgres"; name: "CREATE SCHEMA"; hint: "Use ATTACH DATABASE" }
+	"pg-create-extension": { only: "postgres"; name: "CREATE EXTENSION"; hint: "" }
+	"pg-grant": { only: "postgres"; name: "GRANT"; hint: "SQLite has no users or privileges" }
+	"pg-on-conflict-constraint": {
+		only: "postgres"
+		name: "ON CONFLICT ON CONSTRAINT"
+		hint: "Use ON CONFLICT (columns)"
+	}
+	"pg-delete-using": { only: "postgres"; name: "DELETE … USING"; hint: "Use a subquery" }
+	"pg-fetch-first": { only: "postgres"; name: "FETCH FIRST"; hint: "Use LIMIT" }
+	"pg-type-timestamptz": {
+		only: "postgres"
+		name: "`timestamptz` type"
+		hint: "Use TEXT (ISO 8601) or INTEGER (unix time)"
+	}
+	"pg-type-jsonb": { only: "postgres"; name: "`jsonb` type"; hint: "Use TEXT or JSON" }
+	"pg-type-uuid": { only: "postgres"; name: "`uuid` type"; hint: "Use TEXT" }
+	"pg-type-bytea": { only: "postgres"; name: "`bytea` type"; hint: "Use BLOB" }
+}
+
+/** SQLT-53: PostgreSQL-only type names and the construct row each one gives (lower-case, words joined by one space). */
+export type PgOnlyTypeNames = {
+	timestamptz: "pg-type-timestamptz"
+	"timestamp with time zone": "pg-type-timestamptz"
+	"time with time zone": "pg-type-timestamptz"
+	timetz: "pg-type-timestamptz"
+	jsonb: "pg-type-jsonb"
+	uuid: "pg-type-uuid"
+	bytea: "pg-type-bytea"
 }
 
 export type DialectConstruct = keyof DialectOnlyConstructs
@@ -109,6 +157,21 @@ export type DialectPhrases = {
 	"insert or ignore": "sqlite-insert-or-ignore"
 	"insert or": "sqlite-insert-or"
 	"replace into": "sqlite-replace-into"
+	// SQLT-53 (#76). Constructs that need parser context (`ANY`, `DISTINCT ON`, `DELETE … USING`, type names) are checked by their parsers.
+	"array [": "pg-array-ctor"
+	"[ ]": "pg-array-type"
+	ilike: "pg-ilike"
+	"@>": "pg-array-contains"
+	"<@": "pg-array-contained"
+	"&&": "pg-array-overlap"
+	lateral: "pg-lateral"
+	"create type": "pg-create-type"
+	"create schema": "pg-create-schema"
+	"create extension": "pg-create-extension"
+	grant: "pg-grant"
+	"conflict on constraint": "pg-on-conflict-constraint"
+	"fetch first": "pg-fetch-first"
+	"fetch next": "pg-fetch-first"
 }
 
 type PhraseHead<P> = P extends `${infer Head} ${string}` ? Head : P
@@ -196,6 +259,16 @@ export type DialectOnlyError<Syntax extends string, Construct extends DialectCon
 				: null
 			: null
 		: null
+
+/**
+ * {@link DialectOnlyError} for a parser that has the database state, not `Syntax`: the chain's dialect is the state's
+ * (see {@link DialectFact}; a state without one is PostgreSQL).
+ */
+export type DbDialectOnlyError<Db, Construct extends DialectConstruct, NextWord extends string = ""> = Db extends {
+	dialect: infer D extends DialectName
+}
+	? DialectOnlyError<DialectFlag<D>, Construct, NextWord>
+	: DialectOnlyError<DialectFlag<"postgres">, Construct, NextWord>
 
 /** All other-dialect error descriptions; they share one message shape: construct, this chain's dialect, hint. */
 type OtherDialectErrors = Dialects[DialectName]["onlyError"]
