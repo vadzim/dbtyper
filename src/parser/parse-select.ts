@@ -105,9 +105,11 @@ type ParseSelectWithCtesAfterSubquery<
 				? PeekToken<R4> extends TokenKey<",">
 					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
 					: PeekToken<R4> extends TokenKey<"select">
-						? PeekToken<SkipToken<R4>> extends TokenKey<"distinct">
-							? ParseSelectAfterDistinct<SkipToken<SkipToken<R4>>, Db, Params, NextAcc, OuterScope>
-							: ParseSelectAfterDistinct<SkipToken<R4>, Db, Params, NextAcc, OuterScope>
+						? SkipToken<R4> extends infer R5 extends ParserMonad
+							? PeekToken<R5> extends TokenKey<"distinct">
+								? ParseSelectAfterDistinct<SkipToken<R5>, Db, Params, NextAcc, OuterScope>
+								: ParseSelectAfterDistinct<R5, Db, Params, NextAcc, OuterScope>
+							: never
 						: SkipFailedStatement<R4, Db, FormatError<Errors["EXPECTED_SELECT_AFTER_WITH"], []>>
 				: never
 			: never
@@ -263,7 +265,7 @@ type ParseOrderByScalarExpr<
 				: never
 		: never
 
-/** SEL-31: a bare identifier that names an output column (and is followed by a term end) is that output column. */
+/** SEL-31: a bare identifier that names an output column is that output column (no scope resolution). */
 type ParseOrderByTermExpr<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -271,24 +273,23 @@ type ParseOrderByTermExpr<
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
 > =
-	PeekToken<Tokens> extends TokenIdent<infer N extends string>
-		? N extends OutNames
-			? SkipToken<Tokens> extends infer R1 extends ParserMonad
-				? PeekToken<R1> extends
-						| TokenKey<",">
-						| TokenKey<"asc">
-						| TokenKey<"desc">
-						| TokenKey<"limit">
-						| TokenKey<"offset">
-						| TokenKey<"fetch">
-						| TokenKey<";">
-						| TokenKey<")">
-						| TokenEot
-					? [R1, null]
-					: ParseOrderByScalarExpr<Tokens, Db, Scope, Params>
-				: never
-			: ParseOrderByScalarExpr<Tokens, Db, Scope, Params>
-		: ParseOrderByScalarExpr<Tokens, Db, Scope, Params>
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
+		infer Rw extends ParserMonad,
+		infer Ast,
+		infer _UpdatedEnv,
+	]
+		? Ast extends DbtyperErrorShape
+			? SkipFailedExpression<Rw, Ast>
+			: Ast extends { kind: "col"; parts: readonly [infer N extends OutNames] }
+				? [Rw, null]
+				: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer R
+					? R extends DbtyperErrorShape
+						? SkipFailedExpression<Rw, R>
+						: R extends SqlTypeShape
+							? [Rw, null]
+							: SkipFailedExpression<Rw, never>
+					: never
+		: never
 
 type ParseOrderByOneTerm<
 	Tokens extends ParserMonad,
