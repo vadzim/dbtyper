@@ -2,6 +2,28 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-18 Parameter types from the expression parser (#99, track A; CORE-6, CORE-7)
+
+- **Replaces the token scan** of #57 (`InferSqlParams`, infer-param-types.ts is gone). The parser itself gives a
+  parameter its type; no second copy of the SQL rules.
+- **How (src/core/param-probe.ts).** The statement is parsed with each given parameter bound to a probe
+  (`SqlParamProbe`, type `"param-probe"`). The first position that can type a probe returns the error
+  `ParamProbeFound<key, type>` (an ordinary parser error with a payload, so every parser already propagates it);
+  `DeriveQueryParams` binds that type and parses again, until no probe is found. A probe left over, or one that
+  only meets other parameters, is CORE-7 (2405). The parser's own error stops the loop and is the result.
+  Cost: one extra parse per parameter that is typed this way (test config 4.70M -> 4.97M instantiations with the new tests).
+- **Where positions type a probe.** `ParamProbeAt` in `ResolveExpressionAST` (parse-expression.ts): operands
+  that share a type (comparison, arithmetic (numeric peer only), LIKE / `~`, BETWEEN, IN list; the peer is the first
+  operand that is not a parameter and resolves to a type; a literal counts, so `:x + 1` is an integer), `CAST` and `::`,
+  function arguments (table `FunctionArgTypes` in function-param-types.ts; `coalesce`, `nullif`, `greatest`, `least`
+  follow their other arguments). `ValidateMutationValueForColumn` (INSERT VALUES, UPDATE SET, DO UPDATE SET) gives the
+  column's type, nullable kept. `LIMIT` / `OFFSET` give integer. Comparison-like positions give a non-null type.
+- **INSERT without a column list** is parsed: the columns are all columns of the table in declaration order.
+- **Behaviour changes.** `:x + 1` is no longer CORE-7 (test renamed core-6-param-next-to-literal). A value given
+  for a key that the SQL never uses is now CORE-7 for that key (it has no position). An unqualified column shared by
+  several tables is the parser's ambiguity error, not "first match".
+- **Not typed (CORE-7):** arithmetic functions (`abs(:x)`), a parameter next to `NULL`, `ORDER BY :x`, a bare select item.
+
 ## 2026-11-18 SQLite drivers on track A: dialect, parameter forms, ?NNN (#65 track-A part; DSEL-1, SQLT-3, SQLT-4, SQLT-30)
 
 - `SqliteDriverConfig` declares `dialect: "sqlite"` and `syntax: "question-params" | "named-params"`. `indexed-params`
