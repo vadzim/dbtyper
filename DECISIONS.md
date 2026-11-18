@@ -24,6 +24,18 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
   several tables is the parser's ambiguity error, not "first match".
 - **Not typed (CORE-7):** arithmetic functions (`abs(:x)`), a parameter next to `NULL`, `ORDER BY :x`, a bare select item.
 
+## 2026-11-18 SQLite drivers on track A: dialect, parameter forms, ?NNN (#65 track-A part; DSEL-1, SQLT-3, SQLT-4, SQLT-30)
+
+- `SqliteDriverConfig` declares `dialect: "sqlite"` and `syntax: "question-params" | "named-params"`. `indexed-params`
+  is PostgreSQL's `$1`, so it is not a SQLite form; `dollar-strings` neither.
+- The lexer reads `@name` and `$name` (named, like `:name`) and `?NNN` (numbered, like `$n`) only when the chain's
+  `Syntax` has `dialect:sqlite` (and `named-params` / `question-params`); under PostgreSQL `@` stays an operator and
+  `$name` keeps its old meaning. Bare names bind objects (SQLT-30), so no new parameter kind was needed.
+- Rows are typed from `SqliteTypeMap` by the shape's type name (integer, real, text, blob): SQLT-3/SQLT-4 Checks run
+  in test/dialects/sqlt-30-\*.test-d.ts. The declared-type to affinity mapping is the SQLT type-names issue (#67).
+- The better-sqlite3 adapter no longer retries a failed bind: `usesNumberedParams(sql)` scans the text (outside string
+  literals, quoted names, comments) and an array is bound as `{1: …, 2: …}` exactly when the SQL has `?NNN`.
+
 ## 2026-11-18 Set operations, USING/NATURAL, any ON, recursive CTEs, DO NOTHING (#60, track A; CORE-8..12, CORE-20)
 
 - **Set operations** (`ParseSelectCompound`): one SELECT arm, then a left-associative tail of `UNION|INTERSECT|EXCEPT [ALL|DISTINCT]`.
