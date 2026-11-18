@@ -39,6 +39,14 @@ import type {
 	SqlitePgOnlyFunctions,
 	SqliteRowResult,
 } from "./sqlite-functions.ts"
+import type {
+	IsPostgresFunction,
+	IsWindowCapableRow,
+	PostgresFunctionArity,
+	PostgresFunctions,
+	PostgresRowResult,
+	PostgresSqliteOnlyFunctions,
+} from "./postgres-functions.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -419,11 +427,15 @@ type ParseLikeAfterL<
 > =
 	PeekToken<Tokens> extends infer TokKw
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? TokKw extends TokenIdent<"regexp">
-				? Env["db"] extends { functions: { regexp: unknown } }
-					? ParseLikePattern<R1, L, CI, Env>
-					: SkipFailedExpressionWithEnv<R1, FormatError<Errors["REGEXP_NEEDS_FUNCTION"], []>, Env>
-				: ParseLikePattern<R1, L, CI, Env>
+			? TokKw extends TokenKey<"similar">
+				? PeekToken<R1> extends TokenKey<"to"> // PGT-23: `x SIMILAR TO pattern`
+					? ParseLikePattern<SkipToken<R1>, L, CI, Env>
+					: SkipFailedExpressionWithEnv<R1, FormatError<Errors["UNEXPECTED_TOKEN"], ["SIMILAR"]>, Env>
+				: TokKw extends TokenIdent<"regexp">
+					? Env["db"] extends { functions: { regexp: unknown } }
+						? ParseLikePattern<R1, L, CI, Env>
+						: SkipFailedExpressionWithEnv<R1, FormatError<Errors["REGEXP_NEEDS_FUNCTION"], []>, Env>
+					: ParseLikePattern<R1, L, CI, Env>
 			: never
 		: never
 
@@ -456,7 +468,7 @@ type ParseLikePattern<
 /** `x NOT LIKE | GLOB | REGEXP | IN | BETWEEN …`: the positive form, negated. `Tokens` is at `NOT`. */
 type ParseNotPostfix<Tokens extends ParserMonad, L extends ScalarExprAst, Env extends ExprParseEnv> =
 	SkipToken<Tokens> extends infer R1 extends ParserMonad
-		? PeekToken<R1> extends TokenKey<"like"> | TokenIdent<"glob" | "regexp">
+		? PeekToken<R1> extends TokenKey<"like" | "similar"> | TokenIdent<"glob" | "regexp">
 			? ParseLikeAfterL<R1, L, false, Env> extends [
 					infer R2 extends ParserMonad,
 					infer Inner,
@@ -855,7 +867,7 @@ type ParseAfterAddScalarRelIsInUntyped<Tokens extends ParserMonad, L extends Sca
 														]
 												: never
 											: never
-										: P extends TokenKey<"like">
+										: P extends TokenKey<"like" | "similar">
 											? ParseLikeAfterL<Tokens, L, false, Env>
 											: P extends TokenKey<"ilike">
 												? ParseLikeAfterL<Tokens, L, true, Env>
@@ -1112,9 +1124,75 @@ type ResolveFunctionCall<
 > =
 	DialectFact<Db, "functionCatalog"> extends "sqlite"
 		? ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, false, L>
-		: ResolveBuiltinFunctionCall<Name, Args, Db, Scope, Params, L>
+		: ResolvePgFunctionCall<Name, Args, Db, Scope, Params, false, L>
 
-type ResolveBuiltinFunctionCall<
+/**
+ * PGT-27…PGT-33: a call in a PostgreSQL chain. A name in the data table `PostgresFunctions`
+ * (src/parser/postgres-functions.ts) is typed from its row; the array functions with their own errors (FN-19…FN-21),
+ * the chain's own `functions` and the unknown-function error (FN-1, PGT-34) are {@link ResolveLegacyFunctionCall}.
+ * `Windowed`: the call has an OVER clause.
+ */
+type ResolvePgFunctionCall<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Windowed extends boolean,
+	L extends string = Lowercase<Name>,
+> =
+	IsPostgresFunction<L> extends true
+		? ArgsTupleContainsStar<Args> extends true
+			? L extends "count"
+				? SqlBigint
+				: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
+			: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+				? ArgsRes extends DbtyperErrorShape
+					? ArgsRes
+					: ArgsRes extends readonly SqlTypeShape[]
+						? PgArityError<L, ArgsRes> extends infer Arity
+							? Arity extends DbtyperErrorShape
+								? Arity
+								: L extends keyof PostgresFunctions
+									? PostgresFunctions[L] extends infer Row
+										? Windowed extends false
+											? IsWindowOnlyRow<Row> extends true
+												? FormatError<Errors["WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE"], [Name]>
+												: PostgresRowResult<Row, ArgsRes>
+											: IsWindowCapableRow<Row> extends true
+												? PostgresRowResult<Row, ArgsRes>
+												: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+										: never
+									: never
+							: never
+						: never
+				: never
+		: Windowed extends false
+			? ResolveLegacyFunctionCall<Name, Args, Db, Scope, Params, L>
+			: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
+
+/** FN-5, FN-7…FN-10, FN-12, FN-24: the arity errors of {@link PostgresFunctionArity}; `null` when the count is fine. */
+type PgArityError<L extends string, ArgsRes extends readonly SqlTypeShape[]> = L extends keyof PostgresFunctionArity
+	? PostgresFunctionArity[L] extends readonly [
+			infer Min extends number,
+			infer Max extends number,
+			infer Key extends keyof Errors,
+		]
+		? ArgsRes extends readonly []
+			? Min extends 0
+				? null
+				: FormatError<Errors[Key], []>
+			: Max extends 0
+				? FormatError<Errors[Key], []>
+				: null
+		: null
+	: null
+
+/**
+ * The array functions with their own errors (FN-19…FN-21), the chain's own `functions`, and FN-1 for the rest, with
+ * the PostgreSQL hint for a SQLite-only name (PGT-34, DSEL-6). The result is nullable when any argument is (CORE-2).
+ */
+type ResolveLegacyFunctionCall<
 	Name extends string,
 	Args extends readonly (ScalarExprAst | { kind: "star" })[],
 	Db extends JsqlDatabaseShape,
@@ -1122,43 +1200,21 @@ type ResolveBuiltinFunctionCall<
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	L extends string = Lowercase<Name>,
 > =
-	ResolveFunctionCallBase<Name, Args, Db, Scope, Params, L> extends infer Base
-		? Base extends DbtyperErrorShape
-			? Base
-			: Base extends SqlTypeShape
-				? L extends "count"
-					? Base
-					: L extends "sum" | "avg" | "min" | "max"
-						? Nullable<Base>
-						: ArgsTupleContainsStar<Args> extends true
-							? Base
-							: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes extends
-										readonly SqlTypeShape[]
-								? L extends "coalesce"
-									? CoalesceResult<ArgsRes, Base>
-									: AnyShapeNullable<ArgsRes> extends true
-										? Nullable<Base>
-										: Base
+	ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+		? ArgsRes extends DbtyperErrorShape
+			? ArgsRes
+			: ArgsRes extends readonly SqlTypeShape[]
+				? ResolveLegacyFunctionBase<Name, ArgsRes, Db, L> extends infer Base
+					? Base extends DbtyperErrorShape
+						? Base
+						: Base extends SqlTypeShape
+							? AnyShapeNullable<ArgsRes> extends true
+								? Nullable<Base>
 								: Base
-				: Base
+							: Base
+					: never
+				: never
 		: never
-
-/** CORE-2, CORE-5: `COALESCE` is non-null when one argument is non-null; its type is that of the first non-NULL-literal argument. */
-type CoalesceResult<Args extends readonly SqlTypeShape[], Base extends SqlTypeShape> =
-	FirstNonNullLiteral<Args> extends infer First extends SqlTypeShape
-		? AllShapesNullable<Args> extends true
-			? Nullable<First>
-			: { type: First["type"]; arg: First["arg"]; nullable: false }
-		: Base
-
-type FirstNonNullLiteral<Args extends readonly SqlTypeShape[]> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["type"] extends "null"
-		? FirstNonNullLiteral<T>
-		: H
-	: SqlNull
 
 type AnyShapeNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
@@ -1169,154 +1225,60 @@ type AnyShapeNullable<Args extends readonly SqlTypeShape[]> = Args extends reado
 		: AnyShapeNullable<T>
 	: false
 
-type AllShapesNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["nullable"] extends true
-		? AllShapesNullable<T>
-		: false
-	: true
-
-type ResolveFunctionCallBase<
+type ResolveLegacyFunctionBase<
 	Name extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	ArgsRes extends readonly SqlTypeShape[],
 	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	L extends string = Lowercase<Name>,
-> =
-	ArgsTupleContainsStar<Args> extends true
-		? L extends "count"
-			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
-				? ArgsRes extends DbtyperErrorShape
-					? ArgsRes
-					: ArgsRes extends readonly SqlTypeShape[]
-						? SqlBigint
-						: never
-				: never
-			: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
-		: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
-			? ArgsRes extends DbtyperErrorShape
-				? ArgsRes
-				: ArgsRes extends readonly SqlTypeShape[]
-					? L extends "count"
-						? SqlBigint
-						: L extends "lower" | "upper"
-							? ArgsRes extends readonly [SqlTypeShape, ...infer _Rest]
-								? SqlText
-								: ArgsRes extends readonly []
-									? FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-									: FormatError<Errors["FUNCTION_EXPECTS_TEXT_ARGUMENT"], []>
-							: L extends "coalesce"
-								? ArgsRes extends readonly []
-									? FormatError<Errors["COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-									: ArgsRes[0] extends SqlTypeShape
-										? ArgsRes[0]
+	L extends string,
+> = L extends "array_length"
+	? ArgsRes extends readonly [infer S1 extends SqlTypeShape, SqlTypeShape]
+		? S1["type"] extends "array" | "unknown"
+			? SqlInteger
+			: FormatError<Errors["ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER"], []>
+		: FormatError<Errors["ARRAY_LENGTH_REQUIRES_2_ARGUMENTS"], []>
+	: L extends "array_append"
+		? ArgsRes extends readonly [infer S1 extends SqlTypeShape, SqlTypeShape]
+			? S1["type"] extends "array" | "unknown"
+				? S1
+				: FormatError<Errors["ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT"], []>
+			: FormatError<Errors["ARRAY_APPEND_REQUIRES_2_ARGUMENTS"], []>
+		: L extends "array_prepend"
+			? ArgsRes extends readonly [SqlTypeShape, infer S2 extends SqlTypeShape]
+				? S2["type"] extends "array" | "unknown"
+					? S2
+					: FormatError<Errors["ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY"], []>
+				: FormatError<Errors["ARRAY_PREPEND_REQUIRES_2_ARGUMENTS"], []>
+			: L extends "unnest"
+				? ArgsRes extends readonly [infer S1 extends SqlTypeShape]
+					? S1 extends { type: "array"; arg: infer E extends SqlTypeShape }
+						? E
+						: S1["type"] extends "array" | "unknown"
+							? SqlUnknown
+							: FormatError<Errors["UNNEST_EXPECTS_AN_ARRAY"], []>
+					: FormatError<Errors["UNNEST_REQUIRES_1_ARGUMENT"], []>
+				: "functions" extends keyof Db
+					? Db["functions"] extends Record<string, unknown>
+						? L extends keyof Db["functions"]
+							? Db["functions"][L & keyof Db["functions"]] extends infer FnType
+								? FnType extends SqlTypeShape
+									? FnType
+									: FnType extends string
+										? { type: FnType; arg: null; nullable: false }
 										: SqlUnknown
-								: L extends "now"
-									? ArgsRes extends readonly []
-										? SqlTimestamp
-										: FormatError<Errors["NOW_TAKES_NO_ARGUMENTS"], []>
-									: L extends "sum" | "avg"
-										? ArgsRes extends readonly [SqlTypeShape, ...infer _R]
-											? SqlNumeric
-											: FormatError<Errors["SUM_REQUIRES_AN_ARGUMENT"], []>
-										: L extends "min" | "max"
-											? ArgsRes extends readonly [infer First extends SqlTypeShape, ...infer _R]
-												? First
-												: FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-											: L extends "uuid_generate_v4" | "gen_random_uuid"
-												? ArgsRes extends readonly []
-													? SqlUuid
-													: FormatError<Errors["THIS_FUNCTION_TAKES_NO_ARGUMENTS"], []>
-												: L extends "array_length"
-													? ArgsRes extends readonly [
-															infer S1 extends SqlTypeShape,
-															infer _S2 extends SqlTypeShape,
-														]
-														? S1["type"] extends "array" | "unknown"
-															? SqlInteger
-															: FormatError<
-																	Errors["ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER"],
-																	[]
-																>
-														: FormatError<Errors["ARRAY_LENGTH_REQUIRES_2_ARGUMENTS"], []>
-													: L extends "array_append"
-														? ArgsRes extends readonly [
-																infer S1 extends SqlTypeShape,
-																SqlTypeShape,
-															]
-															? S1["type"] extends "array" | "unknown"
-																? S1
-																: FormatError<
-																		Errors["ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT"],
-																		[]
-																	>
-															: FormatError<
-																	Errors["ARRAY_APPEND_REQUIRES_2_ARGUMENTS"],
-																	[]
-																>
-														: L extends "array_prepend"
-															? ArgsRes extends readonly [
-																	SqlTypeShape,
-																	infer S2 extends SqlTypeShape,
-																]
-																? S2["type"] extends "array" | "unknown"
-																	? S2
-																	: FormatError<
-																			Errors["ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY"],
-																			[]
-																		>
-																: FormatError<
-																		Errors["ARRAY_PREPEND_REQUIRES_2_ARGUMENTS"],
-																		[]
-																	>
-															: L extends "unnest"
-																? ArgsRes extends readonly [
-																		infer S1 extends SqlTypeShape,
-																	]
-																	? S1 extends {
-																			type: "array"
-																			arg: infer E extends SqlTypeShape
-																		}
-																		? E
-																		: S1["type"] extends "array" | "unknown"
-																			? SqlUnknown
-																			: FormatError<
-																					Errors["UNNEST_EXPECTS_AN_ARRAY"],
-																					[]
-																				>
-																	: FormatError<
-																			Errors["UNNEST_REQUIRES_1_ARGUMENT"],
-																			[]
-																		>
-																: "functions" extends keyof Db
-																	? Db["functions"] extends Record<string, unknown>
-																		? L extends keyof Db["functions"]
-																			? Db["functions"][L &
-																					keyof Db["functions"]] extends infer FnType
-																				? FnType extends SqlTypeShape
-																					? FnType
-																					: FnType extends string
-																						? {
-																								type: FnType
-																								arg: null
-																								nullable: false
-																							}
-																						: SqlUnknown
-																				: SqlUnknown
-																			: FormatError<
-																					Errors["UNKNOWN_FUNCTION"],
-																					[Name]
-																				>
-																		: FormatError<
-																				Errors["UNKNOWN_FUNCTION"],
-																				[Name]
-																			>
-																	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
-					: never
-			: never
+								: SqlUnknown
+							: UnknownPgFunction<Name, L>
+						: UnknownPgFunction<Name, L>
+					: UnknownPgFunction<Name, L>
+
+/** FN-1; PGT-34: a SQLite-only function names its PostgreSQL replacement. */
+type UnknownPgFunction<Name extends string, L extends string> = L extends keyof PostgresSqliteOnlyFunctions
+	? PostgresSqliteOnlyFunctions[L] extends infer Hint extends string
+		? FormatError<
+				Errors["UNKNOWN_FUNCTION"],
+				[Hint extends "" ? Name : `${Name}. ${Name}() is SQLite-only${PgHint<Hint>}`]
+			>
+		: never
+	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
 
 type ResolveWindowFunction<
 	Name extends string,
@@ -1328,42 +1290,7 @@ type ResolveWindowFunction<
 > =
 	DialectFact<Db, "functionCatalog"> extends "sqlite"
 		? ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, L>
-		: ResolveBuiltinWindowFunction<Name, Args, Db, Scope, Params, L>
-
-type ResolveBuiltinWindowFunction<
-	Name extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape = EmptyExpressionParams,
-	L extends string = Lowercase<Name>,
-> = L extends "row_number"
-	? Args extends readonly []
-		? SqlBigint
-		: FormatError<Errors["ROW_NUMBER_TAKES_NO_ARGUMENTS"], []>
-	: L extends "rank" | "dense_rank"
-		? Args extends readonly []
-			? SqlBigint
-			: FormatError<Errors["RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"], []>
-		: L extends "lag" | "lead"
-			? ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
-				? ArgsRes extends DbtyperErrorShape
-					? ArgsRes
-					: ArgsRes extends readonly [
-								infer S extends SqlTypeShape,
-								SqlTypeShape,
-								infer Dflt extends SqlTypeShape,
-						  ]
-						? Dflt["nullable"] extends true // with a default the only NULLs are the argument's and the default's
-							? Nullable<S>
-							: S
-						: ArgsRes extends readonly [infer S extends SqlTypeShape, ...infer _Rest]
-							? Nullable<S> // no row before/after: NULL (CORE-2)
-							: ArgsRes extends readonly []
-								? FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
-								: FormatError<Errors["INVALID_LAG_LEAD_ARGUMENTS"], []>
-				: never
-			: FormatError<Errors["UNKNOWN_WINDOW_FUNCTION"], []>
+		: ResolvePgFunctionCall<Name, Args, Db, Scope, Params, true, L>
 
 type ResolveCustomOp<
 	Op extends string,
@@ -1391,32 +1318,45 @@ type ResolveCustomOp<
 				: never
 		: never
 
+type PgJsonTypes = "json" | "jsonb"
+
 type ResolveBuiltinCustomOp<Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
-	| "@>"
-	| "&&"
-	| "<@"
-	? SqlBoolean
-	: Op extends "||"
-		? Lv["type"] extends "array"
-			? Rv["type"] extends "text"
-				? FormatError<Errors["CANNOT_CONCATENATE_ARRAY_WITH_TEXT"], []>
-				: Rv["type"] extends "array"
-					? Lv
-					: Lv
-			: Rv["type"] extends "array"
-				? Lv["type"] extends "text"
-					? FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_ARRAY"], []>
-					: Rv
-				: Lv["type"] extends "text"
-					? Rv["type"] extends "text" | "integer" | "bigint" | "numeric" | "uuid" | "boolean"
-						? SqlText
-						: FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_TYPE"], [Rv["type"]]>
-					: Rv["type"] extends "text"
-						? Lv["type"] extends "integer" | "bigint" | "numeric" | "uuid" | "boolean"
-							? SqlText
-							: FormatError<Errors["CANNOT_CONCATENATE_TYPE_WITH_TEXT"], [Lv["type"]]>
-						: FormatError<Errors["CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND"], []>
+	| "->"
+	| "#>"
+	? Lv["type"] extends PgJsonTypes
+		? Nullable<{ type: Lv["type"]; arg: null; nullable: false }> // PGT-24: the operand's json type, NULL when the key is missing
 		: SqlUnknown
+	: Op extends "->>" | "#>>"
+		? Nullable<SqlText> // PGT-24
+		: Op extends "@>" | "<@" | "?" | "?|" | "?&"
+			? Lv["type"] extends PgJsonTypes
+				? PgNullableIfEither<Lv, Rv, SqlBoolean> // PGT-24: jsonb containment and key existence
+				: Op extends "@>" | "<@"
+					? SqlBoolean
+					: SqlUnknown
+			: Op extends "&&"
+				? SqlBoolean
+				: Op extends "||"
+					? Lv["type"] extends "array"
+						? Rv["type"] extends "text"
+							? FormatError<Errors["CANNOT_CONCATENATE_ARRAY_WITH_TEXT"], []>
+							: Rv["type"] extends "array"
+								? Lv
+								: Lv
+						: Rv["type"] extends "array"
+							? Lv["type"] extends "text"
+								? FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_ARRAY"], []>
+								: Rv
+							: Lv["type"] extends "text"
+								? Rv["type"] extends "text" | "integer" | "bigint" | "numeric" | "uuid" | "boolean"
+									? SqlText
+									: FormatError<Errors["CANNOT_CONCATENATE_TEXT_WITH_TYPE"], [Rv["type"]]>
+								: Rv["type"] extends "text"
+									? Lv["type"] extends "integer" | "bigint" | "numeric" | "uuid" | "boolean"
+										? SqlText
+										: FormatError<Errors["CANNOT_CONCATENATE_TYPE_WITH_TEXT"], [Lv["type"]]>
+									: FormatError<Errors["CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND"], []>
+					: SqlUnknown
 
 type ResolveArrayCtorElements<
 	Els extends readonly ScalarExprAst[],
@@ -1548,14 +1488,14 @@ type ExpressionResolvers<
 		left: infer La extends ScalarExprAst
 		right: infer Ra extends ScalarExprAst
 	}
-		? ResolveScalarExprAstPair<La, Ra, Db, Scope, Params>
+		? ResolveScalarExprAstPair<La, Ra, Db, Scope, Params, "add">
 		: never
 	sub: Ast extends {
 		kind: "sub"
 		left: infer Ls extends ScalarExprAst
 		right: infer Rs extends ScalarExprAst
 	}
-		? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Params>
+		? ResolveScalarExprAstPair<Ls, Rs, Db, Scope, Params, "sub">
 		: never
 	not: Ast extends { kind: "not"; inner: infer I extends ScalarExprAst }
 		? ResolveExpressionAST<I, Db, Scope, Params> extends infer V
@@ -2139,7 +2079,7 @@ type ParseFunctionArgsAccum<
 				: E extends ScalarExprAst
 					? PeekToken<R1> extends TokenKey<")">
 						? [SkipToken<R1>, readonly [...Acc, E], Env1]
-						: PeekToken<R1> extends TokenKey<",">
+						: PeekToken<R1> extends TokenKey<"," | "from" | "for"> | TokenIdent<"for"> // `substring(s from 1 for 2)`, `trim(x from y)`
 							? ParseFunctionArgsAccum<SkipToken<R1>, Env1, readonly [...Acc, E]>
 							: SkipFailedExpressionWithEnv<
 									R1,
@@ -2148,6 +2088,63 @@ type ParseFunctionArgsAccum<
 								>
 					: never
 			: never
+
+/**
+ * The arguments of a call after `(`: the SQL forms `extract(<field> FROM <expr>)` (the field becomes a string
+ * argument) and `position(<substring> IN <string>)` (PGT-28, PGT-30), else the plain list.
+ */
+type ParseCallArgs<Tokens extends ParserMonad, Parts, Env extends ExprParseEnv> = Parts extends readonly ["extract"]
+	? AsIdent<PeekToken<Tokens>> extends TokenIdent<infer Field extends string>
+		? PeekToken<SkipToken<Tokens>> extends TokenKey<"from">
+			? ParseCallArgsTail<SkipToken<SkipToken<Tokens>>, Env, readonly [{ kind: "string"; value: Field }], "from">
+			: ParseFunctionArgs<Tokens, Env>
+		: ParseFunctionArgs<Tokens, Env>
+	: Parts extends readonly ["position"]
+		? ParseOtherOpScalarUntyped<Tokens, Env> extends [
+				infer R1 extends ParserMonad,
+				infer First,
+				infer Env1 extends ExprParseEnv,
+			]
+			? First extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<R1, First, Env1>
+				: First extends ScalarExprAst
+					? PeekToken<R1> extends TokenKey<"in">
+						? ParseCallArgsTail<SkipToken<R1>, Env1, readonly [First], "in">
+						: PeekToken<R1> extends TokenKey<",">
+							? ParseFunctionArgsAccum<SkipToken<R1>, Env1, readonly [First]>
+							: SkipFailedExpressionWithEnv<
+									R1,
+									FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST"], []>,
+									Env1
+								>
+					: never
+			: never
+		: Parts extends readonly ["trim"]
+			? PeekToken<Tokens> extends TokenIdent<"both" | "leading" | "trailing"> // `trim(both 'x' from s)`
+				? ParseFunctionArgs<SkipToken<Tokens>, Env>
+				: ParseFunctionArgs<Tokens, Env>
+			: ParseFunctionArgs<Tokens, Env>
+
+/** One more expression and the closing `)` of a `FROM` / `IN` call form. */
+type ParseCallArgsTail<
+	Tokens extends ParserMonad,
+	Env extends ExprParseEnv,
+	Acc extends readonly ScalarExprAst[],
+	_Kw extends string,
+> =
+	ParseOrScalarUntyped<Tokens, Env> extends [infer R1 extends ParserMonad, infer E, infer Env1 extends ExprParseEnv]
+		? E extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<R1, E, Env1>
+			: E extends ScalarExprAst
+				? PeekToken<R1> extends TokenKey<")">
+					? [SkipToken<R1>, readonly [...Acc, E], Env1]
+					: SkipFailedExpressionWithEnv<
+							R1,
+							FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST"], []>,
+							Env1
+						>
+				: never
+		: never
 
 type ParseFunctionArgs<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"*">
@@ -3166,15 +3163,46 @@ type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 															},
 															Env,
 														]
-													: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
-														? TryColumnOperandScalarUntyped<Tokens, Env>
-														: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
-															? SkipFailedExpressionWithEnv<
-																	Tokens,
-																	FormatError<Errors["UNEXPECTED_TOKEN"], [Value]>,
-																	Env
+													: PeekToken<Tokens> extends TokenIdent<
+																| "interval"
+																| "date"
+																| "timestamp"
+																| "timestamptz"
+																| "time"
+														  >
+														? PeekToken<SkipToken<Tokens>> extends TokenString<
+																infer Lit extends string
+															>
+															? PeekToken<Tokens> extends TokenIdent<
+																	infer TypeName extends string
 																>
-															: never
+																? // `interval '1 day'`, `date '2020-01-01'`: a typed literal is a cast (PGT-30)
+																	[
+																		SkipToken<SkipToken<Tokens>>,
+																		{
+																			kind: "pg_cast"
+																			expr: { kind: "string"; value: Lit }
+																			type_parts: readonly [TypeName]
+																		},
+																		Env,
+																	]
+																: never
+															: TryColumnOperandScalarUntyped<Tokens, Env>
+														: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
+															? TryColumnOperandScalarUntyped<Tokens, Env>
+															: PeekToken<Tokens> extends TokenType<
+																		infer _Kind,
+																		infer Value
+																  >
+																? SkipFailedExpressionWithEnv<
+																		Tokens,
+																		FormatError<
+																			Errors["UNEXPECTED_TOKEN"],
+																			[Value]
+																		>,
+																		Env
+																	>
+																: never
 
 /** EXPR-2, EXPR-5, EXPR-6: a column reference as a right operand or unary-minus operand. */
 type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
@@ -3327,7 +3355,6 @@ type IsOtherOp<T> =
 					| "~*"
 					| "!~"
 					| "!~*"
-					| "?"
 				? false
 				: true
 			: false
@@ -3491,7 +3518,37 @@ type ParseArithTailAfterFirstScalarUntyped<
 				: never
 		: never
 
+/** `interval '1 day'`, `date '2020-01-01'` (PGT-30): a typed literal is a cast; then the arithmetic that follows. */
 type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenIdent<"interval" | "date" | "timestamp" | "timestamptz" | "time">
+		? PeekToken<SkipToken<Tokens>> extends TokenString<infer Lit extends string>
+			? PeekToken<Tokens> extends TokenIdent<infer TypeName extends string>
+				? SkipToken<SkipToken<Tokens>> extends infer Rl extends ParserMonad
+					? PeekToken<Rl> extends ArithOpToken
+						? ParseArithTailAfterFirstScalarUntyped<
+								Rl,
+								{
+									kind: "pg_cast"
+									expr: { kind: "string"; value: Lit }
+									type_parts: readonly [TypeName]
+								},
+								Env
+							>
+						: [
+								Rl,
+								{
+									kind: "pg_cast"
+									expr: { kind: "string"; value: Lit }
+									type_parts: readonly [TypeName]
+								},
+								Env,
+							]
+					: never
+				: never
+			: ParseScalarExprUntypedFromIdentChain<Tokens, Env>
+		: ParseScalarExprUntypedFromIdentChain<Tokens, Env>
+
+type ParseScalarExprUntypedFromIdentChain<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts, infer W extends string]
 		? Parts extends readonly ["__ats__", infer Al extends string]
 			? PeekToken<Rm> extends TokenKey<"(">
@@ -3522,7 +3579,7 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 					: [Rm, { kind: "qualified_table_star"; schema: Sch; table: Tab }, Env]
 				: Parts extends ScalarIdentParts
 					? PeekToken<Rm> extends TokenKey<"(">
-						? ParseFunctionArgs<SkipToken<Rm>, Env> extends [
+						? ParseCallArgs<SkipToken<Rm>, Parts, Env> extends [
 								infer After extends ParserMonad,
 								infer Args,
 								infer EnvAfter extends ExprParseEnv,
@@ -3531,7 +3588,17 @@ type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends Exp
 								? SkipFailedExpressionWithEnv<After, Args, EnvAfter>
 								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 									? Parts extends readonly [infer FnName extends string]
-										? ParseOptionalOverClause<After, FnName, Args, EnvAfter>
+										? ParseOptionalOverClause<After, FnName, Args, EnvAfter> extends [
+												infer Rcall extends ParserMonad,
+												infer Call,
+												infer EnvCall extends ExprParseEnv,
+											]
+											? Call extends ScalarExprAst
+												? PeekToken<Rcall> extends ArithOpToken
+													? ParseArithTailAfterFirstScalarUntyped<Rcall, Call, EnvCall> // `now() - interval '1 day'`, `count(*) - 1`
+													: [Rcall, Call, EnvCall]
+												: [Rcall, Call, EnvCall]
+											: never
 										: SkipFailedExpressionWithEnv<
 												After,
 												FormatError<Errors["QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED"], []>,
@@ -3612,6 +3679,7 @@ type ResolveScalarExprAstPair<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Op extends string = "",
 > =
 	ResolveExpressionAST<L, Db, Scope, Params> extends infer Lv
 		? Lv extends DbtyperErrorShape
@@ -3625,15 +3693,60 @@ type ResolveScalarExprAstPair<
 								? FormatError<Errors["NULL_NOT_ALLOWED_ARITHMETIC"], []>
 								: Rv["type"] extends "null"
 									? FormatError<Errors["NULL_NOT_ALLOWED_ARITHMETIC"], []>
-									: IsSqlNumericType<Lv["type"]> extends true
-										? IsSqlNumericType<Rv["type"]> extends true
-											? ArithmeticResult<Db, Lv, Rv>
-											: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
-										: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
+									: PgDatetimeArithmetic<Db, Op, Lv, Rv> extends infer Dt
+										? [Dt] extends [never]
+											? ResolveNumericPair<Db, Lv, Rv>
+											: Dt
+										: never
 							: never
 						: never
 				: never
 		: never
+
+/**
+ * PGT-30: `timestamp ± interval` is the timestamp's type, `timestamp - timestamp` an `interval`, `date ± integer`
+ * a `date`, `date - date` an `integer`. `never` for any other operands (the numeric rules apply).
+ */
+type PgDatetimeArithmetic<Db, Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
+	| "add"
+	| "sub"
+	? DialectFact<Db, "typeNames"> extends "named"
+		? Lv["type"] extends "timestamp" | "timestamp with time zone" | "timestamp without time zone" | "date"
+			? Rv["type"] extends "interval"
+				? PgNullableIfEither<Lv, Rv, Lv>
+				: Lv["type"] extends "date"
+					? Rv["type"] extends "integer" | "smallint" | "bigint"
+						? PgNullableIfEither<Lv, Rv, Lv>
+						: Op extends "sub"
+							? Rv["type"] extends "date"
+								? PgNullableIfEither<Lv, Rv, SqlInteger>
+								: never
+							: never
+					: Op extends "sub"
+						? Rv["type"] extends Lv["type"]
+							? PgNullableIfEither<Lv, Rv, SqlType<"interval">>
+							: never
+						: never
+			: Lv["type"] extends "interval"
+				? Rv["type"] extends "interval"
+					? PgNullableIfEither<Lv, Rv, Lv>
+					: never
+				: never
+		: never
+	: never
+
+type PgNullableIfEither<
+	Lv extends SqlTypeShape,
+	Rv extends SqlTypeShape,
+	Result extends SqlTypeShape,
+> = Lv["nullable"] extends true ? Nullable<Result> : Rv["nullable"] extends true ? Nullable<Result> : Result
+
+type ResolveNumericPair<Db, Lv extends SqlTypeShape, Rv extends SqlTypeShape> =
+	IsSqlNumericType<Lv["type"]> extends true
+		? IsSqlNumericType<Rv["type"]> extends true
+			? ArithmeticResult<Db, Lv, Rv>
+			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
+		: FormatError<Errors["INCOMPATIBLE_TYPES_IN_ARITHMETIC"], []>
 
 type ResolveScalarExprAstNeg<
 	I extends ScalarExprAst,

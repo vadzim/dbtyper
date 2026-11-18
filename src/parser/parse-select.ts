@@ -119,10 +119,70 @@ type ParseSelectArm<
 			? PeekToken<R0> extends TokenKey<"on">
 				? DbDialectOnlyError<Db, "pg-distinct-on"> extends infer OnlyErr extends DbtyperErrorShape
 					? SkipFailedStatement<R0, Db, OnlyErr>
-					: ParseSelectAfterDistinct<R0, Db, Params, CteBase, OuterScope>
+					: ParseDistinctOnList<SkipToken<R0>, Db, Params, OuterScope> extends [
+								infer R1 extends ParserMonad,
+								infer OnAsts,
+						  ]
+						? OnAsts extends DbtyperErrorShape
+							? SkipFailedStatement<R1, Db, OnAsts>
+							: OnAsts extends readonly ScalarExprAst[]
+								? ParseSelectAfterDistinct<R1, Db, Params, CteBase, OuterScope, OnAsts>
+								: never
+						: never
 				: ParseSelectAfterDistinct<R0, Db, Params, CteBase, OuterScope>
 			: never
 		: ParseSelectAfterDistinct<Tokens, Db, Params, CteBase, OuterScope>
+
+/**
+ * PGT-23: `DISTINCT ON (expr, …)` after the keyword `ON`. The expressions are parsed here and resolved against the
+ * FROM scope by {@link DistinctOnError} (the list comes before FROM). Returns `[Tokens, asts | error]`.
+ */
+type ParseDistinctOnList<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"(">
+		? ParseDistinctOnItems<SkipToken<Tokens>, Db, Params, OuterScope, readonly []>
+		: SkipFailedExpression<Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["ON"]>>
+
+type ParseDistinctOnItems<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	OuterScope extends ScopeMap,
+	Acc extends readonly ScalarExprAst[],
+> =
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope }> extends [
+		infer R1 extends ParserMonad,
+		infer Ast,
+		infer _Env,
+	]
+		? Ast extends DbtyperErrorShape
+			? SkipFailedExpression<R1, Ast>
+			: Ast extends ScalarExprAst
+				? PeekToken<R1> extends TokenKey<",">
+					? ParseDistinctOnItems<SkipToken<R1>, Db, Params, OuterScope, readonly [...Acc, Ast]>
+					: PeekToken<R1> extends TokenKey<")">
+						? [SkipToken<R1>, readonly [...Acc, Ast]]
+						: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>>
+				: never
+		: never
+
+/** The first error of the `DISTINCT ON` expressions resolved against the FROM scope, or `null`. */
+type DistinctOnError<
+	OnAsts extends readonly ScalarExprAst[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> = OnAsts extends readonly [infer H extends ScalarExprAst, ...infer T extends readonly ScalarExprAst[]]
+	? ResolveExpressionAST<H, Db, Scope, Params> extends infer R
+		? R extends DbtyperErrorShape
+			? WithErrorClause<R, "DISTINCT ON">
+			: DistinctOnError<T, Db, Scope, Params>
+		: never
+	: null
 
 type SetOperationKeyword<T> =
 	T extends TokenKey<"union">
@@ -390,6 +450,7 @@ type ParseSelectAfterDistinct<
 	Params extends ExpressionParamsShape,
 	CteBase extends ScopeMap = {},
 	OuterScope extends ScopeMap = {},
+	OnAsts extends readonly ScalarExprAst[] = readonly [],
 > =
 	MergeScope<CteBase, MarkOuterScope<OuterScope>> extends infer MergedOuterScope extends ScopeMap
 		? ParseRawSelectList<Tokens, Db, Params, MergedOuterScope> extends [
@@ -433,14 +494,21 @@ type ParseSelectAfterDistinct<
 															> extends infer Res
 															? Res extends DbtyperErrorShape
 																? [R, Db, WithErrorClause<Res, "SELECT list">]
-																: FinishSelectStatement<
-																		R,
-																		Db,
-																		Res,
-																		MergedScope,
-																		Params,
-																		Items
-																	>
+																: DistinctOnError<
+																			OnAsts,
+																			Db,
+																			MergedScope,
+																			Params
+																	  > extends infer OnErr extends DbtyperErrorShape
+																	? [R, Db, OnErr]
+																	: FinishSelectStatement<
+																			R,
+																			Db,
+																			Res,
+																			MergedScope,
+																			Params,
+																			Items
+																		>
 															: never
 														: never
 													: never
@@ -458,7 +526,14 @@ type ParseSelectAfterDistinct<
 									? ResolveSelectListFrom<Items, Db, {}, MergedScope, Params> extends infer Res
 										? Res extends DbtyperErrorShape
 											? [AfterList, Db, WithErrorClause<Res, "SELECT list">]
-											: FinishSelectStatement<AfterList, Db, Res, MergedScope, Params, Items>
+											: DistinctOnError<
+														OnAsts,
+														Db,
+														MergedScope,
+														Params
+												  > extends infer OnErr extends DbtyperErrorShape
+												? [AfterList, Db, OnErr]
+												: FinishSelectStatement<AfterList, Db, Res, MergedScope, Params, Items>
 										: never
 									: never
 								: SkipFailedStatement<
@@ -497,6 +572,17 @@ type ParseOrderByScalarExpr<
 						: SkipFailedExpression<Rw, never>
 				: never
 		: never
+
+/** `LIMIT <expr>`, or PostgreSQL's `LIMIT ALL` (PGT-23; the dialect phrase `limit all` rejects it in other chains). */
+type ParseLimitValue<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<Tokens> extends TokenKey<"all">
+		? [SkipToken<Tokens>, null]
+		: ParseOrderByScalarExpr<Tokens, Db, Scope, Params, "LIMIT">
 
 /** SEL-31: a bare identifier that names an output column is that output column (no scope resolution). */
 type ParseOrderByTermExpr<
@@ -620,7 +706,7 @@ type OffsetExprThenOptionalLimit<
 > =
 	PeekToken<Ro1> extends TokenKey<"limit">
 		? SkipToken<Ro1> extends infer Rl0 extends ParserMonad
-			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params, "LIMIT"> extends [infer Rl1 extends ParserMonad, infer Le]
+			? ParseLimitValue<Rl0, Db, Scope, Params> extends [infer Rl1 extends ParserMonad, infer Le]
 				? Le extends DbtyperErrorShape
 					? SkipFailedExpression<Rl1, Le>
 					: [Rl1, null]
@@ -676,7 +762,7 @@ type ParseOptionalPagingTokens<
 > =
 	PeekToken<Tokens> extends TokenKey<"limit">
 		? SkipToken<Tokens> extends infer Rl0 extends ParserMonad
-			? ParseOrderByScalarExpr<Rl0, Db, Scope, Params, "LIMIT"> extends [infer Rl1 extends ParserMonad, infer Le]
+			? ParseLimitValue<Rl0, Db, Scope, Params> extends [infer Rl1 extends ParserMonad, infer Le]
 				? Le extends DbtyperErrorShape
 					? SkipFailedExpression<Rl1, Le>
 					: LimitExprThenOptionalOffset<Rl1, Db, Scope, Params>
@@ -867,7 +953,7 @@ type ParseOptionalGroupHaving<
 			: never
 		: ParseOptionalHavingWithoutGroupClause<Tokens, Db, Scope, Params>
 
-/** `min`/`max` with several arguments is the scalar form (SQLT-46); the SQLite-only aggregates are SQLT-47 and SQLT-49. */
+/** `min`/`max` with several arguments is the scalar form (SQLT-46); the SQLite-only aggregates are SQLT-47 and SQLT-49, the PostgreSQL ones PGT-27. */
 type KnownAggregateName<N extends string, Args extends readonly unknown[]> =
 	Lowercase<N> extends infer L extends string
 		? L extends "min" | "max"
@@ -883,6 +969,14 @@ type KnownAggregateName<N extends string, Args extends readonly unknown[]> =
 						| "string_agg"
 						| "json_group_array"
 						| "json_group_object"
+						| "bool_and"
+						| "bool_or"
+						| "every"
+						| "array_agg"
+						| "json_agg"
+						| "jsonb_agg"
+						| "json_object_agg"
+						| "jsonb_object_agg"
 				? true
 				: false
 		: false
