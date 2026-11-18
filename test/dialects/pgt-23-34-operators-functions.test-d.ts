@@ -134,6 +134,12 @@ expectType<Omit<Row<typeof _agg>, "f" | "g" | "h" | "i">>(
 )
 expectType<IsJson<Row<typeof _agg>["f" | "g" | "h" | "i"]>>(toBe<true>())
 
+// PGT-28: concat is never null; concat_ws and format are nullable only through their first argument
+const _cat = await db.query(
+	`select concat(nick, age) as a, concat_ws(',', nick, age) as b, concat_ws(nick, name) as c, format(nick, name) as d, format('%s', nick) as e from t`,
+)
+expectType<typeof _cat>(toBe<Array<{ a: string; b: string; c: string | null; d: string | null; e: string }>>())
+
 // PGT-28
 const _text = await db.query(
 	`select length(name) as a, lower(nick) as b, replace(name, 'a', 'b') as c, left(name, 1) as d, right(name, 1) as e, to_char(at, 'x') as f, position('a' in name) as g, substring(name from 1 for 2) as h, trim(both 'x' from name) as i, regexp_replace(name, 'a', 'b') as j, md5(name) as k from t`,
