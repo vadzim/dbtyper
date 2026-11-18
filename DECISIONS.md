@@ -406,7 +406,27 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   boolean, another enum). A non-literal text operand is accepted. Casts `'x'::mood` give the enum shape; the label of a
   cast literal is not checked. Parameters compared with or assigned to an enum are typed as the label union.
 - **CORE-14 message** now ends with "; select it with a cast, e.g. `::text`" (PGT-15 hint).
-- **Not done**: `COALESCE` over enums is not checked for foreign labels; schema-qualified enum names in column types
-  (`app.status`) still need the parser to read dotted type names; `IN` checks only a literal on the right side.
+- **Not done**: see "Comparison classes" (#85) for the leftovers of this entry; they are done there.
 - Cost: instantiations of the full test typecheck 9.828M -> about 10.5M including the new test file (0.13M-0.2M).
 - **CORE-14 hint per dialect** (#107): the cast spelling is the `castHint` row of `Dialects` (`::text` / `CAST(x AS TEXT)`); message 3506 takes it as its second argument. SQLite `->` is a `["text", "null"]` row (SQLT-36).
+
+## 2026-11-18 Comparison classes, untyped string literals (#85, track A; EXPR-26, PGT-16, DML-16, TYPE-15)
+
+- **Classes are data** in src/core/comparison-classes.ts: `ComparisonClassOfType` (type name -> class; unknown names are
+  "unknown"), `StringLiteralClasses` (the classes a literal fits besides text: uuid, datetime, enums), `EnumClass`
+  (`enum:schema.name`, one class per enum). `SameComparisonClass<L, R, LAst?, RAst?>` takes the operands' ASTs: a
+  non-blob string literal is compatible with a `StringLiteralClasses` class. interval, inet and json[b] are class
+  "unknown" and take it anyway. Callers that have the AST pass it: `=`..., `BETWEEN`, `IN` (either side), simple CASE,
+  CASE results (the AST of the first non-null branch is carried: the CASE keeps its type, EXPR-20), INSERT/UPDATE values
+  and a column DEFAULT. Set operations and INSERT..SELECT have no literal, so no AST.
+- **Enum vs another class is 2500 / 2504 / 2507 now** (the enum is a class), so INCOMPATIBLE_VALUE_FOR_ENUM (2512) is
+  removed. src/parser/parse-enum-checks.ts only does the label check (2511) for a literal; a text column against an
+  enum is an incompatible comparison (PostgreSQL has no `text = enum` either).
+- **Leftovers of #82 done**: `COALESCE` / `NULLIF` / `GREATEST` / `LEAST` over an enum check literal arguments
+  (`EnumPeerCheck`, row `PeerCheckedFunctions`); `IN` with a literal on the left; the label of a cast literal
+  (`'x'::mood`, `CAST('x' AS mood)`, `'x'::app.status`: a dotted cast type is kept as `schema.name`, `app.` + `status`);
+  `schema.enum` in column types (`ParseSqlType` reads `ident . ident` in a "named"-types dialect and looks the type up
+  in that schema).
+- **Not done**: the label check of a literal in a CASE result (`case when .. then 'bad' else enum_col end`) and
+  of enum-typed function arguments other than the four above.
+- Cost (`--singleThreaded`): tsconfig.test.json 8.838M -> 9.010M (includes the new test file), stress 10.855M -> 10.884M.
