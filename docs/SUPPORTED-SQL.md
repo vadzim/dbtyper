@@ -28,7 +28,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 - Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
 - Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
-- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`SqlDatabase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlDatabase({ driver: … })`**).
+- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`DataBase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlMigrations({ driver: … })`**).
 
 ### Dialect (DSEL-1…DSEL-11)
 
@@ -52,7 +52,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - Optional **`IF NOT EXISTS`**.
 - **Qualified** `schema.table` or **unqualified** `table` (uses `defaultSchema`); schema must exist in the shape.
 - **`(` … `)`** column list, then **`;`** or end.
-- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`SqlDatabase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). PostgreSQL (PGT-2…PGT-11): `int8`/`numeric` → `string` (`int8` → `bigint` with `postgresSqlDriver({ sql, bigint: true })`), `date`/`timestamp[tz]` → `Date`, `bytea` → `Uint8Array`, `json[b]` → `JsonValue`; dbtyper never changes the client parsers. A spelling not in the map is error 3506 (CORE-14).
+- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`DataBase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). PostgreSQL (PGT-2…PGT-11): `int8`/`numeric` → `string` (`int8` → `bigint` with `postgresSqlDriver({ sql, bigint: true })`), `date`/`timestamp[tz]` → `Date`, `bytea` → `Uint8Array`, `json[b]` → `JsonValue`; dbtyper never changes the client parsers. A spelling not in the map is error 3506 (CORE-14).
 - Optional **`NULL`** / **`NOT NULL`** after the type.
 - **`CONSTRAINT` …** lines: enough structure to **skip** a typical `CONSTRAINT name PRIMARY KEY ( … )` (balanced parens); constraints are **not** merged into `JsqlTableShape` from this path.
 - With **`IF NOT EXISTS`** when the table **already** exists: table body is **skipped to `;`** without merging.

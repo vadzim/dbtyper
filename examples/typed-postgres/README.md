@@ -1,6 +1,6 @@
 # typed-postgres example
 
-End-to-end flow: **Docker Postgres** → **TS migrations** (dbtyper `migration()` + `.sql` export) → **`postgres.js`** runner → **typed queries** via `sqlDatabase({ driver: postgresSqlDriver(…) }).database()` with **`postgresSqlDriver`** from **`dbtyper/postgres`**.
+End-to-end flow: **Docker Postgres** → **TS migrations** (dbtyper `migration(sql)` + `.sql` export) → **`postgres.js`** runner → **typed queries** via `sqlMigrations({ driver: postgresSqlDriver(…) }).apply(…).database()` with **`postgresSqlDriver`** from **`dbtyper/postgres`**.
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ npm run example:docker:down
 ## Layout
 
 - `docker-compose.yml` — Postgres 16, DB `dbtyper_example`, port **54333**
-- `migrations/*.js` — SQL strings via `migration(import.meta.url).add(\`...\`)`
+- `migrations/*.js` — SQL strings via `migration(\`...\`)`, exported as `generateSql()`
 - `scripts/migrate.ts` — writes ordered `.sql` files with `postgres`, then runs them (no separate Flyway/Sqitch dependency)
 - `src/example-schema.ts` — `exampleDb()` chains DDL + seed migrations for **types**
 - `scripts/migrate.ts` — uses `postgrator` directly over `migrations/*.do.*.js`
