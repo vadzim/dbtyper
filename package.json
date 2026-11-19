@@ -108,7 +108,7 @@
 		"better-sqlite3": "^13.2.0",
 		"eslint": "^10.15.0",
 		"fast-xml-parser": "^5.12.1",
-		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#27e646620fb51651642fa8fb135a66479384cc14",
+		"high-order-type-monad-checker": "git+https://github.com/vadzim/high-order-type-monad-checker.git#27e646620fb51651642fa8fb135a66479384cc14",
 		"nodemon": "^3.1.14",
 		"postgres": "^3.4.5",
 		"prettier": "^3.10.1",
