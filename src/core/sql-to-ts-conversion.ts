@@ -138,8 +138,7 @@ type FirstUnmappedSqlType<
 }[keyof SqlColumns]
 
 type UnmappedTypeName<Shape extends SqlTypeShape, ScalarMap extends Record<string, unknown>> = Shape["type"] extends
-	| "null"
-	| "enum"
+	"null" | "enum"
 	? never
 	: Shape["type"] extends "array"
 		? Shape["arg"] extends SqlTypeShape

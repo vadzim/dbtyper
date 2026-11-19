@@ -48,8 +48,7 @@ type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
 
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
-	| Exclude<Syntax, LexerQueryParams>
-	| Extract<Syntax, AllowedQueryParams>
+	Exclude<Syntax, LexerQueryParams> | Extract<Syntax, AllowedQueryParams>
 
 /** Lex one token from a string (internal) */
 export type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
@@ -77,10 +76,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 							? Rest extends `${infer Name}]${infer Rest2}`
 								? // `text[]`, `array[1, 2]`, `array['a']`, `a[1]` keep their brackets (SQLT-53)
 									Name extends
-										| ""
-										| `${string},${string}`
-										| `${string}'${string}`
-										| `${Digit}${string}`
+										"" | `${string},${string}` | `${string}'${string}` | `${Digit}${string}`
 									? Return<TokenKey<Head>, Rest>
 									: QuotedIdent<Name, Rest2, Syntax>
 								: Return<TokenKey<Head>, Rest>

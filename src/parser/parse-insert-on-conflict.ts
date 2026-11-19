@@ -97,8 +97,7 @@ type ParseInsertOnConstraint<
 		: SkipFailedStatement<R0, Db, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>>
 
 type ConstraintExists<Tbl extends JsqlDataShape, Tab extends string, Name extends string> = Name extends
-	| `${Tab}_pkey`
-	| `${Tab}_${string}_key`
+	`${Tab}_pkey` | `${Tab}_${string}_key`
 	? true
 	: Tbl extends { constraints: { names: infer N extends string } }
 		? Name extends N
