@@ -35,7 +35,10 @@ export type NearestScopeKeysWithColumn<
 	ScopeKeysWithColumnAtDepth<Scope, Col, Counter["length"]> extends infer U
 		? [U] extends [never]
 			? // TLVL-4: the search for the nearest enclosing level stops after 8 levels (SEL-24), a bound on the recursion
-				// depth (TS2589) while scopes nest; the number is a guess from commit a63073b, not measured by a test.
+				// depth (TS2589) while scopes nest. Measured (TS 7.0.2, 2026-11-19): a bare column of the outermost
+				// query found from 8 nested `exists (...)` levels is ok, 9 levels give TS2589 before this bound can
+				// matter; so 8 is not the binding limit, it is the same size as the compiler's. Nesting limits:
+				// WHERE `IN (...)` 10 ok / 12 TS2589, scalar subquery in the select list 4 ok / 8 TS2589.
 				Counter["length"] extends 8
 				? never
 				: NearestScopeKeysWithColumn<Scope, Col, readonly [...Counter, 1]>
