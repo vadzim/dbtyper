@@ -15,9 +15,9 @@ import type { ParseCreateType } from "./parse-create-type.ts"
 import type { ParseCreateView } from "./parse-create-view.ts"
 import type { ParseDelete } from "./parse-delete.ts"
 import type { ParseDropSchema } from "./parse-drop-schema.ts"
-import type { ParseDropTable } from "./parse-drop-table.ts"
-import type { ParseDropType } from "./parse-drop-type.ts"
-import type { ParseDropView } from "./parse-drop-view.ts"
+import type { ParseDropTable } from "./parse-drop.ts"
+import type { ParseDropType } from "./parse-drop.ts"
+import type { ParseDropView } from "./parse-drop.ts"
 import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseSelectStatement } from "./parse-select.ts"
 import type { ParseUpdate } from "./parse-update.ts"
@@ -79,7 +79,7 @@ type ApplyParsedStatements<
 			// (2501 statements, STMT-16). TOO_MANY_STATEMENTS (src/dbtyper-error.ts) says the product of the two.
 			BatchDepth extends StatementBatches
 			? // STMT-16: the script is too long to apply; say so instead of dropping the tail.
-				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], []>>, Result]
+				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], [MaxStatements]>>, Result]
 			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
 						infer Rest extends ParserMonad,
 						infer NewDb extends JsqlDatabaseShape,
@@ -92,6 +92,8 @@ type ApplyParsedStatements<
 /** TLVL-4: statements per batch, and batches per script: a script may have `StatementsPerBatch * StatementBatches` (2500) statements. */
 type StatementsPerBatch = 50
 type StatementBatches = 50
+/** `StatementsPerBatch * StatementBatches`, for the message; test/stress/migration-too-many-statements (2501) breaks if the product changes. */
+type MaxStatements = 2500
 
 /**
  * TLVL-4: the `Depth extends StatementsPerBatch` bound below dodges the instantiation depth limit (TS2589);

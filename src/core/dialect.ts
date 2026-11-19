@@ -69,8 +69,7 @@ export type DialectName = keyof Dialects
  * `CURRENT_DATE`/`CURRENT_TIME`/`CURRENT_TIMESTAMP` in a DEFAULT ("typed" = date/time/timestamp, "any" = any column may
  * default to them, SQLT-19); `addColumn`: "full" = `ADD COLUMN` takes the full column definition and a `, <action>` may
  * follow, "restricted" = PRIMARY KEY, UNIQUE and NOT NULL without a default are errors and the definition ends the
- * statement (SQLT-20, SQLT-21). `ddl` is read only by parse-create-view.ts (the view column list and IF NOT EXISTS), until
- * #146 batch 3 splits it too.
+ * statement (SQLT-20, SQLT-21).
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "typed" (PostgreSQL) = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "affinity" (SQLite) = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "typed" = the PostgreSQL operator typing of the
  * expression parser, "affinity" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
@@ -80,7 +79,7 @@ export type DialectName = keyof Dialects
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
- * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
+ * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error); `viewIfNotExists`: `CREATE VIEW IF NOT EXISTS` exists (SQLite, SQLT-22; PostgreSQL has it only for `OR REPLACE`).
  * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144).
  * Number and date facts (#67): `numberTyping` "uniform" = each numeric type keeps its own type in arithmetic, "affinity" = SQLite's
  * integer/real rules; `datetimeArithmetic`: `timestamp ± interval`, `date - date` are typed (PGT-31).
@@ -102,7 +101,6 @@ export type Dialects = {
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
-		ddl: false
 		tempObjects: false
 		schemaStatements: true
 		unsupportedStatements: readonly []
@@ -121,6 +119,7 @@ export type Dialects = {
 		exprKeys: "name"
 		castHint: "`::text`"
 		dmlInCte: true
+		viewIfNotExists: false
 		skippedStatements: readonly [
 			...CommonSkippedStatementKeywords,
 			"comment",
@@ -170,7 +169,6 @@ export type Dialects = {
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
-		ddl: true
 		tempObjects: true
 		schemaStatements: false
 		unsupportedStatements: readonly ["attach", "detach"]
@@ -189,6 +187,7 @@ export type Dialects = {
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
 		dmlInCte: false
+		viewIfNotExists: true
 		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end"]
 		lexer: {
 			bracketIdents: true
