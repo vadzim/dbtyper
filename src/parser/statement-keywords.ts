@@ -5,16 +5,7 @@ import type { FormatError, Errors } from "../dbtyper-error.ts"
  * {@link ParsedStatementKeywords} is parsed; one whose first word is in a dialect's skipped list is stepped over
  * unchecked; any other first word is the error {@link UnknownStatementError}. The lists are data, one per dialect.
  */
-export type ParsedStatementKeywords = readonly [
-	"select",
-	"with",
-	"insert",
-	"update",
-	"delete",
-	"create",
-	"alter",
-	"drop",
-]
+type ParsedStatementKeywords = readonly ["select", "with", "insert", "update", "delete", "create", "alter", "drop"]
 
 /** Words that start a skipped statement of both dialects (the second word of CREATE/ALTER/DROP is not checked). */
 type CommonSkippedStatementKeywords = readonly [
