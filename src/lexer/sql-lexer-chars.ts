@@ -183,6 +183,7 @@ type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer 
 			: Return<TokenFloat<Buf>, S>
 	: Return<TokenFloat<Buf>, S>
 
+/** The first 15 characters of `Text`: the snippet an error message quotes (long enough to find the place, short enough to read). */
 export type SomeSymbols<Text extends string> = Text extends `${infer Result}${SkipSymbols<Text, 15>}` ? Result : never
 
 type SkipSymbols<Text extends string, Count extends number> = Count extends 0

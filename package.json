@@ -46,7 +46,7 @@
 		"docs"
 	],
 	"scripts": {
-		"setup": "npm install & npm run build",
+		"setup": "npm install && npm run build",
 		"deps:install:all": "npm install --workspaces --include-workspace-root",
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",
@@ -77,13 +77,10 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
-		"lint:unused": "npm run lint",
 		"find-unused": "node scripts/find-unused-exports.ts",
 		"monadcheck": "check-monad './src/**/*.ts' --monad ./src/lexer/parser-monad.ts ParserMonad:CreateParserMonad:PeekToken:SkipToken --snippet-lines 6:4 --max-show-errors 5 --off conditional.monadRelatedNeverNotAllowed",
 		"monadcheck-log": "bash -c 'mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'\"'\"'node:fs/promises'\"'\"';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||process.env.CI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC'",
-		"monitor": "node .automation/monitor-github-labels.ts",
-		"gram:xml": "cd src/gram && bison --xml gram.y",
-		"gram:json": "cd src/gram && node -e 'console.log(JSON.stringify(new((await import(`fast-xml-parser`)).XMLParser)({ignoreAttributes:false,attributeNamePrefix:`@`}).parse((await Array.fromAsync(process.stdin)).join(``)),null,2))'<gram.xml>gram.json"
+		"monitor": "node .automation/monitor-github-labels.ts"
 	},
 	"engines": {
 		"node": ">=22.13"
@@ -107,7 +104,6 @@
 		"@typescript/native": "npm:typescript@^7.0.2",
 		"better-sqlite3": "^13.2.0",
 		"eslint": "^10.15.0",
-		"fast-xml-parser": "^5.12.1",
 		"high-order-type-monad-checker": "git+https://github.com/vadzim/high-order-type-monad-checker.git#27e646620fb51651642fa8fb135a66479384cc14",
 		"nodemon": "^3.1.14",
 		"postgres": "^3.4.5",

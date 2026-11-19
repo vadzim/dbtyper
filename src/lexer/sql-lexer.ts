@@ -39,7 +39,6 @@ export type {
 	TokenStreamHead,
 } from "./sql-lexer-tokens.ts"
 export type { AsIdent } from "./sql-lexer-words.ts"
-export { serviceWords } from "./sql-lexer-words.ts"
 
 export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"

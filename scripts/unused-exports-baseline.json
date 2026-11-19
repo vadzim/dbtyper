@@ -1,9 +1,1 @@
-{
-	"scripts/split-sql-token-statements.ts": [
-		"splitSqlsIntoTokens",
-		"stringifySql",
-		"SqlRuntimeToken",
-		"lexAllSql",
-		"splitTokenStreamIntoStatements"
-	]
-}
+{}

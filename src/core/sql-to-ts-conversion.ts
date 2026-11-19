@@ -2,9 +2,9 @@
  * SQL to TypeScript type conversion utilities.
  *
  * This module contains all logic for converting SQL type strings to TypeScript types.
- * It should ONLY be imported by sql-database.ts.
+ * It is imported only by sql-query-types.ts and sql-select-result-helper.ts.
  *
- * DO NOT import this module anywhere else - not in parsers, not in sql-query.ts, nowhere except sql-database.ts.
+ * DO NOT import this module from parsers or anywhere else: parsers work on SQL type names, not TypeScript types.
  */
 
 import type { DriverConfig } from "./sql-database.ts"
