@@ -1,4 +1,4 @@
-// CORE-13: no rows, so the result is an empty row list
+// CORE-13, STMT-12: no rows, so the result is an empty row list (a stale STMT-12 Check says unknown)
 // Integration Test: TRUNCATE without RETURNING
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"

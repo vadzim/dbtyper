@@ -1,3 +1,4 @@
+// Spec tests: STMT-7 (number tokens)
 import type {
 	TokenIndexedParam,
 	TokenKey,

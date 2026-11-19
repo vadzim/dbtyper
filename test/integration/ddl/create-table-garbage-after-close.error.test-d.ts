@@ -1,4 +1,4 @@
-// Integration Test: CREATE TABLE
+// Integration Test: STMT-9 CREATE TABLE
 import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
