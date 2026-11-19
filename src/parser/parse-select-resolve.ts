@@ -2,7 +2,7 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape, ScalarExprAst, ScalarIdentParts } from "./parse-expression.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
-import type { ScopeEntry, ScopeMap, VisibleColumnsOf } from "./parser-scope.ts"
+import type { ScopeEntry, ScopeMap, VisibleColumnsOf, RowidResultKey } from "./parser-scope.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FirstDuplicateName, UnionToStringTuple } from "./set-operation-types.ts"
 import type { ItemAs, RawSelectItem } from "./parse-select.ts"
@@ -76,7 +76,7 @@ type SelectItemNames<
 								? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
 								: Acc
 							: Acc
-						: OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
+						: OutNameFromExprAst<Ast, As, AllItems, Scope> extends infer O extends string
 							? SelectItemNames<R, Scope, AllItems, [...Acc, O]>
 							: Acc
 				: Acc
@@ -101,21 +101,26 @@ type ParamSelectOut<As, P extends string, Sql extends SqlTypeShape> = As extends
 	? { out: As; sql: Sql }
 	: { out: P; sql: Sql }
 
-type OutNameFromExprAst<Ast extends ScalarExprAst, As, AllItems extends readonly RawSelectItem[]> = As extends string
+type OutNameFromExprAst<
+	Ast extends ScalarExprAst,
+	As,
+	AllItems extends readonly RawSelectItem[],
+	Scope extends ScopeMap,
+> = As extends string
 	? As
 	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts; written: infer W extends string }
 		? // SQLT-28: a SQLite result key is the column name as written in the query
 			W extends ""
-			? OutNameFromParts<P, undefined>
-			: W
+			? RowidResultKey<P, Scope, OutNameFromParts<P, undefined>>
+			: RowidResultKey<P, Scope, W>
 		: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
-			? OutNameFromParts<P, undefined>
+			? RowidResultKey<P, Scope, OutNameFromParts<P, undefined>>
 			: Ast extends { kind: "function_call" | "window_function"; name: infer N extends string }
 				? // SEL-8: PostgreSQL names an unaliased function call (aggregate included) by the function name.
 					Lowercase<N>
 				: Ast extends { kind: "pg_cast" | "sql_cast"; expr: infer Inner extends ScalarExprAst }
 					? // EXPR-24: an unaliased cast is named after the cast operand (`id::uuid` -> `id`).
-						OutNameFromExprAst<Inner, undefined, AllItems>
+						OutNameFromExprAst<Inner, undefined, AllItems, Scope>
 					: AllItems extends readonly [RawSelectItem]
 						? "?column?"
 						: "__invalid_select_expr_alias__"
@@ -150,7 +155,7 @@ type ResolveSelectListExprItem<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? OutNameFromExprAst<Ast, As, AllItems> extends infer O extends string
+					? OutNameFromExprAst<Ast, As, AllItems, Scope> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
 							? FormatError<Errors["SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS"], []>
 							: ResolveSelectListAcc<

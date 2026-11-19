@@ -102,7 +102,10 @@ type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 																	[CKe in keyof Constraints as NonIndexKey<CKe>]: Constraints[CKe]
 																}
 														: never
-												} & (Table extends { rowid_table: true } ? { rowid_table: true } : {})
+												} & (Table extends { rowid_table: true } ? { rowid_table: true } : {}) &
+													(Table extends { rowid_alias: infer A extends string }
+														? { rowid_alias: A }
+														: {})
 											: never
 									}
 								: never

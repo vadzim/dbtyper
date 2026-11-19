@@ -14,14 +14,18 @@ export type ScopeEntry = {
 export type HiddenColumnsOf<E> = E extends { hidden: infer H extends string } ? H : never
 
 /** SQLT-15: a rowid pseudo-column: selectable by name, never part of `*`. */
-type RowidColumnShape = { type: "integer"; arg: null; nullable: false; pseudo: true }
+type RowidColumnShape<Key extends string> = { type: "integer"; arg: null; nullable: false; pseudo: true; rowidKey: Key }
 
 /**
  * The columns a FROM item of this table exposes by name: its own, plus `rowid`, `oid` and `_rowid_` for a SQLite
  * table with a rowid, unless a real column has that name (SQLT-15).
  */
 export type TableScopeColumns<Tbl extends JsqlDataShape> = Tbl extends { rowid_table: true }
-	? Tbl["columns"] & { [N in SqliteRowidNames as N extends keyof Tbl["columns"] ? never : N]: RowidColumnShape }
+	? Tbl["columns"] & {
+			[N in SqliteRowidNames as N extends keyof Tbl["columns"] ? never : N]: RowidColumnShape<
+				Tbl extends { rowid_alias: infer A extends string } ? A : N
+			>
+		}
 	: Tbl["columns"]
 
 /** Columns of an entry as `alias.*` and a bare `*` expand them (CORE-9: merged join columns appear once). */
@@ -72,3 +76,24 @@ export type MarkOuterScope<Outer extends ScopeMap> = {
 export type FromItemsOnly<Scope extends ScopeMap> = {
 	[K in keyof Scope as Scope[K]["schema"] extends "__cte__" ? never : K]: Scope[K]
 }
+
+/**
+ * SQLT-15: the result key of an unaliased `rowid`/`oid`/`_rowid_` read as `Parts` in `Scope`: the rowid alias column's
+ * name when the table has one, else `Written`. A cheap name test first, so other columns cost nothing.
+ */
+export type RowidResultKey<Parts extends readonly string[], Scope extends ScopeMap, Written extends string> =
+	Lowercase<Written> extends SqliteRowidNames
+		? Parts extends readonly [...infer _Q, infer C extends string]
+			? Parts extends readonly [infer T extends string, string]
+				? RowidKeyIn<T extends keyof Scope ? Scope[T]["columns"] : never, Lowercase<C>, Written>
+				: RowidKeyIn<Scope[keyof Scope]["columns"], Lowercase<C>, Written>
+			: Written
+		: Written
+
+type RowidKeyIn<Cols, C extends string, Written extends string> = C extends keyof Cols
+	? Cols[C] extends { pseudo: true; rowidKey: infer K extends string }
+		? K extends C
+			? Written
+			: K
+		: Written
+	: Written

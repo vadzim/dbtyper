@@ -38,8 +38,8 @@ const _ki = await db.query(`select id from ki`)
 expectType<typeof _ki>(toBe<Array<{ id: number | null }>>())
 
 // SQLT-15: rowid, oid and _rowid_ are selectable, not part of `*`
-const _rowid = await db.query(`select rowid, oid, _rowid_, u.rowid as r2 from users u`)
-expectType<typeof _rowid>(toBe<Array<{ rowid: number; oid: number; _rowid_: number; r2: number }>>())
+const _rowid = await db.query(`select rowid as a, oid as b, _rowid_ as c, u.rowid as r2 from users u`)
+expectType<typeof _rowid>(toBe<Array<{ a: number; b: number; c: number; r2: number }>>())
 const _star = await db.query(`select * from users`)
 expectType<typeof _star>(toBe<Array<{ id: number; name: string }>>())
 const _starAlias = await db.query(`select u.* from users u`)
@@ -56,3 +56,15 @@ db.query(_noRowidQuery)
 const named = sqlMigrations({ driver: sqliteDriver }).apply(`create table r (rowid text not null);`).database()
 const _named = await named.query(`select rowid from r`)
 expectType<typeof _named>(toBe<Array<{ rowid: string }>>())
+
+// SQLT-15: an unaliased rowid/oid/_rowid_ on a table with an INTEGER PRIMARY KEY is keyed by that column's name
+const _rowidKey = await db.query(`select rowid, u.rowid as r from users u`)
+expectType<typeof _rowidKey>(toBe<Array<{ id: number; r: number }>>())
+const _rowidAlias = await db.query(`select rowid as r from users`)
+expectType<typeof _rowidAlias>(toBe<Array<{ r: number }>>())
+// without one the key is the word as written
+const _rowidPlain = await sqlMigrations({ driver: sqliteDriver })
+	.apply(`create table u (n text);`)
+	.database()
+	.query(`select rowid, n from u`)
+expectType<typeof _rowidPlain>(toBe<Array<{ rowid: number; n: string | null }>>())

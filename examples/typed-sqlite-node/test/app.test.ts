@@ -36,9 +36,9 @@ test("RUN-25: :name and @name parameters, rowid, update returning", async () => 
 		email: "bob@example.com",
 		profile: "{}",
 	})
-	const byName = await app.query("select rowid as rid, id, email from users where name = @name", { name: "bob" })
-	assertType<Equal<typeof byName, Array<{ rid: number; id: number; email: string | null }>>>()
-	assert.deepEqual(plain(byName), [{ rid: 1, id: 1, email: "bob@example.com" }])
+	const byName = await app.query("select rowid, email from users where name = @name", { name: "bob" })
+	assertType<Equal<typeof byName, Array<{ id: number; email: string | null }>>>()
+	assert.deepEqual(plain(byName), [{ id: 1, email: "bob@example.com" }])
 
 	const updated = await app.query("update users set email = @email where id = @id returning id, email", {
 		email: null,
