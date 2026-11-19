@@ -15,6 +15,7 @@ import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { ParseSetAssignments, ResolveSetAssignments, PendingAssignments } from "./parse-set-assignments.ts"
 import type { ParseInsertMaybeReturning } from "./parse-insert-returning.ts"
 import type { InsertExcludedScope } from "./parse-insert-values.ts"
 
@@ -197,26 +198,40 @@ type ParseInsertOnConflictAfterUpdateKw<
 		? SkipToken<R4> extends infer R5 extends ParserMonad
 			? TSet extends TokenKey<"set">
 				? InsertExcludedScope<Sch, Tab, Tbl, Scope> extends infer UpsertScope extends ScopeMap
-					? ParseInsertUpsertSetAssignments<R5, Db, UpsertScope, Params, Tbl, readonly []> extends [
+					? ParseSetAssignments<"upsert", R5, Db, UpsertScope, Params, Tbl> extends [
 							infer R6 extends ParserMonad,
 							infer Db6 extends JsqlDatabaseShape,
 							infer SetOut,
 						]
 						? SetOut extends DbtyperErrorShape
 							? [R6, Db6, SetOut]
-							: SetOut extends readonly string[]
-								? ParseInsertAfterUpsertSet<
-										R6,
+							: SetOut extends {
+										cols: infer SetCols extends readonly string[]
+										pending: infer Pending extends PendingAssignments
+								  }
+								? ResolveSetAssignments<
+										"upsert",
+										Pending,
+										Tbl,
 										Db6,
 										UpsertScope,
-										Params,
-										Tbl,
-										Sch,
-										Tab,
-										Cols,
-										SetOut,
-										Scope
-									>
+										Params
+									> extends infer Checked
+									? Checked extends DbtyperErrorShape
+										? [R6, Db6, Checked]
+										: ParseInsertAfterUpsertSet<
+												R6,
+												Db6,
+												UpsertScope,
+												Params,
+												Tbl,
+												Sch,
+												Tab,
+												Cols,
+												SetCols,
+												Scope
+											>
+									: never
 								: never
 						: never
 					: never
@@ -257,136 +272,6 @@ type ParseInsertConflictColList<Tokens extends ParserMonad, Tbl extends JsqlData
 				: never
 			: never
 
-type ParseInsertUpsertSetAssignments<
-	Tokens extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	Tbl extends JsqlDataShape,
-	Acc extends readonly string[],
-	// CORE-6 (#143): the probes of all assignments, collected so one round binds them all
-	Found = null,
-> =
-	PeekToken<Tokens> extends infer TokCol
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? TokCol extends TokenIdent<infer Col extends string>
-				? JsqlDataGetColumnType<Tbl, Col> extends null
-					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "ON CONFLICT DO UPDATE SET"]>]
-					: IsGeneratedColumn<Tbl, Col> extends true
-						? [
-								R1,
-								Db,
-								FormatError<
-									Errors["CANNOT_WRITE_GENERATED_COLUMN"],
-									[Col, "ON CONFLICT DO UPDATE SET"]
-								>,
-							]
-						: PeekToken<R1> extends TokenKey<"=">
-							? SkipToken<R1> extends infer R2 extends ParserMonad
-								? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
-										infer R3 extends ParserMonad,
-										infer Ast,
-										infer _UpdatedEnv,
-									]
-									? Ast extends DbtyperErrorShape
-										? [R3, Db, Found extends null ? Ast : Found]
-										: Ast extends ScalarExprAst
-											? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-												? Resolved extends DbtyperErrorShape
-													? IsParamProbeFound<Resolved> extends true
-														? ParseInsertUpsertSetNext<
-																R3,
-																Db,
-																Scope,
-																Params,
-																Tbl,
-																readonly [...Acc, Col],
-																UpsertFoundWith<Found, Resolved>
-															>
-														: [
-																R3,
-																Db,
-																Found extends null
-																	? WithErrorClause<
-																			Resolved,
-																			"ON CONFLICT DO UPDATE SET"
-																		>
-																	: Found,
-															]
-													: Resolved extends SqlTypeShape
-														? ValidateMutationValueForColumn<
-																Tbl,
-																Col,
-																Resolved,
-																Db,
-																Ast
-															> extends infer V0
-															? V0 extends DbtyperErrorShape
-																? IsParamProbeFound<V0> extends true
-																	? ParseInsertUpsertSetNext<
-																			R3,
-																			Db,
-																			Scope,
-																			Params,
-																			Tbl,
-																			readonly [...Acc, Col],
-																			UpsertFoundWith<Found, V0>
-																		>
-																	: [R3, Db, Found extends null ? V0 : Found]
-																: V0 extends true
-																	? ParseInsertUpsertSetNext<
-																			R3,
-																			Db,
-																			Scope,
-																			Params,
-																			Tbl,
-																			readonly [...Acc, Col],
-																			Found
-																		>
-																	: never
-															: never
-														: never
-												: never
-											: SkipFailedExpression<R3, never> extends [
-														infer Rest extends ParserMonad,
-														infer Err,
-												  ]
-												? [Rest, Db, Err]
-												: never
-									: never
-								: never
-							: SkipFailedStatement<
-									R1,
-									Db,
-									FormatError<Errors["EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE"], []>
-								>
-				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in ON CONFLICT UPDATE"]>>
-			: never
-		: never
-
-type UpsertFoundWith<Found, Probe> = Found extends null ? Probe : CollectParamProbes<Found, Probe>
-
-/** After an assignment of DO UPDATE SET: the next one, or the end (where the collected probes come out). */
-type ParseInsertUpsertSetNext<
-	R3 extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	Tbl extends JsqlDataShape,
-	Acc extends readonly string[],
-	Found,
-> =
-	PeekToken<R3> extends TokenKey<",">
-		? ParseInsertUpsertSetAssignments<SkipToken<R3>, Db, Scope, Params, Tbl, Acc, Found>
-		: PeekToken<R3> extends TokenKey<"where"> | TokenKey<"returning"> | TokenKey<"on"> | TokenKey<";"> | TokenEot
-			? [R3, Db, Found extends null ? Acc : Found]
-			: [
-					R3,
-					Db,
-					Found extends null
-						? FormatError<Errors["EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET"], []>
-						: Found,
-				]
 type ParseInsertAfterUpsertSet<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,

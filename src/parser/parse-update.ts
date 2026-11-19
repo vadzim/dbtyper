@@ -29,147 +29,8 @@ import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts
 import type { ParseFromJoinScope } from "./parse-select-from.ts"
 import type { ConflictActionToken } from "./parse-insert.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { ParseSetAssignments, ResolveSetAssignments, PendingAssignments } from "./parse-set-assignments.ts"
 import type { UpdateTableContext, ParseUpdateFromTableRef } from "./parse-update-table.ts"
-
-type PendingAssignments = readonly (readonly [string, ScalarExprAst])[]
-
-type ParseUpdateSetAssignments<
-	Tokens extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	Tbl extends JsqlDataShape,
-	Sch extends string,
-	Tab extends string,
-	Acc extends readonly string[],
-	Pending extends PendingAssignments = readonly [],
-> =
-	PeekToken<Tokens> extends infer TokCol
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? AsIdent<TokCol> extends TokenIdent<infer Col extends string>
-				? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "UPDATE SET"]>]
-					: IsGeneratedColumn<Tbl, Col> extends true
-						? [R1, Db, FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "UPDATE SET"]>]
-						: PeekToken<R1> extends TokenKey<"=">
-							? SkipToken<R1> extends infer R2 extends ParserMonad
-								? ParseExpressionAST<
-										R2,
-										{
-											db: Db
-											params: Params
-											outerScope: Scope
-										}
-									> extends [infer R3 extends ParserMonad, infer Ast, infer _UpdatedEnv]
-									? Ast extends DbtyperErrorShape
-										? [R3, Db, Ast]
-										: Ast extends ScalarExprAst
-											? PeekToken<R3> extends TokenKey<",">
-												? SkipToken<R3> extends infer R4 extends ParserMonad
-													? ParseUpdateSetAssignments<
-															R4,
-															Db,
-															Scope,
-															Params,
-															Tbl,
-															Sch,
-															Tab,
-															readonly [...Acc, Col],
-															readonly [...Pending, readonly [Col, Ast]]
-														>
-													: never
-												: PeekToken<R3> extends
-															| TokenKey<"from">
-															| TokenKey<"where">
-															| TokenKey<"returning">
-															| TokenKey<";">
-															| TokenEot
-													? [
-															R3,
-															Db,
-															{
-																kind: "update"
-																table: Tab
-																schema: Sch
-																set_columns: readonly [...Acc, Col]
-																pending: readonly [...Pending, readonly [Col, Ast]]
-															},
-														]
-													: [
-															R3,
-															Db,
-															FormatError<
-																Errors["EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT"],
-																[]
-															>,
-														]
-											: SkipFailedExpression<R3, never> extends [
-														infer Rest extends ParserMonad,
-														infer Err,
-												  ]
-												? [Rest, Db, Err]
-												: never
-									: never
-								: never
-							: SkipFailedStatement<
-									R1,
-									Db,
-									FormatError<Errors["EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET"], []>
-								>
-				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in UPDATE SET"]>>
-			: never
-		: never
-
-/**
- * Resolves the SET values of an UPDATE against the scope of the whole statement (the target plus its FROM sources) and
- * checks each against its column; `true` or the first error.
- */
-type ResolveUpdateAssignments<
-	Pending extends PendingAssignments,
-	Tbl extends JsqlDataShape,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	// CORE-6: the probes of all assignments, collected so one round binds them all
-	Found = null,
-> = Pending extends readonly [readonly [infer Col extends string, infer Ast extends ScalarExprAst], ...infer Rest]
-	? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
-		? Resolved extends DbtyperErrorShape
-			? IsParamProbeFound<Resolved> extends true
-				? ResolveUpdateAssignmentsRest<Rest, Tbl, Db, Scope, Params, UpdateFoundWith<Found, Resolved>>
-				: Found extends null
-					? WithErrorClause<Resolved, "UPDATE SET">
-					: Found
-			: Resolved extends SqlTypeShape
-				? ValidateMutationValueForColumn<Tbl, Col, Resolved, Db, Ast> extends infer V0
-					? V0 extends DbtyperErrorShape
-						? IsParamProbeFound<V0> extends true
-							? ResolveUpdateAssignmentsRest<Rest, Tbl, Db, Scope, Params, UpdateFoundWith<Found, V0>>
-							: Found extends null
-								? V0
-								: Found
-						: ResolveUpdateAssignmentsRest<Rest, Tbl, Db, Scope, Params, Found>
-					: never
-				: never
-		: never
-	: Found extends null
-		? true
-		: Found
-
-type ResolveUpdateAssignmentsRest<
-	Rest,
-	Tbl extends JsqlDataShape,
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	Found,
-> = Rest extends PendingAssignments
-	? ResolveUpdateAssignments<Rest, Tbl, Db, Scope, Params, Found>
-	: Found extends null
-		? true
-		: Found
-
-type UpdateFoundWith<Found, Probe> = Found extends null ? Probe : CollectParamProbes<Found, Probe>
 
 type ParseUpdateAfterSetKeyword<
 	Tokens extends ParserMonad,
@@ -181,7 +42,15 @@ type ParseUpdateAfterSetKeyword<
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"set">
-		? ParseUpdateSetAssignments<SkipToken<Tokens>, Db, Scope, Params, Tbl, Sch, Tab, readonly []>
+		? ParseSetAssignments<"update", SkipToken<Tokens>, Db, Scope, Params, Tbl> extends [
+				infer R extends ParserMonad,
+				infer Db2 extends JsqlDatabaseShape,
+				infer Out,
+			]
+			? Out extends { cols: infer Cols extends readonly string[]; pending: infer Pending }
+				? [R, Db2, { kind: "update"; table: Tab; schema: Sch; set_columns: Cols; pending: Pending }]
+				: [R, Db2, Out]
+			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SET_IN_UPDATE"], []>>
 
 type ParseUpdateFromClause<
@@ -243,7 +112,7 @@ type FinishUpdateReturning<
 	Res extends JsqlUpdateStatementResult,
 	Tbl extends JsqlDataShape,
 > = Res extends { pending: infer Pending extends PendingAssignments }
-	? ResolveUpdateAssignments<Pending, Tbl, Db, Scope, Params> extends infer Checked
+	? ResolveSetAssignments<"update", Pending, Tbl, Db, Scope, Params> extends infer Checked
 		? Checked extends DbtyperErrorShape
 			? SkipFailedStatement<Tokens, Db, Checked>
 			: FinishUpdateReturningResolved<
