@@ -1,9 +1,15 @@
 import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { ParamProbeFound, ProbeBinding, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
+import type {
+	ParamProbeFound,
+	ParamUnresolved,
+	ProbeBinding,
+	ProbeKeyOf,
+	ProbeTypeFromPeer,
+} from "../core/param-probe.ts"
 import type { Nullable, SqlText, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { Inc } from "../core/type-utils.ts"
-import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { CatalogRow, IsPeerTypedRow, RowArgType } from "./function-catalog.ts"
 import type { ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
@@ -50,17 +56,13 @@ type ParamOperandProbeKey<Op, Params extends ExpressionParamsShape> = Op extends
 		? ProbeKeyOf<LookupPositionalParam<Params, I>>
 		: never
 
-type ParamDisplay<K extends string | number> = K extends number ? `$${Inc<K>}` : `:${K & string}`
-
 type AllParamOperands<Ops extends readonly unknown[]> = Ops extends readonly [infer H, ...infer T]
-	? IsParamOperand<H> extends true
+	? H extends { kind: "param" | "positional-param" }
 		? AllParamOperands<T>
 		: false
 	: true
 
-type IsParamOperand<Op> = Op extends { kind: "param" | "positional-param" } ? true : false
-
-/** The type of the first operand that is not a parameter, resolves to a real type (and a numeric one if asked). */
+/** The type of the first operand that resolves to a real type (a bound parameter counts, #145) (and a numeric one if asked). */
 type PeerOperandType<
 	Ops extends readonly unknown[],
 	Db extends JsqlDatabaseShape,
@@ -68,22 +70,19 @@ type PeerOperandType<
 	Params extends ExpressionParamsShape,
 	Numeric extends boolean,
 > = Ops extends readonly [infer H, ...infer T]
-	? IsParamOperand<H> extends true
-		? PeerOperandType<T, Db, Scope, Params, Numeric>
-		: H extends ScalarExprAst
-			? ResolveExpressionAST<H, Db, Scope, Params> extends infer R
-				? R extends SqlTypeShape
-					? R["type"] extends "null" | "param-probe"
-						? PeerOperandType<T, Db, Scope, Params, Numeric>
-						: Numeric extends true
-							? R["type"] extends
-									"integer" | "bigint" | "smallint" | "numeric" | "real" | "double precision"
-								? R
-								: PeerOperandType<T, Db, Scope, Params, Numeric>
-							: R
-					: PeerOperandType<T, Db, Scope, Params, Numeric>
-				: never
-			: PeerOperandType<T, Db, Scope, Params, Numeric>
+	? H extends ScalarExprAst
+		? ResolveExpressionAST<H, Db, Scope, Params> extends infer R
+			? R extends SqlTypeShape
+				? R["type"] extends "null" | "param-probe" | "param-unused" | "param-read-probe"
+					? PeerOperandType<T, Db, Scope, Params, Numeric>
+					: Numeric extends true
+						? R["type"] extends "integer" | "bigint" | "smallint" | "numeric" | "real" | "double precision"
+							? R
+							: PeerOperandType<T, Db, Scope, Params, Numeric>
+						: R
+				: PeerOperandType<T, Db, Scope, Params, Numeric>
+			: never
+		: PeerOperandType<T, Db, Scope, Params, Numeric>
 	: never
 
 type ProbeFromPeers<
@@ -95,9 +94,10 @@ type ProbeFromPeers<
 	Numeric extends boolean,
 > = Key extends string | number
 	? [PeerOperandType<Ops, Db, Scope, Params, Numeric>] extends [never]
-		? // CORE-7: only parameters meet, nothing gives them a type
+		? // CORE-7: only parameters without a type meet; another position may still type one of them in a later
+			// round (#145), so the error is marked and an AND / OR gives way to a probe found next to it
 			AllParamOperands<Ops> extends true
-			? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [ParamDisplay<Key>, ParamDisplay<Key>]>
+			? ParamUnresolved<Key>
 			: never
 		: PeerOperandType<Ops, Db, Scope, Params, Numeric> extends infer S extends SqlTypeShape
 			? ParamProbeFound<Key, ProbeTypeFromPeer<S>, SamePeerBindings<Ops, Params, Key, ProbeTypeFromPeer<S>>>

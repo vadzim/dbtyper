@@ -488,3 +488,7 @@ PostgreSQL accepts `OVER ()` and `ROWS|RANGE|GROUPS` frames exactly like SQLite,
 ## #138: PostgreSQL starts with `public` (SCHEMA-27, SCHEMA-28)
 
 The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("public" | "main"): the schemas a new chain starts with. PostgreSQL's initial database is `{ defaultSchema: DS, schemas: { public } }` also when `defaultSchema` names another schema (that one is still created by a migration, SCHEMA-3). `create schema public;` needed no new code: the existing "schema already exists" error (3200) applies, and `if not exists` is the existing no-op. No new error code.
+
+## 2026-11-19 A bound parameter is a peer; CORE-7 for `:a = :b` waits (#145, track A; CORE-6, CORE-7)
+
+`PeerOperandType` no longer skips parameter operands: one that resolves to a real type (bound in an earlier round) is a peer, so `c0 = :p0 and :p0 = :p1` types `:p1`. The CORE-7 error for operands that are all untyped parameters is now `ParamUnresolved` (CORE-7 plus a marker); `CollectParamProbes` lets a probe found next to it win, so `:p0 = :p1 and c0 = :p0` works too. The retry loop turns a surviving marker into the plain CORE-7 error. No new error code.
