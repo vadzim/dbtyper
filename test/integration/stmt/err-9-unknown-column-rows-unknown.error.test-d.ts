@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table items (id int not null);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table items (id int not null);`).database()
 
 const query = `select nope from items` as const
 

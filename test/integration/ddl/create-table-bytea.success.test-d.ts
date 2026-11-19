@@ -6,7 +6,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: bytea (binary data)
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table files (id integer not null, data bytea not null);`)
 	.database()
 

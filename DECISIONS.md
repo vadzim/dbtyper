@@ -460,3 +460,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 ## #118: empty OVER () and window frames are one shared rule
 
 PostgreSQL accepts `OVER ()` and `ROWS|RANGE|GROUPS` frames exactly like SQLite, so the `windowFrames` dialect fact (SQLT-51) is removed and `CloseWindowOrError` (parse-function-call.ts) accepts them in every dialect. PGT-3 Check now runs through the typed `query`.
+
+## #138: PostgreSQL starts with `public` (SCHEMA-27, SCHEMA-28)
+
+The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("public" | "main"): the schemas a new chain starts with. PostgreSQL's initial database is `{ defaultSchema: DS, schemas: { public } }` also when `defaultSchema` names another schema (that one is still created by a migration, SCHEMA-3). `create schema public;` needed no new code: the existing "schema already exists" error (3200) applies, and `if not exists` is the existing no-op. No new error code.

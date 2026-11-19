@@ -5,7 +5,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { postgresSqlDriver } from "../../../src/postgres/index.ts"
 
 const db = sqlMigrations({ driver: postgresSqlDriver({ sql: undefined as never }) })
-	.apply(`create schema public;`)
 	.apply(`create table users (id text not null, age integer);`)
 	.database()
 

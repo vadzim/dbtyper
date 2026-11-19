@@ -4,7 +4,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table t (id int not null);`)
 	.apply(`create view v1 as select id from t;`)
 	.apply(`create view v2 as select id from t;`)

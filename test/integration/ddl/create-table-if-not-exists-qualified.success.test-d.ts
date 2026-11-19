@@ -5,7 +5,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: CREATE TABLE IF NOT EXISTS with schema.table (existing table, no-op)
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create schema auth;`)
 	.apply(`create table auth.users (id uuid not null);`)
 	.apply(`create table if not exists auth.users (id text not null);`)

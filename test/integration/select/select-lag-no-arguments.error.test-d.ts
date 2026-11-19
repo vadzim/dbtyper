@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table t (id integer, value integer);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table t (id integer, value integer);`).database()
 
 // ❌ ERROR: LAG/LEAD requires at least 1 argument
 const query = `select lag() over (order by id) from t;` as const

@@ -3,7 +3,7 @@ import { sqlMigrations } from "../../src/core/sql-database.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
 
-const base = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+const base = sqlMigrations({ driver: mockDriver })
 
 // PGT-17: bigint/numeric accept string | number | bigint; timestamps Date | string
 const p17 = base

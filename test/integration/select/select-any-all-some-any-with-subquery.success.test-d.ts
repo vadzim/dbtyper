@@ -5,7 +5,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table items (id integer not null, tags text[] not null, priority integer not null);`)
 	.apply(`create table priorities (value integer not null);`)
 	.database()

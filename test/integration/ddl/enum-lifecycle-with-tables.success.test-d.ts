@@ -5,7 +5,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: Schema with both tables and types
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create type status as enum ('active', 'inactive');`)
 	.apply(`create table users (id integer not null, name text not null);`)
 	.apply(`alter type status add value 'pending';`)

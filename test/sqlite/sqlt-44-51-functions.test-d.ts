@@ -182,8 +182,6 @@ const _nope = `select nonesuch(1) as n` as const
 expectType<GetQueryError<typeof db, typeof _nope>>(toBe<DbtyperError<3619, "Unknown function: nonesuch">>())
 
 // PostgreSQL keeps its own catalog
-const pg = sqlMigrations({ driver: (await import("../test-utils/test-databases.ts")).mockDriver })
-	.apply(`create schema public;`)
-	.database()
+const pg = sqlMigrations({ driver: (await import("../test-utils/test-databases.ts")).mockDriver }).database()
 const _pgNow = await pg.query(`select now() as n`)
 expectType<typeof _pgNow>(toBe<Array<{ n: Date }>>())

@@ -86,7 +86,6 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 	})
 
 	const users = sqlMigrations({ driver })
-		.apply(`create schema public;`)
 		.apply(
 			`create table users (id bigserial primary key, name text not null, born date, created timestamptz not null default now(), balance numeric(12,2))`,
 		)
@@ -111,7 +110,6 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 		await sql.unsafe(`create table t (tags text[] not null, grid integer[][] not null)`)
 		await sql.unsafe(`insert into t values ('{a,b}', '{{1,2},{3,4}}')`)
 		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
 			.apply(`create table t (tags text[] not null, grid integer[][] not null)`)
 			.database()
 		const rows = await db.query(`select tags, grid from t`)
@@ -123,7 +121,6 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 		await sql.unsafe(`create table m (v mood not null)`)
 		await sql.unsafe(`insert into m values ('sad'), ('ok')`)
 		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
 			.apply(`create type mood as enum ('sad','ok')`)
 			.apply(`create table m (v mood not null)`)
 			.database()
@@ -135,7 +132,6 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 
 	it("PGT-14: an unknown enum label is a compile error and the database rejects it too", async () => {
 		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
 			.apply(`create type mood as enum ('sad','ok')`)
 			.apply(`create table m (v mood not null)`)
 			.database()
@@ -171,7 +167,6 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 			`create table a (id uuid primary key default gen_random_uuid(), at timestamptz default current_timestamp)`,
 		)
 		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
 			.apply(
 				`create table a (id uuid primary key default gen_random_uuid(), at timestamptz default current_timestamp)`,
 			)
@@ -183,10 +178,7 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 	it("PGT-24: select data->>'k' as k from t", async () => {
 		await sql.unsafe(`create table j (data jsonb not null)`)
 		await sql.unsafe(`insert into j values ('{"k":"v"}'), ('{}')`)
-		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
-			.apply(`create table j (data jsonb not null)`)
-			.database()
+		const db = sqlMigrations({ driver }).apply(`create table j (data jsonb not null)`).database()
 		const rows = await db.query(`select data->>'k' as k from j`)
 		check(rows, { k: ["string", "null"] })
 	})

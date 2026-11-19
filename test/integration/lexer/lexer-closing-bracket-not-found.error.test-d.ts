@@ -4,7 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`).database()
+const db = sqlMigrations({ driver: mockDriver }).database()
 
 // ❌ ERROR: closing bracket not found (a parser error, not a lexer one)
 const query = `SELECT ARRAY[1` as const
