@@ -4,9 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const base = sqlMigrations({ driver: mockDriver }).apply(
-	`create schema public; create table public.t (id int, name text);`,
-)
+const base = sqlMigrations({ driver: mockDriver }).apply(`create table public.t (id int, name text);`)
 
 const db = base.database()
 const query = `INSERT INTO public.t (id, name) VALUES (1, 'abc` as const

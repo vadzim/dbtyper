@@ -4,7 +4,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(
 		`create table sales (id integer not null, product text not null, amount integer not null, sale_date text not null);`,
 	)

@@ -4,7 +4,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table p (x timestamp(3) not null, y time(3) not null, z timestamp (3) with time zone not null);`)
 	.database()
 

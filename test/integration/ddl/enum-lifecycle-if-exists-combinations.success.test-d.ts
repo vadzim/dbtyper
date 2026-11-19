@@ -5,7 +5,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: IF NOT EXISTS and IF EXISTS combinations
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create type if not exists status as enum ('active', 'inactive');`)
 	.apply(`create type if not exists status as enum ('new');`)
 	.apply(`alter type if exists status add value 'pending';`)

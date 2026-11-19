@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table items (id integer, priority integer);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table items (id integer, priority integer);`).database()
 
 // ❌ ERROR: array_length requires array type, but id is integer
 const query = `select array_length(id, 1) as bad from items;` as const

@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table users (id text, age integer);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, age integer);`).database()
 
 // ❌ ERROR: WHERE clause type mismatch
 const query = `delete from users where age = 'not a number' returning *;` as const

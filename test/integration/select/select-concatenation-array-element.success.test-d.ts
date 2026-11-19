@@ -3,10 +3,7 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
-const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table users (id integer, tags integer[]);`)
-	.database()
+const _db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id integer, tags integer[]);`).database()
 
 // ✅ array || element → array
 const _result = await _db.query(`select array[2,3] || 4 as _result from users;`)

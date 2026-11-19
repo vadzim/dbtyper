@@ -4,10 +4,8 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: CREATE TABLE with DEFAULT values should parse
 
-const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(
-		`create table users (
+const _db = sqlMigrations({ driver: mockDriver }).apply(
+	`create table users (
 				id text not null,
 				name text not null,
 				email text,
@@ -15,4 +13,4 @@ const _db = sqlMigrations({ driver: mockDriver })
 				active boolean default true,
 				created_at timestamp default now()
 			);`,
-	)
+)

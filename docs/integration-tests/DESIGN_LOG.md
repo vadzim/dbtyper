@@ -66,7 +66,7 @@ Find a testing approach so that **invalid SQL queries produce TypeScript compile
 Use this style for all integration tests:
 
 ```typescript
-type TestDb = ApplyStatements<SqlDatabase, `create schema public; create table users (...);`>[0]
+type TestDb = ApplyStatements<SqlDatabase, `create table users (...);`>[0]
 type TBadQuery = ParseSqlStatement<CreateParserMonad<`select wrong_col from users;`>, TestDb>
 type _test = Expect<Extends<Tuple3At2<TBadQuery>, SqlParserError<string>>>
 ```

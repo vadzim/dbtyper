@@ -4,7 +4,6 @@ import { mockDriver } from "../test-utils/test-databases.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
 const pgDb = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table users (id bigserial primary key, name text not null, balance numeric(12,2));`)
 	.database()
 

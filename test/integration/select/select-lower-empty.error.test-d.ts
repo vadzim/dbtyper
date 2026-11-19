@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table t (id integer);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table t (id integer);`).database()
 
 // ❌ ERROR: Function requires at least one argument
 const query = `select lower() from t;` as const

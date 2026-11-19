@@ -7,7 +7,6 @@ import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 declare const client: ReturnType<typeof postgres>
 
 const db = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
-	.apply(`create schema public;`)
 	.apply(
 		`create table t (
 		a smallint not null, b int not null, c oid not null, d real not null, e float8 not null,
@@ -63,7 +62,6 @@ void [_jsonOut, _jsonIn, _jsonNullable, _jsonNotNull]
 
 // PGT-4: with `{ bigint: true }` int8 is bigint, numeric stays string
 const big = sqlMigrations({ driver: postgresSqlDriver({ sql: client, bigint: true }) })
-	.apply(`create schema public;`)
 	.apply(`create table t (f bigint not null, g numeric not null);`)
 	.database()
 const _p4 = await big.query(`select f, g from t`)
