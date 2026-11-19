@@ -4,9 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const migrations = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create type public.status as enum ('active');`)
+const migrations = sqlMigrations({ driver: mockDriver }).apply(`create type public.status as enum ('active');`)
 
 // ❌ ERROR: Expected semicolon after DROP TYPE (qualified name)
 const query = `drop type public.status trailing` as const

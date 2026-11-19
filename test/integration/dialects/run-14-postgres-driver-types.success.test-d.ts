@@ -4,7 +4,6 @@ import type { PostgresDriver } from "../../../src/postgres/index.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 
 const db = sqlMigrations({ driver: createDriver<PostgresDriver>({ query: async () => [] }) })
-	.apply(`create schema public;`)
 	.apply(`create table t (at timestamp not null, big bigint not null);`)
 	.database()
 

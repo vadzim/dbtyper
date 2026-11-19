@@ -4,6 +4,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 // ✅ SUCCESS: CREATE TYPE IF NOT EXISTS (new type)
 
-const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create type if not exists priority as enum ('low', 'medium', 'high');`)
+const _db = sqlMigrations({ driver: mockDriver }).apply(
+	`create type if not exists priority as enum ('low', 'medium', 'high');`,
+)

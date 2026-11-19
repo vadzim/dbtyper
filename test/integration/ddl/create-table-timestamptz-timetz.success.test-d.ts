@@ -7,7 +7,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: timestamptz and timetz aliases
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table events (created_at timestamptz not null, time_only timetz not null);`)
 	.database()
 

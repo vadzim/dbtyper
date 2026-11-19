@@ -11,7 +11,6 @@ type Row<T> = T extends readonly (infer R)[] ? R : never
 type IsJson<T> = [T] extends [JsonValue] ? ([JsonValue] extends [T] ? true : false) : false
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(
 		`create table t (
 			id integer primary key, name text not null, nick text, age integer, big bigint not null, n numeric,

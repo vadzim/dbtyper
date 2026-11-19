@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table sales (region text, amount integer);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table sales (region text, amount integer);`).database()
 
 // ❌ ERROR: HAVING unknown column
 const query = `select region from sales group by region having not_a_col = 'x';` as const

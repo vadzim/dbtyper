@@ -5,7 +5,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 	.database()
 // ✅ SUCCESS: Cast number literal to text (like existing test)

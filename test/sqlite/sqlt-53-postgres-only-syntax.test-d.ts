@@ -64,7 +64,6 @@ expectType<M<`insert into users (id, name) values (1, 'a') on conflict on constr
 
 // the same SQL is fine in PostgreSQL, and SQLite's own forms stay accepted
 const pg = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table users (id integer primary key, name text not null);`)
 	.database()
 const _pgIlike = await pg.query(`select id from users where name ilike 'a%'`)

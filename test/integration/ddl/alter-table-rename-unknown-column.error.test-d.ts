@@ -6,7 +6,6 @@ import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 import type { GetQueryError } from "../../../src/core/sql-database.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table items (id text not null, title text not null);`)
 	.database()
 
