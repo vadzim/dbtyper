@@ -71,7 +71,9 @@ type ApplyParsedStatements<
 > =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error, Result]
-		: BatchDepth extends 50
+		: // TLVL-4: 50 batches of 50 statements dodge the instantiation depth limit (TS2589, "excessively deep"); found
+			// by test/stress/migration-500-statements and migration-too-many-statements (2501 statements, STMT-16).
+			BatchDepth extends 50
 			? // STMT-16: the script is too long to apply; say so instead of dropping the tail.
 				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], []>>, Result]
 			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
@@ -83,6 +85,10 @@ type ApplyParsedStatements<
 				? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc<BatchDepth>>
 				: never
 
+/**
+ * TLVL-4: the `Depth extends 50` bound below (50 statements per batch) dodges the instantiation depth limit (TS2589);
+ * the outer loop runs 50 such batches (test/stress/migration-500-statements, migration-too-many-statements, STMT-16).
+ */
 type ApplyParsedStatementsInner<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,

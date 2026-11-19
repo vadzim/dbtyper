@@ -434,6 +434,7 @@ type SkipSpaces<S> =
  * Skips up to 100 spaces per call; `SkipSpaces` calls it again while more are left. The bound keeps the recursion
  * depth of one call under TypeScript's instantiation depth limit (found by trial on long indented SQL, #48, #105);
  * it is a depth bound, not a limit on the number of spaces.
+ * TLVL-4: the limit dodged is the instantiation depth limit (TS2589); tests: test/stress/sqlt-105-long-statement.
  */
 type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
 	? [S, true]
