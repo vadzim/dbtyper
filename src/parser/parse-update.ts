@@ -1,4 +1,3 @@
-import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type {
 	JsqlDatabaseShape,
 	JsqlDataShape,
@@ -7,28 +6,17 @@ import type {
 } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap } from "./parser-scope.ts"
-import type {
-	EmptyExpressionParams,
-	ExpressionParamsShape,
-	ParseExpressionAST,
-	ScalarExprAst,
-} from "./parse-expression.ts"
-import type { ResolveExpressionAST } from "./resolve-expression.ts"
+import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDbGetColumnType } from "../core/jsql-utils.ts"
-import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
-import type { CollectParamProbes, IsParamProbeFound } from "../core/param-probe.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
 import type { ParseFromJoinScope } from "./parse-select-from.ts"
 import type { ConflictActionToken } from "./parse-insert.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseSetAssignments, ResolveSetAssignments, PendingAssignments } from "./parse-set-assignments.ts"
 import type { UpdateTableContext, ParseUpdateFromTableRef } from "./parse-update-table.ts"
 
@@ -42,7 +30,7 @@ type ParseUpdateAfterSetKeyword<
 	Tab extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"set">
-		? ParseSetAssignments<"update", SkipToken<Tokens>, Db, Scope, Params, Tbl> extends [
+		? ParseSetAssignments<SkipToken<Tokens>, "update", Db, Scope, Params, Tbl> extends [
 				infer R extends ParserMonad,
 				infer Db2 extends JsqlDatabaseShape,
 				infer Out,

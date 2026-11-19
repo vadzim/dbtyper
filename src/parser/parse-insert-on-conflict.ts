@@ -1,20 +1,14 @@
-import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
-import type { CollectParamProbes, IsParamProbeFound } from "../core/param-probe.ts"
-import type { ExpressionParamsShape, ParseExpressionAST, ScalarExprAst } from "./parse-expression.ts"
-import type { ResolveExpressionAST } from "./resolve-expression.ts"
+import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseSetAssignments, ResolveSetAssignments, PendingAssignments } from "./parse-set-assignments.ts"
 import type { ParseInsertMaybeReturning } from "./parse-insert-returning.ts"
 import type { InsertExcludedScope } from "./parse-insert-values.ts"
@@ -198,7 +192,7 @@ type ParseInsertOnConflictAfterUpdateKw<
 		? SkipToken<R4> extends infer R5 extends ParserMonad
 			? TSet extends TokenKey<"set">
 				? InsertExcludedScope<Sch, Tab, Tbl, Scope> extends infer UpsertScope extends ScopeMap
-					? ParseSetAssignments<"upsert", R5, Db, UpsertScope, Params, Tbl> extends [
+					? ParseSetAssignments<R5, "upsert", Db, UpsertScope, Params, Tbl> extends [
 							infer R6 extends ParserMonad,
 							infer Db6 extends JsqlDatabaseShape,
 							infer SetOut,

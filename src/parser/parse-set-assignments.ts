@@ -39,15 +39,15 @@ type SetKinds = {
 	}
 }
 
-export type SetKind = keyof SetKinds
+type SetKind = keyof SetKinds
 
 /**
  * Parses `col = expr {, col = expr}` after `SET`. Gives `[rest, Db, { cols, pending } | error]`; a column name may be a
  * keyword (`AsIdent`) in both clauses.
  */
 export type ParseSetAssignments<
-	Kind extends SetKind,
 	Tokens extends ParserMonad,
+	Kind extends SetKind,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
@@ -78,8 +78,8 @@ export type ParseSetAssignments<
 										: Ast extends ScalarExprAst
 											? PeekToken<R3> extends TokenKey<",">
 												? ParseSetAssignments<
-														Kind,
 														SkipToken<R3>,
+														Kind,
 														Db,
 														Scope,
 														Params,

@@ -1,12 +1,6 @@
 import type { Inc } from "../core/type-utils.ts"
-import type {
-	DialectConstruct,
-	DialectOnlyError,
-	DialectPhraseHeads,
-	LexerFact,
-	MatchDialectPhrase,
-	SyntaxWithoutLexerFact,
-} from "../core/dialect.ts"
+import type { DialectOnlyError, LexerFact, SyntaxWithoutLexerFact } from "../core/dialect.ts"
+import type { DialectConstruct, DialectPhraseHeads, MatchDialectPhrase } from "../core/dialect-constructs.ts"
 import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type {
 	LexerFeatures,

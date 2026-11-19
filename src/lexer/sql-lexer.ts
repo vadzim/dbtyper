@@ -1,5 +1,6 @@
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { DialectConstruct, DialectOnlyError, LexerFact } from "../core/dialect.ts"
+import type { DialectOnlyError, LexerFact } from "../core/dialect.ts"
+import type { DialectConstruct } from "../core/dialect-constructs.ts"
 import type {
 	Return,
 	TokenKey,

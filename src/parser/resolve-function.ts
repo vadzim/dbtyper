@@ -1,16 +1,10 @@
-import type { DialectFact, OtherDialectTitleOf } from "../core/dialect.ts"
+import type { DialectFact, FunctionHintsOf, OtherDialectTitleOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type {
-	CatalogArityError,
-	CatalogRow,
-	CatalogRowResult,
-	IsCatalogFunction,
-	IsWindowCapableRow,
-	IsWindowOnlyRow,
-	OtherDialectHints,
-} from "./function-catalog.ts"
+import type { CatalogRow, IsCatalogFunction, IsWindowCapableRow, IsWindowOnlyRow } from "./function-catalog.ts"
+import type { CatalogArityError } from "./function-catalog-arity.ts"
+import type { CatalogRowResult } from "./function-catalog-result.ts"
 import type { EnumPeerCheck } from "./parse-enum-checks.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
@@ -92,8 +86,8 @@ type ResolveCatalogFunctionCall<
 type PgHint<Hint extends string> = Hint extends "" ? "" : `; ${Hint}`
 
 /** FN-1; SQLT-52, PGT-34: a name of the other dialect's catalog names its replacement. */
-type UnknownFunction<C extends string, Name extends string, L extends string> = L extends keyof OtherDialectHints<C>
-	? OtherDialectHints<C>[L] extends infer Hint extends string
+type UnknownFunction<C extends string, Name extends string, L extends string> = L extends keyof FunctionHintsOf<C>
+	? FunctionHintsOf<C>[L] extends infer Hint extends string
 		? FormatError<
 				Errors["UNKNOWN_FUNCTION"],
 				[Hint extends "" ? Name : `${Name}. ${Name}() is ${OtherDialectTitleOf<C>}-only${PgHint<Hint>}`]

@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-19 Review #146 leftovers of batches 2 and 3 (track A; DLCT-4, FCAT-2, MOD-1)
+
+- **One SET parser.** `src/parser/parse-set-assignments.ts` parses `col = expr, …` for UPDATE SET and ON CONFLICT DO UPDATE SET (`ParseSetAssignments`, kind `"update"` / `"upsert"`: clause name, error codes and end tokens are one `SetKinds` row) and resolves the values (`ResolveSetAssignments`). UPDATE resolves after FROM, DO UPDATE SET at the end of its list. Behaviour changes: DO UPDATE SET accepts a non-reserved keyword as column name (as UPDATE SET did; test `insert-do-update-set-keyword-column-name`), and a syntax error later in a DO UPDATE SET list now wins over a value error earlier in it (values are resolved after the list, as in UPDATE).
+- **Function table in the Dialects row.** `functionRows` and `functionHints` are facts of `Dialects` (src/core/dialect.ts), read through `FunctionRowsOf` / `FunctionHintsOf`; `Catalogs` and `OtherDialectHints` are gone. The constructs and phrase tables moved to `src/core/dialect-constructs.ts` (dialect.ts 443 -> ~330 lines).
+- **function-catalog.ts split by concern:** row lookup and predicates (function-catalog.ts), argument-count rules (function-catalog-arity.ts), result codes and nullability (function-catalog-result.ts).
+- **Cost:** `typecheck:test` 12,223,813 -> 12,244,305 instantiations (+0.17%).
+
 ## 2026-11-19 Dialect seam review, batch 1 (#146, #147; DLCT-2, DLCT-4, DLCT-5, PARAM-15, SQLT-55)
 
 - **`ddl` split** into facts named for rules: `tempObjects`, `schemaStatements`, `unsupportedStatements` (ATTACH/DETACH as data), `constraintOnConflict`, `shortGenerated`, `currentDatetimeType`, `addColumn`. `ddl` stays for `parse-create-view.ts` only (batch 3 splits it).
