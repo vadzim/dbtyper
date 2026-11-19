@@ -24,6 +24,11 @@ import type { ParseUpdate } from "./parse-update.ts"
 import type { ParseSkipStatement, ParseSkipTrigger, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { Inc } from "../core/type-utils.ts"
+import type {
+	PostgresSkippedStatementKeywords,
+	SqliteSkippedStatementKeywords,
+	UnknownStatementError,
+} from "./statement-keywords.ts"
 
 export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
@@ -146,7 +151,10 @@ export type ParseSqlStatement<
 												ParseInsert<SkipToken<Tokens>, Db, Params>
 											: ParseOtherStatement<Tokens, Db>
 
-/** A statement no parser knows: skipped; but ATTACH / DETACH are errors in a SQLite chain (SQLT-24). */
+/**
+ * A statement no parser handles (STMT-18, STMT-19): a known statement keyword is skipped (but ATTACH / DETACH are
+ * errors in a SQLite chain, SQLT-24); any other leading word is a compile error with a hint (never skipped silently).
+ */
 type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	DialectFact<Db, "ddl"> extends true
 		? PeekToken<Tokens> extends TokenIdent<"attach" | "detach">
@@ -155,8 +163,22 @@ type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShap
 					Db,
 					FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], [Uppercase<PeekToken<Tokens>["value"]>]>
 				>
+			: SkipKnownOrFail<Tokens, Db, SqliteSkippedStatementKeywords>
+		: SkipKnownOrFail<Tokens, Db, PostgresSkippedStatementKeywords>
+
+type SkipKnownOrFail<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Known extends readonly string[],
+> =
+	PeekToken<Tokens> extends TokenKey<"("> | TokenEot
+		? // `(select …)` and the like: a parenthesised query is not a keyword statement; stepped over as before
+			ParseSkipStatement<Tokens, Db>
+		: PeekToken<Tokens> extends { value: infer Word extends string }
+			? Lowercase<Word> extends Known[number]
+				? ParseSkipStatement<Tokens, Db>
+				: SkipFailedStatement<Tokens, Db, UnknownStatementError<Word, Known>>
 			: ParseSkipStatement<Tokens, Db>
-		: ParseSkipStatement<Tokens, Db>
 
 type ConcatErrors<
 	Errors extends DbtyperErrorShape | null,
