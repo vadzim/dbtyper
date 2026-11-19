@@ -24,17 +24,21 @@ export type JsqlCreateTable<
 	constraints: Constraints
 }
 
-/** A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). */
+/**
+ * A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). `Alias` is the name of
+ * its INTEGER PRIMARY KEY column (SQLT-13), which is the result key of an unaliased `rowid` (SQLT-15).
+ */
 export type JsqlCreateRowidTable<
 	Columns extends Record<string, SqlTypeShape>,
 	Facts extends Record<string, unknown> | null = null,
+	Alias extends string = never,
 > = {
 	kind: "table"
 	columns: Columns
 	column_facts: Facts
 	constraints: null
 	rowid_table: true
-}
+} & ([Alias] extends [never] ? {} : { rowid_alias: Alias })
 
 export type JsqlCreateView<Columns extends Record<string, SqlTypeShape>> = {
 	kind: "view"
