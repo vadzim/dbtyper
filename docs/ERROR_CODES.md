@@ -1,10 +1,10 @@
 # Error Code Reference
 
-This document provides a comprehensive reference for all error codes in jsql.
+This document provides a comprehensive reference for all error codes in dbtyper.
 
 ## Overview
 
-jsql uses a type-level error system where errors are TypeScript types. Error codes help identify and categorize errors for better debugging and documentation.
+dbtyper uses a type-level error system where errors are TypeScript types. Error codes help identify and categorize errors for better debugging and documentation.
 
 **Error Type System:**
 
@@ -46,7 +46,7 @@ Each category has 100 slots, providing room for future expansion.
 | 1600-1699 | Parser Syntax - ALTER TABLE  | ALTER TABLE parsing             | 4    | 96   |
 | 1700-1799 | Parser Syntax - DROP TABLE   | DROP TABLE parsing              | 2    | 98   |
 | 1800-1899 | Parser Syntax - Type DDL     | CREATE/ALTER/DROP TYPE          | 11   | 89   |
-| 1900-1999 | Other-dialect syntax         | Syntax of the other SQL engine  | 2    | 98   |
+| 1900-1999 | Other-dialect syntax         | Syntax of the other SQL engine  | 15   | 85   |
 | 2100-2199 | Validation - Statement       | Invalid statements              | 10   | 90   |
 | 2200-2299 | Resolution - Table/Schema    | Unknown tables or schemas       | 3    | 97   |
 | 2300-2399 | Resolution - Column          | Unknown columns                 | 4    | 96   |
@@ -65,7 +65,7 @@ Each category has 100 slots, providing room for future expansion.
 | 3600-3699 | Semantic - Function          | Function constraints            | 20   | 80   |
 | 3700-3799 | DDL - CREATE SCHEMA          | CREATE SCHEMA errors            | 3    | 97   |
 | 3800-3899 | DDL - DROP SCHEMA            | DROP SCHEMA errors              | 2    | 98   |
-| 3900-3999 | DDL - CREATE VIEW            | CREATE VIEW errors              | 5    | 95   |
+| 3900-3999 | DDL - CREATE VIEW            | CREATE VIEW errors              | 8    | 92   |
 | 4000-4099 | DDL - ALTER TYPE             | ALTER TYPE errors               | 3    | 97   |
 | 4100-4199 | DDL - Misc                   | Miscellaneous DDL errors        | 6    | 94   |
 | 4200-4299 | DML - JOIN                   | JOIN operation errors           | 3    | 97   |
@@ -202,7 +202,7 @@ type Err = DbtyperError<2200, ...> // UNKNOWN_TABLE with context parameter
 
 **EXPECTED\_\* codes (1100-5400):**
 
-- 1201, 1302, 1401, 1500, 1600, 1700, 1800-1802, 3701, 3801, 3905 → 1105 (EXPECTED_SEMICOLON)
+- 1201, 1302, 1401, 1500, 1600, 1700, 1800-1802, 3701, 3801 → 1105 (EXPECTED_SEMICOLON; the old 3905 went the same way before the number was given to EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW)
 - 1220-1221, 1306-1308, 1402-1404, 1506, 1602-1603, 1701 → 1120 (EXPECTED_TABLE_NAME)
 - 1212, 1218, 1303, 1503, 1604-1606 → 1206 (EXPECTED_COLUMN_NAME)
 - 1809-1812, 4104, 4106 → 4105 (EXPECTED_TYPE_NAME)
@@ -262,6 +262,13 @@ SQLite-specific codes (SQLT-18, SQLT-21, SQLT-24, SQLT-26; #70):
 | 1919 | TOO_MANY_STATEMENTS               | A script may have at most 2500 statements; split it into several migrations          |
 | 1920 | UNKNOWN_CONFLICT_ACTION           | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                  |
 
+Unknown statements (STMT-19; both dialects):
+
+| Code | ID                              | Message                                                                                                          |
+| ---- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 1930 | UNKNOWN_STATEMENT               | Unknown statement keyword {word}. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+| 1931 | UNKNOWN_STATEMENT_DID_YOU_MEAN  | Unknown statement keyword {word}; did you mean {keyword}? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+
 **Example:** SQLite chain, `select id::text from users` →
 `error [dbtyper:1900]: \`::\` cast is PostgreSQL-only; this database is SQLite. Use CAST(x AS TEXT)`
 
@@ -303,6 +310,14 @@ const query = `SELECT * FROM users GROUP` as const
 const query2 = `INSERT INTO users VALUES (1)` as const
 // Error: DbtyperError<1105, "[dbt:1105] Expected semicolon after INSERT">
 ```
+
+### 3900-3999: DDL - CREATE VIEW
+
+| Code | ID                                         | Message                                                                  |
+| ---- | ------------------------------------------ | ------------------------------------------------------------------------ |
+| 3905 | EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW       | Expected `not` after `IF` in CREATE VIEW                                 |
+| 3906 | EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW | Expected `exists` after `IF NOT` in CREATE VIEW                          |
+| 3907 | VIEW_COLUMN_LIST_MISMATCH                  | CREATE VIEW {name}: the column list has a different number of columns than the SELECT |
 
 ### 2200-2299: Resolution - Table/Schema Errors
 
@@ -490,7 +505,7 @@ Error codes follow this structure:
 - 1600-1699: Parser Syntax - ALTER TABLE - 4 codes (96 slots free)
 - 1700-1799: Parser Syntax - DROP TABLE - 2 codes (98 slots free)
 - 1800-1899: Parser Syntax - Type DDL - 11 codes (89 slots free)
-- 1900-1999: Other-dialect syntax - 2 codes (98 slots free)
+- 1900-1999: Other-dialect syntax - 15 codes (85 slots free)
 - 2100-2199: Validation - Statement - 10 codes (90 slots free)
 - 2200-2299: Resolution - Table/Schema - 3 codes (97 slots free)
 - 2300-2399: Resolution - Column - 4 codes (96 slots free)
@@ -509,7 +524,7 @@ Error codes follow this structure:
 - 3600-3699: Semantic - Function - 20 codes (80 slots free)
 - 3700-3799: DDL - CREATE SCHEMA - 3 codes (97 slots free)
 - 3800-3899: DDL - DROP SCHEMA - 2 codes (98 slots free)
-- 3900-3999: DDL - CREATE VIEW - 5 codes (95 slots free)
+- 3900-3999: DDL - CREATE VIEW - 8 codes (92 slots free)
 - 4000-4099: DDL - ALTER TYPE - 3 codes (97 slots free)
 - 4100-4199: DDL - Misc - 6 codes (94 slots free)
 - 4200-4299: DML - JOIN - 3 codes (97 slots free)
