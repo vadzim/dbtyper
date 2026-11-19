@@ -50,11 +50,11 @@ const [user] = await app.query("select id, name, email, profile from users where
 JSON.parse(user.profile) // a JSON column is TEXT in SQLite: typed string, parse it yourself
 ```
 
-`@name` parameters and the rowid (alias it, see below):
+`@name` parameters and the the rowid (an unaliased `rowid` is keyed by the INTEGER PRIMARY KEY column, SQLT-15):
 
 ```ts
-const byName = await app.query("select rowid as rid, id, email from users where name = @name", { name: "bob" })
-// byName: { rid: number; id: number; email: string | null }[]
+const byName = await app.query("select rowid, email from users where name = @name", { name: "bob" })
+// byName: { id: number; email: string | null }[]
 ```
 
 `stream` gives an async iterable of typed rows:
@@ -68,5 +68,4 @@ for await (const row of await app.stream("select id, name from users order by id
 ## Notes
 
 - better-sqlite3 returns plain row objects.
-- On a table with `INTEGER PRIMARY KEY`, SQLite names a bare `rowid` result column after the key (`id`), while the type says `rowid`. The example aliases it (`rowid as rid`), which is the same at runtime and in the type.
 - The `test` script builds the root package once (`dist/`), because the runtime import of `dbtyper` resolves to the built files; the type check uses the sources through `paths`.

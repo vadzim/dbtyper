@@ -62,17 +62,19 @@ db.query(`insert into users (id, name) values (1, 'a') on conflict (id) do updat
 // @ts-expect-error: unknown column in the conflict target
 db.query(`insert into users (id, name) values (1, 'a') on conflict (nope) do nothing`)
 
-// SQLT-41: RETURNING on INSERT, UPDATE and DELETE, rowid included
-const _retRowid = await db.query(`insert into users (name) values ('a') returning rowid, oid, _rowid_, id`)
-expectType<typeof _retRowid>(toBe<Array<{ rowid: number; oid: number; _rowid_: number; id: number }>>())
+// SQLT-41: RETURNING on INSERT, UPDATE and DELETE, rowid included (keyed like a select, SQLT-15)
+const _retRowid = await db.query(
+	`insert into users (name) values ('a') returning rowid as a, oid as b, _rowid_ as c, id`,
+)
+expectType<typeof _retRowid>(toBe<Array<{ a: number; b: number; c: number; id: number }>>())
 const _insertRowid = await db.query(`insert into users (rowid, name) values (5, 'a') returning rowid`)
-expectType<typeof _insertRowid>(toBe<Array<{ rowid: number }>>())
+expectType<typeof _insertRowid>(toBe<Array<{ id: number }>>())
 const _updRowid = await db.query(`update users set name = 'b' returning rowid, name`)
-expectType<typeof _updRowid>(toBe<Array<{ rowid: number; name: string }>>())
+expectType<typeof _updRowid>(toBe<Array<{ id: number; name: string }>>())
 const _delRows = await db.query(`delete from users where id = 1 returning *`)
 expectType<typeof _delRows>(toBe<Array<{ id: number; name: string; email: string | null; score: number | null }>>())
 const _delRowid = await db.query(`delete from users returning rowid`)
-expectType<typeof _delRowid>(toBe<Array<{ rowid: number }>>())
+expectType<typeof _delRowid>(toBe<Array<{ id: number }>>())
 // a DML statement inside a CTE or a subquery is a compile error
 const dmlInCte = `with c as (insert into users (name) values ('a') returning id) select id from c` as const
 // @ts-expect-error

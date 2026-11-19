@@ -101,7 +101,7 @@ type SqliteTableBuiltOk<
 				Table,
 				Opts["withoutRowid"] extends true
 					? JsqlCreateTable<M["cols"], M["facts"]>
-					: JsqlCreateRowidTable<M["cols"], M["facts"]>
+					: JsqlCreateRowidTable<M["cols"], M["facts"], RowidAliasOf<Stack>>
 			> extends infer NewDb extends JsqlDatabaseShape
 			? PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 				? [SkipToken<Tokens>, NewDb, null]
@@ -134,3 +134,8 @@ type SqlitePrimaryKeys<Stack extends readonly ColumnDef[], Opts extends TableOpt
 						: readonly [N, T, Nn, D, G, Pk, Decl]
 		: never
 }
+
+/** SQLT-13, SQLT-15: the name of the column that is the rowid alias (declared exactly INTEGER PRIMARY KEY), else `never`. */
+type RowidAliasOf<Stack extends readonly ColumnDef[]> = {
+	[I in keyof Stack]: [Stack[I][5], Stack[I][6]] extends ["single", "integer"] ? Stack[I][0] : never
+}[number]
