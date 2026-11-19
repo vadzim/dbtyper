@@ -23,18 +23,15 @@ import type { DialectFact } from "../core/dialect.ts"
  * Success: `[rest before AS, null, schema, viewName]`.
  */
 type ParseQualifiedViewNameUnqualified<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<"as"> | ViewColumnListStart<Db>
+	PeekToken<AfterFirst> extends TokenKey<"as" | "(">
 		? [AfterFirst, null, Db["defaultSchema"], A]
 		: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME"], []>>
-
-/** SQLite: `CREATE VIEW v (a, b) AS …` (SQLT-22). */
-type ViewColumnListStart<Db extends JsqlDatabaseShape> = DialectFact<Db, "ddl"> extends true ? TokenKey<"("> : never
 
 type ParseQualifiedViewNameQualified<Rdot extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
 	PeekToken<Rdot> extends TokenIdent<infer B extends string>
 		? SkipToken<Rdot> extends infer AfterB extends ParserMonad
 			? JsqlDbGetSchema<Db, A> extends JsqlSchemaShape
-				? PeekToken<AfterB> extends TokenKey<"as"> | ViewColumnListStart<Db>
+				? PeekToken<AfterB> extends TokenKey<"as" | "(">
 					? A extends keyof Db["schemas"]
 						? [AfterB, null, A & keyof Db["schemas"] & string, B]
 						: never
@@ -67,9 +64,7 @@ type ParseCreateViewAfterSelect<
 > =
 	ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
 		? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
-		: ApplyCteColumnList<Sel, Cols> extends infer Err extends DbtyperErrorShape
-			? SkipFailedStatement<Tokens, Db, Err>
-			: never
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_COLUMN_LIST_MISMATCH"], [Name]>>
 
 type ParseCreateViewStore<
 	Tokens extends ParserMonad,
@@ -142,7 +137,7 @@ type ParseCreateViewAfterAs<
 
 /**
  * `CREATE [TEMP] VIEW [IF NOT EXISTS] name [(cols)] AS …`. `Temp` (SQLite, SQLT-22, SQLT-25) puts an unqualified view
- * into `temp`; IF NOT EXISTS and the column list exist in a SQLite chain only.
+ * into `temp`; the column list exists in both dialects, IF NOT EXISTS in SQLite only (`viewIfNotExists`).
  */
 export type ParseCreateView<
 	Tokens extends ParserMonad,
@@ -152,7 +147,7 @@ export type ParseCreateView<
 	Replace extends boolean = false,
 > =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? DialectFact<Db, "ddl"> extends true
+		? DialectFact<Db, "viewIfNotExists"> extends true
 			? SkipToken<Tokens> extends infer A0 extends ParserMonad
 				? PeekToken<A0> extends TokenKey<"not">
 					? SkipToken<A0> extends infer A1 extends ParserMonad
@@ -161,10 +156,10 @@ export type ParseCreateView<
 							: SkipFailedStatement<
 									A1,
 									Db,
-									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE"], []>
+									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
 								>
 						: never
-					: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE"], []>>
+					: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
 				: never
 			: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
 		: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>

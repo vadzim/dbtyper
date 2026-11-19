@@ -16,4 +16,6 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<5405, "Unsupported ALTER TABLE action">>())
+expectType<ReturnedError>(
+	toBe<DbtyperError<5405, "Unsupported ALTER TABLE action; run this statement with queryUntyped">>(),
+)

@@ -54,7 +54,7 @@ export type DialectName = keyof Dialects
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
- * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
+ * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error); `viewIfNotExists`: `CREATE VIEW IF NOT EXISTS` exists (SQLite, SQLT-22; PostgreSQL has it only for `OR REPLACE`).
  * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
@@ -85,6 +85,7 @@ export type Dialects = {
 		exprKeys: "name"
 		castHint: "`::text`"
 		dmlInCte: true
+		viewIfNotExists: false
 		skippedStatements: readonly [
 			...CommonSkippedStatementKeywords,
 			"comment",
@@ -145,6 +146,7 @@ export type Dialects = {
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
 		dmlInCte: false
+		viewIfNotExists: true
 		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end", "replace"]
 		lexer: {
 			bracketIdents: true

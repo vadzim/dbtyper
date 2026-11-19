@@ -56,7 +56,8 @@ type ErrorDescription = {
  * - 1600-1699: Parser/ALTER TABLE Errors
  * - 1700-1799: Parser/DROP TABLE Errors
  * - 1800-1899: Parser/CREATE/ALTER/DROP TYPE Errors
- * - 1900-1999: Other-dialect syntax (PostgreSQL-only in SQLite, SQLite-only in PostgreSQL)
+ * - 1900-1999: Other-dialect syntax (PostgreSQL-only in SQLite, SQLite-only in PostgreSQL), the SQLite DDL rules
+ *   (1910-1918), TOO_MANY_STATEMENTS (1919) and unknown statements (1930, 1931)
  * - 2000-2099: Validation/Expression Errors
  * - 2100-2199: Validation/Statement Errors
  * - 2200-2299: Resolution/Table-Schema Errors
@@ -126,7 +127,9 @@ const errors = {
 	},
 	TOKEN_NOT_FOUND: {
 		code: 1006,
-		msg: ["Token not found"],
+		msg: [
+			"Statement is not closed: an expected closing token was not found (for example a trigger with BEGIN but no END, or a missing `)`)",
+		],
 	},
 	UNEXPECTED_TOKEN: {
 		code: 1007,
@@ -180,7 +183,7 @@ const errors = {
 	},
 	SQLITE_NO_SCHEMAS: {
 		code: 1915,
-		msg: ["SQLite has no schemas"],
+		msg: ["SQLite has no schemas; drop the schema qualifier, or use main or temp"],
 	},
 	REGEXP_NEEDS_FUNCTION: {
 		code: 1917,
@@ -712,27 +715,27 @@ const errors = {
 	// Statement Validation
 	INVALID_ALTER_TABLE_NAME: {
 		code: 2107,
-		msg: ["Invalid ALTER TABLE name"],
+		msg: ["Invalid ALTER TABLE name (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	INVALID_CREATE_TABLE_NAME_PARSE: {
 		code: 2108,
-		msg: ["Invalid CREATE TABLE name parse"],
+		msg: ["Invalid CREATE TABLE name (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	INVALID_DROP_TABLE_PARSE: {
 		code: 2109,
-		msg: ["Invalid DROP TABLE parse"],
+		msg: ["Invalid DROP TABLE statement (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	INVALID_CREATE_TYPE_NAME_PARSE: {
 		code: 2110,
-		msg: ["Invalid CREATE TYPE name parse"],
+		msg: ["Invalid CREATE TYPE name (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	INVALID_ALTER_TYPE_PARSE: {
 		code: 2111,
-		msg: ["Invalid ALTER TYPE parse"],
+		msg: ["Invalid ALTER TYPE statement (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	INVALID_DROP_TYPE_PARSE: {
 		code: 2112,
-		msg: ["Invalid DROP TYPE parse"],
+		msg: ["Invalid DROP TYPE statement (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	INVALID_NUMBER: {
 		code: 2116,
@@ -1054,11 +1057,15 @@ const errors = {
 	},
 	SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED: {
 		code: 3102,
-		msg: ["Scalar subquery column inference failed"],
+		msg: [
+			"Cannot infer the column of this scalar subquery; select exactly one column, or cast the result (internal inference failed)",
+		],
 	},
 	IN_SUBQUERY_COLUMN_INFERENCE_FAILED: {
 		code: 3103,
-		msg: ["IN subquery column inference failed"],
+		msg: [
+			"Cannot infer the column of this IN subquery; select exactly one column, or cast the result (internal inference failed)",
+		],
 	},
 
 	// Semantic/Constraint Errors
@@ -1215,11 +1222,11 @@ const errors = {
 	},
 	TABLE_KEY_MISMATCH_IN_ALTER_TABLE: {
 		code: 3504,
-		msg: ["Table key mismatch in ALTER TABLE"],
+		msg: ["ALTER TABLE target not found (internal parser error; please report this SQL as a dbtyper issue)"],
 	},
 	COLUMN_RENAME_FAILED: {
 		code: 3505,
-		msg: ["Column rename failed"],
+		msg: ["Cannot rename the column: check that the old name exists and the new name is not taken"],
 	},
 	DROP_VIEW_TARGETS_A_TABLE_USE_DROP_TABLE: {
 		code: 3510,
@@ -1378,6 +1385,18 @@ const errors = {
 	EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME: {
 		code: 3904,
 		msg: ["Expected AS after qualified view name"],
+	},
+	EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW: {
+		code: 3905,
+		msg: ["Expected `not` after `IF` in CREATE VIEW"],
+	},
+	VIEW_COLUMN_LIST_MISMATCH: {
+		code: 3907,
+		msg: ["CREATE VIEW ", ": the column list has a different number of columns than the SELECT"],
+	},
+	EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW: {
+		code: 3906,
+		msg: ["Expected `exists` after `IF NOT` in CREATE VIEW"],
 	},
 
 	// ALTER TYPE
@@ -1626,7 +1645,9 @@ const errors = {
 	},
 	UNSUPPORTED_PARENTHESIZED_EXPRESSION: {
 		code: 5007,
-		msg: ["Unsupported parenthesized expression"],
+		msg: [
+			"Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped",
+		],
 	},
 
 	// Type/Data Specific Errors
@@ -1697,7 +1718,7 @@ const errors = {
 	},
 	UNSUPPORTED_ALTER_TABLE_ACTION: {
 		code: 5405,
-		msg: ["Unsupported ALTER TABLE action"],
+		msg: ["Unsupported ALTER TABLE action; run this statement with queryUntyped"],
 	},
 	UNEXPECTED_END_IN_CREATE_TYPE_ENUM_BODY: {
 		code: 5406,
