@@ -60,8 +60,11 @@ type ParseOneColumn<
 		? ColName extends Stack[number][0]
 			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
 			: Stack["length"] extends ColumnChunkEnd
-				? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName> extends infer R
-					? R
+				? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName> extends [
+						infer M extends ParserMonad,
+						...infer R,
+					]
+					? [M, ...R]
 					: never
 				: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
