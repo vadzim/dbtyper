@@ -1,4 +1,4 @@
-// Spec tests: SCHEMA-3, SCHEMA-27, STMT-6, STMT-12, FN-4
+// Spec tests: SCHEMA-3, SCHEMA-27, STMT-6, STMT-18, FN-4
 import { sqlMigrations } from "../../src/core/sql-database.ts"
 import { postgresSqlDriver } from "../../src/postgres/index.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
@@ -30,7 +30,7 @@ expectType<typeof _s28>(toBe<{ id: number }[]>())
 const dupPublic = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
 void dupPublic
 
-// STMT-12: a skipped statement changes nothing and the next statements are processed
+// STMT-18: a skipped statement changes nothing and the next statements are processed
 const skip = sqlMigrations({ driver: mockDriver })
 	.apply(`set search_path = public; create table t (id integer not null);`)
 	.database()
