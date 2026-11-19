@@ -136,7 +136,7 @@ export type ParseMulScalarUntypedEntry<Tokens extends ParserMonad, Env extends E
 		? E0 extends DbtyperErrorShape
 			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
-				? ScalarAstNonNumericForMulHead<E0> extends true
+				? ScalarAstNonNumericForMulHead<Env0["db"], E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends
 								| TokenKey<"+">

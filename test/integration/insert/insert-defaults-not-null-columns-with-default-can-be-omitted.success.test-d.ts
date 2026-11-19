@@ -1,4 +1,4 @@
-// Integration Test: INSERT with defaults - NOT NULL columns with DEFAULT can be omitted
+// Integration Test: INSERT with defaults - NOT NULL columns with DEFAULT can be omitted (DML-4)
 // Integration Test: INSERT with DEFAULT columns
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"

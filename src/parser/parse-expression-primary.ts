@@ -14,7 +14,7 @@ import type {
 } from "../lexer/sql-lexer.ts"
 import type { ParseCallArgs, ParseOptionalOverClause } from "./parse-function-call.ts"
 import type { ParseParenScalarSelect } from "./parse-select-subquery.ts"
-import type { SqlCastTypeNorm } from "./resolve-cast.ts"
+import type { CastGivesText, SqlCastTypeNorm } from "./resolve-cast.ts"
 import type { MaximalIdentChain } from "./resolve-expression.ts"
 import type { SkipBracketedUntil, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type { ExprParseEnv, ScalarIdentParts, ScalarExprAst } from "./parse-expression-ast.ts"
@@ -31,7 +31,7 @@ import type {
 	ParseArithTailAfterFirstScalarUntyped,
 } from "./parse-expression-arith.ts"
 
-export type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: "string" }
+export type ScalarAstNonNumericForMulHead<Db, E extends ScalarExprAst> = E extends { kind: "string" }
 	? true
 	: E extends { kind: "true" }
 		? true
@@ -40,27 +40,27 @@ export type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends {
 			: E extends { kind: "sql_null" }
 				? true
 				: E extends { kind: "neg"; inner: infer I extends ScalarExprAst }
-					? ScalarAstNonNumericForMulHead<I>
+					? ScalarAstNonNumericForMulHead<Db, I>
 					: E extends {
 								kind: "pg_cast"
 								expr: infer Ic extends ScalarExprAst
 								type_parts: infer Pc extends readonly string[]
 						  }
 						? SqlCastTypeNorm<Pc> extends infer Nc extends string
-							? Nc extends "text" | "varchar" | "character varying" | "char"
+							? CastGivesText<Db, Nc> extends true
 								? true
-								: ScalarAstNonNumericForMulHead<Ic>
-							: ScalarAstNonNumericForMulHead<Ic>
+								: ScalarAstNonNumericForMulHead<Db, Ic>
+							: ScalarAstNonNumericForMulHead<Db, Ic>
 						: E extends {
 									kind: "sql_cast"
 									expr: infer Ics extends ScalarExprAst
 									type_parts: infer Pcs extends readonly string[]
 							  }
 							? SqlCastTypeNorm<Pcs> extends infer Ncs extends string
-								? Ncs extends "text" | "varchar" | "character varying" | "char"
+								? CastGivesText<Db, Ncs> extends true
 									? true
-									: ScalarAstNonNumericForMulHead<Ics>
-								: ScalarAstNonNumericForMulHead<Ics>
+									: ScalarAstNonNumericForMulHead<Db, Ics>
+								: ScalarAstNonNumericForMulHead<Db, Ics>
 							: E extends { kind: "exists_subquery" }
 								? true
 								: E extends { kind: "in_subquery" }
@@ -349,7 +349,7 @@ export type ParseScalarExprUntypedNonIdent<Tokens extends ParserMonad, Env exten
 		? E0 extends DbtyperErrorShape
 			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
-				? ScalarAstNonNumericForMulHead<E0> extends true
+				? ScalarAstNonNumericForMulHead<Env0["db"], E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
 							? SkipFailedExpressionWithEnv<

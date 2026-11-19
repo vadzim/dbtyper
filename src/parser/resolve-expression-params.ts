@@ -153,7 +153,7 @@ export type ParamProbeAt<
 			? [K] extends [never]
 				? never
 				: K extends string | number
-					? ResolveCastFromShape<SqlText, SqlCastTypeNorm<P>> extends infer S extends SqlTypeShape
+					? ResolveCastFromShape<Db, SqlText, SqlCastTypeNorm<P>> extends infer S extends SqlTypeShape
 						? ParamProbeFound<K, S>
 						: never
 					: never

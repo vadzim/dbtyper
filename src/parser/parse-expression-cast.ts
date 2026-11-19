@@ -1,7 +1,7 @@
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
-import type { CastPgOnlyTypeError, CastTypeParts } from "./resolve-cast.ts"
+import type { CastPgOnlyTypeError } from "./resolve-cast.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type { ExprParseEnv, ScalarExprAst } from "./parse-expression-ast.ts"
 import type { ParseOrScalarUntyped } from "./parse-expression-bool.ts"
@@ -81,10 +81,7 @@ export type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends Expr
 																				{
 																					kind: "sql_cast"
 																					expr: Inner
-																					type_parts: CastTypeParts<
-																						Env2["db"],
-																						Parts
-																					>
+																					type_parts: Parts
 																				},
 																				Env2,
 																			]
