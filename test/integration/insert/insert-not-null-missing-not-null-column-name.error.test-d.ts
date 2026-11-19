@@ -1,4 +1,4 @@
-// Integration Test: INSERT NOT NULL validation - missing NOT NULL column 'name'
+// Integration Test: INSERT NOT NULL validation - missing NOT NULL column 'name' (DML-4)
 // Integration Test: INSERT - require values for NOT NULL columns without defaults
 import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
