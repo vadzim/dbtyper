@@ -883,6 +883,11 @@ const errors = {
 		code: 2405,
 		msg: ["cannot infer the type of parameter ", "; use CAST(", " AS …)"],
 	},
+	// Internal (PARAM-14): never shown; the probe run of src/core/param-probe.ts reads a parameter that the SQL uses
+	PARAMETER_PROBE_READ: {
+		code: 2406,
+		msg: ["internal: a parameter was read"],
+	},
 
 	// Type System Errors
 	// Type Compatibility

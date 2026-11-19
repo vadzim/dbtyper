@@ -1,4 +1,4 @@
-// CORE-13, STMT-18: no rows, so the result is an empty row list
+// CORE-13, STMT-18: TRUNCATE is a skipped statement: the result is unknown (SCHEMA-6)
 // Integration Test: TRUNCATE without RETURNING
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
@@ -9,4 +9,4 @@ const _db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id 
 
 const _result = await _db.query(`truncate table users;`)
 
-expectType<typeof _result>(toBe<[]>())
+expectType<typeof _result>(toBe<unknown>())

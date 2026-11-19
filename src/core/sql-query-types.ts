@@ -5,7 +5,7 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
 import type { ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
+import type { SqlSelectResultTs, IsDdlStatement } from "./sql-select-result-helper.ts"
 import type { DeriveQueryParams } from "./param-probe.ts"
 import type { ParserSyntaxOf } from "./dialect.ts"
 import type { DriverConfig, ParamsDriverConfig } from "./sql-driver.ts"
@@ -31,17 +31,19 @@ type ParamKeyDisplay<K> = K extends `${infer I extends number}` ? `$${Inc<I>}` :
 type CheckParamValues<Config extends DriverConfig, Db, Params extends ExpressionParamsShape, Values> = {
 	[K in keyof Params & string]: K extends keyof Values
 		? Params[K] extends infer S extends SqlTypeShape
-			? [Values[K]] extends [
-					SqlTypeShapeToTs<
-						S,
-						Config extends { paramTypes: infer P extends Record<string, unknown> }
-							? P
-							: Config["scalarTypes"],
-						Db
-					>,
-				]
-				? never
-				: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
+			? S["type"] extends "param-unused"
+				? never // PARAM-14
+				: [Values[K]] extends [
+							SqlTypeShapeToTs<
+								S,
+								Config extends { paramTypes: infer P extends Record<string, unknown> }
+									? P
+									: Config["scalarTypes"],
+								Db
+							>,
+					  ]
+					? never
+					: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
 			: never
 		: never
 }[keyof Params & string] extends infer E
@@ -111,7 +113,10 @@ export type QueryReturnType<
 				Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"],
 				string
 			>
-			? []
+			? // SCHEMA-6, STMT-Q5: DDL or a skipped statement last: `unknown`; DML without RETURNING: `[]` (CORE-13)
+				IsDdlStatement<Db, Stmt, Params, ParserSyntaxOf<Config>> extends true
+				? unknown
+				: []
 			: unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
 	: unknown
