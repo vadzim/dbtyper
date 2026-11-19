@@ -199,6 +199,23 @@ const errors = {
 		msg: ["", " is not supported in migrations"],
 	},
 
+	// Unknown leading word of a statement (STMT-19)
+	UNKNOWN_STATEMENT: {
+		code: 1930,
+		msg: [
+			"Unknown statement keyword ",
+			". If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
+		],
+	},
+	UNKNOWN_STATEMENT_DID_YOU_MEAN: {
+		code: 1931,
+		msg: [
+			"Unknown statement keyword ",
+			"; did you mean ",
+			"? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
+		],
+	},
+
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {

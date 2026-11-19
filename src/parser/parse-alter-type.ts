@@ -7,7 +7,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedQualifiedName } from "./skip-statement.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement, ParseSkipStatement } from "./skip-statement.ts"
 import type { JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
 export type ParseAlterType<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
@@ -50,7 +50,7 @@ type ParseAlterTypeQualified<Tokens extends ParserMonad, Db extends JsqlDatabase
 			? IfExists extends true
 				? JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
 					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
-					: [R, Db, null]
+					: ParseSkipStatement<R, Db> // IF EXISTS and absent: the rest of the statement is stepped over
 				: JsqlDbGetEnum<Db, Sch, Typ> extends infer Values extends readonly string[]
 					? ParseAlterTypeAction<R, Db, Sch, Typ, Values>
 					: SkipFailedExpression<
