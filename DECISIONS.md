@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-19 SQLite example apps (#122, track A; RUN-25)
+
+- **Two examples, same shape** as `examples/typed-postgres`: `examples/typed-sqlite-node` (`node:sqlite`) and `examples/typed-sqlite-better` (better-sqlite3). Migration modules (`migrations/*.do.*.js`) feed both the type chain (`exampleDb`) and a 20-line runtime runner (`src/migrate.ts`, `PRAGMA user_version` as the applied count); no migration library, since SQLite needs none.
+- **Wiring.** `test:ci` runs `npm test` of each (build of the root package if `dist/` is missing, typecheck, `node --test`, prettier), which includes the example typecheck; `test:verbose` is unchanged (nothing needs a server).
+- **Runtime import of `dbtyper`** goes through `dist/`, so the example `test` script builds the root once (`build:lib`); types resolve to sources through `paths`.
+- **Found, not fixed:** on a table with `INTEGER PRIMARY KEY`, a bare `rowid` result column is named after the key at runtime (`id`) but typed `rowid`. The examples alias it (`rowid as rid`). Also `node:sqlite` rows have a null prototype.
+
 ## 2026-11-18 PostgreSQL function catalog, JSON and regex operators, data-modifying CTEs (#91, track A; PGT-23…PGT-34; one function requirement removed)
 
 - **Catalog as data, like SQLite's (#76).** `PostgresFunctions` (src/parser/postgres-functions.ts): one row per function,

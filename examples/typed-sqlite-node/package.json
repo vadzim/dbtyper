@@ -1,0 +1,22 @@
+{
+	"name": "@dbtyper/example-sqlite-node",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"dbtyper": "file:../.."
+	},
+	"devDependencies": {
+		"prettier": "^3.8.1",
+		"tsx": "^4.19.4"
+	},
+	"scripts": {
+		"build:lib": "[ -f ../../dist/src/index.js ] || npm --prefix ../.. run build",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"format:check": "prettier --check .",
+		"test": "npm run build:lib && npm run typecheck && node --test \"test/**/*.test.ts\" && npm run format:check",
+		"demo": "npm run build:lib && tsx src/demo.ts"
+	},
+	"engines": {
+		"node": ">=22.13"
+	}
+}
