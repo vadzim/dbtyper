@@ -337,7 +337,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   SQLite config; it is type-level only: the user's client must parse int8 to BigInt itself.
 - **Parameters**: `PostgresParamTypeMap` (the existing `paramTypes` field) keeps `bigint`/`numeric`/`decimal` values accepting
   `string | number | bigint`, so existing inserts keep compiling; the other PGT-17 widenings stay with the params issue.
-- **Not done / notes**: PGT-35's run against a real PostgreSQL (no Docker here) and the README note are left; the
+- **Not done / notes**: PGT-35 was later run against a real PostgreSQL in 7a48e96 (feat/a-pgt35, opt-in `DBTYPER_PG_URL`), with the README note; the
   recursive `JsonValue` is compared by assignability in tests (the invariant check is too deep). Cost: +0.03% instantiations
   (9.825M -> 9.828M); the new type test adds 0.13M.
 
