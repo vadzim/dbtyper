@@ -47,7 +47,7 @@ type ValidateMutationValueBySql<
 			: true
 		: SameComparisonClass<Val, ColSql, ValAst> extends true
 			? true
-			: DialectFact<Db, "typeNames"> extends "affinity"
+			: DialectFact<Db, "declaredTypes"> extends "affinity"
 				? // SQLT-43: SQLite would coerce; dbtyper names the column's storage class instead
 					FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColSql["type"]>]>
 				: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
