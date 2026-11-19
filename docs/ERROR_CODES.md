@@ -264,10 +264,10 @@ SQLite-specific codes (SQLT-18, SQLT-21, SQLT-24, SQLT-26; #70):
 
 Unknown statements (STMT-19; both dialects):
 
-| Code | ID                              | Message                                                                                                          |
-| ---- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 1930 | UNKNOWN_STATEMENT               | Unknown statement keyword {word}. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
-| 1931 | UNKNOWN_STATEMENT_DID_YOU_MEAN  | Unknown statement keyword {word}; did you mean {keyword}? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+| Code | ID                             | Message                                                                                                                                   |
+| ---- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 1930 | UNKNOWN_STATEMENT              | Unknown statement keyword {word}. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                         |
+| 1931 | UNKNOWN_STATEMENT_DID_YOU_MEAN | Unknown statement keyword {word}; did you mean {keyword}? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
 
 **Example:** SQLite chain, `select id::text from users` →
 `error [dbtyper:1900]: \`::\` cast is PostgreSQL-only; this database is SQLite. Use CAST(x AS TEXT)`
@@ -313,11 +313,11 @@ const query2 = `INSERT INTO users VALUES (1)` as const
 
 ### 3900-3999: DDL - CREATE VIEW
 
-| Code | ID                                         | Message                                                                  |
-| ---- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| 3905 | EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW       | Expected `not` after `IF` in CREATE VIEW                                 |
-| 3906 | EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW | Expected `exists` after `IF NOT` in CREATE VIEW                          |
-| 3907 | VIEW_COLUMN_LIST_MISMATCH                  | CREATE VIEW {name}: the column list has a different number of columns than the SELECT |
+| Code | ID                                          | Message                                                                               |
+| ---- | ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 3905 | EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW        | Expected `not` after `IF` in CREATE VIEW                                              |
+| 3906 | EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW | Expected `exists` after `IF NOT` in CREATE VIEW                                       |
+| 3907 | VIEW_COLUMN_LIST_MISMATCH                   | CREATE VIEW {name}: the column list has a different number of columns than the SELECT |
 
 ### 2200-2299: Resolution - Table/Schema Errors
 
