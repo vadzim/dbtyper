@@ -123,3 +123,23 @@ export type SqliteStrictTypeNames = "int" | "integer" | "real" | "text" | "blob"
 
 /** SQLT-15: the names of the rowid pseudo-columns. */
 export type SqliteRowidNames = "rowid" | "oid" | "_rowid_"
+
+/** Words that start a skipped statement of both dialects (STMT-18; the second word of CREATE/ALTER/DROP is not checked). */
+export type CommonSkippedStatementKeywords = readonly [
+	"grant",
+	"revoke",
+	"truncate",
+	"set",
+	"reset",
+	"show",
+	"vacuum",
+	"analyze",
+	"explain",
+	"begin",
+	"commit",
+	"rollback",
+	"savepoint",
+	"release",
+	"reindex",
+	"values",
+]
