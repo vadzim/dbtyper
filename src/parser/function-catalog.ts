@@ -1,5 +1,6 @@
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { Nullable, SqlArray, SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
+import type { OtherDialectTitleOf } from "../core/dialect.ts"
 import type { PostgresFunctions, PostgresSqliteOnlyFunctions } from "./postgres-functions.ts"
 import type { SqliteFunctions, SqlitePgOnlyFunctions } from "./sqlite-functions.ts"
 
@@ -22,7 +23,7 @@ import type { SqliteFunctions, SqlitePgOnlyFunctions } from "./sqlite-functions.
  */
 
 /** The data table of a dialect. */
-type CatalogOf<C extends string> = C extends "sqlite" ? SqliteFunctions : PostgresFunctions
+type CatalogOf<C extends string> = C extends "affinity" ? SqliteFunctions : PostgresFunctions
 
 type CatalogKey<Cat, L extends string, N extends number> = `${L}/${N}` extends keyof Cat
 	? `${L}/${N}`
@@ -132,12 +133,12 @@ export type CatalogArityError<Row, Args extends readonly unknown[]> = Row extend
 	: null
 
 /** The hint table of the other dialect: names it has and this one lacks, with a replacement ("" for none). */
-export type OtherDialectHints<C extends string> = C extends "sqlite"
+export type OtherDialectHints<C extends string> = C extends "affinity"
 	? SqlitePgOnlyFunctions
 	: PostgresSqliteOnlyFunctions
 
 /** How messages name the other dialect. */
-export type OtherDialectTitle<C extends string> = C extends "sqlite" ? "PostgreSQL" : "SQLite"
+export type OtherDialectTitle<C extends string> = OtherDialectTitleOf<C>
 
 /**
  * CORE-6: the SQL type a parameter gets as argument `Index` of a call; `never` when the row gives none. `"peer"`
@@ -363,7 +364,7 @@ type PostgresRowResult<Row, Args extends readonly SqlTypeShape[]> = Row extends 
 	: never
 
 /** The result of a row of dialect `C` for resolved argument types. */
-export type CatalogRowResult<C extends string, Row, Args extends readonly SqlTypeShape[]> = C extends "sqlite"
+export type CatalogRowResult<C extends string, Row, Args extends readonly SqlTypeShape[]> = C extends "affinity"
 	? SqliteRowResult<Row, Args>
 	: PostgresRowResult<Row, Args>
 

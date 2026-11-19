@@ -2,6 +2,11 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-19 Dialect facts named for rules (#124, track A; DLCT-4, DLCT-5)
+
+- **DLCT-4.** Fact values no longer carry an engine name: `functionCatalog` and `operators` are `"typed"` (PostgreSQL: result types computed from the argument types) or `"affinity"` (SQLite: the data tables with storage-class results); no file outside `src/core/dialect.ts` compares a fact to `"sqlite"`/`"postgres"`. The name of "the other engine" in the other-dialect function error is derived from the `title` column (`OtherDialectTitleOf`), not written next to the condition.
+- **DLCT-5.** The fact `typeNames` is now `declaredTypes` (`"named"`: a declared name is the type; `"affinity"`: it only decides an affinity key, `SqliteTypeKey`), so the type-name table is only reached through dialect.ts names. The cast, column-type and comparison rules stay single (`ResolveCastForDialect`, `DialectTypeName`, `ParseSqlType`), each reading that one fact. Not done: the PostgreSQL-named cast table (`ResolveCastFromShape`) is not rewritten as data over the type-name table; the SQLite path still bypasses it by affinity key. The Check line passes by the grep, but the rule's deeper intent (no rule written in one engine's names) is only partly met.
+
 ## 2026-11-19 SQLite example apps (#122, track A; RUN-25)
 
 - **Two examples, same shape** as `examples/typed-postgres`: `examples/typed-sqlite-node` (`node:sqlite`) and `examples/typed-sqlite-better` (better-sqlite3). Migration modules (`migrations/*.do.*.js`) feed both the type chain (`exampleDb`) and a 20-line runtime runner (`src/migrate.ts`, `PRAGMA user_version` as the applied count); no migration library, since SQLite needs none.

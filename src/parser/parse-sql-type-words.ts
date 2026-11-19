@@ -61,7 +61,7 @@ type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
  * SQLite chain gives the other-dialect error instead (with a hint) .
  */
 type DialectTypeName<Db, T extends string> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? T extends "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
 			? DialectOnlyError<"dialect:sqlite", "pg-serial">
 			: T extends keyof PgOnlyTypeNames
@@ -188,7 +188,7 @@ export type ParseSqlType<
 	KeepDeclared extends boolean = false,
 	Schema extends string = Db extends { defaultSchema: infer D extends string } ? D : "",
 > =
-	DialectFact<Db, "typeNames"> extends "named"
+	DialectFact<Db, "declaredTypes"> extends "named"
 		? PeekToken<Tokens> extends TokenIdent<infer Q extends string>
 			? Lowercase<Q> extends "collate"
 				? ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
@@ -254,7 +254,7 @@ type ParseUnqualifiedSqlType<
  * Only PostgreSQL chains have named types; a name with parameters or no match stays as parsed.
  */
 export type ResolveUserType<Db, Schema extends string, Base extends SqlTypeShape> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? [Base, false]
 		: Db extends JsqlDatabaseShape
 			? Base["arg"] extends null

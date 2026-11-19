@@ -33,7 +33,7 @@ export type ResolveCustomOp<
 					? Rv
 					: Lv extends SqlTypeShape
 						? Rv extends SqlTypeShape
-							? DialectFact<Db, "operators"> extends "sqlite"
+							? DialectFact<Db, "operators"> extends "affinity"
 								? Op extends keyof SqliteOperators
 									? SqliteRowResult<SqliteOperators[Op], [Lv, Rv]>
 									: ResolveBuiltinCustomOp<Op, Lv, Rv>

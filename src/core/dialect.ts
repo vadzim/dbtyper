@@ -36,16 +36,16 @@ export type DialectName = keyof Dialects
  * of ANOTHER dialect uses a construct that only this dialect has (DSEL-7: own codes, distinct from syntax errors);
  * `defaultSchemaExists`: a new chain starts with its default schema already there (SQLite has no CREATE SCHEMA,
  * SQLT-25; the `main`/`temp` naming is the SQLite names issue's), or must create it first (PostgreSQL, SCHEMA-4).
- * Type facts (SQLT-6…SQLT-17, #67): `typeNames` "named" = a declared type name is the type (PostgreSQL), "affinity" =
+ * Type facts (SQLT-6…SQLT-17, #67): `declaredTypes` "named" = a declared type name is the type (PostgreSQL), "affinity" =
  * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
  * SQLite DDL facts (SQLT-18…SQLT-26, #70), one flag: `ddl`: `main`/`temp` instead of schemas, CREATE TEMP, short `AS (…)`
  * generated columns, `ON CONFLICT` on constraints, full column definitions in ADD COLUMN with its restrictions, trigger
  * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
- * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "postgres" = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "sqlite" = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
- * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "postgres" = the PostgreSQL operator typing of the
- * expression parser, "sqlite" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
+ * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "typed" (PostgreSQL) = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "affinity" (SQLite) = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
+ * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "typed" = the PostgreSQL operator typing of the
+ * expression parser, "affinity" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
  * operators exist (`REGEXP` is always error 1917 until users can declare functions, SQLT-34, FN-Q1); `isOperand`: what may follow `IS [NOT]`
  * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
  * `LIMIT offset, count` (SQLT-37).
@@ -66,13 +66,13 @@ export type Dialects = {
 		title: "PostgreSQL"
 		onlyError: Errors["POSTGRES_ONLY_SYNTAX"]
 		defaultSchemaExists: false
-		typeNames: "named"
+		declaredTypes: "named"
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
 		ddl: false
-		functionCatalog: "postgres"
-		operators: "postgres"
+		functionCatalog: "typed"
+		operators: "typed"
 		globRegexp: false
 		numberTyping: "uniform"
 		datetimeArithmetic: true
@@ -96,13 +96,13 @@ export type Dialects = {
 		title: "SQLite"
 		onlyError: Errors["SQLITE_ONLY_SYNTAX"]
 		defaultSchemaExists: true
-		typeNames: "affinity"
+		declaredTypes: "affinity"
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
 		ddl: true
-		functionCatalog: "sqlite"
-		operators: "sqlite"
+		functionCatalog: "affinity"
+		operators: "affinity"
 		globRegexp: true
 		numberTyping: "affinity"
 		datetimeArithmetic: false
@@ -291,6 +291,14 @@ export type MatchDialectPhrase<
 /** The dialect(s) `Syntax` names: one name, a union of both, or `never` for none. */
 type SyntaxDialect<Syntax extends string> =
 	Extract<Syntax, DialectFlags> extends `dialect:${infer D extends DialectName}` ? D : never
+
+/**
+ * DLCT-4: how messages name the dialect(s) whose `functionCatalog` fact differs from `Catalog`, i.e. "the other engine"
+ * of a chain whose catalog is `Catalog`.
+ */
+export type OtherDialectTitleOf<Catalog extends string> = {
+	[D in DialectName]: Dialects[D]["functionCatalog"] extends Catalog ? never : Dialects[D]["title"]
+}[DialectName]
 
 /** The dialect of a database state; PostgreSQL when the state names none (see {@link DialectFact}). */
 export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : "postgres"
