@@ -77,12 +77,7 @@ type PeerOperandType<
 						? PeerOperandType<T, Db, Scope, Params, Numeric>
 						: Numeric extends true
 							? R["type"] extends
-									| "integer"
-									| "bigint"
-									| "smallint"
-									| "numeric"
-									| "real"
-									| "double precision"
+									"integer" | "bigint" | "smallint" | "numeric" | "real" | "double precision"
 								? R
 								: PeerOperandType<T, Db, Scope, Params, Numeric>
 							: R

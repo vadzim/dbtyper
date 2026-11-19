@@ -2,6 +2,12 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-19 Runtime robustness: stream binding, migration caller detection, nest test in CI (#137, track A; RUN-4, RUN-12, RUN-17)
+
+- **`stream`** is called as `db.stream(...)` on the driver object (like `query`), so a class-based driver keeps `this`.
+- **RUN-4.** `migrationCallerFile(stack)` (src/core/sql-migrations.ts) returns the first stack frame outside dbtyper's own `src/`/`dist/` folder and `node:` internals; frames with or without parentheses, `file://` URLs or paths, any extension. `migration()` under `TEST_MIGRATIONS` accepts `.js`, `.mjs`, `.cjs` and throws for anything else (`.ts` under tsx). Not solved: with `--enable-source-maps` a compiled `.js` may be reported as its `.ts` source.
+- **RUN-17** test is wired into `test:ci` as `node --import tsx --test packages/dbtyper-nest/test/*.test.ts`.
+
 ## 2026-11-19 Type-name table for casts, column types, value checks (#128, #135, track A; DLCT-5)
 
 - **One table in `src/core/dialect.ts`.** `DialectCastRow<Db, N>` gives `[result type name, guard]` for a written type name: PostgreSQL reads the data table `NamedCastRows` (an unlisted name is its own type), SQLite gives the type of the name's affinity (`SqliteTypeKey`, now only used inside dialect.ts). `ResolveCastFromShape<Db, Ev, N>` is the single cast rule over that row (guards "no-boolean" / "no-number" give 4503 / 4504); `ResolveCastForDialect` has no dialect branch. `DialectColumnTypeName` (column types, SQLT-17 other-dialect errors) and `ValueMismatchError` (INSERT/UPDATE value check, SQLT-43 vs the PostgreSQL error) moved there too. `CastTypeParts` is gone: a cast AST keeps the written type words in both dialects, the dialect is applied once, where the type is resolved.
@@ -343,7 +349,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
   SQLite config; it is type-level only: the user's client must parse int8 to BigInt itself.
 - **Parameters**: `PostgresParamTypeMap` (the existing `paramTypes` field) keeps `bigint`/`numeric`/`decimal` values accepting
   `string | number | bigint`, so existing inserts keep compiling; the other PGT-17 widenings stay with the params issue.
-- **Not done / notes**: PGT-35's run against a real PostgreSQL (no Docker here) and the README note are left; the
+- **Not done / notes**: PGT-35 was later run against a real PostgreSQL in 7a48e96 (feat/a-pgt35, opt-in `DBTYPER_PG_URL`), with the README note; the
   recursive `JsonValue` is compared by assignability in tests (the invariant check is too deep). Cost: +0.03% instantiations
   (9.825M -> 9.828M); the new type test adds 0.13M.
 
@@ -466,3 +472,7 @@ blob`, plus `boolean` (SQLT-9: the type map says `number`, `bigint` in big-integ
 ## #118: empty OVER () and window frames are one shared rule
 
 PostgreSQL accepts `OVER ()` and `ROWS|RANGE|GROUPS` frames exactly like SQLite, so the `windowFrames` dialect fact (SQLT-51) is removed and `CloseWindowOrError` (parse-function-call.ts) accepts them in every dialect. PGT-3 Check now runs through the typed `query`.
+
+## #138: PostgreSQL starts with `public` (SCHEMA-27, SCHEMA-28)
+
+The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("public" | "main"): the schemas a new chain starts with. PostgreSQL's initial database is `{ defaultSchema: DS, schemas: { public } }` also when `defaultSchema` names another schema (that one is still created by a migration, SCHEMA-3). `create schema public;` needed no new code: the existing "schema already exists" error (3200) applies, and `if not exists` is the existing no-op. No new error code.

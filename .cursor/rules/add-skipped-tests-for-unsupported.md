@@ -20,7 +20,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 
 async function testUpdateWithFrom() {
 	const db = sqlMigrations({ driver: mockDriver })
-		.apply(`create schema public;`)
 		.apply(`create table users (id text, name text);`)
 		.apply(`create table profiles (user_id text, bio text);`)
 		.database()

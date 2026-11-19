@@ -7,7 +7,6 @@ import type postgres from "postgres"
 declare const client: ReturnType<typeof postgres>
 
 const db = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
-	.apply(`create schema public;`)
 	.apply(`create function f() returns int as $$ select 1; $$ language sql; create table t2 (x int);`)
 	.database()
 

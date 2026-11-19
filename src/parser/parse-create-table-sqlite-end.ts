@@ -13,11 +13,7 @@ import type { ColumnDef, PkKind, TableOptions } from "./parse-create-table.ts"
 import type { ColumnsFromStack } from "./parse-create-table-merge.ts"
 
 export type TableConstraintStart =
-	| TokenKey<"constraint">
-	| TokenKey<"primary">
-	| TokenKey<"unique">
-	| TokenKey<"check">
-	| TokenKey<"foreign">
+	TokenKey<"constraint"> | TokenKey<"primary"> | TokenKey<"unique"> | TokenKey<"check"> | TokenKey<"foreign">
 
 /**
  * SQLite: after the column list `)`: the table options (`STRICT`, `WITHOUT ROWID`, comma separated, SQLT-18), the

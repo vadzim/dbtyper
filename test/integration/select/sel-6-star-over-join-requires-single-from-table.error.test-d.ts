@@ -5,7 +5,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table users (id integer not null, name text not null);`)
 	.apply(`create table orders (id integer not null, user_id integer not null, total integer not null);`)
 	.database()

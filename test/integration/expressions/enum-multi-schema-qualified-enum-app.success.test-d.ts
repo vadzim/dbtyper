@@ -4,7 +4,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create schema app;`)
 	.apply(`create type public.status as enum ('active', 'inactive');`)
 	.apply(`create type app.status as enum ('draft', 'published');`)

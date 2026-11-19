@@ -12,7 +12,6 @@ type SmallDriverConfig = {
 const smallDriver = createDriver<SmallDriverConfig>({ query: async () => [] })
 
 const db = sqlMigrations({ driver: smallDriver })
-	.apply(`create schema public;`)
 	.apply(`create table t (id integer not null, flag boolean not null);`)
 	.database()
 

@@ -4,7 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+const migrations = sqlMigrations({ driver: mockDriver })
 
 // ❌ ERROR: Expected AS or dot, but got something else
 const query = `create view myview invalid select 1;` as const

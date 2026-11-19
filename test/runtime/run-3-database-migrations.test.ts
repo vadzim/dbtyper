@@ -9,7 +9,7 @@ const mockDriver = createDriver<MockDriverConfig>({ query: async () => [] })
 
 describe("RUN-3 database.migrations and defaultSchema", () => {
 	it("RUN-3: sources unchanged, paths are the names, empty when omitted", () => {
-		const a = `create schema public;`
+		const a = `create schema app;`
 		const b = `  create table  t (id integer);  `
 		const db = sqlMigrations({ driver: mockDriver }).apply(a, "001").apply(b).database()
 		assert.deepEqual(db.migrations, [

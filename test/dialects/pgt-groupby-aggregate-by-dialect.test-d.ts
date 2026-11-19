@@ -10,7 +10,6 @@ const sqliteDb = sqlMigrations({ driver: sqliteDriver })
 	.apply(`create table t (id integer primary key, name text not null, age integer not null);`)
 	.database()
 const pgDb = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table t (id integer primary key, name text not null, age integer not null);`)
 	.database()
 

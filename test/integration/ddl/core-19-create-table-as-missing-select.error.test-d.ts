@@ -4,7 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const migrations = sqlMigrations({ driver: mockDriver }).apply(`create schema public;`)
+const migrations = sqlMigrations({ driver: mockDriver })
 
 // ❌ ERROR: CORE-19 nothing to select
 const query = `create table t as values (1);` as const

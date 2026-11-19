@@ -6,7 +6,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: integer array
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table scores (id integer not null, nums integer[] not null);`)
 	.database()
 

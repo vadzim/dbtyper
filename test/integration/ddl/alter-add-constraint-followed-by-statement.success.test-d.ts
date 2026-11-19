@@ -4,7 +4,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table t (id int not null, n int not null);`)
 	.apply(`alter table t add unique (id); alter table t add unique (id);`)
 	.apply(`alter table t add primary key (id); select 1 as x;`)
