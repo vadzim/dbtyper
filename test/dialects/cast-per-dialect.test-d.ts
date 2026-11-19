@@ -33,3 +33,8 @@ const _sqf = await sqliteDb.query(
 	`select cast(age as real) as a, cast(age as float4) as b, cast(age as float8) as c, cast(age as double precision) as d from t`,
 )
 expectType<typeof _sqf>(toBe<Array<{ a: number; b: number; c: number; d: number }>>())
+
+// SQLT-12: a schema-qualified cast type is classified by its last part (main.int -> integer affinity;
+// main.foo -> unknown name -> the SQLite default, numeric affinity)
+const _sqq = await sqliteDb.query(`select cast(name as main.int) as a, cast(name as main.foo) as b from t`)
+expectType<typeof _sqq>(toBe<Array<{ a: number; b: number }>>())
