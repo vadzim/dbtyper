@@ -51,6 +51,22 @@ describe("Error codes are covered by tests", async () => {
 		})
 	}
 
+	it("no code listed as retired in docs/ERROR_CODES.md is active (EREG-3)", async () => {
+		const doc = await readFile(join(process.cwd(), "docs", "ERROR_CODES.md"), "utf-8")
+		const active = new Set(activeCodes.map(c => c.code))
+		const reused: number[] = []
+		// Mapping lines: "- 1201, 1302, 1800-1802 → 1105 (NAME)": everything left of the arrow is retired.
+		for (const line of doc.split("\n")) {
+			const m = /^- ([\d, -]+) → \d{4}\b/.exec(line)
+			if (!m) continue
+			for (const part of m[1]!.split(",")) {
+				const [from, to = from] = part.trim().split("-").map(Number)
+				for (let c = from!; c <= to!; c++) if (active.has(c)) reused.push(c)
+			}
+		}
+		assert.deepStrictEqual(reused, [], "retired codes must never be active again")
+	})
+
 	it("the allow-list names only active error codes", () => {
 		const active = new Set(activeCodes.map(c => c.code))
 		const unknown = [...untested].filter(c => !active.has(c))
