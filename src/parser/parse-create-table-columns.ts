@@ -59,8 +59,41 @@ type ParseOneColumn<
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer ColName extends string>
 		? ColName extends Stack[number][0]
 			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
-			: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
+			: Stack["length"] extends ColumnChunkEnd
+				? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName> extends infer R
+					? R
+					: never
+				: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
+
+/**
+ * #142: the column list is parsed by tail recursion, about 5 steps per column (more with constraints and
+ * DEFAULT), and TypeScript stops a tail recursion at 1000 steps: about 200 plain columns. Every 50 columns the rest
+ * of the list is parsed inside a nested (not tail) instantiation, which starts a new count: costs about one level of
+ * the instantiation depth (limit 100) per 50 columns, so about 1000 columns fit. Normal tables (under 50 columns)
+ * never take this branch.
+ */
+type ColumnChunkEnd =
+	| 50
+	| 100
+	| 150
+	| 200
+	| 250
+	| 300
+	| 350
+	| 400
+	| 450
+	| 500
+	| 550
+	| 600
+	| 650
+	| 700
+	| 750
+	| 800
+	| 850
+	| 900
+	| 950
+	| 1000
 
 export type ParseOneColumnAfterColName<
 	AfterColName extends ParserMonad,
