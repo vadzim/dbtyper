@@ -10,6 +10,12 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **Small behaviour note:** a SQLite cast to a schema-qualified type name (`main.foo`) is classified by its last part (like PostgreSQL's table lookup) instead of the whole dotted string.
 - **Cost:** `typecheck:test` 11,321,720 -> 11,334,725 instantiations (+0.1%).
 
+## 2026-11-19 Unknown leading word is an error (#139, track A; STMT-18, STMT-19)
+
+- **Lists as data** in src/parser/statement-keywords.ts (one skipped-keyword list per dialect, plus the parsed words); not yet in src/core/dialect.ts (#128 was in flight), move later. Beyond the spec's list the skipped sets also hold harmless real keywords (VALUES, TABLE, SAVEPOINT, RELEASE, PREPARE, EXECUTE, MERGE, PRAGMA ...), so no valid statement becomes an error. Only the first word is checked; a `(` first token (parenthesised query) is still skipped.
+- **Codes.** 1930 UNKNOWN_STATEMENT, 1931 UNKNOWN_STATEMENT_DID_YOU_MEAN. Suggestion = first known keyword one edit away (substitution, insertion, deletion, neighbour swap), words of 4+ letters only; a full edit-distance rule is too costly at type level (TLVL-4).
+- **Side fix.** `ALTER TYPE IF EXISTS missing ADD VALUE ...` returned without stepping over the rest of the statement; it only worked because the tail was skipped as a statement. It now skips explicitly.
+
 ## 2026-11-19 Dialect facts named for rules (#124, track A; DLCT-4, DLCT-5)
 
 - **DLCT-4.** Fact values no longer carry an engine name: `functionCatalog` and `operators` are `"typed"` (PostgreSQL: result types computed from the argument types) or `"affinity"` (SQLite: the data tables with storage-class results); no file outside `src/core/dialect.ts` compares a fact to `"sqlite"`/`"postgres"`. The name of "the other engine" in the other-dialect function error is derived from the `title` column (`OtherDialectTitleOf`), not written next to the condition.
