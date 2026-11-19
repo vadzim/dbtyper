@@ -26,7 +26,8 @@ type ParseFunctionArgsAccum<
 				: E extends ScalarExprAst
 					? PeekToken<R1> extends TokenKey<")">
 						? [SkipToken<R1>, readonly [...Acc, E], Env1]
-						: PeekToken<R1> extends TokenKey<"," | "from" | "for"> | TokenIdent<"for"> // `substring(s from 1 for 2)`, `trim(x from y)`
+						: PeekToken<R1> extends
+									TokenKey<"," | "from" | "for"> | TokenIdent<"for"> // `substring(s from 1 for 2)`, `trim(x from y)`
 							? ParseFunctionArgsAccum<SkipToken<R1>, Env1, readonly [...Acc, E]>
 							: SkipFailedExpressionWithEnv<
 									R1,

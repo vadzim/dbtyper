@@ -46,8 +46,7 @@ export type ResolveCustomOp<
 type PgJsonTypes = "json" | "jsonb"
 
 type ResolveBuiltinCustomOp<Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
-	| "->"
-	| "#>"
+	"->" | "#>"
 	? Lv["type"] extends PgJsonTypes
 		? Nullable<{ type: Lv["type"]; arg: null; nullable: false }> // PGT-24: the operand's json type, NULL when the key is missing
 		: SqlUnknown
@@ -211,8 +210,7 @@ export type ResolveScalarExprAstPair<
  * a `date`, `date - date` an `integer`. `never` for any other operands (the numeric rules apply).
  */
 type PgDatetimeArithmetic<Db, Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
-	| "add"
-	| "sub"
+	"add" | "sub"
 	? DialectFact<Db, "datetimeArithmetic"> extends true
 		? Lv["type"] extends "timestamp" | "timestamp with time zone" | "timestamp without time zone" | "date"
 			? Rv["type"] extends "interval"

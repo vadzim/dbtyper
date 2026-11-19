@@ -257,11 +257,7 @@ type ParseInsertAfterInto<
 
 /** The conflict-resolution words after `INSERT OR` / `UPDATE OR` (SQLT-39). */
 export type ConflictActionToken =
-	| TokenKey<"replace">
-	| TokenIdent<"abort">
-	| TokenIdent<"fail">
-	| TokenIdent<"ignore">
-	| TokenIdent<"rollback">
+	TokenKey<"replace"> | TokenIdent<"abort"> | TokenIdent<"fail"> | TokenIdent<"ignore"> | TokenIdent<"rollback">
 
 /** After `INSERT` (or `REPLACE`, which is `INSERT OR REPLACE`): `[OR action] INTO …`. */
 export type ParseInsert<

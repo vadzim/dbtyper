@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table items (id text not null);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table items (id text not null);`).database()
 
 // ❌ ERROR: Expected NULL after IS NOT
 const query = `select id from items where id is not invalid;` as const

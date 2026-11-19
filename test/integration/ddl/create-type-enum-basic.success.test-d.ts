@@ -5,6 +5,4 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // PGT-13: CREATE TYPE ... AS ENUM
 // ✅ SUCCESS: CREATE TYPE with enum values
 
-const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create type status as enum ('active', 'inactive', 'pending');`)
+const _db = sqlMigrations({ driver: mockDriver }).apply(`create type status as enum ('active', 'inactive', 'pending');`)

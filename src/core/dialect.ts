@@ -34,8 +34,9 @@ export type DialectName = keyof Dialects
 /**
  * One row per dialect. `title` is how messages name the engine; `onlyError` is the error raised when SQL of a chain
  * of ANOTHER dialect uses a construct that only this dialect has (DSEL-7: own codes, distinct from syntax errors);
- * `defaultSchemaExists`: a new chain starts with its default schema already there (SQLite has no CREATE SCHEMA,
- * SQLT-25; the `main`/`temp` naming is the SQLite names issue's), or must create it first (PostgreSQL, SCHEMA-4).
+ * `initialSchemas`: the schemas a new chain starts with: "public" = PostgreSQL's `public` (SCHEMA-27; a `defaultSchema`
+ * other than `public` must still be created, SCHEMA-3), "main" = SQLite's `main` (the default) and `temp` (no CREATE SCHEMA,
+ * SQLT-25).
  * Type facts (SQLT-6…SQLT-17, #67): `declaredTypes` "named" = a declared type name is the type (PostgreSQL), "affinity" =
  * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
@@ -65,7 +66,7 @@ export type Dialects = {
 	postgres: {
 		title: "PostgreSQL"
 		onlyError: Errors["POSTGRES_ONLY_SYNTAX"]
-		defaultSchemaExists: false
+		initialSchemas: "public"
 		declaredTypes: "named"
 		pkImpliesNotNull: true
 		rowidTables: false
@@ -95,7 +96,7 @@ export type Dialects = {
 	sqlite: {
 		title: "SQLite"
 		onlyError: Errors["SQLITE_ONLY_SYNTAX"]
-		defaultSchemaExists: true
+		initialSchemas: "main"
 		declaredTypes: "affinity"
 		pkImpliesNotNull: false
 		rowidTables: true
@@ -153,8 +154,7 @@ export type ParserSyntax = LexerFeatures | DialectFlags
 
 /** The parser syntax of a driver config: its lexer features plus its dialect flag (DSEL-1, DSEL-3). */
 export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: DialectName }> =
-	| Config["syntax"]
-	| DialectFlag<Config["dialect"]>
+	Config["syntax"] | DialectFlag<Config["dialect"]>
 
 /**
  * Constructs that exist in one engine only (DSEL-5, DSEL-6). `name` is how the message names the construct, `hint`

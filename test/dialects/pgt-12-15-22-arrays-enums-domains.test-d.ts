@@ -5,7 +5,6 @@ import { mockDriver } from "../test-utils/test-databases.ts"
 import type { DbtyperError } from "../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create type mood as enum ('sad', 'ok');`)
 	.apply(`create type other as enum ('x');`)
 	.apply(`create domain pos as integer not null check (value > 0);`)

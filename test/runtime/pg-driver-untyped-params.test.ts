@@ -16,10 +16,7 @@ function setup() {
 		},
 	}) as unknown as ReturnType<typeof postgres>
 	const driver = postgresSqlDriver({ sql })
-	const db = sqlMigrations({ driver })
-		.apply(`create schema public;`)
-		.apply(`create table users (id text not null, age integer);`)
-		.database()
+	const db = sqlMigrations({ driver }).apply(`create table users (id text not null, age integer);`).database()
 	return { sent, db, driver }
 }
 

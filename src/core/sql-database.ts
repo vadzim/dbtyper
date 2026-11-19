@@ -18,16 +18,11 @@ export type SqlDatabaseConfig<Driver extends SqlDriver<DriverConfigDraft> = SqlD
 	driver: Driver
 }
 
-type SqlDatabase<DefaultSchema extends string = "public"> = {
-	defaultSchema: DefaultSchema
-	schemas: {}
-}
-
-/** The schema a new chain starts from: empty, or with the default schema when the dialect has it built in. */
+/** The schemas a new chain starts with: those the dialect has built in (`initialSchemas`, SCHEMA-27, SQLT-25). */
 export type InitialDatabase<
 	Config extends DriverConfig,
 	DS extends string,
-> = Dialects[Config["dialect"]]["defaultSchemaExists"] extends true
+> = Dialects[Config["dialect"]]["initialSchemas"] extends "main"
 	? {
 			// SQLT-25: SQLite has no schemas, only `main` (the default) and `temp`
 			defaultSchema: "main"
@@ -38,7 +33,12 @@ export type InitialDatabase<
 			schemas: { [K in "main" | "temp" | (DS & never)]: JsqlCreateSchema }
 			dialect: Config["dialect"]
 		}
-	: SqlDatabase<DS>
+	: {
+			// SCHEMA-27: PostgreSQL has `public` from the start; another `defaultSchema` still needs CREATE SCHEMA
+			defaultSchema: DS
+			// #102 applies here too: the mapped form depends on `DS` (a plain literal costs far more instantiations per step)
+			schemas: { [K in "public" | (DS & never)]: JsqlCreateSchema }
+		}
 
 export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> = {
 	__db(): { [K in keyof Db]: Db[K] }

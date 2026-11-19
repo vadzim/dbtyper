@@ -8,10 +8,7 @@ import type { MockDriverConfig } from "../test-utils/test-databases.ts"
 describe("stream without driver.stream (RUN-12)", () => {
 	it("RUN-12: yields the rows of driver.query one by one", async () => {
 		const driver = createDriver<MockDriverConfig>({ query: async () => [{ id: "1" }, { id: "2" }] })
-		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
-			.apply(`create table users (id text);`)
-			.database()
+		const db = sqlMigrations({ driver }).apply(`create table users (id text);`).database()
 		const it = (await db.stream(`select id from users;`))[Symbol.asyncIterator]()
 		assert.deepEqual(await it.next(), { done: false, value: { id: "1" } })
 		assert.deepEqual(await it.next(), { done: false, value: { id: "2" } })
@@ -19,10 +16,7 @@ describe("stream without driver.stream (RUN-12)", () => {
 	})
 	it("RUN-12: a non-array query result rejects with the 3501 text", async () => {
 		const driver = createDriver<MockDriverConfig>({ query: async () => undefined as never })
-		const db = sqlMigrations({ driver })
-			.apply(`create schema public;`)
-			.apply(`create table users (id text);`)
-			.database()
+		const db = sqlMigrations({ driver }).apply(`create table users (id text);`).database()
 		await assert.rejects(
 			db.stream(`select id from users;`),
 			/stream\(\) requires a row-returning statement \(SELECT or RETURNING clause\)/,
