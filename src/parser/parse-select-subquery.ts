@@ -6,7 +6,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
+import type { FromItemsOnly, MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 
@@ -118,9 +118,10 @@ export type ParseParenDerivedSelect<
 	Db extends JsqlDatabaseShape,
 	OuterScope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Lateral extends boolean = false,
 > =
 	PeekToken<R1> extends TokenKey<"select">
-		? ParseSelectExpression<SkipToken<R1>, Db, Params, {}> extends [
+		? ParseSelectExpression<SkipToken<R1>, Db, Params, Lateral extends true ? FromItemsOnly<OuterScope> : {}> extends [
 				infer R2 extends ParserMonad,
 				infer _Db2 extends JsqlDatabaseShape,
 				infer Result,

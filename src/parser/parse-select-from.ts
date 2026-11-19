@@ -27,6 +27,8 @@ export type ParseFromTableRef<
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenKey<"(">
 				? ParseParenDerivedSelect<R1, Db, Scope, Params>
+				: Tok extends TokenKey<"lateral">
+					? ParseLateralDerived<R1, Db, Scope, Params>
 				: AsIdent<Tok> extends TokenIdent<infer A extends string>
 					? A extends FromFunctionName
 						? PeekToken<R1> extends TokenKey<"(">
@@ -40,6 +42,17 @@ export type ParseFromTableRef<
 						]
 			: never
 		: never
+
+/** `LATERAL (select …) alias` (PostgreSQL; the lexer rejects LATERAL in SQLite): the subquery sees the FROM items before it. */
+type ParseLateralDerived<
+	R1 extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> =
+	PeekToken<R1> extends TokenKey<"(">
+		? ParseParenDerivedSelect<SkipToken<R1>, Db, Scope, Params, true>
+		: [R1, FormatError<Errors["EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM"], []>, ParserRefErrorThirdSentinel]
 
 /** PGT-32: set-returning functions that may be a FROM item. */
 type FromFunctionName = "unnest" | "generate_series"
