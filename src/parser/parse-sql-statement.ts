@@ -1,4 +1,4 @@
-import type { PeekToken, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
+import type { PeekToken, RestOf, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
 import type { DialectFact, ParserSyntax } from "../core/dialect.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
@@ -106,7 +106,7 @@ type ApplyParsedStatementsInner<
 						Rest,
 						NewDB,
 						Params,
-						NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
+						NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult & { __at: RestOf<Tokens> }> : Error,
 						NewResult extends DbtyperErrorShape ? null : NewResult,
 						Inc<Depth>
 					>

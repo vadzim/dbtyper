@@ -1,5 +1,6 @@
 import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
 import type { DbtyperError, DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { ErrorPlace } from "./error-place.ts"
 import type { Inc } from "./type-utils.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
@@ -90,7 +91,7 @@ export type CheckSqlValid<
 		? FormatErrorText<PCode, PMsg>
 		: Params extends ExpressionParamsShape | null
 			? ApplyStatements<Db, Stmt, Params, ParserSyntaxOf<Config>>[1] extends DbtyperError<infer Code, infer Msg>
-				? FormatErrorText<Code, Msg>
+				? `${FormatErrorText<Code, Msg>}${ErrorPlace<Stmt, ApplyStatements<Db, Stmt, Params, ParserSyntaxOf<Config>>[1], Code, Msg>}`
 				: // CORE-14: a result column with no TypeScript mapping is an error, never `unknown`
 					SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
 					? Code extends Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"]

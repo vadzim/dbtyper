@@ -1,0 +1,1 @@
+{ "extends": "./tsconfig.json", "include": ["test/stress/sqlt-105-long-statement.test-d.ts"], "exclude": [] }

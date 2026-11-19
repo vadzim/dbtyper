@@ -25,6 +25,9 @@ export type EmptyTokenList = Buffer<TokenEot, "", string, number, DbtyperErrorSh
 
 export type PeekToken<M extends ParserMonad> = M[typeof tokenKey]
 
+/** Prototype (error positions): the text left to read; a suffix of the SQL, free to take. */
+export type RestOf<M extends ParserMonad> = M[typeof restKey]
+
 /**
  * Source spans (SQLT-28: a result key is the expression text as written). In a SQLite chain every token read carries
  * `from`, the text it was read from (the whitespace before it included), so the monad itself stays single-pass:
