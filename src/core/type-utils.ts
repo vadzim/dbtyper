@@ -8,6 +8,8 @@ type Counting<N extends number, Acc extends unknown[] = []> = Acc["length"] exte
  * `Inc<200>` is `undefined`: a caller that may pass a bigger number must check it (param-probe.ts shows `$n` with
  * it, so a statement with 200 or more positional parameters shows no number there).
  */
+// TLVL-4: bound 200 dodges TypeScript's tuple-length and instantiation-depth limits (see the paragraph above);
+// found by trial, checked by test/stress/migration-60-statements, params-30-parameters and the 2500-statement test.
 type Numbers = Counting<200>
 
 type IncData = Numbers extends [0, ...infer Rest] ? [...Rest, number] : never
@@ -33,6 +35,11 @@ export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never
 
 export type LastOf<T> = UnionToIntersection<T extends unknown ? () => T : never> extends () => infer R ? R : never
 
+/**
+ * TLVL-4: bound 21 = 0..20 error-message arguments (the largest `Tuple` that `ErrorArgs` builds). The limit dodged is
+ * tuple length / recursion depth of the recursive `Tuple` below; the number comes from commit 12bd3d2 (error-code
+ * types) and was not re-measured by a test or issue.
+ */
 export type TupleSize = Counting<21>[number]
 
 export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, Dec<N>>]

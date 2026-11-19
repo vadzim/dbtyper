@@ -34,7 +34,9 @@ export type NearestScopeKeysWithColumn<
 > =
 	ScopeKeysWithColumnAtDepth<Scope, Col, Counter["length"]> extends infer U
 		? [U] extends [never]
-			? Counter["length"] extends 8
+			? // TLVL-4: the search for the nearest enclosing level stops after 8 levels (SEL-24), a bound on the recursion
+				// depth (TS2589) while scopes nest; the number is a guess from commit a63073b, not measured by a test.
+				Counter["length"] extends 8
 				? never
 				: NearestScopeKeysWithColumn<Scope, Col, readonly [...Counter, 1]>
 			: U

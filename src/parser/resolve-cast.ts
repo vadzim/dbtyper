@@ -27,11 +27,11 @@ export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 
 /** SQLT-12: in a SQLite chain `CAST(x AS t)` gets the type of a column declared `t` (its affinity key, SQLT-6…SQLT-8). */
 export type CastTypeParts<Db, Parts extends readonly string[]> =
-	DialectFact<Db, "typeNames"> extends "affinity" ? readonly [SqliteTypeKey<SqlCastTypeNorm<Parts>>] : Parts
+	DialectFact<Db, "declaredTypes"> extends "affinity" ? readonly [SqliteTypeKey<SqlCastTypeNorm<Parts>>] : Parts
 
 /** SQLT-53: `CAST(x AS jsonb)` in a SQLite chain names the PostgreSQL-only type. */
 export type CastPgOnlyTypeError<Db, Parts extends readonly string[]> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? SqlCastTypeNorm<Parts> extends infer T extends keyof PgOnlyTypeNames
 			? DbDialectOnlyError<Db, PgOnlyTypeNames[T]>
 			: null
@@ -45,7 +45,7 @@ export type WithCastLabelCheck<Db, Cast, Ast> = Cast extends SqlTypeShape
 /** `CAST` / `::` result typing for SqlTypeShape (PostgreSQL-oriented compatibility checks). */
 /** SQLT-6: in a chain whose type names only decide an affinity (SQLite) a CAST gives the type of that affinity, from any value. */
 export type ResolveCastForDialect<Db, Ev extends SqlTypeShape, N extends string> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? Ev["type"] extends "null"
 			? SqlNull
 			: SqlType<SqliteTypeKey<N>>
