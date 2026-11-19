@@ -2,8 +2,8 @@
  * Type-name rows of the dialect seam (DLCT-5, SQLT-6…SQLT-11, SQLT-15): the written type name of a column or a CAST,
  * as data per dialect. Split out of dialect.ts (MOD-1); the facts they read are the `Dialects` table there.
  */
-import type { Errors, FormatError } from "../dbtyper-error.ts"
-import type { DialectFact, DialectOnlyError, PgOnlyTypeNames } from "./dialect.ts"
+import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { DbDialectOnlyError, DialectFact, PgOnlyTypeNames } from "./dialect.ts"
 
 /**
  * SQLT-6: the affinity SQLite derives from a declared type name (lower-case, words joined by one space), by its
@@ -27,32 +27,40 @@ type SqliteTypeKey<Name extends string> = Name extends "any"
 							? "real"
 							: "numeric"
 
-/** DLCT-5: the type-name aliases of a `named` dialect (PostgreSQL) and the canonical name each gets. */
-export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
-	? "integer"
-	: T extends "serial" | "serial4"
-		? "integer"
-		: T extends "smallserial" | "serial2"
-			? "smallint"
-			: T extends "bigserial" | "serial8"
-				? "bigint"
-				: T extends "timestamptz"
-					? "timestamp with time zone"
-					: T extends "timetz"
-						? "time with time zone"
-						: T extends "int2"
-							? "smallint"
-							: T extends "int8"
-								? "bigint"
-								: T extends "float8" | "double precision"
-									? "double precision"
-									: T extends "float4"
-										? "real"
-										: T extends "bool"
-											? "boolean"
-											: T extends "character varying"
-												? "varchar"
-												: T
+/** DLCT-5: the type-name aliases of a `named` dialect (PostgreSQL), each with the canonical name it gets. One table. */
+type NamedTypeAliases = {
+	int: "integer"
+	int4: "integer"
+	serial: "integer"
+	serial4: "integer"
+	smallserial: "smallint"
+	serial2: "smallint"
+	int2: "smallint"
+	bigserial: "bigint"
+	serial8: "bigint"
+	int8: "bigint"
+	timestamptz: "timestamp with time zone"
+	timetz: "time with time zone"
+	float8: "double precision"
+	float4: "real"
+	bool: "boolean"
+	"character varying": "varchar"
+	decimal: "numeric"
+}
+
+/** DLCT-5: the canonical name of a written type name of a `named` dialect. */
+export type NormalizeSqlTypeName<T extends string> = T extends keyof NamedTypeAliases ? NamedTypeAliases[T] : T
+
+/** Names of the SERIAL types (SQLT-17). */
+type SerialTypeNames = "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
+
+/** SQLT-17, SQLT-53: the other-dialect error for a PostgreSQL-only type name in an `affinity` chain, else `null`. */
+export type PgOnlyTypeError<Db, T extends string> =
+	DialectFact<Db, "declaredTypes"> extends "affinity"
+		? T extends keyof PgOnlyTypeNames
+			? DbDialectOnlyError<Db, PgOnlyTypeNames[T]>
+			: null
+		: null
 
 /**
  * DLCT-5: the type-name table of the chain's dialect, one place for every rule that reads a written type name
@@ -61,10 +69,10 @@ export type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
  */
 export type DialectColumnTypeName<Db, T extends string> =
 	DialectFact<Db, "declaredTypes"> extends "affinity"
-		? T extends "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
-			? DialectOnlyError<"dialect:sqlite", "pg-serial">
-			: T extends keyof PgOnlyTypeNames
-				? DialectOnlyError<"dialect:sqlite", PgOnlyTypeNames[T]>
+		? T extends SerialTypeNames
+			? DbDialectOnlyError<Db, "pg-serial">
+			: PgOnlyTypeError<Db, T> extends infer E extends DbtyperErrorShape
+				? E
 				: SqliteTypeKey<T>
 		: NormalizeSqlTypeName<T>
 
@@ -76,38 +84,28 @@ export type DialectColumnTypeName<Db, T extends string> =
 type NamedCastRows = {
 	text: ["text", "none"]
 	varchar: ["text", "none"]
-	"character varying": ["text", "none"]
 	char: ["text", "none"]
 	integer: ["integer", "no-boolean"]
-	int: ["integer", "no-boolean"]
-	int4: ["integer", "no-boolean"]
 	smallint: ["integer", "no-boolean"]
-	int2: ["integer", "no-boolean"]
-	serial: ["integer", "no-boolean"]
-	smallserial: ["integer", "no-boolean"]
 	bigint: ["bigint", "no-boolean"]
-	int8: ["bigint", "no-boolean"]
-	bigserial: ["bigint", "no-boolean"]
 	boolean: ["boolean", "no-number"]
-	bool: ["boolean", "no-number"]
 	real: ["real", "none"]
-	float4: ["real", "none"]
 	"double precision": ["double precision", "none"]
-	float8: ["double precision", "none"]
 	numeric: ["numeric", "none"]
-	decimal: ["numeric", "none"]
 }
 
 /**
  * DLCT-5: the CAST row of a written type name in the chain's dialect: `[type name of the result, guard]`. A `named`
- * dialect reads {@link NamedCastRows}; an `affinity` dialect gives the type of the name's affinity (SQLT-6), from any value.
+ * dialect reads {@link NamedCastRows}, keyed by the canonical name ({@link NormalizeSqlTypeName}); an `affinity` dialect gives the type of the name's affinity (SQLT-6), from any value.
  */
 export type DialectCastRow<Db, N extends string> =
 	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? [SqliteTypeKey<N>, "none"]
-		: N extends keyof NamedCastRows
-			? NamedCastRows[N]
-			: [N, "none"]
+		: NormalizeSqlTypeName<N> extends infer Norm extends string
+			? Norm extends keyof NamedCastRows
+				? NamedCastRows[Norm]
+				: [N, "none"]
+			: never
 
 /**
  * DLCT-5: the error for a value that does not fit a column's type in INSERT / UPDATE (SQLT-43: where SQLite would
@@ -123,23 +121,3 @@ export type SqliteStrictTypeNames = "int" | "integer" | "real" | "text" | "blob"
 
 /** SQLT-15: the names of the rowid pseudo-columns. */
 export type SqliteRowidNames = "rowid" | "oid" | "_rowid_"
-
-/** Words that start a skipped statement of both dialects (STMT-18; the second word of CREATE/ALTER/DROP is not checked). */
-export type CommonSkippedStatementKeywords = readonly [
-	"grant",
-	"revoke",
-	"truncate",
-	"set",
-	"reset",
-	"show",
-	"vacuum",
-	"analyze",
-	"explain",
-	"begin",
-	"commit",
-	"rollback",
-	"savepoint",
-	"release",
-	"reindex",
-	"values",
-]

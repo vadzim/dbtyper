@@ -211,11 +211,11 @@ export type JsqlDbDropConstraintName<
 		: Db
 
 /**
- * The schema an UNQUALIFIED table or view name is looked up in: the default schema, except in a SQLite chain, where
- * `temp` is searched first (SQLT-25). A PostgreSQL chain pays one conditional.
+ * The schema an UNQUALIFIED table or view name is looked up in: the default schema, except where the dialect has temp objects
+ * (`tempObjects`), which are searched first (SQLT-25).
  */
 export type UnqualifiedSchema<Db extends JsqlDatabaseShape, Name extends string> =
-	DialectFact<Db, "ddl"> extends true
+	DialectFact<Db, "tempObjects"> extends true
 		? JsqlDbGetData<Db, "temp", Name> extends null
 			? Db["defaultSchema"]
 			: "temp"

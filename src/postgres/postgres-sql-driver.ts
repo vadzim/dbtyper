@@ -2,14 +2,13 @@ import postgres from "postgres"
 
 import { createDriver, type SqlDriver, type SqlDriverParams } from "../core/sql-database.ts"
 import { bindColonNamedParamsForPg } from "./bind-colon-named-params-for-pg.ts"
-import { bindPositionalParamsForPg } from "./bind-positional-params-for-pg.ts"
 import type { PostgresParamTypeMap, PostgresTypeMap } from "./postgres-type-map.ts"
 
 export type PostgresDriverConfig<Bigint extends boolean = false> = {
 	dialect: "postgres"
 	scalarTypes: PostgresTypeMap<Bigint>
 	paramTypes: PostgresParamTypeMap<Bigint>
-	syntax: "dollar-strings" | "named-params" | "indexed-params"
+	syntax: "named-params" | "indexed-params"
 }
 
 export type PostgresSqlDriverConfig = {
@@ -33,14 +32,7 @@ function pgQueryArgs(text: string, params?: SqlDriverParams): { text: string; va
 		return { text, values: [] }
 	}
 	if (Array.isArray(params)) {
-		// Rewrite only when the text has a real "?" token (not in a string, quoted identifier, $$ body or comment)
-		if (text.includes("?")) {
-			const bound = bindPositionalParamsForPg(text, params)
-			if (bound.found) {
-				return { text: bound.text, values: bound.values }
-			}
-		}
-		// Otherwise, assume it's already using $1, $2, etc.
+		// PARAM-15: parameters are `$n` only; `?`, `?|`, `?&` are jsonb operators and are sent unchanged.
 		return { text, values: params }
 	}
 	return bindColonNamedParamsForPg(text, params as Record<string, unknown>)
