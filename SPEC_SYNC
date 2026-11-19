@@ -3,4 +3,4 @@
 # a new project's skeleton issue creates it (METHOD §7.2). What is built = the closed issues, not this file.
 # dbtyper: "dev" here = sqlite-pg/base (shared base of the two competing tracks).
 spec: https://github.com/vadzim/dbtyper-spec
-planned: d7c0217
+planned: d54607a
