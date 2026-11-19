@@ -16,6 +16,11 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **Small behaviour note:** a SQLite cast to a schema-qualified type name (`main.foo`) is classified by its last part (like PostgreSQL's table lookup) instead of the whole dotted string.
 - **Cost:** `typecheck:test` 11,321,720 -> 11,334,725 instantiations (+0.1%).
 
+## 2026-11-19 DDL in query is unknown, unused parameters accepted (#136, track A; SCHEMA-6, STMT-Q5, PARAM-14)
+
+- **SCHEMA-6, STMT-Q5.** `ParseSqlStatement` marks the successful result of CREATE / ALTER / DROP and of skipped statements (also TRUNCATE, SET ...) as `{ returning: null; ddl: true }`; `ApplyStatements` keeps the mark; `QueryReturnType` gives `unknown` when the LAST statement is marked, `[]` for INSERT/UPDATE/DELETE without RETURNING (CORE-13). So `truncate table t;` is `unknown` (STMT-18 Check), not `[]`; its test changed.
+- **PARAM-14.** A parameter still without a type after the probe loop (src/core/param-probe.ts) is either read by the SQL (CORE-7, 2405) or not read at all. The loop tells them apart by one more parse with that parameter marked `param-read-probe`: both reading sites (`LookupParam`, the select-list one) return the internal error 2406 PARAMETER_PROBE_READ for a marked parameter; no 2406 means unused, and it is bound to `param-unused` (any value passes `CheckParamValues`). No text scan of the SQL.
+
 ## 2026-11-19 Unknown leading word is an error (#139, track A; STMT-18, STMT-19)
 
 - **Lists as data** in src/parser/statement-keywords.ts (one skipped-keyword list per dialect, plus the parsed words); not yet in src/core/dialect.ts (#128 was in flight), move later. Beyond the spec's list the skipped sets also hold harmless real keywords (VALUES, TABLE, SAVEPOINT, RELEASE, PREPARE, EXECUTE, MERGE, PRAGMA ...), so no valid statement becomes an error. Only the first word is checked; a `(` first token (parenthesised query) is still skipped.
