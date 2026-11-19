@@ -383,7 +383,7 @@ export type OtherDialectTitleOf<Catalog extends string> = {
 }[DialectName]
 
 /** The dialect of a database state; the default dialect when the state names none (see {@link DialectFact}). */
-export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : DefaultDialect
+type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : DefaultDialect
 
 /**
  * One fact of the dialect row (see {@link Dialects}) of a database state: the state of a chain carries its dialect

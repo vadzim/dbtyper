@@ -1,5 +1,3 @@
-import type { DialectOf } from "../core/dialect.ts"
-import type { IsAggregateCall } from "./function-catalog.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
@@ -312,13 +310,6 @@ type ParseSelectAfterDistinct<
 					: never
 			: never
 		: never
-
-/** An aggregate call: the `"aggregate"` kind of the function's row in the catalog (src/parser/function-catalog.ts). */
-export type KnownAggregateName<Db, N extends string, Args extends readonly unknown[]> = IsAggregateCall<
-	DialectOf<Db>,
-	Lowercase<N>,
-	Args["length"]
->
 
 type SelectAfterWhereAndGroupHaving<
 	Tokens extends ParserMonad,

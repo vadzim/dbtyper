@@ -1,4 +1,4 @@
-import type { DialectFact } from "../core/dialect.ts"
+import type { DialectFact, OtherDialectTitleOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
@@ -10,7 +10,6 @@ import type {
 	IsWindowCapableRow,
 	IsWindowOnlyRow,
 	OtherDialectHints,
-	OtherDialectTitle,
 } from "./function-catalog.ts"
 import type { EnumPeerCheck } from "./parse-enum-checks.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
@@ -97,7 +96,7 @@ type UnknownFunction<C extends string, Name extends string, L extends string> = 
 	? OtherDialectHints<C>[L] extends infer Hint extends string
 		? FormatError<
 				Errors["UNKNOWN_FUNCTION"],
-				[Hint extends "" ? Name : `${Name}. ${Name}() is ${OtherDialectTitle<C>}-only${PgHint<Hint>}`]
+				[Hint extends "" ? Name : `${Name}. ${Name}() is ${OtherDialectTitleOf<C>}-only${PgHint<Hint>}`]
 			>
 		: never
 	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>
