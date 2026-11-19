@@ -1,0 +1,20 @@
+// Integration Test: DML-6 trailing tokens after INSERT
+import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
+import { mockDriver } from "../../test-utils/test-databases.ts"
+import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
+import type { DbtyperError } from "../../../src/dbtyper-error.ts"
+
+const db = sqlMigrations({ driver: mockDriver })
+	.apply(`create schema public;`)
+	.apply(`create table users (id text not null, name text not null);`)
+	.database()
+
+// ❌ ERROR: trailing tokens after INSERT
+const query = `insert into users (id, name) values ('1', 'A') extra;` as const
+
+// @ts-expect-error
+await db.query(query)
+
+type ReturnedError = GetQueryError<typeof db, typeof query>
+
+expectType<ReturnedError>(toBe<DbtyperError<1105, "Expected semicolon after INSERT">>())
