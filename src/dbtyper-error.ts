@@ -1391,16 +1391,16 @@ const errors = {
 		msg: ["Expected AS after qualified view name"],
 	},
 	EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW: {
-		code: 3905,
+		code: 3908,
 		msg: ["Expected `not` after `IF` in CREATE VIEW"],
 	},
-	VIEW_COLUMN_LIST_MISMATCH: {
-		code: 3907,
-		msg: ["CREATE VIEW ", ": the column list has a different number of columns than the SELECT"],
-	},
 	EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW: {
-		code: 3906,
+		code: 3909,
 		msg: ["Expected `exists` after `IF NOT` in CREATE VIEW"],
+	},
+	VIEW_COLUMN_LIST_MISMATCH: {
+		code: 3910,
+		msg: ["CREATE VIEW ", ": the column list has a different number of columns than the SELECT"],
 	},
 
 	// ALTER TYPE

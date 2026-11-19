@@ -202,7 +202,7 @@ type Err = DbtyperError<2200, ...> // UNKNOWN_TABLE with context parameter
 
 **EXPECTED\_\* codes (1100-5400):**
 
-- 1201, 1302, 1401, 1500, 1600, 1700, 1800-1802, 3701, 3801 → 1105 (EXPECTED_SEMICOLON; the old 3905 went the same way before the number was given to EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW)
+- 1201, 1302, 1401, 1500, 1600, 1700, 1800-1802, 3701, 3801, 3905 → 1105 (EXPECTED_SEMICOLON)
 - 1220-1221, 1306-1308, 1402-1404, 1506, 1602-1603, 1701 → 1120 (EXPECTED_TABLE_NAME)
 - 1212, 1218, 1303, 1503, 1604-1606 → 1206 (EXPECTED_COLUMN_NAME)
 - 1809-1812, 4104, 4106 → 4105 (EXPECTED_TYPE_NAME)
@@ -315,9 +315,9 @@ const query2 = `INSERT INTO users VALUES (1)` as const
 
 | Code | ID                                          | Message                                                                               |
 | ---- | ------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 3905 | EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW        | Expected `not` after `IF` in CREATE VIEW                                              |
-| 3906 | EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW | Expected `exists` after `IF NOT` in CREATE VIEW                                       |
-| 3907 | VIEW_COLUMN_LIST_MISMATCH                   | CREATE VIEW {name}: the column list has a different number of columns than the SELECT |
+| 3908 | EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW        | Expected `not` after `IF` in CREATE VIEW                                              |
+| 3909 | EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW | Expected `exists` after `IF NOT` in CREATE VIEW                                       |
+| 3910 | VIEW_COLUMN_LIST_MISMATCH                   | CREATE VIEW {name}: the column list has a different number of columns than the SELECT |
 
 ### 2200-2299: Resolution - Table/Schema Errors
 

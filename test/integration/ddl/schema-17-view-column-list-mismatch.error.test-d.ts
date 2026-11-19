@@ -1,4 +1,4 @@
-// Integration Test: SCHEMA-17 CREATE VIEW column list with a different count than the SELECT (3907)
+// Integration Test: SCHEMA-17 CREATE VIEW column list with a different count than the SELECT (3910)
 import { sqlMigrations, type GetApplyError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
@@ -15,5 +15,5 @@ migrations.apply(query)
 type ReturnedError = GetApplyError<typeof migrations, typeof query>
 
 expectType<ReturnedError>(
-	toBe<DbtyperError<3907, "CREATE VIEW bad: the column list has a different number of columns than the SELECT">>(),
+	toBe<DbtyperError<3910, "CREATE VIEW bad: the column list has a different number of columns than the SELECT">>(),
 )
