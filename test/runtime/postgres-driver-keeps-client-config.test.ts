@@ -35,9 +35,9 @@ describe("postgresSqlDriver positional params", () => {
 		assert.match(r.text, /\$1/)
 	})
 
-	it("PARAM-15: real ? tokens are rewritten", async () => {
-		const r = await sent(`select '?' from t where a = ? and b = ?`, [1, 2])
-		assert.equal(r.text, `select '?' from t where a = $1 and b = $2`)
-		assert.deepEqual(r.values, [1, 2])
+	it("PARAM-15: ? is a jsonb operator and is sent unchanged", async () => {
+		const r = await sent(`select 1 from t where data ? 'k' and id = $1`, [5])
+		assert.equal(r.text, `select 1 from t where data ? 'k' and id = $1`)
+		assert.deepEqual(r.values, [5])
 	})
 })

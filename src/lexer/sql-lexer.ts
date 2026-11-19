@@ -45,7 +45,7 @@ export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"
 type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 
-export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
+export type LexerFeatures = "" | LexerQueryParams
 
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
 	Exclude<Syntax, LexerQueryParams> | Extract<Syntax, AllowedQueryParams>
@@ -132,7 +132,10 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 																					Rest3
 																				>
 																			: never
-																		: "dollar-strings" extends Syntax
+																		: LexerFact<
+																					Syntax,
+																					"dollarStrings"
+																			  > extends true
 																			? Tagged<
 																					ReadDollarString<Rest>,
 																					"pg-dollar-string"

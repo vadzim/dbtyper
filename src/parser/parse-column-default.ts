@@ -51,7 +51,7 @@ export type ParseColumnDefault<Tokens extends ParserMonad, C extends ColumnCtx, 
 /** The type of `CURRENT_TIMESTAMP`, `CURRENT_DATE`, `CURRENT_TIME` (the expression parser has no such keywords). */
 type DateTimeKeywordType<K extends string, Db extends JsqlDatabaseShape> = {
 	// SQLite (SQLT-19): the CURRENT_* values are text, and any column may default to them
-	type: DialectFact<Db, "ddl"> extends true
+	type: DialectFact<Db, "currentDatetimeType"> extends "any"
 		? "any"
 		: K extends "current_date"
 			? "date"
@@ -66,7 +66,9 @@ type DateTimeKeywordType<K extends string, Db extends JsqlDatabaseShape> = {
  * A column name inside a function call of a DEFAULT (`now( invalid)`) keeps its old error (SCHEMA-15):
  * a DEFAULT has no columns in scope, so an unknown name in a call is a broken call.
  */
-type DefaultSyntaxError<Ast, Err extends DbtyperErrorShape> = Err extends { __sql_parser_error_code__: 2300 }
+type DefaultSyntaxError<Ast, Err extends DbtyperErrorShape> = Err extends {
+	__sql_parser_error_code__: Errors["UNKNOWN_COLUMN"]["code"]
+}
 	? Ast extends { kind: "function_call" }
 		? FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT"], []>
 		: Err

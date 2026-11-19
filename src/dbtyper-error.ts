@@ -194,6 +194,10 @@ const errors = {
 		code: 1918,
 		msg: ["Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR"],
 	},
+	UNKNOWN_CONFLICT_ACTION: {
+		code: 1920,
+		msg: ["Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT"],
+	},
 	SQLITE_UNSUPPORTED_STATEMENT: {
 		code: 1916,
 		msg: ["", " is not supported in migrations"],
