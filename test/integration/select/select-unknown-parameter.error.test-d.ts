@@ -16,4 +16,4 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<1105, "Expected semicolon after SELECT">>())
+expectType<ReturnedError>(toBe<DbtyperError<1007, "Unexpected token at: :">>())
