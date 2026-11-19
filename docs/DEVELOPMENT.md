@@ -4,7 +4,7 @@ Notes for working on this repository: toolchain, packaging, and internal convent
 
 ## Toolchain
 
-This project targets **TypeScript 7.0 preview**.
+This project targets **TypeScript 7** (`@typescript/native` 7.0.x, `tsgo`; the `typescript` dev dependency stays on 6.x for tools that need the JS API).
 
 ## npm package
 
@@ -14,12 +14,12 @@ The registry package is **compiled** (`dist/`) so Node can load `.js` from `node
 - **Pack / publish:** `npm pack` or `npm publish` runs **`prepack`**, which runs the build first.
 
 ```ts
-import { sqlDatabase, migration } from "dbtyper"
-import type { ApplyStatements, CreateParserMonad, JsqlDatabaseShape, MigrationExport } from "dbtyper"
+import { sqlMigrations, migration, createDriver } from "dbtyper"
+import type { DataBase, SqlDriver } from "dbtyper"
 import { postgresSqlDriver } from "dbtyper/postgres"
 ```
 
-Use **`migration()`** for normal DDL/DML you export as versioned migrations — see [`MIGRATIONS.md`](./MIGRATIONS.md).
+Use **`migration(sql)`** (it returns the string unchanged and is the marker migration tooling looks for) for normal DDL/DML you export as versioned migrations — see [`MIGRATIONS.md`](./MIGRATIONS.md).
 
 For **PostgreSQL** at runtime (typed `query` / `stream` with the [postgres](https://github.com/porsager/postgres) client), import **`postgresSqlDriver`** from **`dbtyper/postgres`** (optional **`postgres`** peer dependency), see [`../examples/typed-postgres/`](../examples/typed-postgres/).
 

@@ -10,7 +10,6 @@ const db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ❌ ERROR: Cannot cast integer to boolean
-// TODO: Currently accepts integer::boolean (no TypeScript type validation in parsers)
 const query = `select id::boolean from data;` as const
 
 // @ts-expect-error
