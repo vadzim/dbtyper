@@ -3,7 +3,8 @@
  * as data per dialect. Split out of dialect.ts (MOD-1); the facts they read are the `Dialects` table there.
  */
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { DbDialectOnlyError, DialectFact, PgOnlyTypeNames } from "./dialect.ts"
+import type { DbDialectOnlyError, DialectFact } from "./dialect.ts"
+import type { PgOnlyTypeNames } from "./dialect-constructs.ts"
 
 /**
  * SQLT-6: the affinity SQLite derives from a declared type name (lower-case, words joined by one space), by its

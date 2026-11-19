@@ -12,7 +12,7 @@ import type {
 	SqlUnknown,
 } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { CatalogRowResult } from "./function-catalog.ts"
+import type { CatalogRowResult } from "./function-catalog-result.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
