@@ -36,9 +36,11 @@ export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never
 export type LastOf<T> = UnionToIntersection<T extends unknown ? () => T : never> extends () => infer R ? R : never
 
 /**
- * TLVL-4: bound 21 = 0..20 error-message arguments (the largest `Tuple` that `ErrorArgs` builds). The limit dodged is
- * tuple length / recursion depth of the recursive `Tuple` below; the number comes from commit 12bd3d2 (error-code
- * types) and was not re-measured by a test or issue.
+ * TLVL-4: bound 21 = 0..20 error-message arguments (the largest `Tuple` that `ErrorArgs` builds, commit 12bd3d2).
+ * Limit dodged: the recursion depth of the non-tail-recursive `Tuple` below. Measured (TS 7.0.2, 2026-11-19, probe
+ * of `Tuple<string, N>` with a plain `number` parameter): N = 48 ok, N = 49 TS2589, so 21 has a margin of 27. A
+ * bigger bound would only need `Numbers` (200) to stay larger; `Counting<N>` itself hits TS2589 at N = 1000 (999 ok).
+ * Finding test: `FormatError` of every error in dbtyper-error.ts (a message of 21 or more parts would not typecheck).
  */
 export type TupleSize = Counting<21>[number]
 

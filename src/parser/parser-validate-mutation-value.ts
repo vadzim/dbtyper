@@ -1,5 +1,5 @@
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
-import type { ValueMismatchError } from "../core/dialect.ts"
+import type { ValueMismatchError } from "../core/dialect-types.ts"
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"

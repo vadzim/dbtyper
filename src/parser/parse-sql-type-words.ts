@@ -8,7 +8,8 @@ import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
-import type { DialectColumnTypeName, DialectFact, NormalizeSqlTypeName } from "../core/dialect.ts"
+import type { DialectFact } from "../core/dialect.ts"
+import type { DialectColumnTypeName, NormalizeSqlTypeName } from "../core/dialect-types.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
 type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =

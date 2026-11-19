@@ -1,5 +1,5 @@
 import type { JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { SqliteRowidNames } from "../core/dialect.ts"
+import type { SqliteRowidNames } from "../core/dialect-types.ts"
 
 /** One FROM/JOIN alias bound to a concrete table shape (columns as SQL type strings). */
 export type ScopeEntry = {
