@@ -1,4 +1,6 @@
 import { createDriver, type SqlDriver, type SqlDriverParams } from "../core/sql-database.ts"
+import { STREAM_REQUIRES_ROWS_MESSAGE } from "../core/stream-requires-rows.ts"
+import { SQLITE_SCAN_RULES, skipNonCode } from "../core/sql-text-scanner.ts"
 import type { SqliteDriverConfig, SqliteDriverOptions } from "./sqlite-type-map.ts"
 
 /** The part of a `better-sqlite3` / `node:sqlite` statement the adapters use (structural: no import of either package). */
@@ -34,15 +36,19 @@ function bindArgs(params?: SqlDriverParams): unknown[] {
 /**
  * True when the SQL text has a numbered parameter `?NNN` outside string literals, quoted names and comments.
  * better-sqlite3 treats `?NNN` as a named parameter "NNN", so an array must be bound to it as {1: …, 2: …}.
- * This is a run-time scan because the lexer works on types only; it repeats the lexer's rules for the text that hides
- * a `?` (strings, the three quoted-name forms, comments), and test/runtime/sqlite-drivers.test.ts checks it against
- * the lexer's cases. A new quoting rule in src/lexer/sql-lexer.ts needs a branch here and a case there (#116 item 9).
+ * This is a run-time scan because the lexer works on types only; it reads the shared scanner
+ * (src/core/sql-text-scanner.ts), which test/runtime/sql-text-scanner.test.ts keeps in step with the lexer's cases.
  */
 export function usesNumberedParams(sql: string): boolean {
-	const token = /'(?:[^']|'')*'|"(?:[^"]|"")*"|`[^`]*`|\[[^\]]*\]|--[^\n]*|\/\*[\s\S]*?\*\/|\?[0-9]/g
-	for (const match of sql.matchAll(token)) {
-		if (match[0].startsWith("?")) {
+	let i = 0
+	while (i < sql.length) {
+		const skipTo = skipNonCode(sql, i, SQLITE_SCAN_RULES)
+		if (skipTo > i) {
+			i = skipTo
+		} else if (sql[i] === "?" && /[0-9]/.test(sql[i + 1] ?? "")) {
 			return true
+		} else {
+			i++
 		}
 	}
 	return false
@@ -73,7 +79,7 @@ function adapt<Stmt extends StatementLike, Big extends boolean>(
 			const stmt = prepare(text)
 			const args = bindNumbered(text, params, bindArgs(params))
 			if (!reads(stmt)) {
-				throw new Error("stream() requires a row-returning statement (SELECT or RETURNING clause)")
+				throw new Error(STREAM_REQUIRES_ROWS_MESSAGE)
 			}
 			return (async function* () {
 				yield* stmt.iterate(...args)

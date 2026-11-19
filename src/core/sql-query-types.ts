@@ -5,9 +5,9 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
 import type { ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import type { SqlSelectResultTs, IsDdlStatement } from "./sql-select-result-helper.ts"
+import type { SqlSelectResultTs, IsNoRowsResult } from "./sql-select-result-helper.ts"
 import type { DeriveQueryParams } from "./param-probe.ts"
-import type { ParserSyntaxOf } from "./dialect.ts"
+import type { ParserSyntax, ParserSyntaxOf } from "./dialect.ts"
 import type { DriverConfig, ParamsDriverConfig } from "./sql-driver.ts"
 import type { SqlMigrations } from "./sql-migrations.ts"
 import type { DataBase } from "./sql-database.ts"
@@ -95,11 +95,19 @@ export type CheckSqlValid<
 				? FormatErrorText<Code, Msg>
 				: // CORE-14: a result column with no TypeScript mapping is an error, never `unknown`
 					SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<infer Code, infer Msg>
-					? Code extends Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"]
+					? IsNoRowsResult<DbtyperError<Code, Msg>> extends true
 						? Stmt
 						: FormatErrorText<Code, Msg>
 					: Stmt
 			: never
+
+/** SCHEMA-6, STMT-Q5: the last statement is DDL or a skipped statement (the parser marks its result `ddl`). */
+type IsDdlStatement<
+	Db extends JsqlDatabaseShape,
+	Text extends string,
+	Params extends ExpressionParamsShape | null,
+	Syntax extends ParserSyntax,
+> = ApplyStatements<Db, Text, Params, Syntax> extends [unknown, unknown, { ddl: true }] ? true : false
 
 /** Return type for .query() - typed array for SELECT/RETURNING, an empty row list for statements without rows (CORE-13) */
 export type QueryReturnType<
@@ -109,10 +117,7 @@ export type QueryReturnType<
 	Params extends ExpressionParamsShape | DbtyperErrorShape,
 > = Params extends ExpressionParamsShape
 	? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperErrorShape
-		? SqlSelectResultTs<Config, Db, Stmt, Params> extends DbtyperError<
-				Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"],
-				string
-			>
+		? IsNoRowsResult<SqlSelectResultTs<Config, Db, Stmt, Params>> extends true
 			? // SCHEMA-6, STMT-Q5: DDL or a skipped statement last: `unknown`; DML without RETURNING: `[]` (CORE-13)
 				IsDdlStatement<Db, Stmt, Params, ParserSyntaxOf<Config>> extends true
 				? unknown

@@ -13,6 +13,7 @@ import type {
 	RequireDriverDialect,
 	SqlDriver,
 } from "./sql-driver.ts"
+import { STREAM_REQUIRES_ROWS_MESSAGE } from "./stream-requires-rows.ts"
 import type { CheckSqlValid } from "./sql-query-types.ts"
 import type { DataBase, InitialDatabase, SqlDatabaseConfig } from "./sql-database.ts"
 
@@ -228,7 +229,7 @@ class DataBaseImpl {
 		const rows = await db.query(statement, params)
 
 		if (!Array.isArray(rows)) {
-			throw new Error("stream() requires a row-returning statement (SELECT or RETURNING clause)")
+			throw new Error(STREAM_REQUIRES_ROWS_MESSAGE)
 		}
 
 		return (async function* () {
