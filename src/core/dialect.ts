@@ -26,6 +26,7 @@
  *   requires a driver with exactly one declared dialect.
  */
 import type { Errors, FormatErrorOf } from "../dbtyper-error.ts"
+import type { CommonSkippedStatementKeywords } from "./dialect-types.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 
 /** The engines dbtyper types SQL for (DSEL-1). */
@@ -54,6 +55,7 @@ export type DialectName = keyof Dialects
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
+ * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
  * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
@@ -83,6 +85,36 @@ export type Dialects = {
 		exprKeys: "name"
 		castHint: "`::text`"
 		dmlInCte: true
+		skippedStatements: readonly [
+			...CommonSkippedStatementKeywords,
+			"comment",
+			"copy",
+			"lock",
+			"do",
+			"call",
+			"cluster",
+			"refresh",
+			"notify",
+			"listen",
+			"unlisten",
+			"table",
+			"start",
+			"end",
+			"abort",
+			"prepare",
+			"execute",
+			"deallocate",
+			"declare",
+			"fetch",
+			"move",
+			"close",
+			"discard",
+			"merge",
+			"load",
+			"checkpoint",
+			"security",
+			"import",
+		]
 		lexer: {
 			bracketIdents: false
 			atParams: false
@@ -113,6 +145,7 @@ export type Dialects = {
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
 		dmlInCte: false
+		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end", "replace"]
 		lexer: {
 			bracketIdents: true
 			atParams: true
