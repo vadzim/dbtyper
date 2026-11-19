@@ -73,14 +73,6 @@ export type JsqlDbGetTable<Db extends JsqlDatabaseShape, Sch extends string, Tab
 	Tab
 >
 
-type JsqlSchemaGetView<Schema extends JsqlSchemaShape | null, Tab extends string> =
-	JsqlSchemaGetData<Schema, Tab> extends infer T extends JsqlDataShape<"view"> ? T : null
-
-export type JsqlDbGetView<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string> = JsqlSchemaGetView<
-	JsqlDbGetSchema<Db, Sch>,
-	Tab
->
-
 export type JsqlDbReplaceSchema<
 	Db extends JsqlDatabaseShape,
 	Name extends string,

@@ -33,7 +33,9 @@ expectType<GetApplyError<typeof migrations, typeof createSchema>>(
 const dropSchema = `drop schema auth;` as const
 // @ts-expect-error
 migrations.apply(dropSchema)
-expectType<GetApplyError<typeof migrations, typeof dropSchema>>(toBe<DbtyperError<1915, "SQLite has no schemas">>())
+expectType<GetApplyError<typeof migrations, typeof dropSchema>>(
+	toBe<DbtyperError<1915, "SQLite has no schemas; drop the schema qualifier, or use main or temp">>(),
+)
 const otherQualifier = `create table auth.t (a int);` as const
 // @ts-expect-error
 migrations.apply(otherQualifier)
