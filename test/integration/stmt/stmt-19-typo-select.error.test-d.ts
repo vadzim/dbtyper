@@ -4,9 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create table users (id int not null);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id int not null);`).database()
 
 const query = `selec id from users` as const
 
@@ -15,4 +13,11 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<1931, "Unknown statement keyword selec; did you mean SELECT? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped">>())
+expectType<ReturnedError>(
+	toBe<
+		DbtyperError<
+			1931,
+			"Unknown statement keyword selec; did you mean SELECT? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped"
+		>
+	>(),
+)

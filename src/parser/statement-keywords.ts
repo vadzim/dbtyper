@@ -67,12 +67,7 @@ export type PostgresSkippedStatementKeywords = readonly [
 	"import",
 ]
 
-export type SqliteSkippedStatementKeywords = readonly [
-	...CommonSkippedStatementKeywords,
-	"pragma",
-	"end",
-	"replace",
-]
+export type SqliteSkippedStatementKeywords = readonly [...CommonSkippedStatementKeywords, "pragma", "end", "replace"]
 
 /** All words a hint may suggest. */
 type SuggestionCandidates<Known extends readonly string[]> = readonly [...ParsedStatementKeywords, ...Known]
@@ -86,8 +81,10 @@ export type UnknownStatementError<Word extends string, Known extends readonly st
 		: never
 
 /** The first candidate one edit away from the word (words of 4+ letters only, so `go` does not become `do`). */
-type ClosestKeyword<Word extends string, Candidates extends readonly string[]> =
-	Word extends `${infer _1}${infer _2}${infer _3}${infer _4}${string}` ? FirstNear<Word, Candidates> : never
+type ClosestKeyword<
+	Word extends string,
+	Candidates extends readonly string[],
+> = Word extends `${infer _1}${infer _2}${infer _3}${infer _4}${string}` ? FirstNear<Word, Candidates> : never
 
 type FirstNear<Word extends string, Candidates extends readonly string[]> = Candidates extends readonly [
 	infer Head extends string,

@@ -166,11 +166,7 @@ type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShap
 			: SkipKnownOrFail<Tokens, Db, SqliteSkippedStatementKeywords>
 		: SkipKnownOrFail<Tokens, Db, PostgresSkippedStatementKeywords>
 
-type SkipKnownOrFail<
-	Tokens extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Known extends readonly string[],
-> =
+type SkipKnownOrFail<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Known extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<"("> | TokenEot
 		? // `(select …)` and the like: a parenthesised query is not a keyword statement; stepped over as before
 			ParseSkipStatement<Tokens, Db>
