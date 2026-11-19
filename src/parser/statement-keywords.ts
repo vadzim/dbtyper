@@ -5,7 +5,18 @@ import type { FormatError, Errors } from "../dbtyper-error.ts"
  * {@link ParsedStatementKeywords} is parsed; one whose first word is in a dialect's skipped list is stepped over
  * unchecked; any other first word is the error {@link UnknownStatementError}. The skipped lists are the `skippedStatements` row of each dialect in the `Dialects` table (DLCT-1).
  */
-type ParsedStatementKeywords = readonly ["select", "with", "insert", "update", "delete", "create", "alter", "drop"]
+/** The leading words `ParseSqlStatement` dispatches on (parse-sql-statement.ts); keep the two in step. */
+type ParsedStatementKeywords = readonly [
+	"select",
+	"with",
+	"insert",
+	"update",
+	"delete",
+	"create",
+	"alter",
+	"drop",
+	"replace",
+]
 
 /** All words a hint may suggest. */
 type SuggestionCandidates<Known extends readonly string[]> = readonly [...ParsedStatementKeywords, ...Known]

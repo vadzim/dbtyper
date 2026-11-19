@@ -1,4 +1,4 @@
-// Integration Test: CORE-6 — a statement with 30 parameters gets every parameter type (one parse per parameter)
+// Integration Test: CORE-6 — a statement with 30 parameters gets every parameter type (one round binds the probes of the whole AND chain, #143)
 import { sqlMigrations } from "../../src/core/sql-database.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"

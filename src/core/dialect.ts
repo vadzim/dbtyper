@@ -26,8 +26,27 @@
  *   requires a driver with exactly one declared dialect.
  */
 import type { Errors, FormatErrorOf } from "../dbtyper-error.ts"
-import type { CommonSkippedStatementKeywords } from "./dialect-types.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
+
+/** Words that start a skipped statement of both dialects (STMT-18; the second word of CREATE/ALTER/DROP is not checked). */
+type CommonSkippedStatementKeywords = readonly [
+	"grant",
+	"revoke",
+	"truncate",
+	"set",
+	"reset",
+	"show",
+	"vacuum",
+	"analyze",
+	"explain",
+	"begin",
+	"commit",
+	"rollback",
+	"savepoint",
+	"release",
+	"reindex",
+	"values",
+]
 
 /** The engines dbtyper types SQL for (DSEL-1). */
 export type DialectName = keyof Dialects
@@ -42,9 +61,16 @@ export type DialectName = keyof Dialects
  * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
- * SQLite DDL facts (SQLT-18…SQLT-26, #70), one flag: `ddl`: `main`/`temp` instead of schemas, CREATE TEMP, short `AS (…)`
- * generated columns, `ON CONFLICT` on constraints, full column definitions in ADD COLUMN with its restrictions, trigger
- * bodies `BEGIN … END`, no CREATE/DROP SCHEMA, no ATTACH / virtual tables.
+ * DDL facts, one per rule (SQLT-18…SQLT-26, #70; DLCT-4): `tempObjects`: the `temp` schema is searched first for an unqualified
+ * name and `CREATE TEMP`, `CREATE TRIGGER … BEGIN … END` exist (SQLT-23, SQLT-25); `schemaStatements`: `CREATE`/`DROP SCHEMA`
+ * exist (SQLT-26); `unsupportedStatements`: first words of statements that are always an error (ATTACH, DETACH, SQLT-24);
+ * `constraintOnConflict`: `ON CONFLICT <action>` may follow a column or table constraint, `ASC`/`DESC` a primary key
+ * (SQLT-18); `shortGenerated`: the short `AS (…)` generated column (SQLT-18); `currentDatetimeType`: type of
+ * `CURRENT_DATE`/`CURRENT_TIME`/`CURRENT_TIMESTAMP` in a DEFAULT ("typed" = date/time/timestamp, "any" = any column may
+ * default to them, SQLT-19); `addColumn`: "full" = `ADD COLUMN` takes the full column definition and a `, <action>` may
+ * follow, "restricted" = PRIMARY KEY, UNIQUE and NOT NULL without a default are errors and the definition ends the
+ * statement (SQLT-20, SQLT-21). `ddl` is read only by parse-create-view.ts (the view column list and IF NOT EXISTS), until
+ * #146 batch 3 splits it too.
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "typed" (PostgreSQL) = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "affinity" (SQLite) = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "typed" = the PostgreSQL operator typing of the
  * expression parser, "affinity" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
@@ -56,13 +82,16 @@ export type DialectName = keyof Dialects
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error).
  * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144).
+ * Number and date facts (#67): `numberTyping` "uniform" = each numeric type keeps its own type in arithmetic, "affinity" = SQLite's
+ * integer/real rules; `datetimeArithmetic`: `timestamp ± interval`, `date - date` are typed (PGT-31).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
  * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
  * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
  * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
  * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
- * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28).
+ * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28); `dollarStrings`: `$$…$$` strings exist
+ * (without a dialect flag, in low-level lexer tests, the PostgreSQL row applies).
  */
 export type Dialects = {
 	postgres: {
@@ -74,6 +103,13 @@ export type Dialects = {
 		rowidTables: false
 		typelessColumns: false
 		ddl: false
+		tempObjects: false
+		schemaStatements: true
+		unsupportedStatements: readonly []
+		constraintOnConflict: false
+		shortGenerated: false
+		currentDatetimeType: "typed"
+		addColumn: "full"
 		functionCatalog: "typed"
 		operators: "typed"
 		globRegexp: false
@@ -123,6 +159,7 @@ export type Dialects = {
 			joinStrings: true
 			keepWritten: false
 			callableJoinWords: true
+			dollarStrings: true
 		}
 	}
 	sqlite: {
@@ -134,6 +171,13 @@ export type Dialects = {
 		rowidTables: true
 		typelessColumns: true
 		ddl: true
+		tempObjects: true
+		schemaStatements: false
+		unsupportedStatements: readonly ["attach", "detach"]
+		constraintOnConflict: true
+		shortGenerated: true
+		currentDatetimeType: "any"
+		addColumn: "restricted"
 		functionCatalog: "affinity"
 		operators: "affinity"
 		globRegexp: true
@@ -145,7 +189,7 @@ export type Dialects = {
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
 		dmlInCte: false
-		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end", "replace"]
+		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end"]
 		lexer: {
 			bracketIdents: true
 			atParams: true
@@ -154,9 +198,13 @@ export type Dialects = {
 			joinStrings: false
 			keepWritten: true
 			callableJoinWords: false
+			dollarStrings: false
 		}
 	}
 }
+
+/** The dialect a chain without a dialect flag or a state without one is read as: what the parser did before dialects. */
+type DefaultDialect = "postgres"
 
 /** The `Syntax` flag that names a chain's dialect. */
 type DialectFlag<D extends DialectName> = `dialect:${D}`
@@ -165,7 +213,7 @@ type DialectFlags = DialectFlag<DialectName>
 
 /** The dialect a lexer `Syntax` names; without a dialect flag (low-level tests) the lexer reads PostgreSQL. */
 type LexerDialectOf<Syntax extends string> = [Extract<Syntax, DialectFlags>] extends [never]
-	? "postgres"
+	? DefaultDialect
 	: Extract<Syntax, DialectFlags> extends DialectFlag<infer D>
 		? D
 		: never
@@ -233,6 +281,7 @@ type DialectOnlyConstructs = {
 	"pg-limit-all": { only: "postgres"; name: "LIMIT ALL"; hint: "Omit LIMIT" }
 	"pg-lateral": { only: "postgres"; name: "LATERAL"; hint: "Use a correlated subquery" }
 	"pg-create-type": { only: "postgres"; name: "CREATE TYPE"; hint: "Use TEXT with a CHECK constraint" }
+	"pg-drop-type": { only: "postgres"; name: "DROP TYPE"; hint: "" }
 	"pg-create-schema": { only: "postgres"; name: "CREATE SCHEMA"; hint: "SQLite has no schemas" }
 	"pg-create-extension": { only: "postgres"; name: "CREATE EXTENSION"; hint: "" }
 	"pg-grant": { only: "postgres"; name: "GRANT"; hint: "SQLite has no users or privileges" }
@@ -296,6 +345,7 @@ type DialectPhrases = {
 	lateral: "pg-lateral"
 	"create type": "pg-create-type"
 	"create schema": "pg-create-schema"
+	"drop type": "pg-drop-type"
 	"create extension": "pg-create-extension"
 	grant: "pg-grant"
 	"conflict on constraint": "pg-on-conflict-constraint"
@@ -333,8 +383,8 @@ export type OtherDialectTitleOf<Catalog extends string> = {
 	[D in DialectName]: Dialects[D]["functionCatalog"] extends Catalog ? never : Dialects[D]["title"]
 }[DialectName]
 
-/** The dialect of a database state; PostgreSQL when the state names none (see {@link DialectFact}). */
-export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : "postgres"
+/** The dialect of a database state; the default dialect when the state names none (see {@link DialectFact}). */
+export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : DefaultDialect
 
 /**
  * One fact of the dialect row (see {@link Dialects}) of a database state: the state of a chain carries its dialect
@@ -342,14 +392,16 @@ export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } 
  * not readable by parsers (monad checker). A state without one (PostgreSQL chains, dialect-neutral low-level
  * parsing) answers with the PostgreSQL row, which is what the parser did before dialects.
  */
-export type DialectFact<Db, Fact extends keyof Dialects[DialectName]> = Db extends {
-	dialect: infer D extends DialectName
-}
-	? Dialects[D][Fact]
-	: Dialects["postgres"][Fact]
+export type DialectFact<Db, Fact extends keyof Dialects[DialectName]> = Dialects[DialectOf<Db>][Fact]
 
 /** `true` for exactly one member, `false` for `never` or a union. */
-type IsSingle<U, All = U> = [U] extends [never] ? false : U extends unknown ? ([All] extends [U] ? true : false) : never
+export type IsSingle<U, All = U> = [U] extends [never]
+	? false
+	: U extends unknown
+		? [All] extends [U]
+			? true
+			: false
+		: never
 
 /**
  * `null` when `Construct` may be used under `Syntax`, otherwise the other-dialect error (DSEL-5, DSEL-6, DSEL-7).
@@ -374,13 +426,13 @@ export type DialectOnlyError<Syntax extends string, Construct extends DialectCon
 
 /**
  * {@link DialectOnlyError} for a parser that has the database state, not `Syntax`: the chain's dialect is the state's
- * (see {@link DialectFact}; a state without one is PostgreSQL).
+ * (see {@link DialectOf}).
  */
-export type DbDialectOnlyError<Db, Construct extends DialectConstruct, NextWord extends string = ""> = Db extends {
-	dialect: infer D extends DialectName
-}
-	? DialectOnlyError<DialectFlag<D>, Construct, NextWord>
-	: DialectOnlyError<DialectFlag<"postgres">, Construct, NextWord>
+export type DbDialectOnlyError<Db, Construct extends DialectConstruct, NextWord extends string = ""> = DialectOnlyError<
+	DialectFlag<DialectOf<Db>>,
+	Construct,
+	NextWord
+>
 
 /** All other-dialect error descriptions; they share one message shape: construct, this chain's dialect, hint. */
 type OtherDialectErrors = Dialects[DialectName]["onlyError"]

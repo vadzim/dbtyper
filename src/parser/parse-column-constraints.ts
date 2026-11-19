@@ -39,7 +39,7 @@ export type ColumnCtx = {
 	stack: readonly ColumnDef[]
 	name: string
 	type: SqlTypeShape
-	/** The declared type name, lower-case (SQLite only, see {@link DeclaredTypeName}). */
+	/** The declared type name, lower-case (SQLite only: the affinity and STRICT rules read it, SQLT-6…SQLT-11). */
 	declared: string
 	/** The column is the one of `ALTER TABLE … ADD COLUMN` (SQLite, SQLT-21): the definition ends at `;`, not `)`. */
 	alter: boolean
@@ -150,7 +150,8 @@ type ColumnGenericFailNoDefer<
 			>
 
 /** SQLite (SQLT-18): the type parser takes `NOT NULL`, so `ON CONFLICT` can follow the type; nothing else has `ON` here. */
-type OnConflictToken<Db extends JsqlDatabaseShape> = DialectFact<Db, "ddl"> extends true ? TokenKey<"on"> : never
+type OnConflictToken<Db extends JsqlDatabaseShape> =
+	DialectFact<Db, "constraintOnConflict"> extends true ? TokenKey<"on"> : never
 
 /** `[rest, null | error]` after a bracketed group `( … )` (the `(` is the next token). */
 export type SkipParenGroup<Tokens extends ParserMonad> =
