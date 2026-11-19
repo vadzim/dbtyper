@@ -3,9 +3,9 @@ import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { Return, TokenFloat, TokenInteger, TokenKey } from "./sql-lexer-tokens.ts"
 
 export type OperatorChars = PlusMinus | NarrowOperatorChars | WideOperatorChars
-export type PlusMinus = "+" | "-"
-export type NarrowOperatorChars = "*" | "/" | "<" | ">" | "="
-export type WideOperatorChars = "~" | "!" | "@" | "#" | "%" | "^" | "&" | "|" | "`" | "?"
+type PlusMinus = "+" | "-"
+type NarrowOperatorChars = "*" | "/" | "<" | ">" | "="
+type WideOperatorChars = "~" | "!" | "@" | "#" | "%" | "^" | "&" | "|" | "`" | "?"
 
 export type ReadOperator<S extends string> =
 	OptimizedBySpaceReadOperatorChars<S> extends { token: infer Word extends string; rest: infer Tail extends string }
@@ -20,7 +20,7 @@ export type ReadOperator<S extends string> =
 				: Return<TokenKey<Word>, Tail>
 		: never
 
-export type OptimizedBySpaceReadOperatorChars<S extends string> =
+type OptimizedBySpaceReadOperatorChars<S extends string> =
 	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
 		? ReadOperatorChars<SmallerBuffer> extends {
 				token: infer T extends string
@@ -34,7 +34,7 @@ export type OptimizedBySpaceReadOperatorChars<S extends string> =
 			: ReadOperatorChars<S>
 		: ReadOperatorChars<S>
 
-export type ReadOperatorChars<
+type ReadOperatorChars<
 	S extends string,
 	Op extends string = "",
 	SNarrow extends string = S,
@@ -51,7 +51,7 @@ export type ReadOperatorChars<
 				: { token: OpNarrow; rest: SNarrow }
 	: { token: OpNarrow; rest: SNarrow }
 
-export type ReadOperatorCharsWide<S extends string, Op extends string> = S extends `${infer C}${infer Rest}`
+type ReadOperatorCharsWide<S extends string, Op extends string> = S extends `${infer C}${infer Rest}`
 	? C extends OperatorChars
 		? ReadOperatorCharsWide<Rest, `${Op}${C}`>
 		: { token: Op; rest: S }
@@ -70,7 +70,7 @@ export type SkipSpaces<S> =
  * it is a depth bound, not a limit on the number of spaces.
  * TLVL-4: the limit dodged is the instantiation depth limit (TS2589); tests: test/stress/sqlt-105-long-statement.
  */
-export type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
+type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
 	? [S, true]
 	: S extends `\x20${infer Rest}`
 		? SkipSomeSpaces<Rest, [...Acc, 1]>
@@ -95,11 +95,11 @@ export type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
 export type Digit = "0" | NonZeroDigit
 
-export type Letter = LowerCaseLetter | UpperCaseLetter
+type Letter = LowerCaseLetter | UpperCaseLetter
 
-export type UpperCaseLetter = Uppercase<LowerCaseLetter>
+type UpperCaseLetter = Uppercase<LowerCaseLetter>
 
-export type LowerCaseLetter =
+type LowerCaseLetter =
 	| "a"
 	| "b"
 	| "c"
@@ -127,7 +127,7 @@ export type LowerCaseLetter =
 	| "y"
 	| "z"
 
-export type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
+type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
 	? Comment extends `${string}/*${string}`
 		? Skip2Comments<S>
 		: Comment extends `${string}/`
@@ -135,7 +135,7 @@ export type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${
 			: Rest
 	: ""
 
-export type Skip2Comments<S extends string> = S extends `${string}/*${infer Rest}`
+type Skip2Comments<S extends string> = S extends `${string}/*${infer Rest}`
 	? SkipMultiComment<SkipMultiComment<Rest>>
 	: never
 
@@ -161,7 +161,7 @@ export type GetNumberFrac<S extends string, Buf extends string> = S extends `${i
 				: Return<TokenFloat<Buf>, S>
 	: Return<TokenFloat<Buf>, S>
 
-export type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
+type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends "+" | "-"
 		? GetNumberExpNumStart<Rest, `${Buf}${D1}`>
 		: D1 extends Digit
@@ -169,13 +169,13 @@ export type GetNumberExpStart<S extends string, Buf extends string> = S extends 
 			: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 	: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 
-export type GetNumberExpNumStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
+type GetNumberExpNumStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
 		: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 	: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
 
-export type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
+type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
 	? D1 extends Digit
 		? GetNumberExpNum<Rest, `${Buf}${D1}`>
 		: D1 extends Letter
@@ -185,7 +185,7 @@ export type GetNumberExpNum<S extends string, Buf extends string> = S extends `$
 
 export type SomeSymbols<Text extends string> = Text extends `${infer Result}${SkipSymbols<Text, 15>}` ? Result : never
 
-export type SkipSymbols<Text extends string, Count extends number> = Count extends 0
+type SkipSymbols<Text extends string, Count extends number> = Count extends 0
 	? Text
 	: Text extends `${string}${infer Rest}`
 		? SkipSymbols<Rest, Dec<Count>>
