@@ -24,10 +24,42 @@ export type ProbeKeyOf<S> = S extends { type: "param-probe"; arg: infer K extend
 type DisplayKey<K extends string | number> = K extends number ? `$${Inc<K>}` : `:${K & string}`
 
 /** Error carrying the type a position gives to the probe `Key`; shows as CORE-7 if it ever reaches the user. */
-export type ParamProbeFound<Key extends string | number, S extends SqlTypeShape> = FormatError<
-	Errors["CANNOT_INFER_PARAMETER_TYPE"],
-	[DisplayKey<Key>, DisplayKey<Key>]
-> & { __param_probe__: { key: Key; type: S } }
+export type ParamProbeFound<
+	Key extends string | number,
+	S extends SqlTypeShape,
+	More extends readonly ProbeBinding[] = [],
+> = FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [DisplayKey<Key>, DisplayKey<Key>]> & {
+	__param_probe__: { key: Key; type: S; more: More }
+}
+
+/** One probe key with the type a position gives it. */
+export type ProbeBinding = readonly [string | number, SqlTypeShape]
+
+/** Every binding a `ParamProbeFound` carries, in the order they were found; `[]` for anything else. */
+export type ProbeBindingsOf<E> = E extends {
+	__param_probe__: { key: infer K extends string | number; type: infer S extends SqlTypeShape; more: infer M }
+}
+	? M extends readonly ProbeBinding[]
+		? [readonly [K, S], ...M]
+		: [readonly [K, S]]
+	: []
+
+export type IsParamProbeFound<E> = E extends { __param_probe__: unknown } ? true : false
+
+/**
+ * Two results that were both computed in one round: a found probe collects the probes the other one found, so one
+ * round binds them all (instead of one parse per parameter). A probe wins over any other error, as it would in the
+ * one-at-a-time loop, where the first probe is bound before anything after it is looked at.
+ */
+export type CollectParamProbes<Found, Next> = Found extends {
+	__param_probe__: { key: infer K extends string | number; type: infer S extends SqlTypeShape; more: infer M }
+}
+	? IsParamProbeFound<Next> extends true
+		? M extends readonly ProbeBinding[]
+			? ParamProbeFound<K, S, [...M, ...ProbeBindingsOf<Next>]>
+			: Found
+		: Found
+	: Next
 
 /** The type a comparison-like position gives to a probe: never null (a nullable column is compared, not assigned). */
 export type ProbeTypeFromPeer<S extends SqlTypeShape> = NonNull<S>
@@ -38,9 +70,22 @@ type InitialProbes<V> = V extends readonly unknown[]
 		: { [I in keyof V]: SqlParamProbe<I extends `${infer N extends number}` ? N : never> }
 	: { [K in Extract<keyof V, string>]: SqlParamProbe<K> }
 
-type BindProbe<Params, Key extends string | number, S extends SqlTypeShape> = Params extends readonly unknown[]
-	? { [I in keyof Params]: I extends `${Key}` ? S : Params[I] }
-	: { [K in keyof Params]: K extends Key ? S : Params[K] }
+/** The bindings as a map by key; the first binding of a key wins. */
+type ProbeMap<B extends readonly unknown[], Acc = {}> = B extends readonly [
+	readonly [infer K extends string | number, infer S],
+	...infer T,
+]
+	? `${K}` extends keyof Acc
+		? ProbeMap<T, Acc>
+		: ProbeMap<T, Acc & { [P in `${K}`]: S }>
+	: Acc
+
+type BindProbes<Params, B extends readonly unknown[]> =
+	ProbeMap<B> extends infer M
+		? Params extends readonly unknown[]
+			? { [I in keyof Params]: I extends keyof M ? M[I] : Params[I] }
+			: { [K in keyof Params]: K extends keyof M ? M[K] : Params[K] }
+		: never
 
 type LeftoverProbe<Params> = Params extends readonly unknown[]
 	? Params extends readonly [infer H, ...infer T]
@@ -64,8 +109,8 @@ type Derive<
 	Params extends ExpressionParamsShape,
 > =
 	ApplyStatements<Db, Stmt, Params, Syntax> extends [unknown, infer Err, ...unknown[]]
-		? Err extends { __param_probe__: { key: infer K extends string | number; type: infer S extends SqlTypeShape } }
-			? BindProbe<Params, K, S> extends infer Next extends ExpressionParamsShape
+		? IsParamProbeFound<Err> extends true
+			? BindProbes<Params, ProbeBindingsOf<Err>> extends infer Next extends ExpressionParamsShape
 				? Derive<Db, Stmt, Syntax, Next>
 				: never
 			: Err extends DbtyperErrorShape
