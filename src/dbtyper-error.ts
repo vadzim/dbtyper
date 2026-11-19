@@ -191,7 +191,7 @@ const errors = {
 	},
 	TOO_MANY_STATEMENTS: {
 		code: 1919,
-		msg: ["A script may have at most 2500 statements; split it into several migrations"],
+		msg: ["A script may have at most ", " statements; split it into several migrations"],
 	},
 	EXPECTED_CONFLICT_ACTION_AFTER_OR: {
 		code: 1918,

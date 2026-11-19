@@ -79,7 +79,7 @@ type ApplyParsedStatements<
 			// (2501 statements, STMT-16). TOO_MANY_STATEMENTS (src/dbtyper-error.ts) says the product of the two.
 			BatchDepth extends StatementBatches
 			? // STMT-16: the script is too long to apply; say so instead of dropping the tail.
-				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], []>>, Result]
+				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], [MaxStatements]>>, Result]
 			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
 						infer Rest extends ParserMonad,
 						infer NewDb extends JsqlDatabaseShape,
@@ -92,6 +92,8 @@ type ApplyParsedStatements<
 /** TLVL-4: statements per batch, and batches per script: a script may have `StatementsPerBatch * StatementBatches` (2500) statements. */
 type StatementsPerBatch = 50
 type StatementBatches = 50
+/** `StatementsPerBatch * StatementBatches`, for the message; test/stress/migration-too-many-statements (2501) breaks if the product changes. */
+type MaxStatements = 2500
 
 /**
  * TLVL-4: the `Depth extends StatementsPerBatch` bound below dodges the instantiation depth limit (TS2589);

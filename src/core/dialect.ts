@@ -69,8 +69,7 @@ export type DialectName = keyof Dialects
  * `CURRENT_DATE`/`CURRENT_TIME`/`CURRENT_TIMESTAMP` in a DEFAULT ("typed" = date/time/timestamp, "any" = any column may
  * default to them, SQLT-19); `addColumn`: "full" = `ADD COLUMN` takes the full column definition and a `, <action>` may
  * follow, "restricted" = PRIMARY KEY, UNIQUE and NOT NULL without a default are errors and the definition ends the
- * statement (SQLT-20, SQLT-21). `ddl` is read only by parse-create-view.ts (the view column list and IF NOT EXISTS), until
- * #146 batch 3 splits it too.
+ * statement (SQLT-20, SQLT-21).
  * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "typed" (PostgreSQL) = the data table `PostgresFunctions` (src/parser/postgres-functions.ts; grammar and resolver helpers in function-catalog.ts) (the array functions are rows too), "affinity" (SQLite) = the data table `SqliteFunctions` (src/parser/sqlite-functions.ts).
  * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "typed" = the PostgreSQL operator typing of the
  * expression parser, "affinity" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
@@ -102,7 +101,6 @@ export type Dialects = {
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
-		ddl: false
 		tempObjects: false
 		schemaStatements: true
 		unsupportedStatements: readonly []
@@ -171,7 +169,6 @@ export type Dialects = {
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
-		ddl: true
 		tempObjects: true
 		schemaStatements: false
 		unsupportedStatements: readonly ["attach", "detach"]
