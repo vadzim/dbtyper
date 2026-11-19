@@ -24,11 +24,7 @@ import type { ParseUpdate } from "./parse-update.ts"
 import type { ParseSkipStatement, ParseSkipTrigger, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { Inc } from "../core/type-utils.ts"
-import type {
-	PostgresSkippedStatementKeywords,
-	SqliteSkippedStatementKeywords,
-	UnknownStatementError,
-} from "./statement-keywords.ts"
+import type { UnknownStatementError } from "./statement-keywords.ts"
 
 export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
@@ -197,8 +193,8 @@ type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShap
 					Db,
 					FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], [Uppercase<PeekToken<Tokens>["value"]>]>
 				>
-			: SkipKnownOrFail<Tokens, Db, SqliteSkippedStatementKeywords>
-		: SkipKnownOrFail<Tokens, Db, PostgresSkippedStatementKeywords>
+			: SkipKnownOrFail<Tokens, Db, DialectFact<Db, "skippedStatements">>
+		: SkipKnownOrFail<Tokens, Db, DialectFact<Db, "skippedStatements">>
 
 type SkipKnownOrFail<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Known extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<"("> | TokenEot

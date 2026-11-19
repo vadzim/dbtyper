@@ -3,62 +3,9 @@ import type { FormatError, Errors } from "../dbtyper-error.ts"
 /**
  * Statement keywords (STMT-18, STMT-19, SQLT-23, PGT-21). A statement whose first word is one of
  * {@link ParsedStatementKeywords} is parsed; one whose first word is in a dialect's skipped list is stepped over
- * unchecked; any other first word is the error {@link UnknownStatementError}. The lists are data, one per dialect.
+ * unchecked; any other first word is the error {@link UnknownStatementError}. The skipped lists are the `skippedStatements` row of each dialect in the `Dialects` table (DLCT-1).
  */
 type ParsedStatementKeywords = readonly ["select", "with", "insert", "update", "delete", "create", "alter", "drop"]
-
-/** Words that start a skipped statement of both dialects (the second word of CREATE/ALTER/DROP is not checked). */
-type CommonSkippedStatementKeywords = readonly [
-	"grant",
-	"revoke",
-	"truncate",
-	"set",
-	"reset",
-	"show",
-	"vacuum",
-	"analyze",
-	"explain",
-	"begin",
-	"commit",
-	"rollback",
-	"savepoint",
-	"release",
-	"reindex",
-	"values",
-]
-
-export type PostgresSkippedStatementKeywords = readonly [
-	...CommonSkippedStatementKeywords,
-	"comment",
-	"copy",
-	"lock",
-	"do",
-	"call",
-	"cluster",
-	"refresh",
-	"notify",
-	"listen",
-	"unlisten",
-	"table",
-	"start",
-	"end",
-	"abort",
-	"prepare",
-	"execute",
-	"deallocate",
-	"declare",
-	"fetch",
-	"move",
-	"close",
-	"discard",
-	"merge",
-	"load",
-	"checkpoint",
-	"security",
-	"import",
-]
-
-export type SqliteSkippedStatementKeywords = readonly [...CommonSkippedStatementKeywords, "pragma", "end", "replace"]
 
 /** All words a hint may suggest. */
 type SuggestionCandidates<Known extends readonly string[]> = readonly [...ParsedStatementKeywords, ...Known]
