@@ -1,6 +1,18 @@
 import type { SelectGroupClauseMeta } from "./parse-select-group-by.ts"
 import type { ScalarExprAst } from "./parse-expression.ts"
-import type { KnownAggregateName, RawSelectItem } from "./parse-select.ts"
+import type { RawSelectItem } from "./parse-select.ts"
+import type { DialectFact } from "../core/dialect.ts"
+import type { IsAggregateCall } from "./function-catalog.ts"
+
+/**
+ * An aggregate call: the `"aggregate"` kind of the function's row in the catalog of the chain's dialect
+ * (`functionCatalog` fact, src/parser/function-catalog.ts).
+ */
+export type KnownAggregateName<Db, N extends string, Args extends readonly unknown[]> = IsAggregateCall<
+	DialectFact<Db, "functionCatalog">,
+	Lowercase<N>,
+	Args["length"]
+>
 
 type AstContainsAggregateCall<Db, Ast extends ScalarExprAst> = Ast extends {
 	kind: "function_call"

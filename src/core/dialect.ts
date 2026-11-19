@@ -333,9 +333,6 @@ export type OtherDialectTitleOf<Catalog extends string> = {
 	[D in DialectName]: Dialects[D]["functionCatalog"] extends Catalog ? never : Dialects[D]["title"]
 }[DialectName]
 
-/** The dialect of a database state; PostgreSQL when the state names none (see {@link DialectFact}). */
-export type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : "postgres"
-
 /**
  * One fact of the dialect row (see {@link Dialects}) of a database state: the state of a chain carries its dialect
  * (`dialect` of {@link JsqlDatabaseShape}), which every parser already receives; the parser monad's own state is

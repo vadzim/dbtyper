@@ -1,6 +1,5 @@
-import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { DbtyperErrorShape, Errors, FormatError, FormatErrorOf } from "../dbtyper-error.ts"
 import type { Nullable, SqlArray, SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
-import type { OtherDialectTitleOf } from "../core/dialect.ts"
 import type { PostgresFunctions, PostgresSqliteOnlyFunctions } from "./postgres-functions.ts"
 import type { SqliteFunctions, SqlitePgOnlyFunctions } from "./sqlite-functions.ts"
 
@@ -8,7 +7,7 @@ import type { SqliteFunctions, SqlitePgOnlyFunctions } from "./sqlite-functions.
  * The function catalog grammar shared by the dialects (#116 item 4). A dialect's data file (`SqliteFunctions`,
  * `PostgresFunctions`) is one row per function name (SQLite: `name/N` for exactly N arguments); the dialect fact
  * `functionCatalog` picks the table ({@link CatalogOf}) and ONE resolver (`ResolveCatalogFunctionCall` in
- * parse-expression.ts) reads it. A row is `[result, nulls, kind, arity, params]`:
+ * resolve-function.ts) reads it. A row is `[result, nulls, kind, arity, params]`:
  *
  * - `result`: a type name of the dialect's type map, or a code (`arg` the type of the first argument, `arg2` of the
  *   second, `common` the common type of all arguments, `common-tail` of all but the first, `first-value` the first
@@ -22,8 +21,20 @@ import type { SqliteFunctions, SqlitePgOnlyFunctions } from "./sqlite-functions.
  *   of another argument), or `null` (a parameter there is not typed).
  */
 
+/**
+ * The catalogs by value of the `functionCatalog` fact: the row table and the hint table (names the OTHER dialect has
+ * and this one lacks, with a replacement, "" for none). Every "which table" step reads this one type.
+ */
+type Catalogs = {
+	affinity: { rows: SqliteFunctions; hints: SqlitePgOnlyFunctions }
+	typed: { rows: PostgresFunctions; hints: PostgresSqliteOnlyFunctions }
+}
+
+/** The catalog of fact value `C`; anything but "affinity" reads the "typed" one (PostgreSQL, the default dialect). */
+type CatalogEntry<C extends string> = C extends "affinity" ? Catalogs["affinity"] : Catalogs["typed"]
+
 /** The data table of a dialect. */
-type CatalogOf<C extends string> = C extends "affinity" ? SqliteFunctions : PostgresFunctions
+type CatalogOf<C extends string> = CatalogEntry<C>["rows"]
 
 type CatalogKey<Cat, L extends string, N extends number> = `${L}/${N}` extends keyof Cat
 	? `${L}/${N}`
@@ -81,22 +92,6 @@ type ArityRules = {
 	unnest: [1, 1, "UNNEST_REQUIRES_1_ARGUMENT"]
 }
 
-/** The errors of {@link ArityRules} by key. */
-type ArityErrors = {
-	FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT: FormatError<Errors["FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-	COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT: FormatError<Errors["COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT"], []>
-	SUM_REQUIRES_AN_ARGUMENT: FormatError<Errors["SUM_REQUIRES_AN_ARGUMENT"], []>
-	NOW_TAKES_NO_ARGUMENTS: FormatError<Errors["NOW_TAKES_NO_ARGUMENTS"], []>
-	THIS_FUNCTION_TAKES_NO_ARGUMENTS: FormatError<Errors["THIS_FUNCTION_TAKES_NO_ARGUMENTS"], []>
-	ROW_NUMBER_TAKES_NO_ARGUMENTS: FormatError<Errors["ROW_NUMBER_TAKES_NO_ARGUMENTS"], []>
-	RANK_DENSE_RANK_TAKES_NO_ARGUMENTS: FormatError<Errors["RANK_DENSE_RANK_TAKES_NO_ARGUMENTS"], []>
-	LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT: FormatError<Errors["LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT"], []>
-	ARRAY_LENGTH_REQUIRES_2_ARGUMENTS: FormatError<Errors["ARRAY_LENGTH_REQUIRES_2_ARGUMENTS"], []>
-	ARRAY_APPEND_REQUIRES_2_ARGUMENTS: FormatError<Errors["ARRAY_APPEND_REQUIRES_2_ARGUMENTS"], []>
-	ARRAY_PREPEND_REQUIRES_2_ARGUMENTS: FormatError<Errors["ARRAY_PREPEND_REQUIRES_2_ARGUMENTS"], []>
-	UNNEST_REQUIRES_1_ARGUMENT: FormatError<Errors["UNNEST_REQUIRES_1_ARGUMENT"], []>
-}
-
 type EnoughArgs<Args extends readonly unknown[], Min extends number> = Min extends 0
 	? true
 	: Min extends 1
@@ -124,21 +119,16 @@ export type CatalogArityError<Row, Args extends readonly unknown[]> = Row extend
 	? ArityRules[Rule] extends readonly [
 			infer Min extends number,
 			infer Max extends number,
-			infer Key extends keyof ArityErrors,
+			infer Key extends keyof Errors,
 		]
 		? ArgsFit<Args, Min, Max> extends true
 			? null
-			: ArityErrors[Key]
+			: FormatErrorOf<Errors[Key], []>
 		: null
 	: null
 
 /** The hint table of the other dialect: names it has and this one lacks, with a replacement ("" for none). */
-export type OtherDialectHints<C extends string> = C extends "affinity"
-	? SqlitePgOnlyFunctions
-	: PostgresSqliteOnlyFunctions
-
-/** How messages name the other dialect. */
-export type OtherDialectTitle<C extends string> = OtherDialectTitleOf<C>
+export type OtherDialectHints<C extends string> = CatalogEntry<C>["hints"]
 
 /**
  * CORE-6: the SQL type a parameter gets as argument `Index` of a call; `never` when the row gives none. `"peer"`
@@ -157,11 +147,12 @@ export type RowArgType<Row, Index extends number> = Row extends readonly [string
 /** A row whose arguments all share one type: a parameter takes the type of another argument. */
 export type IsPeerTypedRow<Row> = Row extends readonly [string, string, string, unknown, "peer"] ? true : false
 
-// ---- SQLite result codes ----
+// ---- Result codes: one grammar for every dialect ----
 
 type Numeric = "integer" | "real" | "numeric" | "boolean" | "bigint"
 
-type Common2<A extends string, B extends string> = A extends B
+/** SQLite: the common type of two argument types; equal types stay, numbers widen, otherwise `any`. */
+type AffinityCommon2<A extends string, B extends string> = A extends B
 	? A
 	: [A | B] extends [Numeric]
 		? "real" extends A | B
@@ -171,19 +162,117 @@ type Common2<A extends string, B extends string> = A extends B
 				: "integer"
 		: "any"
 
-/** Common type of argument types: null literals are ignored; equal types stay, numbers widen, otherwise `any`. */
-type CommonType<Args extends readonly SqlTypeShape[], Acc extends string = never> = Args extends readonly [
+type PgNumeric = "smallint" | "integer" | "bigint" | "numeric" | "real" | "double precision"
+
+/** PostgreSQL: the widest numeric type among the two (its numeric hierarchy); other types keep the first. */
+type TypedCommon2<A extends string, B extends string> = A extends B
+	? A
+	: [A | B] extends [PgNumeric]
+		? "double precision" extends A | B
+			? "double precision"
+			: "real" extends A | B
+				? "real"
+				: "numeric" extends A | B
+					? "numeric"
+					: "bigint" extends A | B
+						? "bigint"
+						: "integer"
+		: A
+
+type Common2<C extends string, A extends string, B extends string> = C extends "affinity"
+	? AffinityCommon2<A, B>
+	: TypedCommon2<A, B>
+
+/** Common type of argument types: null literals are ignored; the dialect's widening decides the rest. */
+type CommonType<
+	C extends string,
+	Args extends readonly SqlTypeShape[],
+	Acc extends string = never,
+> = Args extends readonly [infer H extends SqlTypeShape, ...infer T extends readonly SqlTypeShape[]]
+	? H["type"] extends "null"
+		? CommonType<C, T, Acc>
+		: [Acc] extends [never]
+			? CommonType<C, T, H["type"]>
+			: CommonType<C, T, Common2<C, Acc, H["type"]>>
+	: [Acc] extends [never]
+		? "null"
+		: Acc
+
+/** The type name that stands for "any type" in the dialect's type map (`arg` without arguments). */
+type UnknownTypeName<C extends string> = C extends "affinity" ? "any" : "unknown"
+
+type FirstValue<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
 	...infer T extends readonly SqlTypeShape[],
 ]
 	? H["type"] extends "null"
-		? CommonType<T, Acc>
-		: [Acc] extends [never]
-			? CommonType<T, H["type"]>
-			: CommonType<T, Common2<Acc, H["type"]>>
-	: [Acc] extends [never]
-		? "null"
-		: Acc
+		? FirstValue<T>
+		: H
+	: { type: "null"; arg: null; nullable: true }
+
+/** `sum`: SQLite integer over integers, else real; PostgreSQL (PGT-27) smallint/integer to bigint, bigint/numeric to numeric, floats keep their type. */
+type SumType<C extends string, T extends string> = C extends "affinity"
+	? T extends "integer" | "boolean" | "bigint"
+		? "integer"
+		: "real"
+	: T extends "smallint" | "integer"
+		? "bigint"
+		: T extends "real" | "double precision"
+			? T
+			: "numeric"
+
+/** PGT-27: `avg` over integers and numeric is numeric, over floats double precision. */
+type AvgType<T extends string> = T extends "real" | "double precision" ? "double precision" : "numeric"
+
+type FirstArg<C extends string, Args extends readonly SqlTypeShape[]> = Args extends readonly [
+	infer A extends SqlTypeShape,
+	...unknown[],
+]
+	? A
+	: Shape<UnknownTypeName<C>>
+
+type ResultShape<C extends string, R extends string, Args extends readonly SqlTypeShape[]> = R extends "arg"
+	? NonNull<FirstArg<C, Args>>
+	: R extends "arg2"
+		? Args extends readonly [unknown, infer A extends SqlTypeShape, ...unknown[]]
+			? NonNull<A>
+			: Shape<UnknownTypeName<C>>
+		: R extends "common"
+			? Shape<CommonType<C, Args>>
+			: R extends "common-tail"
+				? Shape<CommonType<C, Tail<Args>>>
+				: R extends "first-value"
+					? FirstValue<Args> extends infer F extends SqlTypeShape
+						? NonNull<F>
+						: never
+					: R extends "sum"
+						? Shape<SumType<C, FirstArg<C, Args>["type"]>>
+						: R extends "avg"
+							? Shape<AvgType<FirstArg<C, Args>["type"]>>
+							: R extends "array-of-arg"
+								? SqlArray<NonNull<FirstArg<C, Args>>>
+								: R extends "text[]"
+									? SqlArray<Shape<"text">>
+									: R extends "array-length" | "array-append" | "array-prepend" | "unnest"
+										? PgArrayFunctionResult<R, Args>
+										: Shape<R>
+
+/** The result of a row of dialect `C` for resolved argument types (CORE-2 per the row). */
+export type CatalogRowResult<C extends string, Row, Args extends readonly SqlTypeShape[]> = Row extends readonly [
+	infer R extends string,
+	infer N extends string,
+	...unknown[],
+]
+	? ResultShape<C, R, Args> extends infer S
+		? S extends DbtyperErrorShape
+			? S
+			: S extends SqlTypeShape
+				? IsResultNullable<N, Args> extends true
+					? Nullable<S>
+					: S
+				: never
+		: never
+	: never
 
 type Shape<T extends string> = { type: T; arg: null; nullable: false }
 
@@ -193,20 +282,6 @@ type Tail<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 ]
 	? T
 	: readonly []
-
-type ResultShape<R extends string, Args extends readonly SqlTypeShape[]> = R extends "arg"
-	? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-		? NonNull<A>
-		: Shape<"any">
-	: R extends "common"
-		? Shape<CommonType<Args>>
-		: R extends "common-tail"
-			? Shape<CommonType<Tail<Args>>>
-			: R extends "sum"
-				? Args extends readonly [{ type: "integer" | "boolean" | "bigint" }, ...unknown[]]
-					? Shape<"integer">
-					: Shape<"real">
-				: Shape<R>
 
 type AnyNullable<Args extends readonly SqlTypeShape[]> = Args extends readonly [
 	infer H extends SqlTypeShape,
@@ -248,125 +323,6 @@ type IsResultNullable<N extends string, Args extends readonly SqlTypeShape[]> = 
 								: AnyNullable<Args>
 							: true
 						: AnyNullable<Args>
-
-/** Result of a SQLite function row for resolved argument types. */
-export type SqliteRowResult<Row, Args extends readonly SqlTypeShape[]> = Row extends readonly [
-	infer R extends string,
-	infer N extends string,
-	...unknown[],
-]
-	? ResultShape<R, Args> extends infer S extends SqlTypeShape
-		? IsResultNullable<N, Args> extends true
-			? Nullable<S>
-			: S
-		: never
-	: never
-
-// ---- PostgreSQL result codes ----
-
-/** The widest numeric type among the two (PostgreSQL's numeric hierarchy); other types keep the first. */
-type PgCommon2<A extends string, B extends string> = A extends B
-	? A
-	: [A | B] extends [PgNumeric]
-		? "double precision" extends A | B
-			? "double precision"
-			: "real" extends A | B
-				? "real"
-				: "numeric" extends A | B
-					? "numeric"
-					: "bigint" extends A | B
-						? "bigint"
-						: "integer"
-		: A
-
-type PgNumeric = "smallint" | "integer" | "bigint" | "numeric" | "real" | "double precision"
-
-/** Common type of `greatest`/`least` arguments: NULL literals are ignored, numbers widen, else the first type. */
-type PgCommonType<Args extends readonly SqlTypeShape[], Acc extends string = never> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["type"] extends "null"
-		? PgCommonType<T, Acc>
-		: [Acc] extends [never]
-			? PgCommonType<T, H["type"]>
-			: PgCommonType<T, PgCommon2<Acc, H["type"]>>
-	: [Acc] extends [never]
-		? "null"
-		: Acc
-
-type FirstValue<Args extends readonly SqlTypeShape[]> = Args extends readonly [
-	infer H extends SqlTypeShape,
-	...infer T extends readonly SqlTypeShape[],
-]
-	? H["type"] extends "null"
-		? FirstValue<T>
-		: H
-	: { type: "null"; arg: null; nullable: true }
-
-/** PGT-27: `sum` over smallint/integer is bigint, over bigint/numeric numeric, over floats the same type. */
-type PgSumType<T extends string> = T extends "smallint" | "integer"
-	? "bigint"
-	: T extends "real" | "double precision"
-		? T
-		: "numeric"
-
-/** PGT-27: `avg` over integers and numeric is numeric, over floats double precision. */
-type PgAvgType<T extends string> = T extends "real" | "double precision" ? "double precision" : "numeric"
-
-type PgResultShape<R extends string, Args extends readonly SqlTypeShape[]> = R extends "arg"
-	? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-		? NonNull<A>
-		: Shape<"unknown">
-	: R extends "arg2"
-		? Args extends readonly [unknown, infer A extends SqlTypeShape, ...unknown[]]
-			? NonNull<A>
-			: Shape<"unknown">
-		: R extends "common"
-			? Shape<PgCommonType<Args>>
-			: R extends "first-value"
-				? FirstValue<Args> extends infer F extends SqlTypeShape
-					? NonNull<F>
-					: never
-				: R extends "sum"
-					? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-						? Shape<PgSumType<A["type"]>>
-						: Shape<"numeric">
-					: R extends "avg"
-						? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-							? Shape<PgAvgType<A["type"]>>
-							: Shape<"numeric">
-						: R extends "array-of-arg"
-							? Args extends readonly [infer A extends SqlTypeShape, ...unknown[]]
-								? SqlArray<NonNull<A>>
-								: Shape<"unknown">
-							: R extends "text[]"
-								? SqlArray<Shape<"text">>
-								: R extends "array-length" | "array-append" | "array-prepend" | "unnest"
-									? PgArrayFunctionResult<R, Args>
-									: Shape<R>
-
-/** Result of a PostgreSQL function row for resolved argument types (CORE-2 per the row). */
-type PostgresRowResult<Row, Args extends readonly SqlTypeShape[]> = Row extends readonly [
-	infer R extends string,
-	infer N extends string,
-	...unknown[],
-]
-	? PgResultShape<R, Args> extends infer S
-		? S extends DbtyperErrorShape
-			? S
-			: S extends SqlTypeShape
-				? IsResultNullable<N, Args> extends true
-					? Nullable<S>
-					: S
-				: never
-		: never
-	: never
-
-/** The result of a row of dialect `C` for resolved argument types. */
-export type CatalogRowResult<C extends string, Row, Args extends readonly SqlTypeShape[]> = C extends "affinity"
-	? SqliteRowResult<Row, Args>
-	: PostgresRowResult<Row, Args>
 
 /** FN-19…FN-21: the array functions check their argument types (the argument count is the row's arity). */
 type PgArrayFunctionResult<R extends string, Args extends readonly SqlTypeShape[]> = R extends "array-length"

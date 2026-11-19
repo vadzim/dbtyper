@@ -11,7 +11,7 @@ import type {
 	SqlUnknown,
 } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { SqliteRowResult } from "./function-catalog.ts"
+import type { CatalogRowResult } from "./function-catalog.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
@@ -35,7 +35,7 @@ export type ResolveCustomOp<
 						? Rv extends SqlTypeShape
 							? DialectFact<Db, "operators"> extends "affinity"
 								? Op extends keyof SqliteOperators
-									? SqliteRowResult<SqliteOperators[Op], [Lv, Rv]>
+									? CatalogRowResult<"affinity", SqliteOperators[Op], [Lv, Rv]>
 									: ResolveBuiltinCustomOp<Op, Lv, Rv>
 								: ResolveBuiltinCustomOp<Op, Lv, Rv>
 							: never

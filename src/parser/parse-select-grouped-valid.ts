@@ -1,5 +1,5 @@
 import type { ScalarExprAst, ScalarIdentParts } from "./parse-expression.ts"
-import type { KnownAggregateName } from "./parse-select.ts"
+import type { KnownAggregateName } from "./parse-select-grouped-aggregate.ts"
 import type { AstEqualsGroupKey, GroupKeySetContainsColParts } from "./parse-select-grouped.ts"
 
 type TypeBoolAnd<A, B> = A extends true ? (B extends true ? true : false) : false

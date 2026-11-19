@@ -4,7 +4,6 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 - [ ] make it work with omniroute (SQLite is supported: `dbtyper/sqlite`)
 - [ ] try to reorganize errors - use first index by id, not by numbers to be able to cclick in IDE on FormatError<E<"here_to_click">> and navigate to error
-- [ ] deal with large enum of tokens in ParseOneRawSelectItem - why it's needed?
 - [ ] remove Expects and replace with Matches in all the tests
 - [ ] error: "Incompatible types in IN list" -> "Incompatible types in IN list <type1> and <type2>" and also check if other errors can be more informative like this.
 - [ ] add integration test for "select 1;"

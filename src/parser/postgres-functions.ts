@@ -2,8 +2,8 @@ import type { SqlInteger, SqlText } from "../core/sql-type-shape.ts"
 
 /**
  * PGT-27…PGT-33: the result of every PostgreSQL function, as data (a row per function, like `SqliteFunctions`).
- * A row is `[result, nulls]`, `[result, nulls, "aggregate"]` (also valid before `OVER`, FILTER) or
- * `[result, nulls, "window"]` (needs an OVER clause).
+ * A row is the 5-tuple `[result, nulls, kind, arity, params]` of the grammar in function-catalog.ts (`kind`
+ * "aggregate" is also valid before `OVER`, FILTER; "window" needs an OVER clause).
  *
  * `result`: a type name of the PostgreSQL type map, or
  *   `arg` the type of the first argument, `arg2` the type of the second, `common` the common numeric/other type of all

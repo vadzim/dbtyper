@@ -1,9 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken, SourceSpan, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
-import type { TokenIndexedParam } from "../lexer/sql-lexer.ts"
 import type { TokenParam } from "../lexer/sql-lexer.ts"
-import type { TokenNumber } from "../lexer/sql-lexer.ts"
-import type { TokenString } from "../lexer/sql-lexer.ts"
 import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -98,29 +95,11 @@ type ParseOneRawSelectItem<
 			: never
 		: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 			? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
-			: PeekToken<Tokens> extends infer Head
-				? Head extends  // Open question: is this token list needed? See TODO.md ("large enum of tokens in ParseOneRawSelectItem")
-						| TokenNumber<string>
-						| TokenString<string>
-						| TokenParam<string>
-						| TokenIndexedParam<string>
-						| TokenKey<"(">
-						| TokenKey<"true">
-						| TokenKey<"false">
-						| TokenKey<"null">
-						| TokenKey<"-">
-						| TokenKey<"not">
-						| TokenKey<"cast">
-						| TokenKey<"case">
-						| TokenKey<"exists">
-						| TokenKey<"array">
-						| TokenKey<"current_timestamp" | "current_date" | "current_time">
-					? ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
-					: Head extends TokenEotWithDialectError
-						? // the text ended at a lexer error (1001-1004): stop here, ApplyStatements reports that error (#116 item 25)
-							[Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["end of text"]>]
-						: never
-				: never
+			: PeekToken<Tokens> extends TokenEotWithDialectError
+				? // the text ended at a lexer error (1001-1004): stop here, ApplyStatements reports that error (#116 item 25)
+					[Tokens, FormatError<Errors["UNEXPECTED_TOKEN"], ["end of text"]>]
+				: // anything else starts an expression: the expression parser says what may start one (and reports the rest)
+					ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 
 type ParseOptionalAs<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"as">

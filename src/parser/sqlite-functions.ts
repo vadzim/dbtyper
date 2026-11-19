@@ -1,8 +1,8 @@
 import type { SqlInteger, SqlText } from "../core/sql-type-shape.ts"
 
 /**
- * SQLT-44…SQLT-51: the result of every SQLite function, as data (a row per function, like `FunctionArgTypes`).
- * A row is `[result, nulls]` or `[result, nulls, "window"]` for a function that needs an OVER clause. A name followed
+ * SQLT-44…SQLT-51: the result of every SQLite function, as data (a row per function).
+ * A row is the 5-tuple `[result, nulls, kind, arity, params]` of the grammar in function-catalog.ts. A name followed
  * by `/N` is the row for exactly N arguments (`max/1` is the aggregate, `max` the scalar with two or more).
  *
  * `result`: a type name of the SQLite type map (`text`, `integer`, `real`, `blob`, `any`, `typeof`) or
