@@ -46,13 +46,13 @@
 		"docs"
 	],
 	"scripts": {
-		"setup": "npm install & npm run build",
+		"setup": "npm install && npm run build",
 		"deps:install:all": "npm install --workspaces --include-workspace-root",
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist",
 		"prepack": "npm run build",
 		"pr": "bash scripts/create-pr.sh",
-		"typecheck": "tsgo --noEmit -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"typecheck:full": "npm run --silent typecheck && npm run --silent monadcheck-log && npm run --silent typecheck:test && npm run --silent typecheck:stress",
 		"example:docker:up": "npm run docker:up -w @dbtyper/example-postgres",
 		"example:docker:down": "npm run docker:down -w @dbtyper/example-postgres",
@@ -67,23 +67,20 @@
 		"example:nest:start": "npm run start -w @dbtyper/example-nest-postgres",
 		"example:nest:test": "npm test -w @dbtyper/example-nest-postgres",
 		"example:nest:test:integration": "npm run test:integration -w @dbtyper/example-nest-postgres",
-		"typecheck:test": "time tsgo --noEmit -p tsconfig.test.json",
-		"typecheck:stress": "tsgo --noEmit -p tsconfig.test-stress.json",
+		"typecheck:test": "time tsc --noEmit -p tsconfig.test.json",
+		"typecheck:stress": "tsc --noEmit -p tsconfig.test-stress.json",
 		"typecheck:watch": "nodemon -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run --silent typecheck:full || exit 1'\"",
 		"test:watch": "nodemon -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run --silent test || exit 1'\"",
 		"test:verbose": "npm run --silent test:ci && npm run --silent test -w @dbtyper/example-postgres && npm run --silent test -w @dbtyper/example-nest-postgres",
 		"test": "mkdir -p .logs; npm run --silent test:verbose 1>.logs/test.log 2>&1; RC=$?; [ $RC -ne 0 ] && tail -n 100 .logs/test.log || echo 'Ok.'; exit $RC",
-		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w @dbtyper/example-sqlite-node && npm run --silent test -w @dbtyper/example-sqlite-better && npm run --silent test -w dbtyper-nest && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
+		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w @dbtyper/example-sqlite-node && npm run --silent test -w @dbtyper/example-sqlite-better && npm run --silent test -w dbtyper-nest && node --import tsx --test packages/dbtyper-nest/test/*.test.ts && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
-		"lint:unused": "npm run lint",
 		"find-unused": "node scripts/find-unused-exports.ts",
 		"monadcheck": "check-monad './src/**/*.ts' --monad ./src/lexer/parser-monad.ts ParserMonad:CreateParserMonad:PeekToken:SkipToken --snippet-lines 6:4 --max-show-errors 5 --off conditional.monadRelatedNeverNotAllowed",
 		"monadcheck-log": "bash -c 'mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'\"'\"'node:fs/promises'\"'\"';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||process.env.CI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC'",
-		"monitor": "node .automation/monitor-github-labels.ts",
-		"gram:xml": "cd src/gram && bison --xml gram.y",
-		"gram:json": "cd src/gram && node -e 'console.log(JSON.stringify(new((await import(`fast-xml-parser`)).XMLParser)({ignoreAttributes:false,attributeNamePrefix:`@`}).parse((await Array.fromAsync(process.stdin)).join(``)),null,2))'<gram.xml>gram.json"
+		"monitor": "node .automation/monitor-github-labels.ts"
 	},
 	"engines": {
 		"node": ">=22.13"
@@ -101,19 +98,18 @@
 		}
 	},
 	"devDependencies": {
-		"@types/node": "^25.5.2",
-		"@typescript-eslint/eslint-plugin": "^8.59.2",
-		"@typescript-eslint/parser": "^8.59.2",
-		"@typescript/native-preview": "^7.0.0-dev.20260408.1",
+		"@types/node": "^26.6.6",
+		"@typescript-eslint/eslint-plugin": "^8.73.0",
+		"@typescript-eslint/parser": "^8.73.0",
+		"@typescript/native": "npm:typescript@^7.0.2",
 		"better-sqlite3": "^13.2.0",
-		"eslint": "^10.3.0",
-		"fast-xml-parser": "^5.8.0",
-		"high-order-type-monad-checker": "github:vadzim/high-order-type-monad-checker#27e646620fb51651642fa8fb135a66479384cc14",
+		"eslint": "^10.15.0",
+		"high-order-type-monad-checker": "git+https://github.com/vadzim/high-order-type-monad-checker.git#27e646620fb51651642fa8fb135a66479384cc14",
 		"nodemon": "^3.1.14",
 		"postgres": "^3.4.5",
-		"prettier": "^3.8.1",
-		"smee-client": "^2.0.3",
+		"prettier": "^3.10.1",
+		"smee-client": "^5.0.0",
 		"ts-unused-exports": "^11.0.1",
-		"typescript": "^6.0.2"
+		"typescript": "npm:@typescript/typescript6@^6.0.2"
 	}
 }

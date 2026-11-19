@@ -5,7 +5,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table users (id text not null, name text not null);`)
 	.database()
 
@@ -17,4 +16,4 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<1105, "Expected semicolon after SELECT">>())
+expectType<ReturnedError>(toBe<DbtyperError<1007, "Unexpected token at: :">>())

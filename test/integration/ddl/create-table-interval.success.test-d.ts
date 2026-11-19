@@ -6,7 +6,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: interval (time intervals)
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table durations (id integer not null, duration interval not null);`)
 	.database()
 

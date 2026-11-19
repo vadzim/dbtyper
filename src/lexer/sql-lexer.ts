@@ -1,32 +1,54 @@
-import type { Dec } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { DialectConstruct, DialectOnlyError, LexerFact } from "../core/dialect.ts"
+import type { DialectOnlyError, LexerFact } from "../core/dialect.ts"
+import type { DialectConstruct } from "../core/dialect-constructs.ts"
+import type {
+	Return,
+	TokenKey,
+	TokenIdent,
+	TokenString,
+	TokenInteger,
+	TokenParam,
+	TokenIndexedParam,
+	TokenEot,
+} from "./sql-lexer-tokens.ts"
+import type { ServiceWords } from "./sql-lexer-words.ts"
+import type {
+	OperatorChars,
+	ReadOperator,
+	SkipSpaces,
+	StartTokenChar,
+	TokenChar,
+	Digit,
+	NonZeroDigit,
+	GetNumber,
+	GetNumberFrac,
+	SomeSymbols,
+} from "./sql-lexer-chars.ts"
+
+export type {
+	TokenKind,
+	TokenType,
+	TokenKey,
+	TokenIdent,
+	TokenString,
+	TokenInteger,
+	TokenFloat,
+	TokenNumber,
+	TokenParam,
+	TokenIndexedParam,
+	TokenEot,
+	TokenStreamHead,
+} from "./sql-lexer-tokens.ts"
+export type { AsIdent } from "./sql-lexer-words.ts"
 
 export type LexerNamedQueryParams = "named-params"
 export type LexerIndexedQueryParams = "indexed-params" | "question-params"
 type LexerQueryParams = LexerNamedQueryParams | LexerIndexedQueryParams
 
-export type LexerFeatures = "" | "dollar-strings" | LexerQueryParams
+export type LexerFeatures = "" | LexerQueryParams
 
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
-	| Exclude<Syntax, LexerQueryParams>
-	| Extract<Syntax, AllowedQueryParams>
-
-export type TokenKind = "ident" | "string" | "int" | "float" | "key" | "param" | "indexed_param" | "eot"
-
-export type TokenType<Kind extends TokenKind, Value extends string = ""> = { value: Value; kind: Kind }
-
-export type TokenKey<Key extends string> = TokenType<"key", Key>
-export type TokenIdent<Ident extends string> = TokenType<"ident", Ident>
-export type TokenString<String extends string> = TokenType<"string", String>
-export type TokenInteger<Num extends string> = TokenType<"int", Num>
-export type TokenFloat<Num extends string> = TokenType<"float", Num>
-export type TokenNumber<Num extends string> = TokenInteger<Num> | TokenFloat<Num>
-export type TokenParam<Param extends string> = TokenType<"param", Param>
-export type TokenIndexedParam<Index extends string> = TokenType<"indexed_param", Index>
-export type TokenEot = TokenType<"eot">
-
-export type TokenStreamHead = TokenType<TokenKind, string> | DbtyperErrorShape
+	Exclude<Syntax, LexerQueryParams> | Extract<Syntax, AllowedQueryParams>
 
 /** Lex one token from a string (internal) */
 export type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
@@ -54,10 +76,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 							? Rest extends `${infer Name}]${infer Rest2}`
 								? // `text[]`, `array[1, 2]`, `array['a']`, `a[1]` keep their brackets (SQLT-53)
 									Name extends
-										| ""
-										| `${string},${string}`
-										| `${string}'${string}`
-										| `${Digit}${string}`
+										"" | `${string},${string}` | `${string}'${string}` | `${Digit}${string}`
 									? Return<TokenKey<Head>, Rest>
 									: QuotedIdent<Name, Rest2, Syntax>
 								: Return<TokenKey<Head>, Rest>
@@ -113,7 +132,10 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 																					Rest3
 																				>
 																			: never
-																		: "dollar-strings" extends Syntax
+																		: LexerFact<
+																					Syntax,
+																					"dollarStrings"
+																			  > extends true
 																			? Tagged<
 																					ReadDollarString<Rest>,
 																					"pg-dollar-string"
@@ -182,8 +204,6 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 																	>
 															: Return<TokenKey<Head>, Rest>
 	: Return<TokenEot, "">
-
-type Return<Result, Rest> = [Result, Rest]
 
 /**
  * A token that is a one-dialect construct (src/core/dialect.ts). The parser monad turns the tag into the
@@ -367,341 +387,3 @@ type ReadTokenCharsRaw<
 		? ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`>
 		: { token: Acc; rest: S }
 	: { token: Acc; rest: "" }
-
-type OperatorChars = PlusMinus | NarrowOperatorChars | WideOperatorChars
-type PlusMinus = "+" | "-"
-type NarrowOperatorChars = "*" | "/" | "<" | ">" | "="
-type WideOperatorChars = "~" | "!" | "@" | "#" | "%" | "^" | "&" | "|" | "`" | "?"
-
-type ReadOperator<S extends string> =
-	OptimizedBySpaceReadOperatorChars<S> extends { token: infer Word extends string; rest: infer Tail extends string }
-		? Word extends `${infer Before}--${string}`
-			? S extends `${Before}${infer Rest}`
-				? Return<TokenKey<Before>, Rest>
-				: never
-			: Word extends `${infer Before}/*${string}`
-				? S extends `${Before}${infer Rest}`
-					? Return<TokenKey<Before>, Rest>
-					: never
-				: Return<TokenKey<Word>, Tail>
-		: never
-
-type OptimizedBySpaceReadOperatorChars<S extends string> =
-	S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
-		? ReadOperatorChars<SmallerBuffer> extends {
-				token: infer T extends string
-				rest: infer SmallerRest extends string
-			}
-			? SmallerRest extends ""
-				? { token: T; rest: Rest }
-				: S extends `${T}${infer Rest2}`
-					? { token: T; rest: Rest2 }
-					: never
-			: ReadOperatorChars<S>
-		: ReadOperatorChars<S>
-
-type ReadOperatorChars<
-	S extends string,
-	Op extends string = "",
-	SNarrow extends string = S,
-	OpNarrow extends string = Op,
-> = S extends `${infer C}${infer Rest}`
-	? C extends WideOperatorChars
-		? ReadOperatorCharsWide<Rest, `${Op}${C}`>
-		: C extends NarrowOperatorChars
-			? ReadOperatorChars<Rest, `${Op}${C}`, Rest, `${Op}${C}`>
-			: C extends PlusMinus
-				? Op extends ""
-					? ReadOperatorChars<Rest, C, Rest, C>
-					: ReadOperatorChars<Rest, `${Op}${C}`, SNarrow, OpNarrow>
-				: { token: OpNarrow; rest: SNarrow }
-	: { token: OpNarrow; rest: SNarrow }
-
-type ReadOperatorCharsWide<S extends string, Op extends string> = S extends `${infer C}${infer Rest}`
-	? C extends OperatorChars
-		? ReadOperatorCharsWide<Rest, `${Op}${C}`>
-		: { token: Op; rest: S }
-	: { token: Op; rest: S }
-
-type SkipSpaces<S> =
-	SkipSomeSpaces<S> extends [infer R extends string, infer HasMoreSpace]
-		? HasMoreSpace extends true
-			? SkipSpaces<R>
-			: R
-		: never
-
-/**
- * Skips up to 100 spaces per call; `SkipSpaces` calls it again while more are left. The bound keeps the recursion
- * depth of one call under TypeScript's instantiation depth limit (found by trial on long indented SQL, #48, #105);
- * it is a depth bound, not a limit on the number of spaces.
- */
-type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
-	? [S, true]
-	: S extends `\x20${infer Rest}`
-		? SkipSomeSpaces<Rest, [...Acc, 1]>
-		: S extends `\n${infer Rest}`
-			? SkipSomeSpaces<Rest, [...Acc, 1]>
-			: S extends `\t${infer Rest}`
-				? SkipSomeSpaces<Rest, [...Acc, 1]>
-				: S extends `\r${infer Rest}`
-					? SkipSomeSpaces<Rest, [...Acc, 1]>
-					: S extends `--${infer Comment}`
-						? Comment extends `${string}\n${infer Rest}`
-							? SkipSomeSpaces<Rest, [...Acc, 1]>
-							: ["", false]
-						: S extends `/*${infer Comment}`
-							? SkipSomeSpaces<SkipMultiComment<Comment>, [...Acc, 1]>
-							: [S, false]
-
-type StartTokenChar = Letter | "_"
-
-type TokenChar = Letter | Digit | "_"
-
-type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-
-type Digit = "0" | NonZeroDigit
-
-type Letter = LowerCaseLetter | UpperCaseLetter
-
-type UpperCaseLetter = Uppercase<LowerCaseLetter>
-
-type LowerCaseLetter =
-	| "a"
-	| "b"
-	| "c"
-	| "d"
-	| "e"
-	| "f"
-	| "g"
-	| "h"
-	| "i"
-	| "j"
-	| "k"
-	| "l"
-	| "m"
-	| "n"
-	| "o"
-	| "p"
-	| "q"
-	| "r"
-	| "s"
-	| "t"
-	| "u"
-	| "v"
-	| "w"
-	| "x"
-	| "y"
-	| "z"
-
-const serviceWordsMap = {
-	add: true,
-	all: true,
-	alter: true,
-	always: true,
-	and: true,
-	any: true,
-	as: true,
-	asc: true,
-	begin: true,
-	between: true,
-	by: true,
-	case: true,
-	cast: true,
-	check: true,
-	column: true,
-	conflict: true,
-	constraint: true,
-	create: true,
-	cross: true,
-	current_date: true,
-	current_time: true,
-	current_timestamp: true,
-	database: true,
-	declare: true,
-	default: true,
-	delete: true,
-	else: true,
-	enum: true,
-	desc: true,
-	distinct: true,
-	do: true,
-	drop: true,
-	end: true,
-	except: true,
-	exclude: true,
-	extension: true,
-	exists: true,
-	false: true,
-	fetch: true,
-	first: true,
-	foreign: true,
-	from: true,
-	full: true,
-	function: true,
-	generated: true,
-	grant: true,
-	group: true,
-	having: true,
-	if: true,
-	in: true,
-	index: true,
-	inner: true,
-	insert: true,
-	intersect: true,
-	into: true,
-	is: true,
-	join: true,
-	key: true,
-	ilike: true,
-	language: true,
-	lateral: true,
-	left: true,
-	like: true,
-	limit: true,
-	natural: true,
-	array: true,
-	next: true,
-	not: true,
-	null: true,
-	offset: true,
-	on: true,
-	only: true,
-	or: true,
-	order: true,
-	outer: true,
-	over: true,
-	partition: true,
-	primary: true,
-	references: true,
-	rename: true,
-	replace: true,
-	return: true,
-	returning: true,
-	returns: true,
-	right: true,
-	row: true,
-	rows: true,
-	schema: true,
-	select: true,
-	set: true,
-	similar: true,
-	some: true,
-	stored: true,
-	table: true,
-	then: true,
-	to: true,
-	true: true,
-	type: true,
-	union: true,
-	unique: true,
-	update: true,
-	use: true,
-	using: true,
-	values: true,
-	virtual: true,
-	view: true,
-	when: true,
-	where: true,
-}
-
-type ServiceWords = keyof typeof serviceWordsMap
-
-/** Words in {@link serviceWordsMap} that PostgreSQL does not reserve: accepted as unquoted names (STMT-3). */
-type NonReservedWords =
-	| "alter"
-	| "always"
-	| "begin"
-	| "conflict"
-	| "database"
-	| "declare"
-	| "delete"
-	| "enum"
-	| "exclude"
-	| "extension"
-	| "first"
-	| "function"
-	| "generated"
-	| "index"
-	| "insert"
-	| "key"
-	| "language"
-	| "next"
-	| "partition"
-	| "rename"
-	| "replace"
-	| "schema"
-	| "stored"
-	| "type"
-	| "update"
-	| "use"
-	| "view"
-	| "virtual"
-
-/** A keyword token that PostgreSQL does not reserve is seen as an identifier; everything else is unchanged. */
-export type AsIdent<Tok> = Tok extends TokenKey<infer K extends NonReservedWords> ? TokenIdent<K> : Tok
-
-export const serviceWords: ReadonlySet<string> = new Set(Object.keys(serviceWordsMap))
-
-type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
-	? Comment extends `${string}/*${string}`
-		? Skip2Comments<S>
-		: Comment extends `${string}/`
-			? Skip2Comments<S>
-			: Rest
-	: ""
-
-type Skip2Comments<S extends string> = S extends `${string}/*${infer Rest}`
-	? SkipMultiComment<SkipMultiComment<Rest>>
-	: never
-
-type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${infer Rest}`
-	? D1 extends Digit
-		? GetNumber<Rest, `${Num}${D1}`>
-		: D1 extends "."
-			? GetNumberFrac<Rest, `${Num}${D1}`>
-			: D1 extends "e" | "E"
-				? GetNumberExpStart<Rest, `${Num}${D1}`>
-				: D1 extends Letter
-					? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-					: Return<TokenInteger<Num>, S>
-	: Return<TokenInteger<Num>, S>
-
-type GetNumberFrac<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
-	? D1 extends Digit
-		? GetNumberFrac<Rest, `${Buf}${D1}`>
-		: D1 extends "e" | "E"
-			? GetNumberExpStart<Rest, `${Buf}${D1}`>
-			: D1 extends Letter
-				? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-				: Return<TokenFloat<Buf>, S>
-	: Return<TokenFloat<Buf>, S>
-
-type GetNumberExpStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
-	? D1 extends "+" | "-"
-		? GetNumberExpNumStart<Rest, `${Buf}${D1}`>
-		: D1 extends Digit
-			? GetNumberExpNum<Rest, `${Buf}${D1}`>
-			: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-	: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-
-type GetNumberExpNumStart<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
-	? D1 extends Digit
-		? GetNumberExpNum<Rest, `${Buf}${D1}`>
-		: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-	: Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-
-type GetNumberExpNum<S extends string, Buf extends string> = S extends `${infer D1}${infer Rest}`
-	? D1 extends Digit
-		? GetNumberExpNum<Rest, `${Buf}${D1}`>
-		: D1 extends Letter
-			? Return<FormatError<Errors["INVALID_NUMBER"], []>, S>
-			: Return<TokenFloat<Buf>, S>
-	: Return<TokenFloat<Buf>, S>
-
-type SomeSymbols<Text extends string> = Text extends `${infer Result}${SkipSymbols<Text, 15>}` ? Result : never
-
-type SkipSymbols<Text extends string, Count extends number> = Count extends 0
-	? Text
-	: Text extends `${string}${infer Rest}`
-		? SkipSymbols<Rest, Dec<Count>>
-		: Text

@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table ok_sel ( id int );`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table ok_sel ( id int );`).database()
 
 // ❌ ERROR: Scalar expression in SELECT requires AS alias
 const query = `select 1, 2 from ok_sel;` as const

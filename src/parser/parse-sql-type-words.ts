@@ -8,7 +8,8 @@ import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
-import type { DialectFact, DialectOnlyError, PgOnlyTypeNames, SqliteTypeKey } from "../core/dialect.ts"
+import type { DialectFact } from "../core/dialect.ts"
+import type { DialectColumnTypeName, NormalizeSqlTypeName } from "../core/dialect-types.ts"
 
 /** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
 type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
@@ -27,47 +28,6 @@ type TypeWordsToString<A extends readonly string[]> = A extends readonly [
 		? Lowercase<H>
 		: `${Lowercase<H>} ${TypeWordsToString<T>}`
 	: ""
-
-/** Normalize SQL type aliases to canonical names */
-type NormalizeSqlTypeName<T extends string> = T extends "int" | "int4"
-	? "integer"
-	: T extends "serial" | "serial4"
-		? "integer"
-		: T extends "smallserial" | "serial2"
-			? "smallint"
-			: T extends "bigserial" | "serial8"
-				? "bigint"
-				: T extends "timestamptz"
-					? "timestamp with time zone"
-					: T extends "timetz"
-						? "time with time zone"
-						: T extends "int2"
-							? "smallint"
-							: T extends "int8"
-								? "bigint"
-								: T extends "float8" | "double precision"
-									? "double precision"
-									: T extends "float4"
-										? "real"
-										: T extends "bool"
-											? "boolean"
-											: T extends "character varying"
-												? "varchar"
-												: T
-
-/**
- * The type name a declared name gets in this chain's dialect: PostgreSQL normalizes aliases, SQLite derives the
- * affinity key from the name (SQLT-6…SQLT-9, dialect facts of src/core/dialect.ts). SQLT-17: a SERIAL name in a
- * SQLite chain gives the other-dialect error instead (with a hint) .
- */
-type DialectTypeName<Db, T extends string> =
-	DialectFact<Db, "typeNames"> extends "affinity"
-		? T extends "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
-			? DialectOnlyError<"dialect:sqlite", "pg-serial">
-			: T extends keyof PgOnlyTypeNames
-				? DialectOnlyError<"dialect:sqlite", PgOnlyTypeNames[T]>
-				: SqliteTypeKey<T>
-		: NormalizeSqlTypeName<T>
 
 /** Parse numeric literal from token string */
 type ParseNumericLiteral<S extends string> = S extends `${infer N extends number}` ? N : never
@@ -188,7 +148,7 @@ export type ParseSqlType<
 	KeepDeclared extends boolean = false,
 	Schema extends string = Db extends { defaultSchema: infer D extends string } ? D : "",
 > =
-	DialectFact<Db, "typeNames"> extends "named"
+	DialectFact<Db, "declaredTypes"> extends "named"
 		? PeekToken<Tokens> extends TokenIdent<infer Q extends string>
 			? Lowercase<Q> extends "collate"
 				? ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
@@ -216,7 +176,7 @@ type ParseUnqualifiedSqlType<
 		? Words extends readonly []
 			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
 			: TypeWordsToString<Words> extends infer TypeName extends string
-				? DialectTypeName<Db, TypeName> extends infer NormalizedName extends string
+				? DialectColumnTypeName<Db, TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiersAndZone<AfterWords, NormalizedName> extends [
 							infer AfterMods extends ParserMonad,
 							infer BaseShape0 extends SqlTypeShape,
@@ -242,7 +202,7 @@ type ParseUnqualifiedSqlType<
 								: never
 							: never
 						: never
-					: DialectTypeName<Db, TypeName> extends infer TypeErr extends DbtyperErrorShape
+					: DialectColumnTypeName<Db, TypeName> extends infer TypeErr extends DbtyperErrorShape
 						? SkipFailedExpression<AfterWords, TypeErr>
 						: never
 				: never
@@ -254,7 +214,7 @@ type ParseUnqualifiedSqlType<
  * Only PostgreSQL chains have named types; a name with parameters or no match stays as parsed.
  */
 export type ResolveUserType<Db, Schema extends string, Base extends SqlTypeShape> =
-	DialectFact<Db, "typeNames"> extends "affinity"
+	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? [Base, false]
 		: Db extends JsqlDatabaseShape
 			? Base["arg"] extends null

@@ -7,7 +7,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: serial types (auto-increment)
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table counters (id serial not null, count bigserial not null, small smallserial not null);`)
 	.database()
 

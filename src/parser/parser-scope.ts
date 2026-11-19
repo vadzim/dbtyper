@@ -1,5 +1,5 @@
 import type { JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { SqliteRowidNames } from "../core/dialect.ts"
+import type { SqliteRowidNames } from "../core/dialect-types.ts"
 
 /** One FROM/JOIN alias bound to a concrete table shape (columns as SQL type strings). */
 export type ScopeEntry = {
@@ -32,9 +32,9 @@ export type TableScopeColumns<Tbl extends JsqlDataShape> = Tbl extends { rowid_t
 export type VisibleColumnsOf<E extends ScopeEntry> = [HiddenColumnsOf<E> | RowidNamesIn<E["columns"]>] extends [never]
 	? E["columns"]
 	: {
-			[C in keyof E["columns"] as C extends HiddenColumnsOf<E> | RowidNamesIn<E["columns"]>
-				? never
-				: C]: E["columns"][C]
+			[
+				C in keyof E["columns"] as C extends HiddenColumnsOf<E> | RowidNamesIn<E["columns"]> ? never : C
+			]: E["columns"][C]
 		}
 
 /** The rowid pseudo-column names among `Cols` (`never` for any table without them: a cheap key test). */

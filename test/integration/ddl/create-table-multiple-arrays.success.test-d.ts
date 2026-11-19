@@ -6,7 +6,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: multiple array columns
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(
 		`create table multi (id integer not null, tags text[] not null, scores integer[] not null, flags boolean[] not null);`,
 	)

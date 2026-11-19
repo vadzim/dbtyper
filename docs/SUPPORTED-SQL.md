@@ -28,13 +28,14 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 
 - Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
 - Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
-- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`SqlDatabase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlDatabase({ driver: … })`**).
+- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`DataBase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlMigrations({ driver: … })`**).
 
 ### Dialect (DSEL-1…DSEL-11)
 
 - The driver's type-level config declares **`dialect: "postgres" | "sqlite"`** next to **`syntax`** and **`scalarTypes`**; every migration, query and stream of a chain is parsed in that dialect. A `createDriver` config without exactly one dialect is a compile error on `driver` at **`sqlMigrations`**.
 - Syntax of the other engine is a compile error with its own code: **1900** (PostgreSQL-only, in a SQLite chain), **1901** (SQLite-only, in a PostgreSQL chain). Built so far: `::`, `$n`, dollar-quoted strings (PostgreSQL); `INSERT OR …`, `REPLACE INTO`, backtick identifiers (SQLite). The list is the data table in **`src/core/dialect.ts`**.
 - A SQLite chain starts with its default schema in place (no `create schema`).
+- A PostgreSQL chain starts with the schema `public` (SCHEMA-27): the first migration may be `create table …`; `create schema public;` is an error (3200), `create schema if not exists public;` a no-op (SCHEMA-28). A `defaultSchema` other than `public` must still be created.
 
 ---
 
@@ -51,7 +52,7 @@ Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Pa
 - Optional **`IF NOT EXISTS`**.
 - **Qualified** `schema.table` or **unqualified** `table` (uses `defaultSchema`); schema must exist in the shape.
 - **`(` … `)`** column list, then **`;`** or end.
-- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`SqlDatabase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). PostgreSQL (PGT-2…PGT-11): `int8`/`numeric` → `string` (`int8` → `bigint` with `postgresSqlDriver({ sql, bigint: true })`), `date`/`timestamp[tz]` → `Date`, `bytea` → `Uint8Array`, `json[b]` → `JsonValue`; dbtyper never changes the client parsers. A spelling not in the map is error 3506 (CORE-14).
+- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`DataBase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). PostgreSQL (PGT-2…PGT-11): `int8`/`numeric` → `string` (`int8` → `bigint` with `postgresSqlDriver({ sql, bigint: true })`), `date`/`timestamp[tz]` → `Date`, `bytea` → `Uint8Array`, `json[b]` → `JsonValue`; dbtyper never changes the client parsers. A spelling not in the map is error 3506 (CORE-14).
 - Optional **`NULL`** / **`NOT NULL`** after the type.
 - **`CONSTRAINT` …** lines: enough structure to **skip** a typical `CONSTRAINT name PRIMARY KEY ( … )` (balanced parens); constraints are **not** merged into `JsqlTableShape` from this path.
 - With **`IF NOT EXISTS`** when the table **already** exists: table body is **skipped to `;`** without merging.

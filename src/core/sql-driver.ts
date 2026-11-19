@@ -4,7 +4,7 @@ import type {
 	LexerIndexedQueryParams,
 	LexerNamedQueryParams,
 } from "../lexer/sql-lexer.ts"
-import type { DialectName } from "./dialect.ts"
+import type { DialectName, IsSingle } from "./dialect.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -53,17 +53,38 @@ export type SqlDriver<_Config extends DriverConfigDraft> = {
 export type GetDriverConfig<S extends SqlDriver<DriverConfigDraft>> =
 	S extends SqlDriver<infer Driver> ? (Driver extends DriverConfig ? Driver : never) : never
 
+/** `"postgres" or "sqlite"`: the names of the dialects there are, for the messages below. */
+type DialectNames = JoinOr<DialectName>
+
+type JoinOr<U extends string, Last extends string = LastOf<U>> = [U] extends [never]
+	? never
+	: [Exclude<U, Last>] extends [never]
+		? `"${Last}"`
+		: `${JoinCommas<Exclude<U, Last>>} or "${Last}"`
+
+type JoinCommas<U extends string, Last extends string = LastOf<U>> = [Exclude<U, Last>] extends [never]
+	? `"${Last}"`
+	: `${JoinCommas<Exclude<U, Last>>}, "${Last}"`
+
+/** One member of a union of strings. */
+type LastOf<U extends string> =
+	UnionToIntersection<U extends unknown ? (x: U) => void : never> extends (x: infer L extends string) => void
+		? L
+		: never
+
+type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+
 /**
  * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`.
  */
 export type RequireDriverDialect<D> =
 	D extends SqlDriver<infer Config>
 		? Config extends { dialect: infer Dialect extends DialectName }
-			? [DialectName] extends [Dialect]
-				? { driver: 'error: the driver must declare one dialect, "postgres" or "sqlite" (DSEL-8)' }
-				: {}
+			? IsSingle<Dialect> extends true
+				? {}
+				: { driver: `error: the driver must declare one dialect, ${DialectNames} (DSEL-8)` }
 			: {
-					driver: 'error: the driver declares no dialect; add dialect: "postgres" or "sqlite" to its config (DSEL-8)'
+					driver: `error: the driver declares no dialect; add dialect: ${DialectNames} to its config (DSEL-8)`
 				}
 		: {}
 

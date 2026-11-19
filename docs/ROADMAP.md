@@ -4,16 +4,16 @@ This document sketches where the project could go. It is aspirational and unorde
 
 ## Active plan — decisions and sequence (2026-05)
 
-The following items are **maintainer decisions** for upcoming work. They override older open questions in ad hoc notes. Details and backlog lines live in `**docs/TODO.md`\*\*.
+The following items are **maintainer decisions** for upcoming work. They override older open questions in ad hoc notes. Details and backlog lines live in `TODO.md` (repository root).
 
 ### Locked decisions
 
 1. **Function registry (types only, Option A)**
    Custom and extended built-in functions are modeled **only in types**: a `**functions?`** map on `**JsqlDatabaseShape**`/ migration-derived`**Db**`(e.g. passed through`**sqlMigrations`config** as part of the typed database shape). There is **no** separate runtime`**database().extendFunctions()`** API for typing in v1. Runtime registration, if ever added, must not become a second source of truth without codegen or explicit module augmentation.
 2. **PostgreSQL arrays**
-   Implement a **minimal slice** first (see `**docs/TODO.md` § Arrays**): enough real SQL to be useful without chasing full Postgres array semantics in one step. Fuller surface (multidimensional literals, slicing, full operator matrix, `**ANY`/`ALL`** interplay) stays **explicit backlog\*\*.
+   Implement a **minimal slice** first (see `TODO.md` § Arrays): enough real SQL to be useful without chasing full Postgres array semantics in one step. Fuller surface (multidimensional literals, slicing, full operator matrix, `**ANY`/`ALL`** interplay) stays **explicit backlog\*\*.
 3. `**LATERAL` / correlated `FROM`\*\*
-   **Not** required for v1 of subquery/correlation work. `**LATERAL`** and `**CROSS`/`LEFT JOIN LATERAL**` are **deferred** and listed under `**docs/TODO.md`\*\*.
+   **Not** required for v1 of subquery/correlation work. `**LATERAL`** and `**CROSS`/`LEFT JOIN LATERAL**` are **deferred** and listed in `TODO.md`.
 
 ### Work priority when time-bound
 
@@ -84,6 +84,6 @@ Constraints that should stay visible in future work:
 
 ## How to use this document
 
-Treat the **Vision**, **near/mid/long horizon**, and **non-goals** sections as **backlog themes** once **§ Active plan** is accounted for. When priorities shift, update **§ Active plan** and `**docs/TODO.md`\*\* together so decisions stay single-sourced.
+Treat the **Vision**, **near/mid/long horizon**, and **non-goals** sections as **backlog themes** once **§ Active plan** is accounted for. When priorities shift, update **§ Active plan** and `TODO.md` together so decisions stay single-sourced.
 
 For day-to-day shipped vs gaps, see `**docs/CURRENT.md**`.

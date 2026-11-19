@@ -6,7 +6,6 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 // ✅ SUCCESS: inet and cidr (network addresses)
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table hosts (id integer not null, ip inet not null, subnet cidr not null);`)
 	.database()
 

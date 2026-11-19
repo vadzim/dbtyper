@@ -1,10 +1,9 @@
 # TODO (dbtyper)
 
-Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
+Action items (see **`docs/CURRENT.md`** for shipped vs planned). Phrase each line as work to do, not as a gap description.
 
 - [ ] make it work with omniroute (SQLite is supported: `dbtyper/sqlite`)
 - [ ] try to reorganize errors - use first index by id, not by numbers to be able to cclick in IDE on FormatError<E<"here_to_click">> and navigate to error
-- [ ] deal with large enum of tokens in ParseOneRawSelectItem - why it's needed?
 - [ ] remove Expects and replace with Matches in all the tests
 - [ ] error: "Incompatible types in IN list" -> "Incompatible types in IN list <type1> and <type2>" and also check if other errors can be more informative like this.
 - [ ] add integration test for "select 1;"
@@ -13,7 +12,7 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 
 - [ ] define if task is simple and make it with fresh context and exit to preserve tokens
 - [x] add a test that all the error codes are tested in .error.tests.ts files
-- [ ] add infra test that checks for every error code there's at least one integration test (#116 item 24; not done)
+- [x] add infra test that checks for every error code there's at least one integration test (`test/infra/error-codes-covered.test.ts`)
 - [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
 - [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
 - [x] in every migration test wich has @ts-expect-error directive add a way to check the text of message.
@@ -36,9 +35,9 @@ Action items (see **`CURRENT.md`** for shipped vs planned). Phrase each line as 
 ## Documentation
 
 - [ ] In **`README.md`**, document **custom functions**: optional **`functions?: Record<string, …>`** on the typed **`JsqlDatabaseShape`** / migration **`Db`** (types-only registry; **no** runtime `extend` API for typings).
-- [ ] In **`README.md`**, add a **“Type-level API”** section: import path **`core/sql.ts`**, primary entry **`ParseSqlStatement<Tokens, Db, Params>`** (third generic defaults to **`{}`**), document the **`[RestTokens, Db, Result]`** triple for statements and when **`Result`** is **`SqlParserError<…>`** vs **`null`** (end).
-- [ ] In **`README.md`**, either **move the `SqlCreateTable` / `SqlSchema` / `SqlDatabase` example** behind a “Legacy / alternate path” note or **replace it** with a minimal example that uses **`CreateParserMonad`** + **`ParseSqlStatement`** + a hand-written **`JsqlDatabaseShape`** (match **`test/parse-select.test.ts`** style).
-- [ ] **Diff `README.md` links** against **`core/sql.ts`** `export` list; fix any path or symbol that does not exist.
+- [ ] In **`README.md`**, add a **“Type-level API”** section: the public entry **`src/index.ts`** (`sqlMigrations`, `createDriver`, `migration`); the type-level parser entry **`ParseSqlStatement<Tokens, Db, Params>`** is internal (third generic defaults to **`{}`**), document the **`[RestTokens, Db, Result]`** triple for statements and when **`Result`** is **`SqlParserError<…>`** vs **`null`** (end).
+- [x] README no longer shows the `SqlCreateTable` / `SqlSchema` / `SqlDatabase` example (it shows `sqlMigrations` and the drivers)
+- [ ] **Diff `README.md` links** against `src/index.ts` exports and the files they point to; fix any path or symbol that does not exist.
 
 ## `INSERT` / `UPDATE` language
 

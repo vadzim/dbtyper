@@ -3,7 +3,7 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 
 /**
  * PostgreSQL scalar type names (normalized identifiers / joined type words) → the TypeScript types the `postgres`
- * client returns with its default parsers (PGT-2…PGT-11, PGT-35). Inferred for `SqlDatabase` / `sqlDatabase` when
+ * client returns with its default parsers (PGT-2…PGT-11, PGT-35). Inferred for the database chain when
  * `driver` is from **`postgresSqlDriver`** (`dbtyper/postgres`). dbtyper never changes the client's parsers (PGT-3):
  * `int8` and `numeric` are strings, except `int8` with `{ bigint: true }` (PGT-4), where the user's client parses to BigInt.
  * Aliases (`int4`, `int8`, `timestamptz`, `bool`, …) are folded by the parser before this lookup (TYPE-2, TYPE-3).

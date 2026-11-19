@@ -1,10 +1,9 @@
-// Integration Test: CORE-6 — a statement with 30 parameters gets every parameter type (one parse per parameter)
+// Integration Test: CORE-6 — a statement with 30 parameters gets every parameter type (one round binds the probes of the whole AND chain, #143)
 import { sqlMigrations } from "../../src/core/sql-database.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
 
 const _db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(
 		`create table t (id integer not null, c0 integer not null, c1 integer not null, c2 integer not null, c3 integer not null, c4 integer not null, c5 integer not null, c6 integer not null, c7 integer not null, c8 integer not null, c9 integer not null, c10 integer not null, c11 integer not null, c12 integer not null, c13 integer not null, c14 integer not null, c15 integer not null, c16 integer not null, c17 integer not null, c18 integer not null, c19 integer not null, c20 integer not null, c21 integer not null, c22 integer not null, c23 integer not null, c24 integer not null, c25 integer not null, c26 integer not null, c27 integer not null, c28 integer not null, c29 integer not null);`,
 	)

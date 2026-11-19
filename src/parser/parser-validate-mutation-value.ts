@@ -1,5 +1,5 @@
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
-import type { DialectFact } from "../core/dialect.ts"
+import type { ValueMismatchError } from "../core/dialect-types.ts"
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -47,10 +47,7 @@ type ValidateMutationValueBySql<
 			: true
 		: SameComparisonClass<Val, ColSql, ValAst> extends true
 			? true
-			: DialectFact<Db, "typeNames"> extends "affinity"
-				? // SQLT-43: SQLite would coerce; dbtyper names the column's storage class instead
-					FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColSql["type"]>]>
-				: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
+			: ValueMismatchError<Db, Col, ColSql["type"]>
 
 /** A generated column (CORE-18) can be read, but never written. */
 export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {

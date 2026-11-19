@@ -5,7 +5,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table users (id uuid, name text, age integer, score numeric, active boolean);`)
 	.database()
 

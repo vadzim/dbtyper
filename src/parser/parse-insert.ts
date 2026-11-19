@@ -7,160 +7,18 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap, TableScopeColumns, VisibleColumnsOf } from "./parser-scope.ts"
+import type { ScopeMap } from "./parser-scope.ts"
 import type { IsGeneratedColumn, IsIdentityAlwaysColumn } from "./parser-validate-mutation-value.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
-import type { JsqlDbGetData, UnqualifiedSchema, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
+import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseInsertAfterValuesKeyword } from "./parse-insert-values.ts"
 import type { ParseInsertOptionalTail } from "./parse-insert-on-conflict.ts"
 import type { ParseInsertWithSelect } from "./parse-insert-select.ts"
+import type { InsertTableContext, InsertRealColumns, ParseInsertFromTableRef } from "./parse-insert-table.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 export type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
-
-type InsertTableContext = {
-	scope: ScopeMap
-	tbl: JsqlDataShape
-	schema: string
-	table: string
-}
-
-/** SQLT-15: an INSERT into a SQLite table with a rowid may name `rowid`, `oid`, `_rowid_` (columns of the target, never of `*`). */
-type InsertTable<Tbl extends JsqlDataShape> = Tbl extends { rowid_table: true }
-	? Tbl & { columns: TableScopeColumns<Tbl> }
-	: Tbl
-
-/** The real columns of an INSERT target, in declaration order: what an INSERT without a column list fills. */
-type InsertRealColumns<Tbl extends JsqlDataShape> = VisibleColumnsOf<{
-	schema: string
-	table: string
-	columns: Tbl["columns"]
-}>
-
-type ParseInsertAliasAfterTable<
-	Tokens extends ParserMonad,
-	_Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	Tbl extends JsqlDataShape,
-	_Params extends ExpressionParamsShape,
-> =
-	PeekToken<Tokens> extends TokenKey<"(" | "values" | "select" | "default">
-		? [
-				Tokens,
-				null,
-				{
-					scope: MergeScope<
-						Record<
-							Tab,
-							{
-								schema: Sch
-								table: Tab
-								columns: TableScopeColumns<Tbl>
-							}
-						>,
-						{}
-					>
-					tbl: InsertTable<Tbl>
-					schema: Sch
-					table: Tab
-				},
-			]
-		: PeekToken<Tokens> extends infer TokAlias
-			? SkipToken<Tokens> extends infer Ra extends ParserMonad
-				? TokAlias extends TokenIdent<infer Alias extends string>
-					? PeekToken<Ra> extends TokenKey<"(">
-						? [
-								Ra,
-								null,
-								{
-									scope: MergeScope<
-										Record<
-											Alias,
-											{
-												schema: Sch
-												table: Tab
-												columns: TableScopeColumns<Tbl>
-											}
-										>,
-										{}
-									>
-									tbl: InsertTable<Tbl>
-									schema: Sch
-									table: Tab
-								},
-							]
-						: [
-								Ra,
-								FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>,
-								ParserRefErrorThirdSentinel,
-							]
-					: [
-							Ra,
-							FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>,
-							ParserRefErrorThirdSentinel,
-						]
-				: never
-			: never
-
-type ParseInsertFromTableRef<
-	Tokens extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	Params extends ExpressionParamsShape,
-> =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? Tok extends TokenIdent<infer A extends string>
-				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends ParserMonad
-								? TokB extends TokenIdent<infer B extends string>
-									? JsqlDbGetData<Db, A, B> extends infer TblTry
-										? [TblTry] extends [never]
-											? [
-													R3,
-													FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "INSERT INTO"]>,
-													ParserRefErrorThirdSentinel,
-												]
-											: TblTry extends JsqlDataShape
-												? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
-												: [
-														R3,
-														FormatError<
-															Errors["UNKNOWN_SCHEMA_OR_TABLE"],
-															[A, "INSERT INTO"]
-														>,
-														ParserRefErrorThirdSentinel,
-													]
-										: never
-									: [
-											R3,
-											FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in INSERT INTO"]>,
-											ParserRefErrorThirdSentinel,
-										]
-								: never
-							: never
-						: never
-					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
-						? [TblTry] extends [never]
-							? [
-									R1,
-									FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
-									ParserRefErrorThirdSentinel,
-								]
-							: TblTry extends JsqlDataShape
-								? ParseInsertAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry, Params>
-								: [
-										R1,
-										FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
-										ParserRefErrorThirdSentinel,
-									]
-						: never
-				: [R1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in INSERT INTO"]>, ParserRefErrorThirdSentinel]
-			: never
-		: never
 
 type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
 	PeekToken<Tokens> extends TokenKey<")">
@@ -399,11 +257,7 @@ type ParseInsertAfterInto<
 
 /** The conflict-resolution words after `INSERT OR` / `UPDATE OR` (SQLT-39). */
 export type ConflictActionToken =
-	| TokenKey<"replace">
-	| TokenIdent<"abort">
-	| TokenIdent<"fail">
-	| TokenIdent<"ignore">
-	| TokenIdent<"rollback">
+	TokenKey<"replace"> | TokenIdent<"abort"> | TokenIdent<"fail"> | TokenIdent<"ignore"> | TokenIdent<"rollback">
 
 /** After `INSERT` (or `REPLACE`, which is `INSERT OR REPLACE`): `[OR action] INTO …`. */
 export type ParseInsert<

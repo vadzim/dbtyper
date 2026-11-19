@@ -1,6 +1,7 @@
 import type { SqlComparisonClass } from "../core/comparison-classes.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { CollectParamProbes } from "../core/param-probe.ts"
 import type {
 	Nullable,
 	SqlBoolean,
@@ -11,7 +12,7 @@ import type {
 	SqlUnknown,
 } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { SqliteRowResult } from "./function-catalog.ts"
+import type { CatalogRowResult } from "./function-catalog-result.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
@@ -33,9 +34,9 @@ export type ResolveCustomOp<
 					? Rv
 					: Lv extends SqlTypeShape
 						? Rv extends SqlTypeShape
-							? DialectFact<Db, "operators"> extends "sqlite"
+							? DialectFact<Db, "operators"> extends "affinity"
 								? Op extends keyof SqliteOperators
-									? SqliteRowResult<SqliteOperators[Op], [Lv, Rv]>
+									? CatalogRowResult<"affinity", SqliteOperators[Op], [Lv, Rv]>
 									: ResolveBuiltinCustomOp<Op, Lv, Rv>
 								: ResolveBuiltinCustomOp<Op, Lv, Rv>
 							: never
@@ -46,8 +47,7 @@ export type ResolveCustomOp<
 type PgJsonTypes = "json" | "jsonb"
 
 type ResolveBuiltinCustomOp<Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
-	| "->"
-	| "#>"
+	"->" | "#>"
 	? Lv["type"] extends PgJsonTypes
 		? Nullable<{ type: Lv["type"]; arg: null; nullable: false }> // PGT-24: the operand's json type, NULL when the key is missing
 		: SqlUnknown
@@ -128,7 +128,7 @@ export type MergeBoolBinary<
 	R,
 	ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN" | "OR_OPERANDS_MUST_BE_BOOLEAN",
 > = L extends DbtyperErrorShape
-	? L
+	? CollectParamProbes<L, R>
 	: R extends DbtyperErrorShape
 		? R
 		: L extends SqlTypeShape
@@ -211,8 +211,7 @@ export type ResolveScalarExprAstPair<
  * a `date`, `date - date` an `integer`. `never` for any other operands (the numeric rules apply).
  */
 type PgDatetimeArithmetic<Db, Op extends string, Lv extends SqlTypeShape, Rv extends SqlTypeShape> = Op extends
-	| "add"
-	| "sub"
+	"add" | "sub"
 	? DialectFact<Db, "datetimeArithmetic"> extends true
 		? Lv["type"] extends "timestamp" | "timestamp with time zone" | "timestamp without time zone" | "date"
 			? Rv["type"] extends "interval"

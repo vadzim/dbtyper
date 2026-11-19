@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape, ScalarExprAst, ScalarIdentParts } from "./parse-expression.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
+import type { ReadParam } from "./resolve-expression-ident.ts"
 import type { ScopeEntry, ScopeMap, VisibleColumnsOf, RowidResultKey } from "./parser-scope.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FirstDuplicateName, UnionToStringTuple } from "./set-operation-types.ts"
@@ -91,8 +92,12 @@ export type ResolveSelectList<
 > = ResolveSelectListAcc<Items, Db, Scope, Params, {}, Items>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? Params[Name] extends SqlTypeShape
-		? { sql: Params[Name] }
+	? ReadParam<Params[Name]> extends infer S
+		? S extends DbtyperErrorShape
+			? S // PARAM-14: the usage probe
+			: S extends SqlTypeShape
+				? { sql: S }
+				: never
 		: never
 	: FormatError<Errors["UNKNOWN_QUERY_PARAMETER"], [Name]>
 

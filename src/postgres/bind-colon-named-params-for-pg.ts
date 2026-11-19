@@ -1,6 +1,9 @@
+import { POSTGRES_SCAN_RULES, skipNonCode } from "../core/sql-text-scanner.ts"
+
 /**
- * Maps `:param` tokens (lexer-aligned; skips PostgreSQL `::` casts and single-quoted literals)
- * to positional placeholders `$1`, `$2`, … for drivers such as `postgres.js`.
+ * Maps `:param` tokens to positional placeholders `$1`, `$2`, … for drivers such as `postgres.js`.
+ * Lexer-aligned through the shared scanner: `:x` is left alone inside '…' strings, "…" identifiers, $tag$…$tag$ bodies
+ * and comments, and after a `::` cast.
  */
 export function bindColonNamedParamsForPg(
 	sql: string,
@@ -13,28 +16,14 @@ export function bindColonNamedParamsForPg(
 	const nameToIndex = new Map<string, number>()
 	let out = ""
 	let i = 0
-	let inString = false
 	while (i < sql.length) {
+		const skipTo = skipNonCode(sql, i, POSTGRES_SCAN_RULES)
+		if (skipTo > i) {
+			out += sql.slice(i, skipTo)
+			i = skipTo
+			continue
+		}
 		const ch = sql[i]
-		if (inString) {
-			out += ch
-			if (ch === "'") {
-				if (sql[i + 1] === "'") {
-					out += "'"
-					i += 2
-					continue
-				}
-				inString = false
-			}
-			i++
-			continue
-		}
-		if (ch === "'") {
-			inString = true
-			out += ch
-			i++
-			continue
-		}
 		if (ch === ":" && sql[i + 1] === ":") {
 			out += "::"
 			i += 2

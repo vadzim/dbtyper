@@ -249,10 +249,7 @@ npm run typecheck
     import { mockDriver } from "../../test-utils/test-databases.ts"
 
     async function testName() {
-    	const db = sqlMigrations({ driver: mockDriver })
-    		.apply(`create schema public;`)
-    		.apply(`create table users (id text, name text);`)
-    		.database()
+    	const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, name text);`).database()
 
     	// ✅ Valid query should compile
     	const result = await db.query(`select id from users;`)

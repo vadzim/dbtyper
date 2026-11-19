@@ -5,7 +5,6 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table items (id text not null, title text not null);`)
 	.database()
 
@@ -17,4 +16,6 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<5405, "Unsupported ALTER TABLE action">>())
+expectType<ReturnedError>(
+	toBe<DbtyperError<5405, "Unsupported ALTER TABLE action; run this statement with queryUntyped">>(),
+)

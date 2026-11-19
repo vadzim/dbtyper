@@ -4,10 +4,7 @@ import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table users (id integer not null);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id integer not null);`).database()
 
 // ❌ ERROR: Expected AND between BETWEEN bounds
 const query = `select id between 1 10 as x from users;` as const

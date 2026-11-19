@@ -1,13 +1,10 @@
-// Integration Test: CREATE VIEW
+// Integration Test: CREATE VIEW (SEL-33)
 import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
-const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
-	.apply(`create table t (id integer);`)
-	.database()
+const db = sqlMigrations({ driver: mockDriver }).apply(`create table t (id integer);`).database()
 
 // ❌ ERROR: Unknown column in view definition
 const query = `create view bad_v as select nope_col from t;` as const

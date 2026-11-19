@@ -6,12 +6,10 @@ import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver })
-	.apply(`create schema public;`)
 	.apply(`create table data (id integer not null, value text not null, num integer not null);`)
 	.database()
 
 // ❌ ERROR: Cannot cast integer to boolean
-// TODO: Currently accepts integer::boolean (no TypeScript type validation in parsers)
 const query = `select id::boolean from data;` as const
 
 // @ts-expect-error

@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
-import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
+import type { DbtyperError, DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { DriverConfig } from "./sql-database.ts"
@@ -8,6 +8,10 @@ import type { ApplySqlToTsConversion } from "./sql-to-ts-conversion.ts"
 import type { ParserSyntax, ParserSyntaxOf } from "./dialect.ts"
 
 type ExpectedRowSetResult = FormatError<Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"], []>
+
+/** True when `R` is the "this statement has no rows" result (3501): the one place that reads the code as a marker. */
+export type IsNoRowsResult<R> =
+	R extends DbtyperError<Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"], string> ? true : false
 
 /**
  * Returns SQL column types as strings (e.g., { id: "uuid", name: "text" }).

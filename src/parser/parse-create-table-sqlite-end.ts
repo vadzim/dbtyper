@@ -5,7 +5,7 @@ import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { SqliteStrictTypeNames } from "../core/dialect.ts"
+import type { SqliteStrictTypeNames } from "../core/dialect-types.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { JsqlCreateTable, JsqlCreateRowidTable, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -13,11 +13,7 @@ import type { ColumnDef, PkKind, TableOptions } from "./parse-create-table.ts"
 import type { ColumnsFromStack } from "./parse-create-table-merge.ts"
 
 export type TableConstraintStart =
-	| TokenKey<"constraint">
-	| TokenKey<"primary">
-	| TokenKey<"unique">
-	| TokenKey<"check">
-	| TokenKey<"foreign">
+	TokenKey<"constraint"> | TokenKey<"primary"> | TokenKey<"unique"> | TokenKey<"check"> | TokenKey<"foreign">
 
 /**
  * SQLite: after the column list `)`: the table options (`STRICT`, `WITHOUT ROWID`, comma separated, SQLT-18), the
