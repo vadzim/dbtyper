@@ -1,6 +1,7 @@
 import type { SqlComparisonClass } from "../core/comparison-classes.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { CollectParamProbes } from "../core/param-probe.ts"
 import type {
 	Nullable,
 	SqlBoolean,
@@ -127,7 +128,7 @@ export type MergeBoolBinary<
 	R,
 	ErrorId extends "AND_OPERANDS_MUST_BE_BOOLEAN" | "OR_OPERANDS_MUST_BE_BOOLEAN",
 > = L extends DbtyperErrorShape
-	? L
+	? CollectParamProbes<L, R>
 	: R extends DbtyperErrorShape
 		? R
 		: L extends SqlTypeShape

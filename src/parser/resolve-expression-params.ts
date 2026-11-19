@@ -1,6 +1,6 @@
 import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { ParamProbeFound, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
+import type { ParamProbeFound, ProbeBinding, ProbeKeyOf, ProbeTypeFromPeer } from "../core/param-probe.ts"
 import type { Nullable, SqlText, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { Inc } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
@@ -100,9 +100,52 @@ type ProbeFromPeers<
 			? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [ParamDisplay<Key>, ParamDisplay<Key>]>
 			: never
 		: PeerOperandType<Ops, Db, Scope, Params, Numeric> extends infer S extends SqlTypeShape
-			? ParamProbeFound<Key, ProbeTypeFromPeer<S>>
+			? ParamProbeFound<Key, ProbeTypeFromPeer<S>, SamePeerBindings<Ops, Params, Key, ProbeTypeFromPeer<S>>>
 			: never
 	: never
+
+/** CORE-6: the other parameter operands without a type take the same peer type in the same round. */
+type SamePeerBindings<
+	Ops extends readonly unknown[],
+	Params extends ExpressionParamsShape,
+	First,
+	S extends SqlTypeShape,
+	Acc extends readonly ProbeBinding[] = [],
+> = Ops extends readonly [infer H, ...infer T]
+	? ParamOperandProbeKey<H, Params> extends infer K
+		? [K] extends [never]
+			? SamePeerBindings<T, Params, First, S, Acc>
+			: K extends First
+				? SamePeerBindings<T, Params, First, S, Acc>
+				: K extends string | number
+					? SamePeerBindings<T, Params, First, S, [...Acc, readonly [K, S]]>
+					: SamePeerBindings<T, Params, First, S, Acc>
+		: never
+	: Acc
+
+/** CORE-6 (#143): the later arguments that are parameters without a type take their catalog types in the same round. */
+type MoreArgBindings<
+	Args extends readonly unknown[],
+	Row,
+	Params extends ExpressionParamsShape,
+	First,
+	Index extends number,
+	Acc extends readonly ProbeBinding[] = [],
+> = Args extends readonly [infer H, ...infer T]
+	? ParamOperandProbeKey<H, Params> extends infer K
+		? [K] extends [never]
+			? MoreArgBindings<T, Row, Params, First, Inc<Index>, Acc>
+			: K extends First
+				? MoreArgBindings<T, Row, Params, First, Inc<Index>, Acc>
+				: K extends string | number
+					? [RowArgType<Row, Index>] extends [never]
+						? MoreArgBindings<T, Row, Params, First, Inc<Index>, Acc>
+						: RowArgType<Row, Index> extends infer S extends SqlTypeShape
+							? MoreArgBindings<T, Row, Params, First, Inc<Index>, [...Acc, readonly [K, S]]>
+							: MoreArgBindings<T, Row, Params, First, Inc<Index>, Acc>
+					: MoreArgBindings<T, Row, Params, First, Inc<Index>, Acc>
+		: never
+	: Acc
 
 /** The first argument that is a parameter without a type, resolved by the function's argument types. */
 type ProbeInFunctionArgs<
@@ -123,7 +166,7 @@ type ProbeInFunctionArgs<
 						? ProbeFromPeers<K, AllArgs, Db, Scope, Params, false>
 						: [RowArgType<Row, Index>] extends [never]
 							? never
-							: ParamProbeFound<K, RowArgType<Row, Index>>
+							: ParamProbeFound<K, RowArgType<Row, Index>, MoreArgBindings<T, Row, Params, K, Inc<Index>>>
 					: never
 				: never
 		: never
