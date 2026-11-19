@@ -15,5 +15,5 @@ const db = sqlMigrations({ driver: mockDriver })
 	)
 	.database()
 
-const _rows = await db.query(`set search_path to public; select id from users;`)
-expectType<typeof _rows>(toBe<Array<{ id: number }>>())
+const _result = await db.query(`set search_path to public; select id from users;`)
+expectType<typeof _result>(toBe<Array<{ id: number }>>())
