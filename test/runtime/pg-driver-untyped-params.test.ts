@@ -42,21 +42,15 @@ describe("postgres driver parameters at runtime", () => {
 		await driver.query(`select * from users where id = $1;`, ["a", "unused"])
 		assert.deepEqual(sent, [[`select * from users where id = $1;`, ["a", "unused"]]])
 	})
-	it("PARAM-5: the driver itself would rewrite ? at runtime, but the compile check rejects it", async () => {
+	it("PARAM-15: the driver never rewrites ? (a jsonb operator there, PGT-24); the compile check rejects it as a parameter", async () => {
 		const { sent, db } = setup()
-		// @ts-expect-error `?` is not accepted by postgresSqlDriver (dbtyper:1007)
+		// @ts-expect-error `?` is not accepted as a parameter by postgresSqlDriver (dbtyper:1007)
 		await db.query(`select * from users where id = ?;`, ["a"])
-		assert.deepEqual(sent, [[`select * from users where id = $1;`, ["a"]]])
+		assert.deepEqual(sent, [[`select * from users where id = ?;`, ["a"]]])
 	})
 	it("PARAM-16: a missing :name rejects before anything is sent", async () => {
 		const { sent, db } = setup()
 		await assert.rejects(db.queryUntyped(`select :a`, {}), /Missing SQL parameter :a/)
-		assert.deepEqual(sent, [])
-	})
-	it("PARAM-16: fewer array elements than ? rejects before anything is sent", async () => {
-		const { sent, db } = setup()
-		// @ts-expect-error `?` is not accepted by postgresSqlDriver
-		await assert.rejects(db.query(`select ?, ?`, [1]), /Not enough parameters/)
 		assert.deepEqual(sent, [])
 	})
 })

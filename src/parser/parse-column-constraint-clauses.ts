@@ -6,8 +6,9 @@ import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts
 import type { DialectFact } from "../core/dialect.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { PkKind, WithPendingConstraint } from "./parse-create-table.ts"
-import type { PgAlter } from "./parse-column-alter-end.ts"
+import type { FullAddColumn } from "./parse-column-alter-end.ts"
 import type { ColumnCtx, ColumnGenericFail, ColumnState, ParseColumnConstraints } from "./parse-column-constraints.ts"
+import type { ConflictActionToken } from "./parse-insert.ts"
 import type { ColumnGeneratedBody } from "./parse-column-generated.ts"
 
 /** At `AUTOINCREMENT` (SQLite, SQLT-16): only on a column declared exactly `INTEGER PRIMARY KEY`. */
@@ -54,7 +55,7 @@ export type ColumnNotNull<Tokens extends ParserMonad, C extends ColumnCtx, S ext
 /** At `PRIMARY`: `PRIMARY KEY` makes the column NOT NULL (CORE-1). */
 export type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = [
 	C["alter"],
-	PgAlter<C>,
+	FullAddColumn<C>,
 ] extends [true, never]
 	? ColumnFail<Tokens, C, FormatError<Errors["SQLITE_ADD_COLUMN_RESTRICTED"], ["PRIMARY KEY"]>>
 	: SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -72,14 +73,14 @@ export type ColumnPrimaryKey<Tokens extends ParserMonad, C extends ColumnCtx, S 
 /** At `UNIQUE`; SQLite: an `ON CONFLICT` clause may follow (SQLT-18). */
 export type ColumnUnique<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = [
 	C["alter"],
-	PgAlter<C>,
+	FullAddColumn<C>,
 ] extends [true, never]
 	? ColumnFail<Tokens, C, FormatError<Errors["SQLITE_ADD_COLUMN_RESTRICTED"], ["UNIQUE"]>>
 	: ColumnOnConflict<SkipToken<Tokens>, C, ColumnStateWith<S, {}>>
 
 /** After `PRIMARY KEY`; SQLite: `ASC` / `DESC` and `ON CONFLICT` may follow (SQLT-18). */
 type ColumnPkTail<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
-	DialectFact<C["db"], "ddl"> extends true
+	DialectFact<C["db"], "constraintOnConflict"> extends true
 		? PeekToken<Tokens> extends TokenKey<"desc" | "asc">
 			? ColumnOnConflict<SkipToken<Tokens>, C, S>
 			: ColumnOnConflict<Tokens, C, S>
@@ -87,19 +88,36 @@ type ColumnPkTail<Tokens extends ParserMonad, C extends ColumnCtx, S extends Col
 
 /** SQLite (SQLT-18): an optional `ON CONFLICT <action>` after NOT NULL, UNIQUE, PRIMARY KEY; then more constraints. */
 export type ColumnOnConflict<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
-	DialectFact<C["db"], "ddl"> extends true
+	DialectFact<C["db"], "constraintOnConflict"> extends true
 		? PeekToken<Tokens> extends TokenKey<"on">
-			? SkipToken<Tokens> extends infer R1 extends ParserMonad
-				? PeekToken<R1> extends TokenKey<"conflict">
-					? ParseColumnConstraints<SkipToken<SkipToken<R1>>, C, S>
-					: ColumnGenericFail<R1, C, S>
+			? OnConflictClause<Tokens> extends [infer R extends ParserMonad, infer Res]
+				? Res extends DbtyperErrorShape
+					? ColumnFail<R, C, Res>
+					: Res extends "no-conflict"
+						? ColumnGenericFail<R, C, S>
+						: ParseColumnConstraints<R, C, S>
 				: never
 			: ParseColumnConstraints<Tokens, C, S>
 		: ParseColumnConstraints<Tokens, C, S>
 
+/**
+ * SQLite (SQLT-18, SQLT-55): `ON CONFLICT <action>` after a column or a table constraint; the next token is `ON`.
+ * `[rest, null]`, or `[rest, error]` for an unknown action word, or `[rest, "no-conflict"]` when `CONFLICT` does not follow.
+ */
+export type OnConflictClause<Tokens extends ParserMonad> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<R1> extends TokenKey<"conflict">
+			? SkipToken<R1> extends infer R2 extends ParserMonad
+				? PeekToken<R2> extends ConflictActionToken
+					? [SkipToken<R2>, null]
+					: [R2, FormatError<Errors["UNKNOWN_CONFLICT_ACTION"], []>]
+				: never
+			: [R1, "no-conflict"]
+		: never
+
 /** At `AS (expr) [STORED | VIRTUAL]`: SQLite's short form of a generated column (SQLT-18). */
 export type ColumnShortGenerated<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
-	DialectFact<C["db"], "ddl"> extends true
+	DialectFact<C["db"], "shortGenerated"> extends true
 		? ColumnGeneratedBody<SkipToken<Tokens>, C, S>
 		: ColumnGenericFail<Tokens, C, S>
 
