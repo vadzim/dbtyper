@@ -24,6 +24,7 @@ import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { JsqlDbGetColumnType } from "../core/jsql-utils.ts"
 import type { IsGeneratedColumn, ValidateMutationValueForColumn } from "./parser-validate-mutation-value.ts"
+import type { CollectParamProbes, IsParamProbeFound } from "../core/param-probe.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
 import type { ParseFromJoinScope } from "./parse-select-from.ts"
 import type { ConflictActionToken } from "./parse-insert.ts"
@@ -129,21 +130,46 @@ type ResolveUpdateAssignments<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	// CORE-6: the probes of all assignments, collected so one round binds them all
+	Found = null,
 > = Pending extends readonly [readonly [infer Col extends string, infer Ast extends ScalarExprAst], ...infer Rest]
 	? ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Resolved
 		? Resolved extends DbtyperErrorShape
-			? WithErrorClause<Resolved, "UPDATE SET">
+			? IsParamProbeFound<Resolved> extends true
+				? ResolveUpdateAssignmentsRest<Rest, Tbl, Db, Scope, Params, UpdateFoundWith<Found, Resolved>>
+				: Found extends null
+					? WithErrorClause<Resolved, "UPDATE SET">
+					: Found
 			: Resolved extends SqlTypeShape
 				? ValidateMutationValueForColumn<Tbl, Col, Resolved, Db, Ast> extends infer V0
 					? V0 extends DbtyperErrorShape
-						? V0
-						: Rest extends PendingAssignments
-							? ResolveUpdateAssignments<Rest, Tbl, Db, Scope, Params>
-							: true
+						? IsParamProbeFound<V0> extends true
+							? ResolveUpdateAssignmentsRest<Rest, Tbl, Db, Scope, Params, UpdateFoundWith<Found, V0>>
+							: Found extends null
+								? V0
+								: Found
+						: ResolveUpdateAssignmentsRest<Rest, Tbl, Db, Scope, Params, Found>
 					: never
 				: never
 		: never
-	: true
+	: Found extends null
+		? true
+		: Found
+
+type ResolveUpdateAssignmentsRest<
+	Rest,
+	Tbl extends JsqlDataShape,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Found,
+> = Rest extends PendingAssignments
+	? ResolveUpdateAssignments<Rest, Tbl, Db, Scope, Params, Found>
+	: Found extends null
+		? true
+		: Found
+
+type UpdateFoundWith<Found, Probe> = Found extends null ? Probe : CollectParamProbes<Found, Probe>
 
 type ParseUpdateAfterSetKeyword<
 	Tokens extends ParserMonad,
