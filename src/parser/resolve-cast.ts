@@ -1,4 +1,5 @@
-import type { DbDialectOnlyError, DialectCastRow, DialectFact, PgOnlyTypeNames } from "../core/dialect.ts"
+import type { DbDialectOnlyError, DialectFact, PgOnlyTypeNames } from "../core/dialect.ts"
+import type { DialectCastRow } from "../core/dialect-types.ts"
 import type { SqlNull, SqlType, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumCastCheck, WithEnumCheck } from "./parse-enum-checks.ts"
