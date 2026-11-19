@@ -51,7 +51,7 @@ export type ApplyStatements<
 				Result extends { returning: unknown }
 					? [keyof Result["returning"]] extends [never]
 						? Result extends { ddl: true }
-							? { returning: null; ddl: true }
+							? DdlMarker
 							: { returning: null }
 						: { returning: { [K in keyof Result["returning"]]: Result["returning"][K] } }
 					: { returning: null },
@@ -74,9 +74,10 @@ type ApplyParsedStatements<
 > =
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error, Result]
-		: // TLVL-4: 50 batches of 50 statements dodge the instantiation depth limit (TS2589, "excessively deep"); found
-			// by test/stress/migration-500-statements and migration-too-many-statements (2501 statements, STMT-16).
-			BatchDepth extends 50
+		: // TLVL-4: StatementBatches batches of StatementsPerBatch statements dodge the instantiation depth limit (TS2589,
+			// "excessively deep"); found by test/stress/migration-500-statements and migration-too-many-statements
+			// (2501 statements, STMT-16). TOO_MANY_STATEMENTS (src/dbtyper-error.ts) says the product of the two.
+			BatchDepth extends StatementBatches
 			? // STMT-16: the script is too long to apply; say so instead of dropping the tail.
 				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], []>>, Result]
 			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
@@ -88,9 +89,13 @@ type ApplyParsedStatements<
 				? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc<BatchDepth>>
 				: never
 
+/** TLVL-4: statements per batch, and batches per script: a script may have `StatementsPerBatch * StatementBatches` (2500) statements. */
+type StatementsPerBatch = 50
+type StatementBatches = 50
+
 /**
- * TLVL-4: the `Depth extends 50` bound below (50 statements per batch) dodges the instantiation depth limit (TS2589);
- * the outer loop runs 50 such batches (test/stress/migration-500-statements, migration-too-many-statements, STMT-16).
+ * TLVL-4: the `Depth extends StatementsPerBatch` bound below dodges the instantiation depth limit (TS2589);
+ * the outer loop runs {@link StatementBatches} such batches (test/stress/migration-500-statements, migration-too-many-statements, STMT-16).
  */
 type ApplyParsedStatementsInner<
 	Tokens extends ParserMonad,
@@ -99,7 +104,7 @@ type ApplyParsedStatementsInner<
 	Error extends DbtyperErrorShape | null,
 	Result,
 	Depth extends number = 0,
-> = Depth extends 50
+> = Depth extends StatementsPerBatch
 	? [Tokens, Db, Error, Result]
 	: PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, Error, Result]
@@ -173,26 +178,25 @@ export type ParseSqlStatement<
 												? AsDdlResult<R, D, Res>
 												: never
 
+/** The result of a statement that returns no rows and no row list (DDL, skipped statements). */
+type DdlMarker = { returning: null; ddl: true }
+
 /**
  * SCHEMA-6, STMT-Q5: DDL and skipped statements return no rows and no row list: a `query` of one is `unknown`, unlike
  * INSERT/UPDATE/DELETE without RETURNING (CORE-13, `[]`). A successful result is replaced by the marker `{ ddl: true }`.
  */
 type AsDdlResult<Rest extends ParserMonad, Db extends JsqlDatabaseShape, Result> = Result extends DbtyperErrorShape
 	? [Rest, Db, Result]
-	: [Rest, Db, { returning: null; ddl: true }]
+	: [Rest, Db, DdlMarker]
 
 /**
- * A statement no parser handles (STMT-18, STMT-19): a known statement keyword is skipped (but ATTACH / DETACH are
- * errors in a SQLite chain, SQLT-24); any other leading word is a compile error with a hint (never skipped silently).
+ * A statement no parser handles (STMT-18, STMT-19): a known statement keyword is skipped (but the words of the
+ * `unsupportedStatements` fact, ATTACH / DETACH in SQLite, are errors, SQLT-24); any other leading word is a compile error with a hint (never skipped silently).
  */
 type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	DialectFact<Db, "ddl"> extends true
-		? PeekToken<Tokens> extends TokenIdent<"attach" | "detach">
-			? SkipFailedStatement<
-					Tokens,
-					Db,
-					FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], [Uppercase<PeekToken<Tokens>["value"]>]>
-				>
+	PeekToken<Tokens> extends { value: infer Word extends string }
+		? Lowercase<Word> extends DialectFact<Db, "unsupportedStatements">[number]
+			? SkipFailedStatement<Tokens, Db, FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], [Uppercase<Word>]>>
 			: SkipKnownOrFail<Tokens, Db, DialectFact<Db, "skippedStatements">>
 		: SkipKnownOrFail<Tokens, Db, DialectFact<Db, "skippedStatements">>
 
@@ -226,14 +230,13 @@ type ParseCreate<
 	PeekToken<Tokens> extends TokenKey<"table">
 		? ParseCreateTable<SkipToken<Tokens>, Db, Params>
 		: PeekToken<Tokens> extends TokenKey<"schema">
-			? DialectFact<Db, "ddl"> extends true
-				? SkipFailedStatement<Tokens, Db, FormatError<Errors["SQLITE_NO_SCHEMAS"], []>>
-				: ParseCreateSchema<SkipToken<Tokens>, Db>
+			? // CREATE SCHEMA of a chain without schemas is the other-dialect error of the phrase table (1900, SQLT-26)
+				ParseCreateSchema<SkipToken<Tokens>, Db>
 			: PeekToken<Tokens> extends TokenKey<"type">
 				? ParseCreateType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">
 					? ParseCreateView<SkipToken<Tokens>, Db, Params>
-					: DialectFact<Db, "ddl"> extends true
+					: DialectFact<Db, "tempObjects"> extends true
 						? ParseSqliteCreate<Tokens, Db, Params>
 						: PeekToken<Tokens> extends TokenIdent<"domain"> | TokenKey<"domain">
 							? ParseCreateDomain<SkipToken<Tokens>, Db>
@@ -285,9 +288,9 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">
 		? ParseDropTable<SkipToken<Tokens>, Db>
 		: PeekToken<Tokens> extends TokenKey<"schema">
-			? DialectFact<Db, "ddl"> extends true
-				? SkipFailedStatement<Tokens, Db, FormatError<Errors["SQLITE_NO_SCHEMAS"], []>>
-				: ParseDropSchema<SkipToken<Tokens>, Db>
+			? DialectFact<Db, "schemaStatements"> extends true
+				? ParseDropSchema<SkipToken<Tokens>, Db>
+				: SkipFailedStatement<Tokens, Db, FormatError<Errors["SQLITE_NO_SCHEMAS"], []>>
 			: PeekToken<Tokens> extends TokenKey<"type">
 				? ParseDropType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">

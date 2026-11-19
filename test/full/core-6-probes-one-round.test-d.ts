@@ -21,10 +21,19 @@ await _db.query(`select id from t where s = :a and c0 = :b;`, { a: "x", b: "y" }
 // @ts-expect-error
 await _db.query(`select id from t where c0 = :p and s = :p;`, { p: 1 })
 
-// ❌ ERROR: CORE-7 an operand that only meets a parameter is an error before the probe found after it (as in the
-// one-at-a-time loop; #145 may type this)
+// ✅ SUCCESS: CORE-6 a bound parameter is a peer for another parameter, in either order (#145)
+const _bound = await _db.query(`select id from t where c0 = :p0 and :p0 = :p1;`, { p0: 1, p1: 2 })
+expectType<typeof _bound>(toBe<Array<{ id: number }>>())
+const _boundReverse = await _db.query(`select id from t where :p0 = :p1 and c0 = :p0;`, { p0: 1, p1: 2 })
+expectType<typeof _boundReverse>(toBe<Array<{ id: number }>>())
+
+// ❌ ERROR: CORE-6 the second parameter takes the type of the first, a wrong value is found
 // @ts-expect-error
 await _db.query(`select id from t where :p0 = :p1 and c0 = :p0;`, { p0: 1, p1: "x" })
+
+// ❌ ERROR: CORE-7 parameters that only meet each other still have no type
+// @ts-expect-error
+await _db.query(`select id from t where :p0 = :p1;`, { p0: 1, p1: 2 })
 
 // ✅ SUCCESS: CORE-6 the cells of all VALUES rows, nullable columns keep null
 const _rows = await _db.query(`insert into t (id, c0, s, n) values ($1, $2, $3, $4), ($5, $6, $7, $8) returning id;`, [

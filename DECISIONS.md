@@ -2,6 +2,14 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-19 Dialect seam review, batch 1 (#146, #147; DLCT-2, DLCT-4, DLCT-5, PARAM-15, SQLT-55)
+
+- **`ddl` split** into facts named for rules: `tempObjects`, `schemaStatements`, `unsupportedStatements` (ATTACH/DETACH as data), `constraintOnConflict`, `shortGenerated`, `currentDatetimeType`, `addColumn`. `ddl` stays for `parse-create-view.ts` only (batch 3 splits it).
+- **PARAM-15.** `postgresSqlDriver` no longer rewrites `?`; the `$$` fact moved into the `lexer` row (`dollarStrings`; `"dollar-strings"` left `LexerFeatures`). `bind-positional-params-for-pg.ts` is now used only by its test (batch 4 may delete it).
+- **SQLT-55.** `ON CONFLICT <action>` on a column or table constraint is checked by one shared `OnConflictClause`; new code 1920 UNKNOWN_CONFLICT_ACTION "Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT". A table `ON` not followed by `CONFLICT` is now an error (was skipped).
+- **Behaviour notes.** `DROP TYPE` in a SQLite chain is the 1900 phrase error (like `CREATE TYPE`); `CREATE SCHEMA` keeps 1900 and `DROP SCHEMA` 1915 (SQLT-26). `decimal` columns normalize to `numeric` (one alias table). A lexer without a dialect flag lexes `$$` strings.
+- **Cost:** `typecheck:test` 11,824,920 -> 11,810,566 instantiations (-0.1%).
+
 ## 2026-11-19 Parameter probes: one round binds every probe it finds (#143, track A; CORE-6, CORE-7)
 
 - **Why.** The probe loop (src/core/param-probe.ts) parsed the whole statement once per parameter, and `Params` is a type argument of every parser alias, so nothing is cached between rounds: O(N²), and a WHERE with ~35 parameters hit the 5M instantiation cap (TS2589).
@@ -488,3 +496,7 @@ PostgreSQL accepts `OVER ()` and `ROWS|RANGE|GROUPS` frames exactly like SQLite,
 ## #138: PostgreSQL starts with `public` (SCHEMA-27, SCHEMA-28)
 
 The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("public" | "main"): the schemas a new chain starts with. PostgreSQL's initial database is `{ defaultSchema: DS, schemas: { public } }` also when `defaultSchema` names another schema (that one is still created by a migration, SCHEMA-3). `create schema public;` needed no new code: the existing "schema already exists" error (3200) applies, and `if not exists` is the existing no-op. No new error code.
+
+## 2026-11-19 A bound parameter is a peer; CORE-7 for `:a = :b` waits (#145, track A; CORE-6, CORE-7)
+
+`PeerOperandType` no longer skips parameter operands: one that resolves to a real type (bound in an earlier round) is a peer, so `c0 = :p0 and :p0 = :p1` types `:p1`. The CORE-7 error for operands that are all untyped parameters is now `ParamUnresolved` (CORE-7 plus a marker); `CollectParamProbes` lets a probe found next to it win, so `:p0 = :p1 and c0 = :p0` works too. The retry loop turns a surviving marker into the plain CORE-7 error. No new error code.

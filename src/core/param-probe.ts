@@ -40,6 +40,15 @@ export type ParamProbeFound<
 	__param_probe__: { key: Key; type: S; more: More }
 }
 
+/**
+ * CORE-7 at a position where only parameters without a type meet (`:a = :b`). Another position may still type one of
+ * them, so `CollectParamProbes` lets a probe found next to it win; the retry loop shows it when nothing does (#145).
+ */
+export type ParamUnresolved<Key extends string | number> = FormatError<
+	Errors["CANNOT_INFER_PARAMETER_TYPE"],
+	[DisplayKey<Key>, DisplayKey<Key>]
+> & { __param_unresolved__: Key }
+
 /** One probe key with the type a position gives it. */
 export type ProbeBinding = readonly [string | number, SqlTypeShape]
 
@@ -68,7 +77,11 @@ export type CollectParamProbes<Found, Next> = Found extends {
 			? ParamProbeFound<K, S, [...M, ...ProbeBindingsOf<Next>]>
 			: Found
 		: Found
-	: Found
+	: Found extends { __param_unresolved__: string | number }
+		? IsParamProbeFound<Next> extends true
+			? Next
+			: Found
+		: Found
 
 /** The type a comparison-like position gives to a probe: never null (a nullable column is compared, not assigned). */
 export type ProbeTypeFromPeer<S extends SqlTypeShape> = NonNull<S>
@@ -124,22 +137,24 @@ type Derive<
 			? BindProbes<Params, ProbeBindingsOf<Err>> extends infer Next extends ExpressionParamsShape
 				? Derive<Db, Stmt, Syntax, Next>
 				: never
-			: Err extends DbtyperErrorShape
-				? Err
-				: LeftoverProbe<Params> extends infer P extends string | number
-					? [P] extends [never]
-						? Params
-						: // PARAM-14: a parameter the SQL never reads is accepted; one that is read and typed by no position is CORE-7
-							ApplyStatements<Db, Stmt, BindProbe<Params, P, SqlParamReadProbe>, Syntax> extends [
-									unknown,
-									FormatError<Errors["PARAMETER_PROBE_READ"], []>,
-									...unknown[],
-							  ]
-							? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [DisplayKey<P>, DisplayKey<P>]>
-							: BindProbe<Params, P, SqlParamUnused> extends infer Next extends ExpressionParamsShape
-								? Derive<Db, Stmt, Syntax, Next>
-								: never
-					: never
+			: Err extends { __param_unresolved__: infer U extends string | number }
+				? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [DisplayKey<U>, DisplayKey<U>]>
+				: Err extends DbtyperErrorShape
+					? Err
+					: LeftoverProbe<Params> extends infer P extends string | number
+						? [P] extends [never]
+							? Params
+							: // PARAM-14: a parameter the SQL never reads is accepted; one that is read and typed by no position is CORE-7
+								ApplyStatements<Db, Stmt, BindProbe<Params, P, SqlParamReadProbe>, Syntax> extends [
+										unknown,
+										FormatError<Errors["PARAMETER_PROBE_READ"], []>,
+										...unknown[],
+								  ]
+								? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [DisplayKey<P>, DisplayKey<P>]>
+								: BindProbe<Params, P, SqlParamUnused> extends infer Next extends ExpressionParamsShape
+									? Derive<Db, Stmt, Syntax, Next>
+									: never
+						: never
 		: never
 
 /**

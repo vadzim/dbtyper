@@ -8,6 +8,7 @@ import type { DialectFact } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ColumnDef, PkKind, WithPendingConstraint } from "./parse-create-table.ts"
+import type { OnConflictClause } from "./parse-column-constraint-clauses.ts"
 import type { SkipParenGroup } from "./parse-column-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
@@ -157,8 +158,21 @@ type AfterTableConstraint<
 					TableConstraintDeferrable<Tokens, Db, Schema, Table, Stack>
 				: PeekToken<Tokens> extends TokenKey<"on">
 					? // SQLite (SQLT-18): `ON CONFLICT <action>` after a table constraint
-						DialectFact<Db, "ddl"> extends true
-						? AfterTableConstraint<SkipToken<SkipToken<SkipToken<Tokens>>>, Db, Schema, Table, Stack>
+						DialectFact<Db, "constraintOnConflict"> extends true
+						? OnConflictClause<Tokens> extends [infer R extends ParserMonad, infer Res]
+							? Res extends null
+								? AfterTableConstraint<R, Db, Schema, Table, Stack>
+								: SkipFailedStatement<
+										R,
+										Db,
+										Res extends DbtyperErrorShape
+											? Res
+											: FormatError<
+													Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"],
+													[]
+												>
+									>
+							: never
 						: SkipFailedStatement<
 								Tokens,
 								Db,

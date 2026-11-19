@@ -18,7 +18,7 @@ export type AlterColumnDone<
 	C extends ColumnCtx,
 	S extends ColumnState,
 > = S["nn"] extends true
-	? [S["def"], PgAlter<C>] extends [false, never]
+	? [S["def"], FullAddColumn<C>] extends [false, never]
 		? ColumnFail<
 				Tokens,
 				C,
@@ -44,11 +44,11 @@ type AlterColumnStore<Tokens extends ParserMonad, C extends ColumnCtx, S extends
 			>
 		: never
 
-/** PostgreSQL (PGT-19): `ADD COLUMN` takes the full column definition and may be followed by `, <action>`. */
-export type PgAlter<C extends ColumnCtx> = DialectFact<C["db"], "ddl"> extends true ? never : true
+/** Full `ADD COLUMN` (PGT-19, fact `addColumn`): it takes the full column definition and may be followed by `, <action>`. */
+export type FullAddColumn<C extends ColumnCtx> = DialectFact<C["db"], "addColumn"> extends "full" ? true : never
 
 /** SQLite: the definition ends the statement (SQLT-21); PostgreSQL goes on with the next action. */
 type AlterColumnFinish<Tokens extends ParserMonad, C extends ColumnCtx, Db extends JsqlDatabaseShape> =
-	DialectFact<C["db"], "ddl"> extends true
+	DialectFact<C["db"], "addColumn"> extends "restricted"
 		? FinishAlterStatement<Tokens, Db>
 		: ParseAlterActions<Tokens, Db, C["schema"], C["table"]>
