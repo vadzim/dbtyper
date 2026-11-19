@@ -79,8 +79,9 @@ type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 					? {
 							sets: Schema["sets"] extends infer Sets
 								? {
-										[TKey in keyof Sets as NonIndexKey<TKey>]: Sets[TKey] extends infer Table extends
-											JsqlDataShape
+										[
+											TKey in keyof Sets as NonIndexKey<TKey>
+										]: Sets[TKey] extends infer Table extends JsqlDataShape
 											? {
 													kind: Table["kind"]
 													columns: Table["columns"] extends infer Columns
@@ -92,14 +93,18 @@ type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 														? [keyof ColumnFacts] extends [never]
 															? {}
 															: {
-																	[FK in keyof ColumnFacts as NonIndexKey<FK>]: ColumnFacts[FK]
+																	[
+																		FK in keyof ColumnFacts as NonIndexKey<FK>
+																	]: ColumnFacts[FK]
 																}
 														: never
 													constraints: Table["constraints"] extends infer Constraints
 														? [keyof Constraints] extends [never]
 															? {}
 															: {
-																	[CKe in keyof Constraints as NonIndexKey<CKe>]: Constraints[CKe]
+																	[
+																		CKe in keyof Constraints as NonIndexKey<CKe>
+																	]: Constraints[CKe]
 																}
 														: never
 												} & (Table extends { rowid_table: true } ? { rowid_table: true } : {}) &

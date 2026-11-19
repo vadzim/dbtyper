@@ -153,8 +153,7 @@ export type ParserSyntax = LexerFeatures | DialectFlags
 
 /** The parser syntax of a driver config: its lexer features plus its dialect flag (DSEL-1, DSEL-3). */
 export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: DialectName }> =
-	| Config["syntax"]
-	| DialectFlag<Config["dialect"]>
+	Config["syntax"] | DialectFlag<Config["dialect"]>
 
 /**
  * Constructs that exist in one engine only (DSEL-5, DSEL-6). `name` is how the message names the construct, `hint`

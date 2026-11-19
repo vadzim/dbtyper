@@ -234,8 +234,7 @@ type ParseAlterRenameAfterToKw<
 					? [R3, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Old]>]
 					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
 						? JsqlDbGetColumn<Db, Sch, Tab, Old> extends infer OldCol extends
-								| (JsqlColumnFactsEntry & { type: SqlTypeShape })
-								| null
+								(JsqlColumnFactsEntry & { type: SqlTypeShape }) | null
 							? JsqlDbReplaceColumn<
 									JsqlDbReplaceColumn<Db, Sch, Tab, Old, null>,
 									Sch,
@@ -521,8 +520,7 @@ type ParseAlterOneAction<
 					: PeekToken<Tokens> extends TokenKey<"alter">
 						? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab>
 						: PeekToken<Tokens> extends
-									| TokenIdent<"enable" | "disable" | "force" | "owner">
-									| TokenKey<"no">
+									TokenIdent<"enable" | "disable" | "force" | "owner"> | TokenKey<"no">
 							? // PGT-21: row level security and ownership change no type
 								ParseAlterSkipAction<Tokens, Db, Sch, Tab>
 							: SkipFailedStatement<Tokens, Db, FormatError<Errors["UNSUPPORTED_ALTER_TABLE_ACTION"], []>>
