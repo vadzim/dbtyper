@@ -2,6 +2,14 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-19 Type-name table for casts, column types, value checks (#128, #135, track A; DLCT-5)
+
+- **One table in `src/core/dialect.ts`.** `DialectCastRow<Db, N>` gives `[result type name, guard]` for a written type name: PostgreSQL reads the data table `NamedCastRows` (an unlisted name is its own type), SQLite gives the type of the name's affinity (`SqliteTypeKey`, now only used inside dialect.ts). `ResolveCastFromShape<Db, Ev, N>` is the single cast rule over that row (guards "no-boolean" / "no-number" give 4503 / 4504); `ResolveCastForDialect` has no dialect branch. `DialectColumnTypeName` (column types, SQLT-17 other-dialect errors) and `ValueMismatchError` (INSERT/UPDATE value check, SQLT-43 vs the PostgreSQL error) moved there too. `CastTypeParts` is gone: a cast AST keeps the written type words in both dialects, the dialect is applied once, where the type is resolved.
+- **Comparison rules** need no dialect table: `SameComparisonClass` reads `ComparisonClassOfType` (src/core/comparison-classes.ts), keyed by canonical type names that both dialects produce; nothing translates there.
+- **The fact stays `declaredTypes`** ("named" / "affinity"): it now selects how the table reads a name (and whether user types exist), so the name is right.
+- **Small behaviour note:** a SQLite cast to a schema-qualified type name (`main.foo`) is classified by its last part (like PostgreSQL's table lookup) instead of the whole dotted string.
+- **Cost:** `typecheck:test` 11,321,720 -> 11,334,725 instantiations (+0.1%).
+
 ## 2026-11-19 Dialect facts named for rules (#124, track A; DLCT-4, DLCT-5)
 
 - **DLCT-4.** Fact values no longer carry an engine name: `functionCatalog` and `operators` are `"typed"` (PostgreSQL: result types computed from the argument types) or `"affinity"` (SQLite: the data tables with storage-class results); no file outside `src/core/dialect.ts` compares a fact to `"sqlite"`/`"postgres"`. The name of "the other engine" in the other-dialect function error is derived from the `title` column (`OtherDialectTitleOf`), not written next to the condition.

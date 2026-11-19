@@ -43,10 +43,7 @@ export type Nullable<T extends SqlTypeShape> = {
 
 export type SqlText = SqlType<"text">
 export type SqlInteger = SqlType<"integer">
-export type SqlBigint = SqlType<"bigint">
 export type SqlBoolean = SqlType<"boolean">
-export type SqlNumeric = SqlType<"numeric">
-export type SqlUuid = SqlType<"uuid">
 export type SqlNull = { type: "null"; arg: null; nullable: true }
 export type SqlUnknown = SqlType<"unknown">
 
