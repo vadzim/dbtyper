@@ -343,6 +343,7 @@ export type ExprValidInsideGroupedSelection<
 																									: Ast extends {
 																												kind:
 																													| "scalar_subquery"
+																													| "deferred_scalar_subquery"
 																													| "exists_subquery"
 																										  }
 																										? true

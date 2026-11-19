@@ -11,7 +11,8 @@ import type {
 	ScalarExprAst,
 	ScalarIdentParts,
 } from "./parse-expression.ts"
-import type { ScopeMap } from "./parser-scope.ts"
+import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { ParseParenScalarSelect } from "./parse-select-subquery.ts"
 import type { ResolveCastForDialect, SqlCastTypeNorm, WithCastLabelCheck } from "./resolve-cast.ts"
 import type { ResolveCaseSearched, ResolveCaseSimple } from "./resolve-expression-case.ts"
 import type {
@@ -321,6 +322,17 @@ type ExpressionResolvers<
 		sel: infer Sel extends JsqlSelectStatementResult
 	}
 		? ResolveScalarSubquerySel<Sel>
+		: never
+	deferred_scalar_subquery: Ast extends {
+		kind: "deferred_scalar_subquery"
+		tokens: infer Tk extends ParserMonad
+		outer: infer Ou extends ScopeMap
+	}
+		? ParseParenScalarSelect<Tk, Db, Params, MergeScope<Scope, Ou>> extends [infer _R, infer Sub]
+			? Sub extends JsqlSelectStatementResult
+				? ResolveScalarSubquerySel<Sub>
+				: Sub
+			: never
 		: never
 	in_subquery: Ast extends {
 		kind: "in_subquery"

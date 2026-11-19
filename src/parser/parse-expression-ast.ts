@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { EnumComparisonCheck } from "./parse-enum-checks.ts"
 import type { ScopeMap } from "./parser-scope.ts"
+import type { ParserMonad } from "../lexer/parser-monad.ts"
 
 /** Caller-supplied `:name` bindings (names must match lexer param identifiers). */
 export type ExpressionParamsShape = Record<string, SqlTypeShape> | readonly SqlTypeShape[]
@@ -16,6 +17,8 @@ export type ExprParseEnv = {
 	outerScope: ScopeMap
 	/** Set while parsing an unparenthesized column DEFAULT: a following `NOT` is `NOT NULL`, not `NOT LIKE`. */
 	noPostfixNot?: true
+	/** Set while parsing a SELECT list (parsed before FROM): a scalar subquery is kept as tokens and parsed at resolve time, in the FROM scope (SEL-23). */
+	deferSubqueries?: true
 }
 
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */
@@ -56,6 +59,8 @@ export type ScalarExprAst =
 	| { kind: "in_list"; expr: ScalarExprAst; items: readonly ScalarExprAst[] }
 	| { kind: "in_subquery"; expr: ScalarExprAst; sub: JsqlSelectStatementResult }
 	| { kind: "scalar_subquery"; sel: JsqlSelectStatementResult }
+	/** A SELECT-list scalar subquery: `tokens` start after `(`; `outer` is the scope seen while parsing the list (CTEs, outer levels). */
+	| { kind: "deferred_scalar_subquery"; tokens: ParserMonad; outer: ScopeMap }
 	| { kind: "exists_subquery"; sub: JsqlSelectStatementResult }
 	/** PostgreSQL `= ANY(array_expr)` or `= ANY(subquery)` */
 	| { kind: "any_op"; op: string; left: ScalarExprAst; right: ScalarExprAst | JsqlSelectStatementResult }

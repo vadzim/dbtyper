@@ -53,7 +53,7 @@ type ParseOneRawSelectExprItem<
 	Params extends ExpressionParamsShape,
 	OuterScope extends ScopeMap,
 > =
-	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope }> extends [
+	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: OuterScope; deferSubqueries: true }> extends [
 		infer RExpr extends ParserMonad,
 		infer Out,
 		infer _UpdatedEnv,

@@ -152,7 +152,24 @@ export type ParsePostfixArrayIndexTail<
 type TryParenOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipToken<Tokens> extends infer Ri extends ParserMonad
-			? PeekToken<Ri> extends TokenKey<"select">
+			? Env extends { deferSubqueries: true }
+				? PeekToken<Ri> extends TokenKey<"select"> | TokenKey<"with">
+					? DeferScalarSubquery<Ri, Env>
+					: TryParenOperandScalarUntypedNow<Ri, Env>
+				: TryParenOperandScalarUntypedNow<Ri, Env>
+			: never
+		: never
+
+/** SELECT-list scalar subquery: skip to the matching `)`, keep the tokens; parsed when the FROM scope is known. */
+type DeferScalarSubquery<Ri extends ParserMonad, Env extends ExprParseEnv> =
+	SkipBracketedUntil<Ri, TokenKey<")">> extends [infer Rc extends ParserMonad, infer Sk]
+		? Sk extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<Rc, FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY"], []>, Env>
+			: [SkipToken<Rc>, { kind: "deferred_scalar_subquery"; tokens: Ri; outer: Env["outerScope"] }, Env]
+		: never
+
+type TryParenOperandScalarUntypedNow<Ri extends ParserMonad, Env extends ExprParseEnv> =
+			PeekToken<Ri> extends TokenKey<"select">
 				? ParseParenScalarSelect<Ri, Env["db"], Env["params"], Env["outerScope"]> extends [
 						infer Rk extends ParserMonad,
 						infer Sub,
@@ -193,8 +210,6 @@ type TryParenOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprPa
 									: never
 								: never
 						: never
-			: never
-		: never
 
 export type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"cast">
