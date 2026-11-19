@@ -1,10 +1,11 @@
+import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
+import type { AsIdent, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { SqlBoolean, SqlNull, SqlText, SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
 import type {
 	EmptyExpressionParams,
-	EnumBetweenCheck,
 	ExpressionParamsShape,
 	ScalarCmpOp,
 	ScalarExprAst,
@@ -20,7 +21,12 @@ import type {
 	ResolveInSubqueryAst,
 	ResolveScalarSubquerySel,
 } from "./resolve-expression-collections.ts"
-import type { MergeBetweenBounds, MergeComparison, MergeLikeOperands } from "./resolve-expression-compare.ts"
+import type {
+	MergeComparison,
+	ResolveBetweenAst,
+	ResolveLikeAst,
+	ResolvePgRegexMatchAst,
+} from "./resolve-expression-compare.ts"
 import type { LookupParam, LookupPositionalParam, ResolveIdentChainValue } from "./resolve-expression-ident.ts"
 import type { ApplyOperandNullability, ParamProbeAt } from "./resolve-expression-params.ts"
 import type { ResolveFunctionCall, ResolveWindowFunction } from "./resolve-function.ts"
@@ -32,6 +38,49 @@ import type {
 	ResolveScalarExprAstNeg,
 	ResolveScalarExprAstPair,
 } from "./resolve-operators.ts"
+
+/** Longest `a` / `a.b` / `a.b.c` chain starting at an identifier (used by SELECT list fast path).
+ * Also recognizes `alias.*` and `schema.table.*` via sentinel tuples `["__ats__", alias]` / `["__qts__", sch, tab]`.
+ */
+export type MaximalIdentChain<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends infer T1
+		? AsIdent<T1> extends TokenIdent<infer A extends string>
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<".">
+					? SkipToken<R1> extends infer R2 extends ParserMonad
+						? PeekToken<R2> extends TokenKey<"*">
+							? SkipToken<R2> extends infer R3 extends ParserMonad
+								? [R3, readonly ["__ats__", A], ""]
+								: never
+							: PeekToken<R2> extends infer T2
+								? AsIdent<T2> extends TokenIdent<infer B extends string>
+									? SkipToken<R2> extends infer R3 extends ParserMonad
+										? PeekToken<R3> extends TokenKey<".">
+											? SkipToken<R3> extends infer R4 extends ParserMonad
+												? PeekToken<R4> extends TokenKey<"*">
+													? SkipToken<R4> extends infer R5 extends ParserMonad
+														? [R5, readonly ["__qts__", A, B], ""]
+														: never
+													: PeekToken<R4> extends infer T4
+														? AsIdent<T4> extends TokenIdent<infer C extends string>
+															? SkipToken<R4> extends infer R5 extends ParserMonad
+																? [R5, readonly [A, B, C], WrittenOf<T4>]
+																: never
+															: never
+														: never
+												: never
+											: [R3, readonly [A, B], WrittenOf<T2>]
+										: never
+									: never
+								: never
+						: never
+					: [R1, readonly [A], WrittenOf<T1>]
+				: never
+			: never
+		: never
+
+/** SQLite (SQLT-28): how an identifier token was written in the query; "" when the token does not say. */
+export type WrittenOf<T> = T extends { written: infer W extends string } ? W : ""
 
 /** Resolve after `FROM` scope is known */
 type ExpressionResolvers<
@@ -237,75 +286,9 @@ type ExpressionResolvers<
 					: never
 			: never
 		: never
-	between: Ast extends {
-		kind: "between"
-		expr: infer Eb extends ScalarExprAst
-		low: infer Lb extends ScalarExprAst
-		high: infer Hb extends ScalarExprAst
-	}
-		? ResolveExpressionAST<Eb, Db, Scope, Params> extends infer EvB
-			? EvB extends DbtyperErrorShape
-				? EvB
-				: ResolveExpressionAST<Lb, Db, Scope, Params> extends infer LvB
-					? LvB extends DbtyperErrorShape
-						? LvB
-						: ResolveExpressionAST<Hb, Db, Scope, Params> extends infer HvB
-							? HvB extends DbtyperErrorShape
-								? HvB
-								: EvB extends SqlTypeShape
-									? LvB extends SqlTypeShape
-										? HvB extends SqlTypeShape
-											? WithEnumCheck<
-													EnumBetweenCheck<Db, EvB, Eb, LvB, Lb, HvB, Hb>,
-													MergeBetweenBounds<EvB, LvB, HvB, Eb, Lb, Hb>
-												>
-											: never
-										: never
-									: never
-							: never
-					: never
-			: never
-		: never
-	like: Ast extends {
-		kind: "like"
-		expr: infer Exl extends ScalarExprAst
-		pattern: infer Pl extends ScalarExprAst
-		case_insensitive: infer _CI extends boolean
-	}
-		? ResolveExpressionAST<Exl, Db, Scope, Params> extends infer EvL
-			? EvL extends DbtyperErrorShape
-				? EvL
-				: ResolveExpressionAST<Pl, Db, Scope, Params> extends infer PvL
-					? PvL extends DbtyperErrorShape
-						? PvL
-						: EvL extends SqlTypeShape
-							? PvL extends SqlTypeShape
-								? MergeLikeOperands<EvL, PvL>
-								: never
-							: never
-					: never
-			: never
-		: never
-	pg_regex_match: Ast extends {
-		kind: "pg_regex_match"
-		expr: infer Exr extends ScalarExprAst
-		pattern: infer Pr extends ScalarExprAst
-		case_insensitive: infer _CR extends boolean
-	}
-		? ResolveExpressionAST<Exr, Db, Scope, Params> extends infer EvR
-			? EvR extends DbtyperErrorShape
-				? EvR
-				: ResolveExpressionAST<Pr, Db, Scope, Params> extends infer PvR
-					? PvR extends DbtyperErrorShape
-						? PvR
-						: EvR extends SqlTypeShape
-							? PvR extends SqlTypeShape
-								? MergeLikeOperands<EvR, PvR>
-								: never
-							: never
-					: never
-			: never
-		: never
+	between: ResolveBetweenAst<Ast, Db, Scope, Params>
+	like: ResolveLikeAst<Ast, Db, Scope, Params>
+	pg_regex_match: ResolvePgRegexMatchAst<Ast, Db, Scope, Params>
 	case_simple: Ast extends {
 		kind: "case_simple"
 		discriminant: infer Dsc extends ScalarExprAst
@@ -399,4 +382,4 @@ export type ResolveExpressionAST<
 	: never
 
 export type { SameComparisonClass } from "./resolve-expression-compare.ts"
-export type { LookupParam, LookupPositionalParam, MaximalIdentChain } from "./resolve-expression-ident.ts"
+export type { LookupParam, LookupPositionalParam } from "./resolve-expression-ident.ts"
