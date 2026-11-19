@@ -18,7 +18,7 @@ import type { EnumComparisonCheck } from "./parse-enum-checks.ts"
 import type { ParseCallArgs, ParseOptionalOverClause } from "./parse-function-call.ts"
 import type { ParseParenEnclosedSelect, ParseParenScalarSelect } from "./parse-select-subquery.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { CastPgOnlyTypeError, CastTypeParts, SqlCastTypeNorm } from "./resolve-cast.ts"
+import type { CastGivesText, CastPgOnlyTypeError, SqlCastTypeNorm } from "./resolve-cast.ts"
 import type { MaximalIdentChain } from "./resolve-expression.ts"
 import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 
@@ -217,10 +217,7 @@ type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends ExprParseEn
 																				{
 																					kind: "sql_cast"
 																					expr: Inner
-																					type_parts: CastTypeParts<
-																						Env2["db"],
-																						Parts
-																					>
+																					type_parts: Parts
 																				},
 																				Env2,
 																			]
@@ -1001,7 +998,7 @@ export type ParseOrScalarUntyped<Tokens extends ParserMonad, Env extends ExprPar
 
 export type ParseExpressionAST<Tokens extends ParserMonad, Env extends ExprParseEnv> = ParseOrScalarUntyped<Tokens, Env>
 
-type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: "string" }
+type ScalarAstNonNumericForMulHead<Db, E extends ScalarExprAst> = E extends { kind: "string" }
 	? true
 	: E extends { kind: "true" }
 		? true
@@ -1010,27 +1007,27 @@ type ScalarAstNonNumericForMulHead<E extends ScalarExprAst> = E extends { kind: 
 			: E extends { kind: "sql_null" }
 				? true
 				: E extends { kind: "neg"; inner: infer I extends ScalarExprAst }
-					? ScalarAstNonNumericForMulHead<I>
+					? ScalarAstNonNumericForMulHead<Db, I>
 					: E extends {
 								kind: "pg_cast"
 								expr: infer Ic extends ScalarExprAst
 								type_parts: infer Pc extends readonly string[]
 						  }
 						? SqlCastTypeNorm<Pc> extends infer Nc extends string
-							? Nc extends "text" | "varchar" | "character varying" | "char"
+							? CastGivesText<Db, Nc> extends true
 								? true
-								: ScalarAstNonNumericForMulHead<Ic>
-							: ScalarAstNonNumericForMulHead<Ic>
+								: ScalarAstNonNumericForMulHead<Db, Ic>
+							: ScalarAstNonNumericForMulHead<Db, Ic>
 						: E extends {
 									kind: "sql_cast"
 									expr: infer Ics extends ScalarExprAst
 									type_parts: infer Pcs extends readonly string[]
 							  }
 							? SqlCastTypeNorm<Pcs> extends infer Ncs extends string
-								? Ncs extends "text" | "varchar" | "character varying" | "char"
+								? CastGivesText<Db, Ncs> extends true
 									? true
-									: ScalarAstNonNumericForMulHead<Ics>
-								: ScalarAstNonNumericForMulHead<Ics>
+									: ScalarAstNonNumericForMulHead<Db, Ics>
+								: ScalarAstNonNumericForMulHead<Db, Ics>
 							: E extends { kind: "exists_subquery" }
 								? true
 								: E extends { kind: "in_subquery" }
@@ -1348,7 +1345,7 @@ type ParseMulScalarUntypedEntry<Tokens extends ParserMonad, Env extends ExprPars
 		? E0 extends DbtyperErrorShape
 			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
-				? ScalarAstNonNumericForMulHead<E0> extends true
+				? ScalarAstNonNumericForMulHead<Env0["db"], E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends
 								| TokenKey<"+">
@@ -1654,7 +1651,7 @@ type ParseScalarExprUntypedNonIdent<Tokens extends ParserMonad, Env extends Expr
 		? E0 extends DbtyperErrorShape
 			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
-				? ScalarAstNonNumericForMulHead<E0> extends true
+				? ScalarAstNonNumericForMulHead<Env0["db"], E0> extends true
 					? PeekToken<R0> extends infer P
 						? P extends TokenKey<"+"> | TokenKey<"-"> | TokenKey<"*">
 							? SkipFailedExpressionWithEnv<
