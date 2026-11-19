@@ -67,11 +67,11 @@ type ParseOneColumn<
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 
 /**
- * #142: the column list is parsed by tail recursion, about 5 steps per column (more with constraints and
- * DEFAULT), and TypeScript stops a tail recursion at 1000 steps: about 200 plain columns. Every 50 columns the rest
- * of the list is parsed inside a nested (not tail) instantiation, which starts a new count: costs about one level of
- * the instantiation depth (limit 100) per 50 columns, so about 1000 columns fit. Normal tables (under 50 columns)
- * never take this branch.
+ * TLVL-4, #142: the column list is parsed by tail recursion, about 5 steps per column (more with constraints and
+ * DEFAULT), and TypeScript stops a tail recursion at 1000 steps: about 200 plain columns. Every 50 columns (the 50
+ * is measured: 50 columns = about 250 steps, well under 1000, and 20 restarts of one depth level each fit the depth
+ * limit 100) the rest of the list is parsed inside a nested (not tail) instantiation, which starts a new count: about
+ * 1000 columns fit. Normal tables (under 50 columns) never take this branch. Test: test/stress/wide-table-300.
  */
 type ColumnChunkEnd =
 	| 50

@@ -99,9 +99,11 @@ type ColFact<C extends ColumnDef> = C[4] extends "identity"
 type FactKey<C extends ColumnDef> = [ColFact<C>] extends [never] ? never : C[0]
 
 /**
- * #142: 80 or more columns: the columns and facts in ONE mapped type over the union of the columns (key remapping by
+ * TLVL-4, #142: 80 or more columns: the columns and facts in ONE mapped type over the union of the columns (key remapping by
  * name), with no recursion over the column count. The chunked merge above nests one level per 4 columns and fails
- * at about 170 columns; this one is deeper per use on small tables, so it is only taken when the stack is wide.
+ * at about 170 columns; this one is deeper per use on small tables, so it is only taken when the stack is wide. The 80 is measured: the chunked merge still works at 150 columns (606k
+ * instantiations vs 560k here) but TS2589 hits it at about 170, and the mapped type broke an ALTER TABLE chain test when
+ * used for every table, so it starts well under the failing size. Test: test/stress/wide-table-300.
  */
 type WideColumnsFromStack<S extends readonly ColumnDef[]> = {
 	cols: { [C in S[number] as C[0]]: ColType<C> }
