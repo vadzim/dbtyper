@@ -70,7 +70,7 @@ export type MergeComparison<
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
 
-export type MergeBetweenBounds<
+type MergeBetweenBounds<
 	E extends SqlTypeShape,
 	Lm extends SqlTypeShape,
 	H extends SqlTypeShape,
@@ -89,7 +89,7 @@ export type MergeBetweenBounds<
 					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
 				: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
 
-export type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape> = Expr["type"] extends "null"
+type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape> = Expr["type"] extends "null"
 	? FormatError<Errors["NULL_NOT_ALLOWED_IN_LIKE"], []>
 	: Pat["type"] extends "null"
 		? FormatError<Errors["NULL_NOT_ALLOWED_IN_LIKE"], []>

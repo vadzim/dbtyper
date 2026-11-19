@@ -80,7 +80,7 @@ export type MaximalIdentChain<Tokens extends ParserMonad> =
 		: never
 
 /** SQLite (SQLT-28): how an identifier token was written in the query; "" when the token does not say. */
-export type WrittenOf<T> = T extends { written: infer W extends string } ? W : ""
+type WrittenOf<T> = T extends { written: infer W extends string } ? W : ""
 
 /** Resolve after `FROM` scope is known */
 type ExpressionResolvers<
