@@ -18,6 +18,12 @@ import type { Inc, LastOf } from "./type-utils.ts"
 /** The type of a parameter that no position has given a type yet; `arg` is its key (name, or 0-based index). */
 type SqlParamProbe<Key extends string | number> = { type: "param-probe"; arg: Key; nullable: false }
 
+/** A parameter marked for the usage probe: reading it is an error (PARAM-14, see `LookupParam`). */
+type SqlParamReadProbe = { type: "param-read-probe"; arg: null; nullable: false }
+
+/** The type of a parameter the SQL does not use: any value is accepted (PARAM-14). */
+type SqlParamUnused = { type: "param-unused"; arg: null; nullable: false }
+
 /** The probe key of a resolved parameter type, `never` for a real type. */
 export type ProbeKeyOf<S> = S extends { type: "param-probe"; arg: infer K extends string | number } ? K : never
 
@@ -73,7 +79,16 @@ type Derive<
 				: LeftoverProbe<Params> extends infer P extends string | number
 					? [P] extends [never]
 						? Params
-						: FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [DisplayKey<P>, DisplayKey<P>]>
+						: // PARAM-14: a parameter the SQL never reads is accepted; one that is read and typed by no position is CORE-7
+							ApplyStatements<Db, Stmt, BindProbe<Params, P, SqlParamReadProbe>, Syntax> extends [
+									unknown,
+									FormatError<Errors["PARAMETER_PROBE_READ"], []>,
+									...unknown[],
+							  ]
+							? FormatError<Errors["CANNOT_INFER_PARAMETER_TYPE"], [DisplayKey<P>, DisplayKey<P>]>
+							: BindProbe<Params, P, SqlParamUnused> extends infer Next extends ExpressionParamsShape
+								? Derive<Db, Stmt, Syntax, Next>
+								: never
 					: never
 		: never
 

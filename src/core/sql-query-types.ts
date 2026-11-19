@@ -31,17 +31,19 @@ type ParamKeyDisplay<K> = K extends `${infer I extends number}` ? `$${Inc<I>}` :
 type CheckParamValues<Config extends DriverConfig, Db, Params extends ExpressionParamsShape, Values> = {
 	[K in keyof Params & string]: K extends keyof Values
 		? Params[K] extends infer S extends SqlTypeShape
-			? [Values[K]] extends [
-					SqlTypeShapeToTs<
-						S,
-						Config extends { paramTypes: infer P extends Record<string, unknown> }
-							? P
-							: Config["scalarTypes"],
-						Db
-					>,
-				]
-				? never
-				: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
+			? S["type"] extends "param-unused"
+				? never // PARAM-14
+				: [Values[K]] extends [
+							SqlTypeShapeToTs<
+								S,
+								Config extends { paramTypes: infer P extends Record<string, unknown> }
+									? P
+									: Config["scalarTypes"],
+								Db
+							>,
+					  ]
+					? never
+					: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
 			: never
 		: never
 }[keyof Params & string] extends infer E

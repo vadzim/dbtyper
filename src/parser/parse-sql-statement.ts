@@ -133,11 +133,29 @@ export type ParseSqlStatement<
 	PeekToken<Tokens> extends TokenEot
 		? [Tokens, Db, null]
 		: PeekToken<Tokens> extends TokenKey<"alter">
-			? AsDdlResult<ParseAlter<SkipToken<Tokens>, Db>>
+			? ParseAlter<SkipToken<Tokens>, Db> extends [
+					infer R extends ParserMonad,
+					infer D extends JsqlDatabaseShape,
+					infer Res,
+				]
+				? AsDdlResult<R, D, Res>
+				: never
 			: PeekToken<Tokens> extends TokenKey<"create">
-				? AsDdlResult<ParseCreate<SkipToken<Tokens>, Db, Params>>
+				? ParseCreate<SkipToken<Tokens>, Db, Params> extends [
+						infer R extends ParserMonad,
+						infer D extends JsqlDatabaseShape,
+						infer Res,
+					]
+					? AsDdlResult<R, D, Res>
+					: never
 				: PeekToken<Tokens> extends TokenKey<"drop">
-					? AsDdlResult<ParseDrop<SkipToken<Tokens>, Db>>
+					? ParseDrop<SkipToken<Tokens>, Db> extends [
+							infer R extends ParserMonad,
+							infer D extends JsqlDatabaseShape,
+							infer Res,
+						]
+						? AsDdlResult<R, D, Res>
+						: never
 					: PeekToken<Tokens> extends TokenKey<"delete">
 						? ParseDelete<SkipToken<Tokens>, Db, Params>
 						: PeekToken<Tokens> extends TokenKey<"insert">
@@ -151,17 +169,21 @@ export type ParseSqlStatement<
 										: PeekToken<Tokens> extends TokenKey<"replace">
 											? // SQLT-39: `REPLACE INTO` is `INSERT OR REPLACE INTO`
 												ParseInsert<SkipToken<Tokens>, Db, Params>
-											: AsDdlResult<ParseOtherStatement<Tokens, Db>>
+											: ParseOtherStatement<Tokens, Db> extends [
+														infer R extends ParserMonad,
+														infer D extends JsqlDatabaseShape,
+														infer Res,
+												  ]
+												? AsDdlResult<R, D, Res>
+												: never
 
 /**
  * SCHEMA-6, STMT-Q5: DDL and skipped statements return no rows and no row list: a `query` of one is `unknown`, unlike
  * INSERT/UPDATE/DELETE without RETURNING (CORE-13, `[]`). A successful result is replaced by the marker `{ ddl: true }`.
  */
-type AsDdlResult<R> = R extends [infer Rest, infer Db, infer Result]
-	? Result extends DbtyperErrorShape
-		? R
-		: [Rest, Db, { returning: null; ddl: true }]
-	: R
+type AsDdlResult<Rest extends ParserMonad, Db extends JsqlDatabaseShape, Result> = Result extends DbtyperErrorShape
+	? [Rest, Db, Result]
+	: [Rest, Db, { returning: null; ddl: true }]
 
 /**
  * A statement no parser handles (STMT-18, STMT-19): a known statement keyword is skipped (but ATTACH / DETACH are

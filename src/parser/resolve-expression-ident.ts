@@ -5,8 +5,11 @@ import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 
+/** PARAM-14: reading a parameter the usage probe (src/core/param-probe.ts) has marked is an error that says "used". */
+export type ReadParam<S> = S extends { type: "param-read-probe" } ? FormatError<Errors["PARAMETER_PROBE_READ"], []> : S
+
 export type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
-	? Params[Name]
+	? ReadParam<Params[Name]>
 	: FormatError<Errors["UNKNOWN_QUERY_PARAMETER"], [Name]>
 
 export type LookupPositionalParam<
@@ -17,7 +20,7 @@ export type LookupPositionalParam<
 		number extends Params["length"]
 		? Params[number]
 		: `${Index}` extends keyof Params
-			? Params[Index]
+			? ReadParam<Params[Index]>
 			: FormatError<Errors["POSITIONAL_PARAMETER_OUT_OF_BOUNDS"], [Index]>
 	: FormatError<Errors["POSITIONAL_PARAMETER_REQUIRES_ARRAY"], []>
 
