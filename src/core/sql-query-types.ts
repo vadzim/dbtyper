@@ -5,7 +5,7 @@ import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
 import type { ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
-import type { SqlSelectResultTs } from "./sql-select-result-helper.ts"
+import type { SqlSelectResultTs, IsDdlStatement } from "./sql-select-result-helper.ts"
 import type { DeriveQueryParams } from "./param-probe.ts"
 import type { ParserSyntaxOf } from "./dialect.ts"
 import type { DriverConfig, ParamsDriverConfig } from "./sql-driver.ts"
@@ -111,7 +111,10 @@ export type QueryReturnType<
 				Errors["STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT"]["code"],
 				string
 			>
-			? []
+			? // SCHEMA-6, STMT-Q5: DDL or a skipped statement last: `unknown`; DML without RETURNING: `[]` (CORE-13)
+				IsDdlStatement<Db, Stmt, Params, ParserSyntaxOf<Config>> extends true
+				? unknown
+				: []
 			: unknown
 		: Array<SqlSelectRowObject<Config, Db, Stmt, Params>>
 	: unknown

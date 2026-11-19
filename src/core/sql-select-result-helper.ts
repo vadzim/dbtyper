@@ -29,6 +29,14 @@ type SqlSelectResult<
 				: ExpectedRowSetResult
 		: ExpectedRowSetResult
 
+/** SCHEMA-6, STMT-Q5: the last statement is DDL or a skipped statement (the parser marks its result `ddl`). */
+export type IsDdlStatement<
+	Db extends JsqlDatabaseShape,
+	Text extends string,
+	Params extends ExpressionParamsShape | null,
+	Syntax extends ParserSyntax,
+> = ApplyStatements<Db, Text, Params, Syntax> extends [unknown, unknown, { ddl: true }] ? true : false
+
 /**
  * Infers the **row object** type for SELECT/RETURNING statements.
  * Used by .stream() which requires statements that return rows.
