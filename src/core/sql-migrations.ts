@@ -1,3 +1,6 @@
+import { dirname, sep } from "node:path"
+import { fileURLToPath } from "node:url"
+
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape } from "./jsql-shapes.ts"
 import type { EmptyExpressionParams } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
@@ -46,10 +49,42 @@ export type MigrationExport = {
 	path: string
 }
 
+const DBTYPER_DIR = dirname(dirname(fileURLToPath(import.meta.url)))
+
+/**
+ * RUN-4: the file of the first stack frame outside dbtyper (its `src/` or `dist/` folder). Reads frames with and
+ * without parentheses (`at f (file:///a.mjs:1:2)`, `at /a.js:1:2`, `at async f (...)`), file URLs and plain paths,
+ * any extension; skips `node:` internals. Returns undefined when no such frame exists.
+ */
+export function migrationCallerFile(stack: string, ownDir: string = DBTYPER_DIR): string | undefined {
+	for (const line of stack.split("\n")) {
+		const match = /^\s*at (?:.*? \()?(.*?):\d+:\d+\)?\s*$/.exec(line)
+		if (match === null) {
+			continue
+		}
+		let file = match[1]!
+		if (file.startsWith("node:")) {
+			continue
+		}
+		if (file.startsWith("file://")) {
+			try {
+				file = fileURLToPath(file)
+			} catch {
+				continue
+			}
+		}
+		if (file.startsWith(ownDir + sep)) {
+			continue
+		}
+		return file
+	}
+	return undefined
+}
+
 export function migration<S extends string>(source: S): S {
 	if (process.env.TEST_MIGRATIONS) {
-		const caller = new Error().stack?.split("\n")[2]
-		if (caller && !/\.js:\d+\:\d+\)/.test(caller)) {
+		const caller = migrationCallerFile(new Error().stack ?? "")
+		if (caller !== undefined && !/\.[mc]?js$/.test(caller)) {
 			throw new Error(
 				"migration() should be called from a JavaScript file while running tests to test that dbtyper works with js",
 			)
@@ -179,13 +214,12 @@ class DataBaseImpl {
 	}
 
 	async stream(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<unknown>> {
-		const streamFn = this.dbInterface.stream
+		const db = this.dbInterface
 
-		if (streamFn !== undefined) {
-			return await streamFn(statement, params)
+		if (db.stream !== undefined) {
+			return await db.stream(statement, params)
 		}
 
-		const db = this.dbInterface
 		const rows = await db.query(statement, params)
 
 		if (!Array.isArray(rows)) {
