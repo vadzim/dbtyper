@@ -10,9 +10,9 @@
  * Do not fold the whole run to the left again, and do not grow one accumulator tuple (quadratic, see #105).
  * `-`, `%` and custom operators end a run: they are not associative and stay left-nested.
  */
-export type ChainChunk = 8
+type ChainChunk = 8
 
-export type ChainKind = "add" | "mul" | "concat"
+type ChainKind = "add" | "mul" | "concat"
 
 type ChainNode<K extends ChainKind, L, R> = K extends "add"
 	? { kind: "add"; left: L; right: R }

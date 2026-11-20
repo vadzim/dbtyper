@@ -121,13 +121,9 @@ export type ResolveInSubqueryAst<
 					? Rv extends DbtyperErrorShape
 						? Rv
 						: Rv extends SqlTypeShape
-							? ValidateInListElement<Lv, Rv> extends infer V
-								? V extends DbtyperErrorShape
-									? V
-									: V extends true
-										? NullableWhen<Rv["nullable"]> // CORE-2 (#155): NULL when nothing matches and a row is NULL
-										: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []>
-								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []>
+							? ValidateInListElement<Lv, Rv> extends true
+								? NullableWhen<Rv["nullable"]> // CORE-2 (#155): NULL when nothing matches and a row is NULL
+								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []> // 2505, not the IN-list code
 							: never
 					: never
 				: never

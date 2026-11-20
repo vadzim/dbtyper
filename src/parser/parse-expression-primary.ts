@@ -153,7 +153,7 @@ export type ParsePostfixArrayIndexTail<
  * `<expr> COLLATE <name>` (name: identifier or quoted identifier): a postfix that keeps the operand's type, so it is
  * read and dropped. May repeat (`x COLLATE a COLLATE b`).
  */
-export type ParseCollateTail<Tokens extends ParserMonad, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+type ParseCollateTail<Tokens extends ParserMonad, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenIdent<"collate">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? AsIdent<PeekToken<R1>> extends TokenIdent<string>

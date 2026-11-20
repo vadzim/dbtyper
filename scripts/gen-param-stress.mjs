@@ -25,7 +25,7 @@ function gen(N, dialect) {
 	const upsertT = "[" + Array.from({ length: N }, (_, i) => (i === N - 1 ? "string" : "number")).join(", ") + "]"
 	// the last parameter is reported by its name, :p<N-1>, or by its position
 	const lastNamed = `:p${N - 1}`
-	const lastPos = `$${N}` // SQLite reports ?NNN as $NNN too
+	const lastPos = dialect === "pg" ? `$${N}` : `?${N}` // the dialect's own spelling (positionalParamSign)
 	// PostgreSQL positional: $n; SQLite positional: ?NNN (SQLT-4)
 	const p = i => (dialect === "pg" ? `$${i + 1}` : `?${i + 1}`)
 	const where = "select id from t where " + range(i => `c${i} = :p${i}`).join(" and ") + ";"

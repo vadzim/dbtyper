@@ -203,3 +203,9 @@ expectType<GetQueryError<typeof pg, typeof _anyCastWrong, [number]>>(
 )
 // a hint's target parses: `::` after a function call
 await pg.query(`select pg_typeof(id)::text as t, lower(name)::varchar as l from users`)
+
+// a type mismatch in IN (subquery) has its own code, 2505 (2504 is the IN list)
+const _inSub = `select id from users where name in (select id from posts)` as const
+expectType<GetQueryError<typeof pg, typeof _inSub>>(toBe<DbtyperError<2505, "Incompatible types in IN subquery">>())
+const _inList = `select id from users where name in (1, 2)` as const
+expectType<GetQueryError<typeof pg, typeof _inList>>(toBe<DbtyperError<2504, "Incompatible types in IN list">>())
