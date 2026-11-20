@@ -1,7 +1,9 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { OutputRelation } from "./parser-scope.ts"
+import type { FoldAsciiCase } from "../lexer/sql-lexer-chars.ts"
+import type { AsIdent, TokenIdent, TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -63,6 +65,22 @@ export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pend
 	: null
 
 /**
+ * The name token of a column definition (CREATE TABLE, ADD COLUMN) as an identifier: a name or non-reserved keyword
+ * (`AsIdent`), and where the dialect has `stringColumnNames` (SQLite, #195) a single-quoted string, folded like a
+ * quoted name (SQLT-27) and keeping its spelling. Anything else is returned as is (not a name).
+ */
+export type ColumnNameToken<Tok, Db> =
+	Tok extends TokenString<infer V extends string>
+		? Tok extends { blob: true }
+			? Tok
+			: DialectFact<Db, "stringColumnNames"> extends true
+				? FoldAsciiCase<V> extends V
+					? TokenIdent<V>
+					: TokenIdent<FoldAsciiCase<V>> & { written: V }
+				: Tok
+		: AsIdent<Tok>
+
+/**
  * SQLT-28, #151: the declared spelling of a column whose name token was written in another case (SQLite keeps it as
  * `written`, see the lexer) travels in the database state like `pendingConstraints`, and ends in the table's `spelled`.
  */
@@ -83,8 +101,8 @@ export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> =
 
 /** The database state without the pending CREATE TABLE facts. */
 export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
-	{ pendingConstraints: string } | { pendingSpelled: unknown }
-	? JsqlDbOmitProps<Db, "pendingConstraints" | "pendingSpelled">
+	{ pendingConstraints: string } | { pendingSpelled: unknown } | { pendingPkName: string }
+	? JsqlDbOmitProps<Db, "pendingConstraints" | "pendingSpelled" | "pendingPkName">
 	: Db
 
 /** A column of the stack is (part of) the PRIMARY KEY already: a second one is error 1519 in both engines. */
@@ -93,6 +111,24 @@ export type HasPrimaryKey<Stack extends readonly ColumnDef[], Pk extends PkKind 
 ] extends [never]
 	? false
 	: true
+
+/** The PRIMARY KEY columns of a finished column stack (CORE-15, SEL-27), `never` when it has none. */
+export type StackPrimaryKey<Stack extends readonly ColumnDef[], Acc extends string = never> = Stack extends readonly [
+	infer H extends ColumnDef,
+	...infer R extends readonly ColumnDef[],
+]
+	? StackPrimaryKey<R, H[5] extends false ? Acc : Acc | H[0]>
+	: Acc
+
+/**
+ * The PRIMARY KEY's constraint name: a named table constraint's, else PostgreSQL's default `<table>_pkey` (an inline
+ * `CONSTRAINT n PRIMARY KEY` keeps the default).
+ */
+export type PendingPkName<Db extends JsqlDatabaseShape, Table extends string> = Db extends {
+	pendingPkName: infer N extends string
+}
+	? N
+	: `${Table}_pkey`
 
 /** The error of a second PRIMARY KEY in one CREATE TABLE. */
 export type MultiplePrimaryKeys<
@@ -230,29 +266,27 @@ type ParseCreateTableAsSelectRun<
 
 /**
  * CORE-19: the table of `CREATE TABLE … AS SELECT`: the output columns (all nullable) in output order (#150). Where names
- * match case-insensitively (SQLite, fact `foldQuoted`), the keys are lower-cased and the output names kept as the
- * declared spellings (SQLT-28), as for a column of CREATE TABLE.
+ * match case-insensitively (SQLite, fact `foldQuoted`), the keys are folded and the output names kept as the declared
+ * spellings (SQLT-67), as for a view (`OutputRelation`).
  */
-type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = (
-	Res extends { order: infer O extends readonly string[] } ? O : UnionToStringTuple<keyof Res["returning"] & string>
-) extends infer Order extends readonly string[]
-	? DialectFact<Db, "lexer">["foldQuoted"] extends true
-		? JsqlCreateRowidTable<
-				{ [K in keyof Res["returning"] as Lowercase<K & string>]: NullableType<Res["returning"][K]> },
-				null,
-				never,
-				LowercaseNames<Order>,
-				{ [K in keyof Res["returning"] & string as Lowercase<K> extends K ? never : Lowercase<K>]: K }
-			>
-		: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
-	: never
-
-type LowercaseNames<Names extends readonly string[], Acc extends readonly string[] = []> = Names extends readonly [
-	infer H extends string,
-	...infer R extends readonly string[],
-]
-	? LowercaseNames<R, [...Acc, Lowercase<H>]>
-	: Acc
+type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> =
+	OutputRelation<
+		Db,
+		{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> },
+		Res extends { order: infer O extends readonly string[] }
+			? O
+			: UnionToStringTuple<keyof Res["returning"] & string>
+	> extends infer Rel extends { columns: Record<string, SqlTypeShape>; order: readonly string[] }
+		? DialectFact<Db, "lexer">["foldQuoted"] extends true
+			? JsqlCreateRowidTable<
+					Rel["columns"],
+					null,
+					never,
+					Rel["order"],
+					Rel extends { spelled: infer Sp } ? Sp : {}
+				>
+			: JsqlCreateTable<Rel["columns"], null, null, Rel["order"]>
+		: never
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
 

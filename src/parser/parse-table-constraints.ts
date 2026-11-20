@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbSetProp } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -64,7 +65,19 @@ export type ParseTableConstraint<
 	PeekToken<Tokens> extends TokenKey<"constraint">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
-				? TableConstraintBody<SkipToken<R1>, WithPendingConstraint<Db, CName>, Schema, Table, Stack>
+				? SkipToken<R1> extends infer R2 extends ParserMonad
+					? TableConstraintBody<
+							R2,
+							WithPendingConstraint<Db, CName> extends infer Db1 extends JsqlDatabaseShape
+								? PeekToken<R2> extends TokenKey<"primary">
+									? JsqlDbSetProp<Db1, "pendingPkName", CName>
+									: Db1
+								: never,
+							Schema,
+							Table,
+							Stack
+						>
+					: never
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
 			: never
 		: TableConstraintBody<Tokens, Db, Schema, Table, Stack>

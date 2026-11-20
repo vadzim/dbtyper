@@ -6,7 +6,7 @@ import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver }).database()
 
-const query = `select ? * ? as result;` as const
+const query = `select $1 * $2 as result;` as const
 
 // @ts-expect-error
 await db.query(query, [5, 10])

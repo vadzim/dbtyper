@@ -12,8 +12,9 @@ import type { FunctionCatalogFacts } from "../core/dialect.ts"
  *   argument that is not a NULL literal, `sum`/`avg` per argument type, `array-of-arg`, `text[]`, and the array
  *   functions `array-length`, `array-append`, `array-prepend`, `unnest`, which can give their own error, FN-19…FN-21).
  * - `nulls` (CORE-2): the names of {@link IsResultNullable}.
- * - `kind`: `"scalar"`, `"aggregate"` (also valid before OVER and in a grouped query as an aggregate) or `"window"`
- *   (needs OVER).
+ * - `kind`: `"scalar"`, `"aggregate"` (also valid before OVER and in a grouped query as an aggregate), `"window"`
+ *   (needs OVER) or `"table"` (a table-valued function: a FROM item only, elsewhere unknown as in the engine; its
+ *   columns are the `tables` row of the same name, its `result` is unused; SQLT-69…SQLT-72).
  * - `arity`: `null` (any count) or a key of {@link ArityRules}.
  * - `params`: the SQL type a parameter gets as argument N (CORE-6: a tuple of types by position), `"peer"` (the type
  *   of another argument), or `null` (a parameter there is not typed).
@@ -38,6 +39,9 @@ export type IsCatalogFunction<C extends FunctionCatalogFacts, L extends string> 
 	: `${L}/1` extends keyof C["rows"]
 		? true
 		: false
+
+/** Whether the row is a table-valued function (a FROM item only). */
+export type IsTableRow<Row> = Row extends readonly [string, string, "table", ...unknown[]] ? true : false
 
 /** Whether the row needs an OVER clause. */
 export type IsWindowOnlyRow<Row> = Row extends readonly [string, string, "window", ...unknown[]] ? true : false

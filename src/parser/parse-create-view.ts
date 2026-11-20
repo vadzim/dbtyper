@@ -18,6 +18,8 @@ import type { ApplyCteColumnList, ParseCteColumnList } from "./parse-select-cte.
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { FirstDuplicateName } from "./set-operation-types.ts"
+import type { FoldedNames, OutputOrder, OutputRelation } from "./parser-scope.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 type ViewNameRow = {
 	name: FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>
@@ -46,7 +48,11 @@ type ParseCreateViewAfterSelect<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 	Cols,
-> = (Cols extends readonly string[] ? FirstDuplicateName<Cols> : never) extends infer Dup
+> = (
+	Cols extends readonly string[]
+		? FirstDuplicateName<DialectFact<Db, "lexer">["foldQuoted"] extends true ? FoldedNames<Cols> : Cols>
+		: never
+) extends infer Dup
 	? [Dup] extends [never]
 		? ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
 			? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
@@ -76,10 +82,15 @@ type ParseCreateViewStore<
 					Db,
 					Schema,
 					Name,
-					JsqlCreateView<
-						Sel["returning"],
-						Sel extends { order: infer O extends readonly string[] } ? O : readonly string[]
-					>
+					OutputRelation<Db, Sel["returning"], OutputOrder<Sel>> extends infer Rel extends {
+						columns: Record<string, SqlTypeShape>
+					}
+						? JsqlCreateView<
+								Rel["columns"],
+								Rel extends { order: infer O extends readonly string[] } ? O : readonly string[],
+								Rel extends { spelled: infer Sp } ? Sp : {}
+							>
+						: never
 				> extends infer NewDb
 				? NewDb extends JsqlDatabaseShape
 					? [SkipToken<Tokens>, NewDb, null]
@@ -144,21 +155,22 @@ export type ParseCreateView<
 	Replace extends boolean = false,
 > =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? DialectFact<Db, "viewIfNotExists"> extends true
-			? SkipToken<Tokens> extends infer A0 extends ParserMonad
-				? PeekToken<A0> extends TokenKey<"not">
-					? SkipToken<A0> extends infer A1 extends ParserMonad
-						? PeekToken<A1> extends TokenKey<"exists">
+		? // SCHEMA-18: the `IF NOT EXISTS` words are checked in both dialects; only SQLite accepts the whole clause
+			SkipToken<Tokens> extends infer A0 extends ParserMonad
+			? PeekToken<A0> extends TokenKey<"not">
+				? SkipToken<A0> extends infer A1 extends ParserMonad
+					? PeekToken<A1> extends TokenKey<"exists">
+						? DialectFact<Db, "viewIfNotExists"> extends true
 							? ParseCreateViewNamed<SkipToken<A1>, Db, Params, Temp, true>
-							: SkipFailedStatement<
-									A1,
-									Db,
-									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
-								>
-						: never
-					: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
-				: never
-			: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
+							: SkipFailedStatement<A1, Db, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
+						: SkipFailedStatement<
+								A1,
+								Db,
+								FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
+							>
+					: never
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
+			: never
 		: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
 
 type ParseCreateViewNamed<

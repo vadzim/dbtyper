@@ -1,3 +1,4 @@
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
@@ -36,7 +37,7 @@ type ParseSelectWithCtesAfterSubquery<
 	CteBase extends ScopeMap,
 	Recursive extends boolean,
 > =
-	SelectResultToCteScopeEntry<SubOut> extends infer Entry extends ScopeEntry
+	SelectResultToCteScopeEntry<Db, SubOut> extends infer Entry extends ScopeEntry
 		? MergeScope<Record<CteName, Entry>, Acc> extends infer NextAcc
 			? NextAcc extends ScopeMap
 				? PeekToken<R4> extends TokenKey<",">
@@ -53,13 +54,16 @@ export type ParseCteColumnList<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"("> ? ParseCteColumnNames<SkipToken<Tokens>, []> : [Tokens, null]
 
 export type ParseCteColumnNames<Tokens extends ParserMonad, Acc extends readonly string[]> =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<",">
-				? ParseCteColumnNames<SkipToken<R1>, [...Acc, N]>
-				: PeekToken<R1> extends TokenKey<")">
-					? [SkipToken<R1>, [...Acc, N]]
-					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
+	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N0 extends string>
+		? // SQLite (SQLT-67): a listed name is an output name, kept as written like an alias
+			(PeekToken<Tokens> extends { written: infer W extends string } ? W : N0) extends infer N extends string
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<",">
+					? ParseCteColumnNames<SkipToken<R1>, [...Acc, N]>
+					: PeekToken<R1> extends TokenKey<")">
+						? [SkipToken<R1>, [...Acc, N]]
+						: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
+				: never
 			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
 
@@ -102,13 +106,21 @@ type ParseCteBody<
 											SkipToken<Ra>,
 											Db,
 											Params,
-											MergeScope<Record<CteName, SelectResultToCteScopeEntry<Named>>, Visible>,
+											MergeScope<
+												Record<CteName, SelectResultToCteScopeEntry<Db, Named>>,
+												Visible
+											>,
 											{}
 										> extends [infer Rb extends ParserMonad, infer Res2]
 										? Res2 extends DbtyperErrorShape
 											? SkipFailedExpression<Rb, Res2>
 											: Res2 extends JsqlSelectStatementResult
-												? MergeSetOperation<Named, Res2, "UNION"> extends infer Merged
+												? MergeSetOperation<
+														Named,
+														Res2,
+														"UNION",
+														ComparisonClassesOf<Db>
+													> extends infer Merged
 													? Merged extends DbtyperErrorShape
 														? SkipFailedExpression<Rb, Merged>
 														: ParseCompoundTrailing<Rb, Db, Merged, Params> extends [

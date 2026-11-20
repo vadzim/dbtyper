@@ -57,14 +57,49 @@ type EnumClass<S extends SqlTypeShape> = S["arg"] extends readonly [infer N exte
  */
 export type StringLiteralClasses = "uuid" | "datetime" | `enum:${string}`
 
-/** The class of a SQL type name, an array of a class for `T[]`. */
-export type SqlComparisonClass<Sql extends string> = Sql extends `${infer Base}[]`
-	? `array_${SqlComparisonClass<Base>}`
-	: Lowercase<Sql> extends keyof ComparisonClassOfType
-		? ComparisonClassOfType[Lowercase<Sql>]
-		: "unknown"
+/**
+ * Classes compatible with every class: "unknown" (a name not in {@link ComparisonClassOfType}) and "affinity", a value
+ * that is text or a number by the dialect's storage rules (SQLite's NUMERIC affinity, the `comparisonClasses` fact of
+ * src/core/dialect.ts; #195).
+ */
+export type AnyComparisonClass = "unknown" | "affinity"
+
+/**
+ * The class of a SQL type name, an array of a class for `T[]`. `Classes` is the dialect's `comparisonClasses` fact
+ * (`ComparisonClassesOf<Db>`): the names whose class differs in that dialect; `{}` reads the shared table only.
+ */
+export type SqlComparisonClass<Sql extends string, Classes = {}> = Sql extends keyof Classes
+	? Classes[Sql]
+	: Sql extends `${infer Base}[]`
+		? `array_${SqlComparisonClass<Base>}`
+		: Lowercase<Sql> extends keyof ComparisonClassOfType
+			? ComparisonClassOfType[Lowercase<Sql>]
+			: "unknown"
 
 /** The class of a shape: its type name's class, or the class of its enum. */
-export type ShapeComparisonClass<S extends SqlTypeShape> = S["type"] extends "enum"
+export type ShapeComparisonClass<S extends SqlTypeShape, Classes = {}> = S["type"] extends "enum"
 	? EnumClass<S>
-	: SqlComparisonClass<S["type"]>
+	: SqlComparisonClass<S["type"], Classes>
+
+/**
+ * The common type of two branches (set-operation columns, CASE results) when one is of class "affinity" and the other
+ * text or a number: the affinity one, since its values are text or numbers (SQLite NUMERIC with TEXT is
+ * `number | string`, #205); `never` when the rule does not apply (also for `Classes = {}`, a dialect without it).
+ */
+export type AffinityCommonType<L extends SqlTypeShape, R extends SqlTypeShape, Classes> = [keyof Classes] extends [
+	never,
+]
+	? never
+	: ShapeComparisonClass<L, Classes> extends infer CL
+		? ShapeComparisonClass<R, Classes> extends infer CR
+			? CL extends "affinity"
+				? CR extends "affinity" | "text" | "numeric"
+					? L
+					: never
+				: CR extends "affinity"
+					? CL extends "text" | "numeric"
+						? R
+						: never
+					: never
+			: never
+		: never

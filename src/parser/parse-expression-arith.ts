@@ -9,6 +9,7 @@ import type { ParseAddScalarUntyped } from "./parse-expression-predicates.ts"
 import type { FinishChain, PushChainOperand } from "./parse-expression-chain.ts"
 import type {
 	ScalarAstNonNumericForMulHead,
+	ParseCallAfterName,
 	ParsePostfixArrayIndexTail,
 	TryOperandScalarUntyped,
 } from "./parse-expression-primary.ts"
@@ -33,12 +34,12 @@ export type TypedLiteralTail<
 		? ParseArithTailAfterFirstScalarUntyped<Tokens, TypedLiteralCast<TypeName, Lit>, Env>
 		: [Tokens, TypedLiteralCast<TypeName, Lit>, Env]
 
-/** EXPR-2, EXPR-5, EXPR-6: a column reference as a right operand or unary-minus operand. */
+/** EXPR-2, EXPR-5, EXPR-6: a column reference or a function call as a right operand or unary-minus operand. */
 export type TryColumnOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts, infer W extends string]
 		? Parts extends ScalarIdentParts
 			? PeekToken<Rm> extends TokenKey<"(">
-				? SkipFailedExpressionWithEnv<Rm, FormatError<Errors["UNEXPECTED_TOKEN"], ["("]>, Env>
+				? ParseCallAfterName<Rm, Parts, Env, false>
 				: PeekToken<Rm> extends TokenString<infer Lit extends string>
 					? Parts extends readonly [infer TypeName extends TypedLiteralName]
 						? [SkipToken<Rm>, TypedLiteralCast<TypeName, Lit>, Env]
@@ -70,7 +71,7 @@ type ParseUnaryScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEn
 			? Bu extends DbtyperErrorShape
 				? SkipFailedExpressionWithEnv<Tu, Bu, EnvB>
 				: Bu extends ScalarExprAst
-					? ParsePgCastSuffixTail<Tu, Bu> extends [
+					? ParsePgCastSuffixTail<Tu, Bu, EnvB["db"]> extends [
 							infer Tp extends ParserMonad,
 							infer Bp extends ScalarExprAst,
 						]
@@ -160,8 +161,22 @@ type ParseExpScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv>
 				: never
 		: never
 
+/** An operand of `+` / `-` (EXPR-5): the unary operand, then `^`, then `* / %`; the `^` loop runs after the operand, not around it (#180: one level less of instantiation depth per nesting). */
 export type ParseMulScalarUntypedEntry<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	ParseExpScalarUntyped<Tokens, Env> extends [infer R0 extends ParserMonad, infer E0, infer Env0 extends ExprParseEnv]
+	ParseUnaryScalarUntyped<Tokens, Env> extends [
+		infer Ru extends ParserMonad,
+		infer Eu,
+		infer EnvU extends ExprParseEnv,
+	]
+		? Eu extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<Ru, Eu, EnvU>
+			: Eu extends ScalarExprAst
+				? ParseMulAfterUnary<Ru, Eu, EnvU>
+				: never
+		: never
+
+type ParseMulAfterUnary<Tokens extends ParserMonad, First extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParseExpLoop<Tokens, First, Env> extends [infer R0 extends ParserMonad, infer E0, infer Env0 extends ExprParseEnv]
 		? E0 extends DbtyperErrorShape
 			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst

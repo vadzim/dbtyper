@@ -1,6 +1,7 @@
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { LastOf } from "../core/type-utils.ts"
 import type { Nullable, SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { AffinityCommonType } from "../core/comparison-classes.ts"
 import type { SameComparisonClass } from "./resolve-expression.ts"
 
 /** Keys of a union as a tuple (declaration order in practice; best effort, the type system gives no guarantee). */
@@ -48,13 +49,17 @@ type WiderType<L extends SqlTypeShape, R extends SqlTypeShape> =
 		: L
 
 /** The common type of two matching set-operation columns (CORE-8); nullable if either is. */
-type CommonSqlType<L extends SqlTypeShape, R extends SqlTypeShape> = L["type"] extends "null"
+type CommonSqlType<L extends SqlTypeShape, R extends SqlTypeShape, Classes = {}> = L["type"] extends "null"
 	? R["type"] extends "null"
 		? L
 		: Nullable<R>
 	: R["type"] extends "null"
 		? Nullable<L>
-		: WiderType<L, R> extends infer W extends SqlTypeShape
+		: (
+					[AffinityCommonType<L, R, Classes>] extends [never]
+						? WiderType<L, R>
+						: AffinityCommonType<L, R, Classes>
+			  ) extends infer W extends SqlTypeShape
 			? { type: W["type"]; arg: W["arg"]; nullable: L["nullable"] extends true ? true : R["nullable"] }
 			: never
 
@@ -64,28 +69,39 @@ type MergeColumns<
 	LRet extends Record<string, SqlTypeShape>,
 	RRet extends Record<string, SqlTypeShape>,
 	Op extends string,
+	Classes,
 	Acc extends Record<string, SqlTypeShape> = {},
 > = LNames extends readonly [infer Ln extends string, ...infer LRest extends readonly string[]]
 	? RNames extends readonly [infer Rn extends string, ...infer RRest extends readonly string[]]
-		? SameComparisonClass<LRet[Ln], RRet[Rn]> extends true
-			? MergeColumns<LRest, RRest, LRet, RRet, Op, Acc & Record<Ln, CommonSqlType<LRet[Ln], RRet[Rn]>>>
+		? SameComparisonClass<LRet[Ln], RRet[Rn], never, never, Classes> extends true
+			? MergeColumns<
+					LRest,
+					RRest,
+					LRet,
+					RRet,
+					Op,
+					Classes,
+					Acc & Record<Ln, CommonSqlType<LRet[Ln], RRet[Rn], Classes>>
+				>
 			: FormatError<Errors["SET_OPERATION_INCOMPATIBLE_TYPES"], [Op, Ln]>
 		: never
 	: { [K in keyof Acc]: Acc[K] }
 
 /**
  * CORE-8: result of `Left <Op> Right`: names from the left, common types, nullable when either side is.
- * `Op` is the keyword text for error messages (`UNION`, `INTERSECT`, `EXCEPT`).
+ * `Op` is the keyword text for error messages (`UNION`, `INTERSECT`, `EXCEPT`). `Classes`: the dialect's
+ * `comparisonClasses` fact (`ComparisonClassesOf<Db>`): SQLite NUMERIC with TEXT is `number | string` (#205).
  */
 export type MergeSetOperation<
 	Left extends { returning: Record<string, SqlTypeShape> },
 	Right extends { returning: Record<string, SqlTypeShape> },
 	Op extends string,
+	Classes = {},
 > =
 	OutputOrder<Left> extends infer LNames extends readonly string[]
 		? OutputOrder<Right> extends infer RNames extends readonly string[]
 			? LNames["length"] extends RNames["length"]
-				? MergeColumns<LNames, RNames, Left["returning"], Right["returning"], Op> extends infer M
+				? MergeColumns<LNames, RNames, Left["returning"], Right["returning"], Op, Classes> extends infer M
 					? M extends DbtyperErrorShape
 						? M
 						: M extends Record<string, SqlTypeShape>
@@ -96,15 +112,19 @@ export type MergeSetOperation<
 			: never
 		: never
 
-/** CORE-11: the first output name that occurs twice, or `never`. */
-export type FirstDuplicateName<Names extends readonly string[], Seen extends string = never> = Names extends readonly [
-	infer H extends string,
-	...infer R extends readonly string[],
-]
-	? H extends Seen
-		? H
-		: FirstDuplicateName<R, Seen | H>
-	: never
+/**
+ * CORE-11: the first output name that occurs twice, or `never`. Reads the names by index (splitting a tuple per step
+ * costs one instantiation per element, #179 item 2).
+ */
+export type FirstDuplicateName<
+	Names extends readonly string[],
+	Seen extends string = never,
+	Before extends readonly 1[] = [],
+> = Before["length"] extends Names["length"]
+	? never
+	: Names[Before["length"]] extends Seen
+		? Names[Before["length"]]
+		: FirstDuplicateName<Names, Seen | Names[Before["length"]], [...Before, 1]>
 
 /** CORE-12: `WITH name (a, b) AS (…)` renames the query's output columns by position. */
 export type RenameOutputColumns<

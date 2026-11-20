@@ -1,5 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { ParamProbeFound } from "../core/param-probe.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { NonNull, Nullable, SqlArray, SqlBoolean, SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -52,11 +53,12 @@ type ValidateInListElement<
 	R extends SqlTypeShape,
 	LAst = never,
 	RAst = never,
+	Classes = {},
 > = L["type"] extends "null"
 	? never
 	: R["type"] extends "null"
 		? FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_LIST"], []>
-		: SameComparisonClass<L, R, LAst, RAst> extends true
+		: SameComparisonClass<L, R, LAst, RAst, Classes> extends true
 			? true
 			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_LIST"], []>
 
@@ -74,7 +76,7 @@ export type ResolveInListItemsAgainstLeft<
 			: Hv extends SqlTypeShape
 				? WithEnumCheck<
 						EnumComparisonCheck<Db, Left, LeftAst, Hv, H>,
-						ValidateInListElement<Left, Hv, LeftAst, H>
+						ValidateInListElement<Left, Hv, LeftAst, H, ComparisonClassesOf<Db>>
 					> extends infer V
 					? V extends DbtyperErrorShape
 						? V
@@ -121,7 +123,7 @@ export type ResolveInSubqueryAst<
 					? Rv extends DbtyperErrorShape
 						? Rv
 						: Rv extends SqlTypeShape
-							? ValidateInListElement<Lv, Rv> extends true
+							? ValidateInListElement<Lv, Rv, never, never, ComparisonClassesOf<Db>> extends true
 								? NullableWhen<Rv["nullable"]> // CORE-2 (#155): NULL when nothing matches and a row is NULL
 								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []> // 2505, not the IN-list code
 							: never
@@ -146,7 +148,7 @@ export type ResolveAnyAllSomeOp<
 						? Rv extends DbtyperErrorShape
 							? Rv
 							: Rv extends SqlTypeShape
-								? MergeComparison<Lv, Rv> extends infer V
+								? MergeComparison<Lv, Rv, never, never, ComparisonClassesOf<Db>> extends infer V
 									? V extends DbtyperErrorShape
 										? V
 										: NullableWhen<Rv["nullable"]> // CORE-2 (#155)

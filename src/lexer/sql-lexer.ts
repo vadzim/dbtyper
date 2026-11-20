@@ -26,6 +26,8 @@ import type {
 	Whitespace,
 	IdentChar,
 	AsciiChar,
+	FoldAsciiCase,
+	FoldAsciiChars,
 } from "./sql-lexer-chars.ts"
 
 export type {
@@ -53,6 +55,23 @@ export type LexerFeatures = "" | LexerQueryParams
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
 	Exclude<Syntax, LexerQueryParams> | Extract<Syntax, AllowedQueryParams>
 
+/**
+ * An operator token. Where `?` is a parameter (`question-params`, SQLite) it never belongs to an operator: `-?` and
+ * `=?` are the operator, then the parameter (#180; PostgreSQL's operator lexing would read `-?` as one operator). The
+ * text before the `?` is read again on its own, as an operator ending in `+` / `-` is then cut before them.
+ */
+type ReadOperatorIn<S extends string, Syntax extends string> = "question-params" extends Syntax
+	? ReadOperator<S> extends [TokenKey<infer Word extends string>, infer Tail extends string]
+		? Word extends `${infer Before}?${infer After}`
+			? Before extends ""
+				? Return<TokenKey<"?">, `${After}${Tail}`>
+				: ReadOperator<Before> extends [infer Op, infer Left extends string] // `<>-?`: `<>`, then `-`
+					? Return<Op, `${Left}?${After}${Tail}`>
+					: never
+			: ReadOperator<S>
+		: ReadOperator<S>
+	: ReadOperator<S>
+
 /** Lex one token from a string (internal) */
 export type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends StartTokenChar
@@ -62,15 +81,15 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 				? SkipSpaces<S, LexerFact<Syntax, "nestedComments">> extends S
 					? Return<FormatError<Errors["UNCLOSED_BLOCK_COMMENT"], []>, S>
 					: ReadTokenFromString<SkipSpaces<S, LexerFact<Syntax, "nestedComments">>, Syntax>
-				: ReadOperator<S>
+				: ReadOperatorIn<S, Syntax>
 			: Head extends "-"
 				? Rest extends `-${string}`
 					? ReadTokenFromString<SkipSpaces<S, LexerFact<Syntax, "nestedComments">>, Syntax>
-					: ReadOperator<S>
+					: ReadOperatorIn<S, Syntax>
 				: Head extends "`"
 					? Rest extends `${infer Name}\`${infer Rest2}`
 						? Tagged<QuotedIdent<Name, Rest2, Syntax>, "sqlite-backtick-ident">
-						: ReadOperator<S>
+						: ReadOperatorIn<S, Syntax>
 					: Head extends "["
 						? LexerFact<Syntax, "bracketIdents"> extends true
 							? Rest extends `${infer Name}]${infer Rest2}`
@@ -84,7 +103,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 						: Head extends "@" | "?"
 							? ReadSqliteParamOrOperator<S, Head, Rest, Syntax>
 							: Head extends OperatorChars
-								? ReadOperator<S>
+								? ReadOperatorIn<S, Syntax>
 								: Head extends Digit
 									? GetNumber<Rest, Head>
 									: Head extends "."
@@ -212,11 +231,18 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 
 /** An unquoted identifier or keyword starting with `Head` (a letter, `_` or a non-ASCII character). */
 type ReadIdentWord<Head extends string, Rest extends string, Syntax extends string> =
-	ReadTokenChars<Rest, IdentChar, true> extends {
+	ReadTokenChars<Rest, IdentChar, Head extends AsciiChar ? true : "seen"> extends {
 		token: infer Word extends string
 		rest: infer Tail extends string
+		nonAscii: infer N
 	}
-		? ReadWord<Head, Word, Tail, Syntax>
+		? ReadWord<
+				Head,
+				Word,
+				Tail,
+				Syntax,
+				N extends "seen" ? FoldAsciiChars<`${Head}${Word}`> : Lowercase<`${Head}${Word}`>
+			>
 		: never
 
 /**
@@ -257,15 +283,15 @@ type ReadSqliteParamOrOperator<S extends string, Head extends string, Rest exten
 							}
 							? Return<TokenParam<`${Next}${Token}`>, Rest3>
 							: never
-						: ReadOperator<S>
-					: ReadOperator<S>
+						: ReadOperatorIn<S, Syntax>
+					: ReadOperatorIn<S, Syntax>
 				: Next extends NonZeroDigit
 					? "question-params" extends Syntax
 						? ReadIndexedParam<Next, Rest2>
-						: ReadOperator<S>
-					: ReadOperator<S>
-			: ReadOperator<S>
-		: ReadOperator<S>
+						: ReadOperatorIn<S, Syntax>
+					: ReadOperatorIn<S, Syntax>
+			: ReadOperatorIn<S, Syntax>
+		: ReadOperatorIn<S, Syntax>
 
 type ReadIndexedParam<Head extends string, Rest extends string> =
 	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenInteger<string>, infer Rest2 extends string>
@@ -311,44 +337,63 @@ type ReadDollarString<S extends string> = S extends `${infer Head}${infer Rest}`
  * A word: identifier or keyword, lower-cased. In a SQLite chain (SQLT-27, SQLT-28) an identifier also remembers how it
  * was written (`written`), because a result key is named as written in the query; `X'…'` is a blob literal (SQLT-29).
  */
-type ReadWord<Head extends string, Word extends string, Tail extends string, Syntax extends string> = Word extends ""
+type ReadWord<
+	Head extends string,
+	Word extends string,
+	Tail extends string,
+	Syntax extends string,
+	L extends string,
+> = Word extends ""
 	? Head extends "x" | "X"
 		? LexerFact<Syntax, "blobLiterals"> extends true
 			? Tail extends `'${infer Body}'${infer Rest2}`
 				? Return<TokenString<Body> & { blob: true }, Rest2>
-				: ReadPlainWord<Head, Word, Tail, Syntax>
-			: ReadPlainWord<Head, Word, Tail, Syntax>
-		: ReadPlainWord<Head, Word, Tail, Syntax>
-	: ReadPlainWord<Head, Word, Tail, Syntax>
+				: ReadPlainWord<Head, Word, Tail, Syntax, L>
+			: ReadPlainWord<Head, Word, Tail, Syntax, L>
+		: ReadPlainWord<Head, Word, Tail, Syntax, L>
+	: ReadPlainWord<Head, Word, Tail, Syntax, L>
 
-type ReadPlainWord<Head extends string, Word extends string, Tail extends string, Syntax extends string> =
+/** `L`: the word folded to lower case, ASCII letters only, as both engines fold unquoted names (STMT-25). */
+type ReadPlainWord<
+	Head extends string,
+	Word extends string,
+	Tail extends string,
+	Syntax extends string,
+	L extends string,
+> =
 	LexerFact<Syntax, "keepWritten"> extends true
-		? ReadSqliteWord<Head, Word, Tail>
+		? ReadSqliteWord<Head, Word, Tail, L>
 		: LexerFact<Syntax, "callableJoinWords"> extends true
-			? Lowercase<`${Head}${Word}`> extends "left" | "right"
+			? L extends "left" | "right"
 				? // `left(s, n)` and `right(s, n)` are functions (PGT-28); the join keywords are never followed by `(`
 					Tail extends `(${string}`
-					? Return<TokenIdent<Lowercase<`${Head}${Word}`>>, Tail>
-					: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
-				: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
-			: Return<CheckIdentOrKey<Lowercase<`${Head}${Word}`>>, Tail>
+					? Return<TokenIdent<L>, Tail>
+					: Return<CheckIdentOrKey<L>, Tail>
+				: Return<CheckIdentOrKey<L>, Tail>
+			: Return<CheckIdentOrKey<L>, Tail>
 
-type ReadSqliteWord<Head extends string, Word extends string, Tail extends string> =
-	CheckIdentOrKey<Lowercase<`${Head}${Word}`>> extends infer T
+type ReadSqliteWord<Head extends string, Word extends string, Tail extends string, L extends string> =
+	CheckIdentOrKey<L> extends infer T
 		? T extends TokenIdent<string>
-			? WithWritten<T, `${Head}${Word}`, Tail>
+			? WithWritten<T, L, `${Head}${Word}`, Tail>
 			: Return<T, Tail>
 		: never
 
 /** A quoted identifier (`"x"`, and in SQLite `` `x` `` and `[x]`): its case is kept, except in SQLite, where names match case-insensitively (SQLT-27). */
 type QuotedIdent<Name extends string, Rest extends string, Syntax extends string> =
 	LexerFact<Syntax, "foldQuoted"> extends true
-		? WithWritten<TokenIdent<Lowercase<Name>>, Name, Rest>
+		? FoldAsciiCase<Name> extends infer L extends string
+			? WithWritten<TokenIdent<L>, L, Name, Rest>
+			: never
 		: Return<TokenIdent<Name>, Rest>
 
-/** The identifier token remembers how it was written, only when that differs from its lower-case value (cheaper tokens). */
-type WithWritten<T extends TokenIdent<string>, Written extends string, Rest extends string> =
-	Lowercase<Written> extends Written ? Return<T, Rest> : Return<T & { written: Written }, Rest>
+/** The identifier token remembers how it was written, only when that differs from its folded value `L` (cheaper tokens). */
+type WithWritten<
+	T extends TokenIdent<string>,
+	L extends string,
+	Written extends string,
+	Rest extends string,
+> = L extends Written ? Return<T, Rest> : Return<T & { written: Written }, Rest>
 
 type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S extends `${infer P1}'${infer R1}`
 	? R1 extends `'${infer R2}`
@@ -374,26 +419,30 @@ type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S ex
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
-/** `NonAscii`: a character outside ASCII belongs to the word too (identifiers). */
+/**
+ * `NonAscii`: a character outside ASCII belongs to the word too (identifiers); once one is read it becomes `"seen"`,
+ * and the result carries `nonAscii: "seen"` (the word is then folded ASCII-only, {@link FoldAsciiChars}).
+ */
 type ReadTokenChars<
 	S extends string,
 	Chars = TokenChar,
-	NonAscii extends boolean = false,
+	NonAscii extends boolean | "seen" = false,
 > = OptimizedBySpaceReadTokenChars<S, Chars, NonAscii>
 
 type OptimizedBySpaceReadTokenChars<
 	S extends string,
 	Chars = TokenChar,
-	NonAscii extends boolean = false,
+	NonAscii extends boolean | "seen" = false,
 > = S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
 	? ReadTokenCharsRaw<SmallerBuffer, Chars, "", NonAscii> extends {
 			token: infer T extends string
 			rest: infer SmallerRest extends string
+			nonAscii: infer N
 		}
 		? SmallerRest extends ""
-			? { token: T; rest: Rest }
+			? { token: T; rest: Rest; nonAscii: N }
 			: S extends `${T}${infer Rest2}`
-				? { token: T; rest: Rest2 }
+				? { token: T; rest: Rest2; nonAscii: N }
 				: never
 		: ReadTokenCharsRaw<S, Chars, "", NonAscii>
 	: ReadTokenCharsRaw<S, Chars, "", NonAscii>
@@ -402,13 +451,13 @@ type ReadTokenCharsRaw<
 	S extends string,
 	Chars = TokenChar,
 	Acc extends string = "",
-	NonAscii extends boolean = false,
+	NonAscii extends boolean | "seen" = false,
 > = S extends `${infer C}${infer Rest}`
 	? C extends Chars
 		? ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`, NonAscii>
-		: NonAscii extends true
-			? C extends AsciiChar
-				? { token: Acc; rest: S }
-				: ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`, NonAscii>
-			: { token: Acc; rest: S }
-	: { token: Acc; rest: "" }
+		: NonAscii extends false
+			? { token: Acc; rest: S; nonAscii: NonAscii }
+			: C extends AsciiChar
+				? { token: Acc; rest: S; nonAscii: NonAscii }
+				: ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`, "seen">
+	: { token: Acc; rest: ""; nonAscii: NonAscii }

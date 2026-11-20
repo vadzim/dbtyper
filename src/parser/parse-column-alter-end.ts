@@ -2,7 +2,14 @@ import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { DialectFact } from "../core/dialect.ts"
-import type { JsqlDbReplaceColumn } from "../core/jsql-utils.ts"
+import type {
+	JsqlDbGetTable,
+	JsqlDbReplaceColumn,
+	JsqlDbSetPrimaryKey,
+	JsqlPrimaryKey,
+	JsqlTablePrimaryKey,
+} from "../core/jsql-utils.ts"
+import type { MultiplePrimaryKeys } from "./parse-create-table.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FinishAlterStatement, ParseAlterActions } from "./parse-alter-table.ts"
 import type { OneCol } from "./parse-create-table-merge.ts"
@@ -10,7 +17,7 @@ import type { ColumnEntry, ColumnFail } from "./parse-column-constraint-clauses.
 import type { ColumnCtx, ColumnState } from "./parse-column-constraints.ts"
 
 /**
- * `ALTER TABLE … ADD COLUMN <definition>` of a SQLite chain ends here (SQLT-20, SQLT-21): NOT NULL needs a default;
+ * `ALTER TABLE … ADD COLUMN <definition>` of a SQLite chain ends here (SQLT-20, SQLT-21): NOT NULL needs a default (a generated column's expression is one, #193, in any constraint order);
  * the column joins the table with the facts a CREATE TABLE gives it.
  */
 export type AlterColumnDone<
@@ -18,7 +25,7 @@ export type AlterColumnDone<
 	C extends ColumnCtx,
 	S extends ColumnState,
 > = S["nn"] extends true
-	? [S["def"], FullAddColumn<C>] extends [false, never]
+	? [S["def"], S["gen"], FullAddColumn<C>] extends [false, false, never]
 		? ColumnFail<
 				Tokens,
 				C,
@@ -27,13 +34,24 @@ export type AlterColumnDone<
 		: AlterColumnStore<Tokens, C, S>
 	: AlterColumnStore<Tokens, C, S>
 
-type AlterColumnStore<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> =
-	OneCol<ColumnEntry<C, S>> extends { cols: infer Cols; facts: infer Facts }
+type AlterColumnStore<Tokens extends ParserMonad, C extends ColumnCtx, S extends ColumnState> = [
+	S["pk"],
+	JsqlTablePrimaryKey<JsqlDbGetTable<C["db"], C["schema"], C["table"]>>,
+] extends ["single", JsqlPrimaryKey]
+	? MultiplePrimaryKeys<Tokens, C["db"], C["table"]>
+	: OneCol<ColumnEntry<C, S>> extends { cols: infer Cols; facts: infer Facts }
 		? AlterColumnFinish<
 				Tokens,
 				C,
 				JsqlDbReplaceColumn<
-					C["db"],
+					S["pk"] extends false
+						? C["db"]
+						: JsqlDbSetPrimaryKey<
+								C["db"],
+								C["schema"],
+								C["table"],
+								{ columns: C["name"]; name: `${C["table"]}_pkey` }
+							>,
 					C["schema"],
 					C["table"],
 					C["name"],

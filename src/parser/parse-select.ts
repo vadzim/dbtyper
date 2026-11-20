@@ -1,3 +1,4 @@
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
@@ -144,7 +145,12 @@ export type ParseSetOperationTail<
 		? Right extends DbtyperErrorShape
 			? [R, Db, Right]
 			: Right extends JsqlSelectStatementResult
-				? MergeSetOperation<Left, Right, SetOperationKeyword<PeekToken<Tokens>>> extends infer Merged
+				? MergeSetOperation<
+						Left,
+						Right,
+						SetOperationKeyword<PeekToken<Tokens>>,
+						ComparisonClassesOf<Db>
+					> extends infer Merged
 					? Merged extends JsqlSelectStatementResult
 						? ParseSetOperationTail<R, Db, Merged, Params, CteBase, OuterScope, true>
 						: [R, Db, Merged]
@@ -377,7 +383,7 @@ type SelectAfterWhereAndGroupHaving<
 	]
 		? Gh extends DbtyperErrorShape
 			? [T1, Db, Gh]
-			: GroupedProjValidationOutcome<Db, Items, Meta> extends infer V
+			: GroupedProjValidationOutcome<Db, Items, Meta, Scope> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
 					: Trailing extends false

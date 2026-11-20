@@ -34,11 +34,11 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 - `CREATE TABLE … AS SELECT …` makes a table of the output columns of the query, all nullable.
 - With `IF NOT EXISTS`, an existing table is kept as it is.
 - `CREATE VIEW [schema.]name [(column names)] AS SELECT …` (or `AS WITH … SELECT …`): the query is checked and its output columns become the view's columns.
-- PostgreSQL: enums (`CREATE TYPE … AS ENUM`, a column of it is the union of its labels), domains, arrays (`int[]`, `text[]`), `ALTER TYPE … ADD VALUE`. SQLite: `STRICT` and `WITHOUT ROWID` tables, `INTEGER PRIMARY KEY` as the rowid, type affinity names.
+- PostgreSQL: enums (`CREATE TYPE … AS ENUM`, a column of it is the union of its labels), domains, arrays (`int[]`, `text[]`), `ALTER TYPE … ADD VALUE`. SQLite: `STRICT` and `WITHOUT ROWID` tables, `INTEGER PRIMARY KEY` as the rowid, type affinity names, a single-quoted column name (`'order' INTEGER`), a bare name as DEFAULT (`DEFAULT standard` is the text `'standard'`).
 
 ## ALTER TABLE, DROP
 
-- `ALTER TABLE [schema.]name action[, action …]` applies, in order: `ADD [COLUMN]`, `DROP [COLUMN]`, `RENAME [COLUMN] a TO b`, `RENAME TO`, `ALTER COLUMN … TYPE`, `SET`/`DROP NOT NULL`, `SET`/`DROP DEFAULT`, `ADD CONSTRAINT`. A missing table or column, a view, or an unsupported action is a compile error. In SQLite the actions are those SQLite has.
+- `ALTER TABLE [schema.]name action[, action …]` applies, in order: `ADD [COLUMN]`, `DROP [COLUMN]`, `RENAME [COLUMN] a TO b`, `RENAME TO`, `ALTER COLUMN … TYPE`, `SET`/`DROP NOT NULL`, `SET`/`DROP DEFAULT`, `ADD CONSTRAINT`. A missing table or column, a view, or an unsupported action is a compile error. In SQLite the actions are those SQLite has; of `ALTER [COLUMN] c …` only `SET NOT NULL` and `DROP NOT NULL` (they need SQLite 3.53 or later at run time).
 - `DROP TABLE`, `DROP VIEW`, `DROP SCHEMA`, `DROP TYPE` with `IF EXISTS` (and `CASCADE` / `RESTRICT` on PostgreSQL). `DROP TABLE` of a view is an error.
 - `CREATE SCHEMA [IF NOT EXISTS] name`, `DROP SCHEMA [IF EXISTS] name`: PostgreSQL only.
 
@@ -46,14 +46,14 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 
 - Select list: `*`, `t.*`, `schema.t.*`, columns (bare, `alias.col`, `table.col`, `schema.table.col`), expressions, function calls, with or without `AS`. A bare `*` must be the only item, and only over one table (error 3401 over joins). Two output columns with the same name are error 3410.
 - `DISTINCT`, and in PostgreSQL `DISTINCT ON`.
-- `FROM` is optional (`select 1 as one`). Items: `[schema.]table [AS] alias`, a view, a CTE, a derived table `(select …) [AS] alias` (the alias is required).
+- `FROM` is optional (`select 1 as one`). Items: `[schema.]table [AS] alias`, a view, a CTE, a derived table `(select …) [AS] alias` (the alias is required). PostgreSQL also has `unnest(…)` and `generate_series(…)`; SQLite has `json_each(json [, path])` and `json_tree(json [, path])` with the columns `key`, `value`, `type`, `atom`, `id`, `parent`, `fullkey`, `path` (the arguments may use the items before them: `from t, json_each(t.tags) j`; a call with no argument or more than two is error 1937, and outside FROM it is an unknown function, 3619).
 - Joins: `[INNER] JOIN`, `LEFT`/`RIGHT`/`FULL [OUTER] JOIN` and `CROSS JOIN`; `ON` takes any boolean condition, `USING (columns)` and `NATURAL JOIN` work too. Columns on the optional side of an outer join are nullable.
 - `WITH name AS (select …), …` (a CTE may be used in FROM and JOIN), `WITH RECURSIVE`; a CTE may not refer to an earlier CTE of the same list yet.
 - `UNION [ALL]`, `INTERSECT`, `EXCEPT`: the names come from the first SELECT, the column types are merged, and the column counts must agree.
 - `WHERE`, `GROUP BY` (columns, expressions, output positions), `HAVING`, `ORDER BY` (columns, expressions, positions, output aliases; `ASC`/`DESC`), `LIMIT`, `OFFSET`, `FETCH FIRST n ROWS ONLY`. A column in the list that is outside an aggregate and is not a `GROUP BY` key is error 3403.
 - Subqueries in expressions: scalar `(select …)`, `IN (select …)`, `EXISTS (select …)`, `x = ANY (…)`. They see the columns of the outer `FROM` in `WHERE`, not in the select list and not in derived tables.
 - Window functions: `function(…) OVER (PARTITION BY … ORDER BY …)`.
-- Not supported yet (a compile error; use `queryUntyped`): a comma-separated `FROM` list, `LATERAL`, `NULLS FIRST/LAST`, `FOR UPDATE` and other locking clauses, `COLLATE` in an expression, an output alias without `AS`, typing `VALUES (…)` and `TABLE t` as queries.
+- Not supported yet (a compile error; use `queryUntyped`): a comma-separated `FROM` list (except a `,` before SQLite's `json_each`/`json_tree`, a `CROSS JOIN`), the hidden `json`/`root` columns of `json_each`/`json_tree` and `jsonb_each`/`jsonb_tree`, `LATERAL`, `NULLS FIRST/LAST`, `FOR UPDATE` and other locking clauses, `COLLATE` in an expression, an output alias without `AS`, typing `VALUES (…)` and `TABLE t` as queries.
 
 ## INSERT, UPDATE, DELETE
 
@@ -65,7 +65,7 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 ## Expressions
 
 - Literals (string, number, boolean, `NULL`), columns, parameters (`:name`, `$n` in PostgreSQL, `?`, `?NNN`, `:name`, `@name` in SQLite), parentheses.
-- Operators: `+ - * / % ^`, unary `-`, `||`, comparisons, `AND`, `OR`, `NOT`, `IS [NOT] NULL`, `IS [NOT] DISTINCT FROM`, `[NOT] IN (list)`, `[NOT] BETWEEN`, `[NOT] LIKE`, `ILIKE`, array operators `@> <@ &&`. Operands must be compatible: the comparison classes are numeric, text, boolean, uuid, date and time, json, array, and enum for PostgreSQL. A mismatch is error 2500 and its relatives.
+- Operators: `+ - * / % ^`, unary `-`, `||`, comparisons, `AND`, `OR`, `NOT`, `IS [NOT] NULL`, `IS [NOT] DISTINCT FROM`, `[NOT] IN (list)`, `[NOT] BETWEEN`, `[NOT] LIKE`, `ILIKE`, array operators `@> <@ &&`. Operands must be compatible: the comparison classes are numeric, text, boolean, uuid, date and time, json, array, and enum for PostgreSQL. In SQLite a NUMERIC-affinity value (`NUMERIC`, `STRING`, `NUMBER`, any unknown type name) is compatible with text and numbers, as operand and in INSERT, UPDATE and DEFAULT. A mismatch is error 2500 and its relatives.
 - `NULL` is tested with `IS NULL` only: `= null`, `<> null`, and `NULL` in arithmetic or `BETWEEN` are errors.
 - `CASE WHEN … THEN … ELSE … END` and `CASE x WHEN …`; without `ELSE` the result is nullable.
 - `CAST(x AS type)`, and `x::type` in PostgreSQL.

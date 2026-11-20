@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -13,8 +13,11 @@ import type {
 	ColumnDef,
 	ParseCreateTableCloseParenAndSemi,
 	PendingConstraints,
+	ColumnNameToken,
 	PendingSpelled,
 	StackOrder,
+	PendingPkName,
+	StackPrimaryKey,
 	WithColumnSpelling,
 	WithoutPending,
 } from "./parse-create-table.ts"
@@ -46,7 +49,9 @@ export type ParseCreateTableBody<
 							M["facts"],
 							PendingConstraints<Db>,
 							StackOrder<Stack>,
-							PendingSpelled<Db, Stack[number][0]>
+							PendingSpelled<Db, Stack[number][0]>,
+							StackPrimaryKey<Stack>,
+							PendingPkName<Db, Table>
 						>
 					> extends infer NewDb
 					? NewDb extends JsqlDatabaseShape
@@ -77,28 +82,30 @@ type ParseOneColumn<
 	Table extends string,
 	Stack extends readonly ColumnDef[],
 > =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer ColName extends string>
-		? ColName extends Stack[number][0]
-			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
-			: Stack["length"] extends ColumnChunkEnd
-				? ParseOneColumnAfterColName<
-						SkipToken<Tokens>,
-						WithColumnSpelling<Db, ColName, PeekToken<Tokens>>,
-						Schema,
-						Table,
-						Stack,
-						ColName
-					> extends [infer M extends ParserMonad, ...infer R]
-					? [M, ...R]
-					: never
-				: ParseOneColumnAfterColName<
-						SkipToken<Tokens>,
-						WithColumnSpelling<Db, ColName, PeekToken<Tokens>>,
-						Schema,
-						Table,
-						Stack,
-						ColName
-					>
+	ColumnNameToken<PeekToken<Tokens>, Db> extends infer NameTok
+		? NameTok extends TokenIdent<infer ColName extends string>
+			? ColName extends Stack[number][0]
+				? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
+				: Stack["length"] extends ColumnChunkEnd
+					? ParseOneColumnAfterColName<
+							SkipToken<Tokens>,
+							WithColumnSpelling<Db, ColName, NameTok>,
+							Schema,
+							Table,
+							Stack,
+							ColName
+						> extends [infer M extends ParserMonad, ...infer R]
+						? [M, ...R]
+						: never
+					: ParseOneColumnAfterColName<
+							SkipToken<Tokens>,
+							WithColumnSpelling<Db, ColName, NameTok>,
+							Schema,
+							Table,
+							Stack,
+							ColName
+						>
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 
 /**

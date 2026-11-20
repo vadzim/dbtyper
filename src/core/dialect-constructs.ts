@@ -87,7 +87,6 @@ type DialectPhrases = {
 	"insert or ignore": "sqlite-insert-or-ignore"
 	"insert or": "sqlite-insert-or"
 	"replace into": "sqlite-replace-into"
-	"alter column": "pg-alter-column"
 	"add constraint": "pg-add-constraint"
 	"add primary key": "pg-add-constraint"
 	"add unique": "pg-add-constraint"
