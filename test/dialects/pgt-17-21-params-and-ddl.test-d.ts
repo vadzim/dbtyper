@@ -1,5 +1,6 @@
 // PGT-17…PGT-21: parameter widenings and real-world PostgreSQL migrations (DDL).
-import { sqlMigrations } from "../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../src/core/sql-database.ts"
+import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
 
@@ -16,6 +17,9 @@ await p17.query(`select * from users where n = $1`, ["1.5"])
 await p17.query(`select * from users where at > $1`, [new Date()])
 await p17.query(`select * from users where at > $1`, ["2026-01-01"])
 await p17.query(`select * from users where j = $1`, [{ a: [1, null] }])
+expectType<GetQueryError<typeof p17, `select * from users where at > $1`, [number]>>(
+	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
+)
 // @ts-expect-error a number is not a timestamp
 await p17.query(`select * from users where at > $1`, [1])
 
@@ -65,6 +69,9 @@ const d19b = base
 	)
 	.database()
 await d19b.query(`insert into k (id, b) values (1, 'q')`)
+expectType<GetQueryError<typeof d19b, `insert into k (id, a) values (1, 'z')`>>(
+	toBe<DbtyperError<3300, "Missing NOT NULL column b in INSERT">>(),
+)
 // @ts-expect-error b lost its default
 await d19b.query(`insert into k (id, a) values (1, 'z')`)
 const _k = await d19b.query(`select id from k`)
@@ -88,6 +95,7 @@ const _v = await d20.query(`select id, n from v`)
 expectType<typeof _v>(toBe<{ id: number; n: string | null }[]>())
 const _mv = await d20.query(`select n from mv`)
 expectType<typeof _mv>(toBe<{ n: string | null }[]>())
+expectType<GetQueryError<typeof d20, `select id from mv2`>>(toBe<DbtyperError<2200, "Unknown table mv2 in FROM">>())
 // @ts-expect-error dropped
 await d20.query(`select id from mv2`)
 

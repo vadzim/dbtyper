@@ -39,7 +39,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 ## 2026-11-19 Runtime robustness: stream binding, migration caller detection, nest test in CI (#137, track A; RUN-4, RUN-12, RUN-17)
 
 - **`stream`** is called as `db.stream(...)` on the driver object (like `query`), so a class-based driver keeps `this`.
-- **RUN-4.** `migrationCallerFile(stack)` (src/core/sql-migrations.ts) returns the first stack frame outside dbtyper's own `src/`/`dist/` folder and `node:` internals; frames with or without parentheses, `file://` URLs or paths, any extension. `migration()` under `TEST_MIGRATIONS` accepts `.js`, `.mjs`, `.cjs` and throws for anything else (`.ts` under tsx). Not solved: with `--enable-source-maps` a compiled `.js` may be reported as its `.ts` source.
+- **RUN-4.** `migrationCallerFile(stack)` (src/core/sql-migrations.ts) returns the first stack frame outside dbtyper's own `src/`/`dist/` folder and `node:` internals; frames with or without parentheses, `file://` URLs or paths, any extension. `migration()` under `DBTYPER_TEST_MIGRATIONS` accepts `.js`, `.mjs`, `.cjs` and throws for anything else (`.ts` under tsx). Not solved: with `--enable-source-maps` a compiled `.js` may be reported as its `.ts` source.
 - **RUN-17** test is wired into `test:ci` as `node --import tsx --test packages/dbtyper-nest/test/*.test.ts`.
 
 ## 2026-11-19 Type-name table for casts, column types, value checks (#128, #135, track A; DLCT-5)

@@ -31,3 +31,68 @@ jobs:
             - name: Run tests
               run: npm run build && npm run test:ci
               shell: bash
+
+    # The oldest supported compiler (the lowest version `typescript` in package.json allows, TypeScript 6.0.2).
+    # The main job above checks with the TypeScript 7 native compiler, so a 6.x-only regression shows up only here.
+    oldest-typescript:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Type-check the tests with TypeScript 6.0.2
+              run: npm run typecheck:oldest-ts
+              shell: bash
+
+    # TEST-6/7: the tests that need a real PostgreSQL (test/runtime/pgt-35-checks-real-postgres.test.ts and the
+    # integration tests of the two Postgres examples). scripts/test-real-postgres.ts creates a database per suite.
+    real-postgres:
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: postgres
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U postgres"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+        env:
+            DBTYPER_PG_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            - name: Run the tests against the PostgreSQL service
+              run: npm run test:postgres
+              shell: bash

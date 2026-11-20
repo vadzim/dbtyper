@@ -1,7 +1,7 @@
 {
 	// Visit https://aka.ms/tsconfig to read more about this file
 	"include": ["**/*.ts", ".automation/**/*.ts"],
-	"exclude": ["test/**/*.ts", "examples", "packages"],
+	"exclude": ["test/**/*.ts", "examples", "packages", "dist"],
 	"compilerOptions": {
 		// File Layout
 		// "rootDir": "./src",

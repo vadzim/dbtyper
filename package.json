@@ -42,8 +42,10 @@
 	},
 	"files": [
 		"dist",
+		"!dist/**/*.map",
 		"README.md",
-		"docs"
+		"docs",
+		"!docs/pictures"
 	],
 	"scripts": {
 		"setup": "npm install && npm run build",
@@ -67,20 +69,23 @@
 		"example:nest:start": "npm run start -w @dbtyper/example-nest-postgres",
 		"example:nest:test": "npm test -w @dbtyper/example-nest-postgres",
 		"example:nest:test:integration": "npm run test:integration -w @dbtyper/example-nest-postgres",
-		"typecheck:test": "time tsc --noEmit -p tsconfig.test.json",
+		"typecheck:test": "tsc --noEmit -p tsconfig.test.json",
 		"typecheck:stress": "tsc --noEmit -p tsconfig.test-stress.json",
+		"typecheck:oldest-ts": "npx --yes -p @typescript/typescript6@6.0.2 tsc6 --noEmit -p tsconfig.test.json",
+		"check:packaging": "node scripts/check-packaging.ts",
 		"typecheck:watch": "nodemon -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run --silent typecheck:full || exit 1'\"",
 		"test:watch": "nodemon -w src -w test -w tsconfig.json -w package.json -e ts,tsx,json -x \"sh -c 'clear && MI=1 npm run --silent test || exit 1'\"",
 		"test:verbose": "npm run --silent test:ci && npm run --silent test -w @dbtyper/example-postgres && npm run --silent test -w @dbtyper/example-nest-postgres",
 		"test": "mkdir -p .logs; npm run --silent test:verbose 1>.logs/test.log 2>&1; RC=$?; [ $RC -ne 0 ] && tail -n 100 .logs/test.log || echo 'Ok.'; exit $RC",
-		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w @dbtyper/example-sqlite-node && npm run --silent test -w @dbtyper/example-sqlite-better && npm run --silent test -w dbtyper-nest && node --import tsx --test packages/dbtyper-nest/test/*.test.ts && TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent format:check",
+		"test:ci": "npm run --silent typecheck:full && npm run --silent typecheck -w @dbtyper/example-postgres && npm run --silent typecheck -w @dbtyper/example-nest-postgres && npm run --silent test -w @dbtyper/example-sqlite-node && npm run --silent test -w @dbtyper/example-sqlite-better && npm run --silent test -w dbtyper-nest && node --import tsx --test packages/dbtyper-nest/test/*.test.ts && DBTYPER_TEST_MIGRATIONS=1 node --test \"test/**/*.test.ts\" && npm run --silent lint && npm run --silent find-unused && npm run --silent check:packaging && npm run --silent format:check",
+		"test:postgres": "node scripts/test-real-postgres.ts",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
 		"find-unused": "node scripts/find-unused-exports.ts",
 		"gen-error-codes": "node scripts/gen-error-codes.ts",
 		"monadcheck": "check-monad './src/**/*.ts' --monad ./src/lexer/parser-monad.ts ParserMonad:CreateParserMonad:PeekToken:SkipToken --snippet-lines 6:4 --max-show-errors 5 --off conditional.monadRelatedNeverNotAllowed",
-		"monadcheck-log": "bash -c 'mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'\"'\"'node:fs/promises'\"'\"';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||process.env.CI||await appendFile(process.env.LOGFILE,c)}\")>&2; MC=$?; if [ -f \"$LOGFILE\" ]; then 7z a \"${LOGFILE%.monad.log}.data.7z\" ./src -mx=9; fi; exit $MC'",
+		"monadcheck-log": "bash -c 'mkdir -p .logs && LOGFILE=\".logs/$(date +%Y%m%d%H%M%S%N 2>/dev/null || date +%Y%m%d%H%M%S).monad.log\" && export LOGFILE && npm run --silent monadcheck 2> >(node --input-type=module -e \"import{appendFile}from'\"'\"'node:fs/promises'\"'\"';for await(const c of process.stdin){process.stdout.write(c);process.env.MI||process.env.CI||await appendFile(process.env.LOGFILE,c)}\")>&2; exit $?'",
 		"monitor": "node .automation/monitor-github-labels.ts"
 	},
 	"engines": {
