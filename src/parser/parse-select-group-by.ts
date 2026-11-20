@@ -22,7 +22,7 @@ type AliasItemAst<Items extends readonly RawSelectItem[], Name extends string> =
 	: never
 
 /**
- * SEL-36: a GROUP BY key that is a bare output alias stands for that item's expression, when no column of the FROM
+ * SEL-28: a GROUP BY key that is a bare output alias stands for that item's expression, when no column of the FROM
  * items has the name (as in both engines). `never` for any other key.
  */
 type GroupKeyOutputAlias<Items extends readonly RawSelectItem[], Ast extends ScalarExprAst> = Ast extends {
