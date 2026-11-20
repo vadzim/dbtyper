@@ -205,7 +205,7 @@ export type ParseSelectStatement<
 				: SkipFailedStatement<R1, Db2, FormatError<Errors["EXPECTED_SEMICOLON"], ["SELECT"]>>
 		: never
 
-export type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
+type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
 	{ kind: "star" },
 	...infer Rest extends readonly RawSelectItem[],
 ]
