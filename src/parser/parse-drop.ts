@@ -3,8 +3,8 @@ import type {
 	JsqlDbGetData,
 	JsqlDbGetType,
 	JsqlDbReplaceData,
-	JsqlDbDropEnumUsers,
-	JsqlDbEnumInUse,
+	JsqlDbDropTypeUsers,
+	JsqlDbTypeInUse,
 	JsqlDbReplaceType,
 	UnqualifiedSchema,
 } from "../core/jsql-utils.ts"
@@ -196,16 +196,17 @@ type DropTarget<
 > = K extends "type" | "domain"
 	? JsqlDbGetType<Db, Sch, Name> extends infer T extends JsqlTypeShape
 		? [K, T] extends ["domain", { kind: "domain" }] | ["type", JsqlTypeShape]
-			? // TYPE-18: an enum with a column is in use; CASCADE drops those columns (and the views over them)
-				[K, T] extends ["type", { kind: "enum" }]
-				? [JsqlDbEnumInUse<Db, Sch, Name>] extends [true]
+			? // TYPE-18: a type with a column is in use (an enum, a domain or a composite type, #179); CASCADE drops
+				// those columns (and the views over an enum column)
+				(T extends { kind: "enum" } ? true : false) extends infer Enum extends boolean
+				? [JsqlDbTypeInUse<Db, Sch, Name, Enum>] extends [true]
 					? Cascade extends true
-						? JsqlDbDropEnumUsers<Db, Sch, Name> extends infer D extends JsqlDatabaseShape
+						? JsqlDbDropTypeUsers<Db, Sch, Name, Enum> extends infer D extends JsqlDatabaseShape
 							? JsqlDbReplaceType<D, Sch, Name, null>
 							: never
 						: FormatError<Errors["TYPE_IS_IN_USE_BY_A_COLUMN"], []>
 					: JsqlDbReplaceType<Db, Sch, Name, null>
-				: JsqlDbReplaceType<Db, Sch, Name, null>
+				: never
 			: DropKinds[K]["wrongKind"]
 		: IfExists extends true
 			? Db

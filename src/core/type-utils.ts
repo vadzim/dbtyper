@@ -27,7 +27,7 @@ export type Inc<N extends number> = IncData[N]
 export type Dec<N extends number> = DecData[N]
 
 /** The object of a union of `[key, value]` pairs: it holds its pairs only, no object it was made from (#192). */
-type FromEntries<E extends readonly [PropertyKey, unknown]> = { [X in E as X[0]]: X[1] }
+export type FromEntries<E extends readonly [PropertyKey, unknown]> = { [X in E as X[0]]: X[1] }
 
 /**
  * `T` with the property `K` set to `V`. #192: the result is built from the `[key, value]` pairs of `T` (values

@@ -2,6 +2,8 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } fr
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { OutputRelation } from "./parser-scope.ts"
+import type { JsqlDbSetUserType } from "../core/jsql-utils.ts"
+import type { ReplaceProp } from "../core/type-utils.ts"
 import type { FoldAsciiCase } from "../lexer/sql-lexer-chars.ts"
 import type { AsIdent, TokenIdent, TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -61,8 +63,51 @@ export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends str
 	: JsqlDbSetProp<Db, "pendingConstraints", Name>
 
 export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
-	? JsqlConstraints<P>
+	? Db extends { pendingConstraintColumns: infer C }
+		? JsqlConstraints<P, C>
+		: JsqlConstraints<P>
 	: null
+
+/**
+ * #179: the named constraint `Name` of the CREATE TABLE being parsed involves the columns `Cols` (a column constraint:
+ * its column; a table constraint: its list, or the columns a CHECK names); it ends in the table's `constraints.columns`.
+ */
+export type WithPendingConstraintColumns<Db extends JsqlDatabaseShape, Name extends string, Cols extends string> = [
+	Cols,
+] extends [never]
+	? Db
+	: Db extends { pendingConstraintColumns: infer P }
+		? JsqlDbSetProp<Db, "pendingConstraintColumns", ReplaceProp<P, Name, Cols>>
+		: JsqlDbSetProp<Db, "pendingConstraintColumns", Record<Name, Cols>>
+
+/**
+ * TYPE-18, #179: a column of a domain or composite type `Decl` (`schema.name`, see `ResolveUserType`): the CREATE
+ * TABLE collects them in the state; ALTER TABLE … ADD COLUMN records it on the table at once.
+ */
+export type WithColumnUserType<
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Name extends string,
+	Decl extends string,
+	Alter extends boolean,
+> = Alter extends true
+	? JsqlDbSetUserType<Db, Schema, Table, Name, Decl>
+	: Db extends { pendingUserTypes: infer P }
+		? JsqlDbSetProp<Db, "pendingUserTypes", ReplaceProp<P, Name, Decl>>
+		: JsqlDbSetProp<Db, "pendingUserTypes", Record<Name, Decl>>
+
+/** The finished table with the user-typed columns collected while it was parsed. */
+export type WithPendingUserTypes<Tbl, Db extends JsqlDatabaseShape> = Db extends { pendingUserTypes: infer U }
+	? ReplaceProp<Tbl, "user_types", U>
+	: Tbl
+
+/** The columns of the named table constraint being parsed (`pendingTableConstraint`) are `Cols`. */
+export type WithTableConstraintColumns<Db extends JsqlDatabaseShape, Cols extends string> = Db extends {
+	pendingTableConstraint: infer N extends string
+}
+	? WithPendingConstraintColumns<Db, N, Cols>
+	: Db
 
 /**
  * The name token of a column definition (CREATE TABLE, ADD COLUMN) as an identifier: a name or non-reserved keyword
@@ -101,8 +146,21 @@ export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> =
 
 /** The database state without the pending CREATE TABLE facts. */
 export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
-	{ pendingConstraints: string } | { pendingSpelled: unknown } | { pendingPkName: string }
-	? JsqlDbOmitProps<Db, "pendingConstraints" | "pendingSpelled" | "pendingPkName">
+	| { pendingConstraints: string }
+	| { pendingSpelled: unknown }
+	| { pendingPkName: string }
+	| { pendingConstraintColumns: unknown }
+	| { pendingTableConstraint: string }
+	| { pendingUserTypes: unknown }
+	? JsqlDbOmitProps<
+			Db,
+			| "pendingConstraints"
+			| "pendingSpelled"
+			| "pendingPkName"
+			| "pendingConstraintColumns"
+			| "pendingTableConstraint"
+			| "pendingUserTypes"
+		>
 	: Db
 
 /** A column of the stack is (part of) the PRIMARY KEY already: a second one is error 1519 in both engines. */
