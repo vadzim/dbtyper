@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175: one alias parser (track A; not spec-derived)
+
+- **One reader of `[AS] alias`.** `ParseAlias` (src/parser/parse-alias.ts) serves FROM / JOIN tables, FROM functions, CTE and derived-table aliases, and the target of INSERT, UPDATE, DELETE and DELETE USING. Each place is an `AliasRow`: the tokens that mean "no alias", whether a bare alias is allowed (`allowed`, `never` for INSERT, `dml` = the `bareDmlAlias` fact, error 1309 on SQLite), the errors after `AS` and for a bare non-name, and the tokens that must follow (INSERT `(`/VALUES/SELECT/DEFAULT, UPDATE `SET`). The callers only build the scope entry.
+- **Behaviour changes where a copy was wrong.** A bare alias that is a non-reserved keyword (`from users type`, `(select …) key`, `from c type`) was rejected by FROM, CTE and derived-table copies (`TokenIdent`; the DML copies took `AsIdent`); `DELETE … USING t AS x` took the `AS` for the alias and left `x` behind. An error leaves the rest at the offending token (a `;` is no longer swallowed). A bare non-name after USING is left unread (the statement end is then expected) instead of being eaten.
+- **Not done:** the table name of FROM (CTE scope, function names) is still read by `ParseFromTableAfterLeadingIdent`; it is not one of the nine places of the finding.
+- **Cost:** `typecheck:test` 16,087,530 -> 16,306,287 instantiations (+1.4%, without the new test files).
+
 ## 2026-11-20 Review #175: one name parser (track A; not spec-derived)
 
 - **One reader of `[schema.]name`.** `ParseNameParts` (src/parser/parse-qualified-name.ts) replaces the copies in CREATE TABLE / TYPE / DOMAIN / VIEW, ALTER TABLE, ALTER TYPE, DROP and the table references of INSERT, UPDATE and DELETE (FROM and USING). Each caller is a data row (`NameRow`): its two "expected a name" errors, the tokens that may follow, the errors for a bad tail (unqualified / qualified), whether the rest is skipped after an error, and the schema of an unqualified name (`home`: default schema, `UnqualifiedSchema`, or left to the caller). The three DML copies of the table lookup (unknown, view, found) are `ParseTableRef` (src/parser/parse-table-ref.ts).
