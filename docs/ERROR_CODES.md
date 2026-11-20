@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **334 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **335 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -31,7 +31,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2900-2999 | Type/Numeric Operations       |            1 |
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
-| 3200-3299 | Semantic/Duplicate-Existence  |           14 |
+| 3200-3299 | Semantic/Duplicate-Existence  |           15 |
 | 3300-3399 | Semantic/Constraint           |            9 |
 | 3400-3499 | Semantic/SELECT               |           17 |
 | 3500-3599 | Semantic/Statement            |           11 |
