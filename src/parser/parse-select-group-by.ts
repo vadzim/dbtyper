@@ -125,7 +125,7 @@ type ParseOptionalHavingClauseAfterGroupTerms<
 						]
 					: readonly [
 							Rhw,
-							null,
+							He, // null, or a view's types it read (#210)
 							{
 								have_explicit_group_by: true
 								has_having_clause: true
@@ -165,7 +165,7 @@ type ParseOptionalHavingWithoutGroupClause<
 						]
 					: readonly [
 							Rhw,
-							null,
+							He, // null, or a view's types it read (#210)
 							{
 								have_explicit_group_by: false
 								has_having_clause: true

@@ -21,6 +21,7 @@ import type {
 	JsqlDbOmitProps,
 	JsqlDbSetProp,
 	JsqlDbReplaceData,
+	JsqlSchemaConstraintNames,
 } from "../core/jsql-utils.ts"
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
@@ -87,6 +88,7 @@ export type WithPendingConstraintRefs<Db extends JsqlDatabaseShape, Name extends
  */
 export type WithPendingDefaultConstraint<
 	Db extends JsqlDatabaseShape,
+	Schema extends string,
 	Table extends string,
 	NamePart extends string,
 	Label extends "key" | "fkey" | "check",
@@ -98,7 +100,8 @@ export type WithPendingDefaultConstraint<
 				Table,
 				NamePart,
 				Label,
-				Db extends { pendingConstraints: infer P extends string } ? P : never
+				| (Db extends { pendingConstraints: infer P extends string } ? P : never)
+				| JsqlSchemaConstraintNames<Db, Schema>
 			> extends infer Name extends string
 			? WithPendingConstraintRefs<
 					WithPendingConstraintColumns<WithPendingConstraint<Db, Name>, Name, Cols>,

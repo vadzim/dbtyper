@@ -144,7 +144,14 @@ type TableConstraintBody<
 								: Extract<E, Stack[number][0]> extends infer Used extends string
 									? AfterTableConstraint<
 											R,
-											WithPendingDefaultConstraint<Db, Table, SingleName<Used>, "check", Used>,
+											WithPendingDefaultConstraint<
+												Db,
+												Schema,
+												Table,
+												SingleName<Used>,
+												"check",
+												Used
+											>,
 											Schema,
 											Table,
 											Stack
@@ -189,6 +196,7 @@ type TableConstraintColumns<
 											? // #207: an unnamed UNIQUE is `<table>_<columns>_key`
 												WithPendingDefaultConstraint<
 													Db,
+													Schema,
 													Table,
 													JoinColumnNames<Names>,
 													"key",
@@ -229,7 +237,7 @@ type TableConstraintAfterColumns<
 						// #207: the columns it references; unnamed, it is `<table>_<columns>_fkey`
 						Db extends { pendingTableConstraint: infer N extends string }
 							? WithPendingConstraintRefs<Db, N, Refs>
-							: WithPendingDefaultConstraint<Db, Table, NamePart, "fkey", Names, Refs>,
+							: WithPendingDefaultConstraint<Db, Schema, Table, NamePart, "fkey", Names, Refs>,
 						Schema,
 						Table,
 						Stack
