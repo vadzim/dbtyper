@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **309 active error codes** and 70 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **310 active error codes** and 70 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -33,7 +33,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3100-3199 | Type/Subquery                 |            4 |
 | 3200-3299 | Semantic/Duplicate-Existence  |           12 |
 | 3300-3399 | Semantic/Constraint           |            7 |
-| 3400-3499 | Semantic/SELECT               |           15 |
+| 3400-3499 | Semantic/SELECT               |           16 |
 | 3500-3599 | Semantic/Statement            |           11 |
 | 3600-3699 | Semantic/Function             |           20 |
 | 3700-3799 | DDL/CREATE SCHEMA             |            3 |
@@ -358,23 +358,24 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 3400-3499: Semantic/SELECT
 
-| Code | Name                                                                          | Message                                                                                                   |
-| ---- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 3400 | `SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST`                         | SELECT \* must be the only projection in the list                                                         |
-| 3401 | `SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE`                                    | SELECT \* requires a single FROM table                                                                    |
-| 3402 | `SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS`                               | Scalar expression in SELECT requires AS alias                                                             |
-| 3403 | `GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE` | Grouped SELECT requires column to appear in GROUP BY or inside an aggregate                               |
-| 3404 | `AMBIGUOUS_UNQUALIFIED_COLUMN`                                                | Ambiguous unqualified column …                                                                            |
-| 3405 | `QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS`                          | Qualified table .\* is only valid in SELECT lists                                                         |
-| 3406 | `SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS`                                    | SELECT result column index out of bounds                                                                  |
-| 3407 | `SELECT_RESULT_MISSING_COLUMN`                                                | SELECT result missing column                                                                              |
-| 3408 | `SET_OPERATION_COLUMN_COUNT_MISMATCH`                                         | Each … query must have the same number of columns                                                         |
-| 3409 | `SET_OPERATION_INCOMPATIBLE_TYPES`                                            | Incompatible types in … for column …                                                                      |
-| 3410 | `DUPLICATE_OUTPUT_COLUMN`                                                     | Duplicate output column …; use AS to give one of them an alias                                            |
-| 3411 | `JOIN_USING_COLUMN_NOT_FOUND`                                                 | Column … specified in USING clause does not exist in both join sides                                      |
-| 3412 | `EXPECTED_SELECT_AFTER_SET_OPERATOR`                                          | Expected SELECT after UNION, INTERSECT or EXCEPT                                                          |
-| 3413 | `CTE_COLUMN_LIST_MISMATCH`                                                    | WITH query … has a different number of columns than its column list                                       |
-| 3416 | `ORDER_OR_LIMIT_BEFORE_SET_OPERATOR`                                          | ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it |
+| Code | Name                                                                          | Message                                                                                                                   |
+| ---- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 3400 | `SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST`                         | SELECT \* must be the only projection in the list                                                                         |
+| 3401 | `SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE`                                    | SELECT \* requires a single FROM table                                                                                    |
+| 3402 | `SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS`                               | Scalar expression in SELECT requires AS alias                                                                             |
+| 3403 | `GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE` | Grouped SELECT requires column to appear in GROUP BY or inside an aggregate                                               |
+| 3404 | `AMBIGUOUS_UNQUALIFIED_COLUMN`                                                | Ambiguous unqualified column …                                                                                            |
+| 3405 | `QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS`                          | Qualified table .\* is only valid in SELECT lists                                                                         |
+| 3406 | `SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS`                                    | SELECT result column index out of bounds                                                                                  |
+| 3407 | `SELECT_RESULT_MISSING_COLUMN`                                                | SELECT result missing column                                                                                              |
+| 3408 | `SET_OPERATION_COLUMN_COUNT_MISMATCH`                                         | Each … query must have the same number of columns                                                                         |
+| 3409 | `SET_OPERATION_INCOMPATIBLE_TYPES`                                            | Incompatible types in … for column …                                                                                      |
+| 3410 | `DUPLICATE_OUTPUT_COLUMN`                                                     | Duplicate output column …; use AS to give one of them an alias                                                            |
+| 3411 | `JOIN_USING_COLUMN_NOT_FOUND`                                                 | Column … specified in USING clause does not exist in both join sides                                                      |
+| 3412 | `EXPECTED_SELECT_AFTER_SET_OPERATOR`                                          | Expected SELECT after UNION, INTERSECT or EXCEPT                                                                          |
+| 3413 | `CTE_COLUMN_LIST_MISMATCH`                                                    | WITH query … has a different number of columns than its column list                                                       |
+| 3414 | `COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN`                                      | ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position |
+| 3416 | `ORDER_OR_LIMIT_BEFORE_SET_OPERATOR`                                          | ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it                 |
 
 ## 3500-3599: Semantic/Statement
 
