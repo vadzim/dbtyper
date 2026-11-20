@@ -139,7 +139,7 @@ export type DialectName = keyof Dialects
  * identifier) is the text default 'name' (SQLite, #195; PostgreSQL rejects a column reference there);
  * `defaultConstraintNames`: a constraint written without `CONSTRAINT name` is tracked under the name the engine gives
  * it (PostgreSQL's `<table>_<columns>_key`, `DefaultConstraintName`, #207; SQLite has no named-constraint statements);
- * `dropReferencedColumn`: what dropping a column another table's FOREIGN KEY references does ("cascade" = an error
+ * `dropReferencedColumn`: what dropping a column another table's FOREIGN KEY references does (or a table, SCHEMA-32, #210) ("cascade" = an error
  * without CASCADE, which drops the constraint, PostgreSQL, #207; "keep" = nothing, SQLite).
  * Function facts (SQLT-44…SQLT-52, #76; #175): `functionCatalog` is the dialect's function data ({@link FunctionCatalogFacts}):
  * `rows` the table of functions (`PostgresFunctions`, `SqliteFunctions`; grammar and resolver helpers in

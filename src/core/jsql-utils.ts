@@ -289,6 +289,10 @@ export type JsqlConstraints<Names extends string, Columns = {}, Refs = {}> = {
 /** PGT-25: the names of a table's named constraints (`constraints: { names }`), or `never`. */
 export type JsqlConstraintNames<Tbl> = Tbl extends { constraints: { names: infer N extends string } } ? N : never
 
+/** PGT-40 (#210): every constraint name of the schema's tables, which share one name space in PostgreSQL. */
+export type JsqlSchemaConstraintNames<Db extends JsqlDatabaseShape, Sch extends string> =
+	JsqlDbGetSchema<Db, Sch> extends { sets: infer S } ? { [K in keyof S]: JsqlConstraintNames<S[K]> }[keyof S] : never
+
 /** TYPE-18, #179: column `Col` of the table has the domain or composite type `Decl` (`schema.name`). */
 export type JsqlDbSetUserType<
 	Db extends JsqlDatabaseShape,
@@ -389,7 +393,7 @@ export type JsqlDbAddDefaultConstraint<
 				Db,
 				Sch,
 				Tab,
-				DefaultConstraintName<Tab, NamePart, Label, JsqlConstraintNames<JsqlDbGetData<Db, Sch, Tab>>>,
+				DefaultConstraintName<Tab, NamePart, Label, JsqlSchemaConstraintNames<Db, Sch>>,
 				Cols,
 				Refs
 			>

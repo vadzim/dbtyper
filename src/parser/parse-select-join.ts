@@ -8,6 +8,7 @@ import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-senti
 import type { FromItemsOnly, ScopeEntry, ScopeMap, HiddenColumnsOf } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { WithJoinReads } from "./parse-select-resolve.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseFromTableRef } from "./parse-select-from.ts"
 import type { JoinScopeOnly, TokenKeyOn } from "./parse-select.ts"
@@ -402,6 +403,6 @@ type ParseJoinOn<
 		? ParseWhereExpression<R1, Db, Scope, Params, "JOIN ON"> extends [infer R2 extends ParserMonad, infer Err]
 			? Err extends DbtyperErrorShape
 				? [R2, Err, ParserRefErrorThirdSentinel]
-				: ParseJoinChain<R2, Db, Scope, Params>
+				: ParseJoinChain<R2, Db, WithJoinReads<Scope, Err>, Params> // #210: a view's types the ON reads
 			: never
 		: never

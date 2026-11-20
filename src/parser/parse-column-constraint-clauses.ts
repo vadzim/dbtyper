@@ -106,7 +106,7 @@ type ColumnConstraintDb<
 > = [Named] extends [never]
 	? C["alter"] extends true
 		? JsqlDbAddDefaultConstraint<C["db"], C["schema"], C["table"], NamePart, Label, Cols, Refs>
-		: WithPendingDefaultConstraint<C["db"], C["table"], NamePart, Label, Cols, Refs>
+		: WithPendingDefaultConstraint<C["db"], C["schema"], C["table"], NamePart, Label, Cols, Refs>
 	: [Refs] extends [never]
 		? C["db"]
 		: C["alter"] extends true
