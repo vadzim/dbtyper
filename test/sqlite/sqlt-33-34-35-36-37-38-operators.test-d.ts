@@ -4,7 +4,7 @@ import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import { sqliteBigintDriver, sqliteDriver } from "../test-utils/test-databases.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
-const ddl = `create table users (id integer primary key, name text not null, email text, score real);
+const ddl = `create table users (id integer primary key, name text not null, email text, score real, avatar blob);
 	create table posts (id integer primary key, user_id integer not null, title text not null);`
 const db = sqlMigrations({ driver: sqliteDriver }).apply(ddl).database()
 const big = sqlMigrations({ driver: sqliteBigintDriver }).apply(ddl).database()
