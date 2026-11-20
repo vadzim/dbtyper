@@ -7,15 +7,17 @@ import type { SameComparisonClass } from "./resolve-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
-type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
+/** The facts recorded for a column (`column_facts`): its entry, or `{}` when it has none. */
+export type ColumnFacts<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
 	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
 }
 	? Col extends keyof F
-		? F[Col] extends { nullability: "not_null" }
-			? true
-			: false
-		: false
-	: false
+		? F[Col]
+		: {}
+	: {}
+
+type InsertColNotNull<Tbl extends JsqlDataShape, Col extends string> =
+	ColumnFacts<Tbl, Col> extends { nullability: "not_null" } ? true : false
 
 export type ValidateMutationValueForColumn<
 	Tbl extends JsqlDataShape,
@@ -50,23 +52,9 @@ type ValidateMutationValueBySql<
 			: ValueMismatchError<Db, Col, ColSql["type"]>
 
 /** A generated column (CORE-18) can be read, but never written. */
-export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
-	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
-}
-	? Col extends keyof F
-		? F[Col] extends { generated: true | { mode: "stored" | "virtual" } }
-			? true
-			: false
-		: false
-	: false
+export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> =
+	ColumnFacts<Tbl, Col> extends { generated: true | { mode: "stored" | "virtual" } } ? true : false
 
 /** PGT-25: a `GENERATED ALWAYS AS IDENTITY` column: not insertable unless `OVERRIDING {SYSTEM|USER} VALUE`. */
-export type IsIdentityAlwaysColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
-	column_facts: infer F extends { [K: string]: JsqlColumnFactsEntry }
-}
-	? Col extends keyof F
-		? F[Col] extends { identity: true }
-			? true
-			: false
-		: false
-	: false
+export type IsIdentityAlwaysColumn<Tbl extends JsqlDataShape, Col extends string> =
+	ColumnFacts<Tbl, Col> extends { identity: true } ? true : false

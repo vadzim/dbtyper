@@ -20,7 +20,7 @@ export type ParseInsertWithSelect<
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseSelectExpression<SkipToken<Tokens>, Db, Params> extends [
+	ParseSelectExpression<SkipToken<Tokens>, Db & { positionalSelect: true }, Params> extends [
 		infer RSelect extends ParserMonad,
 		infer _Db2,
 		infer SelectRes,
