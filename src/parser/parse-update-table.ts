@@ -3,6 +3,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParseAlias } from "./parse-alias.ts"
+import type { IndexNamesOf } from "./parse-index.ts"
 import type { ParseTableRef, TableRefTarget } from "./parse-table-ref.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 
@@ -23,7 +24,7 @@ type UpdateAliasRow = {
 	tailError: FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>
 }
 
-/** `UPDATE t [[AS] alias] SET`: on SQLite the alias needs AS (`bareDmlAlias`). */
+/** `UPDATE t [[AS] alias] [INDEXED BY i | NOT INDEXED] SET`: on SQLite the alias needs AS (`bareDmlAlias`). */
 type ParseUpdateAliasAfterTable<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -31,7 +32,11 @@ type ParseUpdateAliasAfterTable<
 	Tab extends string,
 	Tbl extends JsqlDataShape,
 > =
-	ParseAlias<Tokens, Db, UpdateAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+	ParseAlias<Tokens, Db, UpdateAliasRow, { table: Tab; indexes: IndexNamesOf<Tbl> }> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Alias,
+	]
 		? E extends null
 			? [
 					R,

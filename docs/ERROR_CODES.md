@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **328 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **330 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -11,7 +11,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | Range     | Category                      | Active codes |
 | --------- | ----------------------------- | -----------: |
 | 1000-1099 | Lexer/Tokenization            |           11 |
-| 1100-1199 | Parser/SELECT Statement       |           22 |
+| 1100-1199 | Parser/SELECT Statement       |           23 |
 | 1200-1299 | Parser/INSERT Statement       |           18 |
 | 1300-1399 | Parser/UPDATE Statement       |            4 |
 | 1400-1499 | Parser/DELETE Statement       |            2 |
@@ -21,7 +21,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
 | 1900-1999 | Other-dialect syntax          |           21 |
 | 2100-2199 | Validation/Statement          |           10 |
-| 2200-2299 | Resolution/Table-Schema       |            4 |
+| 2200-2299 | Resolution/Table-Schema       |            5 |
 | 2300-2399 | Resolution/Column             |            4 |
 | 2400-2499 | Resolution/Other              |            6 |
 | 2500-2599 | Type/Compatibility            |           11 |
@@ -96,6 +96,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1119 | `EXPECTED_WHEN_ELSE_OR_END_IN_CASE`               | Expected WHEN ELSE or END in CASE               |
 | 1120 | `EXPECTED_TABLE_NAME`                             | Expected table name …                           |
 | 1121 | `EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM`       | Expected table name or \`(\` in FROM            |
+| 1122 | `EXPECTED_INDEX_NAME_AFTER_INDEXED_BY`            | Expected index name after INDEXED BY            |
 
 ## 1200-1299: Parser/INSERT Statement
 
@@ -245,6 +246,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2207 | `UNKNOWN_SCHEMA_OR_TABLE` | Unknown schema or table … in …  |
 | 2214 | `UNKNOWN_SCHEMA`          | Unknown schema … for …          |
 | 2220 | `UNKNOWN_CONSTRAINT`      | Unknown constraint … on table … |
+| 2221 | `UNKNOWN_INDEX`           | Unknown index … on table …      |
 
 ## 2300-2399: Resolution/Column
 

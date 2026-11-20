@@ -10,6 +10,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from
 import type { ParseCallArgs } from "./parse-function-call.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ParseAlias } from "./parse-alias.ts"
+import type { IndexNamesOf } from "./parse-index.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
@@ -294,7 +295,12 @@ type ParseAliasAfterCTE<
 	CteEntry extends ScopeEntry,
 	Scope extends ScopeMap,
 > =
-	ParseAlias<Tokens, Db, CteAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+	// SQLT-73: a CTE has no indexes, so `INDEXED BY` after it is 2221 (`NOT INDEXED` is fine)
+	ParseAlias<Tokens, Db, CteAliasRow, { table: CteName; indexes: never }> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Alias,
+	]
 		? E extends null
 			? [R, null, MergeScope<Record<Alias extends string ? Alias : CteName, CteEntry>, Scope>]
 			: [R, E, Alias]
@@ -308,7 +314,11 @@ type ParseAliasAfterTable<
 	Tbl extends JsqlDataShape,
 	Scope extends ScopeMap,
 > =
-	ParseAlias<Tokens, Db, TableAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+	ParseAlias<Tokens, Db, TableAliasRow, { table: Tab; indexes: IndexNamesOf<Tbl> }> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Alias,
+	]
 		? E extends null
 			? [
 					R,

@@ -661,3 +661,9 @@ The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("
 - **count(DISTINCT x)** (`ParseAggregateArgs`, parse-function-call.ts): `DISTINCT` before the arguments of count, sum, avg, min, max, total, group_concat, string_agg, array_agg is skipped; the result type is the same. `DISTINCT *` is 1007. No catalog row changed.
 - **Select list cost.** The accumulator is a union of `[name, type]` entries turned into a record once (`EntriesToRecord`), not a record merged per item (`MergeStringRecords` is gone). 320 items: 3.76M -> 3.0M instantiations net; still not linear (the item tuple), see #175.
 - **Not done:** the PostgreSQL grouped-primary-key rule of SEL-27 needs the primary key in the table shape (jsql-*, CREATE/ALTER TABLE: other batches).
+
+## 2026-11-20 INDEXED BY and SQLite index names (#206 item 1, track A; SQLT-73, SQLT-74)
+
+- **Where the names live.** An index name is a member of `indexes` (a string union) of its table's data, not a schema-level map: DROP TABLE drops it, RENAME keeps it, and `INDEXED BY` asks only the table it follows. `DROP INDEX` finds the table by one mapped lookup over the schemas. Only the dialect fact `trackedIndexes` (SQLite) parses CREATE/DROP INDEX (src/parser/parse-index.ts); PostgreSQL still skips them.
+- **One alias parser.** The hint is read by `ParseAlias` (an optional `IndexHint` argument: the table name and its index names), before a bare alias (`indexed` followed by `by`, `not` followed by `indexed`) and after the alias, before the row's tail (`SET` of UPDATE). FROM tables, CTEs (no indexes: 2221), UPDATE and DELETE targets pass it; other places pass nothing and pay one check. PostgreSQL: the `sqlite-indexed-by` construct row (1901).
+- **New code** 1122 `EXPECTED_INDEX_NAME_AFTER_INDEXED_BY` (not in the spec).
