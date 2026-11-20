@@ -121,7 +121,7 @@ type ExpressionResolvers<
 		name: infer FnName extends string
 		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
 	}
-		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params>
+		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params, Ast extends { from: true } ? true : false>
 		: never
 	window_function: Ast extends {
 		kind: "window_function"
