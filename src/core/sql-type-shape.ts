@@ -23,6 +23,16 @@ export type SqlType<T extends string, A = null> = {
 	nullable: false
 }
 
+/**
+ * A type shape of its three parts. #192: use it (not an object type written in place) for a shape that is built
+ * inside a conditional type and stored in the schema state, see `ReplaceProp` (src/core/type-utils.ts).
+ */
+export type SqlTypeOf<T extends string, A, N extends boolean> = {
+	type: T
+	arg: A
+	nullable: N
+}
+
 /** Make a type NOT NULL (the counterpart of {@link Nullable}) */
 export type NonNull<T extends SqlTypeShape> = {
 	type: T["type"]

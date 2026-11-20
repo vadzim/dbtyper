@@ -80,3 +80,26 @@ export type SqlComparisonClass<Sql extends string, Classes = {}> = Sql extends k
 export type ShapeComparisonClass<S extends SqlTypeShape, Classes = {}> = S["type"] extends "enum"
 	? EnumClass<S>
 	: SqlComparisonClass<S["type"], Classes>
+
+/**
+ * The common type of two branches (set-operation columns, CASE results) when one is of class "affinity" and the other
+ * text or a number: the affinity one, since its values are text or numbers (SQLite NUMERIC with TEXT is
+ * `number | string`, #205); `never` when the rule does not apply (also for `Classes = {}`, a dialect without it).
+ */
+export type AffinityCommonType<L extends SqlTypeShape, R extends SqlTypeShape, Classes> = [keyof Classes] extends [
+	never,
+]
+	? never
+	: ShapeComparisonClass<L, Classes> extends infer CL
+		? ShapeComparisonClass<R, Classes> extends infer CR
+			? CL extends "affinity"
+				? CR extends "affinity" | "text" | "numeric"
+					? L
+					: never
+				: CR extends "affinity"
+					? CL extends "text" | "numeric"
+						? R
+						: never
+					: never
+			: never
+		: never

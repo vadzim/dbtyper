@@ -1,3 +1,4 @@
+import type { AffinityCommonType } from "../core/comparison-classes.ts"
 import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { Nullable, SqlNull, SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -30,6 +31,7 @@ type MergeCaseThenAccum<
 	Tv extends SqlTypeShape,
 	AccAst = never,
 	TvAst = never,
+	Classes = {},
 > = Acc extends null
 	? Tv
 	: Acc extends SqlTypeShape
@@ -39,10 +41,18 @@ type MergeCaseThenAccum<
 				: Nullable<Tv>
 			: Tv["type"] extends "null"
 				? Nullable<Acc>
-				: SameComparisonClass<Acc, Tv, AccAst, TvAst> extends true
-					? Tv["nullable"] extends true
-						? Nullable<Acc>
-						: Acc
+				: SameComparisonClass<Acc, Tv, AccAst, TvAst, Classes> extends true
+					? (
+							[AffinityCommonType<Acc, Tv, Classes>] extends [never]
+								? Acc
+								: AffinityCommonType<Acc, Tv, Classes>
+						) extends infer W extends SqlTypeShape
+						? Acc["nullable"] extends true
+							? Nullable<W>
+							: Tv["nullable"] extends true
+								? Nullable<W>
+								: W
+						: never
 					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_CASE"], []>
 		: never
 
@@ -71,7 +81,13 @@ type ResolveCaseSearchedArms<
 						? Tv extends DbtyperErrorShape
 							? Tv
 							: Tv extends SqlTypeShape
-								? MergeCaseThenAccum<Acc, Tv, AccAst, A["then"]> extends infer Merged
+								? MergeCaseThenAccum<
+										Acc,
+										Tv,
+										AccAst,
+										A["then"],
+										ComparisonClassesOf<Db>
+									> extends infer Merged
 									? Merged extends DbtyperErrorShape
 										? Merged
 										: Merged extends SqlTypeShape
@@ -96,7 +112,7 @@ type ResolveCaseSearchedArms<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB> extends infer F
+					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB, ComparisonClassesOf<Db>> extends infer F
 						? F extends DbtyperErrorShape
 							? F
 							: F extends SqlTypeShape
@@ -146,7 +162,13 @@ type ResolveCaseSimpleArms<
 								? Tv extends DbtyperErrorShape
 									? Tv
 									: Tv extends SqlTypeShape
-										? MergeCaseThenAccum<Acc, Tv, AccAst, A["then"]> extends infer Merged
+										? MergeCaseThenAccum<
+												Acc,
+												Tv,
+												AccAst,
+												A["then"],
+												ComparisonClassesOf<Db>
+											> extends infer Merged
 											? Merged extends DbtyperErrorShape
 												? Merged
 												: Merged extends SqlTypeShape
@@ -174,7 +196,7 @@ type ResolveCaseSimpleArms<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB> extends infer F
+					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB, ComparisonClassesOf<Db>> extends infer F
 						? F extends DbtyperErrorShape
 							? F
 							: F extends SqlTypeShape

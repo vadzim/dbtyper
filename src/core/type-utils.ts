@@ -26,16 +26,32 @@ type DecData = [never, ...Numbers]
 export type Inc<N extends number> = IncData[N]
 export type Dec<N extends number> = DecData[N]
 
-export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K, V> extends infer R
-	? ForceProps<{ [K in keyof R]: R[K] }>
-	: never
+/** The object of a union of `[key, value]` pairs: it holds its pairs only, no object it was made from (#192). */
+export type FromEntries<E extends readonly [PropertyKey, unknown]> = { [X in E as X[0]]: X[1] }
 
 /**
- * Resolves every property type of a mapped type right away (inferring from all properties does it).
- * Without it each ReplaceProp layer keeps pointing at the previous one, and reading a property
- * after ~50 chained updates (STMT-16: 60 statements in one migration) exceeds the instantiation depth.
+ * `T` with the property `K` set to `V`. #192: the result is built from the `[key, value]` pairs of `T` (values
+ * resolved), so it does not point at `T`. A mapped type over `T` (`Omit<T, K> & Record<K, V>`,
+ * `{ [P in keyof T]: … }`) keeps `T` in its mapper, the next update keeps that one, and TypeScript walks the whole
+ * chain of earlier states each time the schema is instantiated: the instantiation depth (limit 100, TS2589) grew
+ * with every schema change of a migration chain. Two more things keep `T` alive in the same way, so both are avoided:
+ * the alias arguments of a result that is itself an alias instantiation (hence the pairs are computed inline in the
+ * `extends` check, not in an alias `EntriesOf<T>`, and the result is `FromEntries<pairs>`), and an object type
+ * written inside a conditional type (it keeps every type parameter and every `infer` in scope).
+ * Rule for the schema state: change it with `ReplaceProp` / `OmitProp` only, and build its objects with an alias
+ * whose parameters are the parts of the object (`JsqlCreateTable`, `JsqlConstraints`, …).
  */
-type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
+export type ReplaceProp<T, K extends string | symbol, V> = {
+	[P in keyof T]-?: [P, T[P]]
+}[keyof T] extends infer E extends readonly [PropertyKey, unknown]
+	? FromEntries<Exclude<E, readonly [K, unknown]> | [K, V]>
+	: never
+
+/** `T` without the properties `K`; like {@link ReplaceProp} it does not point at `T` (use it instead of `Omit` on schema state). */
+export type OmitProp<T, K extends string | symbol> = { [P in keyof T]-?: [P, T[P]] }[keyof T] extends infer E extends
+	readonly [PropertyKey, unknown]
+	? FromEntries<Exclude<E, readonly [K, unknown]>>
+	: never
 
 export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void
 	? I
@@ -56,7 +72,10 @@ export type Tuple<T, N extends TupleSize> = N extends 0 ? [] : [T, ...Tuple<T, D
 
 export type ParseNumber<S extends string> = S extends `${infer Number extends number}` ? Number : never
 
-/** Record merge where keys of `B` win; lazy, so wrap it in `ForceProps` when it is chained (#48). */
+/**
+ * Record merge where keys of `B` win. Lazy, and it points at `A` and `B`: not for chained updates of the schema state
+ * (use {@link ReplaceProp}, #192).
+ */
 export type MergeRecords<A extends Record<string, unknown>, B extends Record<string, unknown>> = {
 	[K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never
 }

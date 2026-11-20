@@ -134,7 +134,7 @@ export type DialectName = keyof Dialects
  * follow, "restricted" = PRIMARY KEY, UNIQUE and NOT NULL without a default are errors and the definition ends the
  * statement (SQLT-20, SQLT-21); `alterColumn`: "full" = every `ALTER [COLUMN] c` action, "not-null" = only
  * `SET NOT NULL` and `DROP NOT NULL` (SQLite 3.53 and later; any other is the `pg-alter-column` error, #195);
- * `stringColumnNames`: a single-quoted string where a column definition (CREATE TABLE, ADD COLUMN) names its column is
+ * `stringColumnNames`: a single-quoted string where a column definition (CREATE TABLE, ADD COLUMN, INSERT column list, SQLT-68) names its column is
  * the name (SQLite's legacy rule, `'order' INTEGER`, #195); `bareNameDefault`: `DEFAULT name` (one unqualified
  * identifier) is the text default 'name' (SQLite, #195; PostgreSQL rejects a column reference there).
  * Function facts (SQLT-44…SQLT-52, #76; #175): `functionCatalog` is the dialect's function data ({@link FunctionCatalogFacts}):

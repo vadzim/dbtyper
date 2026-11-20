@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlTypeShape } from "./jsql-shapes.ts"
 import type { DialectFact } from "./dialect.ts"
-import type { ReplaceProp } from "./type-utils.ts"
+import type { OmitProp, ReplaceProp } from "./type-utils.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 
 export type JsqlCreateSchema = {
@@ -56,10 +56,13 @@ export type JsqlTablePrimaryKey<Tbl> = Tbl extends { primary_key: infer P extend
 
 /** The table with PRIMARY KEY `Pk` (`null` removes it). */
 export type JsqlTableWithPrimaryKey<Tbl, Pk extends JsqlPrimaryKey | null> = [Pk] extends [JsqlPrimaryKey]
-	? ReplaceProp<Tbl, "primary_key", { columns: Pk["columns"]; name: Pk["name"] }>
+	? ReplaceProp<Tbl, "primary_key", JsqlPrimaryKeyOf<Pk["columns"], Pk["name"]>>
 	: Tbl extends { primary_key: unknown }
-		? Omit<Tbl, "primary_key">
+		? OmitProp<Tbl, "primary_key">
 		: Tbl
+
+/** A PRIMARY KEY of its parts (#192: an alias of its parts, see `ReplaceProp`). */
+type JsqlPrimaryKeyOf<Columns extends string, Name extends string> = { columns: Columns; name: Name }
 
 /** `ALTER TABLE … ADD [CONSTRAINT name] PRIMARY KEY` or `ADD COLUMN … PRIMARY KEY` (CORE-15): the table gets `Pk`. */
 export type JsqlDbSetPrimaryKey<
@@ -143,13 +146,21 @@ export type JsqlDbGetTable<Db extends JsqlDatabaseShape, Sch extends string, Tab
 	Tab
 >
 
+/** `Db` with the property `K` set to `V` (#192: never `Db & { … }` or `Omit<Db, …>`, which keep pointing at `Db`). */
+export type JsqlDbSetProp<Db, K extends keyof JsqlDatabaseShape, V> =
+	ReplaceProp<Db, K, V> extends infer R extends JsqlDatabaseShape ? R : never
+
+/** `Db` without the properties `K` (#192: not `Omit`, see {@link JsqlDbSetProp}). */
+export type JsqlDbOmitProps<Db, K extends keyof JsqlDatabaseShape> =
+	OmitProp<Db, K> extends infer R extends JsqlDatabaseShape ? R : never
+
 export type JsqlDbReplaceSchema<
 	Db extends JsqlDatabaseShape,
 	Name extends string,
 	Schema extends JsqlSchemaShape | null,
 > = (
 	Schema extends null
-		? ReplaceProp<Db, "schemas", Omit<Db["schemas"], Name>>
+		? ReplaceProp<Db, "schemas", OmitProp<Db["schemas"], Name>>
 		: ReplaceProp<Db, "schemas", ReplaceProp<Db["schemas"], Name, Schema>>
 ) extends infer R extends JsqlDatabaseShape
 	? R
@@ -161,7 +172,7 @@ export type JsqlSchemaReplaceData<
 	Data extends JsqlDataShape | null,
 > = Schema extends JsqlSchemaShape
 	? Data extends null
-		? ReplaceProp<Schema, "sets", Omit<Schema["sets"], Name>>
+		? ReplaceProp<Schema, "sets", OmitProp<Schema["sets"], Name>>
 		: ReplaceProp<Schema, "sets", ReplaceProp<Schema["sets"], Name, Data>>
 	: null
 
@@ -178,7 +189,7 @@ type JsqlSchemaReplaceType<
 	Type extends JsqlTypeShape | null,
 > = Schema extends JsqlSchemaShape
 	? Type extends null
-		? ReplaceProp<Schema, "types", Omit<Schema["types"], Name>>
+		? ReplaceProp<Schema, "types", OmitProp<Schema["types"], Name>>
 		: ReplaceProp<Schema, "types", ReplaceProp<Schema["types"], Name, Type>>
 	: null
 
@@ -197,23 +208,29 @@ export type JsqlDbGetEnum<Db extends JsqlDatabaseShape, Schema extends string, N
 	Name
 >
 
-/** A type of the chain by name (PGT-13, PGT-22): the schema given, else the default schema, else any schema. */
+/**
+ * A type of the chain by name (PGT-13, PGT-22): the schema given, else the default schema, else any schema.
+ * #192: the result ends up in column types, so its object types must not name `Db` (an object type keeps every
+ * type parameter its text names, and a column that keeps the state it was made in chains all the states).
+ */
 export type JsqlDbFindUserType<Db extends JsqlDatabaseShape, Schema extends string, Name extends string> =
 	JsqlDbGetType<Db, Schema, Name> extends infer A
 		? [A] extends [null]
 			? JsqlDbGetType<Db, Db["defaultSchema"], Name> extends infer B
 				? [B] extends [null]
 					? FindTypeInAnySchema<Db, Name>
-					: { schema: Db["defaultSchema"]; type: B }
+					: FoundUserType<Db["defaultSchema"], B>
 				: never
-			: { schema: Schema; type: A }
+			: FoundUserType<Schema, A>
 		: never
+
+type FoundUserType<Schema, Type> = { schema: Schema; type: Type }
 
 type FindTypeInAnySchema<Db extends JsqlDatabaseShape, Name extends string> = {
 	[S in keyof Db["schemas"] & string]: JsqlDbGetType<Db, S, Name> extends infer T
 		? [T] extends [null]
 			? never
-			: { schema: S; type: T }
+			: FoundUserType<S, T>
 		: never
 }[keyof Db["schemas"] & string]
 
@@ -235,7 +252,7 @@ type JsqlSchemaReplaceEnum<
 > = Values extends null
 	? JsqlSchemaReplaceType<Schema, Name, null>
 	: Values extends readonly string[]
-		? JsqlSchemaReplaceType<Schema, Name, { kind: "enum"; values: Values }>
+		? JsqlSchemaReplaceType<Schema, Name, JsqlEnumType<Values>>
 		: null
 
 export type JsqlDbReplaceEnum<
@@ -244,6 +261,17 @@ export type JsqlDbReplaceEnum<
 	Name extends string,
 	Values extends readonly string[] | null,
 > = JsqlDbReplaceSchema<Db, Schema, JsqlSchemaReplaceEnum<JsqlDbGetSchema<Db, Schema>, Name, Values>>
+
+/** The schema state's enum and domain types (#192: aliases of their parts, see `ReplaceProp`). */
+type JsqlEnumType<Values extends readonly string[]> = { kind: "enum"; values: Values }
+export type JsqlDomainType<Base extends SqlTypeShape, NotNull extends boolean> = {
+	kind: "domain"
+	base: Base
+	notNull: NotNull
+}
+
+/** The `constraints` of a table with named constraints (#192: an alias of its parts, see `ReplaceProp`). */
+export type JsqlConstraints<Names extends string, Columns = {}> = { names: Names; columns: Columns }
 
 /** PGT-25: the names of a table's named constraints (`constraints: { names }`), or `never`. */
 type ConstraintNames<Tbl> = Tbl extends { constraints: { names: infer N extends string } } ? N : never
@@ -260,16 +288,11 @@ export type JsqlDbSetUserType<
 		? ReplaceProp<
 				Tbl,
 				"user_types",
-				WithEntry<Tbl extends { user_types: infer U } ? U : {}, Col, Decl>
+				ReplaceProp<Tbl extends { user_types: infer U } ? U : {}, Col, Decl>
 			> extends infer T extends JsqlDataShape
 			? JsqlDbReplaceData<Db, Sch, Tab, T>
 			: Db
 		: Db
-
-/** `M` with the entry `Name: V` (one flat object, not an intersection). */
-export type WithEntry<M, Name extends string, V> = {
-	[K in keyof M | Name]: K extends Name ? V : K extends keyof M ? M[K] : never
-}
 
 /** #179: the columns each named constraint involves (`constraints.columns`: name -> union of columns), or `{}`. */
 type ConstraintColumns<Tbl> = Tbl extends { constraints: { columns: infer C } } ? C : {}
@@ -289,17 +312,13 @@ export type JsqlDbSetConstraintColumns<
 	: [Cols] extends [never]
 		? JsqlDbAddConstraintName<Db, Sch, Tab, Name>
 		: JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
-			? JsqlDbReplaceData<
-					Db,
-					Sch,
-					Tab,
-					Omit<Tbl, "constraints"> & {
-						constraints: {
-							names: ConstraintNames<Tbl> | Name
-							columns: WithEntry<ConstraintColumns<Tbl>, Name, Cols>
-						}
-					}
-				>
+			? ReplaceProp<
+					Tbl,
+					"constraints",
+					JsqlConstraints<ConstraintNames<Tbl> | Name, ReplaceProp<ConstraintColumns<Tbl>, Name, Cols>>
+				> extends infer NewTbl extends JsqlDataShape
+				? JsqlDbReplaceData<Db, Sch, Tab, NewTbl>
+				: Db
 			: Db
 
 /** PGT-25: `ALTER TABLE … ADD CONSTRAINT name`: the name is known to `ON CONFLICT ON CONSTRAINT`. */
@@ -310,14 +329,13 @@ export type JsqlDbAddConstraintName<
 	Name extends string,
 > =
 	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
-		? JsqlDbReplaceData<
-				Db,
-				Sch,
-				Tab,
-				Omit<Tbl, "constraints"> & {
-					constraints: { names: ConstraintNames<Tbl> | Name; columns: ConstraintColumns<Tbl> }
-				}
-			>
+		? ReplaceProp<
+				Tbl,
+				"constraints",
+				JsqlConstraints<ConstraintNames<Tbl> | Name, ConstraintColumns<Tbl>>
+			> extends infer NewTbl extends JsqlDataShape
+			? JsqlDbReplaceData<Db, Sch, Tab, NewTbl>
+			: Db
 		: Db
 
 /** PGT-25: `ALTER TABLE … DROP CONSTRAINT name`. */
@@ -329,17 +347,13 @@ export type JsqlDbDropConstraintName<
 > =
 	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
 		? JsqlTableWithPrimaryKey<Tbl, DropPkByName<Tbl, Name>> extends infer T extends JsqlDataShape
-			? JsqlDbReplaceData<
-					Db,
-					Sch,
-					Tab,
-					Omit<T, "constraints"> & {
-						constraints: {
-							names: Exclude<ConstraintNames<Tbl>, Name>
-							columns: Omit<ConstraintColumns<Tbl>, Name>
-						}
-					}
-				>
+			? ReplaceProp<
+					T,
+					"constraints",
+					JsqlConstraints<Exclude<ConstraintNames<Tbl>, Name>, OmitProp<ConstraintColumns<Tbl>, Name>>
+				> extends infer NewTbl extends JsqlDataShape
+				? JsqlDbReplaceData<Db, Sch, Tab, NewTbl>
+				: Db
 			: Db
 		: Db
 

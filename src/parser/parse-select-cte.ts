@@ -1,3 +1,4 @@
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
@@ -114,7 +115,12 @@ type ParseCteBody<
 										? Res2 extends DbtyperErrorShape
 											? SkipFailedExpression<Rb, Res2>
 											: Res2 extends JsqlSelectStatementResult
-												? MergeSetOperation<Named, Res2, "UNION"> extends infer Merged
+												? MergeSetOperation<
+														Named,
+														Res2,
+														"UNION",
+														ComparisonClassesOf<Db>
+													> extends infer Merged
 													? Merged extends DbtyperErrorShape
 														? SkipFailedExpression<Rb, Merged>
 														: ParseCompoundTrailing<Rb, Db, Merged, Params> extends [

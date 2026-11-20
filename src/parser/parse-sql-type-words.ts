@@ -5,7 +5,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipBracketedUntil } from "./skip-statement.ts"
-import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
+import type { SqlTypeShape, SqlType, NonNull } from "../core/sql-type-shape.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
 import type { DialectFact } from "../core/dialect.ts"
@@ -272,7 +272,7 @@ export type ResolveUserType<Db, Schema extends string, Base extends SqlTypeShape
 						? [Base, false, never]
 						: Found extends { schema: infer S extends string; type: infer T }
 							? T extends { kind: "enum" }
-								? [{ type: "enum"; arg: readonly [Base["type"], S]; nullable: false }, false, never]
+								? [SqlType<"enum", readonly [Base["type"], S]>, false, never]
 								: T extends {
 											kind: "domain"
 											base: infer B extends SqlTypeShape

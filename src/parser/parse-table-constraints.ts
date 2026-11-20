@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbOmitProps, JsqlDbSetProp } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -68,11 +69,13 @@ export type ParseTableConstraint<
 				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? TableConstraintBody<
 							R2,
-							WithPendingConstraint<WithoutTableConstraint<Db>, CName> & {
-								pendingTableConstraint: CName
-							} extends infer Db1 extends JsqlDatabaseShape
+							JsqlDbSetProp<
+								WithPendingConstraint<WithoutTableConstraint<Db>, CName>,
+								"pendingTableConstraint",
+								CName
+							> extends infer Db1 extends JsqlDatabaseShape
 								? PeekToken<R2> extends TokenKey<"primary">
-									? Db1 & { pendingPkName: CName }
+									? JsqlDbSetProp<Db1, "pendingPkName", CName>
 									: Db1
 								: never,
 							Schema,
@@ -86,9 +89,7 @@ export type ParseTableConstraint<
 
 /** The state without the name of the previous named table constraint (an unnamed one has no columns to record). */
 type WithoutTableConstraint<Db extends JsqlDatabaseShape> = Db extends { pendingTableConstraint: string }
-	? Omit<Db, "pendingTableConstraint"> extends infer D extends JsqlDatabaseShape
-		? D
-		: Db
+	? JsqlDbOmitProps<Db, "pendingTableConstraint">
 	: Db
 
 type TableConstraintBody<

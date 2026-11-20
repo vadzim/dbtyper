@@ -13,7 +13,7 @@ import type { ParseOtherOpAfterOperand, ParseOtherOpScalarUntyped } from "./pars
  * AND and OR are associative for typing (boolean, nullable when any operand is, first error in source order), so
  * the shape of the tree changes nothing but its depth.
  *
- * The operands are collected tail-recursively (as #48 did with ForceProps) in a short tuple `Items`; every
+ * The operands are collected tail-recursively (as #48 did by forcing the properties) in a short tuple `Items`; every
  * {@link BoolChainChunk} operands it is balanced into one node and moved to `Done`. Two things are required (#105):
  * a tuple that grows by one at every operator is copied n times, which makes the instantiation count quadratic
  * (TS2589 at about 240 operators), and a nested cons list instead of a tuple is itself deeper than the instantiation

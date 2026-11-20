@@ -1,11 +1,13 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlColumnFactsEntry } from "./jsql-shapes.ts"
-import type { ReplaceProp } from "./type-utils.ts"
-import type { SqlTypeShape, NonNull } from "./sql-type-shape.ts"
+import type { FromEntries, OmitProp, ReplaceProp } from "./type-utils.ts"
+import type { SqlTypeShape, SqlTypeOf, NonNull } from "./sql-type-shape.ts"
 import type {
 	JsqlDbGetSchema,
+	JsqlDbOmitProps,
 	JsqlDbReplaceSchema,
 	JsqlSchemaGetTable,
 	JsqlSchemaReplaceData,
+	JsqlConstraints,
 	JsqlTableWithPrimaryKey,
 } from "./jsql-utils.ts"
 
@@ -50,26 +52,25 @@ type JsqlTableReplaceColumnData<
 			ReplaceProp<
 				Table["column_facts"] extends Record<string, unknown> ? Table["column_facts"] : {},
 				Col,
-				Omit<Column, "type">
+				OmitProp<Column, "type">
 			>
 		>
 	: Column extends SqlTypeShape
 		? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column>>
 		: ReplaceProp<
-				ReplaceProp<Table, "columns", Omit<Table["columns"], Col>>,
+				ReplaceProp<Table, "columns", OmitProp<Table["columns"], Col>>,
 				"column_facts",
-				Omit<Table["column_facts"], Col>
+				OmitProp<Table["column_facts"], Col>
 			>
 
-/** `Names` without `Name`. */
-type WithoutName<Names extends readonly string[], Name extends string> = Names extends readonly [
-	infer H extends string,
-	...infer R extends readonly string[],
-]
-	? H extends Name
-		? R
-		: [H, ...WithoutName<R, Name>]
-	: []
+/** `Names` without `Name`. Tail-recursive (#192): the depth must not grow with the width of the table. */
+type WithoutName<
+	Names extends readonly string[],
+	Name extends string,
+	Acc extends readonly string[] = [],
+> = Names extends readonly [infer H extends string, ...infer R extends readonly string[]]
+	? WithoutName<R, Name, H extends Name ? Acc : [...Acc, H]>
+	: Acc
 
 /** `Names` with `Old` replaced by `New` in place. */
 type RenameName<
@@ -131,7 +132,7 @@ type WithoutColumnConstraints<T, Old, Col extends string> = Old extends {
 	? { [K in keyof M]: [Extract<Col, M[K]>] extends [never] ? never : K }[keyof M] extends infer Gone extends string
 		? [Gone] extends [never]
 			? T
-			: ReplaceProp<T, "constraints", { names: Exclude<N, Gone>; columns: Omit<M, Gone> }>
+			: ReplaceProp<T, "constraints", JsqlConstraints<Exclude<N, Gone>, OmitProp<M, Gone>>>
 		: T
 	: T
 
@@ -139,25 +140,24 @@ type WithoutColumnConstraints<T, Old, Col extends string> = Old extends {
 type WithoutUserTypes<T, Old, Col extends string> = Old extends { user_types: infer U }
 	? [Extract<Col, keyof U>] extends [never]
 		? T
-		: ReplaceProp<T, "user_types", Omit<U, Col>>
+		: ReplaceProp<T, "user_types", OmitProp<U, Col>>
 	: T
 
 /** A renamed column keeps its domain or composite type under its new name. */
 type WithRenamedUserType<T, Old extends string, New extends string> = T extends { user_types: infer U }
 	? Old extends keyof U
-		? ReplaceProp<T, "user_types", Omit<U, Old> & Record<New, U[Old]>>
+		? ReplaceProp<T, "user_types", ReplaceProp<OmitProp<U, Old>, New, U[Old]>>
 		: T
 	: T
 
 /** A renamed column keeps its constraints under its new name. */
 type WithRenamedConstraintColumn<T, Old extends string, New extends string> = T extends {
-	constraints: { names: infer N; columns: infer M }
+	constraints: { names: infer N extends string; columns: infer M }
 }
-	? ReplaceProp<
-			T,
-			"constraints",
-			{ names: N; columns: { [K in keyof M]: Old extends M[K] ? Exclude<M[K], Old> | New : M[K] } }
-		>
+	? { [K in keyof M]-?: [K, Old extends M[K] ? Exclude<M[K], Old> | New : M[K]] }[keyof M] extends infer E extends
+			readonly [PropertyKey, unknown]
+		? ReplaceProp<T, "constraints", JsqlConstraints<N, FromEntries<E>>>
+		: T
 	: T
 
 /** A renamed column stays in the PRIMARY KEY under its new name. */
@@ -174,9 +174,9 @@ type WithSpelling<T, Old, Col extends string, Spelling extends string> = [Spelli
 	? Old extends { spelled: infer S }
 		? [Extract<Col, keyof S>] extends [never]
 			? T
-			: ReplaceProp<T, "spelled", Omit<S, Col>>
+			: ReplaceProp<T, "spelled", OmitProp<S, Col>>
 		: T
-	: ReplaceProp<T, "spelled", (Old extends { spelled: infer S } ? Omit<S, Col> : {}) & Record<Col, Spelling>>
+	: ReplaceProp<T, "spelled", ReplaceProp<Old extends { spelled: infer S } ? S : {}, Col, Spelling>>
 
 /** `ALTER TABLE … RENAME COLUMN Old TO New`: the column keeps its place, type and facts (#150); `Spelling` as written (SQLite). */
 type JsqlTableRenameColumn<
@@ -209,7 +209,9 @@ type JsqlTableRenameColumn<
 							Table,
 							New,
 							Spelling
-						>
+						> extends infer Renamed extends JsqlDataShape<"table">
+						? Renamed
+						: never
 					: never
 				: never
 			: null
@@ -250,11 +252,7 @@ type JsqlTableReplaceColumnNullability<
 						T["columns"],
 						Col,
 						T["columns"][Col & keyof T["columns"]] extends infer Ty extends SqlTypeShape
-							? {
-									type: Ty["type"]
-									arg: Ty["arg"]
-									nullable: Nullability extends "not_null" ? false : true
-								}
+							? SqlTypeOf<Ty["type"], Ty["arg"], Nullability extends "not_null" ? false : true>
 							: never
 					>
 				>
@@ -274,7 +272,7 @@ type JsqlTableReplaceColumnNullabilityFact<
 					Nullability extends null
 						? Table["column_facts"] extends infer Facts
 							? Facts extends Record<string, unknown>
-								? ReplaceProp<Facts, Col, Omit<Facts[Col & keyof Facts], "nullability">>
+								? ReplaceProp<Facts, Col, OmitProp<Facts[Col & keyof Facts], "nullability">>
 								: Facts
 							: Table["column_facts"]
 						: ReplaceProp<
@@ -307,7 +305,7 @@ type JsqlTableReplaceColumnDefault<
 					HasDefault extends null
 						? Table["column_facts"] extends infer Facts
 							? Facts extends Record<string, unknown>
-								? ReplaceProp<Facts, Col, Omit<Facts[Col & keyof Facts], "default">>
+								? ReplaceProp<Facts, Col, OmitProp<Facts[Col & keyof Facts], "default">>
 								: Facts
 							: Table["column_facts"]
 						: ReplaceProp<
@@ -403,9 +401,7 @@ type PendingSpellingOf<Db, Name extends string> = Db extends { pendingSpelled: i
 	: never
 
 type WithoutPendingSpelled<Db extends JsqlDatabaseShape> = Db extends { pendingSpelled: unknown }
-	? Omit<Db, "pendingSpelled"> extends infer D extends JsqlDatabaseShape
-		? D
-		: Db
+	? JsqlDbOmitProps<Db, "pendingSpelled">
 	: Db
 
 /** `ALTER TABLE … RENAME COLUMN Old TO New` (#150: the column keeps its place); `Spelling`: the new name as written (SQLite). */
