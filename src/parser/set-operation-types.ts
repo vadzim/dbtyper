@@ -112,15 +112,19 @@ export type MergeSetOperation<
 			: never
 		: never
 
-/** CORE-11: the first output name that occurs twice, or `never`. */
-export type FirstDuplicateName<Names extends readonly string[], Seen extends string = never> = Names extends readonly [
-	infer H extends string,
-	...infer R extends readonly string[],
-]
-	? H extends Seen
-		? H
-		: FirstDuplicateName<R, Seen | H>
-	: never
+/**
+ * CORE-11: the first output name that occurs twice, or `never`. Reads the names by index (splitting a tuple per step
+ * costs one instantiation per element, #179 item 2).
+ */
+export type FirstDuplicateName<
+	Names extends readonly string[],
+	Seen extends string = never,
+	Before extends readonly 1[] = [],
+> = Before["length"] extends Names["length"]
+	? never
+	: Names[Before["length"]] extends Seen
+		? Names[Before["length"]]
+		: FirstDuplicateName<Names, Seen | Names[Before["length"]], [...Before, 1]>
 
 /** CORE-12: `WITH name (a, b) AS (…)` renames the query's output columns by position. */
 export type RenameOutputColumns<

@@ -97,11 +97,10 @@ export type JsqlCreateRowidTable<
 export type JsqlCreateView<
 	Columns extends Record<string, SqlTypeShape>,
 	Order extends readonly string[] = readonly string[],
-> = {
-	kind: "view"
-	columns: Columns
-	order: Order
-}
+	Spelled = {},
+> = {} extends Spelled
+	? { kind: "view"; columns: Columns; order: Order }
+	: { kind: "view"; columns: Columns; order: Order; spelled: Spelled }
 
 /** The result key of column `Key` of `Data`: its declared spelling in SQLite (SQLT-28, #151), else the key. */
 export type JsqlColumnResultKey<Data, Key extends string> = Data extends { spelled: infer S }
