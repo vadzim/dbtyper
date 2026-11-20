@@ -5,7 +5,8 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
-import type { PkKind, WithPendingConstraint } from "./parse-create-table.ts"
+import type { PkKind, WithPendingConstraint, WithPendingConstraintColumns } from "./parse-create-table.ts"
+import type { JsqlDbSetConstraintColumns } from "../core/jsql-utils.ts"
 import type { FullAddColumn } from "./parse-column-alter-end.ts"
 import type { ColumnCtx, ColumnGenericFail, ColumnState, ParseColumnConstraints } from "./parse-column-constraints.ts"
 import type { ConflictActionToken } from "./parse-insert.ts"
@@ -28,7 +29,10 @@ export type ColumnConstraintName<Tokens extends ParserMonad, C extends ColumnCtx
 			? ParseColumnConstraints<
 					SkipToken<R1>,
 					{
-						db: WithPendingConstraint<C["db"], CName>
+						// #179: the constraint involves this column; ALTER TABLE … ADD COLUMN records it on the table at once
+						db: C["alter"] extends true
+							? JsqlDbSetConstraintColumns<C["db"], C["schema"], C["table"], CName, C["name"]>
+							: WithPendingConstraintColumns<WithPendingConstraint<C["db"], CName>, CName, C["name"]>
 						schema: C["schema"]
 						table: C["table"]
 						stack: C["stack"]

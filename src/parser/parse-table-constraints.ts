@@ -1,5 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbSetProp } from "../core/jsql-utils.ts"
+import type { JsqlDbOmitProps, JsqlDbSetProp } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -14,9 +14,10 @@ import type {
 	MultiplePrimaryKeys,
 	PkKind,
 	WithPendingConstraint,
+	WithTableConstraintColumns,
 } from "./parse-create-table.ts"
 import type { OnConflictClause } from "./parse-column-constraint-clauses.ts"
-import type { SkipParenGroup } from "./parse-column-constraints.ts"
+import type { ParenGroupNames, SkipParenGroup } from "./parse-column-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { ParseCreateTableAfterComma, ParseCreateTableBody } from "./parse-create-table-columns.ts"
 
@@ -68,7 +69,11 @@ export type ParseTableConstraint<
 				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? TableConstraintBody<
 							R2,
-							WithPendingConstraint<Db, CName> extends infer Db1 extends JsqlDatabaseShape
+							JsqlDbSetProp<
+								WithPendingConstraint<WithoutTableConstraint<Db>, CName>,
+								"pendingTableConstraint",
+								CName
+							> extends infer Db1 extends JsqlDatabaseShape
 								? PeekToken<R2> extends TokenKey<"primary">
 									? JsqlDbSetProp<Db1, "pendingPkName", CName>
 									: Db1
@@ -80,7 +85,12 @@ export type ParseTableConstraint<
 					: never
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE"], []>>
 			: never
-		: TableConstraintBody<Tokens, Db, Schema, Table, Stack>
+		: TableConstraintBody<Tokens, WithoutTableConstraint<Db>, Schema, Table, Stack>
+
+/** The state without the name of the previous named table constraint (an unnamed one has no columns to record). */
+type WithoutTableConstraint<Db extends JsqlDatabaseShape> = Db extends { pendingTableConstraint: string }
+	? JsqlDbOmitProps<Db, "pendingTableConstraint">
+	: Db
 
 type TableConstraintBody<
 	Tokens extends ParserMonad,
@@ -110,11 +120,24 @@ type TableConstraintBody<
 		: PeekToken<Tokens> extends TokenKey<"unique">
 			? TableConstraintColumns<SkipToken<Tokens>, Db, Schema, Table, Stack, "UNIQUE">
 			: PeekToken<Tokens> extends TokenKey<"check">
-				? SkipParenGroup<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
-					? E extends DbtyperErrorShape
-						? [R, Db, E]
-						: AfterTableConstraint<R, Db, Schema, Table, Stack>
-					: never
+				? Db extends { pendingTableConstraint: string }
+					? // #179: a named CHECK involves the table's columns its expression names
+						ParenGroupNames<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
+						? [E] extends [DbtyperErrorShape] // E is a union of names: no distribution
+							? [R, Db, E]
+							: AfterTableConstraint<
+									R,
+									WithTableConstraintColumns<Db, Extract<E, Stack[number][0]>>,
+									Schema,
+									Table,
+									Stack
+								>
+						: never
+					: SkipParenGroup<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
+						? E extends DbtyperErrorShape
+							? [R, Db, E]
+							: AfterTableConstraint<R, Db, Schema, Table, Stack>
+						: never
 				: SkipFailedStatement<
 						Tokens,
 						Db,
@@ -142,7 +165,7 @@ type TableConstraintColumns<
 						? [Missing] extends [never]
 							? TableConstraintAfterColumns<
 									R,
-									Db,
+									WithTableConstraintColumns<Db, Names[number]>,
 									Schema,
 									Table,
 									Stack,

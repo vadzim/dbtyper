@@ -13,6 +13,12 @@ export type JsqlDatabaseShape = {
 	pendingSpelled?: Record<string, string>
 	/** The name of the CREATE TABLE's named table PRIMARY KEY constraint (CORE-15); never in a finished state. */
 	pendingPkName?: string
+	/** The columns of the CREATE TABLE's named constraints, name -> union (#179); never in a finished state. */
+	pendingConstraintColumns?: unknown
+	/** The name of the CREATE TABLE's named table constraint being parsed (#179); never in a finished state. */
+	pendingTableConstraint?: string
+	/** The CREATE TABLE's columns of a domain or composite type, name -> `schema.type` (#179); never in a finished state. */
+	pendingUserTypes?: Record<string, string>
 	/** Set while the SELECT of an `INSERT … SELECT` is parsed: the columns match by position, so no output name is needed (#166). */
 	positionalSelect?: true
 }
@@ -56,6 +62,8 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	primary_key?: unknown
 	/** SQLite: the names of the table's indexes, a union (`CREATE INDEX`, for `INDEXED BY`; src/parser/parse-index.ts, SQLT-74). */
 	indexes?: unknown
+	/** The columns of a domain or composite type: name -> `schema.type` (TYPE-18, #179); absent when none. */
+	user_types?: unknown
 }
 
 export type JsqlColumnFactsEntry = {

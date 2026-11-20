@@ -177,7 +177,8 @@ type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 														? { primary_key: Pk }
 														: {}) &
 													// SQLT-74: the index names (INDEXED BY)
-													(Table extends { indexes: infer Ix } ? { indexes: Ix } : {})
+													(Table extends { indexes: infer Ix } ? { indexes: Ix } : {}) &
+													(Table extends { user_types: infer U } ? { user_types: U } : {})
 											: never
 									}
 								: never
