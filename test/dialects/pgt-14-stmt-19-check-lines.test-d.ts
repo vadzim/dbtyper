@@ -21,7 +21,7 @@ const _ok = await mood.query(`select * from m where v = 'happy'`)
 expectType<typeof _ok>(toBe<{ v: "happy" | "sad" }[]>())
 
 const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id integer not null);`).database()
-const hint = "If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped"
+type Hint = "If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped"
 const s1 = `selec id from users` as const
 const s2 = `udpate users set id = 1` as const
 const s3 = `foo bar;` as const
@@ -32,11 +32,11 @@ await db.query(s2)
 // @ts-expect-error
 await db.query(s3)
 expectType<GetQueryError<typeof db, typeof s1>>(
-	toBe<DbtyperError<1931, `Unknown statement keyword selec; did you mean SELECT? ${typeof hint}`>>(),
+	toBe<DbtyperError<1931, `Unknown statement keyword selec; did you mean SELECT? ${Hint}`>>(),
 )
 expectType<GetQueryError<typeof db, typeof s2>>(
-	toBe<DbtyperError<1931, `Unknown statement keyword udpate; did you mean UPDATE? ${typeof hint}`>>(),
+	toBe<DbtyperError<1931, `Unknown statement keyword udpate; did you mean UPDATE? ${Hint}`>>(),
 )
 expectType<GetQueryError<typeof db, typeof s3>>(
-	toBe<DbtyperError<1930, `Unknown statement keyword foo. ${typeof hint}`>>(),
+	toBe<DbtyperError<1930, `Unknown statement keyword foo. ${Hint}`>>(),
 )
