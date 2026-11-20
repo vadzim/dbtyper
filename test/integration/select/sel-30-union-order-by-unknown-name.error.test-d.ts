@@ -16,4 +16,11 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<2300, "Unknown column score in ORDER BY">>())
+expectType<ReturnedError>(
+	toBe<
+		DbtyperError<
+			3414,
+			"ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position"
+		>
+	>(),
+)
