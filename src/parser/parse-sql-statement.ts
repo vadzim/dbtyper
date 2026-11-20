@@ -256,7 +256,10 @@ type SkipKnownOrFail<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, K
 		: PeekToken<Tokens> extends { value: infer Word extends string }
 			? Lowercase<Word> extends Known[number]
 				? ParseSkipStatement<Tokens, Db>
-				: SkipFailedStatement<Tokens, Db, UnknownStatementError<Word, Known>>
+				: Lowercase<Word> extends DialectFact<Db, "otherDialectForms">["statements"]
+					? // DSEL-7: a statement of the other engine is not a typo
+						SkipFailedStatement<Tokens, Db, OtherDialectFormError<Db, Uppercase<Word>>>
+					: SkipFailedStatement<Tokens, Db, UnknownStatementError<Word, Known>>
 			: ParseSkipStatement<Tokens, Db>
 
 type ConcatErrors<
@@ -278,7 +281,17 @@ type SkipStatementForm<Tokens extends ParserMonad, Db extends JsqlDatabaseShape,
 						? SkipAlterUnlessRename<SkipToken<Tokens>, Db, Lowercase<Word>>
 						: ParseSkipStatement<Tokens, Db>
 					: ParseSkipStatement<Tokens, Db>
-				: SkipFailedStatement<Tokens, Db, UnknownFormError<Verb, Word, DialectFact<Db, "skippedForms">[Verb]>>
+				: Lowercase<Word> extends DialectFact<Db, "otherDialectForms">[Verb]
+					? SkipFailedStatement<
+							Tokens,
+							Db,
+							OtherDialectFormError<Db, `${Uppercase<Verb>} ${Uppercase<Word>}`>
+						>
+					: SkipFailedStatement<
+							Tokens,
+							Db,
+							UnknownFormError<Verb, Word, DialectFact<Db, "skippedForms">[Verb]>
+						>
 			: ParseSkipStatement<Tokens, Db>
 
 /** STMT-Q2: `ALTER VIEW | MATERIALIZED VIEW | SCHEMA … RENAME …` would leave the typed schema behind: an error. */
