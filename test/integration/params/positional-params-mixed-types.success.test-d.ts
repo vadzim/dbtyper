@@ -8,7 +8,7 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: multiple positional parameters with different types
-const _result = await _db.query(`select * from users where id = ? and age > ? and active = ?;`, ["user1", 18, true])
+const _result = await _db.query(`select * from users where id = $1 and age > $2 and active = $3;`, ["user1", 18, true])
 
 expectType<typeof _result>(
 	toBe<
