@@ -1,4 +1,4 @@
-// DSEL-4 Check: select 1 as x is { x: number } in both; ?1 is accepted by SQLite (the PostgreSQL 1007 half: dsel-4-check-question-param-pg.test-d.skip.ts, bug #196)
+// DSEL-4 Check: select 1 as x is { x: number } in both; ?1 is accepted by SQLite (the PostgreSQL 1007 half: dsel-4-check-question-param-pg.test-d.ts)
 import { sqlMigrations } from "../../src/core/sql-database.ts"
 import { mockDriver, sqliteDriver } from "../test-utils/test-databases.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"

@@ -10,7 +10,7 @@ import type { ColumnEntry, ColumnFail } from "./parse-column-constraint-clauses.
 import type { ColumnCtx, ColumnState } from "./parse-column-constraints.ts"
 
 /**
- * `ALTER TABLE … ADD COLUMN <definition>` of a SQLite chain ends here (SQLT-20, SQLT-21): NOT NULL needs a default;
+ * `ALTER TABLE … ADD COLUMN <definition>` of a SQLite chain ends here (SQLT-20, SQLT-21): NOT NULL needs a default (a generated column's expression is one, #193, in any constraint order);
  * the column joins the table with the facts a CREATE TABLE gives it.
  */
 export type AlterColumnDone<
@@ -18,7 +18,7 @@ export type AlterColumnDone<
 	C extends ColumnCtx,
 	S extends ColumnState,
 > = S["nn"] extends true
-	? [S["def"], FullAddColumn<C>] extends [false, never]
+	? [S["def"], S["gen"], FullAddColumn<C>] extends [false, false, never]
 		? ColumnFail<
 				Tokens,
 				C,

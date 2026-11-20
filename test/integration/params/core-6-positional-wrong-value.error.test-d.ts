@@ -8,7 +8,7 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table users (id integer not null default 0, name text not null, email text, age integer);`)
 	.database()
 
-const query = `select id from users where age > ?;` as const
+const query = `select id from users where age > $1;` as const
 
 // @ts-expect-error
 await db.query(query, ["5"])
