@@ -76,7 +76,10 @@ type DeepParens = GetQueryError<
 >
 expectType<DeepParens>(
 	toBe<
-		DbtyperError<5020, "Parentheses are nested more than 6 levels deep; simplify the expression or split the query">
+		DbtyperError<
+			5020,
+			"Parentheses, function calls and CASE are nested more than 8 levels deep; simplify the expression or split the query"
+		>
 	>(),
 )
 type LongMinus = GetQueryError<

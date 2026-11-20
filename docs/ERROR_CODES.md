@@ -540,21 +540,21 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 5000-5099: DML/Misc Expression
 
-| Code | Name                                                  | Message                                                                                                        |
-| ---- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 5000 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST`      | Expected \`,\` or \`)\` in argument list                                                                       |
-| 5001 | `EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT` | Expected \`)\` after function name in DEFAULT                                                                  |
-| 5002 | `EXPECTED_NULL_AFTER_IS`                              | Expected NULL after IS                                                                                         |
-| 5003 | `EXPECTED_NULL_AFTER_IS_NOT`                          | Expected NULL after IS NOT                                                                                     |
-| 5004 | `EXPECTED_NULL_AFTER_DROP_NOT`                        | Expected NULL after DROP NOT                                                                                   |
-| 5005 | `EXPECTED_CLOSE_PAREN_AFTER_STAR`                     | Expected \`)\` after \`\*\`                                                                                    |
-| 5006 | `EXPECTED_CLOSE_PAREN`                                | Expected \`)\`                                                                                                 |
-| 5007 | `UNSUPPORTED_PARENTHESIZED_EXPRESSION`                | Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped |
-| 5008 | `EXPECTED_FROM_AFTER_IS_DISTINCT`                     | Expected FROM after IS DISTINCT                                                                                |
-| 5009 | `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`               | Expected LIKE, IN or BETWEEN after NOT                                                                         |
-| 5020 | `EXPRESSION_NESTED_TOO_DEEP`                          | Parentheses are nested more than … levels deep; simplify the expression or split the query                     |
-| 5021 | `EXPRESSION_CHAIN_TOO_LONG`                           | More than … chained \`-\` operators; split the expression into parenthesized groups                            |
-| 5022 | `EXPECTED_COLLATION_NAME`                             | Expected a collation name after COLLATE                                                                        |
+| Code | Name                                                  | Message                                                                                                             |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 5000 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST`      | Expected \`,\` or \`)\` in argument list                                                                            |
+| 5001 | `EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT` | Expected \`)\` after function name in DEFAULT                                                                       |
+| 5002 | `EXPECTED_NULL_AFTER_IS`                              | Expected NULL after IS                                                                                              |
+| 5003 | `EXPECTED_NULL_AFTER_IS_NOT`                          | Expected NULL after IS NOT                                                                                          |
+| 5004 | `EXPECTED_NULL_AFTER_DROP_NOT`                        | Expected NULL after DROP NOT                                                                                        |
+| 5005 | `EXPECTED_CLOSE_PAREN_AFTER_STAR`                     | Expected \`)\` after \`\*\`                                                                                         |
+| 5006 | `EXPECTED_CLOSE_PAREN`                                | Expected \`)\`                                                                                                      |
+| 5007 | `UNSUPPORTED_PARENTHESIZED_EXPRESSION`                | Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped      |
+| 5008 | `EXPECTED_FROM_AFTER_IS_DISTINCT`                     | Expected FROM after IS DISTINCT                                                                                     |
+| 5009 | `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`               | Expected LIKE, IN or BETWEEN after NOT                                                                              |
+| 5020 | `EXPRESSION_NESTED_TOO_DEEP`                          | Parentheses, function calls and CASE are nested more than … levels deep; simplify the expression or split the query |
+| 5021 | `EXPRESSION_CHAIN_TOO_LONG`                           | More than … chained \`-\` operators; split the expression into parenthesized groups                                 |
+| 5022 | `EXPECTED_COLLATION_NAME`                             | Expected a collation name after COLLATE                                                                             |
 
 ## 5100-5199: Type-Data/VARCHAR-NUMERIC
 

@@ -4,7 +4,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type { ExprParseEnv, ScalarExprAst } from "./parse-expression-ast.ts"
 import type { ParseAfterAddScalarRelIsInUntyped, ParseNotScalarUntyped } from "./parse-expression-relational.ts"
-import type { ParseOtherOpAfterOperand } from "./parse-expression-arith.ts"
+import type { ParseOtherOpAfterOperand, ParseOtherOpScalarUntyped } from "./parse-expression-arith.ts"
 
 /**
  * `a AND b AND c …` / `a OR b OR c …` become a BALANCED tree of binary nodes (depth log2 n), not the left-nested one.
@@ -104,12 +104,58 @@ type ParseOrLoopScalarUntyped<
 			: never
 		: [Tokens, FinishBoolChain<"or", Items, Done>, Env]
 
+/**
+ * A whole expression. The first operand is parsed by the operator level directly (`ParseOtherOpScalarUntyped`), and
+ * comparison, `AND` and `OR` follow it one after the other, not nested in each other: every nested parser level is
+ * one more level of TypeScript's instantiation depth per parenthesis, function call or CASE an expression nests
+ * (#174, #180). Only `NOT` and `EXISTS` first go the long way (`ParseNotScalarUntyped`).
+ */
 export type ParseOrScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	ParseAndScalarUntyped<Tokens, Env> extends [infer R0 extends ParserMonad, infer E0, infer Env0 extends ExprParseEnv]
-		? E0 extends DbtyperErrorShape
-			? SkipFailedExpressionWithEnv<R0, E0, Env0>
-			: E0 extends ScalarExprAst
-				? ParseOrLoopScalarUntyped<R0, [E0], [], Env0>
+	PeekToken<Tokens> extends TokenKey<"not" | "exists">
+		? ParseAndScalarUntyped<Tokens, Env> extends [
+				infer R0 extends ParserMonad,
+				infer E0,
+				infer Env0 extends ExprParseEnv,
+			]
+			? E0 extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<R0, E0, Env0>
+				: E0 extends ScalarExprAst
+					? ParseOrLoopScalarUntyped<R0, [E0], [], Env0>
+					: never
+			: never
+		: ParseOtherOpScalarUntyped<Tokens, Env> extends [
+					infer R1 extends ParserMonad,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+			  ]
+			? E1 extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<R1, E1, Env1>
+				: E1 extends ScalarExprAst
+					? ParseRestAfterRelOperand<R1, E1, Env1>
+					: never
+			: never
+
+/** After the first operand of a comparison: the comparison, then the `AND` and `OR` chains. */
+type ParseRestAfterRelOperand<Tokens extends ParserMonad, First extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParseAfterAddScalarRelIsInUntyped<Tokens, First, Env> extends [
+		infer R2 extends ParserMonad,
+		infer E2,
+		infer Env2 extends ExprParseEnv,
+	]
+		? E2 extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<R2, E2, Env2>
+			: E2 extends ScalarExprAst
+				? ParseAndLoopScalarUntyped<R2, [E2], [], Env2> extends [
+						infer R3 extends ParserMonad,
+						infer E3,
+						infer Env3 extends ExprParseEnv,
+					]
+					? E3 extends DbtyperErrorShape
+						? SkipFailedExpressionWithEnv<R3, E3, Env3>
+						: E3 extends ScalarExprAst
+							? ParseOrLoopScalarUntyped<R3, [E3], [], Env3>
+							: never
+					: never
 				: never
 		: never
 
