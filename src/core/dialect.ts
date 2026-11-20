@@ -29,7 +29,12 @@ import type { Errors, FormatErrorOf } from "../dbtyper-error.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 import type { DialectConstruct, DialectOnlyConstructs } from "./dialect-constructs.ts"
 import type { PostgresFunctions, PostgresSqliteOnlyFunctions } from "../parser/postgres-functions.ts"
-import type { SqliteFunctions, SqliteOperators, SqlitePgOnlyFunctions } from "../parser/sqlite-functions.ts"
+import type {
+	SqliteFunctions,
+	SqliteOperators,
+	SqlitePgOnlyFunctions,
+	SqliteTableFunctions,
+} from "../parser/sqlite-functions.ts"
 import type { PostgresSkippedForms, SqliteSkippedForms } from "../parser/statement-keywords.ts"
 import type { PostgresTypeNameWords } from "./dialect-types.ts"
 
@@ -62,6 +67,7 @@ type SqliteNumericOrder = readonly ["real", "numeric", "integer", "bigint"]
 /** The function data of a dialect (the `functionCatalog` fact of {@link Dialects}). */
 export type FunctionCatalogFacts = {
 	rows: object
+	tables: object
 	hints: object
 	anyType: string
 	unlikeTypes: "first" | "any"
@@ -129,7 +135,8 @@ export type DialectName = keyof Dialects
  * statement (SQLT-20, SQLT-21).
  * Function facts (SQLT-44…SQLT-52, #76; #175): `functionCatalog` is the dialect's function data ({@link FunctionCatalogFacts}):
  * `rows` the table of functions (`PostgresFunctions`, `SqliteFunctions`; grammar and resolver helpers in
- * function-catalog.ts), `hints` the table of names the OTHER dialect has and this one lacks, with a replacement ("" for
+ * function-catalog.ts), `tables` the columns of each table-valued function (a row of kind "table", a FROM item only:
+ * SQLite's `json_each` / `json_tree`, SQLT-69…SQLT-72), `hints` the table of names the OTHER dialect has and this one lacks, with a replacement ("" for
  * none), `anyType` the type name that stands for "any type", `unlikeTypes` what the common type of two unlike,
  * non-numeric types is ("first" = the first one, "any" = `anyType`), `sum` the result of `sum` per argument type
  * (`else` for the types not listed), `numericOrder` the dialect's {@link Dialects} fact of that name.
@@ -184,6 +191,7 @@ export type Dialects = {
 		addColumn: "full"
 		functionCatalog: {
 			rows: PostgresFunctions
+			tables: {}
 			hints: PostgresSqliteOnlyFunctions
 			anyType: "unknown"
 			unlikeTypes: "first"
@@ -254,6 +262,7 @@ export type Dialects = {
 		addColumn: "restricted"
 		functionCatalog: {
 			rows: SqliteFunctions
+			tables: SqliteTableFunctions
 			hints: SqlitePgOnlyFunctions
 			anyType: "any"
 			unlikeTypes: "any"

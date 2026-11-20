@@ -116,6 +116,32 @@ export type SqliteFunctions = {
 	first_value: ["arg", "args", "window", null, null]
 	last_value: ["arg", "args", "window", null, null]
 	nth_value: ["arg", "null", "window", null, null]
+	// SQLT-69…SQLT-72 table-valued functions: FROM items only (the "table" kind), columns in SqliteTableFunctions
+	json_each: ["table", "non-null", "table", "jsonTable", [SqlText, SqlText]]
+	json_tree: ["table", "non-null", "table", "jsonTable", [SqlText, SqlText]]
+}
+
+/**
+ * SQLT-69, SQLT-70: the columns of `json_each` / `json_tree` (the hidden `json` and `root` are "Not yet"), as the
+ * drivers return them: `json_key` an array index or an object label, `json_value` a number or text (an array or
+ * object comes back as its JSON text, `true`/`false` as 1/0; SQLT-Q14), `json_type` the eight type names
+ * (src/sqlite/sqlite-type-map.ts).
+ */
+type JsonTableColumns = {
+	key: { type: "json_key"; arg: null; nullable: true }
+	value: { type: "json_value"; arg: null; nullable: true }
+	type: { type: "json_type"; arg: null; nullable: false }
+	atom: { type: "json_value"; arg: null; nullable: true }
+	id: SqlInteger
+	parent: { type: "integer"; arg: null; nullable: true }
+	fullkey: SqlText
+	path: SqlText
+}
+
+/** The columns of each table-valued function (a "table" row of {@link SqliteFunctions}). */
+export type SqliteTableFunctions = {
+	json_each: JsonTableColumns
+	json_tree: JsonTableColumns
 }
 
 /**

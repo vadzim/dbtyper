@@ -235,6 +235,11 @@ const errors = {
 			". If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
 		],
 	},
+	// SQLT-72: `json_each` / `json_tree` with no argument or more than two (#198)
+	JSON_TABLE_FUNCTION_TAKES_1_OR_2_ARGUMENTS: {
+		code: 1937,
+		msg: ["", " takes 1 or 2 arguments: json [, path]"],
+	},
 	UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN: {
 		code: 1933,
 		msg: [

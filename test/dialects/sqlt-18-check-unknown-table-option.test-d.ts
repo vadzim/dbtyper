@@ -1,6 +1,4 @@
-// SKIPPED (excluded in tsconfig.test.json): SQLT-18 part 2 Check: `create table t (a int) nonsense` -> dbtyper:1912 "Expected STRICT or WITHOUT ROWID".
-// The code gives 1105 "Expected semicolon after CREATE TABLE" (1912 is reached only after WITHOUT). SPEC-Q SQLT-18 1912 (also #184).
-// Options: A) fix the Check (1105 for a bare word) B) fix the code (1912 for any unknown option).
+// Integration Test: SQLT-18 part 2 Check (verification/sqlite.md @ 2a941c8): an unknown table option after `)` is dbtyper:1912.
 import { sqlMigrations, type GetApplyError } from "../../src/core/sql-database.ts"
 import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import { sqliteDriver } from "../test-utils/test-databases.ts"
