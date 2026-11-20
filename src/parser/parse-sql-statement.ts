@@ -18,6 +18,7 @@ import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop.ts"
 import type { ParseDropType } from "./parse-drop.ts"
 import type { ParseDropView, ParseDropDomain } from "./parse-drop.ts"
+import type { ParseCreateIndex, ParseDropIndex } from "./parse-index.ts"
 import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseSelectStatement, ParseSetOperationTail } from "./parse-select.ts"
 import type { ParseParenEnclosedSelect } from "./parse-select-subquery.ts"
@@ -392,7 +393,9 @@ type ParseCreateNamedForm<
 						? ParseCreateTable<SkipToken<R1>, Db, Params>
 						: UnknownTwoWordForm<R1, Db, "create", "unlogged">
 					: never
-				: SkipStatementForm<Tokens, Db, "create">
+				: PeekToken<Tokens> extends TokenKey<"index" | "unique">
+					? ParseCreateIndex<Tokens, Db> // SQLT-74: index names are kept for INDEXED BY (`trackedIndexes`)
+					: SkipStatementForm<Tokens, Db, "create">
 
 /** `CREATE MATERIALIZED <not VIEW>` and the like: `Tokens` is at the word after `First`. */
 type UnknownTwoWordForm<
@@ -447,4 +450,6 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 									? ParseDropView<SkipToken<R1>, Db>
 									: UnknownTwoWordForm<R1, Db, "drop", "materialized">
 								: never
-							: SkipStatementForm<Tokens, Db, "drop">
+							: PeekToken<Tokens> extends TokenKey<"index">
+								? ParseDropIndex<SkipToken<Tokens>, Db> // SQLT-74
+								: SkipStatementForm<Tokens, Db, "drop">

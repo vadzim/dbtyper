@@ -20,7 +20,7 @@
 3. **Simple `CASE expr WHEN …`** — Implemented (discriminant vs each `WHEN` uses `=` comparison-class rules; `THEN`/`ELSE` merge like searched `CASE`).
 4. **Select items** — The select list asks the expression parser what is an operand, so a new operand kind needs no change there.
 5. **Subqueries / CTEs / views** — Derived tables in `FROM` / `JOIN`, scalar / `IN (SELECT …)` / `EXISTS`, leading `WITH` CTEs and `CREATE VIEW` are covered in `SUPPORTED-SQL.md`. Correlation in `SELECT` list subqueries remains limited (see `TODO.md`). `LATERAL` joins are explicitly deferred past the v1 correlation milestone (`docs/ROADMAP.md`). CTE cycle detection is not implemented.
-6. **`CREATE INDEX`** — Still skipped at statement level (`ALTER TABLE` is parsed; see `SUPPORTED-SQL.md`).
+6. **`CREATE INDEX`** — Skipped on PostgreSQL; on SQLite only the index name is kept, for `INDEXED BY` (SQLT-74; see `SUPPORTED-SQL.md`).
 7. **Runtime query execution** — Explicitly out of scope per README; no change.
 8. **`SELECT … ORDER BY`** — Typed: ORDER BY never changes the row type; ordering by an output alias works. Gaps are listed in `TODO.md`.
 

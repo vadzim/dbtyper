@@ -22,6 +22,8 @@ export type DialectOnlyConstructs = {
 	"sqlite-insert-or-ignore": { only: "sqlite"; name: "INSERT OR IGNORE"; hint: "Use ON CONFLICT DO NOTHING" }
 	"sqlite-insert-or": { only: "sqlite"; name: "INSERT OR <conflict action>"; hint: "Use ON CONFLICT" }
 	"sqlite-replace-into": { only: "sqlite"; name: "REPLACE INTO"; hint: "Use INSERT … ON CONFLICT … DO UPDATE" }
+	// SQLT-73: `INDEXED BY` / `NOT INDEXED` after a table in FROM, UPDATE and DELETE (parse-alias.ts)
+	"sqlite-indexed-by": { only: "sqlite"; name: "INDEXED BY"; hint: "Omit it" }
 	"pg-serial": { only: "postgres"; name: "SERIAL type"; hint: "Use INTEGER PRIMARY KEY" }
 	"pg-alter-column": {
 		only: "postgres"

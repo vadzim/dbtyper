@@ -12,7 +12,7 @@ SQL that is not listed is either skipped (see "Statements that are skipped") or 
 | `CREATE OR REPLACE VIEW`, `CREATE MATERIALIZED VIEW`, `DROP MATERIALIZED VIEW`                                                                                     | PostgreSQL: parsed like a view. SQLite: error 1900.                                                                               |
 | `SELECT`, `WITH … SELECT`                                                                                                                                          | Parsed and checked; the result is the row type.                                                                                   |
 | `INSERT`, `UPDATE`, `DELETE`                                                                                                                                       | Parsed and checked; the result is `[]`, or the rows of `RETURNING`.                                                               |
-| `CREATE INDEX`, `GRANT`, `REVOKE`, `TRUNCATE`, `SET`, `BEGIN`, `COMMIT`, `COPY`, `PRAGMA` and the like                                                             | Skipped up to the next `;` (brackets must balance); no check, no schema change. A `query` of such a statement is typed `unknown`. |
+| `CREATE INDEX` (PostgreSQL), `GRANT`, `REVOKE`, `TRUNCATE`, `SET`, `BEGIN`, `COMMIT`, `COPY`, `PRAGMA` and the like                                                | Skipped up to the next `;` (brackets must balance); no check, no schema change. A `query` of such a statement is typed `unknown`. |
 | Any other first word (`selec`, `udpate`)                                                                                                                           | Compile error 1930 (1931 with a "did you mean" hint). `ATTACH`, `DETACH` and `CREATE VIRTUAL TABLE` in SQLite are error 1916.     |
 
 A script may hold several statements. They are applied in order, each sees the schema changes of the ones before it, and the first wrong statement is the error. A statement ends with `;` or at the end of the text. A script may have at most 2500 statements (error 1919).
@@ -25,6 +25,7 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 - Syntax of the other engine is a compile error: 1900 (PostgreSQL-only syntax in a SQLite chain, such as `::`, `$n`, `DROP TABLE … CASCADE`), 1901 (SQLite-only syntax in a PostgreSQL chain, such as `INSERT OR …`, `REPLACE INTO`, backtick identifiers). The list is the data table in `src/core/dialect.ts`.
 - A PostgreSQL chain starts with the schema `public`: the first migration may be `create table …`. `create schema public;` is error 3200, `create schema if not exists public;` does nothing. A `defaultSchema` other than `public` must be created.
 - A SQLite chain starts with the schemas `main` (the default) and `temp`. `CREATE SCHEMA` is an error there.
+- SQLite: `CREATE [UNIQUE] INDEX name ON table …` keeps only the index name on its table (an unknown table is error 2200; the columns and `WHERE` are not checked); `DROP INDEX` removes it, `DROP TABLE` drops it with the table. A table in FROM, JOIN, UPDATE and DELETE may be followed by `INDEXED BY name` (the index must be one of that table's, else error 2221) or `NOT INDEXED`; neither changes a type. In PostgreSQL both are error 1901.
 - Column types come from the driver's type map: `PostgresTypeMap` and `SqliteTypeMap` (see the README). A type spelling that is not in the map is error 3506.
 
 ## CREATE TABLE, CREATE VIEW
@@ -78,6 +79,6 @@ A function must be in the function catalog of the dialect (PostgreSQL or SQLite)
 
 ## Statements that are skipped
 
-Skipped statements are not checked, change nothing in the schema, and are typed `unknown` by `query`. Most are harmless (`GRANT`, `SET`, `BEGIN`, `CREATE INDEX`, `COMMENT`). Some of them change the schema in the real database, and later queries then fail against the old schema: PostgreSQL `CREATE TEMP TABLE`, `ALTER SCHEMA … RENAME`, `ALTER VIEW …`. Keep such changes out of the typed chain.
+Skipped statements are not checked, change nothing in the schema, and are typed `unknown` by `query`. Most are harmless (`GRANT`, `SET`, `BEGIN`, PostgreSQL's `CREATE INDEX`, `COMMENT`). Some of them change the schema in the real database, and later queries then fail against the old schema: PostgreSQL `CREATE TEMP TABLE`, `ALTER SCHEMA … RENAME`, `ALTER VIEW …`. Keep such changes out of the typed chain.
 
 Very long statements are a limit of the TypeScript compiler, not of dbtyper: an expression with about thirty chained `+`, more than about 200 positional parameters, or a very long migration chain can end in TypeScript's own "excessively deep" error (TS2589) instead of a dbtyper error. Split the statement or the migration.
