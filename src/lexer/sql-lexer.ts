@@ -59,13 +59,13 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 		? ReadIdentWord<Head, Rest, Syntax>
 		: Head extends "/"
 			? Rest extends `*${string}`
-				? SkipSpaces<S> extends S
+				? SkipSpaces<S, LexerFact<Syntax, "nestedComments">> extends S
 					? Return<FormatError<Errors["UNCLOSED_BLOCK_COMMENT"], []>, S>
-					: ReadTokenFromString<SkipSpaces<S>, Syntax>
+					: ReadTokenFromString<SkipSpaces<S, LexerFact<Syntax, "nestedComments">>, Syntax>
 				: ReadOperator<S>
 			: Head extends "-"
 				? Rest extends `-${string}`
-					? ReadTokenFromString<SkipSpaces<S>, Syntax>
+					? ReadTokenFromString<SkipSpaces<S, LexerFact<Syntax, "nestedComments">>, Syntax>
 					: ReadOperator<S>
 				: Head extends "`"
 					? Rest extends `${infer Name}\`${infer Rest2}`
@@ -98,7 +98,10 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 												? QuotedIdent<String, Rest, Syntax>
 												: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
 											: Head extends Whitespace
-												? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
+												? ReadTokenFromString<
+														SkipSpaces<Rest, LexerFact<Syntax, "nestedComments">>,
+														Syntax
+													>
 												: Head extends "'"
 													? ReadSingleQuotedString<Rest, Syntax>
 													: Head extends ":"
@@ -355,7 +358,7 @@ type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S ex
 			>
 			? Return<TokenString<`${P1}'${P2}`>, R3>
 			: Return<FormatError<Errors["UNCLOSED_STRING_LITERAL"], []>, S>
-		: SkipSpaces<R1> extends infer R4 extends string
+		: SkipSpaces<R1, LexerFact<Syntax, "nestedComments">> extends infer R4 extends string
 			? R4 extends `'${infer R5}`
 				? LexerFact<Syntax, "joinStrings"> extends false
 					? Return<TokenString<P1>, R4>

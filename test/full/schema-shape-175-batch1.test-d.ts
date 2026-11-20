@@ -128,3 +128,11 @@ expectType<Code<GetApplyError<typeof lite, typeof dupView>>>(toBe<3911>())
 const wrongOrder = `insert into y values (1, 't', 2)` as const
 expectType<Code<GetQueryError<typeof pgDb, typeof wrongOrder>>>(toBe<2507>())
 expectType<Code<GetQueryError<typeof liteDb, typeof wrongOrder>>>(toBe<2510>())
+
+// block comments nest in PostgreSQL only (lexer fact `nestedComments`): in SQLite the first `*/` ends the comment
+const halfNested = `select 1 as a /* x /* y */` as const
+const _flat = await liteDb.query(halfNested)
+expectType<typeof _flat>(toBe<Array<{ a: number }>>())
+expectType<Code<GetQueryError<typeof pgDb, typeof halfNested>>>(toBe<1011>())
+const _nested = await pgDb.query(`select 1 as a /* x /* y */ z */`)
+expectType<typeof _nested>(toBe<Array<{ a: number }>>())

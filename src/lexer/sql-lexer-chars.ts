@@ -57,10 +57,11 @@ type ReadOperatorCharsWide<S extends string, Op extends string> = S extends `${i
 		: { token: Op; rest: S }
 	: { token: Op; rest: S }
 
-export type SkipSpaces<S> =
-	SkipSomeSpaces<S> extends [infer R extends string, infer HasMoreSpace]
+/** `Nested`: block comments nest (lexer fact `nestedComments`). */
+export type SkipSpaces<S, Nested extends boolean = true> =
+	SkipSomeSpaces<S, [], Nested> extends [infer R extends string, infer HasMoreSpace]
 		? HasMoreSpace extends true
-			? SkipSpaces<R>
+			? SkipSpaces<R, Nested>
 			: R
 		: never
 
@@ -70,18 +71,20 @@ export type SkipSpaces<S> =
  * it is a depth bound, not a limit on the number of spaces.
  * TLVL-4: the limit dodged is the instantiation depth limit (TS2589); tests: test/stress/sqlt-105-long-statement.
  */
-type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
+type SkipSomeSpaces<S, Acc extends unknown[] = [], Nested extends boolean = true> = Acc["length"] extends 100
 	? [S, true]
 	: S extends `${infer C}${infer Rest}`
 		? C extends Whitespace
-			? SkipSomeSpaces<Rest, [...Acc, 1]>
+			? SkipSomeSpaces<Rest, [...Acc, 1], Nested>
 			: S extends `--${infer Comment}`
 				? Comment extends `${string}\n${infer Rest}`
-					? SkipSomeSpaces<Rest, [...Acc, 1]>
+					? SkipSomeSpaces<Rest, [...Acc, 1], Nested>
 					: ["", false]
 				: S extends `/*${infer Comment}`
-					? SkipMultiComment<Comment> extends infer Rest extends string
-						? SkipSomeSpaces<Rest, [...Acc, 1]>
+					? (
+							Nested extends true ? SkipMultiComment<Comment> : SkipFlatComment<Comment>
+						) extends infer Rest extends string
+						? SkipSomeSpaces<Rest, [...Acc, 1], Nested>
 						: [S, false] // unclosed: the lexer reports UNCLOSED_BLOCK_COMMENT at the `/*`
 					: [S, false]
 		: [S, false]
@@ -205,6 +208,9 @@ type LowerCaseLetter =
 	| "x"
 	| "y"
 	| "z"
+
+/** The text after the end of a comment that does not nest (SQLite), or `false` when it is not closed. */
+type SkipFlatComment<S extends string> = S extends `${string}*/${infer Rest}` ? Rest : false
 
 /** The text after the end of the comment (block comments nest), or `false` when it is not closed. */
 type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
