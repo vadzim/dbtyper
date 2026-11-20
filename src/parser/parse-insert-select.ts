@@ -2,26 +2,27 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult, JsqlDataShape } from
 import type { SkipToken } from "../lexer/parser-monad.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type { ScopeMap } from "./parser-scope.ts"
+import type { CteDefsOnly, ScopeMap } from "./parser-scope.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { SameComparisonClass } from "./resolve-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
+import type { ParseInsertOptionalTail } from "./parse-insert-on-conflict.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ComparisonClassesOf } from "../core/dialect.ts"
-import type { FinishInsertSemicolon } from "./parse-insert.ts"
 
 export type ParseInsertWithSelect<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
-	_Scope extends ScopeMap,
+	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Tbl extends JsqlDataShape,
 	Sch extends string,
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseSelectExpression<SkipToken<Tokens>, Db & { positionalSelect: true }, Params> extends [
+	// DML-21: the CTEs of a `WITH … INSERT … SELECT` are FROM items of the SELECT; the target table is not
+	ParseSelectExpression<SkipToken<Tokens>, Db & { positionalSelect: true }, Params, {}, CteDefsOnly<Scope>> extends [
 		infer RSelect extends ParserMonad,
 		infer _Db2,
 		infer SelectRes,
@@ -33,19 +34,19 @@ export type ParseInsertWithSelect<
 					? ValidationRes extends DbtyperErrorShape
 						? [RSelect, Db, ValidationRes]
 						: ValidationRes extends true
-							? Db extends JsqlDatabaseShape
-								? FinishInsertSemicolon<
-										RSelect,
-										Db,
-										{
-											kind: "insert"
-											table: Tab
-											schema: Sch
-											columns: Cols
-											returning: null
-										}
-									>
-								: never
+							? // DML-21: RETURNING and ON CONFLICT after the SELECT, as after VALUES
+								ParseInsertOptionalTail<
+									RSelect,
+									Db,
+									Scope,
+									Params,
+									Tbl,
+									Sch,
+									Tab,
+									Cols,
+									undefined,
+									undefined
+								>
 							: never
 					: never
 				: never

@@ -9,13 +9,16 @@ type ScopeEntryDepth<E> = E extends { outerDepth: infer D extends readonly unkno
 /** CORE-9: a column merged away by USING / NATURAL is not visible to an unqualified reference. */
 type HiddenColumns<E> = E extends { hidden: infer H extends string } ? H : never
 
+/** A CTE definition (DML-21: in the scope of a `WITH … UPDATE | DELETE`) is no FROM item: its columns are never bare names. */
+type CteDefinitionColumns<E> = E extends { schema: "__cte__" } ? string : never
+
 type ScopeKeysWithColumnAtDepth<
 	Scope extends Record<string, { columns: Record<string, unknown> }>,
 	Col extends string,
 	Depth extends number,
 > = {
 	[K in keyof Scope]: Col extends keyof Scope[K]["columns"]
-		? Col extends HiddenColumns<Scope[K]>
+		? Col extends HiddenColumns<Scope[K]> | CteDefinitionColumns<Scope[K]>
 			? never
 			: ScopeEntryDepth<Scope[K]> extends Depth
 				? K

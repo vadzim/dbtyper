@@ -4,8 +4,8 @@ import type { ErrorneousResult, ParseErrorneousText } from "../test-utils/error-
 
 // Test: WITH clause with missing SELECT
 
-type Result = ParseErrorneousText<"with cte as (select id from users) insert into users (id) values (1)">
+type Result = ParseErrorneousText<"with cte as (select id from users) create table x (id integer)">
 
-expectType<Result>(toBe<ErrorneousResult<1100, "Expected SELECT after WITH clause">>())
+expectType<Result>(toBe<ErrorneousResult<1100, "Expected SELECT, INSERT, UPDATE or DELETE after WITH clause">>())
 
 it("SELECT: Expected SELECT after WITH clause", () => {})
