@@ -33,6 +33,10 @@ export type JsqlTypeShape =
 			/** The domain says NOT NULL: columns of it are NOT NULL. */
 			notNull: boolean
 	  }
+	| {
+			/** `CREATE TYPE t AS (…)` (PGT-15): no TypeScript mapping; its attributes are not typed. */
+			kind: "composite"
+	  }
 
 export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind

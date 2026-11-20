@@ -7,7 +7,12 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { DialectFact } from "../core/dialect.ts"
-import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type {
+	ParseSkipStatement,
+	SkipBracketedUntil,
+	SkipFailedExpression,
+	SkipFailedStatement,
+} from "./skip-statement.ts"
 import type {
 	JsqlCreateTable,
 	JsqlCreateRowidTable,
@@ -91,7 +96,8 @@ type ParseCreateTableQualifiedWhenSchKnown<
 		? Entry extends null
 			? ParseCreateTableOpenParenOrAs<R, Db, Sch, Tab, IfNotExists, Params>
 			: IfNotExists extends true
-				? [R, Db, null]
+				? // the rest of the statement is stepped over (it used to be left for the next "statement", #157)
+					ParseSkipStatement<R, Db>
 				: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS"], []>>
 		: never
 

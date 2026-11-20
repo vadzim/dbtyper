@@ -3,9 +3,11 @@ import type {
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
 	JsqlDbReplaceColumnDefault,
+	JsqlDbGetColumnType,
 } from "../core/jsql-utils.ts"
+import type { ParseDefaultValue } from "./parse-column-default.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -38,11 +40,11 @@ type ParseAlterColumnTypeAfterTypeKw<
 	Col extends string,
 > =
 	ParseSqlType<R3, Db, false, Sch> extends [infer AfterType extends ParserMonad, infer TypeShape]
-		? TypeShape extends SqlTypeShape
-			? TypeShape extends DbtyperErrorShape
-				? [AfterType, Db, TypeShape]
-				: ParseAlterColumnUsing<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
-			: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>]
+		? TypeShape extends DbtyperErrorShape
+			? [AfterType, Db, TypeShape]
+			: TypeShape extends SqlTypeShape
+				? ParseAlterColumnUsing<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
+				: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>]
 		: never
 
 type ParseAlterColumnTypeBranch<
@@ -85,10 +87,16 @@ type ParseAlterColumnSetBranch<
 						: never
 					: never
 				: PeekToken<Rs> extends TokenKey<"default">
-					? SkipToken<Rs> extends infer Rd extends ParserMonad
-						? SkipUntilCommaOrSemi<Rd> extends [infer Rsd extends ParserMonad, unknown]
-							? ParseAlterActions<Rsd, JsqlDbReplaceColumnDefault<Db, Sch, Tab, Col, true>, Sch, Tab>
-							: never
+					? // CORE-16: the value must fit the column, as in CREATE TABLE
+						ParseDefaultValue<
+							SkipToken<Rs>,
+							Db,
+							JsqlDbGetColumnType<Db, Sch, Tab, Col> & SqlTypeShape,
+							Col
+						> extends [infer Rsd extends ParserMonad, infer DefErr]
+						? DefErr extends DbtyperErrorShape
+							? SkipFailedStatement<Rsd, Db, DefErr>
+							: ParseAlterActions<Rsd, JsqlDbReplaceColumnDefault<Db, Sch, Tab, Col, true>, Sch, Tab>
 						: never
 					: PeekToken<Rs> extends TokenKey<"data"> | TokenIdent<"data">
 						? // `SET DATA TYPE t`: the same as `TYPE t`
@@ -205,8 +213,11 @@ export type ParseAlterColumnAfterAlterKw<
 			? ParseAlterAfterOptionalColumnKw<R0> extends [infer R1 extends ParserMonad, null]
 				? PeekToken<R1> extends infer Tcol
 					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? Tcol extends TokenIdent<infer Col extends string>
-							? ParseAlterColumnAfterIdent<R2, Db, Sch, Tab, Col>
+						? AsIdent<Tcol> extends TokenIdent<infer Col extends string>
+							? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+								? // SCHEMA-23, #154: a missing column is an error (it used to drop the table from the schema)
+									SkipFailedStatement<R2, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>>
+								: ParseAlterColumnAfterIdent<R2, Db, Sch, Tab, Col>
 							: SkipFailedExpression<
 										R2,
 										FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after ALTER COLUMN"]>

@@ -58,25 +58,21 @@ export type DialectOnlyConstructs = {
 	}
 	"pg-delete-using": { only: "postgres"; name: "DELETE … USING"; hint: "Use a subquery" }
 	"pg-fetch-first": { only: "postgres"; name: "FETCH FIRST"; hint: "Use LIMIT" }
-	"pg-type-timestamptz": {
+	// #175: PostgreSQL DDL a SQLite chain accepted
+	"pg-drop-list": { only: "postgres"; name: "DROP of a name list"; hint: "Use one DROP statement per name" }
+	"pg-drop-cascade": { only: "postgres"; name: "CASCADE / RESTRICT"; hint: "" }
+	"pg-create-or-replace": { only: "postgres"; name: "CREATE OR REPLACE"; hint: "Drop it and create it again" }
+	"pg-materialized-view": { only: "postgres"; name: "MATERIALIZED VIEW"; hint: "Use a table or a view" }
+	"pg-unlogged-table": { only: "postgres"; name: "UNLOGGED TABLE"; hint: "Use CREATE TABLE" }
+	"pg-domain": { only: "postgres"; name: "DOMAIN"; hint: "Use the base type with a CHECK constraint" }
+	"pg-alter-table-if-exists": { only: "postgres"; name: "ALTER TABLE IF EXISTS"; hint: "" }
+	"pg-alter-table-owner": { only: "postgres"; name: "OWNER TO / ROW LEVEL SECURITY"; hint: "" }
+	"pg-column-if-exists": { only: "postgres"; name: "IF [NOT] EXISTS on a column"; hint: "" }
+	"pg-default-expression": {
 		only: "postgres"
-		name: "`timestamptz` type"
-		hint: "Use TEXT (ISO 8601) or INTEGER (unix time)"
+		name: "DEFAULT expression without parentheses"
+		hint: "Write DEFAULT (expression)"
 	}
-	"pg-type-jsonb": { only: "postgres"; name: "`jsonb` type"; hint: "Use TEXT or JSON" }
-	"pg-type-uuid": { only: "postgres"; name: "`uuid` type"; hint: "Use TEXT" }
-	"pg-type-bytea": { only: "postgres"; name: "`bytea` type"; hint: "Use BLOB" }
-}
-
-/** SQLT-53: PostgreSQL-only type names and the construct row each one gives (lower-case, words joined by one space). */
-export type PgOnlyTypeNames = {
-	timestamptz: "pg-type-timestamptz"
-	"timestamp with time zone": "pg-type-timestamptz"
-	"time with time zone": "pg-type-timestamptz"
-	timetz: "pg-type-timestamptz"
-	jsonb: "pg-type-jsonb"
-	uuid: "pg-type-uuid"
-	bytea: "pg-type-bytea"
 }
 
 export type DialectConstruct = keyof DialectOnlyConstructs
@@ -117,6 +113,13 @@ type DialectPhrases = {
 	"conflict on constraint": "pg-on-conflict-constraint"
 	"fetch first": "pg-fetch-first"
 	"fetch next": "pg-fetch-first"
+	"create or replace": "pg-create-or-replace"
+	"create materialized": "pg-materialized-view"
+	"drop materialized": "pg-materialized-view"
+	"create unlogged": "pg-unlogged-table"
+	"create domain": "pg-domain"
+	"drop domain": "pg-domain"
+	"alter table if": "pg-alter-table-if-exists"
 }
 
 type PhraseHead<P> = P extends `${infer Head} ${string}` ? Head : P

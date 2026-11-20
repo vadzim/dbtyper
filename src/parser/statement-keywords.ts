@@ -72,3 +72,103 @@ type IsOneEdit<A extends string, B extends string> = A extends `${infer a}${infe
 			? true
 			: false
 		: false
+
+/**
+ * Second words of `CREATE` / `ALTER` / `DROP` (#158). The parsed ones are dispatched by parse-sql-statement.ts (keep
+ * the two in step); the skipped ones are the `skippedForms` fact of each dialect (rows below). Any other second word
+ * is the error {@link UnknownFormError}: a typo such as `create tabel` is never skipped silently.
+ */
+type ParsedForms = {
+	create: readonly [
+		"table",
+		"schema",
+		"type",
+		"view",
+		"domain",
+		"unlogged",
+		"materialized",
+		"or",
+		"temp",
+		"temporary",
+		"trigger",
+		"virtual",
+	]
+	alter: readonly ["table", "type"]
+	drop: readonly ["table", "schema", "type", "view", "materialized", "domain"]
+}
+
+export type StatementVerb = keyof ParsedForms
+
+/** Objects PostgreSQL creates, alters and drops that change no table, view or type dbtyper types (PGT-21). */
+type PostgresUntypedObjects = readonly [
+	"index",
+	"sequence",
+	"extension",
+	"function",
+	"procedure",
+	"routine",
+	"aggregate",
+	"operator",
+	"cast",
+	"collation",
+	"conversion",
+	"language",
+	"transform",
+	"policy",
+	"rule",
+	"role",
+	"user",
+	"group",
+	"database",
+	"tablespace",
+	"event",
+	"foreign",
+	"server",
+	"publication",
+	"subscription",
+	"statistics",
+	"text",
+	"access",
+]
+
+/** PostgreSQL: `CREATE UNIQUE INDEX`, `CREATE CONSTRAINT TRIGGER`; `ALTER DEFAULT PRIVILEGES`, `ALTER VIEW`, `ALTER SCHEMA` (a RENAME of these is an error, {@link RenameUntracked}); `DROP TRIGGER`, `DROP OWNED`. */
+export type PostgresSkippedForms = {
+	create: readonly [...PostgresUntypedObjects, "unique", "constraint"]
+	alter: readonly [
+		...PostgresUntypedObjects,
+		"trigger",
+		"default",
+		"large",
+		"system",
+		"view",
+		"materialized",
+		"schema",
+		"domain",
+	]
+	drop: readonly [...PostgresUntypedObjects, "trigger", "owned"]
+}
+
+/** SQLite: `CREATE [UNIQUE] INDEX`, `DROP INDEX`, `DROP TRIGGER` (SQLT-23); its ALTER has only TABLE. */
+export type SqliteSkippedForms = {
+	create: readonly ["index", "unique"]
+	alter: readonly []
+	drop: readonly ["index", "trigger"]
+}
+
+/** Skipped ALTER forms whose `RENAME` changes a name dbtyper types: an error, never a silent skip (STMT-Q2). */
+export type RenameUntracked = {
+	view: "Use DROP VIEW and CREATE VIEW"
+	materialized: "Use DROP MATERIALIZED VIEW and CREATE MATERIALIZED VIEW"
+	schema: "Create the new schema and move the objects"
+}
+
+/** #158: the error for an unknown second word of `Verb` (`create tabel`), with the closest known form when there is one. */
+export type UnknownFormError<Verb extends StatementVerb, Word extends string, Skipped extends readonly string[]> =
+	ClosestKeyword<Lowercase<Word>, readonly [...ParsedForms[Verb], ...Skipped]> extends infer Close extends string
+		? [Close] extends [never]
+			? FormatError<Errors["UNKNOWN_STATEMENT_FORM"], [Uppercase<Verb>, Word]>
+			: FormatError<
+					Errors["UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN"],
+					[Uppercase<Verb>, Word, Uppercase<Verb>, Uppercase<Close>]
+				>
+		: never

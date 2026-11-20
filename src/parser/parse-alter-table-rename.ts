@@ -24,7 +24,7 @@ type ParseAlterRenameAfterToKw<
 > =
 	PeekToken<R2> extends TokenKey<"to">
 		? SkipToken<R2> extends infer R3 extends ParserMonad
-			? PeekToken<R3> extends TokenIdent<infer New extends string>
+			? AsIdent<PeekToken<R3>> extends TokenIdent<infer New extends string>
 				? JsqlDbGetColumnType<Db, Sch, Tab, Old> extends null
 					? [R3, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Old]>]
 					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
@@ -57,7 +57,7 @@ type ParseAlterRenameAfterOldName<
 	Sch extends string,
 	Tab extends string,
 > =
-	Told extends TokenIdent<infer Old extends string>
+	AsIdent<Told> extends TokenIdent<infer Old extends string>
 		? PeekToken<R2> extends TokenKey<"to">
 			? ParseAlterRenameAfterToKw<R2, Db, Sch, Tab, Old>
 			: SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_TO_IN_RENAME_COLUMN"], []>>
