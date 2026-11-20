@@ -3,6 +3,8 @@ import type {
 	JsqlDbGetData,
 	JsqlDbGetType,
 	JsqlDbReplaceData,
+	JsqlDbDropEnumUsers,
+	JsqlDbEnumInUse,
 	JsqlDbReplaceType,
 	UnqualifiedSchema,
 } from "../core/jsql-utils.ts"
@@ -148,7 +150,14 @@ type DropAfterName<
 				? SkipFailedStatement<Tokens, Db, OnlyErr>
 				: SkipToken<Tokens> extends infer R extends ParserMonad
 					? PeekToken<R> extends TokenKey<";"> | TokenEot
-						? DropTargets<R, Db, K, IfExists, Names>
+						? DropTargets<
+								R,
+								Db,
+								K,
+								IfExists,
+								Names,
+								PeekToken<Tokens> extends TokenIdent<"cascade"> ? true : false
+							>
 						: SkipFailedStatement<R, Db, DropKinds[K]["end"]>
 					: never
 			: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
@@ -162,13 +171,14 @@ type DropTargets<
 	K extends DropKind,
 	IfExists extends boolean,
 	Names extends readonly DropName[],
+	Cascade extends boolean = false,
 > = Names extends readonly [
 	readonly [infer Sch extends string, infer Name extends string],
 	...infer Rest extends readonly DropName[],
 ]
-	? DropTarget<Db, K, IfExists, Sch, Name> extends infer Res
+	? DropTarget<Db, K, IfExists, Sch, Name, Cascade> extends infer Res
 		? Res extends JsqlDatabaseShape
-			? DropTargets<Tokens, Res, K, IfExists, Rest>
+			? DropTargets<Tokens, Res, K, IfExists, Rest, Cascade>
 			: Res extends DbtyperErrorShape
 				? SkipFailedStatement<Tokens, Db, Res>
 				: never
@@ -182,10 +192,20 @@ type DropTarget<
 	IfExists extends boolean,
 	Sch extends string,
 	Name extends string,
+	Cascade extends boolean = false,
 > = K extends "type" | "domain"
 	? JsqlDbGetType<Db, Sch, Name> extends infer T extends JsqlTypeShape
 		? [K, T] extends ["domain", { kind: "domain" }] | ["type", JsqlTypeShape]
-			? JsqlDbReplaceType<Db, Sch, Name, null>
+			? // TYPE-18: an enum with a column is in use; CASCADE drops those columns (and the views over them)
+				[K, T] extends ["type", { kind: "enum" }]
+				? [JsqlDbEnumInUse<Db, Sch, Name>] extends [true]
+					? Cascade extends true
+						? JsqlDbDropEnumUsers<Db, Sch, Name> extends infer D extends JsqlDatabaseShape
+							? JsqlDbReplaceType<D, Sch, Name, null>
+							: never
+						: FormatError<Errors["TYPE_IS_IN_USE_BY_A_COLUMN"], []>
+					: JsqlDbReplaceType<Db, Sch, Name, null>
+				: JsqlDbReplaceType<Db, Sch, Name, null>
 			: DropKinds[K]["wrongKind"]
 		: IfExists extends true
 			? Db
