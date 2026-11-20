@@ -5,6 +5,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape, ParseExpressionAST }
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ConditionProbeOr, IsConditionType } from "./resolve-operators.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
+import type { ViewReads } from "./parse-select-resolve.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
@@ -29,7 +30,7 @@ export type ParseWhereExpression<
 					? SkipFailedExpression<Rw, WithErrorClause<R, Clause>>
 					: R extends SqlTypeShape
 						? IsConditionType<Db, R> extends true
-							? [Rw, null]
+							? [Rw, ViewReads<Db, Ast, Scope>] // null, but a CREATE VIEW's types read (#210)
 							: SkipFailedExpression<
 									Rw,
 									// CORE-6 (#164): a parameter as the whole condition is a boolean

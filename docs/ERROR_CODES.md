@@ -340,22 +340,23 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 3200-3299: Semantic/Duplicate-Existence
 
-| Code | Name                                                  | Message                                                                               |
-| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                              |
-| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                                  |
-| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                               |
-| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                                  |
-| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                                   |
-| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                                |
-| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                                    |
-| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                                  |
-| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                               |
-| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                               |
-| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                                            |
-| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                                |
-| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18)              |
-| 3213 | `COLUMN_IS_REFERENCED_BY_A_FOREIGN_KEY`               | Column … is referenced by the foreign key …; drop the constraint first or use CASCADE |
+| Code | Name                                                  | Message                                                                                          |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                                         |
+| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                                             |
+| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                                          |
+| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                                             |
+| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                                              |
+| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                                           |
+| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                                               |
+| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                                             |
+| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                                          |
+| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                                          |
+| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                                                       |
+| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                                           |
+| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18)                         |
+| 3213 | `COLUMN_IS_REFERENCED_BY_A_FOREIGN_KEY`               | Column … is referenced by the foreign key …; drop the constraint first or use CASCADE            |
+| 3214 | `TABLE_IS_REFERENCED_BY_A_FOREIGN_KEY`                | Table … is referenced by the foreign key …; drop the constraint first or use CASCADE (SCHEMA-32) |
 
 ## 3300-3399: Semantic/Constraint
 

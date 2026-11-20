@@ -7,8 +7,8 @@
  * columns joined with `_` (`key`: UNIQUE, `fkey`: FOREIGN KEY; `check`: a CHECK whose expression names exactly one
  * column, else `<table>_check`; the primary key is `<table>_pkey`, kept in `primary_key`). Over 63 characters, the
  * longer of the table and column parts is cut one character at a time until the name fits. A name already taken gets
- * the number 1, 2, … after the label (`t_a_key1`). Taken means: by the table's tracked names (PostgreSQL checks the
- * whole schema; a clash with another table's constraint is not modelled). Names are counted in characters, which
+ * the number 1, 2, … after the label (`t_a_key1`). Taken means: by the tracked names of the whole schema (PGT-40, #210: PostgreSQL
+ * checks the schema, not the table) and, in a CREATE TABLE, the names seen so far. Names are counted in characters, which
  * is PostgreSQL's byte count for ASCII names.
  */
 

@@ -80,6 +80,46 @@ type WithViewUserTypes<
 		: Res
 	: Res
 
+/**
+ * #210: the user types an expression of another clause (WHERE, HAVING, GROUP BY, JOIN ON) reads, in the SELECT of a
+ * CREATE VIEW only: `null` (no `pendingView`, or none read) or `{ viewTypes }`. It travels in the slot where the clause
+ * parser put its `null` (no error), and {@link AddViewReads} adds it to the select's `user_types`.
+ */
+export type ViewReads<Db, Ast, Scope extends ScopeMap> = Db extends { pendingView: true }
+	? [AstUserTypes<Ast, Db, Scope>] extends [never]
+		? null
+		: { viewTypes: AstUserTypes<Ast, Db, Scope> }
+	: null
+
+/** `Res` with the user types a clause read (`ViewReads`) added to its `user_types`. */
+export type AddViewReads<Res, W> = W extends { viewTypes: infer U extends string }
+	? Res & { user_types: { [K in U]: K } }
+	: Res
+
+/** The reads of the JOIN … ON conditions, kept by {@link WithJoinReads} as a hidden scope entry. */
+export type JoinReadsKey = "__view_reads__"
+
+/** `Scope` with the user types `W` (`ViewReads`) read by a JOIN … ON condition added to its hidden entry. */
+export type WithJoinReads<Scope extends ScopeMap, W> = W extends { viewTypes: infer U extends string }
+	? {
+			[K in keyof Scope | JoinReadsKey]: K extends JoinReadsKey
+				? {
+						schema: "__cte__"
+						table: "__subquery__"
+						columns: {}
+						user_types: { [T in U | AllUserTypes<Scope[JoinReadsKey & keyof Scope]>]: T }
+					}
+				: Scope[K & keyof Scope]
+		}
+	: Scope
+
+/** `Res` with the user types the JOIN … ON conditions of `Scope` read. */
+export type AddJoinReads<Res, Db, Scope extends ScopeMap> = Db extends { pendingView: true }
+	? JoinReadsKey extends keyof Scope
+		? AddViewReads<Res, { viewTypes: AllUserTypes<Scope[JoinReadsKey]> }>
+		: Res
+	: Res
+
 /** The user types an item reads (distributes over a union of items). */
 type ItemUserTypes<H, Db, FromScope extends ScopeMap, Scope extends ScopeMap> = H extends { kind: "star" }
 	? ScopeEntryOfSingle<FromScope> extends infer E extends ScopeEntry

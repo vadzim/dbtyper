@@ -17,7 +17,7 @@ import type { MergeSetOperation } from "./set-operation-types.ts"
 import type { ParseSelectWithCtes } from "./parse-select-cte.ts"
 import type { ParseRawSelectList } from "./parse-select-list.ts"
 import type { ParseFromJoinScope } from "./parse-select-from.ts"
-import type { ResolveSelectListFrom } from "./parse-select-resolve.ts"
+import type { AddJoinReads, AddViewReads, ResolveSelectListFrom, ViewReads } from "./parse-select-resolve.ts"
 import type { ParseOptionalGroupHaving, SelectGroupClauseMeta } from "./parse-select-group-by.ts"
 import type { GroupedProjValidationOutcome } from "./parse-select-grouped.ts"
 import type { ParseOptionalOrderByTokens, ParseOptionalPagingTokens } from "./parse-select-order-limit.ts"
@@ -152,11 +152,22 @@ export type ParseSetOperationTail<
 						ComparisonClassesOf<Db>
 					> extends infer Merged
 					? Merged extends JsqlSelectStatementResult
-						? ParseSetOperationTail<R, Db, Merged, Params, CteBase, OuterScope, true>
+						? ParseSetOperationTail<
+								R,
+								Db,
+								Merged & ArmUserTypes<Left> & ArmUserTypes<Right>, // #210: a view reads the types of both arms
+								Params,
+								CteBase,
+								OuterScope,
+								true
+							>
 						: [R, Db, Merged]
 					: never
 				: never
 		: never
+
+/** The `user_types` of a CREATE VIEW's select arms (#207), which a set operation's merged result keeps. */
+type ArmUserTypes<Arm> = Arm extends { user_types: infer U } ? { user_types: U } : {}
 
 /** After the set operator keyword: optional `ALL` / `DISTINCT`, then `SELECT …`. Returns `[Tokens, Result | error]`. */
 export type ParseSetOperationRightArm<
@@ -310,7 +321,7 @@ type ParseSelectAfterDistinct<
 																	: FinishSelectStatement<
 																			R,
 																			Db,
-																			Res,
+																			AddJoinReads<Res, Db, JoinScopeOnly<Tail>>,
 																			MergedScope,
 																			Params,
 																			Items,
@@ -370,7 +381,7 @@ type ParseSelectAfterDistinct<
 type SelectAfterWhereAndGroupHaving<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
-	Res,
+	Res0,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Items extends readonly RawSelectItem[],
@@ -386,25 +397,31 @@ type SelectAfterWhereAndGroupHaving<
 			: GroupedProjValidationOutcome<Db, Items, Meta, Scope> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
-					: Trailing extends false
-						? [T1, Db, Res] // an arm after a set operator: ORDER BY / paging belong to the whole compound
-						: ParseSelectTrailingClauses<T1, Db, Scope, Params, SelectOutputNames<Res>> extends [
-									infer Rt extends ParserMonad,
-									infer Te,
-							  ]
-							? Te extends DbtyperErrorShape
-								? [Rt, Db, Te]
-								: [PeekToken<T1>, PeekToken<Rt>] extends [
-											TokenKey<"order" | "limit" | "offset" | "fetch">,
-											SetOperationToken,
-									  ]
-									? SkipFailedStatement<
-											Rt,
-											Db,
-											FormatError<Errors["ORDER_OR_LIMIT_BEFORE_SET_OPERATOR"], []>
-										>
-									: [Rt, Db, Res]
-							: never
+					: // #210: a view's types HAVING and GROUP BY read
+						AddViewReads<
+								AddViewReads<Res0, Gh>,
+								ViewReads<Db, Meta["group_key_asts"], Scope>
+						  > extends infer Res
+						? Trailing extends false
+							? [T1, Db, Res] // an arm after a set operator: ORDER BY / paging belong to the whole compound
+							: ParseSelectTrailingClauses<T1, Db, Scope, Params, SelectOutputNames<Res>> extends [
+										infer Rt extends ParserMonad,
+										infer Te,
+								  ]
+								? Te extends DbtyperErrorShape
+									? [Rt, Db, Te]
+									: [PeekToken<T1>, PeekToken<Rt>] extends [
+												TokenKey<"order" | "limit" | "offset" | "fetch">,
+												SetOperationToken,
+										  ]
+										? SkipFailedStatement<
+												Rt,
+												Db,
+												FormatError<Errors["ORDER_OR_LIMIT_BEFORE_SET_OPERATOR"], []>
+											>
+										: [Rt, Db, Res]
+								: never
+						: never
 				: never
 		: never
 
@@ -444,7 +461,7 @@ type FinishSelectStatement<
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends ParserMonad, infer We]
 				? We extends DbtyperErrorShape
 					? [Rw, Db, We]
-					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params, Items, Trailing>
+					: SelectAfterWhereAndGroupHaving<Rw, Db, AddViewReads<Res, We>, Scope, Params, Items, Trailing>
 				: never
 			: never
 		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params, Items, Trailing>

@@ -1211,6 +1211,10 @@ const errors = {
 		code: 3213,
 		msg: ["Column ", " is referenced by the foreign key ", "; drop the constraint first or use CASCADE"],
 	},
+	TABLE_IS_REFERENCED_BY_A_FOREIGN_KEY: {
+		code: 3214,
+		msg: ["Table ", " is referenced by the foreign key ", "; drop the constraint first or use CASCADE (SCHEMA-32)"],
+	},
 
 	// Constraint Violations
 	MISSING_NOT_NULL_COLUMN_IN_INSERT: {
