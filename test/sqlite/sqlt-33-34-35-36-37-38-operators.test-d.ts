@@ -17,6 +17,13 @@ const _is = await db.query(
 expectType<typeof _is>(toBe<Array<{ a: number; b: number; c: number; d: number }>>())
 const _isNull = await db.query(`select email is null as a, email is not null as b from users`)
 expectType<typeof _isNull>(toBe<Array<{ a: number; b: number }>>())
+// SQLT-33: `IS DISTINCT` without FROM
+const isDistinctQuery = `select email is distinct name from users` as const
+// @ts-expect-error
+db.query(isDistinctQuery)
+expectType<GetQueryError<typeof db, typeof isDistinctQuery>>(
+	toBe<DbtyperError<5008, "Expected FROM after IS DISTINCT">>(),
+)
 
 // SQLT-34: LIKE (with ESCAPE), GLOB and the NOT forms are integers; REGEXP needs a `regexp` function
 const _like = await db.query(
@@ -35,6 +42,12 @@ const regexpQuery = `select id from users where name regexp 'a'` as const
 db.query(regexpQuery)
 expectType<GetQueryError<typeof db, typeof regexpQuery>>(
 	toBe<DbtyperError<1917, "REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB">>(),
+)
+const notQuery = `select id from users where name not 'a'` as const
+// @ts-expect-error
+db.query(notQuery)
+expectType<GetQueryError<typeof db, typeof notQuery>>(
+	toBe<DbtyperError<5009, "Expected LIKE, IN or BETWEEN after NOT">>(),
 )
 
 // SQLT-35: integer arithmetic stays integer, REAL makes it REAL; `||` is TEXT for any operands
