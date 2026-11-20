@@ -164,15 +164,16 @@ type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string>
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? BaseTypeName extends "varchar" | "character varying" | "char"
-				? ParseVarcharLength<R0> extends [infer R1 extends ParserMonad, infer Len extends number]
-					? [R1, { type: BaseTypeName; arg: Len; nullable: false }]
+				? ParseVarcharLength<R0> extends [infer R1 extends ParserMonad, infer Len]
+					? Len extends number
+						? [R1, { type: BaseTypeName; arg: Len; nullable: false }]
+						: [R1, Len]
 					: never
 				: BaseTypeName extends "numeric" | "decimal"
-					? ParseNumericPrecisionScale<R0> extends [
-							infer R1 extends ParserMonad,
-							infer Arg extends { precision: number; scale: number },
-						]
-						? [R1, { type: BaseTypeName; arg: Arg; nullable: false }]
+					? ParseNumericPrecisionScale<R0> extends [infer R1 extends ParserMonad, infer Arg]
+						? Arg extends { precision: number; scale: number }
+							? [R1, { type: BaseTypeName; arg: Arg; nullable: false }]
+							: [R1, Arg]
 						: never
 					: // Other parameterized types, e.g. time(3): the argument does not change the TypeScript type, so it is skipped (arg: null)
 						SkipBracketedUntil<R0, TokenKey<")">> extends [infer R1 extends ParserMonad, infer _]
@@ -198,7 +199,7 @@ type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string, 
 					: never
 				: [R, Shape]
 			: [R, Shape]
-		: never
+		: ParseTypeModifiers<Tokens, Name>
 
 /**
  * Main entry point: parse SQL type and return SqlTypeShape. With `KeepDeclared` the shape also says the lower-case
@@ -264,9 +265,9 @@ type ParseUnqualifiedSqlType<
 											: [R, Shaped]
 										: never
 									: ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn>
-								: never
+								: ParseArraySuffix<AfterMods, BaseShape> // `[` without `]`: the error
 							: never
-						: never
+						: ParseTypeModifiersAndZone<AfterWords, NormalizedName, Named> // a bad modifier: the error
 					: DialectColumnTypeName<Db, TypeName> extends infer TypeErr extends DbtyperErrorShape
 						? SkipFailedExpression<AfterWords, TypeErr>
 						: never
