@@ -5,7 +5,7 @@ import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { ParseAlterTable } from "./parse-alter-table.ts"
 import type { ParseAlterType } from "./parse-alter-type.ts"
 import type { ParseCreateDomain } from "./parse-create-domain.ts"
@@ -17,14 +17,15 @@ import type { ParseDelete } from "./parse-delete.ts"
 import type { ParseDropSchema } from "./parse-drop-schema.ts"
 import type { ParseDropTable } from "./parse-drop.ts"
 import type { ParseDropType } from "./parse-drop.ts"
-import type { ParseDropView } from "./parse-drop.ts"
+import type { ParseDropView, ParseDropDomain } from "./parse-drop.ts"
 import type { ParseInsert } from "./parse-insert.ts"
-import type { ParseSelectStatement } from "./parse-select.ts"
+import type { ParseSelectStatement, ParseSetOperationTail } from "./parse-select.ts"
+import type { ParseParenEnclosedSelect } from "./parse-select-subquery.ts"
 import type { ParseUpdate } from "./parse-update.ts"
-import type { ParseSkipStatement, ParseSkipTrigger, SkipFailedStatement } from "./skip-statement.ts"
+import type { ParseSkipStatement, ParseSkipTrigger, SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { Inc } from "../core/type-utils.ts"
-import type { UnknownStatementError } from "./statement-keywords.ts"
+import type { RenameUntracked, StatementVerb, UnknownFormError, UnknownStatementError } from "./statement-keywords.ts"
 
 export type ApplyStatements<
 	Db extends JsqlDatabaseShape,
@@ -172,13 +173,39 @@ export type ParseSqlStatement<
 										: PeekToken<Tokens> extends TokenKey<"replace">
 											? // SQLT-39: `REPLACE INTO` is `INSERT OR REPLACE INTO`
 												ParseInsert<SkipToken<Tokens>, Db, Params>
-											: ParseOtherStatement<Tokens, Db> extends [
-														infer R extends ParserMonad,
-														infer D extends JsqlDatabaseShape,
-														infer Res,
-												  ]
-												? AsDdlResult<R, D, Res>
-												: never
+											: PeekToken<Tokens> extends TokenKey<"(">
+												? ParseParenthesizedQuery<SkipToken<Tokens>, Db, Params>
+												: ParseOtherStatement<Tokens, Db> extends [
+															infer R extends ParserMonad,
+															infer D extends JsqlDatabaseShape,
+															infer Res,
+													  ]
+													? AsDdlResult<R, D, Res>
+													: never
+
+/** #157: `(SELECT …) [UNION (SELECT …) …];` is typed like the query without the parentheses (`Tokens` after `(`). */
+type ParseParenthesizedQuery<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+> =
+	ParseParenEnclosedSelect<Tokens, Db, Params> extends [infer R1 extends ParserMonad, infer Res]
+		? Res extends DbtyperErrorShape
+			? [R1, Db, Res]
+			: Res extends JsqlSelectStatementResult
+				? ParseSetOperationTail<R1, Db, Res, Params, {}, {}> extends [
+						infer R2 extends ParserMonad,
+						infer _Db,
+						infer Res2,
+					]
+					? Res2 extends DbtyperErrorShape
+						? [R2, Db, Res2]
+						: PeekToken<R2> extends TokenKey<";"> | TokenEot
+							? [SkipToken<R2>, Db, Res2]
+							: SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["SELECT"]>>
+					: never
+				: never
+		: never
 
 /** The result of a statement that returns no rows and no row list (DDL, skipped statements). */
 type DdlMarker = { returning: null; ddl: true }
@@ -203,9 +230,8 @@ type ParseOtherStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShap
 		: SkipKnownOrFail<Tokens, Db, DialectFact<Db, "skippedStatements">>
 
 type SkipKnownOrFail<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Known extends readonly string[]> =
-	PeekToken<Tokens> extends TokenKey<"("> | TokenEot
-		? // `(select …)` and the like: a parenthesised query is not a keyword statement; stepped over as before
-			ParseSkipStatement<Tokens, Db>
+	PeekToken<Tokens> extends TokenEot
+		? ParseSkipStatement<Tokens, Db>
 		: PeekToken<Tokens> extends { value: infer Word extends string }
 			? Lowercase<Word> extends Known[number]
 				? ParseSkipStatement<Tokens, Db>
@@ -217,13 +243,59 @@ type ConcatErrors<
 	Result extends DbtyperErrorShape,
 > = Errors extends DbtyperErrorShape ? Errors : Result
 
+/**
+ * The second word of CREATE / ALTER / DROP (#158): a parsed form, a skipped form of the dialect (`skippedForms`), or an
+ * error. `Tokens` is at the second word.
+ */
+type SkipStatementForm<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Verb extends StatementVerb> =
+	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+		? SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_STATEMENT_FORM"], [Uppercase<Verb>]>>
+		: PeekToken<Tokens> extends { value: infer Word extends string }
+			? Lowercase<Word> extends DialectFact<Db, "skippedForms">[Verb][number]
+				? Verb extends "alter"
+					? Lowercase<Word> extends keyof RenameUntracked
+						? SkipAlterUnlessRename<SkipToken<Tokens>, Db, Lowercase<Word>>
+						: ParseSkipStatement<Tokens, Db>
+					: ParseSkipStatement<Tokens, Db>
+				: SkipFailedStatement<Tokens, Db, UnknownFormError<Verb, Word, DialectFact<Db, "skippedForms">[Verb]>>
+			: ParseSkipStatement<Tokens, Db>
+
+/** STMT-Q2: `ALTER VIEW | MATERIALIZED VIEW | SCHEMA … RENAME …` would leave the typed schema behind: an error. */
+type SkipAlterUnlessRename<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Word extends keyof RenameUntracked,
+> =
+	SkipBracketedUntil<Tokens, TokenKey<"rename" | ";"> | TokenEot> extends [infer R extends ParserMonad, infer Res]
+		? Res extends DbtyperErrorShape
+			? [SkipToken<R>, Db, Res]
+			: PeekToken<R> extends TokenKey<"rename">
+				? SkipFailedStatement<
+						R,
+						Db,
+						FormatError<
+							Errors["UNTRACKED_SCHEMA_CHANGE"],
+							[
+								`ALTER ${Word extends "materialized" ? "MATERIALIZED VIEW" : Uppercase<Word>} … RENAME`,
+								RenameUntracked[Word],
+							]
+						>
+					>
+				: [SkipToken<R>, Db, Res]
+		: never
+
 type ParseAlter<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">
 		? ParseAlterTable<Tokens, Db>
 		: PeekToken<Tokens> extends TokenKey<"type">
 			? ParseAlterType<SkipToken<Tokens>, Db>
-			: ParseSkipStatement<Tokens, Db>
+			: SkipStatementForm<Tokens, Db, "alter">
 
+/**
+ * CREATE forms. One-dialect forms need no condition here: the phrase table (src/core/dialect-constructs.ts) reports
+ * `CREATE OR REPLACE`, `MATERIALIZED`, `UNLOGGED`, `DOMAIN` in a SQLite chain (DSEL-5), and they are parsed as in
+ * PostgreSQL. Only TEMP reads a fact (`tempObjects`, SQLT-23, SQLT-25).
+ */
 type ParseCreate<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -238,53 +310,74 @@ type ParseCreate<
 				? ParseCreateType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">
 					? ParseCreateView<SkipToken<Tokens>, Db, Params>
-					: DialectFact<Db, "tempObjects"> extends true
-						? ParseSqliteCreate<Tokens, Db, Params>
-						: PeekToken<Tokens> extends TokenIdent<"domain"> | TokenKey<"domain">
-							? ParseCreateDomain<SkipToken<Tokens>, Db>
-							: ParsePgCreateView<Tokens, Db, Params>
+					: PeekToken<Tokens> extends TokenIdent<"domain"> | TokenKey<"domain">
+						? ParseCreateDomain<SkipToken<Tokens>, Db>
+						: PeekToken<Tokens> extends TokenIdent<"temp" | "temporary">
+							? ParseCreateTemp<SkipToken<Tokens>, Db, Params>
+							: PeekToken<Tokens> extends TokenIdent<"trigger">
+								? // `CREATE TRIGGER … BEGIN … END` (SQLT-23) is one statement; without BEGIN it ends at `;`
+									ParseSkipTrigger<SkipToken<Tokens>, Db>
+								: PeekToken<Tokens> extends TokenKey<"virtual"> | TokenIdent<"virtual">
+									? SkipFailedStatement<
+											Tokens,
+											Db,
+											FormatError<
+												Errors["SQLITE_UNSUPPORTED_STATEMENT"],
+												["CREATE VIRTUAL TABLE"]
+											>
+										>
+									: ParseCreateNamedForm<Tokens, Db, Params>
 
-/** PostgreSQL (PGT-20): `CREATE OR REPLACE VIEW`, `CREATE MATERIALIZED VIEW` (typed as a view); other statements are skipped. */
-type ParsePgCreateView<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
+/** PGT-20: `CREATE OR REPLACE VIEW`, `CREATE MATERIALIZED VIEW` (typed as a view), `CREATE UNLOGGED TABLE`. */
+type ParseCreateNamedForm<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+> =
 	PeekToken<Tokens> extends TokenKey<"or">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"replace">
 				? SkipToken<R1> extends infer R2 extends ParserMonad
 					? PeekToken<R2> extends TokenKey<"view">
 						? ParseCreateView<SkipToken<R2>, Db, Params, false, true>
-						: ParseSkipStatement<R2, Db>
+						: PeekToken<R2> extends TokenIdent<"trigger">
+							? ParseSkipTrigger<SkipToken<R2>, Db>
+							: SkipStatementForm<R2, Db, "create">
 					: never
-				: ParseSkipStatement<R1, Db>
+				: SkipStatementForm<Tokens, Db, "create">
 			: never
 		: PeekToken<Tokens> extends TokenIdent<"materialized">
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? PeekToken<R1> extends TokenKey<"view">
 					? ParseCreateView<SkipToken<R1>, Db, Params>
-					: ParseSkipStatement<R1, Db>
+					: SkipStatementForm<Tokens, Db, "create">
 				: never
-			: ParseSkipStatement<Tokens, Db>
+			: PeekToken<Tokens> extends TokenIdent<"unlogged">
+				? SkipToken<Tokens> extends infer R1 extends ParserMonad
+					? PeekToken<R1> extends TokenKey<"table">
+						? ParseCreateTable<SkipToken<R1>, Db, Params>
+						: SkipStatementForm<Tokens, Db, "create">
+					: never
+				: SkipStatementForm<Tokens, Db, "create">
 
-/** SQLite: `CREATE [TEMP|TEMPORARY] TABLE|VIEW|TRIGGER`, `CREATE VIRTUAL TABLE`; the rest (INDEX…) is skipped (SQLT-22…SQLT-24). */
-type ParseSqliteCreate<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
-	PeekToken<Tokens> extends TokenIdent<"temp" | "temporary">
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<"table">
-				? ParseCreateTable<SkipToken<R1>, Db, Params, true>
-				: PeekToken<R1> extends TokenKey<"view">
-					? ParseCreateView<SkipToken<R1>, Db, Params, true>
-					: PeekToken<R1> extends TokenIdent<"trigger">
-						? ParseSkipTrigger<SkipToken<R1>, Db>
-						: ParseSkipStatement<R1, Db>
-			: never
-		: PeekToken<Tokens> extends TokenIdent<"trigger">
-			? ParseSkipTrigger<SkipToken<Tokens>, Db>
-			: PeekToken<Tokens> extends TokenKey<"virtual"> | TokenIdent<"virtual">
-				? SkipFailedStatement<
-						Tokens,
-						Db,
-						FormatError<Errors["SQLITE_UNSUPPORTED_STATEMENT"], ["CREATE VIRTUAL TABLE"]>
-					>
-				: ParseSkipStatement<Tokens, Db>
+/** `CREATE TEMP|TEMPORARY TABLE|VIEW|TRIGGER` where temp objects are typed (`tempObjects`), else an error (STMT-Q2). */
+type ParseCreateTemp<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
+	DialectFact<Db, "tempObjects"> extends true
+		? PeekToken<Tokens> extends TokenKey<"table">
+			? ParseCreateTable<SkipToken<Tokens>, Db, Params, true>
+			: PeekToken<Tokens> extends TokenKey<"view">
+				? ParseCreateView<SkipToken<Tokens>, Db, Params, true>
+				: PeekToken<Tokens> extends TokenIdent<"trigger">
+					? ParseSkipTrigger<SkipToken<Tokens>, Db>
+					: SkipStatementForm<Tokens, Db, "create">
+		: SkipFailedStatement<
+				Tokens,
+				Db,
+				FormatError<
+					Errors["UNTRACKED_SCHEMA_CHANGE"],
+					["CREATE TEMP", "Create a regular table, or run it with queryUntyped outside the migrations"]
+				>
+			>
 
 type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"table">
@@ -297,10 +390,12 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 				? ParseDropType<SkipToken<Tokens>, Db>
 				: PeekToken<Tokens> extends TokenKey<"view">
 					? ParseDropView<SkipToken<Tokens>, Db>
-					: PeekToken<Tokens> extends TokenIdent<"materialized"> // PGT-20
-						? SkipToken<Tokens> extends infer R1 extends ParserMonad
-							? PeekToken<R1> extends TokenKey<"view">
-								? ParseDropView<SkipToken<R1>, Db>
-								: ParseSkipStatement<R1, Db>
-							: never
-						: ParseSkipStatement<Tokens, Db>
+					: PeekToken<Tokens> extends TokenIdent<"domain"> | TokenKey<"domain">
+						? ParseDropDomain<SkipToken<Tokens>, Db>
+						: PeekToken<Tokens> extends TokenIdent<"materialized"> // PGT-20
+							? SkipToken<Tokens> extends infer R1 extends ParserMonad
+								? PeekToken<R1> extends TokenKey<"view">
+									? ParseDropView<SkipToken<R1>, Db>
+									: SkipStatementForm<Tokens, Db, "drop">
+								: never
+							: SkipStatementForm<Tokens, Db, "drop">

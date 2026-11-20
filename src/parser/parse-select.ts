@@ -21,6 +21,7 @@ import type { ParseOptionalGroupHaving, SelectGroupClauseMeta } from "./parse-se
 import type { GroupedProjValidationOutcome } from "./parse-select-grouped.ts"
 import type { ParseOptionalOrderByTokens, ParseOptionalPagingTokens } from "./parse-select-order-limit.ts"
 import type { ParseDistinctOnList, DistinctOnError } from "./parse-select-distinct-on.ts"
+import type { ParseParenEnclosedSelect } from "./parse-select-subquery.ts"
 
 /** Avoid `extends TokenKey<"on">` — the closing `>` can be parsed as a comparison operator. */
 export type TokenKeyOn = TokenKey<"on">
@@ -123,7 +124,7 @@ type SetOperationKeyword<T> =
 				? "EXCEPT"
 				: never
 
-type ParseSetOperationTail<
+export type ParseSetOperationTail<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Left extends JsqlSelectStatementResult,
@@ -168,17 +169,20 @@ type ParseSetOperationSelect<
 	CteBase extends ScopeMap,
 	OuterScope extends ScopeMap,
 > =
-	PeekToken<R0> extends TokenKey<"select">
-		? SkipToken<R0> extends infer R1 extends ParserMonad
-			? ParseSelectArm<R1, Db, Params, CteBase, OuterScope> extends [
-					infer R extends ParserMonad,
-					infer _Db2,
-					infer Res,
-				]
-				? [R, Res]
+	PeekToken<R0> extends TokenKey<"(">
+		? // #157: a parenthesised arm `UNION (SELECT …)`
+			ParseParenEnclosedSelect<SkipToken<R0>, Db, Params, OuterScope, CteBase>
+		: PeekToken<R0> extends TokenKey<"select">
+			? SkipToken<R0> extends infer R1 extends ParserMonad
+				? ParseSelectArm<R1, Db, Params, CteBase, OuterScope> extends [
+						infer R extends ParserMonad,
+						infer _Db2,
+						infer Res,
+					]
+					? [R, Res]
+					: never
 				: never
-			: never
-		: SkipFailedExpression<R0, FormatError<Errors["EXPECTED_SELECT_AFTER_SET_OPERATOR"], []>>
+			: SkipFailedExpression<R0, FormatError<Errors["EXPECTED_SELECT_AFTER_SET_OPERATOR"], []>>
 
 /**
  * Parse SELECT statement (consumes terminator `;`).

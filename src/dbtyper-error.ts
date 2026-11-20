@@ -222,6 +222,33 @@ const errors = {
 			"? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
 		],
 	},
+	// Unknown second word of CREATE / ALTER / DROP, untracked schema changes (#157, #158, STMT-Q2)
+	UNKNOWN_STATEMENT_FORM: {
+		code: 1932,
+		msg: [
+			"Unknown statement ",
+			" ",
+			". If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
+		],
+	},
+	UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN: {
+		code: 1933,
+		msg: [
+			"Unknown statement ",
+			" ",
+			"; did you mean ",
+			" ",
+			"? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
+		],
+	},
+	EXPECTED_STATEMENT_FORM: {
+		code: 1934,
+		msg: ["Expected what to ", " (TABLE, VIEW, INDEX, …)"],
+	},
+	UNTRACKED_SCHEMA_CHANGE: {
+		code: 1935,
+		msg: ["", " is not supported: dbtyper cannot follow the schema change it makes. ", ""],
+	},
 
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
@@ -1147,6 +1174,14 @@ const errors = {
 	ENUM_VALUE_ALREADY_EXISTS: {
 		code: 3305,
 		msg: ["Enum value already exists"],
+	},
+	TYPE_IS_NOT_A_DOMAIN: {
+		code: 3306,
+		msg: ["Type is not a domain; use DROP TYPE"],
+	},
+	ENUM_VALUE_DOES_NOT_EXIST: {
+		code: 3307,
+		msg: ["", " is not a value of the enum"],
 	},
 
 	// SELECT Constraints
