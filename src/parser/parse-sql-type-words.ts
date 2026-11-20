@@ -11,13 +11,73 @@ import type { JsqlDbFindUserType } from "../core/jsql-utils.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { DialectColumnTypeName, NormalizeSqlTypeName } from "../core/dialect-types.ts"
 
-/** Collect type name words (e.g., "double", "precision" → ["double", "precision"]) */
-type CollectSqlTypeWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
-	PeekToken<Tokens> extends TokenIdent<infer W extends string>
+/**
+ * Collect type name words (e.g., "double", "precision" → ["double", "precision"]). With `Named` (a dialect whose
+ * declared type name is the type, PostgreSQL) a word after the first one joins the name only where a known type name
+ * of several words goes on ({@link TypeNameContinuations}), so `c int nut null` is an error at `nut`, not a type
+ * `int nut` (#159). Without it every word joins (SQLite takes any words as the type name, SQLT-6).
+ */
+type CollectSqlTypeWords<
+	Tokens extends ParserMonad,
+	Acc extends readonly string[],
+	Named extends boolean,
+	Prefix extends string = "",
+> =
+	PeekToken<Tokens> extends TokenIdent<infer W extends string> | TokenKey<infer W extends string>
 		? Lowercase<W> extends "collate"
 			? [Tokens, Acc]
-			: CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W]>
+			: [Named, Prefix] extends [true, ""]
+				? PeekToken<Tokens> extends TokenIdent<string>
+					? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W], Named, Lowercase<W>>
+					: [Tokens, Acc]
+				: Named extends true
+					? Lowercase<W> extends ContinuationOf<Prefix>
+						? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W], Named, `${Prefix} ${Lowercase<W>}`>
+						: [Tokens, Acc]
+					: PeekToken<Tokens> extends TokenIdent<string>
+						? CollectSqlTypeWords<SkipToken<Tokens>, [...Acc, W], Named, Prefix>
+						: [Tokens, Acc]
 		: [Tokens, Acc]
+
+/** The fields of an interval type (PGT-8). */
+type IntervalField = "year" | "month" | "day" | "hour" | "minute" | "second"
+
+/** PostgreSQL type names of several words: the words that may follow the name read so far. */
+type TypeNameContinuations = {
+	double: "precision"
+	character: "varying"
+	char: "varying"
+	bit: "varying"
+	national: "character" | "char"
+	"national character": "varying"
+	"national char": "varying"
+	timestamp: "with" | "without"
+	time: "with" | "without"
+	"timestamp with": "time"
+	"timestamp without": "time"
+	"time with": "time"
+	"time without": "time"
+	"timestamp with time": "zone"
+	"timestamp without time": "zone"
+	"time with time": "zone"
+	"time without time": "zone"
+	interval: IntervalField
+	"interval year": "to"
+	"interval year to": "month"
+	"interval day": "to"
+	"interval day to": "hour" | "minute" | "second"
+	"interval hour": "to"
+	"interval hour to": "minute" | "second"
+	"interval minute": "to"
+	"interval minute to": "second"
+}
+
+type ContinuationOf<Prefix extends string> = Prefix extends keyof TypeNameContinuations
+	? TypeNameContinuations[Prefix]
+	: never
+
+/** PGT-8: the fields of an interval (`interval day to second`) do not change its type. */
+type WithoutIntervalFields<Name extends string> = Name extends `interval ${string}` ? "interval" : Name
 
 /** Convert type words to lowercase space-separated string */
 type TypeWordsToString<A extends readonly string[]> = A extends readonly [
@@ -122,11 +182,14 @@ type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string>
 		: [Tokens, { type: BaseTypeName; arg: null; nullable: false }]
 
 /** `timestamp(3) with time zone`: words after the modifier of timestamp/time (TYPE-4) */
-type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string> =
+type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string, Named extends boolean> =
 	ParseTypeModifiers<Tokens, Name> extends [infer R extends ParserMonad, infer Shape extends SqlTypeShape]
 		? Name extends "timestamp" | "time"
 			? PeekToken<Tokens> extends TokenKey<"(">
-				? CollectSqlTypeWords<R> extends [infer R2 extends ParserMonad, infer Extra extends readonly string[]]
+				? CollectSqlTypeWords<R, [], Named, Named extends true ? Name : "x"> extends [
+						infer R2 extends ParserMonad,
+						infer Extra extends readonly string[],
+					]
 					? Extra extends readonly []
 						? [R2, Shape]
 						: NormalizeSqlTypeName<`${Name} ${TypeWordsToString<Extra>}`> extends infer N extends string
@@ -151,15 +214,15 @@ export type ParseSqlType<
 	DialectFact<Db, "declaredTypes"> extends "named"
 		? PeekToken<Tokens> extends TokenIdent<infer Q extends string>
 			? Lowercase<Q> extends "collate"
-				? ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
+				? ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema, true>
 				: SkipToken<Tokens> extends infer R1 extends ParserMonad
 					? PeekToken<R1> extends TokenKey<".">
 						? // PGT-13: `schema.type` (`app.status`): the schema says where a named type is looked up
 							ParseSqlType<SkipToken<R1>, Db, KeepDeclared, Q>
-						: ParseUnqualifiedSqlType<R1, Db, KeepDeclared, Schema, [Q]>
+						: ParseUnqualifiedSqlType<R1, Db, KeepDeclared, Schema, true, [Q], Lowercase<Q>>
 					: never
-			: ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
-		: ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema>
+			: ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema, true>
+		: ParseUnqualifiedSqlType<Tokens, Db, KeepDeclared, Schema, false>
 
 /** The type words (the first ones may be read already, `Words0`) and what follows them. */
 type ParseUnqualifiedSqlType<
@@ -167,17 +230,19 @@ type ParseUnqualifiedSqlType<
 	Db,
 	KeepDeclared extends boolean,
 	Schema extends string,
+	Named extends boolean,
 	Words0 extends readonly string[] = [],
+	Prefix0 extends string = "",
 > =
-	CollectSqlTypeWords<Tokens, Words0> extends [
+	CollectSqlTypeWords<Tokens, Words0, Named, Prefix0> extends [
 		infer AfterWords extends ParserMonad,
 		infer Words extends readonly string[],
 	]
 		? Words extends readonly []
 			? SkipFailedExpression<AfterWords, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
-			: TypeWordsToString<Words> extends infer TypeName extends string
+			: WithoutIntervalFields<TypeWordsToString<Words>> extends infer TypeName extends string
 				? DialectColumnTypeName<Db, TypeName> extends infer NormalizedName extends string
-					? ParseTypeModifiersAndZone<AfterWords, NormalizedName> extends [
+					? ParseTypeModifiersAndZone<AfterWords, NormalizedName, Named> extends [
 							infer AfterMods extends ParserMonad,
 							infer BaseShape0 extends SqlTypeShape,
 						]

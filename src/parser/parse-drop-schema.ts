@@ -50,7 +50,15 @@ type ParseDropSchemaName<Tokens extends ParserMonad, Db extends JsqlDatabaseShap
 	PeekToken<Tokens> extends infer NameTok
 		? SkipToken<Tokens> extends infer AfterName extends ParserMonad
 			? NameTok extends TokenIdent<infer SchemaName extends string>
-				? ParseDropSchemaAfterIdent<AfterName, Db, IfExists, SchemaName>
+				? ParseDropSchemaAfterIdent<
+						// SCHEMA-29: `CASCADE | RESTRICT` change nothing the types see (the schema goes with its objects)
+						PeekToken<AfterName> extends TokenIdent<"cascade" | "restrict">
+							? SkipToken<AfterName>
+							: AfterName,
+						Db,
+						IfExists,
+						SchemaName
+					>
 				: SkipFailedStatement<AfterName, Db, FormatError<Errors["EXPECTED_SCHEMA_NAME_IN_DROP_SCHEMA"], []>>
 			: never
 		: never

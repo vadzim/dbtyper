@@ -40,7 +40,8 @@ expectType<Q<`select id from users where tags && 'x'`>>(toBe<E<"`&&` operator", 
 expectType<Q<`select u.id from users u, lateral (select 1) x`>>(toBe<E<"LATERAL", "Use a correlated subquery">>())
 expectType<Q<`select id from users fetch first 1 rows only`>>(toBe<E<"FETCH FIRST", "Use LIMIT">>())
 expectType<Q<`select id::text as x from users`>>(toBe<E<"`::` cast", "Use CAST(x AS TEXT)">>())
-expectType<Q<`select cast(name as jsonb) as x from users`>>(toBe<E<"`jsonb` type", "Use TEXT or JSON">>())
+// SQLT-Q8 B: a PostgreSQL type name is typed by its SQLite affinity, in a CAST too
+expectType<Q<`select cast(name as jsonb) as x from users`>>(toBe<null>())
 expectType<Q<`delete from users using users u2 where users.id = u2.id`>>(toBe<E<"DELETE … USING", "Use a subquery">>())
 
 // migrations
@@ -48,12 +49,12 @@ expectType<M<`create type mood as enum ('a');`>>(toBe<E<"CREATE TYPE", "Use TEXT
 expectType<M<`create schema s;`>>(toBe<E<"CREATE SCHEMA", "SQLite has no schemas">>())
 expectType<M<`create extension pgcrypto;`>>(toBe<E<"CREATE EXTENSION">>())
 expectType<M<`grant select on users to bob;`>>(toBe<E<"GRANT", "SQLite has no users or privileges">>())
-expectType<M<`create table a (id integer primary key, v timestamptz);`>>(
-	toBe<E<"`timestamptz` type", "Use TEXT (ISO 8601) or INTEGER (unix time)">>(),
-)
-expectType<M<`create table a (id integer primary key, v jsonb);`>>(toBe<E<"`jsonb` type", "Use TEXT or JSON">>())
-expectType<M<`create table a (id integer primary key, v uuid);`>>(toBe<E<"`uuid` type", "Use TEXT">>())
-expectType<M<`create table a (id integer primary key, v bytea);`>>(toBe<E<"`bytea` type", "Use BLOB">>())
+// SQLT-Q8 B: every declared type name but SERIAL is accepted by affinity (SQLT-7)
+expectType<M<`create table a (id integer primary key, v timestamptz);`>>(toBe<null>())
+expectType<M<`create table a (id integer primary key, v jsonb);`>>(toBe<null>())
+expectType<M<`create table a (id integer primary key, v uuid);`>>(toBe<null>())
+expectType<M<`create table a (id integer primary key, v bytea);`>>(toBe<null>())
+expectType<M<`create table a (id integer primary key, v json, s string, n number);`>>(toBe<null>())
 expectType<M<`create table a (id integer primary key, v text[]);`>>(
 	toBe<E<"Array type `T[]`", "Use a JSON TEXT column">>(),
 )

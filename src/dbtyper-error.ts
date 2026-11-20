@@ -637,6 +637,14 @@ const errors = {
 		code: 1610,
 		msg: ["Expected `exists` after `IF` in ALTER TABLE"],
 	},
+	EXPECTED_ALTER_TABLE_ACTION: {
+		code: 1611,
+		msg: ["Expected an action (ADD, DROP, RENAME, ALTER, …) in ALTER TABLE"],
+	},
+	EXPECTED_NOT_EXISTS_AFTER_IF_ON_COLUMN: {
+		code: 1612,
+		msg: ["Expected ", " after `IF` on a column in ALTER TABLE"],
+	},
 
 	// DROP TABLE
 	OBSOLETE_1700_EXPECTED_SEMICOLON_AFTER_DROP_TABLE: {
@@ -1460,6 +1468,10 @@ const errors = {
 	EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE: {
 		code: 4002,
 		msg: ["Expected `.` or `;` after type name in DROP TYPE"],
+	},
+	EXPECTED_TO_IN_RENAME_VALUE: {
+		code: 4003,
+		msg: ["Expected `TO` after the old label in ALTER TYPE … RENAME VALUE"],
 	},
 
 	// Misc DDL

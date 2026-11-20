@@ -1,4 +1,4 @@
-import type { DialectCastRow, PgOnlyTypeError } from "../core/dialect-types.ts"
+import type { DialectCastRow } from "../core/dialect-types.ts"
 import type { SqlNull, SqlType, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumCastCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -14,9 +14,6 @@ export type SqlCastTypeNorm<P extends readonly string[]> = P extends readonly [
 			? `${Lowercase<H>}${SqlCastTypeNorm<T>}` // `schema.type`: the dot joins without a space
 			: `${Lowercase<H>} ${SqlCastTypeNorm<T>}`
 	: string
-
-/** SQLT-53: `CAST(x AS jsonb)` in a SQLite chain names the PostgreSQL-only type. */
-export type CastPgOnlyTypeError<Db, Parts extends readonly string[]> = PgOnlyTypeError<Db, SqlCastTypeNorm<Parts>>
 
 /** PGT-14: a string literal cast to an enum must be one of its labels; `Cast` otherwise. */
 export type WithCastLabelCheck<Db, Cast, Ast> = Cast extends SqlTypeShape

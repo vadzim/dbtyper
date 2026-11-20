@@ -13,12 +13,15 @@ import type { SkipParenGroup } from "./parse-column-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
 
-/** `a, b, c)` after `(`: `[rest after ")", names]` or `[rest, error]`. */
-export type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[]> =
+/**
+ * `a, b, c)` after `(`: `[rest after ")", names]` or `[rest, error]`. With `Ordered` (SQLite table PRIMARY KEY and
+ * UNIQUE, SQLT-18) each name may be followed by `COLLATE x` and `ASC` / `DESC`.
+ */
+export type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[], Ordered extends boolean = false> =
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? SkipOrderedSuffix<SkipToken<Tokens>, Ordered> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<",">
-				? ParseNameList<SkipToken<R1>, readonly [...Acc, N]>
+				? ParseNameList<SkipToken<R1>, readonly [...Acc, N], Ordered>
 				: PeekToken<R1> extends TokenKey<")">
 					? [SkipToken<R1>, readonly [...Acc, N]]
 					: SkipFailedExpression<
@@ -27,6 +30,15 @@ export type ParseNameList<Tokens extends ParserMonad, Acc extends readonly strin
 						>
 			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE constraint"]>>
+
+/** `[COLLATE x] [ASC | DESC]` after a name of an ordered list. */
+type SkipOrderedSuffix<Tokens extends ParserMonad, Ordered extends boolean> = Ordered extends true
+	? PeekToken<Tokens> extends TokenIdent<"collate">
+		? SkipOrderedSuffix<SkipToken<SkipToken<Tokens>>, true>
+		: PeekToken<Tokens> extends TokenKey<"asc" | "desc">
+			? SkipToken<Tokens>
+			: Tokens
+	: Tokens
 
 /**
  * A table constraint (CORE-15), named or not: `PRIMARY KEY (cols)` makes its columns NOT NULL (CORE-1);
@@ -94,7 +106,11 @@ type TableConstraintColumns<
 	Kind extends string,
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
-		? ParseNameList<SkipToken<Tokens>, readonly []> extends [infer R extends ParserMonad, infer Names]
+		? ParseNameList<
+				SkipToken<Tokens>,
+				readonly [],
+				Kind extends "FOREIGN KEY" ? false : DialectFact<Db, "constraintOnConflict">
+			> extends [infer R extends ParserMonad, infer Names]
 			? Names extends DbtyperErrorShape
 				? [R, Db, Names]
 				: Names extends readonly string[]

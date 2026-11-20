@@ -1,13 +1,13 @@
-import type { JsqlDatabaseShape, JsqlSchemaShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { TokenKey, TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
-import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceEnum, JsqlDbReplaceType } from "../core/jsql-utils.ts"
 
 export type ParseCreateType<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<"if">
@@ -83,12 +83,17 @@ type ParseCreateTypeAsEnum<
 									? ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
 									: ParseCreateTypeSkipEnumBody<AfterEnum, Db>
 								: ParseCreateTypeEnumBody<AfterEnum, Db, Schema, TypeName, []>
-							: SkipFailedExpression<
-										AfterEnum,
-										FormatError<Errors["EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE"], []>
-								  > extends [infer Rest extends ParserMonad, infer Err]
-								? [Rest, Db, Err]
-								: never
+							: [EnumTok, AsIdent<PeekToken<AfterEnum>>] extends [
+										TokenKey<"(">,
+										TokenIdent<string> | TokenKey<")">,
+								  ]
+								? ParseCreateCompositeType<AfterEnum, Db, Schema, TypeName, IfNotExists>
+								: SkipFailedExpression<
+											AfterEnum,
+											FormatError<Errors["EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE"], []>
+									  > extends [infer Rest extends ParserMonad, infer Err]
+									? [Rest, Db, Err]
+									: never
 						: never
 					: never
 				: SkipFailedExpression<
@@ -205,3 +210,25 @@ type ParseCreateTypeCloseSemi<Tokens extends ParserMonad, NewDb extends JsqlData
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 		? [SkipToken<Tokens>, NewDb, null]
 		: SkipFailedStatement<Tokens, NewDb, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE TYPE"]>>
+
+/**
+ * `CREATE TYPE t AS (a int, b text)`, after the `(` (PGT-15): a composite type has no TypeScript mapping, so a column of
+ * it may be created and using it in a result is CORE-14. The attributes are not typed.
+ */
+type ParseCreateCompositeType<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	TypeName extends string,
+	IfNotExists extends boolean,
+> =
+	SkipBracketedUntil<Tokens, TokenKey<")">> extends [infer R extends ParserMonad, infer Res]
+		? Res extends DbtyperErrorShape
+			? SkipFailedStatement<R, Db, Res>
+			: [IfNotExists, JsqlDbGetType<Db, Schema, TypeName>] extends [true, JsqlTypeShape]
+				? ParseCreateTypeCloseSemi<SkipToken<R>, Db>
+				: JsqlDbReplaceType<Db, Schema, TypeName, { kind: "composite" }> extends infer NewDb extends
+							JsqlDatabaseShape
+					? ParseCreateTypeCloseSemi<SkipToken<R>, NewDb>
+					: never
+		: never

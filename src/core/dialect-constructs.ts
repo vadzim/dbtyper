@@ -58,14 +58,6 @@ export type DialectOnlyConstructs = {
 	}
 	"pg-delete-using": { only: "postgres"; name: "DELETE … USING"; hint: "Use a subquery" }
 	"pg-fetch-first": { only: "postgres"; name: "FETCH FIRST"; hint: "Use LIMIT" }
-	"pg-type-timestamptz": {
-		only: "postgres"
-		name: "`timestamptz` type"
-		hint: "Use TEXT (ISO 8601) or INTEGER (unix time)"
-	}
-	"pg-type-jsonb": { only: "postgres"; name: "`jsonb` type"; hint: "Use TEXT or JSON" }
-	"pg-type-uuid": { only: "postgres"; name: "`uuid` type"; hint: "Use TEXT" }
-	"pg-type-bytea": { only: "postgres"; name: "`bytea` type"; hint: "Use BLOB" }
 	// #175: PostgreSQL DDL a SQLite chain accepted
 	"pg-drop-list": { only: "postgres"; name: "DROP of a name list"; hint: "Use one DROP statement per name" }
 	"pg-drop-cascade": { only: "postgres"; name: "CASCADE / RESTRICT"; hint: "" }
@@ -81,17 +73,6 @@ export type DialectOnlyConstructs = {
 		name: "DEFAULT expression without parentheses"
 		hint: "Write DEFAULT (expression)"
 	}
-}
-
-/** SQLT-53: PostgreSQL-only type names and the construct row each one gives (lower-case, words joined by one space). */
-export type PgOnlyTypeNames = {
-	timestamptz: "pg-type-timestamptz"
-	"timestamp with time zone": "pg-type-timestamptz"
-	"time with time zone": "pg-type-timestamptz"
-	timetz: "pg-type-timestamptz"
-	jsonb: "pg-type-jsonb"
-	uuid: "pg-type-uuid"
-	bytea: "pg-type-bytea"
 }
 
 export type DialectConstruct = keyof DialectOnlyConstructs
