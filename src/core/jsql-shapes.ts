@@ -47,9 +47,9 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	column_facts?: unknown
 	constraints?: unknown
 	/** The column keys in declaration order (SCHEMA-10): INSERT without a column list, `*` (#150). */
-	order?: readonly string[]
+	order?: unknown
 	/** SQLite: the declared spelling of each column whose key (lower case) differs from it; the result key (SQLT-28, #151). */
-	spelled?: Record<string, string>
+	spelled?: unknown
 }
 
 export type JsqlColumnFactsEntry = {

@@ -101,7 +101,12 @@ export type MultiplePrimaryKeys<
 > = SkipFailedStatement<Tokens, Db, FormatError<Errors["MULTIPLE_PRIMARY_KEYS"], [Table]>>
 
 /** The column names of a column stack in declaration order (#150). */
-export type StackOrder<Stack extends readonly ColumnDef[]> = { [I in keyof Stack]: Stack[I][0] }
+export type StackOrder<
+	Stack extends readonly ColumnDef[],
+	Acc extends readonly string[] = [],
+> = Stack extends readonly [infer H extends ColumnDef, ...infer R extends readonly ColumnDef[]]
+	? StackOrder<R, [...Acc, H[0]]>
+	: Acc
 
 /**
  * One column while it is being parsed (CORE-15): name, type (its `nullable` is the declared NULL / NOT NULL),
@@ -235,11 +240,18 @@ type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStat
 				{ [K in keyof Res["returning"] as Lowercase<K & string>]: NullableType<Res["returning"][K]> },
 				null,
 				never,
-				{ [I in keyof Order]: Lowercase<Order[I]> },
+				LowercaseNames<Order>,
 				{ [K in keyof Res["returning"] & string as Lowercase<K> extends K ? never : Lowercase<K>]: K }
 			>
 		: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
 	: never
+
+type LowercaseNames<Names extends readonly string[], Acc extends readonly string[] = []> = Names extends readonly [
+	infer H extends string,
+	...infer R extends readonly string[],
+]
+	? LowercaseNames<R, [...Acc, Lowercase<H>]>
+	: Acc
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
 

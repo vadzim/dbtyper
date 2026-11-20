@@ -66,9 +66,14 @@ type WithoutName<Names extends readonly string[], Name extends string> = Names e
 	: []
 
 /** `Names` with `Old` replaced by `New` in place. */
-type RenameName<Names extends readonly string[], Old extends string, New extends string> = {
-	[I in keyof Names]: Names[I] extends Old ? New : Names[I]
-}
+type RenameName<
+	Names extends readonly string[],
+	Old extends string,
+	New extends string,
+	Acc extends readonly string[] = [],
+> = Names extends readonly [infer H extends string, ...infer R extends readonly string[]]
+	? RenameName<R, Old, New, [...Acc, H extends Old ? New : H]>
+	: Acc
 
 /**
  * #150, #151: the table with its declaration order (a new column goes last, a dropped one leaves) and SQLite spellings

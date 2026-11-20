@@ -26,7 +26,7 @@ export type ResolveSelectListFrom<
 		? ScopeEntryOfSingle<FromScope> extends infer E extends ScopeEntry
 			? {
 					kind: "select"
-					returning: StarColumns<Db, E>
+					returning: StarColumns<KeyDb<Db>, E>
 					order: StarNames<Db, E>
 				}
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
@@ -35,8 +35,14 @@ export type ResolveSelectListFrom<
 		? Res extends DbtyperErrorShape
 			? Res
 			: Res extends JsqlSelectStatementResult
-				? SelectItemNames<Items, Scope, Items, [], IsPositionalSelect<Db>, Db> extends infer Names extends
-						readonly string[]
+				? SelectItemNames<
+						Items,
+						Scope,
+						Items,
+						[],
+						IsPositionalSelect<Db>,
+						NamesDb<Db, Items>
+					> extends infer Names extends readonly string[]
 					? IsPositionalSelect<Db> extends true
 						? Res & { order: Names } // #166: matched by position, a repeated name is fine
 						: FirstDuplicateName<Names> extends infer Dup
@@ -47,6 +53,20 @@ export type ResolveSelectListFrom<
 					: never
 				: never
 		: never
+
+/**
+ * The database the result keys are looked up in: only where names match case-insensitively (SQLite, fact `foldQuoted`)
+ * can a key differ from the name in the scope, so elsewhere it is `null` and the name helpers below stay shared between
+ * statements (they are keyed by their type arguments). `*` order (#150) is the exception: it reads the database always.
+ */
+type KeyDb<Db extends JsqlDatabaseShape> = DialectFact<Db, "lexer">["foldQuoted"] extends true ? Db : null
+
+/** {@link KeyDb}, or the database when the list has an `alias.*`, whose names come in the table's order (#150). */
+type NamesDb<Db extends JsqlDatabaseShape, Items extends readonly RawSelectItem[]> = [
+	Extract<Items[number], { kind: "expr"; ast: { kind: "qualified_table_star" | "alias_table_star" } }>,
+] extends [never]
+	? KeyDb<Db>
+	: Db
 
 /** The table or view a scope entry reads, or `null` (a CTE or a subquery). */
 type EntryData<Db, E> = Db extends JsqlDatabaseShape
@@ -94,7 +114,12 @@ type StarNames<Db, E extends ScopeEntry> =
 			: UnionToStringTuple<keyof StarColumns<Db, E> & string>
 		: never
 
-type ResultKeysOf<Data, Names extends readonly string[]> = { [I in keyof Names]: JsqlColumnResultKey<Data, Names[I]> }
+type ResultKeysOf<Data, Names extends readonly string[], Acc extends readonly string[] = []> = Names extends readonly [
+	infer H extends string,
+	...infer R extends readonly string[],
+]
+	? ResultKeysOf<Data, R, [...Acc, JsqlColumnResultKey<Data, H>]>
+	: Acc
 
 /**
  * SQLT-28, #151: the result key of a plain column reference where names match case-insensitively (SQLite, fact
@@ -261,13 +286,13 @@ type ResolveSelectListExprItem<
 > = Ast extends { kind: "qualified_table_star"; schema: infer Sch extends string; table: infer Tab extends string }
 	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
 		? E extends ScopeEntry
-			? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<StarColumns<Db, E>>, AllItems>
+			? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<StarColumns<KeyDb<Db>, E>>, AllItems>
 			: FormatError<Errors["UNKNOWN_TABLE"], [Sch, "SELECT ... *"]>
 		: FormatError<Errors["UNKNOWN_TABLE"], [Tab, "SELECT ... *"]>
 	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
 		? Al extends keyof Scope
 			? Scope[Al] extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<StarColumns<Db, E>>, AllItems>
+				? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<StarColumns<KeyDb<Db>, E>>, AllItems>
 				: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 			: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
@@ -280,7 +305,7 @@ type ResolveSelectListExprItem<
 							AllItems,
 							Scope,
 							PositionalName<IsPositionalSelect<Db>, [unknown, ...R]>,
-							Db
+							KeyDb<Db>
 						> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
 							? FormatError<Errors["SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS"], []>
@@ -323,7 +348,7 @@ type ResolveSelectListAcc<
 	? H extends { kind: "star" }
 		? SingleAliasScope<Scope> extends true
 			? ScopeEntryOfSingle<Scope> extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<StarColumns<Db, E>>, AllItems>
+				? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<StarColumns<KeyDb<Db>, E>>, AllItems>
 				: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }

@@ -2,14 +2,10 @@ import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlTypeShape }
 import type { DialectFact } from "./dialect.ts"
 import type { ReplaceProp } from "./type-utils.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
-import type { UnionToStringTuple } from "../parser/set-operation-types.ts"
 
 export type JsqlCreateSchema = {
 	sets: {}
 }
-
-/** The table's declared spellings (SQLT-28), only when some column has one: tables of other dialects carry nothing. */
-type SpelledProp<Spelled> = {} extends Spelled ? {} : { spelled: Spelled }
 
 export type JsqlCreateTable<
 	Columns extends Record<string, SqlTypeShape>,
@@ -17,13 +13,9 @@ export type JsqlCreateTable<
 	Constraints extends Record<string, unknown> | null = null,
 	Order extends readonly string[] = readonly string[],
 	Spelled = {},
-> = {
-	kind: "table"
-	columns: Columns
-	column_facts: Facts
-	constraints: Constraints
-	order: Order
-} & SpelledProp<Spelled>
+> = {} extends Spelled
+	? { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order }
+	: { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order; spelled: Spelled }
 
 /**
  * A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). `Alias` is the name of
@@ -43,7 +35,7 @@ export type JsqlCreateRowidTable<
 	rowid_table: true
 	order: Order
 } & ([Alias] extends [never] ? {} : { rowid_alias: Alias }) &
-	SpelledProp<Spelled>
+	({} extends Spelled ? {} : { spelled: Spelled })
 
 export type JsqlCreateView<
 	Columns extends Record<string, SqlTypeShape>,
@@ -53,16 +45,6 @@ export type JsqlCreateView<
 	columns: Columns
 	order: Order
 }
-
-/**
- * The column keys of a table or view in declaration order (SCHEMA-10, #150). A shape without `order` (built by hand in
- * low-level tests) falls back to the key order TypeScript gives, which is not the declared one.
- */
-export type JsqlColumnOrder<Data extends JsqlDataShape> = Data extends { order: infer O extends readonly string[] }
-	? string[] extends O
-		? UnionToStringTuple<keyof Data["columns"] & string>
-		: O
-	: UnionToStringTuple<keyof Data["columns"] & string>
 
 /** The result key of column `Key` of `Data`: its declared spelling in SQLite (SQLT-28, #151), else the key. */
 export type JsqlColumnResultKey<Data, Key extends string> = Data extends { spelled: infer S }
@@ -224,9 +206,7 @@ export type JsqlDbAddConstraintName<
 				Tab,
 				Omit<Tbl, "constraints"> & {
 					constraints: { names: ConstraintNames<Tbl> | Name }
-				} extends infer T extends JsqlDataShape
-					? T
-					: never
+				}
 			>
 		: Db
 
@@ -244,9 +224,7 @@ export type JsqlDbDropConstraintName<
 				Tab,
 				Omit<Tbl, "constraints"> & {
 					constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
-				} extends infer T extends JsqlDataShape
-					? T
-					: never
+				}
 			>
 		: Db
 
