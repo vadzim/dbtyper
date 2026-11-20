@@ -302,7 +302,8 @@ type ParseSelectAfterDistinct<
 												: JoinScopeOnly<Tail> extends ScopeMap
 													? MergeScope<
 															FromItemsOnly<JoinScopeOnly<Tail>>,
-															MarkOuterScope<OuterScope>
+															// #211: the CTEs of this statement are visible by name in every subquery
+															MarkOuterScope<MergeScope<CteDefsOnly<CteBase>, OuterScope>>
 														> extends infer MergedScope extends ScopeMap
 														? ResolveSelectListFrom<
 																Items,
