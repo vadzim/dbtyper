@@ -6,6 +6,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"
 import type { DialectFact } from "../core/dialect.ts"
+import type { AffinityTakesAnyValue } from "../core/dialect-types.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { EmptyExpressionParams, ParseExpressionAST, ScalarExprAst } from "./parse-expression.ts"
 import type { ResolveExpressionAST, SameComparisonClass } from "./resolve-expression.ts"
@@ -92,6 +93,8 @@ type DefaultFits<V, C extends ColumnCtx, Ast = never> = V extends {
 						? Fit
 						: Fit extends true
 							? null
-							: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [C["name"]]>
+							: AffinityTakesAnyValue<C["db"], C["type"]["type"]> extends true
+								? null
+								: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [C["name"]]>
 					: never
 			: never

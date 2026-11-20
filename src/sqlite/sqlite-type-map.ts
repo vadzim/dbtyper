@@ -9,10 +9,11 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
 	blob: Uint8Array
 	null: null
 	/**
-	 * NUMERIC affinity (SQLT-7): `number`; in big-integer mode a stored whole number comes back as a `bigint`, so the
-	 * type is `number | bigint` (#169; SQLT-4, SQLT-6, SQLT-8).
+	 * NUMERIC affinity (SQLT-7): a column of this affinity holds numbers and text (a value that does not look like a
+	 * number stays text), and in big-integer mode a stored whole number comes back as a `bigint`: `number | string`,
+	 * plus `bigint` in that mode (#169; SQLT-4, SQLT-6, SQLT-8). Writes accept text and numbers.
 	 */
-	numeric: Integer extends bigint ? number | bigint : number
+	numeric: number | string | (Integer extends bigint ? bigint : never)
 	/** BOOLEAN columns and comparison results are integers 0/1 (SQLT-9): `number` (`bigint` in big-integer mode). */
 	boolean: Integer
 	/** A column with no type, or `ANY`: any storage class (SQLT-10); `null` is added when the column is nullable. */
@@ -30,7 +31,7 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
  */
 type SqliteParamTypeMap = Omit<SqliteTypeMap, "integer" | "boolean" | "bigint" | "any" | "numeric"> & {
 	integer: number | bigint
-	numeric: number | bigint
+	numeric: number | bigint | string
 	boolean: number | bigint
 	bigint: number | bigint
 	any: number | bigint | string | Uint8Array
