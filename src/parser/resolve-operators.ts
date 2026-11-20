@@ -21,7 +21,7 @@ import type { ResolveExpressionAST } from "./resolve-expression.ts"
 type ProbeShape<K extends string | number = string | number> = { type: "param-probe"; arg: K }
 
 /** SQLT-9: the type of TRUE/FALSE, of a comparison result and of a condition in the chain's dialect. */
-export type DialectBoolean<Db> = SqlType<DialectFact<Db, "booleanType">>
+type DialectBoolean<Db> = SqlType<DialectFact<Db, "booleanType">>
 
 /**
  * CORE-6 (#164): a parameter that is an operand of `||` is text, in every dialect. `never` when neither operand is a

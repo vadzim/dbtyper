@@ -69,7 +69,7 @@ type CastToNamedType<Db, Ev extends SqlTypeShape, Schema extends string, N exten
 type DefaultSchemaOf<Db> = Db extends { defaultSchema: infer D extends string } ? D : ""
 
 /** The built-in cast of a value to a written type name: the row of the dialect's table, its guard against the value. */
-export type ResolveCastFromShape<Db, Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
+type ResolveCastFromShape<Db, Ev extends SqlTypeShape, N extends string> = Ev["type"] extends "null"
 	? SqlNull
 	: DialectCastRow<Db, N> extends [infer T extends string, infer Guard extends string]
 		? Guard extends "no-boolean"

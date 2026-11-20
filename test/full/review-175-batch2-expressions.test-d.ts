@@ -72,16 +72,16 @@ const _liteCase = await lite.query(`select case when age then 'a' else 'b' end a
 expectType<typeof _liteCase>(toBe<{ x: string; ok: number | null; gt: number | null }[]>())
 sqlMigrations({ driver: sqliteDriver }).apply(`create table x (z integer default true, b boolean default 0);`)
 // a text column is still no condition, and PostgreSQL keeps its boolean class
-const liteTextCond = `select name from users where name` as const
-expectType<GetQueryError<typeof lite, typeof liteTextCond>>(
+const _liteTextCond = `select name from users where name` as const
+expectType<GetQueryError<typeof lite, typeof _liteTextCond>>(
 	toBe<DbtyperError<2600, "Expression must be boolean, but has a type text.">>(),
 )
-const pgIntCond = `select name from users where age` as const
-expectType<GetQueryError<typeof pg, typeof pgIntCond>>(
+const _pgIntCond = `select name from users where age` as const
+expectType<GetQueryError<typeof pg, typeof _pgIntCond>>(
 	toBe<DbtyperError<2600, "Expression must be boolean, but has a type integer.">>(),
 )
-const pgBoolInt = `select name from users where ok = 1` as const
-expectType<GetQueryError<typeof pg, typeof pgBoolInt>>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())
+const _pgBoolInt = `select name from users where ok = 1` as const
+expectType<GetQueryError<typeof pg, typeof _pgBoolInt>>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())
 
 // #162: float, citext, character, name, interval and time in expressions
 const _f = await pg.query(
@@ -106,10 +106,10 @@ expectType<typeof _f>(
 	>(),
 )
 await pg.query(`select id from t where c like 'a%' and d like 'a%' and n like 'a%'`)
-const citextInt = `select id from t where c = 5` as const
-expectType<GetQueryError<typeof pg, typeof citextInt>>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())
-const floatText = `insert into t (c, f, big, small) values ('a', 'x', 1, 1)` as const
-expectType<GetQueryError<typeof pg, typeof floatText>>(
+const _citextInt = `select id from t where c = 5` as const
+expectType<GetQueryError<typeof pg, typeof _citextInt>>(toBe<DbtyperError<2500, "Incompatible types in comparison">>())
+const _floatText = `insert into t (c, f, big, small) values ('a', 'x', 1, 1)` as const
+expectType<GetQueryError<typeof pg, typeof _floatText>>(
 	toBe<DbtyperError<2507, "Incompatible value type for column f">>(),
 )
 
@@ -117,8 +117,8 @@ expectType<GetQueryError<typeof pg, typeof floatText>>(
 const _any = await pg.query(`select id from users where id = any($1)`, [[1, 2]])
 expectType<typeof _any>(toBe<{ id: number }[]>())
 await pg.query(`select id from users where name = any(:names) and id <> all(:ids)`, { names: ["a"], ids: [1] })
-const anyWrong = `select id from users where id = any($1)` as const
-expectType<GetQueryError<typeof pg, typeof anyWrong, [string[]]>>(
+const _anyWrong = `select id from users where id = any($1)` as const
+expectType<GetQueryError<typeof pg, typeof _anyWrong, [string[]]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
 )
 
@@ -135,17 +135,17 @@ await pg.query(`select case when $1 then 1 else 2 end as x from users`, [true])
 await lite.query(`select id from users where name like ? || '%'`, ["a"])
 await lite.query(`select id from users where id = - ?`, [1])
 await lite.query(`select id from users where ? and ok`, [1])
-const concatNumber = `select id from users where name like $1 || '%'` as const
-expectType<GetQueryError<typeof pg, typeof concatNumber, [number]>>(
+const _concatNumber = `select id from users where name like $1 || '%'` as const
+expectType<GetQueryError<typeof pg, typeof _concatNumber, [number]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
 )
-const condNumber = `select id from users where $1 and ok` as const
-expectType<GetQueryError<typeof pg, typeof condNumber, [number]>>(
+const _condNumber = `select id from users where $1 and ok` as const
+expectType<GetQueryError<typeof pg, typeof _condNumber, [number]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
 )
 // a parameter alone under a minus has no type from its position (CORE-7), not "requires a number"
-const negAlone = `select -$1 as x` as const
-expectType<GetQueryError<typeof pg, typeof negAlone, [number]>>(
+const _negAlone = `select -$1 as x` as const
+expectType<GetQueryError<typeof pg, typeof _negAlone, [number]>>(
 	toBe<DbtyperError<2405, "cannot infer the type of parameter $1; use CAST($1 AS …)">>(),
 )
 
@@ -154,19 +154,21 @@ const _concat = await pg.query(
 	`select name || id as a, id || name as b, name || ok as c, name || now() as d, 'n' || 1.5 as e from users`,
 )
 expectType<typeof _concat>(toBe<{ a: string; b: string; c: string | null; d: string; e: string }[]>())
-const noText = `select id || id as a from users` as const
-expectType<GetQueryError<typeof pg, typeof noText>>(toBe<DbtyperError<2800, "|| requires at least one text operand">>())
+const _noText = `select id || id as a from users` as const
+expectType<GetQueryError<typeof pg, typeof _noText>>(
+	toBe<DbtyperError<2800, "|| requires at least one text operand">>(),
+)
 
 // CORE-6: a parameter the SQL tests for NULL accepts null
 await pg.query(`select id from users where ($1 is null or age > $1)`, [null])
 await pg.query(`select id from users where ($1 is null or age > $1)`, [5])
 await pg.query(`select id from users where (:min is not null and age > :min) or name = :name`, { min: null, name: "a" })
-const notTested = `select id from users where age > $1` as const
-expectType<GetQueryError<typeof pg, typeof notTested, [null]>>(
+const _notTested = `select id from users where age > $1` as const
+expectType<GetQueryError<typeof pg, typeof _notTested, [null]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
 )
-const nullTestedWrong = `select id from users where ($1 is null or age > $1)` as const
-expectType<GetQueryError<typeof pg, typeof nullTestedWrong, [string]>>(
+const _nullTestedWrong = `select id from users where ($1 is null or age > $1)` as const
+expectType<GetQueryError<typeof pg, typeof _nullTestedWrong, [string]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
 )
 
@@ -179,3 +181,13 @@ const _fn = await pg.query(
 		gen_random_bytes(4) as r from users`,
 )
 expectType<typeof _fn>(toBe<{ n: string | null; e: string; t: string; r: Uint8Array }[]>())
+
+// 3413 names the WITH query (the name was empty)
+const _cteList = `with w (a, b) as (select id from users) select a from w` as const
+expectType<GetQueryError<typeof pg, typeof _cteList>>(
+	toBe<DbtyperError<3413, "WITH query w has a different number of columns than its column list">>(),
+)
+const _cteDmlList = `with w (a, b) as (delete from users returning id) select a from w` as const
+expectType<GetQueryError<typeof pg, typeof _cteDmlList>>(
+	toBe<DbtyperError<3413, "WITH query w has a different number of columns than its column list">>(),
+)
