@@ -4,7 +4,7 @@ import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
-import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { FormatError, Errors, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { FromItemsOnly, MarkOuterScope, MergeScope, ScopeMap } from "./parser-scope.ts"
@@ -181,9 +181,15 @@ export type ParseCompoundTrailing<
 		infer Te,
 	]
 		? Te extends DbtyperErrorShape
-			? [Rt, Db, Te]
+			? [Rt, Db, CompoundOrderByError<Te>]
 			: [Rt, Db, Res]
 		: never
+
+/** CORE-8: an ORDER BY term after a set operation that is not an output column gets its own code, not the generic 2300. */
+type CompoundOrderByError<E> =
+	E extends DbtyperError<Errors["UNKNOWN_COLUMN"]["code"], `Unknown column ${string} in ORDER BY`>
+		? FormatError<Errors["COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN"], []>
+		: E
 
 type ParseSetOperationSelect<
 	R0 extends ParserMonad,
@@ -398,10 +404,10 @@ type SelectAfterWhereAndGroupHaving<
 
 type SetOperationToken = TokenKey<"union" | "intersect" | "except">
 
-export type SelectOutputNames<Res> = Res extends { returning: infer Ret } ? keyof Ret & string : never
+type SelectOutputNames<Res> = Res extends { returning: infer Ret } ? keyof Ret & string : never
 
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
-export type ParseSelectTrailingClauses<
+type ParseSelectTrailingClauses<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
