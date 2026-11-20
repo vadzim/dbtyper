@@ -33,28 +33,38 @@ await db.query(`select json_valid(:x) as ok from users`, { x: 2 })
 // values of json_set / json_insert / json_replace, paths in between
 await db.query(`update users set email = json_set(email, '$.a', :v, :p, :w) where id = 1`, { v: 1, p: "$.b", w: null })
 await db.query(`update users set email = json_set(email, '$.a', :v, :p, :w) where id = 1`, { v: 1n, p: "$.b", w: "x" })
-await db.query(`update users set email = json_insert(email, '$.a', :v, :p, :w) where id = 1`, { v: 1, p: "$.b", w: null })
-await db.query(`update users set email = json_replace(email, '$.a', :v, :p, :w) where id = 1`, { v: 1, p: "$.b", w: null })
+await db.query(`update users set email = json_insert(email, '$.a', :v, :p, :w) where id = 1`, {
+	v: 1,
+	p: "$.b",
+	w: null,
+})
+await db.query(`update users set email = json_replace(email, '$.a', :v, :p, :w) where id = 1`, {
+	v: 1,
+	p: "$.b",
+	w: null,
+})
 // @ts-expect-error the 4th argument is a path
 await db.query(`update users set email = json_set(email, '$.a', :v, :p, :w) where id = 1`, { v: 1, p: 1, w: null })
 // @ts-expect-error a blob is no JSON value
 await db.query(`update users set email = json_set(email, '$.a', :v) where id = 1`, { v: new Uint8Array(1) })
-expectType<GetQueryError<typeof db, `update users set email = json_set(email, '$.a', :v) where id = 1`, { v: Uint8Array }>>(
-	toBe<DbtyperError<2509, "Incompatible value type for parameter :v">>(),
-)
+expectType<
+	GetQueryError<typeof db, `update users set email = json_set(email, '$.a', :v) where id = 1`, { v: Uint8Array }>
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter :v">>())
 // @ts-expect-error a boolean is no JSON value
 await db.query(`update users set email = json_insert(email, '$.a', :v) where id = 1`, { v: true })
-expectType<GetQueryError<typeof db, `update users set email = json_insert(email, '$.a', :v) where id = 1`, { v: boolean }>>(
-	toBe<DbtyperError<2509, "Incompatible value type for parameter :v">>(),
-)
+expectType<
+	GetQueryError<typeof db, `update users set email = json_insert(email, '$.a', :v) where id = 1`, { v: boolean }>
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter :v">>())
 // @ts-expect-error
 await db.query(`update users set email = json_replace(email, '$.a', :v) where id = 1`, { v: new Uint8Array(1) })
 
 // labels and values
-const _obj = await db.query(
-	`select json_object(:k, :v, 'b', 2) as o, json_array(:a, 1) as a, json_quote(:q) as q`,
-	{ k: "key", v: 1, a: "x", q: null },
-)
+const _obj = await db.query(`select json_object(:k, :v, 'b', 2) as o, json_array(:a, 1) as a, json_quote(:q) as q`, {
+	k: "key",
+	v: 1,
+	a: "x",
+	q: null,
+})
 expectType<typeof _obj>(toBe<Array<{ o: string; a: string; q: string }>>())
 await db.query(`select json_object(:k, :v, :k2, :v2) as o`, { k: "a", v: 1, k2: "b", v2: 2n })
 // @ts-expect-error a label is a string
