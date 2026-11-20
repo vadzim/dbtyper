@@ -37,7 +37,7 @@ describe("postgres driver parameters at runtime", () => {
 		assert.deepEqual(sent, [[`select * from users where id = ':x' and age = $1::integer;`, [1]]])
 	})
 	it("PARAM-14: extra array elements are accepted for $n", async () => {
-		// (typed query() rejects unused elements with dbtyper:2405, see the BUG skip file for PARAM-14; the driver itself accepts them)
+		// (typed query() rejects unused elements with dbtyper:2405; the driver itself accepts them)
 		const { sent, driver } = setup()
 		await driver.query(`select * from users where id = $1;`, ["a", "unused"])
 		assert.deepEqual(sent, [[`select * from users where id = $1;`, ["a", "unused"]]])

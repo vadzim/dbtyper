@@ -215,7 +215,7 @@ type ParseCaseExpectEndKeyword<
 	PeekToken<Tokens> extends TokenKey<"end">
 		? SkipToken<Tokens> extends infer Rend extends ParserMonad
 			? Acc extends readonly []
-				? SkipFailedExpressionWithEnv<Rend, FormatError<Errors["CASE_REQUIRES_AT_LEAST_ONE_WHEN"], []>, Env>
+				? SkipFailedExpressionWithEnv<Rend, FormatError<Errors["EXPECTED_WHEN_AFTER_CASE_EXPRESSION"], []>, Env>
 				: Disc extends null
 					? [Rend, { kind: "case_searched"; arms: Acc; else_: ElseB }, Env]
 					: [Rend, { kind: "case_simple"; discriminant: Disc; arms: Acc; else_: ElseB }, Env]

@@ -424,9 +424,11 @@ const errors = {
 	},
 
 	// UPDATE Statement
-	EXPECTED_SET_IN_UPDATE: {
+	OBSOLETE_1300_EXPECTED_SET_IN_UPDATE: {
 		code: 1300,
-		msg: ["Expected SET in UPDATE"],
+		msg: [
+			"Obsolete, no longer reported: Expected SET in UPDATE (EXPECTED_SET_AFTER_TABLE_IN_UPDATE is reported first)",
+		],
 	},
 	EXPECTED_SET_AFTER_TABLE_IN_UPDATE: {
 		code: 1301,
@@ -1501,9 +1503,9 @@ const errors = {
 	},
 
 	// CASE Expression
-	CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
+	OBSOLETE_4300_CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
 		code: 4300,
-		msg: ["CASE requires at least one WHEN"],
+		msg: ["Obsolete, no longer reported: CASE requires at least one WHEN (the parser reads one WHEN before END)"],
 	},
 	EXPECTED_THEN_AFTER_CASE_WHEN: {
 		code: 4301,

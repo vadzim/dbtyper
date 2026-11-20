@@ -62,4 +62,4 @@ Function result types and nullability are rows in `postgres-functions.ts` and `s
 
 `test/integration` holds `*.success.test-d.ts` / `*.error.test-d.ts` type tests and runtime tests; `test/dialects` the SQLite and PostgreSQL cases tagged with spec IDs; `test/infra` checks of the repository itself (every error code is tested, file naming); `test/runtime`, `test/sqlite`, `test/stress`, `test/full`, `test/framework`, `test/error-recovery` the rest.
 
-The gate (`npm run test:ci`): `typecheck:full`, the example typechecks and tests, `node --test` with `TEST_MIGRATIONS=1`, `lint`, `find-unused` (an export used nowhere fails; the baseline may only shrink) and `format:check` (prettier).
+The gate (`npm run test:ci`): `typecheck:full`, the example typechecks and tests, `node --test` with `DBTYPER_TEST_MIGRATIONS=1`, `lint`, `find-unused` (an export used nowhere fails; the baseline may only shrink) and `format:check` (prettier).

@@ -2,7 +2,7 @@
 
 import { describe, it } from "node:test"
 import assert from "node:assert"
-import { getIntegrationTestFiles } from "./integration-test-utils.ts"
+import { getIntegrationTestFiles, getStressTestFiles } from "./integration-test-utils.ts"
 
 const ALLOWED_EXTENSIONS = [
 	".success.test-d.ts",
@@ -168,4 +168,47 @@ describe("Integration test files correctness", async () => {
 			assert.fail("test/integration should contain at least one .error. test file")
 		})
 	}
+})
+
+// test/stress holds hand-written and generated files that run many queries each, so the one-query rules above do not
+// apply; what holds there: the name says what the file tests (a file named `.success.` has no @ts-expect-error, a file named
+// `.error.` has one), and every @ts-expect-error has the error code pinned next to it through GetQueryError,
+// GetStreamError or GetApplyError (a bare @ts-expect-error accepts any error).
+describe("Stress test files correctness", async () => {
+	const files = await getStressTestFiles()
+
+	for await (const { file, contentIO } of files) {
+		const content = await contentIO
+		const expectErrors = content.match(/\/[/*]\s*@ts-expect-error/g)?.length ?? 0
+		const codeChecks = content.match(/expectType<\s*Get(Query|Stream|Apply)Error</g)?.length ?? 0
+
+		it(`${file} ends with .test-d.ts`, () => {
+			assert.ok(file.endsWith(".test-d.ts"), `${file} must end with .test-d.ts`)
+		})
+		if (file.includes(".success.")) {
+			it(`${file} (success) has no @ts-expect-error and no error marker`, () => {
+				assert.equal(
+					expectErrors,
+					0,
+					"A .success. file must not contain @ts-expect-error: drop `.success.` from its name or split it",
+				)
+				assert.ok(!content.includes("❌"), "A .success. file must not contain ❌")
+			})
+		}
+		if (file.includes(".error.")) {
+			it(`${file} (error) has a @ts-expect-error`, () => {
+				assert.ok(expectErrors > 0, "An .error. file must contain @ts-expect-error")
+			})
+		}
+		it(`${file} pins the error code of every @ts-expect-error`, () => {
+			assert.ok(
+				codeChecks >= expectErrors,
+				`${expectErrors} @ts-expect-error but ${codeChecks} expectType<Get(Query|Stream|Apply)Error<…>> checks`,
+			)
+		})
+	}
+
+	it("test/stress has files", () => {
+		assert.ok(files.length > 0)
+	})
 })
