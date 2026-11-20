@@ -86,6 +86,13 @@ type ValidateInsertRequiredColumns<Tbl extends JsqlDataShape, Cols extends reado
 				: FormatError<Errors["MISSING_NOT_NULL_COLUMN_IN_INSERT"], [string]>
 		: never
 
+/** #150: an INSERT without a column list fills the real columns in declaration order. */
+type InsertColumnOrder<Tbl extends JsqlDataShape> = Tbl extends { order: infer O extends readonly string[] }
+	? string[] extends O
+		? UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
+		: O
+	: UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
+
 type ParseInsertAfterOpenParenCols<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -97,16 +104,7 @@ type ParseInsertAfterOpenParenCols<
 > =
 	PeekToken<Tokens> extends TokenKey<"values" | "select">
 		? // no column list: every column of the table, in declaration order
-			ParseInsertAfterColumnNames<
-				Tokens,
-				Db,
-				Scope,
-				Params,
-				Tbl,
-				Sch,
-				Tab,
-				UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
-			>
+			ParseInsertAfterColumnNames<Tokens, Db, Scope, Params, Tbl, Sch, Tab, InsertColumnOrder<Tbl>>
 		: PeekToken<Tokens> extends TokenKey<"default">
 			? SkipToken<Tokens> extends infer Rd extends ParserMonad
 				? PeekToken<Rd> extends TokenKey<"values">

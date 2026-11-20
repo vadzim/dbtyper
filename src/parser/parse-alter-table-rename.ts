@@ -1,18 +1,11 @@
-import type { JsqlDatabaseShape, JsqlDataShape, JsqlColumnFactsEntry } from "../core/jsql-shapes.ts"
-import type {
-	JsqlDbGetData,
-	JsqlDbReplaceColumn,
-	JsqlDbGetColumn,
-	JsqlDbGetColumnType,
-	JsqlDbReplaceData,
-} from "../core/jsql-utils.ts"
+import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbGetData, JsqlDbRenameColumn, JsqlDbGetColumnType, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FinishAlterStatement, ParseAlterActions, ParseAlterAfterOptionalColumnKw } from "./parse-alter-table.ts"
 
 type ParseAlterRenameAfterToKw<
@@ -28,18 +21,17 @@ type ParseAlterRenameAfterToKw<
 				? JsqlDbGetColumnType<Db, Sch, Tab, Old> extends null
 					? [R3, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Old]>]
 					: JsqlDbGetColumnType<Db, Sch, Tab, New> extends null
-						? JsqlDbGetColumn<Db, Sch, Tab, Old> extends infer OldCol extends
-								(JsqlColumnFactsEntry & { type: SqlTypeShape }) | null
-							? JsqlDbReplaceColumn<
-									JsqlDbReplaceColumn<Db, Sch, Tab, Old, null>,
-									Sch,
-									Tab,
-									New,
-									OldCol
-								> extends infer NewDb extends JsqlDatabaseShape
-								? ParseAlterActions<SkipToken<R3>, NewDb, Sch, Tab>
-								: SkipFailedStatement<R3, Db, FormatError<Errors["COLUMN_RENAME_FAILED"], []>>
-							: never
+						? // #150: the column keeps its place in the declaration order
+							JsqlDbRenameColumn<
+								Db,
+								Sch,
+								Tab,
+								Old,
+								New,
+								PeekToken<R3> extends { written: infer W extends string } ? W : never
+							> extends infer NewDb extends JsqlDatabaseShape
+							? ParseAlterActions<SkipToken<R3>, NewDb, Sch, Tab>
+							: SkipFailedStatement<R3, Db, FormatError<Errors["COLUMN_RENAME_FAILED"], []>>
 						: SkipFailedStatement<R3, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [New]>>
 				: SkipFailedExpression<
 							R3,

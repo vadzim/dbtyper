@@ -46,15 +46,15 @@ const users = migrations
 
 // SQLT-27: three quote styles, case-insensitive names
 const _quoted = await users.query('select [Name], `email`, "ID" from USERS')
-expectType<typeof _quoted>(toBe<Array<{ Name: string; email: string | null; ID: number }>>())
+expectType<typeof _quoted>(toBe<Array<{ name: string; email: string | null; id: number }>>())
 
-// SQLT-28: a result key is the alias, else the column name as written
+// SQLT-28 (#151): a result key is the alias, else the declared column name, as the drivers return it
 const _keys = await users.query(`select Name, id as Ident, USERS.Email from users`)
-expectType<typeof _keys>(toBe<Array<{ Name: string; Ident: number; Email: string | null }>>())
+expectType<typeof _keys>(toBe<Array<{ name: string; Ident: number; email: string | null }>>())
 
 // SQLT-28: any other expression is keyed by its text as written; SQLite has no GROUP BY rule for bare columns
 const _exprKeys = await users.query(`select Name, count(*) from users`)
-expectType<typeof _exprKeys>(toBe<Array<{ Name: string; "count(*)": number }>>())
+expectType<typeof _exprKeys>(toBe<Array<{ name: string; "count(*)": number }>>())
 const _exprText = await users.query(`select id + 1,  upper( Name ) , id*2 as dbl, cast(id as text) from users`)
 expectType<typeof _exprText>(
 	toBe<Array<{ "id + 1": number; "upper( Name )": string; dbl: number; "cast(id as text)": string }>>(),

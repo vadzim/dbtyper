@@ -57,10 +57,11 @@ type ReadOperatorCharsWide<S extends string, Op extends string> = S extends `${i
 		: { token: Op; rest: S }
 	: { token: Op; rest: S }
 
-export type SkipSpaces<S> =
-	SkipSomeSpaces<S> extends [infer R extends string, infer HasMoreSpace]
+/** `Nested`: block comments nest (lexer fact `nestedComments`). */
+export type SkipSpaces<S, Nested extends boolean = true> =
+	SkipSomeSpaces<S, [], Nested> extends [infer R extends string, infer HasMoreSpace]
 		? HasMoreSpace extends true
-			? SkipSpaces<R>
+			? SkipSpaces<R, Nested>
 			: R
 		: never
 
@@ -70,26 +71,107 @@ export type SkipSpaces<S> =
  * it is a depth bound, not a limit on the number of spaces.
  * TLVL-4: the limit dodged is the instantiation depth limit (TS2589); tests: test/stress/sqlt-105-long-statement.
  */
-type SkipSomeSpaces<S, Acc extends unknown[] = []> = Acc["length"] extends 100
+type SkipSomeSpaces<S, Acc extends unknown[] = [], Nested extends boolean = true> = Acc["length"] extends 100
 	? [S, true]
-	: S extends `\x20${infer Rest}`
-		? SkipSomeSpaces<Rest, [...Acc, 1]>
-		: S extends `\n${infer Rest}`
-			? SkipSomeSpaces<Rest, [...Acc, 1]>
-			: S extends `\t${infer Rest}`
-				? SkipSomeSpaces<Rest, [...Acc, 1]>
-				: S extends `\r${infer Rest}`
-					? SkipSomeSpaces<Rest, [...Acc, 1]>
-					: S extends `--${infer Comment}`
-						? Comment extends `${string}\n${infer Rest}`
-							? SkipSomeSpaces<Rest, [...Acc, 1]>
-							: ["", false]
-						: S extends `/*${infer Comment}`
-							? SkipSomeSpaces<SkipMultiComment<Comment>, [...Acc, 1]>
-							: [S, false]
+	: S extends `${infer C}${infer Rest}`
+		? C extends Whitespace
+			? SkipSomeSpaces<Rest, [...Acc, 1], Nested>
+			: S extends `--${infer Comment}`
+				? Comment extends `${string}\n${infer Rest}`
+					? SkipSomeSpaces<Rest, [...Acc, 1], Nested>
+					: ["", false]
+				: S extends `/*${infer Comment}`
+					? (
+							Nested extends true ? SkipMultiComment<Comment> : SkipFlatComment<Comment>
+						) extends infer Rest extends string
+						? SkipSomeSpaces<Rest, [...Acc, 1], Nested>
+						: [S, false] // unclosed: the lexer reports UNCLOSED_BLOCK_COMMENT at the `/*`
+					: [S, false]
+		: [S, false]
+
+/** The whitespace characters of both engines (form feed included); the one list the lexer and the parser monad read. */
+export type Whitespace = "\x20" | "\n" | "\t" | "\r" | "\f"
+
 export type StartTokenChar = Letter | "_"
 
 export type TokenChar = Letter | Digit | "_"
+
+/**
+ * The characters of an unquoted identifier after its first one: also `$` (`col$1`; both engines). A character outside
+ * ASCII is an identifier character too, first one included (`імя`): see {@link AsciiChar}.
+ */
+export type IdentChar = TokenChar | "$"
+
+/** The 128 ASCII characters; any other character may be part of an unquoted identifier (PostgreSQL and SQLite). */
+export type AsciiChar =
+	| "\x00"
+	| "\x01"
+	| "\x02"
+	| "\x03"
+	| "\x04"
+	| "\x05"
+	| "\x06"
+	| "\x07"
+	| "\x08"
+	| "\x09"
+	| "\x0a"
+	| "\x0b"
+	| "\x0c"
+	| "\x0d"
+	| "\x0e"
+	| "\x0f"
+	| "\x10"
+	| "\x11"
+	| "\x12"
+	| "\x13"
+	| "\x14"
+	| "\x15"
+	| "\x16"
+	| "\x17"
+	| "\x18"
+	| "\x19"
+	| "\x1a"
+	| "\x1b"
+	| "\x1c"
+	| "\x1d"
+	| "\x1e"
+	| "\x1f"
+	| " "
+	| "!"
+	| '"'
+	| "#"
+	| "$"
+	| "%"
+	| "&"
+	| "'"
+	| "("
+	| ")"
+	| "*"
+	| "+"
+	| ","
+	| "-"
+	| "."
+	| "/"
+	| Digit
+	| ":"
+	| ";"
+	| "<"
+	| "="
+	| ">"
+	| "?"
+	| "@"
+	| Letter
+	| "["
+	| "\\"
+	| "]"
+	| "^"
+	| "_"
+	| "`"
+	| "{"
+	| "|"
+	| "}"
+	| "~"
+	| "\x7f"
 
 export type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
@@ -127,16 +209,22 @@ type LowerCaseLetter =
 	| "y"
 	| "z"
 
+/** The text after the end of a comment that does not nest (SQLite), or `false` when it is not closed. */
+type SkipFlatComment<S extends string> = S extends `${string}*/${infer Rest}` ? Rest : false
+
+/** The text after the end of the comment (block comments nest), or `false` when it is not closed. */
 type SkipMultiComment<S extends string> = S extends `${infer Comment}*/${infer Rest}`
 	? Comment extends `${string}/*${string}`
 		? Skip2Comments<S>
 		: Comment extends `${string}/`
 			? Skip2Comments<S>
 			: Rest
-	: ""
+	: false
 
 type Skip2Comments<S extends string> = S extends `${string}/*${infer Rest}`
-	? SkipMultiComment<SkipMultiComment<Rest>>
+	? SkipMultiComment<Rest> extends infer Inner extends string
+		? SkipMultiComment<Inner>
+		: false
 	: never
 
 export type GetNumber<S extends string, Num extends string> = S extends `${infer D1}${infer Rest}`

@@ -9,6 +9,8 @@ export type JsqlDatabaseShape = {
 	pendingConstraints?: string
 	/** Set while the INSERT / UPDATE / DELETE of a data-modifying CTE is parsed: it ends at `)` (PGT-26). */
 	cteDml?: true
+	/** SQLite: declared spellings of the columns of the CREATE TABLE / ADD COLUMN being parsed (SQLT-28); never in a finished state. */
+	pendingSpelled?: Record<string, string>
 	/** Set while the SELECT of an `INSERT … SELECT` is parsed: the columns match by position, so no output name is needed (#166). */
 	positionalSelect?: true
 }
@@ -44,6 +46,10 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	columns: Record<string, SqlTypeShape>
 	column_facts?: unknown
 	constraints?: unknown
+	/** The column keys in declaration order (SCHEMA-10): INSERT without a column list, `*` (#150). */
+	order?: unknown
+	/** SQLite: the declared spelling of each column whose key (lower case) differs from it; the result key (SQLT-28, #151). */
+	spelled?: unknown
 }
 
 export type JsqlColumnFactsEntry = {

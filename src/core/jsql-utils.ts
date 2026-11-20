@@ -11,12 +11,11 @@ export type JsqlCreateTable<
 	Columns extends Record<string, SqlTypeShape>,
 	Facts extends Record<string, unknown> | null = null,
 	Constraints extends Record<string, unknown> | null = null,
-> = {
-	kind: "table"
-	columns: Columns
-	column_facts: Facts
-	constraints: Constraints
-}
+	Order extends readonly string[] = readonly string[],
+	Spelled = {},
+> = {} extends Spelled
+	? { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order }
+	: { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order; spelled: Spelled }
 
 /**
  * A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). `Alias` is the name of
@@ -26,18 +25,33 @@ export type JsqlCreateRowidTable<
 	Columns extends Record<string, SqlTypeShape>,
 	Facts extends Record<string, unknown> | null = null,
 	Alias extends string = never,
+	Order extends readonly string[] = readonly string[],
+	Spelled = {},
 > = {
 	kind: "table"
 	columns: Columns
 	column_facts: Facts
 	constraints: null
 	rowid_table: true
-} & ([Alias] extends [never] ? {} : { rowid_alias: Alias })
+	order: Order
+} & ([Alias] extends [never] ? {} : { rowid_alias: Alias }) &
+	({} extends Spelled ? {} : { spelled: Spelled })
 
-export type JsqlCreateView<Columns extends Record<string, SqlTypeShape>> = {
+export type JsqlCreateView<
+	Columns extends Record<string, SqlTypeShape>,
+	Order extends readonly string[] = readonly string[],
+> = {
 	kind: "view"
 	columns: Columns
+	order: Order
 }
+
+/** The result key of column `Key` of `Data`: its declared spelling in SQLite (SQLT-28, #151), else the key. */
+export type JsqlColumnResultKey<Data, Key extends string> = Data extends { spelled: infer S }
+	? Key extends keyof S
+		? S[Key] & string
+		: Key
+	: Key
 
 export type JsqlDbGetSchema<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"]
 	? Db["schemas"][Sch & keyof Db["schemas"]] & JsqlSchemaShape
@@ -190,7 +204,9 @@ export type JsqlDbAddConstraintName<
 				Db,
 				Sch,
 				Tab,
-				Omit<Tbl, "constraints"> & { constraints: { names: ConstraintNames<Tbl> | Name } }
+				Omit<Tbl, "constraints"> & {
+					constraints: { names: ConstraintNames<Tbl> | Name }
+				}
 			>
 		: Db
 
@@ -206,7 +222,9 @@ export type JsqlDbDropConstraintName<
 				Db,
 				Sch,
 				Tab,
-				Omit<Tbl, "constraints"> & { constraints: { names: Exclude<ConstraintNames<Tbl>, Name> } }
+				Omit<Tbl, "constraints"> & {
+					constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
+				}
 			>
 		: Db
 
@@ -223,9 +241,9 @@ export type UnqualifiedSchema<Db extends JsqlDatabaseShape, Name extends string>
 
 export type {
 	JsqlDataGetColumnType,
-	JsqlDbGetColumn,
 	JsqlDbGetColumnType,
 	JsqlDbReplaceColumn,
+	JsqlDbRenameColumn,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
 	JsqlDbReplaceColumnDefault,
