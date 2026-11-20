@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175: one alias parser (track A; not spec-derived)
+
+- **One reader of `[AS] alias`.** `ParseAlias` (src/parser/parse-alias.ts) serves FROM / JOIN tables, FROM functions, CTE and derived-table aliases, and the target of INSERT, UPDATE, DELETE and DELETE USING. Each place is an `AliasRow`: the tokens that mean "no alias", whether a bare alias is allowed (`allowed`, `never` for INSERT, `dml` = the `bareDmlAlias` fact, error 1309 on SQLite), the errors after `AS` and for a bare non-name, and the tokens that must follow (INSERT `(`/VALUES/SELECT/DEFAULT, UPDATE `SET`). The callers only build the scope entry.
+- **Behaviour changes where a copy was wrong.** A bare alias that is a non-reserved keyword (`from users type`, `(select …) key`, `from c type`) was rejected by FROM, CTE and derived-table copies (`TokenIdent`; the DML copies took `AsIdent`); `DELETE … USING t AS x` took the `AS` for the alias and left `x` behind. An error leaves the rest at the offending token (a `;` is no longer swallowed). A bare non-name after USING is left unread (the statement end is then expected) instead of being eaten.
+- **Not done:** the table name of FROM (CTE scope, function names) is still read by `ParseFromTableAfterLeadingIdent`; it is not one of the nine places of the finding.
+- **Cost:** `typecheck:test` 16,087,530 -> 16,306,287 instantiations (+1.4%, without the new test files).
+
 ## 2026-11-20 Review #175 batch 1: schema shape and lexer (track A; #150, #151, #172; SCHEMA-10, SCHEMA-17, SQLT-28, CORE-15)
 
 - **Declared order (#150, SCHEMA-10).** A table or view shape has `order`: its column keys in declaration order (CREATE TABLE from the column stack, `CREATE TABLE … AS` and views from the SELECT's output order). `JsqlDbReplaceColumn` appends an added column and drops a removed one; `JsqlDbRenameColumn` (new) keeps a renamed column in place. INSERT without a column list and `*` / `alias.*` (so also a `select *` arm of a set operation) read it; a CTE or subquery entry has no order and keeps the old key-order fallback (`UnionToStringTuple`). `FlattenedJsqlDatabase` carries `order` and `spelled` across `.apply()`.
@@ -16,7 +23,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 
 - **One reader of `[schema.]name`.** `ParseNameParts` (src/parser/parse-qualified-name.ts) replaces the copies in CREATE TABLE / TYPE / DOMAIN / VIEW, ALTER TABLE, ALTER TYPE, DROP and the table references of INSERT, UPDATE and DELETE (FROM and USING). Each caller is a data row (`NameRow`): its two "expected a name" errors, the tokens that may follow, the errors for a bad tail (unqualified / qualified), whether the rest is skipped after an error, and the schema of an unqualified name (`home`: default schema, `UnqualifiedSchema`, or left to the caller). The three DML copies of the table lookup (unknown, view, found) are `ParseTableRef` (src/parser/parse-table-ref.ts).
 - **Behaviour changes where a copy was wrong.** CREATE VIEW read `TokenIdent` only, so a non-reserved keyword as view name (`create view type as …`, `create view public.key as …`) was 3900 / 3901; it is `AsIdent` as in every other copy (tests review-175-name-parser-view-keyword-name-*). A name that fails now leaves the rest at the bad token, not after it, so a `;` is no longer swallowed together with the next statement. In CREATE VIEW a bad tail after `schema.name` is reported before an unknown schema (syntax first, as in DROP).
-- **Not done:** the alias parsers of INSERT / UPDATE / DELETE differ by design (`AS` required, bare alias per dialect fact, end tokens) and stay; FROM's alias is in batch 3's files.
+- **Alias.** The alias after the name is the next entry (`ParseAlias`).
 - **Cost:** `typecheck:test` 16,034,396 -> 16,082,261 instantiations (+0.30%, with two new test files).
 
 ## 2026-11-20 Review #175 batch 4: statements and DDL (track A; #154, #157, #158, #159, #165, #171; STMT-18, STMT-19, STMT-Q2, SCHEMA-21, SCHEMA-23, SCHEMA-29, PGT-8, PGT-13, PGT-15, CORE-16, CORE-17, SQLT-11, SQLT-18, SQLT-Q8)
