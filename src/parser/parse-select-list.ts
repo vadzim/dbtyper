@@ -107,7 +107,7 @@ type ParseOneRawSelectItem<
 				ParseOneRawSelectExprItem<Tokens, Db, Params, OuterScope>
 
 /**
- * `[AS] alias` after a select item (SEL-35: the `AS` may be left out, as in both engines). Returns `[Tokens, name |
+ * `[AS] alias` after a select item (SEL-2: the `AS` may be left out, as in both engines). Returns `[Tokens, name |
  * undefined | error]`: `AS` without a name is 1114 (#168). A bare word is an alias unless it is `WITH` (`WITH [NO] DATA`
  * after a materialized view's query, PGT-20).
  */

@@ -1,4 +1,4 @@
-// Integration Test: SELECT - SEL-35 an output alias without AS
+// Integration Test: SELECT - SEL-39 WHERE without FROM
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
@@ -9,6 +9,6 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS
-const _result = await _db.query(`select id i, name n from users;`)
+const _result = await _db.query(`select 1 as one where true;`)
 
-expectType<typeof _result>(toBe<{ i: number; n: string | null }[]>())
+expectType<typeof _result>(toBe<{ one: number }[]>())

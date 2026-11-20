@@ -512,10 +512,10 @@ The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("
 
 - **#152.** `MarkJoinNullable` tells the new side of a join from the old one by the FROM items only (`FromItemsOnly`): the CTE definition `p` in the scope no longer makes the joined `p` count as old.
 - **#160.** ORDER BY / LIMIT / OFFSET / FETCH after a set operation belong to the whole compound (`ParseCompoundTrailing`): they see only its output names. Right arms are parsed with `Trailing = false`; a first arm that has its own clause before `UNION` is the new error 3416. `WITH RECURSIVE` bodies use the same trailing parser.
-- **#168.** `select id, from t` is 1007; `AS` without a name is 1114 (`ParseOptionalAs` returns the error). SEL-35 (new): the `AS` of an output alias may be left out; a bare word after an item is its alias, except `WITH` (`WITH [NO] DATA`).
+- **#168.** `select id, from t` is 1007; `AS` without a name is 1114 (`ParseOptionalAs` returns the error). SEL-2 (new): the `AS` of an output alias may be left out; a bare word after an item is its alias, except `WITH` (`WITH [NO] DATA`).
 - **Comma FROM list** is 1115 at the comma (`ParseJoinChain`), not an unknown column later.
-- **SEL-25.** `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `FETCH` work without FROM; any other token after the list is still 1106.
-- **SEL-36 (new).** A GROUP BY key that is a bare output alias is that item's expression, if no FROM column has the name.
+- **SEL-39.** `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `FETCH` work without FROM; any other token after the list is still 1106.
+- **SEL-28 (new).** A GROUP BY key that is a bare output alias is that item's expression, if no FROM column has the name.
 - **count(DISTINCT x)** (`ParseAggregateArgs`, parse-function-call.ts): `DISTINCT` before the arguments of count, sum, avg, min, max, total, group_concat, string_agg, array_agg is skipped; the result type is the same. `DISTINCT *` is 1007. No catalog row changed.
 - **Select list cost.** The accumulator is a union of `[name, type]` entries turned into a record once (`EntriesToRecord`), not a record merged per item (`MergeStringRecords` is gone). 320 items: 3.76M -> 3.0M instantiations net; still not linear (the item tuple), see #175.
 - **Not done:** the PostgreSQL grouped-primary-key rule of SEL-27 needs the primary key in the table shape (jsql-*, CREATE/ALTER TABLE: other batches).
