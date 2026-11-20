@@ -9,9 +9,10 @@ import type {
 	UnqualifiedSchema,
 } from "../core/jsql-utils.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { AsIdent, TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
+import type { TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { DbDialectOnlyError } from "../core/dialect.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
 /**
@@ -88,6 +89,16 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, K exten
 /** One `[schema, name]` of the name list. */
 type DropName = readonly [string, string]
 
+type DropNameRow<K extends DropKind> = {
+	name: DropKinds[K]["name"]
+	afterDot: DropKinds[K]["afterDot"]
+	ends: never
+	plain: null
+	qualified: null
+	skip: false
+	home: "none"
+}
+
 type ParseDropName<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -95,34 +106,28 @@ type ParseDropName<
 	IfExists extends boolean,
 	Acc extends readonly DropName[],
 > =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<".">
-				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? AsIdent<PeekToken<R2>> extends TokenIdent<infer B extends string>
-						? DropAfterName<
-								SkipToken<R2>,
-								Db,
-								K,
-								IfExists,
-								readonly [...Acc, readonly [A, B]],
-								"qualifiedTail"
-							>
-						: SkipFailedStatement<R2, Db, DropKinds[K]["afterDot"]>
-					: never
-				: DropAfterName<
-						R1,
-						Db,
-						K,
-						IfExists,
-						readonly [
-							...Acc,
-							readonly [K extends "type" | "domain" ? Db["defaultSchema"] : UnqualifiedSchema<Db, A>, A],
-						],
-						"plainTail"
-					>
-			: never
-		: SkipFailedStatement<Tokens, Db, DropKinds[K]["name"]>
+	ParseNameParts<Tokens, Db, DropNameRow<K>> extends [infer R extends ParserMonad, infer E, infer Sch, infer Name]
+		? E extends DbtyperErrorShape
+			? SkipFailedStatement<R, Db, E>
+			: Name extends string
+				? Sch extends string
+					? DropAfterName<R, Db, K, IfExists, readonly [...Acc, readonly [Sch, Name]], "qualifiedTail">
+					: DropAfterName<
+							R,
+							Db,
+							K,
+							IfExists,
+							readonly [
+								...Acc,
+								readonly [
+									K extends "type" | "domain" ? Db["defaultSchema"] : UnqualifiedSchema<Db, Name>,
+									Name,
+								],
+							],
+							"plainTail"
+						>
+				: never
+		: never
 
 /**
  * `, name …` (PostgreSQL: a name list), `[CASCADE | RESTRICT] ;` (PostgreSQL, SCHEMA-29), then the lookups. The tail

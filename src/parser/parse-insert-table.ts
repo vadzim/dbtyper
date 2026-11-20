@@ -7,7 +7,7 @@ import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns, VisibleColumnsOf } from "./parser-scope.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
-import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
+import type { ParseTableRef, TableRefTarget } from "./parse-table-ref.ts"
 
 export type InsertTableContext = {
 	scope: ScopeMap
@@ -117,67 +117,14 @@ export type ParseInsertFromTableRef<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? AsIdent<Tok> extends TokenIdent<infer A extends string>
-				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends ParserMonad
-								? AsIdent<TokB> extends TokenIdent<infer B extends string>
-									? JsqlDbGetData<Db, A, B> extends infer TblTry
-										? [TblTry] extends [never]
-											? [
-													R3,
-													FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "INSERT INTO"]>,
-													ParserRefErrorThirdSentinel,
-												]
-											: TblTry extends JsqlDataShape<"view">
-												? [
-														R3,
-														FormatError<Errors["CANNOT_WRITE_VIEW"], [B, "INSERT"]>,
-														ParserRefErrorThirdSentinel,
-													]
-												: TblTry extends JsqlDataShape
-													? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
-													: [
-															R3,
-															FormatError<
-																Errors["UNKNOWN_SCHEMA_OR_TABLE"],
-																[A, "INSERT INTO"]
-															>,
-															ParserRefErrorThirdSentinel,
-														]
-										: never
-									: [
-											R3,
-											FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in INSERT INTO"]>,
-											ParserRefErrorThirdSentinel,
-										]
-								: never
-							: never
-						: never
-					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
-						? [TblTry] extends [never]
-							? [
-									R1,
-									FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
-									ParserRefErrorThirdSentinel,
-								]
-							: TblTry extends JsqlDataShape<"view">
-								? [
-										R1,
-										FormatError<Errors["CANNOT_WRITE_VIEW"], [A, "INSERT"]>,
-										ParserRefErrorThirdSentinel,
-									]
-								: TblTry extends JsqlDataShape
-									? ParseInsertAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry, Params>
-									: [
-											R1,
-											FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
-											ParserRefErrorThirdSentinel,
-										]
-						: never
-				: [R1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in INSERT INTO"]>, ParserRefErrorThirdSentinel]
-			: never
+	ParseTableRef<Tokens, Db, "INSERT INTO", "INSERT"> extends [infer R extends ParserMonad, infer E, infer Target]
+		? E extends null
+			? Target extends TableRefTarget<
+					infer Sch extends string,
+					infer Tab extends string,
+					infer Tbl extends JsqlDataShape
+				>
+				? ParseInsertAliasAfterTable<R, Db, Sch, Tab, Tbl, Params>
+				: never
+			: [R, E, Target]
 		: never
