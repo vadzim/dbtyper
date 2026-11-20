@@ -125,9 +125,9 @@ expectType<Code<GetApplyError<typeof lite, typeof trailingAfterConstraint>>>(toB
 expectType<Code<GetApplyError<typeof lite, typeof twoTablePks>>>(toBe<1519>())
 expectType<Code<GetApplyError<typeof pg, typeof inlineAndTablePk>>>(toBe<1519>())
 expectType<Code<GetApplyError<typeof lite, typeof dupView>>>(toBe<3911>())
-const wrongOrder = `insert into y values (1, 't', 2)` as const
-expectType<Code<GetQueryError<typeof pgDb, typeof wrongOrder>>>(toBe<2507>())
-expectType<Code<GetQueryError<typeof liteDb, typeof wrongOrder>>>(toBe<2510>())
+const _wrongOrder = `insert into y values (1, 't', 2)` as const
+expectType<Code<GetQueryError<typeof pgDb, typeof _wrongOrder>>>(toBe<2507>())
+expectType<Code<GetQueryError<typeof liteDb, typeof _wrongOrder>>>(toBe<2510>())
 
 // block comments nest in PostgreSQL only (lexer fact `nestedComments`): in SQLite the first `*/` ends the comment
 const halfNested = `select 1 as a /* x /* y */` as const

@@ -256,12 +256,6 @@ type JsqlTableGetColumn<Table extends JsqlDataShape<"table"> | null, Name extend
 		? { type: Type } & (JsqlTableGetColumnFacts<Table, Name> extends infer Facts extends {} ? Facts : {})
 		: null
 
-type JsqlSchemaGetColumn<
-	Schema extends JsqlSchemaShape | null,
-	Tab extends string,
-	Col extends string,
-> = JsqlTableGetColumn<JsqlSchemaGetTable<Schema, Tab>, Col>
-
 type JsqlSchemaReplaceColumn<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
@@ -294,13 +288,6 @@ type JsqlSchemaReplaceColumnDefault<
 	Col extends string,
 	HasDefault extends true | null,
 > = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumnDefault<JsqlSchemaGetTable<Schema, Tab>, Col, HasDefault>>
-
-export type JsqlDbGetColumn<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	Name extends string,
-> = JsqlSchemaGetColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name>
 
 export type JsqlDbGetColumnType<
 	Db extends JsqlDatabaseShape,

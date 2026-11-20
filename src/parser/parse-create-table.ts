@@ -7,7 +7,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { DialectFact } from "../core/dialect.ts"
-import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type {
 	JsqlCreateTable,
 	JsqlCreateRowidTable,

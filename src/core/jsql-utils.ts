@@ -241,7 +241,6 @@ export type UnqualifiedSchema<Db extends JsqlDatabaseShape, Name extends string>
 
 export type {
 	JsqlDataGetColumnType,
-	JsqlDbGetColumn,
 	JsqlDbGetColumnType,
 	JsqlDbReplaceColumn,
 	JsqlDbRenameColumn,
