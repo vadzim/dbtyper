@@ -108,3 +108,21 @@ const _alias212 = await noEmail212.query(`select * from v_alias`)
 expectType<typeof _alias212>(toBe<Array<{ e: number }>>())
 const _plain212 = await noEmail212.query(`select * from v_plain`)
 expectType<typeof _plain212>(toBe<Array<{ id: number }>>())
+
+// #213: a window call reads the domain in its OVER (...) outside the select list (ORDER BY); named windows
+// (WINDOW w AS ...) are not parsed at all yet (FN "Not yet"), so that position is not reachable.
+const base213 = sqlMigrations({ driver: mockDriver }).apply(
+	`create domain email as text;
+	 create table t (id integer not null, e email, d integer);
+	 create view v_over_part as select id from t order by row_number() over (partition by e order by d);
+	 create view v_over_ord as select id from t order by row_number() over (order by e desc);
+	 create view v_over_sel as select id, row_number() over (partition by e order by d) as rn from t;
+	 create view v_over_plain as select id from t order by row_number() over (partition by d order by id);`,
+)
+const noEmail213 = base213.apply(`drop domain email cascade;`).database()
+type Gone213<V extends string> = Code<GetQueryError<typeof noEmail213, `select count(*) as n from ${V}`>>
+expectType<Gone213<"v_over_part">>(toBe<2200>())
+expectType<Gone213<"v_over_ord">>(toBe<2200>())
+expectType<Gone213<"v_over_sel">>(toBe<2200>())
+const _plain213 = await noEmail213.query(`select * from v_over_plain`)
+expectType<typeof _plain213>(toBe<Array<{ id: number }>>())
