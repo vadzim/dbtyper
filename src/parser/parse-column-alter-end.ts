@@ -4,12 +4,13 @@ import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type {
 	JsqlDbGetTable,
+	JsqlDbOmitProps,
 	JsqlDbReplaceColumn,
 	JsqlDbSetPrimaryKey,
 	JsqlPrimaryKey,
 	JsqlTablePrimaryKey,
 } from "../core/jsql-utils.ts"
-import type { MultiplePrimaryKeys } from "./parse-create-table.ts"
+import type { MultiplePrimaryKeys, PendingPkName } from "./parse-create-table.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FinishAlterStatement, ParseAlterActions } from "./parse-alter-table.ts"
 import type { OneCol } from "./parse-create-table-merge.ts"
@@ -47,10 +48,12 @@ type AlterColumnStore<Tokens extends ParserMonad, C extends ColumnCtx, S extends
 					S["pk"] extends false
 						? C["db"]
 						: JsqlDbSetPrimaryKey<
-								C["db"],
+								C["db"] extends { pendingPkName: string }
+									? JsqlDbOmitProps<C["db"], "pendingPkName">
+									: C["db"],
 								C["schema"],
 								C["table"],
-								{ columns: C["name"]; name: `${C["table"]}_pkey` }
+								{ columns: C["name"]; name: PendingPkName<C["db"], C["table"]> }
 							>,
 					C["schema"],
 					C["table"],

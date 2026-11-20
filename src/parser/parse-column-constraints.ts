@@ -10,11 +10,10 @@ import type { DialectFact } from "../core/dialect.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ColumnDef, HasPrimaryKey, MultiplePrimaryKeys, PkKind } from "./parse-create-table.ts"
 import type { ParseCreateTableAfterComma, ParseCreateTableBody } from "./parse-create-table-columns.ts"
-import type { ParseReferences } from "./parse-column-references.ts"
 import type { AlterColumnDone } from "./parse-column-alter-end.ts"
 import type {
-	ColumnAfterGroup,
 	ColumnAutoincrement,
+	ColumnCheck,
 	ColumnCollate,
 	ColumnConstraintName,
 	ColumnEntry,
@@ -22,6 +21,7 @@ import type {
 	ColumnNotNull,
 	ColumnOnConflict,
 	ColumnPrimaryKey,
+	ColumnReferences,
 	ColumnShortGenerated,
 	ColumnStateWith,
 	ColumnUnique,
@@ -96,21 +96,9 @@ export type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnC
 								: PeekToken<Tokens> extends TokenKey<"unique">
 									? ColumnUnique<Tokens, C, S>
 									: PeekToken<Tokens> extends TokenKey<"check">
-										? SkipParenGroup<SkipToken<Tokens>> extends [
-												infer R extends ParserMonad,
-												infer E,
-											]
-											? ColumnAfterGroup<R, E, C, S>
-											: never
+										? ColumnCheck<Tokens, C, S>
 										: PeekToken<Tokens> extends TokenKey<"references">
-											? ParseReferences<
-													SkipToken<Tokens>,
-													C["db"],
-													C["schema"],
-													C["table"]
-												> extends [infer R extends ParserMonad, infer E]
-												? ColumnAfterGroup<R, E, C, S>
-												: never
+											? ColumnReferences<Tokens, C, S>
 											: PeekToken<Tokens> extends TokenIdent<"collate">
 												? ColumnCollate<Tokens, C, S>
 												: PeekToken<Tokens> extends TokenKey<"generated">

@@ -2,7 +2,7 @@ import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
-import type { ScopeMap } from "./parser-scope.ts"
+import type { CteDefsOnly, FromItemsOnly, ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { ParseRawSelectList } from "./parse-select-list.ts"
 import type { RawSelectItem } from "./parse-select.ts"
@@ -41,17 +41,19 @@ export type ParseAndResolveReturningClause<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 > =
-	ParseRawSelectList<Tokens, Db, Params, {}> extends [infer After extends ParserMonad, infer Items]
+	// DML-21: subqueries of RETURNING see the CTEs of a `WITH … INSERT | UPDATE | DELETE`; `*` is the FROM items only
+	ParseRawSelectList<Tokens, Db, Params, CteDefsOnly<Scope>> extends [infer After extends ParserMonad, infer Items]
 		? Items extends DbtyperErrorShape
 			? [After, Db, Items]
 			: Items extends readonly RawSelectItem[]
 				? // `*` may sit beside other items here (`returning *, id as id2`), unlike in SELECT
-					ResolveSelectList<Items, Db, Scope, Params> extends infer Res
+					ResolveSelectList<Items, Db, FromItemsOnly<Scope>, Params> extends infer Res
 					? Res extends DbtyperErrorShape
 						? [After, Db, WithErrorClause<Res, "RETURNING">]
 						: Res extends JsqlSelectStatementResult
 							? // CORE-11: the output names of RETURNING are unique too
-								SelectItemNames<Items, Scope> extends infer Names extends readonly string[]
+								SelectItemNames<Items, FromItemsOnly<Scope>> extends infer Names extends
+									readonly string[]
 								? FirstDuplicateName<Names> extends infer Dup
 									? [Dup] extends [never]
 										? [After, Db, Res]

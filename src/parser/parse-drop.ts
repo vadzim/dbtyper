@@ -1,17 +1,22 @@
 import type { JsqlDatabaseShape, JsqlDataShape, JsqlTypeShape } from "../core/jsql-shapes.ts"
 import type {
+	JsqlConstraintNames,
 	JsqlDbGetData,
 	JsqlDbGetType,
+	JsqlDbReferencingConstraints,
 	JsqlDbReplaceData,
+	JsqlDbDropReferencingConstraints,
 	JsqlDbDropTypeUsers,
+	JsqlDbTypeColumnRefs,
 	JsqlDbTypeInUse,
 	JsqlDbReplaceType,
 	UnqualifiedSchema,
 } from "../core/jsql-utils.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
+import type { LastOf } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { DbDialectOnlyError } from "../core/dialect.ts"
+import type { DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
 import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
@@ -172,18 +177,54 @@ type DropTargets<
 	IfExists extends boolean,
 	Names extends readonly DropName[],
 	Cascade extends boolean = false,
+	Listed extends string = ListedConstraints<Db, Names>,
 > = Names extends readonly [
 	readonly [infer Sch extends string, infer Name extends string],
 	...infer Rest extends readonly DropName[],
 ]
-	? DropTarget<Db, K, IfExists, Sch, Name, Cascade> extends infer Res
+	? DropTarget<Db, K, IfExists, Sch, Name, Cascade, Listed> extends infer Res
 		? Res extends JsqlDatabaseShape
-			? DropTargets<Tokens, Res, K, IfExists, Rest, Cascade>
+			? DropTargets<Tokens, Res, K, IfExists, Rest, Cascade, Listed>
 			: Res extends DbtyperErrorShape
 				? SkipFailedStatement<Tokens, Db, Res>
 				: never
 		: never
 	: [SkipToken<Tokens>, Db, null]
+
+/** SCHEMA-32: the constraints (`table.constraint`) of the tables in a DROP TABLE list; they go with it. */
+type ListedConstraints<Db extends JsqlDatabaseShape, Names extends readonly DropName[]> = Names[number] extends infer E
+	? E extends readonly [infer S extends string, infer N extends string]
+		? `${N}.${JsqlConstraintNames<JsqlDbGetData<Db, S, N>>}`
+		: never
+	: never
+
+/**
+ * SCHEMA-32 (#210): the FOREIGN KEYs of other tables that reference the table `Sch.Name` (`table.constraint`), or
+ * `never`; not the ones of the tables dropped with it (`Listed`). Dialect fact `dropReferencedColumn`.
+ */
+type TableReferencedBy<Db extends JsqlDatabaseShape, Sch extends string, Name extends string, Listed extends string> =
+	DialectFact<Db, "dropReferencedColumn"> extends "cascade"
+		? JsqlDbReferencingConstraints<Db, `${Sch}.${Name}.${string}`, Listed>
+		: never
+
+/** The table `Sch.Name` dropped: with CASCADE its referencing FOREIGN KEYs go too (SCHEMA-32), without it they are an error. */
+type DropTable<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Name extends string,
+	Cascade extends boolean,
+	Listed extends string,
+> =
+	TableReferencedBy<Db, Sch, Name, Listed> extends infer Deps extends string
+		? [Deps] extends [never]
+			? JsqlDbReplaceData<Db, Sch, Name, null>
+			: Cascade extends true
+				? JsqlDbReplaceData<JsqlDbDropReferencingConstraints<Db, `${Sch}.${Name}.${string}`>, Sch, Name, null>
+				: FormatError<
+						Errors["TABLE_IS_REFERENCED_BY_A_FOREIGN_KEY"],
+						[Name, LastOf<Deps> extends `${infer T}.${infer N}` ? `${N} of table ${T}` : never]
+					>
+		: never
 
 /** The database without the named object, or the error. */
 type DropTarget<
@@ -193,6 +234,7 @@ type DropTarget<
 	Sch extends string,
 	Name extends string,
 	Cascade extends boolean = false,
+	Listed extends string = never,
 > = K extends "type" | "domain"
 	? JsqlDbGetType<Db, Sch, Name> extends infer T extends JsqlTypeShape
 		? [K, T] extends ["domain", { kind: "domain" }] | ["type", JsqlTypeShape]
@@ -201,7 +243,12 @@ type DropTarget<
 				(T extends { kind: "enum" } ? true : false) extends infer Enum extends boolean
 				? [JsqlDbTypeInUse<Db, Sch, Name, Enum>] extends [true]
 					? Cascade extends true
-						? JsqlDbDropTypeUsers<Db, Sch, Name, Enum> extends infer D extends JsqlDatabaseShape
+						? JsqlDbDropReferencingConstraints<
+								JsqlDbDropTypeUsers<Db, Sch, Name, Enum> extends infer U extends JsqlDatabaseShape
+									? U
+									: Db,
+								JsqlDbTypeColumnRefs<Db, Sch, Name, Enum>
+							> extends infer D extends JsqlDatabaseShape
 							? JsqlDbReplaceType<D, Sch, Name, null>
 							: never
 						: FormatError<Errors["TYPE_IS_IN_USE_BY_A_COLUMN"], []>
@@ -213,7 +260,9 @@ type DropTarget<
 			: DropKinds[K]["missing"]
 	: JsqlDbGetData<Db, Sch, Name> extends infer D
 		? D extends JsqlDataShape<Exclude<K, "type" | "domain">>
-			? JsqlDbReplaceData<Db, Sch, Name, null>
+			? K extends "table"
+				? DropTable<Db, Sch, Name, Cascade, Listed>
+				: JsqlDbReplaceData<Db, Sch, Name, null>
 			: [D] extends [null]
 				? IfExists extends true
 					? Db

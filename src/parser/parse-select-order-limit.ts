@@ -10,6 +10,7 @@ import type { ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
+import type { ViewReads, MergeViewReads } from "./parse-select-resolve.ts"
 import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
 
 /** Scalar `ORDER BY` / `LIMIT` / `OFFSET` value: any resolved expression (unlike `WHERE`, not restricted to `boolean`). */
@@ -72,7 +73,7 @@ type ParseOrderByTermExpr<
 					? R extends DbtyperErrorShape
 						? SkipFailedExpression<Rw, WithErrorClause<R, "ORDER BY">>
 						: R extends SqlTypeShape
-							? [Rw, null]
+							? [Rw, ViewReads<Db, Ast, Scope>] // null, but a CREATE VIEW's types read (#212)
 							: SkipFailedExpression<Rw, never>
 					: never
 		: never
@@ -88,10 +89,10 @@ type ParseOrderByOneTerm<
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<"asc">
-				? [SkipToken<R1>, null]
+				? [SkipToken<R1>, E1]
 				: PeekToken<R1> extends TokenKey<"desc">
-					? [SkipToken<R1>, null]
-					: [R1, null]
+					? [SkipToken<R1>, E1]
+					: [R1, E1]
 		: never
 
 type ParseOrderByTerms<
@@ -105,8 +106,15 @@ type ParseOrderByTerms<
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<",">
-				? ParseOrderByTerms<SkipToken<R1>, Db, Scope, Params, OutNames>
-				: [R1, null]
+				? ParseOrderByTerms<SkipToken<R1>, Db, Scope, Params, OutNames> extends [
+						infer R2 extends ParserMonad,
+						infer E2,
+					]
+					? E2 extends DbtyperErrorShape
+						? [R2, E2]
+						: [R2, MergeViewReads<E1, E2>]
+					: never
+				: [R1, E1]
 		: never
 
 type ParseOrderByAfterOrderKw<

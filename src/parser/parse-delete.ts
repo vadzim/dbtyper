@@ -7,6 +7,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseAlias } from "./parse-alias.ts"
+import type { IndexNamesOf } from "./parse-index.ts"
 import type { ParseTableRef, TableRefTarget } from "./parse-table-ref.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
@@ -15,21 +16,24 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expre
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
 
+/** `Ctes`: the CTE definitions of a `WITH … DELETE` (DML-21), visible by name in the subqueries of WHERE and RETURNING. */
 export type ParseDelete<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Ctes extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends TokenKey<"from">
-		? ParseDeleteAfterFrom<SkipToken<Tokens>, Db, Params>
+		? ParseDeleteAfterFrom<SkipToken<Tokens>, Db, Params, Ctes>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_FROM_AFTER_DELETE"], []>>
 
 type ParseDeleteAfterFrom<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	Ctes extends ScopeMap,
 > =
-	ParseDeleteFromTableRef<Tokens, Db, {}, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
+	ParseDeleteFromTableRef<Tokens, Db, Ctes, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]
@@ -201,7 +205,7 @@ type DeleteAliasRow = {
 	tailError: null
 }
 
-/** `DELETE FROM t [[AS] alias]`: on SQLite the alias needs AS (`bareDmlAlias`). */
+/** `DELETE FROM t [[AS] alias] [INDEXED BY i | NOT INDEXED]`: on SQLite the alias needs AS (`bareDmlAlias`). */
 type ParseDeleteAliasAfterTable<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -211,7 +215,11 @@ type ParseDeleteAliasAfterTable<
 	Scope extends ScopeMap,
 	_Params extends ExpressionParamsShape,
 > =
-	ParseAlias<Tokens, Db, DeleteAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+	ParseAlias<Tokens, Db, DeleteAliasRow, { table: Tab; indexes: IndexNamesOf<Tbl> }> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Alias,
+	]
 		? E extends null
 			? [
 					R,

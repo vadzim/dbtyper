@@ -268,7 +268,7 @@ const errors = {
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {
 		code: 1100,
-		msg: ["Expected SELECT after WITH clause"],
+		msg: ["Expected SELECT, INSERT, UPDATE or DELETE after WITH clause"],
 	},
 	EXPECTED_SELECT_IN_SUBQUERY: {
 		code: 1101,
@@ -355,6 +355,20 @@ const errors = {
 	EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM: {
 		code: 1121,
 		msg: ["Expected table name or `(` in FROM"],
+	},
+	// SQLT-73: `INDEXED BY` without a name
+	EXPECTED_INDEX_NAME_AFTER_INDEXED_BY: {
+		code: 1122,
+		msg: ["Expected index name after INDEXED BY"],
+	},
+	// SEL-40: a VALUES CTE body
+	EXPECTED_OPEN_PAREN_IN_VALUES: {
+		code: 1123,
+		msg: ["Expected `(` before a VALUES row"],
+	},
+	EXPECTED_COMMA_OR_CLOSE_PAREN_IN_VALUES_ROW: {
+		code: 1124,
+		msg: ["Expected `,` or `)` in a VALUES row"],
 	},
 
 	// INSERT Statement
@@ -833,6 +847,11 @@ const errors = {
 		code: 2220,
 		msg: ["Unknown constraint ", " on table ", ""],
 	},
+	// SQLT-73: `INDEXED BY name` with a name no CREATE INDEX of the table has (also after a CTE or a view)
+	UNKNOWN_INDEX: {
+		code: 2221,
+		msg: ["Unknown index ", " on table ", ""],
+	},
 	OBSOLETE_2201_UNKNOWN_TABLE_UPDATE: {
 		code: 2201,
 		msg: ["Use UNKNOWN_TABLE with context parameter"],
@@ -1197,6 +1216,14 @@ const errors = {
 		code: 3212,
 		msg: ["Type is used by a column; drop the column first or use CASCADE (TYPE-18)"],
 	},
+	COLUMN_IS_REFERENCED_BY_A_FOREIGN_KEY: {
+		code: 3213,
+		msg: ["Column ", " is referenced by the foreign key ", "; drop the constraint first or use CASCADE"],
+	},
+	TABLE_IS_REFERENCED_BY_A_FOREIGN_KEY: {
+		code: 3214,
+		msg: ["Table ", " is referenced by the foreign key ", "; drop the constraint first or use CASCADE (SCHEMA-32)"],
+	},
 
 	// Constraint Violations
 	MISSING_NOT_NULL_COLUMN_IN_INSERT: {
@@ -1299,6 +1326,11 @@ const errors = {
 		msg: [
 			"ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it",
 		],
+	},
+	// SEL-40: rows of a VALUES CTE body with different numbers of values
+	VALUES_ROW_LENGTH_MISMATCH: {
+		code: 3417,
+		msg: ["All VALUES rows must have the same number of values"],
 	},
 
 	COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN: {

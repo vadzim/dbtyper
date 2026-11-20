@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **328 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **335 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -11,7 +11,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | Range     | Category                      | Active codes |
 | --------- | ----------------------------- | -----------: |
 | 1000-1099 | Lexer/Tokenization            |           11 |
-| 1100-1199 | Parser/SELECT Statement       |           22 |
+| 1100-1199 | Parser/SELECT Statement       |           25 |
 | 1200-1299 | Parser/INSERT Statement       |           18 |
 | 1300-1399 | Parser/UPDATE Statement       |            4 |
 | 1400-1499 | Parser/DELETE Statement       |            2 |
@@ -21,7 +21,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
 | 1900-1999 | Other-dialect syntax          |           21 |
 | 2100-2199 | Validation/Statement          |           10 |
-| 2200-2299 | Resolution/Table-Schema       |            4 |
+| 2200-2299 | Resolution/Table-Schema       |            5 |
 | 2300-2399 | Resolution/Column             |            4 |
 | 2400-2499 | Resolution/Other              |            6 |
 | 2500-2599 | Type/Compatibility            |           11 |
@@ -31,9 +31,9 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2900-2999 | Type/Numeric Operations       |            1 |
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
-| 3200-3299 | Semantic/Duplicate-Existence  |           13 |
+| 3200-3299 | Semantic/Duplicate-Existence  |           15 |
 | 3300-3399 | Semantic/Constraint           |            9 |
-| 3400-3499 | Semantic/SELECT               |           16 |
+| 3400-3499 | Semantic/SELECT               |           17 |
 | 3500-3599 | Semantic/Statement            |           11 |
 | 3600-3699 | Semantic/Function             |           20 |
 | 3700-3799 | DDL/CREATE SCHEMA             |            3 |
@@ -72,30 +72,33 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 1100-1199: Parser/SELECT Statement
 
-| Code | Name                                              | Message                                         |
-| ---- | ------------------------------------------------- | ----------------------------------------------- |
-| 1100 | `EXPECTED_SELECT_AFTER_WITH`                      | Expected SELECT after WITH clause               |
-| 1101 | `EXPECTED_SELECT_IN_SUBQUERY`                     | Expected SELECT in subquery                     |
-| 1102 | `EXPECTED_SELECT_IN_DERIVED_TABLE`                | Expected SELECT in derived table                |
-| 1103 | `EXPECTED_SELECT_IN_EXISTS_SUBQUERY`              | Expected SELECT in EXISTS subquery              |
-| 1104 | `EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW` | Expected SELECT or WITH after AS in CREATE VIEW |
-| 1105 | `EXPECTED_SEMICOLON`                              | Expected semicolon after …                      |
-| 1106 | `EXPECTED_FROM_AFTER_SELECT_LIST`                 | Expected FROM after SELECT list                 |
-| 1107 | `EXPECTED_BY_AFTER_GROUP`                         | Expected BY after GROUP                         |
-| 1108 | `EXPECTED_BY_AFTER_ORDER`                         | Expected BY after ORDER                         |
-| 1109 | `EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE`          | Expected BY after ORDER in OVER clause          |
-| 1110 | `EXPECTED_BY_AFTER_PARTITION`                     | Expected BY after PARTITION                     |
-| 1111 | `EXPECTED_CTE_NAME_IN_WITH`                       | Expected CTE name in WITH                       |
-| 1112 | `EXPECTED_ALIAS_AFTER_CTE`                        | Expected alias after CTE                        |
-| 1113 | `EXPECTED_ALIAS_AFTER_DERIVED_TABLE`              | Expected alias after derived table              |
-| 1114 | `EXPECTED_ALIAS_NAME_AFTER_AS`                    | Expected alias name after AS                    |
-| 1115 | `EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE`       | Expected alias or join clause after table       |
-| 1116 | `EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH`            | Expected open paren after AS in WITH            |
-| 1117 | `EXPECTED_END_AFTER_CASE`                         | Expected END after CASE                         |
-| 1118 | `EXPECTED_WHEN_AFTER_CASE_EXPRESSION`             | Expected WHEN after CASE expression             |
-| 1119 | `EXPECTED_WHEN_ELSE_OR_END_IN_CASE`               | Expected WHEN ELSE or END in CASE               |
-| 1120 | `EXPECTED_TABLE_NAME`                             | Expected table name …                           |
-| 1121 | `EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM`       | Expected table name or \`(\` in FROM            |
+| Code | Name                                              | Message                                                     |
+| ---- | ------------------------------------------------- | ----------------------------------------------------------- |
+| 1100 | `EXPECTED_SELECT_AFTER_WITH`                      | Expected SELECT, INSERT, UPDATE or DELETE after WITH clause |
+| 1101 | `EXPECTED_SELECT_IN_SUBQUERY`                     | Expected SELECT in subquery                                 |
+| 1102 | `EXPECTED_SELECT_IN_DERIVED_TABLE`                | Expected SELECT in derived table                            |
+| 1103 | `EXPECTED_SELECT_IN_EXISTS_SUBQUERY`              | Expected SELECT in EXISTS subquery                          |
+| 1104 | `EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW` | Expected SELECT or WITH after AS in CREATE VIEW             |
+| 1105 | `EXPECTED_SEMICOLON`                              | Expected semicolon after …                                  |
+| 1106 | `EXPECTED_FROM_AFTER_SELECT_LIST`                 | Expected FROM after SELECT list                             |
+| 1107 | `EXPECTED_BY_AFTER_GROUP`                         | Expected BY after GROUP                                     |
+| 1108 | `EXPECTED_BY_AFTER_ORDER`                         | Expected BY after ORDER                                     |
+| 1109 | `EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE`          | Expected BY after ORDER in OVER clause                      |
+| 1110 | `EXPECTED_BY_AFTER_PARTITION`                     | Expected BY after PARTITION                                 |
+| 1111 | `EXPECTED_CTE_NAME_IN_WITH`                       | Expected CTE name in WITH                                   |
+| 1112 | `EXPECTED_ALIAS_AFTER_CTE`                        | Expected alias after CTE                                    |
+| 1113 | `EXPECTED_ALIAS_AFTER_DERIVED_TABLE`              | Expected alias after derived table                          |
+| 1114 | `EXPECTED_ALIAS_NAME_AFTER_AS`                    | Expected alias name after AS                                |
+| 1115 | `EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE`       | Expected alias or join clause after table                   |
+| 1116 | `EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH`            | Expected open paren after AS in WITH                        |
+| 1117 | `EXPECTED_END_AFTER_CASE`                         | Expected END after CASE                                     |
+| 1118 | `EXPECTED_WHEN_AFTER_CASE_EXPRESSION`             | Expected WHEN after CASE expression                         |
+| 1119 | `EXPECTED_WHEN_ELSE_OR_END_IN_CASE`               | Expected WHEN ELSE or END in CASE                           |
+| 1120 | `EXPECTED_TABLE_NAME`                             | Expected table name …                                       |
+| 1121 | `EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM`       | Expected table name or \`(\` in FROM                        |
+| 1122 | `EXPECTED_INDEX_NAME_AFTER_INDEXED_BY`            | Expected index name after INDEXED BY                        |
+| 1123 | `EXPECTED_OPEN_PAREN_IN_VALUES`                   | Expected \`(\` before a VALUES row                          |
+| 1124 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_VALUES_ROW`     | Expected \`,\` or \`)\` in a VALUES row                     |
 
 ## 1200-1299: Parser/INSERT Statement
 
@@ -245,6 +248,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2207 | `UNKNOWN_SCHEMA_OR_TABLE` | Unknown schema or table … in …  |
 | 2214 | `UNKNOWN_SCHEMA`          | Unknown schema … for …          |
 | 2220 | `UNKNOWN_CONSTRAINT`      | Unknown constraint … on table … |
+| 2221 | `UNKNOWN_INDEX`           | Unknown index … on table …      |
 
 ## 2300-2399: Resolution/Column
 
@@ -338,21 +342,23 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 3200-3299: Semantic/Duplicate-Existence
 
-| Code | Name                                                  | Message                                                                  |
-| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
-| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                 |
-| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                     |
-| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                  |
-| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                     |
-| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                      |
-| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                   |
-| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                       |
-| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                     |
-| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                  |
-| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                  |
-| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                               |
-| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                   |
-| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18) |
+| Code | Name                                                  | Message                                                                                          |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                                         |
+| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                                             |
+| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                                          |
+| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                                             |
+| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                                              |
+| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                                           |
+| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                                               |
+| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                                             |
+| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                                          |
+| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                                          |
+| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                                                       |
+| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                                           |
+| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18)                         |
+| 3213 | `COLUMN_IS_REFERENCED_BY_A_FOREIGN_KEY`               | Column … is referenced by the foreign key …; drop the constraint first or use CASCADE            |
+| 3214 | `TABLE_IS_REFERENCED_BY_A_FOREIGN_KEY`                | Table … is referenced by the foreign key …; drop the constraint first or use CASCADE (SCHEMA-32) |
 
 ## 3300-3399: Semantic/Constraint
 
@@ -388,6 +394,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3413 | `CTE_COLUMN_LIST_MISMATCH`                                                    | WITH query … has a different number of columns than its column list                                                       |
 | 3414 | `COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN`                                      | ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position |
 | 3416 | `ORDER_OR_LIMIT_BEFORE_SET_OPERATOR`                                          | ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it                 |
+| 3417 | `VALUES_ROW_LENGTH_MISMATCH`                                                  | All VALUES rows must have the same number of values                                                                       |
 
 ## 3500-3599: Semantic/Statement
 

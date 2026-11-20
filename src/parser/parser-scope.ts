@@ -79,6 +79,11 @@ export type MarkOuterScope<Outer extends ScopeMap> = {
 	}
 }
 
+/** Only the scope entries that are CTE definitions (DML-21: what the SELECT of `WITH … INSERT … SELECT` sees). */
+export type CteDefsOnly<Scope extends ScopeMap> = {
+	[K in keyof Scope as Scope[K]["schema"] extends "__cte__" ? K : never]: Scope[K]
+}
+
 /** Drop scope entries that are CTE definitions (not FROM items): they are visible by name only. */
 export type FromItemsOnly<Scope extends ScopeMap> = {
 	[K in keyof Scope as Scope[K]["schema"] extends "__cte__" ? never : K]: Scope[K]

@@ -11,8 +11,8 @@ SQL that is not listed is either skipped (see "Statements that are skipped") or 
 | `CREATE TABLE`, `CREATE VIEW`, `CREATE SCHEMA`, `CREATE TYPE`, `CREATE DOMAIN`, `ALTER TABLE`, `ALTER TYPE`, `DROP TABLE`, `DROP VIEW`, `DROP SCHEMA`, `DROP TYPE` | Parsed and checked; they change the schema of the chain (a statement passed to `query` is checked but changes nothing).           |
 | `CREATE OR REPLACE VIEW`, `CREATE MATERIALIZED VIEW`, `DROP MATERIALIZED VIEW`                                                                                     | PostgreSQL: parsed like a view. SQLite: error 1900.                                                                               |
 | `SELECT`, `WITH … SELECT`                                                                                                                                          | Parsed and checked; the result is the row type.                                                                                   |
-| `INSERT`, `UPDATE`, `DELETE`                                                                                                                                       | Parsed and checked; the result is `[]`, or the rows of `RETURNING`.                                                               |
-| `CREATE INDEX`, `GRANT`, `REVOKE`, `TRUNCATE`, `SET`, `BEGIN`, `COMMIT`, `COPY`, `PRAGMA` and the like                                                             | Skipped up to the next `;` (brackets must balance); no check, no schema change. A `query` of such a statement is typed `unknown`. |
+| `INSERT`, `UPDATE`, `DELETE`, also after `WITH …`                                                                                                                  | Parsed and checked; the result is `[]`, or the rows of `RETURNING`.                                                               |
+| `CREATE INDEX` (PostgreSQL), `GRANT`, `REVOKE`, `TRUNCATE`, `SET`, `BEGIN`, `COMMIT`, `COPY`, `PRAGMA` and the like                                                | Skipped up to the next `;` (brackets must balance); no check, no schema change. A `query` of such a statement is typed `unknown`. |
 | Any other first word (`selec`, `udpate`)                                                                                                                           | Compile error 1930 (1931 with a "did you mean" hint). `ATTACH`, `DETACH` and `CREATE VIRTUAL TABLE` in SQLite are error 1916.     |
 
 A script may hold several statements. They are applied in order, each sees the schema changes of the ones before it, and the first wrong statement is the error. A statement ends with `;` or at the end of the text. A script may have at most 2500 statements (error 1919).
@@ -25,6 +25,7 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 - Syntax of the other engine is a compile error: 1900 (PostgreSQL-only syntax in a SQLite chain, such as `::`, `$n`, `DROP TABLE … CASCADE`), 1901 (SQLite-only syntax in a PostgreSQL chain, such as `INSERT OR …`, `REPLACE INTO`, backtick identifiers). The list is the data table in `src/core/dialect.ts`.
 - A PostgreSQL chain starts with the schema `public`: the first migration may be `create table …`. `create schema public;` is error 3200, `create schema if not exists public;` does nothing. A `defaultSchema` other than `public` must be created.
 - A SQLite chain starts with the schemas `main` (the default) and `temp`. `CREATE SCHEMA` is an error there.
+- SQLite: `CREATE [UNIQUE] INDEX name ON table …` keeps only the index name on its table (an unknown table is error 2200; the columns and `WHERE` are not checked); `DROP INDEX` removes it, `DROP TABLE` drops it with the table. A table in FROM, JOIN, UPDATE and DELETE may be followed by `INDEXED BY name` (the index must be one of that table's, else error 2221) or `NOT INDEXED`; neither changes a type. In PostgreSQL both are error 1901.
 - Column types come from the driver's type map: `PostgresTypeMap` and `SqliteTypeMap` (see the README). A type spelling that is not in the map is error 3506.
 
 ## CREATE TABLE, CREATE VIEW
@@ -48,7 +49,8 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 - `DISTINCT`, and in PostgreSQL `DISTINCT ON`.
 - `FROM` is optional (`select 1 as one`). Items: `[schema.]table [AS] alias`, a view, a CTE, a derived table `(select …) [AS] alias` (the alias is required). PostgreSQL also has `unnest(…)` and `generate_series(…)`; SQLite has `json_each(json [, path])` and `json_tree(json [, path])` with the columns `key`, `value`, `type`, `atom`, `id`, `parent`, `fullkey`, `path` (the arguments may use the items before them: `from t, json_each(t.tags) j`; a call with no argument or more than two is error 1937, and outside FROM it is an unknown function, 3619).
 - Joins: `[INNER] JOIN`, `LEFT`/`RIGHT`/`FULL [OUTER] JOIN` and `CROSS JOIN`; `ON` takes any boolean condition, `USING (columns)` and `NATURAL JOIN` work too. Columns on the optional side of an outer join are nullable.
-- `WITH name AS (select …), …` (a CTE may be used in FROM and JOIN), `WITH RECURSIVE`; a CTE may not refer to an earlier CTE of the same list yet.
+- `WITH name AS (select …), …` (a CTE may be used in FROM and JOIN), `WITH RECURSIVE`; a CTE may not refer to an earlier CTE of the same list yet. A CTE body may be `VALUES (…), (…)`: its columns are `column1`, `column2`, … (or the CTE's column list), each of the common type of its cells (3409 for incompatible cells, 3417 for rows of different lengths).
+- `WITH …` may also precede `INSERT`, `UPDATE` and `DELETE` (SQLite also `REPLACE`): the CTEs are FROM items of the `INSERT … SELECT`, of `UPDATE … FROM` and of the subqueries of SET, WHERE and RETURNING; the target is always a table, never a CTE of that name.
 - `UNION [ALL]`, `INTERSECT`, `EXCEPT`: the names come from the first SELECT, the column types are merged, and the column counts must agree.
 - `WHERE`, `GROUP BY` (columns, expressions, output positions), `HAVING`, `ORDER BY` (columns, expressions, positions, output aliases; `ASC`/`DESC`), `LIMIT`, `OFFSET`, `FETCH FIRST n ROWS ONLY`. A column in the list that is outside an aggregate and is not a `GROUP BY` key is error 3403.
 - Subqueries in expressions: scalar `(select …)`, `IN (select …)`, `EXISTS (select …)`, `x = ANY (…)`. They see the columns of the outer `FROM` in `WHERE`, not in the select list and not in derived tables.
@@ -57,7 +59,7 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 
 ## INSERT, UPDATE, DELETE
 
-- `INSERT INTO [schema.]table [(columns)] VALUES (…), (…)` and `INSERT INTO … SELECT …`. Every value is checked against its column; `NULL` for a NOT NULL column is an error; a NOT NULL column without a default that is missing from the column list is error 3300.
+- `INSERT INTO [schema.]table [(columns)] VALUES (…), (…)` and `INSERT INTO … SELECT …` (both with `ON CONFLICT` and `RETURNING`). Every value is checked against its column; `NULL` for a NOT NULL column is an error; a NOT NULL column without a default that is missing from the column list is error 3300.
 - `ON CONFLICT [(columns)] DO NOTHING` and `DO UPDATE SET … [WHERE …]`, where `excluded.column` is in scope. SQLite also has `INSERT OR …` and `REPLACE INTO`.
 - `UPDATE table SET column = value, … [FROM other] [WHERE …]`, `DELETE FROM table [USING other] [WHERE …]`; the `WHERE` follows the rules of a SELECT `WHERE`.
 - `RETURNING *`, `t.*`, columns or expressions with `AS`: the result is the typed rows. Without `RETURNING` the result is `[]`.
@@ -78,6 +80,6 @@ A function must be in the function catalog of the dialect (PostgreSQL or SQLite)
 
 ## Statements that are skipped
 
-Skipped statements are not checked, change nothing in the schema, and are typed `unknown` by `query`. Most are harmless (`GRANT`, `SET`, `BEGIN`, `CREATE INDEX`, `COMMENT`). Some of them change the schema in the real database, and later queries then fail against the old schema: PostgreSQL `CREATE TEMP TABLE`, `ALTER SCHEMA … RENAME`, `ALTER VIEW …`. Keep such changes out of the typed chain.
+Skipped statements are not checked, change nothing in the schema, and are typed `unknown` by `query`. Most are harmless (`GRANT`, `SET`, `BEGIN`, PostgreSQL's `CREATE INDEX`, `COMMENT`). Some of them change the schema in the real database, and later queries then fail against the old schema: PostgreSQL `CREATE TEMP TABLE`, `ALTER SCHEMA … RENAME`, `ALTER VIEW …`. Keep such changes out of the typed chain.
 
 Very long statements are a limit of the TypeScript compiler, not of dbtyper: an expression with about thirty chained `+`, more than about 200 positional parameters, or a very long migration chain can end in TypeScript's own "excessively deep" error (TS2589) instead of a dbtyper error. Split the statement or the migration.

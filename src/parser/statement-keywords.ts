@@ -148,7 +148,7 @@ export type PostgresSkippedForms = {
 	drop: readonly [...PostgresUntypedObjects, "trigger", "owned"]
 }
 
-/** SQLite: `CREATE [UNIQUE] INDEX`, `DROP INDEX`, `DROP TRIGGER` (SQLT-23); its ALTER has only TABLE. */
+/** SQLite: `CREATE [UNIQUE] INDEX`, `DROP INDEX` (their names are kept for INDEXED BY: parse-index.ts, SQLT-74), `DROP TRIGGER` (SQLT-23); its ALTER has only TABLE. */
 export type SqliteSkippedForms = {
 	create: readonly ["index", "unique"]
 	alter: readonly []

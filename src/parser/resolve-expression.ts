@@ -29,6 +29,7 @@ import type {
 	ResolvePgRegexMatchAst,
 } from "./resolve-expression-compare.ts"
 import type { LookupParam, LookupPositionalParam, ResolveIdentChainValue } from "./resolve-expression-ident.ts"
+import type { CollectParamProbes } from "../core/param-probe.ts"
 import type { ApplyOperandNullability, NullTestedParam, ParamProbeAt } from "./resolve-expression-params.ts"
 import type { ResolveFunctionCall, ResolveWindowFunction } from "./resolve-function.ts"
 import type {
@@ -235,7 +236,16 @@ type ExpressionResolvers<
 				: ResolveExpressionAST<Ri, Db, Scope, Params> extends infer RiV
 					? RiV extends DbtyperErrorShape
 						? RiV
-						: SqlBoolean
+						: LiV extends SqlTypeShape
+							? RiV extends SqlTypeShape
+								? // CORE-6, SQLT-33: a parameter operand of a null-safe comparison also accepts `null`
+									NullTestedParam<Li, LiV> extends infer NL
+									? [NL] extends [SqlBoolean]
+										? NullTestedParam<Ri, RiV>
+										: CollectParamProbes<NL, NullTestedParam<Ri, RiV>>
+									: never
+								: never
+							: never
 					: never
 			: never
 		: never

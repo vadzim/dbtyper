@@ -11,15 +11,27 @@ import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { RawSelectItem } from "./parse-select.ts"
 
-/** The expression of the select item named `Name` by its alias, `never` when no item has that alias. */
-type AliasItemAst<Items extends readonly RawSelectItem[], Name extends string> = Items extends readonly [
-	infer H,
-	...infer R extends readonly RawSelectItem[],
-]
-	? H extends { kind: "expr"; ast: infer A extends ScalarExprAst; as: Name }
-		? A
-		: AliasItemAst<R, Name>
+/** The expression of `Item` when it is an expression item with the alias `Name`, `never` otherwise. */
+type ItemAstWithAlias<Item, Name extends string> = Item extends {
+	kind: "expr"
+	ast: infer A extends ScalarExprAst
+	as: Name
+}
+	? A
 	: never
+
+/** The expression of the select item named `Name` by its alias, `never` when no item has that alias (index walk, #208). */
+type AliasItemAst<
+	Items extends readonly RawSelectItem[],
+	Name extends string,
+	Before extends readonly 1[] = [],
+> = Before["length"] extends Items["length"]
+	? never
+	: ItemAstWithAlias<Items[Before["length"]], Name> extends infer A extends ScalarExprAst
+		? [A] extends [never]
+			? AliasItemAst<Items, Name, [...Before, 1]>
+			: A
+		: never
 
 /**
  * SEL-28: a GROUP BY key that is a bare output alias stands for that item's expression, when no column of the FROM
@@ -113,7 +125,7 @@ type ParseOptionalHavingClauseAfterGroupTerms<
 						]
 					: readonly [
 							Rhw,
-							null,
+							He, // null, or a view's types it read (#210)
 							{
 								have_explicit_group_by: true
 								has_having_clause: true
@@ -153,7 +165,7 @@ type ParseOptionalHavingWithoutGroupClause<
 						]
 					: readonly [
 							Rhw,
-							null,
+							He, // null, or a view's types it read (#210)
 							{
 								have_explicit_group_by: false
 								has_having_clause: true

@@ -21,12 +21,14 @@ import type {
 	JsqlDbOmitProps,
 	JsqlDbSetProp,
 	JsqlDbReplaceData,
+	JsqlSchemaConstraintNames,
 } from "../core/jsql-utils.ts"
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
 import type { UnionToStringTuple } from "./set-operation-types.ts"
+import type { DefaultConstraintName } from "../core/jsql-constraint-names.ts"
 
 export type ParseCreateTable<
 	Tokens extends ParserMonad,
@@ -54,7 +56,8 @@ export type ParseCreateTable<
 /**
  * PGT-25: the names given with `CONSTRAINT name` while a CREATE TABLE is parsed travel in the database state
  * (`pendingConstraints`) and end up in the table's `constraints` (`{ names }`), where `ON CONFLICT ON CONSTRAINT`
- * looks for them. Default names (`t_pkey`, `t_col_key`) are not recorded: see `ConstraintExists` (parse-insert.ts).
+ * looks for them. An unnamed constraint is recorded under its default name (`t_col_key`, #207:
+ * {@link WithPendingDefaultConstraint}); the primary key's name is in `primary_key`.
  */
 export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends string> = Db extends {
 	pendingConstraints: infer P extends string
@@ -63,10 +66,50 @@ export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends str
 	: JsqlDbSetProp<Db, "pendingConstraints", Name>
 
 export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
-	? Db extends { pendingConstraintColumns: infer C }
-		? JsqlConstraints<P, C>
-		: JsqlConstraints<P>
+	? JsqlConstraints<
+			P,
+			Db extends { pendingConstraintColumns: infer C } ? C : {},
+			Db extends { pendingConstraintRefs: infer R } ? R : {}
+		>
 	: null
+
+/** #207: the FOREIGN KEY `Name` of the CREATE TABLE being parsed references `Refs` (`schema.table.column`). */
+export type WithPendingConstraintRefs<Db extends JsqlDatabaseShape, Name extends string, Refs extends string> = [
+	Refs,
+] extends [never]
+	? Db
+	: Db extends { pendingConstraintRefs: infer P }
+		? JsqlDbSetProp<Db, "pendingConstraintRefs", ReplaceProp<P, Name, Refs>>
+		: JsqlDbSetProp<Db, "pendingConstraintRefs", Record<Name, Refs>>
+
+/**
+ * #207: an unnamed constraint of the CREATE TABLE being parsed, under the name PostgreSQL gives it
+ * (`DefaultConstraintName`, taken names: the ones seen so far); the dialect fact `defaultConstraintNames`.
+ */
+export type WithPendingDefaultConstraint<
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	NamePart extends string,
+	Label extends "key" | "fkey" | "check",
+	Cols extends string,
+	Refs extends string = never,
+> =
+	DialectFact<Db, "defaultConstraintNames"> extends true
+		? DefaultConstraintName<
+				Table,
+				NamePart,
+				Label,
+				| (Db extends { pendingConstraints: infer P extends string } ? P : never)
+				| JsqlSchemaConstraintNames<Db, Schema>
+			> extends infer Name extends string
+			? WithPendingConstraintRefs<
+					WithPendingConstraintColumns<WithPendingConstraint<Db, Name>, Name, Cols>,
+					Name,
+					Refs
+				>
+			: never
+		: Db
 
 /**
  * #179: the named constraint `Name` of the CREATE TABLE being parsed involves the columns `Cols` (a column constraint:
@@ -152,6 +195,7 @@ export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
 	| { pendingConstraintColumns: unknown }
 	| { pendingTableConstraint: string }
 	| { pendingUserTypes: unknown }
+	| { pendingConstraintRefs: unknown }
 	? JsqlDbOmitProps<
 			Db,
 			| "pendingConstraints"
@@ -160,6 +204,7 @@ export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
 			| "pendingConstraintColumns"
 			| "pendingTableConstraint"
 			| "pendingUserTypes"
+			| "pendingConstraintRefs"
 		>
 	: Db
 
@@ -178,10 +223,7 @@ export type StackPrimaryKey<Stack extends readonly ColumnDef[], Acc extends stri
 	? StackPrimaryKey<R, H[5] extends false ? Acc : Acc | H[0]>
 	: Acc
 
-/**
- * The PRIMARY KEY's constraint name: a named table constraint's, else PostgreSQL's default `<table>_pkey` (an inline
- * `CONSTRAINT n PRIMARY KEY` keeps the default).
- */
+/** The PRIMARY KEY's constraint name: the one given with `CONSTRAINT n` (#207: inline too), else `<table>_pkey`. */
 export type PendingPkName<Db extends JsqlDatabaseShape, Table extends string> = Db extends {
 	pendingPkName: infer N extends string
 }

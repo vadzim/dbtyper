@@ -1,7 +1,8 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlTypeShape } from "./jsql-shapes.ts"
 import type { DialectFact } from "./dialect.ts"
-import type { OmitProp, ReplaceProp } from "./type-utils.ts"
+import type { FromEntries, OmitProp, ReplaceProp } from "./type-utils.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
+import type { DefaultConstraintName } from "./jsql-constraint-names.ts"
 
 export type JsqlCreateSchema = {
 	sets: {}
@@ -97,13 +98,17 @@ export type JsqlCreateRowidTable<
 } & ([Alias] extends [never] ? {} : { rowid_alias: Alias }) &
 	({} extends Spelled ? {} : { spelled: Spelled })
 
+/** A view; `UserTypes`: the domain and composite types it reads, keyed by themselves (TYPE-18, #207). */
 export type JsqlCreateView<
 	Columns extends Record<string, SqlTypeShape>,
 	Order extends readonly string[] = readonly string[],
 	Spelled = {},
-> = {} extends Spelled
-	? { kind: "view"; columns: Columns; order: Order }
-	: { kind: "view"; columns: Columns; order: Order; spelled: Spelled }
+	UserTypes = {},
+> = {} extends UserTypes
+	? {} extends Spelled
+		? { kind: "view"; columns: Columns; order: Order }
+		: { kind: "view"; columns: Columns; order: Order; spelled: Spelled }
+	: { kind: "view"; columns: Columns; order: Order; user_types: UserTypes }
 
 /** The result key of column `Key` of `Data`: its declared spelling in SQLite (SQLT-28, #151), else the key. */
 export type JsqlColumnResultKey<Data, Key extends string> = Data extends { spelled: infer S }
@@ -270,11 +275,23 @@ export type JsqlDomainType<Base extends SqlTypeShape, NotNull extends boolean> =
 	notNull: NotNull
 }
 
-/** The `constraints` of a table with named constraints (#192: an alias of its parts, see `ReplaceProp`). */
-export type JsqlConstraints<Names extends string, Columns = {}> = { names: Names; columns: Columns }
+/**
+ * The `constraints` of a table with named constraints (#192: an alias of its parts, see `ReplaceProp`): the names
+ * (also the default names PostgreSQL gives, #207), the columns each involves, and for a FOREIGN KEY the columns it
+ * references as `schema.table.column` (`refs`, #207: a DROP COLUMN … CASCADE of one drops the constraint).
+ */
+export type JsqlConstraints<Names extends string, Columns = {}, Refs = {}> = {
+	names: Names
+	columns: Columns
+	refs: Refs
+}
 
 /** PGT-25: the names of a table's named constraints (`constraints: { names }`), or `never`. */
-type ConstraintNames<Tbl> = Tbl extends { constraints: { names: infer N extends string } } ? N : never
+export type JsqlConstraintNames<Tbl> = Tbl extends { constraints: { names: infer N extends string } } ? N : never
+
+/** PGT-40 (#210): every constraint name of the schema's tables, which share one name space in PostgreSQL. */
+export type JsqlSchemaConstraintNames<Db extends JsqlDatabaseShape, Sch extends string> =
+	JsqlDbGetSchema<Db, Sch> extends { sets: infer S } ? { [K in keyof S]: JsqlConstraintNames<S[K]> }[keyof S] : never
 
 /** TYPE-18, #179: column `Col` of the table has the domain or composite type `Decl` (`schema.name`). */
 export type JsqlDbSetUserType<
@@ -294,8 +311,40 @@ export type JsqlDbSetUserType<
 			: Db
 		: Db
 
+/**
+ * #207 (item 4b): `ALTER COLUMN … TYPE` of column `Col`: its domain or composite type is now `Decl` (`schema.name`), or
+ * it has none (`never`).
+ */
+export type JsqlDbChangeUserType<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Col extends string,
+	Decl extends string,
+> = [Decl] extends [never]
+	? JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+		? Tbl extends { user_types: infer U }
+			? Col extends keyof U
+				? (
+						[Exclude<keyof U, Col>] extends [never]
+							? OmitProp<Tbl, "user_types">
+							: ReplaceProp<Tbl, "user_types", OmitProp<U, Col>>
+					) extends infer T extends JsqlDataShape
+					? JsqlDbReplaceData<Db, Sch, Tab, T>
+					: Db
+				: Db
+			: Db
+		: Db
+	: JsqlDbSetUserType<Db, Sch, Tab, Col, Decl>
+
 /** #179: the columns each named constraint involves (`constraints.columns`: name -> union of columns), or `{}`. */
 type ConstraintColumns<Tbl> = Tbl extends { constraints: { columns: infer C } } ? C : {}
+
+/** #207: the columns each FOREIGN KEY references (`constraints.refs`: name -> union of `schema.table.column`), or `{}`. */
+export type JsqlConstraintRefs<Tbl> = Tbl extends { constraints: { refs: infer R } } ? R : {}
+
+/** The refs with the FOREIGN KEY `Name` referencing `Refs` (none: unchanged). */
+type WithRefs<R, Name extends string, Refs extends string> = [Refs] extends [never] ? R : ReplaceProp<R, Name, Refs>
 
 /**
  * #179: the named constraint `Name` of the table involves the columns `Cols` (PRIMARY KEY, UNIQUE, FOREIGN KEY: their
@@ -307,6 +356,7 @@ export type JsqlDbSetConstraintColumns<
 	Tab extends string,
 	Name extends string,
 	Cols extends string,
+	Refs extends string = never,
 > = [Name] extends [never]
 	? Db
 	: [Cols] extends [never]
@@ -315,11 +365,39 @@ export type JsqlDbSetConstraintColumns<
 			? ReplaceProp<
 					Tbl,
 					"constraints",
-					JsqlConstraints<ConstraintNames<Tbl> | Name, ReplaceProp<ConstraintColumns<Tbl>, Name, Cols>>
+					JsqlConstraints<
+						JsqlConstraintNames<Tbl> | Name,
+						ReplaceProp<ConstraintColumns<Tbl>, Name, Cols>,
+						WithRefs<JsqlConstraintRefs<Tbl>, Name, Refs>
+					>
 				> extends infer NewTbl extends JsqlDataShape
 				? JsqlDbReplaceData<Db, Sch, Tab, NewTbl>
 				: Db
 			: Db
+
+/**
+ * #207: an unnamed constraint of an existing table (ALTER TABLE … ADD UNIQUE | FOREIGN KEY | CHECK, ADD COLUMN … UNIQUE)
+ * under the name PostgreSQL gives it (`DefaultConstraintName`; the dialect fact `defaultConstraintNames`).
+ */
+export type JsqlDbAddDefaultConstraint<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	NamePart extends string,
+	Label extends "key" | "fkey" | "check",
+	Cols extends string,
+	Refs extends string = never,
+> =
+	DialectFact<Db, "defaultConstraintNames"> extends true
+		? JsqlDbSetConstraintColumns<
+				Db,
+				Sch,
+				Tab,
+				DefaultConstraintName<Tab, NamePart, Label, JsqlSchemaConstraintNames<Db, Sch>>,
+				Cols,
+				Refs
+			>
+		: Db
 
 /** PGT-25: `ALTER TABLE … ADD CONSTRAINT name`: the name is known to `ON CONFLICT ON CONSTRAINT`. */
 export type JsqlDbAddConstraintName<
@@ -332,7 +410,7 @@ export type JsqlDbAddConstraintName<
 		? ReplaceProp<
 				Tbl,
 				"constraints",
-				JsqlConstraints<ConstraintNames<Tbl> | Name, ConstraintColumns<Tbl>>
+				JsqlConstraints<JsqlConstraintNames<Tbl> | Name, ConstraintColumns<Tbl>, JsqlConstraintRefs<Tbl>>
 			> extends infer NewTbl extends JsqlDataShape
 			? JsqlDbReplaceData<Db, Sch, Tab, NewTbl>
 			: Db
@@ -350,7 +428,11 @@ export type JsqlDbDropConstraintName<
 			? ReplaceProp<
 					T,
 					"constraints",
-					JsqlConstraints<Exclude<ConstraintNames<Tbl>, Name>, OmitProp<ConstraintColumns<Tbl>, Name>>
+					JsqlConstraints<
+						Exclude<JsqlConstraintNames<Tbl>, Name>,
+						OmitProp<ConstraintColumns<Tbl>, Name>,
+						OmitProp<JsqlConstraintRefs<Tbl>, Name>
+					>
 				> extends infer NewTbl extends JsqlDataShape
 				? JsqlDbReplaceData<Db, Sch, Tab, NewTbl>
 				: Db
@@ -422,6 +504,22 @@ export type JsqlDbTypeInUse<
 	Enum extends boolean,
 > = [TypeUserSets<Db, Name, Sch, Enum>] extends [never] ? false : true
 
+/** The columns of the type `Sch.Name` in the chain's tables, as `schema.table.column` (#207: the FOREIGN KEYs to them go too). */
+export type JsqlDbTypeColumnRefs<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Name extends string,
+	Enum extends boolean,
+> = {
+	[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
+		? {
+				[T in keyof Sets]: Sets[T] extends { kind: "table" }
+					? `${S & string}.${T & string}.${TypeColumnNames<Sets[T], Name, Sch, Enum>}`
+					: never
+			}[keyof Sets]
+		: never
+}[keyof Db["schemas"]]
+
 /**
  * TYPE-18, DROP TYPE | DOMAIN … CASCADE as in PostgreSQL: the columns of the type go from their tables (with the
  * primary key and the named constraints that involve them, #179), and the views that select an enum column go as a
@@ -453,3 +551,141 @@ export type JsqlDbDropTypeUsers<
 			: Db["schemas"][S]
 	}
 >
+
+/**
+ * #207: the FOREIGN KEYs of the chain that reference one of `Refs` (`schema.table.column`), as `table.constraint`
+ * (`never`: none). `Except` is a constraint the drop removes anyway (`table.constraint`: it involves a dropped column).
+ */
+export type JsqlDbReferencingConstraints<
+	Db extends JsqlDatabaseShape,
+	Refs extends string,
+	Except extends string = never,
+> = Exclude<
+	{
+		[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
+			? {
+					[T in keyof Sets]: JsqlConstraintRefs<Sets[T]> extends infer R
+						? {
+								[N in keyof R]: [Extract<R[N], Refs>] extends [never]
+									? never
+									: `${T & string}.${N & string}`
+							}[keyof R]
+						: never
+				}[keyof Sets]
+			: never
+	}[keyof Db["schemas"]],
+	Except
+>
+
+/** The named constraints of the table `Tab` that involve one of the columns `Cols`, as `Tab.constraint`. */
+export type JsqlTableConstraintsOn<Tbl, Tab extends string, Cols extends string> = Tbl extends {
+	constraints: { columns: infer M }
+}
+	? { [K in keyof M]: [Extract<Cols, M[K]>] extends [never] ? never : `${Tab}.${K & string}` }[keyof M]
+	: never
+
+/**
+ * #207, DROP COLUMN … CASCADE (and TYPE-18 CASCADE) as in PostgreSQL: the FOREIGN KEYs that reference one of `Refs`
+ * leave their tables.
+ */
+export type JsqlDbDropReferencingConstraints<Db extends JsqlDatabaseShape, Refs extends string> = AsDb<
+	[JsqlDbReferencingConstraints<Db, Refs>] extends [never]
+		? Db
+		: ReplaceProp<
+				Db,
+				"schemas",
+				{
+					[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
+						? ReplaceProp<
+								Db["schemas"][S],
+								"sets",
+								{ [T in keyof Sets]: TableWithoutReferencing<Sets[T], Refs> }
+							>
+						: Db["schemas"][S]
+				}
+			>,
+	Db
+>
+
+/** `T` as a database state (the rebuilt state of a `ReplaceProp`), else `Db`. */
+type AsDb<T, Db extends JsqlDatabaseShape> = T extends JsqlDatabaseShape ? T : Db
+
+/** The table without its FOREIGN KEYs that reference one of `Refs`. */
+type TableWithoutReferencing<Tbl, Refs extends string> =
+	JsqlConstraintRefs<Tbl> extends infer R
+		? { [N in keyof R]: [Extract<R[N], Refs>] extends [never] ? never : N }[keyof R] extends infer Gone extends
+				string
+			? [Gone] extends [never]
+				? Tbl
+				: ReplaceProp<
+						Tbl,
+						"constraints",
+						JsqlConstraints<
+							Exclude<JsqlConstraintNames<Tbl>, Gone>,
+							OmitProp<ConstraintColumns<Tbl>, Gone>,
+							OmitProp<R, Gone>
+						>
+					>
+			: Tbl
+		: Tbl
+
+/**
+ * #207: the FOREIGN KEY refs of the chain after a rename: of the column `From` (`schema.table.column`) to `To`, or with
+ * `Table`, of the table `From` (`schema.table`) to `To`, so a later DROP COLUMN still finds them.
+ */
+export type JsqlDbRenameRefs<
+	Db extends JsqlDatabaseShape,
+	From extends string,
+	To extends string,
+	Table extends boolean = false,
+> = (Table extends true ? `${From}.${string}` : From) extends infer Match extends string
+	? [JsqlDbReferencingConstraints<Db, Match>] extends [never]
+		? Db
+		: AsDb<
+				ReplaceProp<
+					Db,
+					"schemas",
+					{
+						[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
+							? ReplaceProp<
+									Db["schemas"][S],
+									"sets",
+									{
+										[T in keyof Sets]: JsqlConstraintRefs<Sets[T]> extends infer R
+											? [{ [N in keyof R]: Extract<R[N], Match> }[keyof R]] extends [never]
+												? Sets[T]
+												: ReplaceProp<
+														Sets[T],
+														"constraints",
+														JsqlConstraints<
+															JsqlConstraintNames<Sets[T]>,
+															ConstraintColumns<Sets[T]>,
+															FromEntries<
+																{
+																	[N in keyof R]-?: [
+																		N,
+																		RenamedRef<R[N], From, To, Table>,
+																	]
+																}[keyof R]
+															>
+														>
+													>
+											: Sets[T]
+									}
+								>
+							: Db["schemas"][S]
+					}
+				>,
+				Db
+			>
+	: never
+
+type RenamedRef<R, From extends string, To extends string, Table extends boolean> = R extends string
+	? Table extends true
+		? R extends `${From}.${infer Col}`
+			? `${To}.${Col}`
+			: R
+		: R extends From
+			? To
+			: R
+	: R

@@ -8,6 +8,7 @@ import type {
 	JsqlSchemaGetTable,
 	JsqlSchemaReplaceData,
 	JsqlConstraints,
+	JsqlConstraintRefs,
 	JsqlTableWithPrimaryKey,
 } from "./jsql-utils.ts"
 
@@ -132,7 +133,11 @@ type WithoutColumnConstraints<T, Old, Col extends string> = Old extends {
 	? { [K in keyof M]: [Extract<Col, M[K]>] extends [never] ? never : K }[keyof M] extends infer Gone extends string
 		? [Gone] extends [never]
 			? T
-			: ReplaceProp<T, "constraints", JsqlConstraints<Exclude<N, Gone>, OmitProp<M, Gone>>>
+			: ReplaceProp<
+					T,
+					"constraints",
+					JsqlConstraints<Exclude<N, Gone>, OmitProp<M, Gone>, OmitProp<JsqlConstraintRefs<Old>, Gone>>
+				>
 		: T
 	: T
 
@@ -156,7 +161,7 @@ type WithRenamedConstraintColumn<T, Old extends string, New extends string> = T 
 }
 	? { [K in keyof M]-?: [K, Old extends M[K] ? Exclude<M[K], Old> | New : M[K]] }[keyof M] extends infer E extends
 			readonly [PropertyKey, unknown]
-		? ReplaceProp<T, "constraints", JsqlConstraints<N, FromEntries<E>>>
+		? ReplaceProp<T, "constraints", JsqlConstraints<N, FromEntries<E>, JsqlConstraintRefs<T>>>
 		: T
 	: T
 
