@@ -23,10 +23,10 @@ export type TableConstraintStart =
 	TokenKey<"constraint"> | TokenKey<"primary"> | TokenKey<"unique"> | TokenKey<"check"> | TokenKey<"foreign">
 
 /**
- * SQLite: after the column list `)`: the table options (`STRICT`, `WITHOUT ROWID`, comma separated, SQLT-18), the
+ * A table of a dialect with rowid tables (`rowidTables`, SQLite), after the column list `)`: the table options (`STRICT`, `WITHOUT ROWID`, comma separated, SQLT-18), the
  * STRICT type check (SQLT-11), then NOT NULL of the primary key and the rowid alias per table kind (SQLT-13, SQLT-14).
  */
-export type ParseSqliteTableEnd<
+export type ParseRowidTableEnd<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
@@ -43,16 +43,17 @@ export type ParseSqliteTableEnd<
 				: Opts extends TableOptions
 					? Opts["strict"] extends true
 						? StrictViolation<Stack> extends false
-							? SqliteTableBuilt<R2, Db, Schema, Table, Stack, Opts>
+							? RowidTableBuilt<R2, Db, Schema, Table, Stack, Opts>
 							: SkipFailedStatement<R2, Db, FormatError<Errors["STRICT_TABLE_TYPE_NOT_ALLOWED"], []>>
-						: SqliteTableBuilt<R2, Db, Schema, Table, Stack, Opts>
+						: RowidTableBuilt<R2, Db, Schema, Table, Stack, Opts>
 					: never
 			: never
 		: never
 
 /** `true` when a column of a STRICT table has a declared type name that STRICT does not allow (SQLT-11). */
 type StrictViolation<Stack extends readonly ColumnDef[]> = true extends {
-	[I in keyof Stack]: Stack[I][6] extends "" | SqliteStrictTypeNames ? false : true
+	// a column without a type is not allowed either (SQLite: "missing datatype")
+	[I in keyof Stack]: Stack[I][6] extends SqliteStrictTypeNames ? false : true
 }[number]
 	? true
 	: false
@@ -73,7 +74,7 @@ type AfterTableOption<Tokens extends ParserMonad, Acc extends TableOptions> =
 	PeekToken<Tokens> extends TokenKey<","> ? ParseTableOptions<SkipToken<Tokens>, Acc> : [Tokens, Acc]
 
 /** SQLT-18: a WITHOUT ROWID table needs a PRIMARY KEY (a column or a table constraint). */
-type SqliteTableBuilt<
+type RowidTableBuilt<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
@@ -82,11 +83,11 @@ type SqliteTableBuilt<
 	Opts extends TableOptions,
 > = Opts["withoutRowid"] extends true
 	? true extends { [I in keyof Stack]: Stack[I][5] extends false ? false : true }[number]
-		? SqliteTableBuiltOk<Tokens, Db, Schema, Table, Stack, Opts>
+		? RowidTableBuiltOk<Tokens, Db, Schema, Table, Stack, Opts>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["WITHOUT_ROWID_NEEDS_PRIMARY_KEY"], []>>
-	: SqliteTableBuiltOk<Tokens, Db, Schema, Table, Stack, Opts>
+	: RowidTableBuiltOk<Tokens, Db, Schema, Table, Stack, Opts>
 
-type SqliteTableBuiltOk<
+type RowidTableBuiltOk<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Schema extends string,

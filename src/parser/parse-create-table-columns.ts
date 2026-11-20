@@ -18,7 +18,7 @@ import type {
 	WithColumnSpelling,
 	WithoutPending,
 } from "./parse-create-table.ts"
-import type { ParseSqliteTableEnd, TableConstraintStart } from "./parse-create-table-sqlite-end.ts"
+import type { ParseRowidTableEnd, TableConstraintStart } from "./parse-create-table-sqlite-end.ts"
 import type { ColumnsFromStack } from "./parse-create-table-merge.ts"
 import type { ParseTableConstraint } from "./parse-table-constraints.ts"
 import type { ParseColumnConstraints, SerialName } from "./parse-column-constraints.ts"
@@ -32,7 +32,7 @@ export type ParseCreateTableBody<
 > =
 	PeekToken<Tokens> extends TokenKey<")">
 		? DialectFact<Db, "rowidTables"> extends true
-			? ParseSqliteTableEnd<Tokens, Db, Schema, Table, Stack>
+			? ParseRowidTableEnd<Tokens, Db, Schema, Table, Stack>
 			: ColumnsFromStack<Stack> extends infer M extends {
 						cols: Record<string, SqlTypeShape>
 						facts: Record<string, unknown>

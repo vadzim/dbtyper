@@ -2,9 +2,8 @@
  * Type-name rows of the dialect seam (DLCT-5, SQLT-6…SQLT-11, SQLT-15): the written type name of a column or a CAST,
  * as data per dialect. Split out of dialect.ts (MOD-1); the facts they read are the `Dialects` table there.
  */
-import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { DbDialectOnlyError, DialectFact } from "./dialect.ts"
-import type { PgOnlyTypeNames } from "./dialect-constructs.ts"
 
 /**
  * SQLT-6: the affinity SQLite derives from a declared type name (lower-case, words joined by one space), by its
@@ -58,26 +57,17 @@ export type NormalizeSqlTypeName<T extends string> = T extends keyof NamedTypeAl
 /** Names of the SERIAL types (SQLT-17). */
 type SerialTypeNames = "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
 
-/** SQLT-17, SQLT-53: the other-dialect error for a PostgreSQL-only type name in an `affinity` chain, else `null`. */
-export type PgOnlyTypeError<Db, T extends string> =
-	DialectFact<Db, "declaredTypes"> extends "affinity"
-		? T extends keyof PgOnlyTypeNames
-			? DbDialectOnlyError<Db, PgOnlyTypeNames[T]>
-			: null
-		: null
-
 /**
  * DLCT-5: the type-name table of the chain's dialect, one place for every rule that reads a written type name
  * (casts, column types). A column type: PostgreSQL normalizes aliases, SQLite derives the affinity key from the name
- * (SQLT-6…SQLT-9). SQLT-17: a SERIAL name in a SQLite chain gives the other-dialect error instead (with a hint).
+ * (SQLT-6…SQLT-9). SQLT-17: a SERIAL name in a SQLite chain gives the other-dialect error instead (with a hint). Any
+ * other name, a PostgreSQL one such as `uuid` or `jsonb` too, is typed by its affinity (SQLT-Q8 B).
  */
 export type DialectColumnTypeName<Db, T extends string> =
 	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? T extends SerialTypeNames
 			? DbDialectOnlyError<Db, "pg-serial">
-			: PgOnlyTypeError<Db, T> extends infer E extends DbtyperErrorShape
-				? E
-				: SqliteTypeKey<T>
+			: SqliteTypeKey<T>
 		: NormalizeSqlTypeName<T>
 
 /**
