@@ -1713,6 +1713,30 @@ const errors = {
 		code: 4603,
 		msg: ["Expected ORDER BY or ) after PARTITION BY"],
 	},
+	UNKNOWN_WINDOW: {
+		code: 4604,
+		msg: ["Unknown window: ", ""],
+	},
+	DUPLICATE_WINDOW_NAME: {
+		code: 4605,
+		msg: ["Duplicate window name: ", ""],
+	},
+	WINDOW_ALREADY_HAS_PARTITION_BY: {
+		code: 4606,
+		msg: ["Window ", " already has PARTITION BY; OVER cannot add one"],
+	},
+	WINDOW_ALREADY_HAS_ORDER_BY: {
+		code: 4607,
+		msg: ["Window ", " already has ORDER BY; OVER cannot add one"],
+	},
+	WINDOW_HAS_FRAME_CLAUSE: {
+		code: 4608,
+		msg: ["Window ", " has a frame clause; OVER cannot add or copy one"],
+	},
+	WINDOW_CLAUSE_MISPLACED: {
+		code: 4609,
+		msg: ["WINDOW clause must come after HAVING and before ORDER BY"],
+	},
 
 	// Array Operations
 	EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT: {

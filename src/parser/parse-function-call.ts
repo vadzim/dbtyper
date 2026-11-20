@@ -1,6 +1,7 @@
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
+import type { WindowSpecAst } from "./parse-expression-ast.ts"
 import type {
 	ExprParseEnv,
 	ParseOrScalarUntyped,
@@ -154,8 +155,34 @@ type ParseOverAfterFilter<
 	PeekToken<Tokens> extends TokenKey<"over">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"(">
-				? ParseWindowClauseContent<SkipToken<R1>, FnName, Args, Env>
-				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env>
+				? ParseWindowSpec<SkipToken<R1>, Env> extends [
+						infer R2 extends ParserMonad,
+						infer Spec,
+						infer Env2 extends ExprParseEnv,
+					]
+					? Spec extends WindowSpecAst
+						? [R2, { kind: "window_function"; name: FnName; args: Args; over: Spec }, Env2]
+						: [R2, Spec, Env2]
+					: never
+				: PeekToken<R1> extends TokenIdent<infer W extends string>
+					? // FN-31: `OVER w` uses the named window `w` as it is (checked when the SELECT's WINDOW clause is read)
+						[
+							SkipToken<R1>,
+							{
+								kind: "window_function"
+								name: FnName
+								args: Args
+								over: {
+									ref: W
+									bare: true
+									partition_by: readonly []
+									order_by: readonly []
+									frame: null
+								}
+							},
+							Env,
+						]
+					: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env>
 			: never
 		: [Tokens, { kind: "function_call"; name: FnName; args: Args }, Env]
 
@@ -183,12 +210,23 @@ type ParseFilterClause<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 			: [R1, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_OVER"], []>, Env]
 		: never
 
-type ParseWindowClauseContent<
-	Tokens extends ParserMonad,
-	FnName extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
-	Env extends ExprParseEnv,
-> =
+/**
+ * A window spec after its `(` up to and including the closing `)`: the content of an OVER clause (FN-11, FN-15) and of
+ * a `WINDOW w AS (…)` definition (FN-30), one parser for both. An optional existing window name first (FN-31,
+ * `OVER (w ORDER BY …)`), then `PARTITION BY`, `ORDER BY`, a frame. Returns `[rest, WindowSpecAst | error, env]`;
+ * the name is checked against the WINDOW clause by the SELECT (parse-select-window.ts).
+ */
+export type ParseWindowSpec<Tokens extends ParserMonad, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenIdent<infer W extends string>
+		? W extends FrameUnitWord
+			? ParseWindowSpecBody<Tokens, null, Env>
+			: ParseWindowSpecBody<SkipToken<Tokens>, W, Env>
+		: ParseWindowSpecBody<Tokens, null, Env>
+
+/** The frame units that are identifiers to the lexer (`ROWS` is a keyword). */
+type FrameUnitWord = "range" | "groups"
+
+type ParseWindowSpecBody<Tokens extends ParserMonad, Ref extends string | null, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"partition">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"by">
@@ -201,64 +239,132 @@ type ParseWindowClauseContent<
 						? SkipFailedExpressionWithEnv<R2, PartitionList, Env2>
 						: PartitionList extends readonly ScalarExprAst[]
 							? PeekToken<R2> extends TokenKey<"order">
-								? ParseWindowOrderByAfterPartition<R2, FnName, Args, PartitionList, Env2>
-								: PeekToken<R2> extends TokenKey<")">
-									? [
-											SkipToken<R2>,
-											{
-												kind: "window_function"
-												name: FnName
-												args: Args
-												over: { partition_by: PartitionList; order_by: readonly [] }
-											},
-											Env2,
-										]
-									: CloseWindowOrError<
-											R2,
-											{
-												kind: "window_function"
-												name: FnName
-												args: Args
-												over: { partition_by: PartitionList; order_by: readonly [] }
-											},
-											Env2,
-											FormatError<
-												Errors["EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY"],
-												[]
-											>
-										>
+								? ParseWindowOrderPart<
+										R2,
+										Ref,
+										PartitionList,
+										Env2,
+										FormatError<Errors["EXPECTED_BY_AFTER_ORDER"], []>
+									>
+								: CloseWindowSpec<
+										R2,
+										Ref,
+										PartitionList,
+										readonly [],
+										Env2,
+										FormatError<Errors["EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY"], []>
+									>
 							: never
 					: never
 				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_BY_AFTER_PARTITION"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"order">
-			? ParseWindowOrderByWithoutPartition<Tokens, FnName, Args, Env>
-			: CloseWindowOrError<
+			? ParseWindowOrderPart<
 					Tokens,
-					{ kind: "window_function"; name: FnName; args: Args; over: { order_by: readonly [] } },
+					Ref,
+					readonly [],
+					Env,
+					FormatError<Errors["EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE"], []>
+				>
+			: CloseWindowSpec<
+					Tokens,
+					Ref,
+					readonly [],
+					readonly [],
 					Env,
 					FormatError<Errors["EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE"], []>
 				>
 
-/**
- * An empty `OVER ()` and a frame (`ROWS|RANGE|GROUPS …`, skipped: it does not change a result type) before the closing
- * paren. One rule for every dialect (SQLT-51, PGT-3, #118): PostgreSQL and SQLite both accept them.
- */
-type CloseWindowOrError<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
-	PeekToken<Tokens> extends TokenKey<")">
-		? [SkipToken<Tokens>, Ast, Env]
-		: AsIdent<PeekToken<Tokens>> extends TokenIdent<"range" | "groups">
-			? CloseWindowFrame<Tokens, Ast, Env, Err>
-			: PeekToken<Tokens> extends TokenKey<"rows">
-				? CloseWindowFrame<Tokens, Ast, Env, Err>
-				: SkipFailedExpressionWithEnv<Tokens, Err, Env>
-
-type CloseWindowFrame<Tokens extends ParserMonad, Ast, Env extends ExprParseEnv, Err extends DbtyperErrorShape> =
-	SkipToCloseParen<Tokens> extends [infer Rf extends ParserMonad, unknown]
-		? PeekToken<Rf> extends TokenKey<")">
-			? [SkipToken<Rf>, Ast, Env]
-			: SkipFailedExpressionWithEnv<Rf, Err, Env>
+/** `ORDER BY <list>` of a window spec (at `ORDER`), then its end. */
+type ParseWindowOrderPart<
+	Tokens extends ParserMonad,
+	Ref extends string | null,
+	PartitionList extends readonly ScalarExprAst[],
+	Env extends ExprParseEnv,
+	NoBy extends DbtyperErrorShape,
+> =
+	SkipToken<Tokens> extends infer R3 extends ParserMonad
+		? PeekToken<R3> extends TokenKey<"by">
+			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
+					infer R4 extends ParserMonad,
+					infer OrderList,
+					infer Env4 extends ExprParseEnv,
+				]
+				? OrderList extends DbtyperErrorShape
+					? SkipFailedExpressionWithEnv<R4, OrderList, Env4>
+					: OrderList extends WindowSpecAst["order_by"]
+						? CloseWindowSpec<
+								R4,
+								Ref,
+								PartitionList,
+								OrderList,
+								Env4,
+								FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>
+							>
+						: never
+				: never
+			: SkipFailedExpressionWithEnv<R3, NoBy, Env>
 		: never
+
+/**
+ * The end of a window spec: `)`, or a frame (`ROWS|RANGE|GROUPS …`, it does not change a result type) then `)`. One
+ * rule for every dialect (SQLT-51, PGT-3, #118). `Err` when neither comes.
+ */
+type CloseWindowSpec<
+	Tokens extends ParserMonad,
+	Ref extends string | null,
+	PartitionList extends readonly ScalarExprAst[],
+	OrderList extends WindowSpecAst["order_by"],
+	Env extends ExprParseEnv,
+	Err extends DbtyperErrorShape,
+> =
+	PeekToken<Tokens> extends TokenKey<")">
+		? [
+				SkipToken<Tokens>,
+				{ ref: Ref; bare: false; partition_by: PartitionList; order_by: OrderList; frame: null },
+				Env,
+			]
+		: (
+					PeekToken<Tokens> extends TokenKey<"rows">
+						? true
+						: AsIdent<PeekToken<Tokens>> extends TokenIdent<FrameUnitWord>
+							? true
+							: false
+			  ) extends true
+			? ParseWindowFrameExtent<SkipToken<Tokens>, Env> extends [
+					infer Rf extends ParserMonad,
+					infer Offsets,
+					infer EnvF extends ExprParseEnv,
+				]
+				? Offsets extends readonly ScalarExprAst[]
+					? FrameExcludeSkipped<Rf> extends [infer Re extends ParserMonad, unknown]
+						? PeekToken<Re> extends TokenKey<")">
+							? [
+									SkipToken<Re>,
+									{
+										ref: Ref
+										bare: false
+										partition_by: PartitionList
+										order_by: OrderList
+										frame: Offsets
+									},
+									EnvF,
+								]
+							: SkipFailedExpressionWithEnv<Re, Err, EnvF>
+						: never
+					: SkipFailedExpressionWithEnv<
+							Rf,
+							Offsets extends DbtyperErrorShape
+								? Offsets
+								: FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>,
+							EnvF
+						>
+				: never
+			: SkipFailedExpressionWithEnv<Tokens, Err, Env>
+
+/** `EXCLUDE …` after a frame is stepped over unchecked (functions.md "Not yet"). */
+type FrameExcludeSkipped<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<"exclude"> ? SkipToCloseParen<Tokens> : [Tokens, null]
 
 type SkipToCloseParen<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<")"> | TokenEot
@@ -267,92 +373,49 @@ type SkipToCloseParen<Tokens extends ParserMonad> =
 			? SkipToCloseParen<Next>
 			: never
 
-type ParseWindowOrderByWithoutPartition<
-	Tokens extends ParserMonad,
-	FnName extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
-	Env extends ExprParseEnv,
-> =
-	SkipToken<Tokens> extends infer R3 extends ParserMonad
-		? PeekToken<R3> extends TokenKey<"by">
-			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
-					infer R4 extends ParserMonad,
-					infer OrderList,
-					infer Env4 extends ExprParseEnv,
-				]
-				? OrderList extends DbtyperErrorShape
-					? SkipFailedExpressionWithEnv<R4, OrderList, Env4>
-					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
-						? PeekToken<R4> extends TokenKey<")">
-							? [
-									SkipToken<R4>,
-									{
-										kind: "window_function"
-										name: FnName
-										args: Args
-										over: { order_by: OrderList }
-									},
-									Env4,
-								]
-							: CloseWindowOrError<
-									R4,
-									{
-										kind: "window_function"
-										name: FnName
-										args: Args
-										over: { order_by: OrderList }
-									},
-									Env4,
-									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>
-								>
-						: never
-				: never
-			: SkipFailedExpressionWithEnv<R3, FormatError<Errors["EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE"], []>, Env>
-		: never
+/** After the frame unit: `BETWEEN <bound> AND <bound>` or one `<bound>`; returns the offset expressions (FN-35). */
+type ParseWindowFrameExtent<Tokens extends ParserMonad, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenKey<"between">
+		? ParseFrameBound<SkipToken<Tokens>, Env, readonly []> extends [
+				infer R1 extends ParserMonad,
+				infer Acc,
+				infer Env1 extends ExprParseEnv,
+			]
+			? Acc extends readonly ScalarExprAst[]
+				? PeekToken<R1> extends TokenKey<"and">
+					? ParseFrameBound<SkipToken<R1>, Env1, Acc>
+					: [R1, null, Env1]
+				: [R1, Acc, Env1]
+			: never
+		: ParseFrameBound<Tokens, Env, readonly []>
 
-type ParseWindowOrderByAfterPartition<
-	Tokens extends ParserMonad,
-	FnName extends string,
-	Args extends readonly (ScalarExprAst | { kind: "star" })[],
-	PartitionList extends readonly ScalarExprAst[],
-	Env extends ExprParseEnv,
-> =
-	SkipToken<Tokens> extends infer R3 extends ParserMonad
-		? PeekToken<R3> extends TokenKey<"by">
-			? ParseWindowOrderByList<SkipToken<R3>, Env> extends [
-					infer R4 extends ParserMonad,
-					infer OrderList,
-					infer Env4 extends ExprParseEnv,
-				]
-				? OrderList extends DbtyperErrorShape
-					? SkipFailedExpressionWithEnv<R4, OrderList, Env4>
-					: OrderList extends readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
-						? PeekToken<R4> extends TokenKey<")">
-							? [
-									SkipToken<R4>,
-									{
-										kind: "window_function"
-										name: FnName
-										args: Args
-										over: { partition_by: PartitionList; order_by: OrderList }
-									},
-									Env4,
-								]
-							: CloseWindowOrError<
-									R4,
-									{
-										kind: "window_function"
-										name: FnName
-										args: Args
-										over: { partition_by: PartitionList; order_by: OrderList }
-									},
-									Env4,
-									FormatError<Errors["EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE"], []>
-								>
-						: never
+/** `UNBOUNDED PRECEDING|FOLLOWING`, `CURRENT ROW` or `<expr> PRECEDING|FOLLOWING`; `null` in the slot when malformed. */
+type ParseFrameBound<Tokens extends ParserMonad, Env extends ExprParseEnv, Acc extends readonly ScalarExprAst[]> =
+	PeekToken<Tokens> extends TokenIdent<"unbounded">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenIdent<FrameDirection>
+				? [SkipToken<R1>, Acc, Env]
+				: [R1, null, Env]
+			: never
+		: PeekToken<Tokens> extends TokenIdent<"current">
+			? SkipToken<Tokens> extends infer R1 extends ParserMonad
+				? PeekToken<R1> extends TokenKey<"row">
+					? [SkipToken<R1>, Acc, Env]
+					: [R1, null, Env]
 				: never
-			: SkipFailedExpressionWithEnv<R3, FormatError<Errors["EXPECTED_BY_AFTER_ORDER"], []>, Env>
-		: never
+			: ParseOtherOpScalarUntyped<Tokens, Env> extends [
+						infer R1 extends ParserMonad,
+						infer E,
+						infer Env1 extends ExprParseEnv,
+				  ]
+				? E extends ScalarExprAst
+					? PeekToken<R1> extends TokenIdent<FrameDirection>
+						? [SkipToken<R1>, readonly [...Acc, E], Env1]
+						: [R1, null, Env1]
+					: [R1, E, Env1]
+				: never
+
+type FrameDirection = "preceding" | "following"
 
 type ParseWindowPartitionByList<
 	Tokens extends ParserMonad,

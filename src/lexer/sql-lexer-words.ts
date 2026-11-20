@@ -109,6 +109,7 @@ type ServiceWordsMap = {
 	view: true
 	when: true
 	where: true
+	window: true
 }
 
 export type ServiceWords = keyof ServiceWordsMap

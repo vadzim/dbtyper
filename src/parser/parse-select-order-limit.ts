@@ -12,6 +12,7 @@ import type { DialectFact } from "../core/dialect.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { ViewReads, MergeViewReads } from "./parse-select-resolve.ts"
 import type { SqlInteger, SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { WindowDefs, WindowUsesError } from "./parse-select-window.ts"
 
 /** Scalar `ORDER BY` / `LIMIT` / `OFFSET` value: any resolved expression (unlike `WHERE`, not restricted to `boolean`). */
 type ParseOrderByScalarExpr<
@@ -59,6 +60,7 @@ type ParseOrderByTermExpr<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
+	Wins extends WindowDefs,
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
 		infer Rw extends ParserMonad,
@@ -73,7 +75,9 @@ type ParseOrderByTermExpr<
 					? R extends DbtyperErrorShape
 						? SkipFailedExpression<Rw, WithErrorClause<R, "ORDER BY">>
 						: R extends SqlTypeShape
-							? [Rw, ViewReads<Db, Ast, Scope>] // null, but a CREATE VIEW's types read (#212)
+							? WindowUsesError<Ast, Wins, Db> extends infer Ue extends DbtyperErrorShape
+								? SkipFailedExpression<Rw, Ue> // FN-32, FN-33: `ORDER BY rank() OVER w`
+								: [Rw, ViewReads<Db, Ast, Scope>] // null, but a CREATE VIEW's types read (#212)
 							: SkipFailedExpression<Rw, never>
 					: never
 		: never
@@ -84,8 +88,9 @@ type ParseOrderByOneTerm<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
+	Wins extends WindowDefs,
 > =
-	ParseOrderByTermExpr<Tokens, Db, Scope, Params, OutNames> extends [infer R1 extends ParserMonad, infer E1]
+	ParseOrderByTermExpr<Tokens, Db, Scope, Params, OutNames, Wins> extends [infer R1 extends ParserMonad, infer E1]
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<"asc">
@@ -101,12 +106,13 @@ type ParseOrderByTerms<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
+	Wins extends WindowDefs,
 > =
-	ParseOrderByOneTerm<Tokens, Db, Scope, Params, OutNames> extends [infer R1 extends ParserMonad, infer E1]
+	ParseOrderByOneTerm<Tokens, Db, Scope, Params, OutNames, Wins> extends [infer R1 extends ParserMonad, infer E1]
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<R1, E1>
 			: PeekToken<R1> extends TokenKey<",">
-				? ParseOrderByTerms<SkipToken<R1>, Db, Scope, Params, OutNames> extends [
+				? ParseOrderByTerms<SkipToken<R1>, Db, Scope, Params, OutNames, Wins> extends [
 						infer R2 extends ParserMonad,
 						infer E2,
 					]
@@ -123,11 +129,12 @@ type ParseOrderByAfterOrderKw<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
+	Wins extends WindowDefs,
 > =
 	PeekToken<R1> extends infer TBy
 		? SkipToken<R1> extends infer R2 extends ParserMonad
 			? TBy extends TokenKey<"by">
-				? ParseOrderByTerms<R2, Db, Scope, Params, OutNames>
+				? ParseOrderByTerms<R2, Db, Scope, Params, OutNames, Wins>
 				: SkipFailedExpression<R2, FormatError<Errors["EXPECTED_BY_AFTER_ORDER"], []>>
 			: never
 		: never
@@ -138,9 +145,10 @@ export type ParseOptionalOrderByTokens<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
+	Wins extends WindowDefs = {},
 > =
 	PeekToken<Tokens> extends TokenKey<"order">
-		? ParseOrderByAfterOrderKw<SkipToken<Tokens>, Db, Scope, Params, OutNames>
+		? ParseOrderByAfterOrderKw<SkipToken<Tokens>, Db, Scope, Params, OutNames, Wins>
 		: [Tokens, null]
 
 type LimitExprThenOptionalOffset<

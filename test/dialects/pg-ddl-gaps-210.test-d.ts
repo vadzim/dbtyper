@@ -110,7 +110,7 @@ const _plain212 = await noEmail212.query(`select * from v_plain`)
 expectType<typeof _plain212>(toBe<Array<{ id: number }>>())
 
 // #213: a window call reads the domain in its OVER (...) outside the select list (ORDER BY); named windows
-// (WINDOW w AS ...) are not parsed at all yet (FN "Not yet"), so that position is not reachable.
+// (WINDOW w AS ...) are tested in fn-30-35-named-windows-214.test-d.ts (FN-35).
 const base213 = sqlMigrations({ driver: mockDriver }).apply(
 	`create domain email as text;
 	 create table t (id integer not null, e email, d integer);

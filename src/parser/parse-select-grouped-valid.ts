@@ -40,7 +40,7 @@ export type ExprValidInsideGroupedSelection<
 				: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
 					? GroupKeySetContainsColParts<P, GroupKeys>
 					: Ast extends {
-								kind: "function_call"
+								kind: "function_call" | "window_function" // FN-30: a window call's arguments, as a call's
 								name: infer N extends string
 								args: infer Args extends readonly (ScalarExprAst | { kind: "star" })[]
 						  }

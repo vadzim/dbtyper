@@ -162,13 +162,29 @@ type AstUserTypes<A, Db, Scope extends ScopeMap> = A extends { kind: "col"; part
 
 type LastPart<P extends ScalarIdentParts> = P extends readonly [...unknown[], infer L extends string] ? L : never
 
-/** The user type of column `Col` of a table, or every one of a view, CTE or subquery (it may read it anywhere). */
+/**
+ * The user type of column `Col` of a table (a domain or composite type by its `user_types`, an enum by its column type,
+ * #214), or every one of a view, CTE or subquery (it may read it anywhere).
+ */
 type ColumnUserType<Data, Col extends string> = Data extends { kind: "view" } | { schema: "__subquery__" | "__cte__" }
 	? AllUserTypes<Data>
 	: Data extends { user_types: infer U }
 		? Col extends keyof U
 			? U[Col] & string
-			: never
+			: ColumnEnumType<Data, Col>
+		: ColumnEnumType<Data, Col>
+
+/** TYPE-18 for enums (#214): `schema.name` of an enum column (or an array of one), else `never`. */
+type ColumnEnumType<Data, Col extends string> = Data extends { columns: infer Cols }
+	? Col extends keyof Cols
+		? EnumTypeName<Cols[Col]>
+		: never
+	: never
+
+type EnumTypeName<C> = C extends { type: "enum"; arg: readonly [infer N extends string, infer S extends string] }
+	? `${S}.${N}`
+	: C extends { type: "array"; arg: infer E }
+		? EnumTypeName<E>
 		: never
 
 /**
