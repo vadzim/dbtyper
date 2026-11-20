@@ -80,7 +80,7 @@ type ColumnNamedConstraint<
 					: ParseColumnConstraints<Tokens, C, S>
 
 /** The column context with another database state. */
-export type ColumnCtxWithDb<C extends ColumnCtx, Db extends JsqlDatabaseShape> = {
+type ColumnCtxWithDb<C extends ColumnCtx, Db extends JsqlDatabaseShape> = {
 	db: Db
 	schema: C["schema"]
 	table: C["table"]
@@ -277,7 +277,7 @@ export type ColumnFail<
 > = SkipFailedStatement<Tokens, C["db"], Err>
 
 /** After a constraint helper `[rest, null | error]`: go on with the column or fail the statement. */
-export type ColumnAfterGroup<
+type ColumnAfterGroup<
 	R extends ParserMonad,
 	E,
 	C extends ColumnCtx,

@@ -73,10 +73,10 @@ type ReferencesColumns<
 				? [R, Names]
 				: Names extends readonly string[]
 					? AnyColumn extends true
-						? WithRefs<SkipReferenceActions<R>, `${Target}.${Names[number]}`>
+						? SkipReferenceActions<R, `${Target}.${Names[number]}`>
 						: Exclude<Names[number], keyof Columns> extends infer Missing extends string
 							? [Missing] extends [never]
-								? WithRefs<SkipReferenceActions<R>, `${Target}.${Names[number]}`>
+								? SkipReferenceActions<R, `${Target}.${Names[number]}`>
 								: SkipFailedExpression<
 										R,
 										FormatError<Errors["UNKNOWN_COLUMN"], [Missing, "REFERENCES"]>
@@ -84,37 +84,34 @@ type ReferencesColumns<
 							: never
 					: never
 			: never
-		: WithRefs<SkipReferenceActions<Tokens>, `${Target}.${PkColumns}`>
+		: SkipReferenceActions<Tokens, `${Target}.${PkColumns}`>
 
-/** The result of {@link ParseReferences}: the rest after the actions and the referenced columns. */
-type WithRefs<Res, Refs extends string> = Res extends [infer R extends ParserMonad, null] ? [R, { refs: Refs }] : never
-
-/** `ON DELETE|UPDATE action`, `MATCH x`, in any number and order. Result `[rest, null]`. */
-type SkipReferenceActions<Tokens extends ParserMonad> =
+/** `ON DELETE|UPDATE action`, `MATCH x`, in any number and order. Result `[rest, { refs }]`. */
+type SkipReferenceActions<Tokens extends ParserMonad, Refs extends string> =
 	PeekToken<Tokens> extends TokenKey<"on">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? SkipToken<R1> extends infer R2 extends ParserMonad
 				? PeekToken<R2> extends TokenKey<"set">
-					? ReferenceSetAction<SkipToken<R2>>
+					? ReferenceSetAction<SkipToken<R2>, Refs>
 					: PeekToken<R2> extends TokenIdent<"no">
 						? SkipToken<R2> extends infer R3 extends ParserMonad
-							? SkipReferenceActions<SkipToken<R3>>
+							? SkipReferenceActions<SkipToken<R3>, Refs>
 							: never
-						: SkipReferenceActions<SkipToken<R2>>
+						: SkipReferenceActions<SkipToken<R2>, Refs>
 				: never
 			: never
 		: PeekToken<Tokens> extends TokenIdent<"match">
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
-				? SkipReferenceActions<SkipToken<R1>>
+				? SkipReferenceActions<SkipToken<R1>, Refs>
 				: never
-			: [Tokens, null]
+			: [Tokens, { refs: Refs }]
 
 /** At the `NULL` or `DEFAULT` after `SET`: skip it, an optional column list, then the rest of the actions. */
-type ReferenceSetAction<Tokens extends ParserMonad> =
+type ReferenceSetAction<Tokens extends ParserMonad, Refs extends string> =
 	SkipToken<Tokens> extends infer R extends ParserMonad
 		? PeekToken<R> extends TokenKey<"(">
 			? SkipParenGroup<R> extends [infer R2 extends ParserMonad, infer _E]
-				? SkipReferenceActions<R2>
+				? SkipReferenceActions<R2, Refs>
 				: never
-			: SkipReferenceActions<R>
+			: SkipReferenceActions<R, Refs>
 		: never

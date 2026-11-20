@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **330 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **331 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -31,7 +31,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2900-2999 | Type/Numeric Operations       |            1 |
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
-| 3200-3299 | Semantic/Duplicate-Existence  |           13 |
+| 3200-3299 | Semantic/Duplicate-Existence  |           14 |
 | 3300-3399 | Semantic/Constraint           |            9 |
 | 3400-3499 | Semantic/SELECT               |           16 |
 | 3500-3599 | Semantic/Statement            |           11 |
@@ -340,21 +340,22 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 3200-3299: Semantic/Duplicate-Existence
 
-| Code | Name                                                  | Message                                                                  |
-| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
-| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                 |
-| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                     |
-| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                  |
-| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                     |
-| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                      |
-| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                   |
-| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                       |
-| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                     |
-| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                  |
-| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                  |
-| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                               |
-| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                   |
-| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18) |
+| Code | Name                                                  | Message                                                                               |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                              |
+| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                                  |
+| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                               |
+| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                                  |
+| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                                   |
+| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                                |
+| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                                    |
+| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                                  |
+| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                               |
+| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                               |
+| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                                            |
+| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                                |
+| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18)              |
+| 3213 | `COLUMN_IS_REFERENCED_BY_A_FOREIGN_KEY`               | Column … is referenced by the foreign key …; drop the constraint first or use CASCADE |
 
 ## 3300-3399: Semantic/Constraint
 

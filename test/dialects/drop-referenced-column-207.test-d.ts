@@ -38,14 +38,14 @@ base.apply(`alter table s drop column parent;`)
 base.apply(`alter table p drop column k;`)
 
 // CASCADE drops the referencing constraints, the others stay
-const dropped = base.apply(`alter table p drop column id cascade;`).database()
-expectType<Unknown<GetQueryError<typeof dropped, OnConstraint<"q", "q_pid_fkey">>>>(
+const _dropped = base.apply(`alter table p drop column id cascade;`).database()
+expectType<Unknown<GetQueryError<typeof _dropped, OnConstraint<"q", "q_pid_fkey">>>>(
 	toBe<DbtyperError<2220, "Unknown constraint q_pid_fkey on table q">>(),
 )
-expectType<Unknown<GetQueryError<typeof dropped, OnConstraint<"r", "r_pid_fkey">>>>(
+expectType<Unknown<GetQueryError<typeof _dropped, OnConstraint<"r", "r_pid_fkey">>>>(
 	toBe<DbtyperError<2220, "Unknown constraint r_pid_fkey on table r">>(),
 )
-expectType<Known<GetQueryError<typeof dropped, OnConstraint<"q", "q_k">>>>(toBe<true>())
+expectType<Known<GetQueryError<typeof _dropped, OnConstraint<"q", "q_k">>>>(toBe<true>())
 // … and with the constraints gone the other column drops without CASCADE
 base.apply(`alter table p drop column id cascade; alter table q drop constraint q_k; alter table p drop column k;`)
 // dropping the referencing constraint or table first works too
@@ -75,7 +75,7 @@ expectType<
 )
 
 // TYPE-18: DROP DOMAIN … CASCADE drops the columns of the domain and the foreign keys to them
-const dom = sqlMigrations({ driver: mockDriver })
+const _dom = sqlMigrations({ driver: mockDriver })
 	.apply(
 		`create domain code as integer;
 		 create table c (a integer not null, k code unique);
@@ -83,7 +83,7 @@ const dom = sqlMigrations({ driver: mockDriver })
 		 drop domain code cascade;`,
 	)
 	.database()
-expectType<Unknown<GetQueryError<typeof dom, OnConstraint<"d", "d_ck_fkey">>>>(
+expectType<Unknown<GetQueryError<typeof _dom, OnConstraint<"d", "d_ck_fkey">>>>(
 	toBe<DbtyperError<2220, "Unknown constraint d_ck_fkey on table d">>(),
 )
 

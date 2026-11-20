@@ -57,7 +57,7 @@ expectType<
 >(toBe<3212>())
 base.apply(`drop view v_col, v_expr, v_star, v_alias, v_sub, v_cte, v_scalar, v_over;
 	 alter table t alter column e type text; drop domain email;`)
-const altered = base
+const _altered = base
 	.apply(`create domain d2 as integer; alter table t alter column id type d2; drop domain d2 cascade;`)
 	.database()
-expectType<Code<GetQueryError<typeof altered, `select id from t`>>>(toBe<2300>())
+expectType<Code<GetQueryError<typeof _altered, `select id from t`>>>(toBe<2300>())
