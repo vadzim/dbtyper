@@ -13,9 +13,66 @@ export type JsqlCreateTable<
 	Constraints extends Record<string, unknown> | null = null,
 	Order extends readonly string[] = readonly string[],
 	Spelled = {},
-> = {} extends Spelled
-	? { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order }
-	: { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order; spelled: Spelled }
+	PkColumns extends string = never,
+	PkName extends string = never,
+> = [PkColumns] extends [never]
+	? {} extends Spelled
+		? { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order }
+		: {
+				kind: "table"
+				columns: Columns
+				column_facts: Facts
+				constraints: Constraints
+				order: Order
+				spelled: Spelled
+			}
+	: {} extends Spelled
+		? {
+				kind: "table"
+				columns: Columns
+				column_facts: Facts
+				constraints: Constraints
+				order: Order
+				primary_key: { columns: PkColumns; name: PkName }
+			}
+		: {
+				kind: "table"
+				columns: Columns
+				column_facts: Facts
+				constraints: Constraints
+				order: Order
+				spelled: Spelled
+				primary_key: { columns: PkColumns; name: PkName }
+			}
+
+/**
+ * The PRIMARY KEY of a table (CORE-15, SEL-27): its columns (a union of keys) and its constraint name, which
+ * `DROP CONSTRAINT` matches (PostgreSQL names an unnamed one `<table>_pkey`). A table without one has no field.
+ */
+export type JsqlPrimaryKey = { columns: string; name: string }
+
+/** The PRIMARY KEY of a table shape, or `null`. */
+export type JsqlTablePrimaryKey<Tbl> = Tbl extends { primary_key: infer P extends JsqlPrimaryKey } ? P : null
+
+/** The table with PRIMARY KEY `Pk` (`null` removes it). */
+export type JsqlTableWithPrimaryKey<Tbl, Pk extends JsqlPrimaryKey | null> = [Pk] extends [JsqlPrimaryKey]
+	? ReplaceProp<Tbl, "primary_key", { columns: Pk["columns"]; name: Pk["name"] }>
+	: Tbl extends { primary_key: unknown }
+		? Omit<Tbl, "primary_key">
+		: Tbl
+
+/** `ALTER TABLE … ADD [CONSTRAINT name] PRIMARY KEY` or `ADD COLUMN … PRIMARY KEY` (CORE-15): the table gets `Pk`. */
+export type JsqlDbSetPrimaryKey<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Pk extends JsqlPrimaryKey | null,
+> =
+	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+		? JsqlTableWithPrimaryKey<Tbl, Pk> extends infer T extends JsqlDataShape
+			? JsqlDbReplaceData<Db, Sch, Tab, T>
+			: Db
+		: Db
 
 /**
  * A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). `Alias` is the name of
@@ -218,15 +275,21 @@ export type JsqlDbDropConstraintName<
 	Name extends string,
 > =
 	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
-		? JsqlDbReplaceData<
-				Db,
-				Sch,
-				Tab,
-				Omit<Tbl, "constraints"> & {
-					constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
-				}
-			>
+		? JsqlTableWithPrimaryKey<Tbl, DropPkByName<Tbl, Name>> extends infer T extends JsqlDataShape
+			? JsqlDbReplaceData<
+					Db,
+					Sch,
+					Tab,
+					Omit<T, "constraints"> & {
+						constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
+					}
+				>
+			: Db
 		: Db
+
+/** The table's PRIMARY KEY after `DROP CONSTRAINT Name`: gone when `Name` is its name (CORE-15). */
+type DropPkByName<Tbl, Name extends string> =
+	JsqlTablePrimaryKey<Tbl> extends infer P extends JsqlPrimaryKey ? (Name extends P["name"] ? null : P) : null
 
 /**
  * The schema an UNQUALIFIED table or view name is looked up in: the default schema, except where the dialect has temp objects

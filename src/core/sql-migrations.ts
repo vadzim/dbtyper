@@ -171,7 +171,9 @@ type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 														: {}) &
 													// #150, #151: declaration order and SQLite spellings
 													(Table extends { order: infer O } ? { order: O } : {}) &
-													(Table extends { spelled: infer Sp } ? { spelled: Sp } : {})
+													(Table extends { spelled: infer Sp } ? { spelled: Sp } : {}) &
+													// CORE-15, SEL-27: the primary key
+													(Table extends { primary_key: infer Pk } ? { primary_key: Pk } : {})
 											: never
 									}
 								: never
