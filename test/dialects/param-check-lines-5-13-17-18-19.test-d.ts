@@ -3,7 +3,7 @@
 import { sqlMigrations, type GetQueryError } from "../../src/core/sql-database.ts"
 import { postgresSqlDriver } from "../../src/postgres/index.ts"
 import type { DbtyperError } from "../../src/dbtyper-error.ts"
-import { mockDriver } from "../test-utils/test-databases.ts"
+import { mockDriver, sqliteDriver } from "../test-utils/test-databases.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
 const schema = `create table users (id text not null, age integer not null, active boolean not null default true);`
@@ -19,11 +19,19 @@ const p5 = `select * from users where id = ?;` as const
 await pg.query(p5, ["a"])
 expectType<GetQueryError<typeof pg, typeof p5>>(toBe<DbtyperError<1007, "Unexpected token at: ?">>())
 
-// ❌ ERROR: PARAM-13 two `?`, one value
+// ❌ ERROR: PARAM-13 two `?`, one value (`?` is a parameter in a SQLite chain; PostgreSQL takes `$1`, `$2`: same code 2404)
+const lite = sqlMigrations({ driver: sqliteDriver }).apply(schema).database()
 const p13 = `select * from users where id = ? and age > ?;` as const
 // @ts-expect-error
-await db.query(p13, ["a"])
-expectType<GetQueryError<typeof db, typeof p13, ["a"]>>(
+await lite.query(p13, ["a"])
+expectType<GetQueryError<typeof lite, typeof p13, ["a"]>>(
+	toBe<DbtyperError<2404, "Positional parameter index 1 is out of bounds">>(),
+)
+
+const p13pg = `select * from users where id = $1 and age > $2;` as const
+// @ts-expect-error
+await db.query(p13pg, ["a"])
+expectType<GetQueryError<typeof db, typeof p13pg, ["a"]>>(
 	toBe<DbtyperError<2404, "Positional parameter index 1 is out of bounds">>(),
 )
 
