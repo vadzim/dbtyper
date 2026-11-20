@@ -11,7 +11,7 @@ import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { SkipFailedQualifiedName } from "./skip-statement.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ApplyCteColumnList, ParseCteColumnList } from "./parse-select-cte.ts"
@@ -19,41 +19,25 @@ import type { ParseSelectExpression } from "./parse-select.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { FirstDuplicateName } from "./set-operation-types.ts"
 
+type ViewNameRow = {
+	name: FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>
+	afterDot: FormatError<Errors["EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW"], []>
+	ends: TokenKey<"as" | "(">
+	plain: FormatError<Errors["EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME"], []>
+	qualified: FormatError<Errors["EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME"], []>
+	skip: true
+	home: "default"
+}
+
 /**
  * `view_name AS` or `schema.view_name AS` (unlike {@link ParseQualifiedTableName}, not followed by `(`).
  * Success: `[rest before AS, null, schema, viewName]`.
  */
-type ParseQualifiedViewNameUnqualified<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<"as" | "(">
-		? [AfterFirst, null, Db["defaultSchema"], A]
-		: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME"], []>>
-
-type ParseQualifiedViewNameQualified<Rdot extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<Rdot> extends TokenIdent<infer B extends string>
-		? SkipToken<Rdot> extends infer AfterB extends ParserMonad
-			? JsqlDbGetSchema<Db, A> extends JsqlSchemaShape
-				? PeekToken<AfterB> extends TokenKey<"as" | "(">
-					? A extends keyof Db["schemas"]
-						? [AfterB, null, A & keyof Db["schemas"] & string, B]
-						: never
-					: SkipFailedQualifiedName<AfterB, FormatError<Errors["EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME"], []>>
-				: SkipFailedQualifiedName<AfterB, FormatError<Errors["UNKNOWN_SCHEMA"], [A, "CREATE VIEW"]>>
-			: never
-		: SkipFailedQualifiedName<Rdot, FormatError<Errors["EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW"], []>>
-
-type ParseQualifiedViewNameAfterFirstIdent<
-	AfterFirst extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	A extends string,
-> =
-	PeekToken<AfterFirst> extends TokenKey<".">
-		? ParseQualifiedViewNameQualified<SkipToken<AfterFirst>, Db, A>
-		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
-
-type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends TokenIdent<infer A extends string>
-		? ParseQualifiedViewNameAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: SkipFailedQualifiedName<Tokens, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
+type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> = ParseNameParts<
+	Tokens,
+	Db,
+	ViewNameRow
+>
 
 type ParseCreateViewAfterSelect<
 	Tokens extends ParserMonad,

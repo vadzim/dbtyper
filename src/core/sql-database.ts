@@ -2,6 +2,7 @@ import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
 import type { EmptyExpressionParams } from "../parser/parse-expression.ts"
 import type { Dialects } from "./dialect.ts"
 import type { JsqlCreateSchema } from "./jsql-utils.ts"
+import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { MigrationExport } from "./sql-migrations.ts"
 import type { DriverConfig, DriverConfigDraft, ParamsDriverConfig, SqlDriver } from "./sql-driver.ts"
 import type {
@@ -25,7 +26,7 @@ export type InitialDatabase<
 > = Dialects[Config["dialect"]]["initialSchemas"] extends "main"
 	? {
 			// SQLT-25: SQLite has no schemas, only `main` (the default) and `temp`
-			defaultSchema: "main"
+			defaultSchema: DS
 			// #102: the mapped form below must depend on `DS` (`DS & never` is `never`, adds no key). Compile cost:
 			// with a plain literal `{ main: ...; temp: ... }` every `.apply()` of a SQLite chain costs ~6x more
 			// instantiations (per-step instantiations are not cached) and 18 chained CREATE TABLEs hit TS2589.
@@ -39,6 +40,24 @@ export type InitialDatabase<
 			// #102 applies here too: the mapped form depends on `DS` (a plain literal costs far more instantiations per step)
 			schemas: { [K in "public" | (DS & never)]: JsqlCreateSchema }
 		}
+
+/** The schema a chain starts with when `sqlMigrations` gets no `defaultSchema`: SQLite `main`, PostgreSQL `public`. */
+export type DefaultSchemaOf<Config extends DriverConfig> = Dialects[Config["dialect"]]["initialSchemas"] extends "main"
+	? "main"
+	: "public"
+
+/**
+ * SQLT-25: SQLite has no schemas, only `main` and `temp`; any other `defaultSchema` is a compile error on
+ * `defaultSchema` at `sqlMigrations` (code 4108). Not checked for a driver without one dialect (DSEL-8 says that).
+ */
+export type RequireSqliteDefaultSchema<D, DS extends string> =
+	D extends SqlDriver<infer Config extends DriverConfig>
+		? Dialects[Config["dialect"]]["initialSchemas"] extends "main"
+			? DS extends "main" | "temp"
+				? {}
+				: { defaultSchema: FormatError<Errors["SQLITE_HAS_NO_SCHEMAS_DEFAULT_SCHEMA"], []> }
+			: {}
+		: {}
 
 export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> = {
 	__db(): { [K in keyof Db]: Db[K] }

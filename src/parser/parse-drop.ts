@@ -3,13 +3,16 @@ import type {
 	JsqlDbGetData,
 	JsqlDbGetType,
 	JsqlDbReplaceData,
+	JsqlDbDropEnumUsers,
+	JsqlDbEnumInUse,
 	JsqlDbReplaceType,
 	UnqualifiedSchema,
 } from "../core/jsql-utils.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { AsIdent, TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
+import type { TokenEot, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { DbDialectOnlyError } from "../core/dialect.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 
 /**
@@ -86,6 +89,16 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, K exten
 /** One `[schema, name]` of the name list. */
 type DropName = readonly [string, string]
 
+type DropNameRow<K extends DropKind> = {
+	name: DropKinds[K]["name"]
+	afterDot: DropKinds[K]["afterDot"]
+	ends: never
+	plain: null
+	qualified: null
+	skip: false
+	home: "none"
+}
+
 type ParseDropName<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -93,34 +106,28 @@ type ParseDropName<
 	IfExists extends boolean,
 	Acc extends readonly DropName[],
 > =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<".">
-				? SkipToken<R1> extends infer R2 extends ParserMonad
-					? AsIdent<PeekToken<R2>> extends TokenIdent<infer B extends string>
-						? DropAfterName<
-								SkipToken<R2>,
-								Db,
-								K,
-								IfExists,
-								readonly [...Acc, readonly [A, B]],
-								"qualifiedTail"
-							>
-						: SkipFailedStatement<R2, Db, DropKinds[K]["afterDot"]>
-					: never
-				: DropAfterName<
-						R1,
-						Db,
-						K,
-						IfExists,
-						readonly [
-							...Acc,
-							readonly [K extends "type" | "domain" ? Db["defaultSchema"] : UnqualifiedSchema<Db, A>, A],
-						],
-						"plainTail"
-					>
-			: never
-		: SkipFailedStatement<Tokens, Db, DropKinds[K]["name"]>
+	ParseNameParts<Tokens, Db, DropNameRow<K>> extends [infer R extends ParserMonad, infer E, infer Sch, infer Name]
+		? E extends DbtyperErrorShape
+			? SkipFailedStatement<R, Db, E>
+			: Name extends string
+				? Sch extends string
+					? DropAfterName<R, Db, K, IfExists, readonly [...Acc, readonly [Sch, Name]], "qualifiedTail">
+					: DropAfterName<
+							R,
+							Db,
+							K,
+							IfExists,
+							readonly [
+								...Acc,
+								readonly [
+									K extends "type" | "domain" ? Db["defaultSchema"] : UnqualifiedSchema<Db, Name>,
+									Name,
+								],
+							],
+							"plainTail"
+						>
+				: never
+		: never
 
 /**
  * `, name …` (PostgreSQL: a name list), `[CASCADE | RESTRICT] ;` (PostgreSQL, SCHEMA-29), then the lookups. The tail
@@ -143,7 +150,14 @@ type DropAfterName<
 				? SkipFailedStatement<Tokens, Db, OnlyErr>
 				: SkipToken<Tokens> extends infer R extends ParserMonad
 					? PeekToken<R> extends TokenKey<";"> | TokenEot
-						? DropTargets<R, Db, K, IfExists, Names>
+						? DropTargets<
+								R,
+								Db,
+								K,
+								IfExists,
+								Names,
+								PeekToken<Tokens> extends TokenIdent<"cascade"> ? true : false
+							>
 						: SkipFailedStatement<R, Db, DropKinds[K]["end"]>
 					: never
 			: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
@@ -157,13 +171,14 @@ type DropTargets<
 	K extends DropKind,
 	IfExists extends boolean,
 	Names extends readonly DropName[],
+	Cascade extends boolean = false,
 > = Names extends readonly [
 	readonly [infer Sch extends string, infer Name extends string],
 	...infer Rest extends readonly DropName[],
 ]
-	? DropTarget<Db, K, IfExists, Sch, Name> extends infer Res
+	? DropTarget<Db, K, IfExists, Sch, Name, Cascade> extends infer Res
 		? Res extends JsqlDatabaseShape
-			? DropTargets<Tokens, Res, K, IfExists, Rest>
+			? DropTargets<Tokens, Res, K, IfExists, Rest, Cascade>
 			: Res extends DbtyperErrorShape
 				? SkipFailedStatement<Tokens, Db, Res>
 				: never
@@ -177,10 +192,20 @@ type DropTarget<
 	IfExists extends boolean,
 	Sch extends string,
 	Name extends string,
+	Cascade extends boolean = false,
 > = K extends "type" | "domain"
 	? JsqlDbGetType<Db, Sch, Name> extends infer T extends JsqlTypeShape
 		? [K, T] extends ["domain", { kind: "domain" }] | ["type", JsqlTypeShape]
-			? JsqlDbReplaceType<Db, Sch, Name, null>
+			? // TYPE-18: an enum with a column is in use; CASCADE drops those columns (and the views over them)
+				[K, T] extends ["type", { kind: "enum" }]
+				? [JsqlDbEnumInUse<Db, Sch, Name>] extends [true]
+					? Cascade extends true
+						? JsqlDbDropEnumUsers<Db, Sch, Name> extends infer D extends JsqlDatabaseShape
+							? JsqlDbReplaceType<D, Sch, Name, null>
+							: never
+						: FormatError<Errors["TYPE_IS_IN_USE_BY_A_COLUMN"], []>
+					: JsqlDbReplaceType<Db, Sch, Name, null>
+				: JsqlDbReplaceType<Db, Sch, Name, null>
 			: DropKinds[K]["wrongKind"]
 		: IfExists extends true
 			? Db

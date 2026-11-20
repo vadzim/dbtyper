@@ -1188,6 +1188,10 @@ const errors = {
 		code: 3211,
 		msg: ["View or table already exists in schema"],
 	},
+	TYPE_IS_IN_USE_BY_A_COLUMN: {
+		code: 3212,
+		msg: ["Type is used by a column; drop the column first or use CASCADE (TYPE-18)"],
+	},
 
 	// Constraint Violations
 	MISSING_NOT_NULL_COLUMN_IN_INSERT: {
@@ -1555,6 +1559,10 @@ const errors = {
 	EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME: {
 		code: 4107,
 		msg: ["Expected `.` or `(` after table name"],
+	},
+	SQLITE_HAS_NO_SCHEMAS_DEFAULT_SCHEMA: {
+		code: 4108,
+		msg: ['SQLite has no schemas: defaultSchema must be "main" or "temp"'],
 	},
 
 	// DML/Expression-Specific Errors

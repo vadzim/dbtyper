@@ -1,11 +1,12 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetTable, UnqualifiedSchema, JsqlDbGetData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetTable, JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
@@ -18,19 +19,22 @@ export type SkipUntilCommaOrSemi<Tokens extends ParserMonad> = SkipBracketedUnti
 	TokenKey<","> | TokenKey<";"> | TokenEot
 >
 
-type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<".">
-		? SkipToken<AfterFirst> extends infer Rd1 extends ParserMonad
-			? AsIdent<PeekToken<Rd1>> extends TokenIdent<infer B extends string>
-				? [SkipToken<Rd1>, null, A, B]
-				: [Rd1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>, null, null]
-			: never
-		: [AfterFirst, null, UnqualifiedSchema<Db, A>, A]
+type AlterTableNameRow = {
+	name: FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>
+	afterDot: FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>
+	ends: never
+	plain: null
+	qualified: null
+	skip: false
+	home: "lookup"
+}
 
-type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
-		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: [SkipToken<Tokens>, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>, null, null]
+/** `[rest, null, schema, table]`, or `[rest, error, never, never]`. */
+type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> = ParseNameParts<
+	Tokens,
+	Db,
+	AlterTableNameRow
+>
 
 export type FinishAlterStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
