@@ -14,6 +14,8 @@ import type {
 	PendingSpelled,
 	PkKind,
 	StackOrder,
+	PendingPkName,
+	StackPrimaryKey,
 	TableOptions,
 	WithoutPending,
 } from "./parse-create-table.ts"
@@ -111,7 +113,9 @@ type RowidTableBuiltOk<
 							M["facts"],
 							null,
 							StackOrder<Stack>,
-							PendingSpelled<Db, Stack[number][0]>
+							PendingSpelled<Db, Stack[number][0]>,
+							StackPrimaryKey<Stack>,
+							PendingPkName<Db, Table>
 						>
 					: JsqlCreateRowidTable<
 							M["cols"],

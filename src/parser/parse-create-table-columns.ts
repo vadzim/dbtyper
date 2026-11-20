@@ -16,6 +16,8 @@ import type {
 	ColumnNameToken,
 	PendingSpelled,
 	StackOrder,
+	PendingPkName,
+	StackPrimaryKey,
 	WithColumnSpelling,
 	WithoutPending,
 } from "./parse-create-table.ts"
@@ -47,7 +49,9 @@ export type ParseCreateTableBody<
 							M["facts"],
 							PendingConstraints<Db>,
 							StackOrder<Stack>,
-							PendingSpelled<Db, Stack[number][0]>
+							PendingSpelled<Db, Stack[number][0]>,
+							StackPrimaryKey<Stack>,
+							PendingPkName<Db, Table>
 						>
 					> extends infer NewDb
 					? NewDb extends JsqlDatabaseShape
