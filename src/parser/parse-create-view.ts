@@ -144,21 +144,22 @@ export type ParseCreateView<
 	Replace extends boolean = false,
 > =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? DialectFact<Db, "viewIfNotExists"> extends true
-			? SkipToken<Tokens> extends infer A0 extends ParserMonad
-				? PeekToken<A0> extends TokenKey<"not">
-					? SkipToken<A0> extends infer A1 extends ParserMonad
-						? PeekToken<A1> extends TokenKey<"exists">
+		? // SCHEMA-18: the `IF NOT EXISTS` words are checked in both dialects; only SQLite accepts the whole clause
+			SkipToken<Tokens> extends infer A0 extends ParserMonad
+			? PeekToken<A0> extends TokenKey<"not">
+				? SkipToken<A0> extends infer A1 extends ParserMonad
+					? PeekToken<A1> extends TokenKey<"exists">
+						? DialectFact<Db, "viewIfNotExists"> extends true
 							? ParseCreateViewNamed<SkipToken<A1>, Db, Params, Temp, true>
-							: SkipFailedStatement<
-									A1,
-									Db,
-									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
-								>
-						: never
-					: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
-				: never
-			: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
+							: SkipFailedStatement<A1, Db, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
+						: SkipFailedStatement<
+								A1,
+								Db,
+								FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
+							>
+					: never
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
+			: never
 		: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
 
 type ParseCreateViewNamed<
