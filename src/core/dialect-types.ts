@@ -10,12 +10,12 @@ import type { PgOnlyTypeNames } from "./dialect-constructs.ts"
  * SQLT-6: the affinity SQLite derives from a declared type name (lower-case, words joined by one space), by its
  * five rules in order; SQLT-8 / SQLT-9 / SQLT-11 name exceptions that keep a name apart. The result is the type name
  * of the column's shape: a key of the SQLite driver's type map (`integer`, `real`, `text`, `numeric`, `blob`,
- * `boolean`, `any`).
+ * `any`).
  */
 type SqliteTypeKey<Name extends string> = Name extends "any"
 	? "any"
 	: Name extends "boolean" | "bool"
-		? "boolean"
+		? "integer" // SQLT-9 (#161): a BOOLEAN column holds the integers 0/1
 		: Name extends "date" | "datetime" | "timestamp" | "time" | "json"
 			? "text"
 			: Name extends `${string}int${string}`
@@ -43,7 +43,10 @@ type NamedTypeAliases = {
 	timestamptz: "timestamp with time zone"
 	timetz: "time with time zone"
 	float8: "double precision"
+	float: "double precision"
 	float4: "real"
+	character: "char"
+	bpchar: "char"
 	bool: "boolean"
 	"character varying": "varchar"
 	decimal: "numeric"
@@ -116,6 +119,13 @@ export type ValueMismatchError<Db, Col extends string, ColType extends string> =
 	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColType>]>
 		: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
+
+/**
+ * SQLT-7: a NUMERIC-affinity column of an `affinity` dialect (SQLite) stores text as well as numbers, so INSERT / UPDATE
+ * values and DEFAULTs of any class fit it (no 2507, 2508, 2510); DATE, JSON and BOOLEAN have their own types (SQLT-8, SQLT-9).
+ */
+export type AffinityTakesAnyValue<Db, ColType extends string> =
+	DialectFact<Db, "declaredTypes"> extends "affinity" ? (ColType extends "numeric" ? true : false) : false
 
 /** SQLT-11: the only type names a STRICT table allows. */
 export type SqliteStrictTypeNames = "int" | "integer" | "real" | "text" | "blob" | "any"

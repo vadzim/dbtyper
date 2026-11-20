@@ -1,4 +1,4 @@
-// RUN-4: migration(sql) returns its argument unchanged; a plain .js migration module works with TEST_MIGRATIONS set.
+// RUN-4: migration(sql) returns its argument unchanged; a plain .js migration module works with DBTYPER_TEST_MIGRATIONS set.
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 
@@ -20,8 +20,8 @@ describe("RUN-4 migration()", () => {
 			.database()
 		assert.deepEqual(db.migrations[1], { source: mod.generateSql(), path: "002" })
 	})
-	it("RUN-4: with TEST_MIGRATIONS set, a call from a non-.js module throws", () => {
-		if (!process.env.TEST_MIGRATIONS) {
+	it("RUN-4: with DBTYPER_TEST_MIGRATIONS set, a call from a non-.js module throws", () => {
+		if (!process.env.DBTYPER_TEST_MIGRATIONS) {
 			return
 		}
 		assert.throws(() => migration(`select 1`), /should be called from a JavaScript file/)

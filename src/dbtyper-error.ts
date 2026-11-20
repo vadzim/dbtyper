@@ -227,6 +227,11 @@ const errors = {
 		],
 	},
 
+	MULTIPLE_STATEMENTS_IN_QUERY: {
+		code: 1932,
+		msg: ["This driver runs only the first statement of a text; send one statement per query or stream call"],
+	},
+
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {
@@ -428,9 +433,11 @@ const errors = {
 	},
 
 	// UPDATE Statement
-	EXPECTED_SET_IN_UPDATE: {
+	OBSOLETE_1300_EXPECTED_SET_IN_UPDATE: {
 		code: 1300,
-		msg: ["Expected SET in UPDATE"],
+		msg: [
+			"Obsolete, no longer reported: Expected SET in UPDATE (EXPECTED_SET_AFTER_TABLE_IN_UPDATE is reported first)",
+		],
 	},
 	EXPECTED_SET_AFTER_TABLE_IN_UPDATE: {
 		code: 1301,
@@ -485,6 +492,10 @@ const errors = {
 	OBSOLETE_1404_EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM: {
 		code: 1404,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
+	},
+	BARE_DML_ALIAS_NEEDS_AS: {
+		code: 1309,
+		msg: ["On SQLite the alias of the target table of ", " needs AS: write AS ", ""],
 	},
 	EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM: {
 		code: 1405,
@@ -907,6 +918,13 @@ const errors = {
 		code: 2406,
 		msg: ["internal: a parameter was read"],
 	},
+	TOO_MANY_PARAMETERS: {
+		code: 2407,
+		msg: [
+			"A statement may have at most ",
+			" positional parameters; pass fewer values or split it into several statements",
+		],
+	},
 
 	// Type System Errors
 	// Type Compatibility
@@ -1029,13 +1047,14 @@ const errors = {
 		code: 2803,
 		msg: ["LIKE left operand must be text"],
 	},
-	CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
+	// EXPR-Q6: text || <any non-array type> is text, so 2804 and 2805 are retired
+	OBSOLETE_2804_CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
 		code: 2804,
-		msg: ["Cannot concatenate text with ", ""],
+		msg: ["Obsolete, no longer reported: Cannot concatenate text with a type"],
 	},
-	CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
+	OBSOLETE_2805_CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
 		code: 2805,
-		msg: ["Cannot concatenate ", " with text"],
+		msg: ["Obsolete, no longer reported: Cannot concatenate a type with text"],
 	},
 	LIKE_PATTERN_MUST_BE_TEXT: {
 		code: 2806,
@@ -1222,6 +1241,19 @@ const errors = {
 	CTE_COLUMN_LIST_MISMATCH: {
 		code: 3413,
 		msg: ["WITH query ", " has a different number of columns than its column list"],
+	},
+	ORDER_OR_LIMIT_BEFORE_SET_OPERATOR: {
+		code: 3416,
+		msg: [
+			"ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it",
+		],
+	},
+
+	COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN: {
+		code: 3414,
+		msg: [
+			"ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position",
+		],
 	},
 
 	// Statement Constraints
@@ -1527,9 +1559,9 @@ const errors = {
 	},
 
 	// CASE Expression
-	CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
+	OBSOLETE_4300_CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
 		code: 4300,
-		msg: ["CASE requires at least one WHEN"],
+		msg: ["Obsolete, no longer reported: CASE requires at least one WHEN (the parser reads one WHEN before END)"],
 	},
 	EXPECTED_THEN_AFTER_CASE_WHEN: {
 		code: 4301,
@@ -1652,6 +1684,18 @@ const errors = {
 	EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT: {
 		code: 5009,
 		msg: ["Expected LIKE, IN or BETWEEN after NOT"],
+	},
+	EXPRESSION_NESTED_TOO_DEEP: {
+		code: 5020,
+		msg: ["Parentheses are nested more than ", " levels deep; simplify the expression or split the query"],
+	},
+	EXPRESSION_CHAIN_TOO_LONG: {
+		code: 5021,
+		msg: ["More than ", " chained `-` operators; split the expression into parenthesized groups"],
+	},
+	EXPECTED_COLLATION_NAME: {
+		code: 5022,
+		msg: ["Expected a collation name after COLLATE"],
 	},
 	EXPECTED_FROM_AFTER_IS_DISTINCT: {
 		code: 5008,

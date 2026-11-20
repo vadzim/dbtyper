@@ -18,7 +18,12 @@ import type {
 	ParseParenEnclosedSelect,
 	SelectResultToCteScopeEntry,
 } from "./parse-select-subquery.ts"
-import type { ParseSelectArm, ParseSelectCompound, ParseSetOperationRightArm } from "./parse-select.ts"
+import type {
+	ParseCompoundTrailing,
+	ParseSelectArm,
+	ParseSelectCompound,
+	ParseSetOperationRightArm,
+} from "./parse-select.ts"
 
 type ParseSelectWithCtesAfterSubquery<
 	R4 extends ParserMonad,
@@ -59,9 +64,11 @@ export type ParseCteColumnNames<Tokens extends ParserMonad, Acc extends readonly
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_CTE_NAME_IN_WITH"], []>>
 
 /** Apply the CTE column list (names by position); no list keeps the query's own names. */
-export type ApplyCteColumnList<Res extends JsqlSelectStatementResult, Cols> = Cols extends readonly string[]
-	? RenameOutputColumns<Res, Cols>
-	: Res
+export type ApplyCteColumnList<
+	Res extends JsqlSelectStatementResult,
+	Cols,
+	Name extends string = "",
+> = Cols extends readonly string[] ? RenameOutputColumns<Res, Cols, Name> : Res
 
 /**
  * The parenthesised body of a CTE after `(`. A `WITH RECURSIVE` body may be `non-recursive UNION [ALL] recursive`:
@@ -86,7 +93,7 @@ type ParseCteBody<
 			? Res1 extends DbtyperErrorShape
 				? SkipFailedExpression<Ra, Res1>
 				: Res1 extends JsqlSelectStatementResult
-					? ApplyCteColumnList<Res1, Cols> extends infer Named
+					? ApplyCteColumnList<Res1, Cols, CteName> extends infer Named
 						? Named extends DbtyperErrorShape
 							? SkipFailedExpression<Ra, Named>
 							: Named extends JsqlSelectStatementResult
@@ -104,7 +111,15 @@ type ParseCteBody<
 												? MergeSetOperation<Named, Res2, "UNION"> extends infer Merged
 													? Merged extends DbtyperErrorShape
 														? SkipFailedExpression<Rb, Merged>
-														: ConsumeClosingParen<Rb, Merged>
+														: ParseCompoundTrailing<Rb, Db, Merged, Params> extends [
+																	infer Rc extends ParserMonad,
+																	infer _Db3,
+																	infer Mt,
+															  ]
+															? Mt extends DbtyperErrorShape
+																? SkipFailedExpression<Rc, Mt>
+																: ConsumeClosingParen<Rc, Mt>
+															: never
 													: never
 												: never
 										: never
@@ -116,11 +131,11 @@ type ParseCteBody<
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
 	: PeekToken<Tokens> extends TokenKey<"insert" | "update" | "delete">
 		? DialectFact<Db, "dmlInCte"> extends true
-			? ParseCteDml<Tokens, Db, Params, Cols>
+			? ParseCteDml<Tokens, Db, Params, Cols, CteName>
 			: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
 		: ParseParenEnclosedSelect<Tokens, Db, Params, {}, Visible> extends [infer R4 extends ParserMonad, infer SubOut]
 			? SubOut extends JsqlSelectStatementResult
-				? ApplyCteColumnList<SubOut, Cols> extends infer Named
+				? ApplyCteColumnList<SubOut, Cols, CteName> extends infer Named
 					? Named extends DbtyperErrorShape
 						? SkipFailedExpression<R4, Named>
 						: [R4, Named]
@@ -132,14 +147,20 @@ type ParseCteBody<
  * PGT-26: `WITH x AS (INSERT | UPDATE | DELETE … [RETURNING …])`: the statement is parsed by its own parser (it ends
  * at `)` instead of `;`); the CTE has the RETURNING columns, or none. Returns `[Tokens, Result | error]` after `)`.
  */
-type ParseCteDml<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape, Cols> =
+type ParseCteDml<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Cols,
+	CteName extends string,
+> =
 	PeekToken<Tokens> extends TokenKey<"insert">
 		? ParseInsert<SkipToken<Tokens>, Db & { cteDml: true }, Params> extends [
 				infer R1 extends ParserMonad,
 				infer _Db2,
 				infer Res,
 			]
-			? FinishCteDml<R1, Res, Cols>
+			? FinishCteDml<R1, Res, Cols, CteName>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"update">
 			? ParseUpdate<SkipToken<Tokens>, Db & { cteDml: true }, Params> extends [
@@ -147,23 +168,24 @@ type ParseCteDml<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Param
 					infer _Db2,
 					infer Res,
 				]
-				? FinishCteDml<R1, Res, Cols>
+				? FinishCteDml<R1, Res, Cols, CteName>
 				: never
 			: ParseDelete<SkipToken<Tokens>, Db & { cteDml: true }, Params> extends [
 						infer R1 extends ParserMonad,
 						infer _Db2,
 						infer Res,
 				  ]
-				? FinishCteDml<R1, Res, Cols>
+				? FinishCteDml<R1, Res, Cols, CteName>
 				: never
 
 /** The RETURNING columns of the data-modifying CTE are its columns (none without RETURNING); then `)`. */
-type FinishCteDml<R1 extends ParserMonad, Res, Cols> = Res extends DbtyperErrorShape
+type FinishCteDml<R1 extends ParserMonad, Res, Cols, CteName extends string> = Res extends DbtyperErrorShape
 	? SkipFailedExpression<R1, Res>
 	: Res extends { returning: infer Ret }
 		? ApplyCteColumnList<
 				{ kind: "select"; returning: Ret extends Record<string, SqlTypeShape> ? Ret : {} },
-				Cols
+				Cols,
+				CteName
 			> extends infer Named
 			? Named extends DbtyperErrorShape
 				? SkipFailedExpression<R1, Named>

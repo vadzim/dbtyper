@@ -16,6 +16,8 @@ export type ExprParseEnv = {
 	outerScope: ScopeMap
 	/** Set while parsing an unparenthesized column DEFAULT: a following `NOT` is `NOT NULL`, not `NOT LIKE`. */
 	noPostfixNot?: true
+	/** Parenthesis nesting (one element per level), see ParenNestingLimit in parse-expression-primary.ts. */
+	depth?: readonly unknown[]
 }
 
 /** Identifier chain in a scalar expression AST (syntax only until {@link ResolveExpressionAST}). */

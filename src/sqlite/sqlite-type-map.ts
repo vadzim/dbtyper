@@ -8,8 +8,12 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
 	text: string
 	blob: Uint8Array
 	null: null
-	/** NUMERIC affinity (SQLT-7): `number` (SQLT-6, SQLT-8). */
-	numeric: number
+	/**
+	 * NUMERIC affinity (SQLT-7): a column of this affinity holds numbers and text (a value that does not look like a
+	 * number stays text), and in big-integer mode a stored whole number comes back as a `bigint`: `number | string`,
+	 * plus `bigint` in that mode (#169; SQLT-4, SQLT-6, SQLT-8). Writes accept text and numbers.
+	 */
+	numeric: number | string | (Integer extends bigint ? bigint : never)
 	/** BOOLEAN columns and comparison results are integers 0/1 (SQLT-9): `number` (`bigint` in big-integer mode). */
 	boolean: Integer
 	/** A column with no type, or `ANY`: any storage class (SQLT-10); `null` is added when the column is nullable. */
@@ -25,8 +29,9 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
  * and `null`; an integer position accepts `number` and `bigint` (in either mode); `boolean`, `Date` and objects are not
  * bindable, so no row accepts them. `null` is added by the nullability of the position.
  */
-type SqliteParamTypeMap = Omit<SqliteTypeMap, "integer" | "boolean" | "bigint" | "any"> & {
+type SqliteParamTypeMap = Omit<SqliteTypeMap, "integer" | "boolean" | "bigint" | "any" | "numeric"> & {
 	integer: number | bigint
+	numeric: number | bigint | string
 	boolean: number | bigint
 	bigint: number | bigint
 	any: number | bigint | string | Uint8Array
@@ -40,11 +45,13 @@ export type SqliteDriverOptions = {
 
 /**
  * Config of a SQLite driver: its dialect (DSEL-1) and every SQLite parameter form (`?`, `?NNN`, `:n`, `@n`, `$n`;
- * `indexed-params` is PostgreSQL's `$1`, not SQLite's). `bigint` is a type-level flag mirroring {@link SqliteDriverOptions}.
+ * `indexed-params` is PostgreSQL's `$1`, not SQLite's). `bigint` is a type-level flag mirroring {@link SqliteDriverOptions};
+ * `SingleStatement` marks a driver that runs only the first statement of a text (node:sqlite, #156).
  */
-export type SqliteDriverConfig<Bigint extends boolean = false> = {
+export type SqliteDriverConfig<Bigint extends boolean = false, SingleStatement extends boolean = false> = {
 	dialect: "sqlite"
 	scalarTypes: SqliteTypeMap<Bigint extends true ? bigint : number>
 	paramTypes: SqliteParamTypeMap
 	syntax: "question-params" | "named-params"
+	singleStatement: SingleStatement extends true ? true : undefined
 }

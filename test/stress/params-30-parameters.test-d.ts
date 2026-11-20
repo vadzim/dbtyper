@@ -1,5 +1,6 @@
 // Integration Test: CORE-6 — a statement with 30 parameters gets every parameter type (one round binds the probes of the whole AND chain, #143)
-import { sqlMigrations } from "../../src/core/sql-database.ts"
+import { sqlMigrations, type GetQueryError } from "../../src/core/sql-database.ts"
+import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
 
@@ -80,5 +81,8 @@ const badValues = {
 	p28: 28,
 	p29: "x",
 }
+expectType<GetQueryError<typeof _db, typeof sql, typeof badValues>>(
+	toBe<DbtyperError<2509, "Incompatible value type for parameter :p29">>(),
+)
 // @ts-expect-error
 await _db.query(sql, badValues)

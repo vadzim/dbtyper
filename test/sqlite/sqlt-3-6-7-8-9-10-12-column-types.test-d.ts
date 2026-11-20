@@ -29,7 +29,7 @@ expectType<typeof _aff>(
 			a: number
 			b: string
 			c: number
-			d: number
+			d: number | string
 			e: number | string | Uint8Array
 			f: number
 			g: string

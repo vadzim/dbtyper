@@ -3,6 +3,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ParseExpressionAST } from "./parse-expression.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
+import type { ConditionProbeOr, IsConditionType } from "./resolve-operators.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
@@ -27,9 +28,17 @@ export type ParseWhereExpression<
 				? R extends DbtyperErrorShape
 					? SkipFailedExpression<Rw, WithErrorClause<R, Clause>>
 					: R extends SqlTypeShape
-						? R["type"] extends "boolean"
+						? IsConditionType<Db, R> extends true
 							? [Rw, null]
-							: SkipFailedExpression<Rw, FormatError<Errors["EXPRESSION_MUST_BE_BOOLEAN"], [R["type"]]>>
+							: SkipFailedExpression<
+									Rw,
+									// CORE-6 (#164): a parameter as the whole condition is a boolean
+									ConditionProbeOr<
+										Db,
+										R,
+										FormatError<Errors["EXPRESSION_MUST_BE_BOOLEAN"], [R["type"]]>
+									>
+								>
 						: SkipFailedExpression<Rw, FormatError<Errors["EXPRESSION_MUST_BE_BOOLEAN"], ["unknown"]>>
 				: never
 		: never

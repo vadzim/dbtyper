@@ -5,12 +5,20 @@ type Counting<N extends number, Acc extends unknown[] = []> = Acc["length"] exte
 /**
  * The numbers 0..199 as a tuple. Found by trial: `Inc`/`Dec` are table lookups (cheap), a longer tuple costs more on
  * every use and 200 is enough for the callers, which count statement batches (50) and positional parameters.
- * `Inc<200>` is `undefined`: a caller that may pass a bigger number must check it (param-probe.ts shows `$n` with
- * it, so a statement with 200 or more positional parameters shows no number there).
+ * `Inc<199>` is `number` and `Inc<200>` is `undefined`: a caller that may pass a bigger number must check it. The
+ * positional parameters of a statement use it (`?` numbers, the `$n` in messages): a statement with more than
+ * `MaxPositionalParams` (199, measured: 199 works and 200 does not, both dialects) of them is TOO_MANY_PARAMETERS
+ * (2407, #167), checked on the values before any parsing.
  */
 // TLVL-4: bound 200 dodges TypeScript's tuple-length and instantiation-depth limits (see the paragraph above);
 // found by trial, checked by test/stress/migration-60-statements, params-30-parameters and the 2500-statement test.
 type Numbers = Counting<200>
+
+/** The most positional parameters a statement may have (#167): the numbers `Numbers` can count to, 199. */
+export type MaxPositionalParams = Dec<Numbers["length"]>
+
+/** `true` when the count `N` is a literal over {@link MaxPositionalParams}; `false` for a smaller or an unknown count. */
+export type OverParamLimit<N extends number> = number extends N ? false : N extends Numbers[number] ? false : true
 
 type IncData = Numbers extends [0, ...infer Rest] ? [...Rest, number] : never
 type DecData = [never, ...Numbers]
@@ -27,7 +35,7 @@ export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K
  * Without it each ReplaceProp layer keeps pointing at the previous one, and reading a property
  * after ~50 chained updates (STMT-16: 60 statements in one migration) exceeds the instantiation depth.
  */
-export type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
+type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
 
 export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void
 	? I

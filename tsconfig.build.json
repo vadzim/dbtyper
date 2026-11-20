@@ -5,7 +5,10 @@
 		"allowJs": true,
 		"outDir": "./dist",
 		"rootDir": ".",
-		"rewriteRelativeImportExtensions": true
+		"rewriteRelativeImportExtensions": true,
+		// The maps would point at src/ and test/, which the package does not ship.
+		"sourceMap": false,
+		"declarationMap": false
 	},
 	"include": ["core/**/*.ts", "src/**/*.ts"],
 	"exclude": ["test", "migrations", "scripts", "examples", "node_modules", "dist"]

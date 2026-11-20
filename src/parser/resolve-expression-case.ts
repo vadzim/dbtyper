@@ -6,7 +6,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from
 import type { ScopeMap } from "./parser-scope.ts"
 import type { MergeComparison, SameComparisonClass } from "./resolve-expression-compare.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
-import type { IsSqlBooleanType } from "./resolve-operators.ts"
+import type { ConditionProbeOr, IsConditionType } from "./resolve-operators.ts"
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
 type ValidateCaseSimpleWhenMatch<
@@ -64,7 +64,7 @@ type ResolveCaseSearchedArms<
 		? Wv extends DbtyperErrorShape
 			? Wv
 			: Wv extends SqlTypeShape
-				? IsSqlBooleanType<Wv> extends true
+				? IsConditionType<Db, Wv> extends true
 					? ResolveExpressionAST<A["then"], Db, Scope, Params> extends infer Tv
 						? Tv extends DbtyperErrorShape
 							? Tv
@@ -86,7 +86,7 @@ type ResolveCaseSearchedArms<
 									: never
 								: never
 						: never
-					: FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>
+					: ConditionProbeOr<Db, Wv, FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>> // #164
 				: FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>
 		: never
 	: ElseB extends ScalarExprAst

@@ -8,7 +8,8 @@ import type { SqlInteger, SqlText } from "../core/sql-type-shape.ts"
  * `result`: a type name of the PostgreSQL type map, or
  *   `arg` the type of the first argument, `arg2` the type of the second, `common` the common numeric/other type of all
  *   arguments, `first-value` the type of the first argument that is not a NULL literal, `sum`/`avg` per argument type
- *   (PGT-27), `array-of-arg` an array of the first argument's type, `text[]` an array of text.
+ *   (PGT-27), `array-of-arg` an array of the first argument's type, `text[]` an array of text, `numeric-or-double`
+ *   `numeric` when an argument is `numeric`, else `double precision` (`power`, `sqrt`, `sign`; #153).
  * `nulls` (CORE-2): the names of {@link IsResultNullable}: `args` nullable when any argument is; `non-null`; `null`
  *   always nullable (aggregates over an empty set); `all` nullable only when every argument is (`greatest`,
  *   `coalesce`); `lag` for `lag`/`lead`.
@@ -56,6 +57,10 @@ export type PostgresFunctions = {
 	concat_ws: ["text", "first", "scalar", null, null]
 	format: ["text", "first", "scalar", null, null]
 	md5: ["text", "args", "scalar", null, [SqlText]]
+	encode: ["text", "args", "scalar", null, null]
+	decode: ["bytea", "args", "scalar", null, [SqlText, SqlText]]
+	gen_random_bytes: ["bytea", "args", "scalar", null, [SqlInteger]]
+	pg_typeof: ["regtype", "non-null", "scalar", null, null]
 	to_char: ["text", "args", "scalar", null, null]
 	regexp_replace: ["text", "args", "scalar", null, null]
 	// PGT-29 math
@@ -65,13 +70,16 @@ export type PostgresFunctions = {
 	round: ["arg", "args", "scalar", null, null]
 	trunc: ["arg", "args", "scalar", null, null]
 	mod: ["arg", "args", "scalar", null, null]
-	power: ["double precision", "args", "scalar", null, null]
-	sqrt: ["double precision", "args", "scalar", null, null]
+	power: ["numeric-or-double", "args", "scalar", null, null]
+	sqrt: ["numeric-or-double", "args", "scalar", null, null]
+	sign: ["numeric-or-double", "args", "scalar", null, null]
+	pi: ["double precision", "non-null", "scalar", "noArgs", null]
 	random: ["double precision", "non-null", "scalar", null, null]
 	greatest: ["common", "all", "scalar", null, "peer"]
 	least: ["common", "all", "scalar", null, "peer"]
 	// FN-8
 	coalesce: ["first-value", "all", "scalar", "coalesce", "peer"]
+	nullif: ["arg", "null", "scalar", null, "peer"]
 	// PGT-30 date and time (FN-10)
 	now: ["timestamp with time zone", "non-null", "scalar", "now", null]
 	current_timestamp: ["timestamp with time zone", "non-null", "scalar", null, null]
@@ -146,19 +154,17 @@ export type PostgresSqliteOnlyFunctions = {
 	instr: "use strpos(x, y)"
 	printf: "use format(…)"
 	hex: "use encode(x, 'hex')"
-	typeof: "use pg_typeof(x)"
+	typeof: "use CAST(pg_typeof(x) AS text)"
 	randomblob: "use gen_random_bytes(n)"
 	zeroblob: ""
 	last_insert_rowid: "use INSERT … RETURNING"
 	changes: ""
 	total_changes: ""
 	total: "use sum(x)"
-	sign: ""
 	likely: ""
 	unlikely: ""
 	json_extract: "use the -> and ->> operators"
 	json_array: "use json_build_array(…)"
 	json_object: "use json_build_object(…)"
-	pi: ""
 	log2: ""
 }

@@ -1,14 +1,14 @@
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { FunctionRowsOf } from "../core/dialect.ts"
+import type { FunctionCatalogFacts } from "../core/dialect.ts"
 
 /**
  * The function catalog grammar shared by the dialects (#116 item 4). A dialect's data file (`SqliteFunctions`,
  * `PostgresFunctions`) is one row per function name (SQLite: `name/N` for exactly N arguments); the dialect fact
- * `functionCatalog` picks the table ({@link FunctionRowsOf}) and ONE resolver (`ResolveCatalogFunctionCall` in
+ * `functionCatalog` ({@link FunctionCatalogFacts}, called `C` below) holds the table (`rows`) and ONE resolver (`ResolveCatalogFunctionCall` in
  * resolve-function.ts) reads it. A row is `[result, nulls, kind, arity, params]`:
  *
  * - `result`: a type name of the dialect's type map, or a code (`arg` the type of the first argument, `arg2` of the
- *   second, `common` the common type of all arguments, `common-tail` of all but the first, `first-value` the first
+ *   second, `common` the common type of all arguments, `common-tail` of all but the first, `numeric-or-double` (`numeric` when an argument is, else `double precision`), `first-value` the first
  *   argument that is not a NULL literal, `sum`/`avg` per argument type, `array-of-arg`, `text[]`, and the array
  *   functions `array-length`, `array-append`, `array-prepend`, `unnest`, which can give their own error, FN-19…FN-21).
  * - `nulls` (CORE-2): the names of {@link IsResultNullable}.
@@ -29,13 +29,13 @@ type CatalogKey<Cat, L extends string, N extends number> = `${L}/${N}` extends k
 		: never
 
 /** The row of function `L` called with `N` arguments in the catalog of dialect `C`, or `never`. */
-export type CatalogRow<C extends string, L extends string, N extends number> =
-	CatalogKey<FunctionRowsOf<C>, L, N> extends infer K extends keyof FunctionRowsOf<C> ? FunctionRowsOf<C>[K] : never
+export type CatalogRow<C extends FunctionCatalogFacts, L extends string, N extends number> =
+	CatalogKey<C["rows"], L, N> extends infer K extends keyof C["rows"] ? C["rows"][K] : never
 
 /** Whether `L` is a function of the catalog of dialect `C` (with any argument count). */
-export type IsCatalogFunction<C extends string, L extends string> = L extends keyof FunctionRowsOf<C>
+export type IsCatalogFunction<C extends FunctionCatalogFacts, L extends string> = L extends keyof C["rows"]
 	? true
-	: `${L}/1` extends keyof FunctionRowsOf<C>
+	: `${L}/1` extends keyof C["rows"]
 		? true
 		: false
 
@@ -51,7 +51,9 @@ export type IsWindowCapableRow<Row> = Row extends readonly [string, string, "agg
  * Whether a call `L(...N arguments)` is an aggregate (the `"aggregate"` kind of its row in the catalog of the
  * chain's dialect: only SQLite overloads by argument count, `max(a, b)` is the scalar there).
  */
-export type IsAggregateCall<D extends string, L extends string, N extends number> = IsAggregateRow<CatalogRow<D, L, N>>
+export type IsAggregateCall<D extends FunctionCatalogFacts, L extends string, N extends number> = IsAggregateRow<
+	CatalogRow<D, L, N>
+>
 
 type IsAggregateRow<Row> = [Row] extends [never]
 	? false
