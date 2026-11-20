@@ -1237,6 +1237,13 @@ const errors = {
 		],
 	},
 
+	COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN: {
+		code: 3414,
+		msg: [
+			"ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position",
+		],
+	},
+
 	// Statement Constraints
 	INSERT_SELECT_COLUMN_COUNT_MISMATCH: {
 		code: 3500,
