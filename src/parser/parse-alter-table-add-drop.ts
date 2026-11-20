@@ -5,19 +5,25 @@ import type {
 	JsqlDbReplaceColumnNullability,
 	JsqlDbGetColumnType,
 	JsqlDbAddConstraintName,
+	JsqlDbAddDefaultConstraint,
 	JsqlDbDropConstraintName,
+	JsqlDbDropReferencingConstraints,
+	JsqlDbReferencingConstraints,
 	JsqlDbSetConstraintColumns,
 	JsqlDbSetPrimaryKey,
 	JsqlPrimaryKey,
+	JsqlTableConstraintsOn,
 	JsqlTablePrimaryKey,
 } from "../core/jsql-utils.ts"
+import type { LastOf } from "../core/type-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
-import type { DbDialectOnlyError } from "../core/dialect.ts"
+import type { DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
+import type { JoinColumnNames, SingleName } from "../core/jsql-constraint-names.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseOneColumnAfterColName } from "./parse-create-table-columns.ts"
 import type { ColumnNameToken, MultiplePrimaryKeys, WithColumnSpelling } from "./parse-create-table.ts"
@@ -154,25 +160,28 @@ type ParseAlterConstraintBody<
 				: never
 		: PeekToken<Tokens> extends TokenKey<"unique">
 			? ParseAlterConstraintColumns<SkipToken<Tokens>, Db, Sch, Tab, "UNIQUE", CName>
-			: [PeekToken<Tokens>, CName] extends [TokenKey<"check">, never]
-				? ParseAlterSkipAction<Tokens, WithConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
+			: [PeekToken<Tokens>, CName, DialectFact<Db, "defaultConstraintNames">] extends [
+						TokenKey<"check">,
+						never,
+						false,
+				  ]
+				? ParseAlterSkipAction<Tokens, Db, Sch, Tab>
 				: PeekToken<Tokens> extends TokenKey<"check">
-					? // #179: a named CHECK involves the table's columns its expression names
+					? // #179: a CHECK involves the table's columns its expression names (#207: unnamed, its default name)
 						ParenGroupNames<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
 						? [E] extends [DbtyperErrorShape] // E is a union of names: no distribution
 							? [R, Db, E]
-							: ParseAlterSkipAction<
-									R,
-									JsqlDbSetConstraintColumns<
-										Db,
+							: Extract<E, keyof JsqlTableColumns<Db, Sch, Tab> & string> extends infer Used extends
+										string
+								? ParseAlterSkipAction<
+										R,
+										[CName] extends [never]
+											? JsqlDbAddDefaultConstraint<Db, Sch, Tab, SingleName<Used>, "check", Used>
+											: JsqlDbSetConstraintColumns<Db, Sch, Tab, CName, Used>,
 										Sch,
-										Tab,
-										CName,
-										Extract<E, keyof JsqlTableColumns<Db, Sch, Tab> & string>
-									>,
-									Sch,
-									Tab
-								>
+										Tab
+									>
+								: never
 						: never
 					: ParseAlterSkipAction<Tokens, WithConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
 
@@ -199,8 +208,23 @@ type ParseAlterConstraintColumns<
 				: Names extends readonly string[]
 					? Exclude<Names[number], keyof JsqlTableColumns<Db, Sch, Tab>> extends infer Missing extends string
 						? [Missing] extends [never]
-							? JsqlDbSetConstraintColumns<Db, Sch, Tab, CName, Names[number]> extends infer Db1 extends
-									JsqlDatabaseShape
+							? (
+									[CName] extends [never]
+										? Kind extends "UNIQUE"
+											? // #207: an unnamed UNIQUE is `<table>_<columns>_key`
+												JsqlDbAddDefaultConstraint<
+													Db,
+													Sch,
+													Tab,
+													JoinColumnNames<Names>,
+													"key",
+													Names[number]
+												>
+											: Db
+										: Kind extends "FOREIGN KEY"
+											? Db // recorded with the columns it references
+											: JsqlDbSetConstraintColumns<Db, Sch, Tab, CName, Names[number]>
+								) extends infer Db1 extends JsqlDatabaseShape
 								? Kind extends "PRIMARY KEY"
 									? ParseAlterSkipAction<
 											R2,
@@ -222,7 +246,7 @@ type ParseAlterConstraintColumns<
 											Tab
 										>
 									: Kind extends "FOREIGN KEY"
-										? ParseAlterForeignKeyTarget<R2, Db1, Sch, Tab>
+										? ParseAlterForeignKeyTarget<R2, Db1, Sch, Tab, CName, Names>
 										: ParseAlterSkipAction<R2, Db1, Sch, Tab>
 								: never
 							: SkipFailedStatement<R2, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Missing, Kind]>>
@@ -231,18 +255,38 @@ type ParseAlterConstraintColumns<
 			: never
 		: ParseAlterSkipAction<R1, WithConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
 
-/** `REFERENCES target [(cols)] …` after the FOREIGN KEY columns: the target must exist (CORE-17). */
+/**
+ * `REFERENCES target [(cols)] …` after the FOREIGN KEY columns: the target must exist (CORE-17). The constraint
+ * records its columns and the ones it references (#207); unnamed, it is `<table>_<columns>_fkey`.
+ */
 type ParseAlterForeignKeyTarget<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
+	CName extends string,
+	Names extends readonly string[],
 > =
 	PeekToken<Tokens> extends TokenKey<"references">
 		? ParseReferences<SkipToken<Tokens>, Db, "", ""> extends [infer R extends ParserMonad, infer E]
-			? E extends DbtyperErrorShape
-				? [R, Db, E]
-				: ParseAlterSkipAction<R, Db, Sch, Tab>
+			? E extends { refs: infer Refs extends string }
+				? ParseAlterSkipAction<
+						R,
+						[CName] extends [never]
+							? JsqlDbAddDefaultConstraint<
+									Db,
+									Sch,
+									Tab,
+									JoinColumnNames<Names>,
+									"fkey",
+									Names[number],
+									Refs
+								>
+							: JsqlDbSetConstraintColumns<Db, Sch, Tab, CName, Names[number], Refs>,
+						Sch,
+						Tab
+					>
+				: [R, Db, E]
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_REFERENCES_AFTER_FOREIGN_KEY"], []>>
 
@@ -298,18 +342,68 @@ type ParseAlterDropColumnNamed<
 			? IfExists extends true
 				? ParseAlterDropColumnTail<SkipToken<R1>, Db, Sch, Tab>
 				: [R1, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>]
-			: ParseAlterDropColumnTail<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab>
+			: ParseAlterDropColumnTail<SkipToken<R1>, JsqlDbReplaceColumn<Db, Sch, Tab, Col, null>, Sch, Tab, Db, Col>
 		: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after DROP COLUMN"]>>
 
-/** SCHEMA-29: `CASCADE | RESTRICT` after a dropped column (PostgreSQL) change nothing the types see. */
+/**
+ * SCHEMA-29: `CASCADE | RESTRICT` after a dropped column (PostgreSQL). #207: a FOREIGN KEY of any table that
+ * references the column (`constraints.refs`) makes the drop an error without CASCADE (3213); CASCADE drops those
+ * constraints (the dialect fact `dropReferencedColumn`). `Dropped` is the state with the column gone, `Before` the one
+ * before; `Col` is never when nothing was dropped (IF EXISTS).
+ */
 type ParseAlterDropColumnTail<
 	Tokens extends ParserMonad,
-	Db extends JsqlDatabaseShape,
+	Dropped extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
+	Before extends JsqlDatabaseShape = Dropped,
+	Col extends string = never,
 > =
 	PeekToken<Tokens> extends TokenIdent<"cascade" | "restrict">
-		? DbDialectOnlyError<Db, "pg-drop-cascade"> extends infer OnlyErr extends DbtyperErrorShape
-			? SkipFailedStatement<Tokens, Db, OnlyErr>
-			: ParseAlterActions<SkipToken<Tokens>, Db, Sch, Tab>
-		: ParseAlterActions<Tokens, Db, Sch, Tab>
+		? DbDialectOnlyError<Dropped, "pg-drop-cascade"> extends infer OnlyErr extends DbtyperErrorShape
+			? SkipFailedStatement<Tokens, Dropped, OnlyErr>
+			: DropColumnDependents<Before, Sch, Tab, Col> extends infer Deps extends string
+				? [Deps] extends [never]
+					? ParseAlterActions<SkipToken<Tokens>, Dropped, Sch, Tab>
+					: PeekToken<Tokens> extends TokenIdent<"cascade">
+						? ParseAlterActions<
+								SkipToken<Tokens>,
+								JsqlDbDropReferencingConstraints<Dropped, `${Sch}.${Tab}.${Col}`>,
+								Sch,
+								Tab
+							>
+						: ReferencedColumnError<Tokens, Before, Col, Deps>
+				: never
+		: DropColumnDependents<Before, Sch, Tab, Col> extends infer Deps extends string
+			? [Deps] extends [never]
+				? ParseAlterActions<Tokens, Dropped, Sch, Tab>
+				: ReferencedColumnError<Tokens, Before, Col, Deps>
+			: never
+
+/** #207: the FOREIGN KEYs (`table.constraint`) that keep column `Col` from being dropped without CASCADE. */
+type DropColumnDependents<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, Col extends string> = [
+	Col,
+] extends [never]
+	? never
+	: DialectFact<Db, "dropReferencedColumn"> extends "cascade"
+		? JsqlDbReferencingConstraints<
+				Db,
+				`${Sch}.${Tab}.${Col}`,
+				// a constraint of the table that involves the column goes with it anyway
+				JsqlTableConstraintsOn<JsqlDbGetTable<Db, Sch, Tab>, Tab, Col>
+			>
+		: never
+
+type ReferencedColumnError<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Col extends string,
+	Deps extends string,
+> = SkipFailedStatement<
+	Tokens,
+	Db,
+	FormatError<
+		Errors["COLUMN_IS_REFERENCED_BY_A_FOREIGN_KEY"],
+		[Col, LastOf<Deps> extends `${infer T}.${infer N}` ? `${N} of table ${T}` : never]
+	>
+>

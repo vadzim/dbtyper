@@ -1,5 +1,11 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetData, JsqlDbRenameColumn, JsqlDbGetColumnType, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type {
+	JsqlDbGetData,
+	JsqlDbRenameColumn,
+	JsqlDbGetColumnType,
+	JsqlDbRenameRefs,
+	JsqlDbReplaceData,
+} from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -30,7 +36,13 @@ type ParseAlterRenameAfterToKw<
 								New,
 								PeekToken<R3> extends { written: infer W extends string } ? W : never
 							> extends infer NewDb extends JsqlDatabaseShape
-							? ParseAlterActions<SkipToken<R3>, NewDb, Sch, Tab>
+							? ParseAlterActions<
+									SkipToken<R3>,
+									// #207: the FOREIGN KEYs that reference the column follow it
+									JsqlDbRenameRefs<NewDb, `${Sch}.${Tab}.${Old}`, `${Sch}.${Tab}.${New}`>,
+									Sch,
+									Tab
+								>
 							: SkipFailedStatement<R3, Db, FormatError<Errors["COLUMN_RENAME_FAILED"], []>>
 						: SkipFailedStatement<R3, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [New]>>
 				: SkipFailedExpression<
@@ -67,7 +79,12 @@ type ParseAlterRenameTable<
 			? JsqlDbGetData<Db, Sch, Tab> extends infer Data extends JsqlDataShape
 				? FinishAlterStatement<
 						SkipToken<Tokens>,
-						JsqlDbReplaceData<JsqlDbReplaceData<Db, Sch, Tab, null>, Sch, New, Data>
+						JsqlDbRenameRefs<
+							JsqlDbReplaceData<JsqlDbReplaceData<Db, Sch, Tab, null>, Sch, New, Data>,
+							`${Sch}.${Tab}`,
+							`${Sch}.${New}`,
+							true
+						>
 					>
 				: never
 			: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA"], []>>

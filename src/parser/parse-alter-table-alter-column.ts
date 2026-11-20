@@ -1,6 +1,7 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
 import type {
+	JsqlDbChangeUserType,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
 	JsqlDbReplaceColumnDefault,
@@ -40,11 +41,29 @@ type ParseAlterColumnTypeAfterTypeKw<
 	Tab extends string,
 	Col extends string,
 > =
-	ParseSqlType<R3, Db, false, Sch> extends [infer AfterType extends ParserMonad, infer TypeShape]
+	ParseSqlType<R3, Db, true, Sch> extends [infer AfterType extends ParserMonad, infer TypeShape]
 		? TypeShape extends DbtyperErrorShape
 			? [AfterType, Db, TypeShape]
 			: TypeShape extends SqlTypeShape
-				? ParseAlterColumnUsing<AfterType, JsqlDbReplaceColumnType<Db, Sch, Tab, Col, TypeShape>, Sch, Tab>
+				? ParseAlterColumnUsing<
+						AfterType,
+						// #207: a column changed to or from a domain or composite type keeps `user_types` in step
+						JsqlDbChangeUserType<
+							JsqlDbReplaceColumnType<
+								Db,
+								Sch,
+								Tab,
+								Col,
+								{ type: TypeShape["type"]; arg: TypeShape["arg"]; nullable: TypeShape["nullable"] }
+							>,
+							Sch,
+							Tab,
+							Col,
+							TypeShape extends { declared: infer D extends `${string}.${string}` } ? D : never
+						>,
+						Sch,
+						Tab
+					>
 				: [AfterType, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>]
 		: never
 

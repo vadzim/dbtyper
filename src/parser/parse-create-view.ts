@@ -4,7 +4,13 @@ import type {
 	JsqlSchemaShape,
 	JsqlSelectStatementResult,
 } from "../core/jsql-shapes.ts"
-import type { JsqlCreateView, JsqlDbGetSchema, JsqlDbGetData, JsqlDbReplaceData } from "../core/jsql-utils.ts"
+import type {
+	JsqlCreateView,
+	JsqlDbGetSchema,
+	JsqlDbGetData,
+	JsqlDbReplaceData,
+	JsqlDbSetProp,
+} from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
@@ -88,7 +94,8 @@ type ParseCreateViewStore<
 						? JsqlCreateView<
 								Rel["columns"],
 								Rel extends { order: infer O extends readonly string[] } ? O : readonly string[],
-								Rel extends { spelled: infer Sp } ? Sp : {}
+								Rel extends { spelled: infer Sp } ? Sp : {},
+								Sel extends { user_types: infer U } ? U : {}
 							>
 						: never
 				> extends infer NewDb
@@ -115,7 +122,12 @@ type ParseCreateViewSelectAndSemi<
 				: false
 			: false
 ) extends true
-	? ParseSelectExpression<R2, Db, Params> extends [infer R3 extends ParserMonad, infer _Db2, infer Res]
+	? // #207: the select names the domain and composite types it reads (`pendingView`, see `WithViewUserTypes`)
+		ParseSelectExpression<R2, JsqlDbSetProp<Db, "pendingView", true>, Params> extends [
+			infer R3 extends ParserMonad,
+			infer _Db2,
+			infer Res,
+		]
 		? Res extends DbtyperErrorShape
 			? [R3, Db, Res]
 			: Res extends JsqlSelectStatementResult
