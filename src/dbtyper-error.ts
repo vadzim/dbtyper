@@ -895,6 +895,13 @@ const errors = {
 		code: 2406,
 		msg: ["internal: a parameter was read"],
 	},
+	TOO_MANY_PARAMETERS: {
+		code: 2407,
+		msg: [
+			"A statement may have at most ",
+			" positional parameters; pass fewer values or split it into several statements",
+		],
+	},
 
 	// Type System Errors
 	// Type Compatibility
