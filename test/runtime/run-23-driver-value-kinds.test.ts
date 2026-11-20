@@ -82,12 +82,19 @@ describe("RUN-23 PostgreSQL (real)", { skip: url === undefined }, () => {
 			assert.equal(typeof row.b, "number")
 			assert.equal(typeof row.c, "string")
 			assert.ok(row.d instanceof Date)
-			const big = sqlMigrations({ driver: postgresSqlDriver({ sql, bigint: true }) })
-				.apply(schema)
-				.database()
-			const bigRows = await big.query(`select a from run23_v`)
-			expectType<typeof bigRows>(toBe<{ a: bigint }[]>())
-			assert.equal(typeof bigRows[0]!.a, "bigint")
+			// PGT-3/PGT-4: `bigint: true` is only the type switch; the user's client parses int8 to BigInt.
+			const bigSql = postgres(url!, { max: 1, onnotice: () => {}, types: { bigint: postgres.BigInt } })
+			try {
+				const big = sqlMigrations({ driver: postgresSqlDriver({ sql: bigSql, bigint: true }) })
+					.apply(schema)
+					.database()
+				const bigRows = await big.query(`select a from run23_v`)
+				expectType<typeof bigRows>(toBe<{ a: bigint }[]>())
+				assert.equal(typeof bigRows[0]!.a, "bigint")
+				assert.equal(bigRows[0]!.a, 9007199254740993n)
+			} finally {
+				await bigSql.end({ timeout: 5 })
+			}
 		} finally {
 			await sql.unsafe(`drop table if exists run23_v`).catch(() => {})
 		}
