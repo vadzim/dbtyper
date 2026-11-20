@@ -11,6 +11,8 @@ export type JsqlDatabaseShape = {
 	cteDml?: true
 	/** SQLite: declared spellings of the columns of the CREATE TABLE / ADD COLUMN being parsed (SQLT-28); never in a finished state. */
 	pendingSpelled?: Record<string, string>
+	/** The name of the CREATE TABLE's named table PRIMARY KEY constraint (CORE-15); never in a finished state. */
+	pendingPkName?: string
 	/** Set while the SELECT of an `INSERT … SELECT` is parsed: the columns match by position, so no output name is needed (#166). */
 	positionalSelect?: true
 }
@@ -50,6 +52,8 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	order?: unknown
 	/** SQLite: the declared spelling of each column whose key (lower case) differs from it; the result key (SQLT-28, #151). */
 	spelled?: unknown
+	/** The PRIMARY KEY, `JsqlPrimaryKey` (src/core/jsql-utils.ts): columns and constraint name (CORE-15, SEL-27). */
+	primary_key?: unknown
 }
 
 export type JsqlColumnFactsEntry = {

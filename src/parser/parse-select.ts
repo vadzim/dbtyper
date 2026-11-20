@@ -377,7 +377,7 @@ type SelectAfterWhereAndGroupHaving<
 	]
 		? Gh extends DbtyperErrorShape
 			? [T1, Db, Gh]
-			: GroupedProjValidationOutcome<Db, Items, Meta> extends infer V
+			: GroupedProjValidationOutcome<Db, Items, Meta, Scope> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
 					: Trailing extends false

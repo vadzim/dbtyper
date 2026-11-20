@@ -80,8 +80,8 @@ export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> =
 
 /** The database state without the pending CREATE TABLE facts. */
 export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
-	{ pendingConstraints: string } | { pendingSpelled: unknown }
-	? Omit<Db, "pendingConstraints" | "pendingSpelled"> extends infer Clean extends JsqlDatabaseShape
+	{ pendingConstraints: string } | { pendingSpelled: unknown } | { pendingPkName: string }
+	? Omit<Db, "pendingConstraints" | "pendingSpelled" | "pendingPkName"> extends infer Clean extends JsqlDatabaseShape
 		? Clean
 		: Db
 	: Db
@@ -92,6 +92,24 @@ export type HasPrimaryKey<Stack extends readonly ColumnDef[], Pk extends PkKind 
 ] extends [never]
 	? false
 	: true
+
+/** The PRIMARY KEY columns of a finished column stack (CORE-15, SEL-27), `never` when it has none. */
+export type StackPrimaryKey<Stack extends readonly ColumnDef[], Acc extends string = never> = Stack extends readonly [
+	infer H extends ColumnDef,
+	...infer R extends readonly ColumnDef[],
+]
+	? StackPrimaryKey<R, H[5] extends false ? Acc : Acc | H[0]>
+	: Acc
+
+/**
+ * The PRIMARY KEY's constraint name: a named table constraint's, else PostgreSQL's default `<table>_pkey` (an inline
+ * `CONSTRAINT n PRIMARY KEY` keeps the default).
+ */
+export type PendingPkName<Db extends JsqlDatabaseShape, Table extends string> = Db extends {
+	pendingPkName: infer N extends string
+}
+	? N
+	: `${Table}_pkey`
 
 /** The error of a second PRIMARY KEY in one CREATE TABLE. */
 export type MultiplePrimaryKeys<

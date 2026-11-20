@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175 follow-ups: the table keeps its PRIMARY KEY (track A; #179 items 1, 5c; SEL-27, CORE-15)
+
+- **Shape.** A table has `primary_key: { columns; name }` (`JsqlPrimaryKey`, src/core/jsql-utils.ts) when it has one: the columns as a union of keys, and the constraint name `DROP CONSTRAINT` matches (a named table constraint's, else PostgreSQL's `<table>_pkey`; an inline `CONSTRAINT n PRIMARY KEY` keeps the default name, a known gap). CREATE TABLE takes it from the column stack (`StackPrimaryKey`, the name through the pending state `pendingPkName`); `ALTER TABLE … ADD [CONSTRAINT n] PRIMARY KEY` and `ADD COLUMN … PRIMARY KEY` set it; DROP CONSTRAINT of its name and DROP COLUMN of one of its columns remove it (as PostgreSQL drops the constraint); RENAME COLUMN renames it. SQLite rowid tables do not carry it (no rule reads it there). `FlattenedJsqlDatabase` keeps it.
+- **CORE-15 (5c).** ADD PRIMARY KEY or ADD COLUMN … PRIMARY KEY on a table that has one is 1519 MULTIPLE_PRIMARY_KEYS.
+- **SEL-27 (item 1).** In the PostgreSQL GROUP BY rule, a FROM table whose whole primary key is among the GROUP BY keys (`alias.c`, or a bare `c` the alias has) makes all its columns grouped: the check gets one more key whose parts are those columns, qualified and bare (`WithPkGroupedColumns`, parse-select-grouped.ts); `ExprValidInsideGroupedSelection` is unchanged. Views, CTEs and subqueries have no key.
+- **Cost.** A conditional on a naked type parameter (`Pk extends JsqlPrimaryKey ? { …; primary_key: Pk } : …`) put a substitution type into every table and cost +6.1M instantiations on the test config; `JsqlCreateTable` therefore takes the columns and the name as two string parameters and tests `[PkColumns] extends [never]`. `typecheck:test` 16,979,764 -> 17,020,857 without the new test file (+0.24%), 17,328,762 with it.
+
 ## 2026-11-20 Review #175: one alias parser (track A; not spec-derived)
 
 - **One reader of `[AS] alias`.** `ParseAlias` (src/parser/parse-alias.ts) serves FROM / JOIN tables, FROM functions, CTE and derived-table aliases, and the target of INSERT, UPDATE, DELETE and DELETE USING. Each place is an `AliasRow`: the tokens that mean "no alias", whether a bare alias is allowed (`allowed`, `never` for INSERT, `dml` = the `bareDmlAlias` fact, error 1309 on SQLite), the errors after `AS` and for a bare non-name, and the tokens that must follow (INSERT `(`/VALUES/SELECT/DEFAULT, UPDATE `SET`). The callers only build the scope entry.
