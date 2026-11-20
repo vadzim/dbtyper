@@ -46,14 +46,14 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 
 - Select list: `*`, `t.*`, `schema.t.*`, columns (bare, `alias.col`, `table.col`, `schema.table.col`), expressions, function calls, with or without `AS`. A bare `*` must be the only item, and only over one table (error 3401 over joins). Two output columns with the same name are error 3410.
 - `DISTINCT`, and in PostgreSQL `DISTINCT ON`.
-- `FROM` is optional (`select 1 as one`). Items: `[schema.]table [AS] alias`, a view, a CTE, a derived table `(select …) [AS] alias` (the alias is required).
+- `FROM` is optional (`select 1 as one`). Items: `[schema.]table [AS] alias`, a view, a CTE, a derived table `(select …) [AS] alias` (the alias is required). PostgreSQL also has `unnest(…)` and `generate_series(…)`; SQLite has `json_each(json [, path])` and `json_tree(json [, path])` with the columns `key`, `value`, `type`, `atom`, `id`, `parent`, `fullkey`, `path` (the arguments may use the items before them: `from t, json_each(t.tags) j`; a call with no argument or more than two is error 1937, and outside FROM it is an unknown function, 3619).
 - Joins: `[INNER] JOIN`, `LEFT`/`RIGHT`/`FULL [OUTER] JOIN` and `CROSS JOIN`; `ON` takes any boolean condition, `USING (columns)` and `NATURAL JOIN` work too. Columns on the optional side of an outer join are nullable.
 - `WITH name AS (select …), …` (a CTE may be used in FROM and JOIN), `WITH RECURSIVE`; a CTE may not refer to an earlier CTE of the same list yet.
 - `UNION [ALL]`, `INTERSECT`, `EXCEPT`: the names come from the first SELECT, the column types are merged, and the column counts must agree.
 - `WHERE`, `GROUP BY` (columns, expressions, output positions), `HAVING`, `ORDER BY` (columns, expressions, positions, output aliases; `ASC`/`DESC`), `LIMIT`, `OFFSET`, `FETCH FIRST n ROWS ONLY`. A column in the list that is outside an aggregate and is not a `GROUP BY` key is error 3403.
 - Subqueries in expressions: scalar `(select …)`, `IN (select …)`, `EXISTS (select …)`, `x = ANY (…)`. They see the columns of the outer `FROM` in `WHERE`, not in the select list and not in derived tables.
 - Window functions: `function(…) OVER (PARTITION BY … ORDER BY …)`.
-- Not supported yet (a compile error; use `queryUntyped`): a comma-separated `FROM` list, `LATERAL`, `NULLS FIRST/LAST`, `FOR UPDATE` and other locking clauses, `COLLATE` in an expression, an output alias without `AS`, typing `VALUES (…)` and `TABLE t` as queries.
+- Not supported yet (a compile error; use `queryUntyped`): a comma-separated `FROM` list (except a `,` before SQLite's `json_each`/`json_tree`, a `CROSS JOIN`), the hidden `json`/`root` columns of `json_each`/`json_tree` and `jsonb_each`/`jsonb_tree`, `LATERAL`, `NULLS FIRST/LAST`, `FOR UPDATE` and other locking clauses, `COLLATE` in an expression, an output alias without `AS`, typing `VALUES (…)` and `TABLE t` as queries.
 
 ## INSERT, UPDATE, DELETE
 

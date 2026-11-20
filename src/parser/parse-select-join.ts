@@ -34,12 +34,7 @@ export type ParseJoinChain<
 							: PeekToken<Tokens> extends TokenKey<"join">
 								? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
 								: PeekToken<Tokens> extends TokenKey<",">
-									? // a comma FROM list is not supported (SEL "Not yet"): say so here, not at the first use of its table
-										[
-											Tokens,
-											FormatError<Errors["EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE"], []>,
-											ParserRefErrorThirdSentinel,
-										]
+									? ParseCrossJoinItem<SkipToken<Tokens>, Db, Scope, Params, "table-function"> // SQLT-72
 									: [Tokens, null, Scope]
 
 type NaturalJoinKind<T> =
@@ -81,26 +76,33 @@ type ParseJoinAfterCross<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? SkipToken<Tokens> extends infer AfterJ extends ParserMonad
-			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [
-					infer R0 extends ParserMonad,
-					infer Mid,
-					infer Third,
-				]
-				? Mid extends DbtyperErrorShape
-					? Third extends ParserRefErrorThirdSentinel
-						? [R0, Mid, ParserRefErrorThirdSentinel]
-						: never
-					: Mid extends null
-						? [JoinScopeOnly<Third>] extends [never]
-							? never
-							: JoinScopeOnly<Third> extends ScopeMap
-								? ParseJoinChain<R0, Db, JoinScopeOnly<Third>, Params>
-								: never
+		? ParseCrossJoinItem<SkipToken<Tokens>, Db, Scope, Params>
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["CROSS"]>, ParserRefErrorThirdSentinel]
+
+/**
+ * The item of `CROSS JOIN`, or of a `,` (`Items` "table-function": only `json_each(…)` / `json_tree(…)` is joined
+ * after a comma, like `CROSS JOIN`, SQLT-72), then the rest of the chain.
+ */
+type ParseCrossJoinItem<
+	AfterJ extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Items extends "any" | "table-function" = "any",
+> =
+	ParseFromTableRef<AfterJ, Db, Scope, Params, Items> extends [infer R0 extends ParserMonad, infer Mid, infer Third]
+		? Mid extends DbtyperErrorShape
+			? Third extends ParserRefErrorThirdSentinel
+				? [R0, Mid, ParserRefErrorThirdSentinel]
+				: never
+			: Mid extends null
+				? [JoinScopeOnly<Third>] extends [never]
+					? never
+					: JoinScopeOnly<Third> extends ScopeMap
+						? ParseJoinChain<R0, Db, JoinScopeOnly<Third>, Params>
 						: never
 				: never
-			: never
-		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["CROSS"]>, ParserRefErrorThirdSentinel]
+		: never
 
 type ParseJoinAfterOptionalInner<
 	Tokens extends ParserMonad,
