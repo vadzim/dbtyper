@@ -16,21 +16,24 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expre
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
 
+/** `Ctes`: the CTE definitions of a `WITH … DELETE` (DML-21), visible by name in the subqueries of WHERE and RETURNING. */
 export type ParseDelete<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Ctes extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends TokenKey<"from">
-		? ParseDeleteAfterFrom<SkipToken<Tokens>, Db, Params>
+		? ParseDeleteAfterFrom<SkipToken<Tokens>, Db, Params, Ctes>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_FROM_AFTER_DELETE"], []>>
 
 type ParseDeleteAfterFrom<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	Ctes extends ScopeMap,
 > =
-	ParseDeleteFromTableRef<Tokens, Db, {}, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
+	ParseDeleteFromTableRef<Tokens, Db, Ctes, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
 			? Third extends ParserRefErrorThirdSentinel
 				? [R, Db, Mid]

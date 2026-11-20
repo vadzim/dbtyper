@@ -268,7 +268,7 @@ const errors = {
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {
 		code: 1100,
-		msg: ["Expected SELECT after WITH clause"],
+		msg: ["Expected SELECT, INSERT, UPDATE or DELETE after WITH clause"],
 	},
 	EXPECTED_SELECT_IN_SUBQUERY: {
 		code: 1101,
@@ -360,6 +360,15 @@ const errors = {
 	EXPECTED_INDEX_NAME_AFTER_INDEXED_BY: {
 		code: 1122,
 		msg: ["Expected index name after INDEXED BY"],
+	},
+	// SEL-40: a VALUES CTE body
+	EXPECTED_OPEN_PAREN_IN_VALUES: {
+		code: 1123,
+		msg: ["Expected `(` before a VALUES row"],
+	},
+	EXPECTED_COMMA_OR_CLOSE_PAREN_IN_VALUES_ROW: {
+		code: 1124,
+		msg: ["Expected `,` or `)` in a VALUES row"],
 	},
 
 	// INSERT Statement
@@ -1317,6 +1326,11 @@ const errors = {
 		msg: [
 			"ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it",
 		],
+	},
+	// SEL-40: rows of a VALUES CTE body with different numbers of values
+	VALUES_ROW_LENGTH_MISMATCH: {
+		code: 3417,
+		msg: ["All VALUES rows must have the same number of values"],
 	},
 
 	COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN: {

@@ -11,7 +11,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { CteDefsOnly, MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
 import type { ParseAndResolveReturningClause } from "./parse-select-returning.ts"
@@ -49,7 +49,12 @@ type ParseUpdateFromClause<
 	Res extends JsqlUpdateStatementResult,
 	Tbl extends JsqlDataShape,
 > =
-	ParseFromJoinScope<Tokens, Db, {}, Params> extends [infer RFrom extends ParserMonad, infer FromErr, infer FromScope]
+	// DML-21: the CTEs of a `WITH … UPDATE` may be FROM items
+	ParseFromJoinScope<Tokens, Db, CteDefsOnly<Scope>, Params> extends [
+		infer RFrom extends ParserMonad,
+		infer FromErr,
+		infer FromScope,
+	]
 		? FromErr extends DbtyperErrorShape
 			? [RFrom, Db, FromErr]
 			: FromScope extends ScopeMap
@@ -152,6 +157,7 @@ type ParseUpdateAfterTableRef<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	Ctes extends ScopeMap,
 > =
 	ParseUpdateFromTableRef<Tokens, Db> extends [infer R extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
@@ -163,7 +169,7 @@ type ParseUpdateAfterTableRef<
 					? ParseUpdateAfterSetKeyword<
 							R,
 							Db,
-							Third["scope"],
+							MergeScope<Third["scope"], Ctes>,
 							Params,
 							Third["tbl"],
 							Third["schema"],
@@ -172,23 +178,34 @@ type ParseUpdateAfterTableRef<
 						? Out extends DbtyperErrorShape
 							? [R2, Db2, Out]
 							: Out extends JsqlUpdateStatementResult
-								? FinishUpdateStatement<R2, Db2, Third["scope"], Params, Out, Third["tbl"]>
+								? FinishUpdateStatement<
+										R2,
+										Db2,
+										MergeScope<Third["scope"], Ctes>,
+										Params,
+										Out,
+										Third["tbl"]
+									>
 								: never
 						: never
 					: never
 				: never
 		: never
 
-/** After `UPDATE`: `[OR action] table …` (SQLT-39). */
+/**
+ * After `UPDATE`: `[OR action] table …` (SQLT-39). `Ctes`: the CTE definitions of a `WITH … UPDATE` (DML-21), visible
+ * by name in FROM and in the subqueries of SET, WHERE and RETURNING.
+ */
 export type ParseUpdate<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Ctes extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends TokenKey<"or">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends ConflictActionToken
-				? ParseUpdateAfterTableRef<SkipToken<R1>, Db, Params>
+				? ParseUpdateAfterTableRef<SkipToken<R1>, Db, Params, Ctes>
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONFLICT_ACTION_AFTER_OR"], []>>
 			: never
-		: ParseUpdateAfterTableRef<Tokens, Db, Params>
+		: ParseUpdateAfterTableRef<Tokens, Db, Params, Ctes>
