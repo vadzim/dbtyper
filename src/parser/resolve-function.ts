@@ -1,4 +1,4 @@
-import type { DialectFact, FunctionHintsOf, OtherDialectTitleOf } from "../core/dialect.ts"
+import type { DialectFact, FunctionCatalogFacts, OtherDialectTitle } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
@@ -53,7 +53,7 @@ type ResolveCatalogFunctionCall<
 	Params extends ExpressionParamsShape,
 	Windowed extends boolean,
 	L extends string = Lowercase<Name>,
-	C extends string = DialectFact<Db, "functionCatalog">,
+	C extends FunctionCatalogFacts = DialectFact<Db, "functionCatalog">,
 > =
 	IsCatalogFunction<C, L> extends true
 		? ArgsTupleContainsStar<Args> extends true
@@ -76,21 +76,26 @@ type ResolveCatalogFunctionCall<
 												: CatalogRowResult<C, Row, ArgsRes>
 											: IsWindowCapableRow<Row> extends true
 												? CatalogRowResult<C, Row, ArgsRes>
-												: UnknownFunction<C, Name, L>
+												: UnknownFunction<Db, C, Name, L>
 								: never
 							: never
 						: never
 				: never
-		: UnknownFunction<C, Name, L>
+		: UnknownFunction<Db, C, Name, L>
 
 type PgHint<Hint extends string> = Hint extends "" ? "" : `; ${Hint}`
 
 /** FN-1; SQLT-52, PGT-34: a name of the other dialect's catalog names its replacement. */
-type UnknownFunction<C extends string, Name extends string, L extends string> = L extends keyof FunctionHintsOf<C>
-	? FunctionHintsOf<C>[L] extends infer Hint extends string
+type UnknownFunction<
+	Db,
+	C extends FunctionCatalogFacts,
+	Name extends string,
+	L extends string,
+> = L extends keyof C["hints"]
+	? C["hints"][L] extends infer Hint extends string
 		? FormatError<
 				Errors["UNKNOWN_FUNCTION"],
-				[Hint extends "" ? Name : `${Name}. ${Name}() is ${OtherDialectTitleOf<C>}-only${PgHint<Hint>}`]
+				[Hint extends "" ? Name : `${Name}. ${Name}() is ${OtherDialectTitle<Db>}-only${PgHint<Hint>}`]
 			>
 		: never
 	: FormatError<Errors["UNKNOWN_FUNCTION"], [Name]>

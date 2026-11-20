@@ -208,6 +208,10 @@ type Err = DbtyperError<2200, ...> // UNKNOWN_TABLE with context parameter
 - 1809-1812, 4104, 4106 → 4105 (EXPECTED_TYPE_NAME)
 - 4201-4208 → 4200 (EXPECTED_JOIN_KEYWORD)
 
+**Retired without a replacement:**
+
+- 2804, 2805 (CANNOT_CONCATENATE_TEXT_WITH_TYPE, CANNOT_CONCATENATE_TYPE_WITH_TEXT): `text || <any non-array type>` is text (EXPR-Q6), so the errors are no longer reported
+
 ### Obsolete Code Handling
 
 Obsolete codes are marked in the source code as `OBSOLETE_<CODE>_<OLD_NAME>` and include a message directing you to the replacement code. These codes are kept in the registry to:

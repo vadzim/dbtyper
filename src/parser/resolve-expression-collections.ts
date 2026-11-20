@@ -1,5 +1,6 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { Nullable, SqlBoolean, SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
+import type { ParamProbeFound } from "../core/param-probe.ts"
+import type { NonNull, Nullable, SqlArray, SqlBoolean, SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
 import type {
@@ -124,7 +125,7 @@ export type ResolveInSubqueryAst<
 								? V extends DbtyperErrorShape
 									? V
 									: V extends true
-										? SqlBoolean
+										? NullableWhen<Rv["nullable"]> // CORE-2 (#155): NULL when nothing matches and a row is NULL
 										: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []>
 								: FormatError<Errors["INCOMPATIBLE_TYPES_IN_IN_SUBQUERY"], []>
 							: never
@@ -152,7 +153,7 @@ export type ResolveAnyAllSomeOp<
 								? MergeComparison<Lv, Rv> extends infer V
 									? V extends DbtyperErrorShape
 										? V
-										: SqlBoolean
+										: NullableWhen<Rv["nullable"]> // CORE-2 (#155)
 									: never
 								: never
 						: never
@@ -162,10 +163,22 @@ export type ResolveAnyAllSomeOp<
 								? Rv
 								: Rv extends SqlTypeShape
 									? Rv["type"] extends "array" | "unknown"
-										? SqlBoolean
-										: FormatError<Errors["ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY"], []>
+										? Rv["arg"] extends { nullable: true }
+											? Nullable<SqlBoolean> // CORE-2 (#155): NULL when nothing matches and an element is NULL
+											: SqlBoolean
+										: Rv extends { type: "param-probe"; arg: infer K extends string | number }
+											? ArrayParamProbe<K, Lv> // FN-22, CORE-6 (#163): a parameter is an array of the left type
+											: FormatError<Errors["ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY"], []>
 									: never
 							: never
 						: never
 				: never
 		: never
+
+type NullableWhen<N> = N extends true ? Nullable<SqlBoolean> : SqlBoolean
+
+/** `x = ANY($1)`: the parameter is an array of the type of `x`; nothing when `x` has no type itself. */
+type ArrayParamProbe<K extends string | number, Lv extends SqlTypeShape> = Lv["type"] extends
+	"null" | "param-probe" | "param-unused" | "unknown"
+	? FormatError<Errors["ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY"], []>
+	: ParamProbeFound<K, SqlArray<NonNull<Lv>>>

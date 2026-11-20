@@ -29,7 +29,7 @@ import type { Errors, FormatErrorOf } from "../dbtyper-error.ts"
 import type { LexerFeatures } from "../lexer/sql-lexer.ts"
 import type { DialectConstruct, DialectOnlyConstructs } from "./dialect-constructs.ts"
 import type { PostgresFunctions, PostgresSqliteOnlyFunctions } from "../parser/postgres-functions.ts"
-import type { SqliteFunctions, SqlitePgOnlyFunctions } from "../parser/sqlite-functions.ts"
+import type { SqliteFunctions, SqliteOperators, SqlitePgOnlyFunctions } from "../parser/sqlite-functions.ts"
 
 /** Words that start a skipped statement of both dialects (STMT-18; the second word of CREATE/ALTER/DROP is not checked). */
 type CommonSkippedStatementKeywords = readonly [
@@ -50,6 +50,22 @@ type CommonSkippedStatementKeywords = readonly [
 	"reindex",
 	"values",
 ]
+
+/** PostgreSQL's numeric types, widest first (PGT-35: `integer + bigint` is `bigint`, `integer * numeric` is `numeric`). */
+type PostgresNumericOrder = readonly ["double precision", "real", "numeric", "bigint", "integer", "smallint"]
+
+/** SQLT-35: with any REAL operand the result is REAL, else a NUMERIC operand makes it NUMERIC, else it is an integer. */
+type SqliteNumericOrder = readonly ["real", "numeric", "integer", "bigint"]
+
+/** The function data of a dialect (the `functionCatalog` fact of {@link Dialects}). */
+export type FunctionCatalogFacts = {
+	rows: object
+	hints: object
+	anyType: string
+	unlikeTypes: "first" | "any"
+	sum: { else: string }
+	numericOrder: readonly string[]
+}
 
 /** The engines dbtyper types SQL for (DSEL-1). */
 export type DialectName = keyof Dialects
@@ -73,9 +89,14 @@ export type DialectName = keyof Dialects
  * default to them, SQLT-19); `addColumn`: "full" = `ADD COLUMN` takes the full column definition and a `, <action>` may
  * follow, "restricted" = PRIMARY KEY, UNIQUE and NOT NULL without a default are errors and the definition ends the
  * statement (SQLT-20, SQLT-21).
- * Function facts (SQLT-44…SQLT-52, #76): `functionCatalog` "typed" (PostgreSQL) = result types computed from the argument types, "affinity" (SQLite) = storage-class results; `functionRows` is the dialect's data table (`PostgresFunctions`, `SqliteFunctions`; grammar and resolver helpers in function-catalog.ts) and `functionHints` the table of names the OTHER dialect has and this one lacks, with a replacement ("" for none).
- * Operator and DML facts (SQLT-30…SQLT-43, #73): `operators` "typed" = the PostgreSQL operator typing of the
- * expression parser, "affinity" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
+ * Function facts (SQLT-44…SQLT-52, #76; #175): `functionCatalog` is the dialect's function data ({@link FunctionCatalogFacts}):
+ * `rows` the table of functions (`PostgresFunctions`, `SqliteFunctions`; grammar and resolver helpers in
+ * function-catalog.ts), `hints` the table of names the OTHER dialect has and this one lacks, with a replacement ("" for
+ * none), `anyType` the type name that stands for "any type", `unlikeTypes` what the common type of two unlike,
+ * non-numeric types is ("first" = the first one, "any" = `anyType`), `sum` the result of `sum` per argument type
+ * (`else` for the types not listed), `numericOrder` the dialect's {@link Dialects} fact of that name.
+ * Operator and DML facts (SQLT-30…SQLT-43, #73): `operatorRows`: the operators whose result is not that of the shared
+ * expression parser, as function rows over `[left, right]` (`SqliteOperators`: `||`, `->`, `->>`); `globRegexp`: the `GLOB` and `REGEXP`
  * operators exist (`REGEXP` is always error 1917 until users can declare functions, SQLT-34, FN-Q1); `isOperand`: what may follow `IS [NOT]`
  * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
  * `LIMIT offset, count` (SQLT-37).
@@ -84,8 +105,11 @@ export type DialectName = keyof Dialects
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
  * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error); `viewIfNotExists`: `CREATE VIEW IF NOT EXISTS` exists (SQLite, SQLT-22; PostgreSQL has it only for `OR REPLACE`).
  * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144).
- * Number and date facts (#67): `numberTyping` "uniform" = each numeric type keeps its own type in arithmetic, "affinity" = SQLite's
- * integer/real rules; `datetimeArithmetic`: `timestamp ± interval`, `date - date` are typed (PGT-31).
+ * Number and date facts (#67, #153): `numericOrder`: the numeric types, widest first: arithmetic on two different ones
+ * and the common type of function arguments give the one that comes first (PostgreSQL's numeric hierarchy; SQLT-35: REAL,
+ * then NUMERIC, then INTEGER); `numberLiterals`: the type of a number literal with a fraction or an exponent (`fraction`),
+ * of an integer literal beyond the 32-bit range (`big`; SQLT-35, PGT-35); `booleanType`: the type of TRUE/FALSE, of every comparison result and of a condition (SQLT-9:
+ * SQLite has no boolean type, they are integers 0/1); `datetimeArithmetic`: `timestamp ± interval`, `date - date` are typed (PGT-31).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * `positionalParamSign`: how messages spell positional parameter n: the sign before the number (`$1`, `?1`).
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
@@ -112,12 +136,25 @@ export type Dialects = {
 		shortGenerated: false
 		currentDatetimeType: "typed"
 		addColumn: "full"
-		functionCatalog: "typed"
-		functionRows: PostgresFunctions
-		functionHints: PostgresSqliteOnlyFunctions
-		operators: "typed"
+		functionCatalog: {
+			rows: PostgresFunctions
+			hints: PostgresSqliteOnlyFunctions
+			anyType: "unknown"
+			unlikeTypes: "first"
+			sum: {
+				smallint: "bigint"
+				integer: "bigint"
+				real: "real"
+				"double precision": "double precision"
+				else: "numeric"
+			}
+			numericOrder: PostgresNumericOrder
+		}
+		operatorRows: {}
 		globRegexp: false
-		numberTyping: "uniform"
+		numericOrder: PostgresNumericOrder
+		numberLiterals: { fraction: "numeric"; big: "bigint" }
+		booleanType: "boolean"
 		datetimeArithmetic: true
 		isOperand: "null"
 		limitComma: false
@@ -183,12 +220,19 @@ export type Dialects = {
 		shortGenerated: true
 		currentDatetimeType: "any"
 		addColumn: "restricted"
-		functionCatalog: "affinity"
-		functionRows: SqliteFunctions
-		functionHints: SqlitePgOnlyFunctions
-		operators: "affinity"
+		functionCatalog: {
+			rows: SqliteFunctions
+			hints: SqlitePgOnlyFunctions
+			anyType: "any"
+			unlikeTypes: "any"
+			sum: { integer: "integer"; bigint: "integer"; else: "real" }
+			numericOrder: SqliteNumericOrder
+		}
+		operatorRows: SqliteOperators
 		globRegexp: true
-		numberTyping: "affinity"
+		numericOrder: SqliteNumericOrder
+		numberLiterals: { fraction: "real"; big: "integer" }
+		booleanType: "integer"
 		datetimeArithmetic: false
 		isOperand: "value"
 		limitComma: true
@@ -250,18 +294,12 @@ export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: Dial
 type SyntaxDialect<Syntax extends string> =
 	Extract<Syntax, DialectFlags> extends `dialect:${infer D extends DialectName}` ? D : never
 
-/**
- * DLCT-4: how messages name the dialect(s) whose `functionCatalog` fact differs from `Catalog`, i.e. "the other engine"
- * of a chain whose catalog is `Catalog`.
- */
-export type OtherDialectTitleOf<Catalog extends string> = {
-	[D in DialectName]: Dialects[D]["functionCatalog"] extends Catalog ? never : Dialects[D]["title"]
-}[DialectName]
-
 /** One fact of the dialect a `Syntax` names (the default dialect's when it names none or several). */
-export type SyntaxDialectFact<Syntax extends string, Fact extends keyof Dialects[DialectName]> = Dialects[
-	IsSingle<SyntaxDialect<Syntax>> extends true ? SyntaxDialect<Syntax> : DefaultDialect
-][Fact]
+export type SyntaxDialectFact<Syntax extends string, Fact extends keyof Dialects[DialectName]> = Dialects[IsSingle<
+	SyntaxDialect<Syntax>
+> extends true
+	? SyntaxDialect<Syntax>
+	: DefaultDialect][Fact]
 
 /** The dialect of a database state; the default dialect when the state names none (see {@link DialectFact}). */
 type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : DefaultDialect
@@ -323,17 +361,5 @@ type FormatHint<Hint extends string, NextWord extends string> = Hint extends ""
 		? `. ${Before}${NextWord extends "" ? "type" : Uppercase<NextWord>}${After}`
 		: `. ${Hint}`
 
-/** The dialect whose `functionCatalog` fact is `C`; the default dialect for any other value. */
-type CatalogDialect<C extends string> = [
-	{ [D in DialectName]: Dialects[D]["functionCatalog"] extends C ? D : never }[DialectName],
-] extends [infer D extends DialectName]
-	? [D] extends [never]
-		? DefaultDialect
-		: D
-	: never
-
-/** The function table (`functionRows`) of the dialect whose `functionCatalog` fact is `C`. */
-export type FunctionRowsOf<C extends string> = Dialects[CatalogDialect<C>]["functionRows"]
-
-/** The hint table (`functionHints`) of the dialect whose `functionCatalog` fact is `C`. */
-export type FunctionHintsOf<C extends string> = Dialects[CatalogDialect<C>]["functionHints"]
+/** How messages name the other engine(s) of a chain: every dialect but the state's own (SQLT-52, PGT-34). */
+export type OtherDialectTitle<Db> = Dialects[Exclude<DialectName, DialectOf<Db>>]["title"]

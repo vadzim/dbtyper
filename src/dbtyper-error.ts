@@ -1017,13 +1017,14 @@ const errors = {
 		code: 2803,
 		msg: ["LIKE left operand must be text"],
 	},
-	CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
+	// EXPR-Q6: text || <any non-array type> is text, so 2804 and 2805 are retired
+	OBSOLETE_2804_CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
 		code: 2804,
-		msg: ["Cannot concatenate text with ", ""],
+		msg: ["Obsolete, no longer reported: Cannot concatenate text with a type"],
 	},
-	CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
+	OBSOLETE_2805_CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
 		code: 2805,
-		msg: ["Cannot concatenate ", " with text"],
+		msg: ["Obsolete, no longer reported: Cannot concatenate a type with text"],
 	},
 	LIKE_PATTERN_MUST_BE_TEXT: {
 		code: 2806,
