@@ -1,5 +1,4 @@
 // Integration Test: CORE-11 Check: duplicate output column id is 3410
-// SKIPPED (SPEC-Q CORE-11): the Check says the message is `Duplicate output column id; ...`, the code says `Duplicate output column \`id\`; ...` (backticks around the name, as in the existing test core-11-duplicate-output-column).
 import { sqlMigrations, type GetQueryError } from "../../../src/core/sql-database.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
@@ -19,4 +18,6 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<3410, "Duplicate output column id; use AS to give one of them an alias">>())
+expectType<ReturnedError>(
+	toBe<DbtyperError<3410, "Duplicate output column `id`; use AS to give one of them an alias">>(),
+)
