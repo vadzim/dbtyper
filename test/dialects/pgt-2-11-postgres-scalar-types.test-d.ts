@@ -22,8 +22,11 @@ const db = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
 	)
 	.database()
 
-// PGT-2
-const _p2 = await db.query(`select a, b, c, d, e from t`)
+// PGT-2: the whole Check line, on its own table
+const db2 = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
+	.apply(`create table t (a smallint not null, b int not null, c oid not null, d real not null, e float8 not null)`)
+	.database()
+const _p2 = await db2.query(`select a, b, c, d, e from t`)
 expectType<typeof _p2>(toBe<{ a: number; b: number; c: number; d: number; e: number }[]>())
 
 // PGT-3: int8, numeric and decimal are strings, count(*) too
@@ -32,20 +35,40 @@ expectType<typeof _p3>(toBe<{ f: string; g: string; h: string }[]>())
 const _p3n = await db.query(`select count(*) as n from t`)
 expectType<typeof _p3n>(toBe<{ n: string }[]>())
 
-// PGT-5
-const _p5 = await db.query(`select i, j, k, l, m, n from t`)
+// PGT-5: the whole Check line, on its own table
+const db5 = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
+	.apply(
+		`create table t (i boolean not null, j text not null, k varchar(5) not null, l char(2) not null, m uuid not null, n name not null)`,
+	)
+	.database()
+const _p5 = await db5.query(`select i, j, k, l, m, n from t`)
 expectType<typeof _p5>(toBe<{ i: boolean; j: string; k: string; l: string; m: string; n: string }[]>())
+
+// PGT-8: the whole Check line, on its own table
+const db8 = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
+	.apply(`create table t (s time not null, tz timetz not null, u interval not null)`)
+	.database()
+const _p8 = await db8.query(`select s, tz, u from t`)
+expectType<typeof _p8>(toBe<{ s: string; tz: string; u: string }[]>())
 
 // PGT-7, PGT-8
 const _p7 = await db.query(`select o, p, q, r, s, tz, u from t`)
 expectType<typeof _p7>(toBe<{ o: Date; p: Date; q: Date; r: Date; s: string; tz: string; u: string }[]>())
 
-// PGT-9
-const _p9 = await db.query(`select v from t`)
+// PGT-9: the whole Check line, on its own table
+const db9 = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
+	.apply(`create table t (v bytea not null)`)
+	.database()
+const _p9 = await db9.query(`select v from t`)
 expectType<typeof _p9>(toBe<{ v: Uint8Array }[]>())
 
-// PGT-10
-const _p10 = await db.query(`select w, x, y, z, aa, ab, ac, ad from t`)
+// PGT-10: the whole Check line, on its own table
+const db10 = sqlMigrations({ driver: postgresSqlDriver({ sql: client }) })
+	.apply(
+		`create table t (w inet not null, x cidr not null, y macaddr not null, z money not null, aa xml not null, ab tsvector not null, ac bit(3) not null, ad varbit not null)`,
+	)
+	.database()
+const _p10 = await db10.query(`select w, x, y, z, aa, ab, ac, ad from t`)
 expectType<typeof _p10>(
 	toBe<{ w: string; x: string; y: string; z: string; aa: string; ab: string; ac: string; ad: string }[]>(),
 )

@@ -147,6 +147,10 @@ const errors = {
 		code: 1010,
 		msg: ["Invalid indexed parameter: ", ""],
 	},
+	UNCLOSED_BLOCK_COMMENT: {
+		code: 1011,
+		msg: ["Unclosed block comment: `/*` has no matching `*/`"],
+	},
 
 	// Other-dialect syntax (DSEL-5, DSEL-6, DSEL-7; rows of src/core/dialect.ts). Args: construct, this chain's dialect, hint.
 	POSTGRES_ONLY_SYNTAX: {
@@ -224,7 +228,7 @@ const errors = {
 	},
 	// Unknown second word of CREATE / ALTER / DROP, untracked schema changes (#157, #158, STMT-Q2)
 	UNKNOWN_STATEMENT_FORM: {
-		code: 1932,
+		code: 1936,
 		msg: [
 			"Unknown statement ",
 			" ",
@@ -601,6 +605,14 @@ const errors = {
 	EXPECTED_AS_AFTER_GENERATED_ALWAYS: {
 		code: 1518,
 		msg: ["Expected AS after GENERATED ALWAYS in CREATE TABLE"],
+	},
+	MULTIPLE_PRIMARY_KEYS: {
+		code: 1519,
+		msg: ["Multiple primary keys for table ", " are not allowed"],
+	},
+	EXPECTED_COLUMN_AFTER_COMMA_IN_CREATE_TABLE: {
+		code: 1520,
+		msg: ["Expected a column or a table constraint after `,` in CREATE TABLE"],
 	},
 
 	// ALTER TABLE
@@ -1176,6 +1188,10 @@ const errors = {
 		code: 3211,
 		msg: ["View or table already exists in schema"],
 	},
+	TYPE_IS_IN_USE_BY_A_COLUMN: {
+		code: 3212,
+		msg: ["Type is used by a column; drop the column first or use CASCADE (TYPE-18)"],
+	},
 
 	// Constraint Violations
 	MISSING_NOT_NULL_COLUMN_IN_INSERT: {
@@ -1203,7 +1219,7 @@ const errors = {
 		msg: ["Enum value already exists"],
 	},
 	TYPE_IS_NOT_A_DOMAIN: {
-		code: 3306,
+		code: 3308,
 		msg: ["Type is not a domain; use DROP TYPE"],
 	},
 	ENUM_VALUE_DOES_NOT_EXIST: {
@@ -1487,6 +1503,10 @@ const errors = {
 		code: 3910,
 		msg: ["CREATE VIEW ", ": the column list has a different number of columns than the SELECT"],
 	},
+	DUPLICATE_VIEW_COLUMN: {
+		code: 3911,
+		msg: ["CREATE VIEW ", ": column ", " is named more than once in the column list"],
+	},
 
 	// ALTER TYPE
 	EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE: {
@@ -1539,6 +1559,10 @@ const errors = {
 	EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME: {
 		code: 4107,
 		msg: ["Expected `.` or `(` after table name"],
+	},
+	SQLITE_HAS_NO_SCHEMAS_DEFAULT_SCHEMA: {
+		code: 4108,
+		msg: ['SQLite has no schemas: defaultSchema must be "main" or "temp"'],
 	},
 
 	// DML/Expression-Specific Errors

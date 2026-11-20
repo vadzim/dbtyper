@@ -8,6 +8,7 @@ import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ParseCallArgs } from "./parse-function-call.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
+import type { ParseAlias } from "./parse-alias.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeEntry, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
@@ -74,51 +75,56 @@ type ParseFromFunction<
 					? V extends DbtyperErrorShape
 						? [R, WithErrorClause<V, "FROM">, ParserRefErrorThirdSentinel]
 						: V extends SqlTypeShape
-							? ParseFromFunctionAlias<R, Name, NonNull<V>, Scope>
+							? ParseFromFunctionAlias<R, Db, Name, NonNull<V>, Scope>
 							: never
 					: never
 				: never
 		: never
 
+type FunctionAliasRow = {
+	ends: FromItemEndToken
+	bare: "allowed"
+	verb: ""
+	afterAs: FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>
+	bad: FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>
+	tail: never
+	tailError: null
+}
+
 /** `[AS] alias [(column)]` after a FROM function; no alias keeps the function name. */
 type ParseFromFunctionAlias<
 	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
 	Name extends string,
 	Col extends SqlTypeShape,
 	Scope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends FromItemEndToken
-		? [Tokens, null, MergeScope<Record<Name, FromFunctionEntry<Name, Col>>, Scope>]
-		: PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ra extends ParserMonad
-				? ParseFromFunctionAliasName<Ra, Col, Scope>
-				: never
-			: ParseFromFunctionAliasName<Tokens, Col, Scope>
+	ParseAlias<Tokens, Db, FunctionAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+		? E extends null
+			? Alias extends string
+				? ParseFromFunctionAliasColumn<R, Alias, Col, Scope>
+				: [R, null, MergeScope<Record<Name, FromFunctionEntry<Name, Col>>, Scope>]
+			: [R, E, Alias]
+		: never
 
-type ParseFromFunctionAliasName<Tokens extends ParserMonad, Col extends SqlTypeShape, Scope extends ScopeMap> =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer Alias extends string>
-		? SkipToken<Tokens> extends infer Rn extends ParserMonad
-			? PeekToken<Rn> extends TokenKey<"(">
-				? SkipToken<Rn> extends infer Rc extends ParserMonad
-					? AsIdent<PeekToken<Rc>> extends TokenIdent<infer ColName extends string>
-						? SkipToken<Rc> extends infer Rd extends ParserMonad
-							? PeekToken<Rd> extends TokenKey<")">
-								? [
-										SkipToken<Rd>,
-										null,
-										MergeScope<Record<Alias, FromFunctionEntry<ColName, Col>>, Scope>,
-									]
-								: [Rd, FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>, ParserRefErrorThirdSentinel]
-							: never
-						: [
-								Rc,
-								FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in the FROM alias"]>,
-								ParserRefErrorThirdSentinel,
-							]
+/** The optional `(column)` after the alias of a FROM function. */
+type ParseFromFunctionAliasColumn<
+	Rn extends ParserMonad,
+	Alias extends string,
+	Col extends SqlTypeShape,
+	Scope extends ScopeMap,
+> =
+	PeekToken<Rn> extends TokenKey<"(">
+		? SkipToken<Rn> extends infer Rc extends ParserMonad
+			? AsIdent<PeekToken<Rc>> extends TokenIdent<infer ColName extends string>
+				? SkipToken<Rc> extends infer Rd extends ParserMonad
+					? PeekToken<Rd> extends TokenKey<")">
+						? [SkipToken<Rd>, null, MergeScope<Record<Alias, FromFunctionEntry<ColName, Col>>, Scope>]
+						: [Rd, FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>, ParserRefErrorThirdSentinel]
 					: never
-				: [Rn, null, MergeScope<Record<Alias, FromFunctionEntry<Alias, Col>>, Scope>]
+				: [Rc, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in the FROM alias"]>, ParserRefErrorThirdSentinel]
 			: never
-		: [Tokens, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
+		: [Rn, null, MergeScope<Record<Alias, FromFunctionEntry<Alias, Col>>, Scope>]
 
 type FromFunctionEntry<ColName extends string, Col extends SqlTypeShape> = {
 	schema: "__subquery__"
@@ -159,7 +165,7 @@ type ParseFromTableAfterLeadingIdent<
 				? SkipToken<R2> extends infer R3 extends ParserMonad
 					? AsIdent<TokB> extends TokenIdent<infer B extends string>
 						? JsqlDbGetData<Db, A, B> extends infer Tbl extends JsqlDataShape
-							? ParseAliasAfterTable<R3, A, B, Tbl, Scope>
+							? ParseAliasAfterTable<R3, Db, A, B, Tbl, Scope>
 							: [
 									R3,
 									FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "FROM"]>,
@@ -174,9 +180,9 @@ type ParseFromTableAfterLeadingIdent<
 				: never
 			: never
 		: A extends keyof Scope
-			? ParseAliasAfterCTE<R1, A, CteAsFromEntry<Scope[A]>, Scope>
+			? ParseAliasAfterCTE<R1, Db, A, CteAsFromEntry<Scope[A]>, Scope>
 			: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer Tbl extends JsqlDataShape
-				? ParseAliasAfterTable<R1, UnqualifiedSchema<Db, A>, A, Tbl, Scope>
+				? ParseAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, Tbl, Scope>
 				: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
 /** Tokens that end a FROM item without an alias. */
@@ -206,101 +212,59 @@ type FromItemEndToken =
 	| TokenKey<";">
 	| TokenEot
 
+type TableAliasRow = {
+	ends: FromItemEndToken
+	bare: "allowed"
+	verb: ""
+	afterAs: FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>
+	bad: FormatError<Errors["EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE"], []>
+	tail: never
+	tailError: null
+}
+
+type CteAliasRow = {
+	ends: FromItemEndToken
+	bare: "allowed"
+	verb: ""
+	afterAs: FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>
+	bad: FormatError<Errors["EXPECTED_ALIAS_AFTER_CTE"], []>
+	tail: never
+	tailError: null
+}
+
 type ParseAliasAfterCTE<
 	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
 	CteName extends string,
 	CteEntry extends ScopeEntry,
 	Scope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends FromItemEndToken
-		? [Tokens, null, MergeScope<Record<CteName, CteEntry>, Scope>]
-		: PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
-				? PeekToken<Ras0> extends infer TokName
-					? SkipToken<Ras0> extends infer Ra extends ParserMonad
-						? AsIdent<TokName> extends TokenIdent<infer Alias extends string>
-							? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
-							: [Ra, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
-						: never
-					: never
-				: never
-			: PeekToken<Tokens> extends infer TokAlias
-				? SkipToken<Tokens> extends infer Ra extends ParserMonad
-					? TokAlias extends TokenIdent<infer Alias extends string>
-						? [Ra, null, MergeScope<Record<Alias, CteEntry>, Scope>]
-						: [Ra, FormatError<Errors["EXPECTED_ALIAS_AFTER_CTE"], []>, ParserRefErrorThirdSentinel]
-					: never
-				: never
+	ParseAlias<Tokens, Db, CteAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+		? E extends null
+			? [R, null, MergeScope<Record<Alias extends string ? Alias : CteName, CteEntry>, Scope>]
+			: [R, E, Alias]
+		: never
 
 type ParseAliasAfterTable<
 	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
 	Scope extends ScopeMap,
 > =
-	PeekToken<Tokens> extends FromItemEndToken
-		? [
-				Tokens,
-				null,
-				MergeScope<
-					Record<
-						Tab,
-						{
-							schema: Sch
-							table: Tab
-							columns: TableScopeColumns<Tbl>
-						}
+	ParseAlias<Tokens, Db, TableAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+		? E extends null
+			? [
+					R,
+					null,
+					MergeScope<
+						Record<
+							Alias extends string ? Alias : Tab,
+							{ schema: Sch; table: Tab; columns: TableScopeColumns<Tbl> }
+						>,
+						Scope
 					>,
-					Scope
-				>,
-			]
-		: PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ras0 extends ParserMonad
-				? PeekToken<Ras0> extends infer TokName
-					? SkipToken<Ras0> extends infer Ra extends ParserMonad
-						? AsIdent<TokName> extends TokenIdent<infer Alias extends string>
-							? [
-									Ra,
-									null,
-									MergeScope<
-										Record<
-											Alias,
-											{
-												schema: Sch
-												table: Tab
-												columns: TableScopeColumns<Tbl>
-											}
-										>,
-										Scope
-									>,
-								]
-							: [Ra, FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>, ParserRefErrorThirdSentinel]
-						: never
-					: never
-				: never
-			: PeekToken<Tokens> extends infer TokAlias
-				? SkipToken<Tokens> extends infer Ra extends ParserMonad
-					? TokAlias extends TokenIdent<infer Alias extends string>
-						? [
-								Ra,
-								null,
-								MergeScope<
-									Record<
-										Alias,
-										{
-											schema: Sch
-											table: Tab
-											columns: TableScopeColumns<Tbl>
-										}
-									>,
-									Scope
-								>,
-							]
-						: [
-								Ra,
-								FormatError<Errors["EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE"], []>,
-								ParserRefErrorThirdSentinel,
-							]
-					: never
-				: never
+				]
+			: [R, E, Alias]
+		: never

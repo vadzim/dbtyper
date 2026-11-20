@@ -69,6 +69,36 @@ export type FunctionCatalogFacts = {
 	numericOrder: readonly string[]
 }
 
+/** Words that start a skipped statement of PostgreSQL only (STMT-18); in a SQLite chain they are the 1900 error (DSEL-7). */
+type PostgresOnlyStatementKeywords = readonly [
+	"comment",
+	"copy",
+	"lock",
+	"do",
+	"call",
+	"cluster",
+	"refresh",
+	"notify",
+	"listen",
+	"unlisten",
+	"table",
+	"start",
+	"abort",
+	"prepare",
+	"execute",
+	"deallocate",
+	"declare",
+	"fetch",
+	"move",
+	"close",
+	"discard",
+	"merge",
+	"load",
+	"checkpoint",
+	"security",
+	"import",
+]
+
 /** The engines dbtyper types SQL for (DSEL-1). */
 export type DialectName = keyof Dialects
 
@@ -114,7 +144,9 @@ export type DialectName = keyof Dialects
  * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error); `viewIfNotExists`: `CREATE VIEW IF NOT EXISTS` exists (SQLite, SQLT-22; PostgreSQL has it only for `OR REPLACE`).
  * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144); `skippedForms`: the
  * second words of `CREATE` / `ALTER` / `DROP` statements stepped over unchecked (the parsed ones are in statement-keywords.ts;
- * any other second word is an error, #158).
+ * any other second word is an error, #158); `otherDialectForms`: the first words and the CREATE / ALTER / DROP second words
+ * that only the OTHER dialect (`owner`) has: the other-dialect error (DSEL-7: a wrong engine is not a typo), see
+ * {@link OtherDialectFormError}.
  * Number and date facts (#67, #153): `numericOrder`: the numeric types, widest first: arithmetic on two different ones
  * and the common type of function arguments give the one that comes first (PostgreSQL's numeric hierarchy; SQLT-35: REAL,
  * then NUMERIC, then INTEGER); `numberLiterals`: the type of a number literal with a fraction or an exponent (`fraction`),
@@ -127,7 +159,7 @@ export type DialectName = keyof Dialects
  * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
  * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
  * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
- * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28); `dollarStrings`: `$$…$$` strings exist
+ * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28); `dollarStrings`: `$$…$$` strings exist; `nestedComments`: a block comment may hold another (PostgreSQL), else it ends at the first close (SQLite)
  * (without a dialect flag, in low-level lexer tests, the PostgreSQL row applies).
  */
 export type Dialects = {
@@ -179,37 +211,15 @@ export type Dialects = {
 		positionalParamSign: "$"
 		dmlInCte: true
 		viewIfNotExists: false
-		skippedStatements: readonly [
-			...CommonSkippedStatementKeywords,
-			"comment",
-			"copy",
-			"lock",
-			"do",
-			"call",
-			"cluster",
-			"refresh",
-			"notify",
-			"listen",
-			"unlisten",
-			"table",
-			"start",
-			"end",
-			"abort",
-			"prepare",
-			"execute",
-			"deallocate",
-			"declare",
-			"fetch",
-			"move",
-			"close",
-			"discard",
-			"merge",
-			"load",
-			"checkpoint",
-			"security",
-			"import",
-		]
+		skippedStatements: readonly [...CommonSkippedStatementKeywords, ...PostgresOnlyStatementKeywords, "end"]
 		skippedForms: PostgresSkippedForms
+		otherDialectForms: {
+			owner: "sqlite"
+			statements: "pragma"
+			create: never
+			alter: never
+			drop: never
+		}
 		lexer: {
 			bracketIdents: false
 			atParams: false
@@ -219,6 +229,7 @@ export type Dialects = {
 			keepWritten: false
 			callableJoinWords: true
 			dollarStrings: true
+			nestedComments: true
 		}
 	}
 	sqlite: {
@@ -265,6 +276,13 @@ export type Dialects = {
 		viewIfNotExists: true
 		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end"]
 		skippedForms: SqliteSkippedForms
+		otherDialectForms: {
+			owner: "postgres"
+			statements: PostgresOnlyStatementKeywords[number]
+			create: Exclude<PostgresSkippedForms["create"][number], SqliteSkippedForms["create"][number]>
+			alter: PostgresSkippedForms["alter"][number]
+			drop: Exclude<PostgresSkippedForms["drop"][number], SqliteSkippedForms["drop"][number]>
+		}
 		lexer: {
 			bracketIdents: true
 			atParams: true
@@ -274,6 +292,7 @@ export type Dialects = {
 			keepWritten: true
 			callableJoinWords: false
 			dollarStrings: false
+			nestedComments: false
 		}
 	}
 }
@@ -339,6 +358,15 @@ type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : D
  * parsing) answers with the PostgreSQL row, which is what the parser did before dialects.
  */
 export type DialectFact<Db, Fact extends keyof Dialects[DialectName]> = Dialects[DialectOf<Db>][Fact]
+
+/**
+ * DSEL-7: the other-dialect error for a statement form (`CREATE SEQUENCE` in a SQLite chain, `PRAGMA` in a PostgreSQL
+ * one) that only the dialect `owner` of the row `otherDialectForms` has; `Phrase` names the form.
+ */
+export type OtherDialectFormError<Db, Phrase extends string> = FormatErrorOf<
+	Dialects[DialectFact<Db, "otherDialectForms">["owner"]]["onlyError"],
+	[Phrase, DialectFact<Db, "title">, ""]
+>
 
 /** `true` for exactly one member, `false` for `never` or a union. */
 export type IsSingle<U, All = U> = [U] extends [never]

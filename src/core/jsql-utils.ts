@@ -11,12 +11,11 @@ export type JsqlCreateTable<
 	Columns extends Record<string, SqlTypeShape>,
 	Facts extends Record<string, unknown> | null = null,
 	Constraints extends Record<string, unknown> | null = null,
-> = {
-	kind: "table"
-	columns: Columns
-	column_facts: Facts
-	constraints: Constraints
-}
+	Order extends readonly string[] = readonly string[],
+	Spelled = {},
+> = {} extends Spelled
+	? { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order }
+	: { kind: "table"; columns: Columns; column_facts: Facts; constraints: Constraints; order: Order; spelled: Spelled }
 
 /**
  * A SQLite table with a rowid: `rowid`, `oid` and `_rowid_` are selectable from it (SQLT-15). `Alias` is the name of
@@ -26,18 +25,33 @@ export type JsqlCreateRowidTable<
 	Columns extends Record<string, SqlTypeShape>,
 	Facts extends Record<string, unknown> | null = null,
 	Alias extends string = never,
+	Order extends readonly string[] = readonly string[],
+	Spelled = {},
 > = {
 	kind: "table"
 	columns: Columns
 	column_facts: Facts
 	constraints: null
 	rowid_table: true
-} & ([Alias] extends [never] ? {} : { rowid_alias: Alias })
+	order: Order
+} & ([Alias] extends [never] ? {} : { rowid_alias: Alias }) &
+	({} extends Spelled ? {} : { spelled: Spelled })
 
-export type JsqlCreateView<Columns extends Record<string, SqlTypeShape>> = {
+export type JsqlCreateView<
+	Columns extends Record<string, SqlTypeShape>,
+	Order extends readonly string[] = readonly string[],
+> = {
 	kind: "view"
 	columns: Columns
+	order: Order
 }
+
+/** The result key of column `Key` of `Data`: its declared spelling in SQLite (SQLT-28, #151), else the key. */
+export type JsqlColumnResultKey<Data, Key extends string> = Data extends { spelled: infer S }
+	? Key extends keyof S
+		? S[Key] & string
+		: Key
+	: Key
 
 export type JsqlDbGetSchema<Db extends JsqlDatabaseShape, Sch extends string> = Sch extends keyof Db["schemas"]
 	? Db["schemas"][Sch & keyof Db["schemas"]] & JsqlSchemaShape
@@ -190,7 +204,9 @@ export type JsqlDbAddConstraintName<
 				Db,
 				Sch,
 				Tab,
-				Omit<Tbl, "constraints"> & { constraints: { names: ConstraintNames<Tbl> | Name } }
+				Omit<Tbl, "constraints"> & {
+					constraints: { names: ConstraintNames<Tbl> | Name }
+				}
 			>
 		: Db
 
@@ -206,7 +222,9 @@ export type JsqlDbDropConstraintName<
 				Db,
 				Sch,
 				Tab,
-				Omit<Tbl, "constraints"> & { constraints: { names: Exclude<ConstraintNames<Tbl>, Name> } }
+				Omit<Tbl, "constraints"> & {
+					constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
+				}
 			>
 		: Db
 
@@ -223,10 +241,79 @@ export type UnqualifiedSchema<Db extends JsqlDatabaseShape, Name extends string>
 
 export type {
 	JsqlDataGetColumnType,
-	JsqlDbGetColumn,
 	JsqlDbGetColumnType,
 	JsqlDbReplaceColumn,
+	JsqlDbRenameColumn,
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
 	JsqlDbReplaceColumnDefault,
 } from "./jsql-columns.ts"
+
+/** TYPE-18: the column is the enum `[name, schema]`, or an array of it. */
+type IsEnumColumn<Col, Name extends string, Sch extends string> = Col extends {
+	type: "enum"
+	arg: readonly [Name, Sch]
+}
+	? true
+	: Col extends { type: "array"; arg: infer Elem }
+		? IsEnumColumn<Elem, Name, Sch>
+		: false
+
+type EnumColumnNames<Data, Name extends string, Sch extends string> = Data extends { columns: infer Cols }
+	? { [C in keyof Cols]: IsEnumColumn<Cols[C], Name, Sch> extends true ? C : never }[keyof Cols]
+	: never
+
+type EnumUserSets<Db extends JsqlDatabaseShape, Name extends string, Sch extends string> = {
+	[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
+		? { [T in keyof Sets]: [EnumColumnNames<Sets[T], Name, Sch>] extends [never] ? never : T }[keyof Sets]
+		: never
+}[keyof Db["schemas"]]
+
+/** TYPE-18: some column of a table or view of the chain has the enum `Sch.Name` (PostgreSQL refuses to drop it). */
+export type JsqlDbEnumInUse<Db extends JsqlDatabaseShape, Sch extends string, Name extends string> = [
+	EnumUserSets<Db, Name, Sch>,
+] extends [never]
+	? false
+	: true
+
+/**
+ * TYPE-18, DROP TYPE … CASCADE as in PostgreSQL: the columns of the enum go from their tables, and the views that
+ * select such a column go as a whole.
+ */
+export type JsqlDbDropEnumUsers<Db extends JsqlDatabaseShape, Sch extends string, Name extends string> = ReplaceProp<
+	Db,
+	"schemas",
+	{
+		[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
+			? ReplaceProp<
+					Db["schemas"][S],
+					"sets",
+					{
+						[
+							T in keyof Sets as Sets[T] extends { kind: "view" }
+								? [EnumColumnNames<Sets[T], Name, Sch>] extends [never]
+									? T
+									: never
+								: T
+						]: [EnumColumnNames<Sets[T], Name, Sch>] extends [never]
+							? Sets[T]
+							: Sets[T] extends { columns: infer Cols }
+								? ReplaceProp<
+										ReplaceProp<
+											Sets[T],
+											"columns",
+											Omit<Cols, EnumColumnNames<Sets[T], Name, Sch> & string>
+										>,
+										"column_facts",
+										Sets[T] extends { column_facts: infer F }
+											? F extends object
+												? Omit<F, EnumColumnNames<Sets[T], Name, Sch> & string>
+												: F
+											: null
+									>
+								: Sets[T]
+					}
+				>
+			: Db["schemas"][S]
+	}
+>

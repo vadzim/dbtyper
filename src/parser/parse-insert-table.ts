@@ -1,13 +1,11 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
-import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns, VisibleColumnsOf } from "./parser-scope.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
-import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
+import type { ParseAlias } from "./parse-alias.ts"
+import type { ParseTableRef, TableRefTarget } from "./parse-table-ref.ts"
 
 export type InsertTableContext = {
 	scope: ScopeMap
@@ -28,88 +26,44 @@ export type InsertRealColumns<Tbl extends JsqlDataShape> = VisibleColumnsOf<{
 	columns: Tbl["columns"]
 }>
 
+type InsertAliasRow = {
+	ends: TokenKey<"(" | "values" | "select" | "default">
+	bare: "never"
+	verb: ""
+	afterAs: FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>
+	bad: FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>
+	tail: TokenKey<"(" | "values" | "select" | "default">
+	tailError: FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>
+}
+
+/** `INSERT INTO t [AS alias]` (a bare alias is a syntax error in both dialects). */
 type ParseInsertAliasAfterTable<
 	Tokens extends ParserMonad,
-	_Db extends JsqlDatabaseShape,
+	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
 	_Params extends ExpressionParamsShape,
-	AfterAs extends boolean = false,
-> = AfterAs extends false
-	? PeekToken<Tokens> extends TokenKey<"as">
-		? ParseInsertAliasAfterTable<SkipToken<Tokens>, _Db, Sch, Tab, Tbl, _Params, true>
-		: InsertTableOrAlias<Tokens, Sch, Tab, Tbl>
-	: InsertAlias<Tokens, Sch, Tab, Tbl>
-
-/** `INSERT INTO t` without an alias (a bare alias is a syntax error in both dialects; it is `AS alias`). */
-type InsertTableOrAlias<Tokens extends ParserMonad, Sch extends string, Tab extends string, Tbl extends JsqlDataShape> =
-	PeekToken<Tokens> extends TokenKey<"(" | "values" | "select" | "default">
-		? [
-				Tokens,
-				null,
-				{
-					scope: MergeScope<
-						Record<
-							Tab,
-							{
-								schema: Sch
-								table: Tab
-								columns: TableScopeColumns<Tbl>
-							}
-						>,
-						{}
-					>
-					tbl: InsertTable<Tbl>
-					schema: Sch
-					table: Tab
-				},
-			]
-		: SkipToken<Tokens> extends infer Ra extends ParserMonad
+> =
+	ParseAlias<Tokens, Db, InsertAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+		? E extends null
 			? [
-					Ra,
-					FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>,
-					ParserRefErrorThirdSentinel,
+					R,
+					null,
+					{
+						scope: MergeScope<
+							Record<
+								Alias extends string ? Alias : Tab,
+								{ schema: Sch; table: Tab; columns: TableScopeColumns<Tbl> }
+							>,
+							{}
+						>
+						tbl: InsertTable<Tbl>
+						schema: Sch
+						table: Tab
+					},
 				]
-			: never
-
-/** The alias after `INSERT INTO t AS`. */
-type InsertAlias<Tokens extends ParserMonad, Sch extends string, Tab extends string, Tbl extends JsqlDataShape> =
-	PeekToken<Tokens> extends infer TokAlias
-		? SkipToken<Tokens> extends infer Ra extends ParserMonad
-			? AsIdent<TokAlias> extends TokenIdent<infer Alias extends string>
-				? PeekToken<Ra> extends TokenKey<"(" | "values" | "select" | "default">
-					? [
-							Ra,
-							null,
-							{
-								scope: MergeScope<
-									Record<
-										Alias,
-										{
-											schema: Sch
-											table: Tab
-											columns: TableScopeColumns<Tbl>
-										}
-									>,
-									{}
-								>
-								tbl: InsertTable<Tbl>
-								schema: Sch
-								table: Tab
-							},
-						]
-					: [
-							Ra,
-							FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>,
-							ParserRefErrorThirdSentinel,
-						]
-				: [
-						Ra,
-						FormatError<Errors["EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT"], []>,
-						ParserRefErrorThirdSentinel,
-					]
-			: never
+			: [R, E, Alias]
 		: never
 
 export type ParseInsertFromTableRef<
@@ -117,67 +71,14 @@ export type ParseInsertFromTableRef<
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
 > =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? AsIdent<Tok> extends TokenIdent<infer A extends string>
-				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends ParserMonad
-								? AsIdent<TokB> extends TokenIdent<infer B extends string>
-									? JsqlDbGetData<Db, A, B> extends infer TblTry
-										? [TblTry] extends [never]
-											? [
-													R3,
-													FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "INSERT INTO"]>,
-													ParserRefErrorThirdSentinel,
-												]
-											: TblTry extends JsqlDataShape<"view">
-												? [
-														R3,
-														FormatError<Errors["CANNOT_WRITE_VIEW"], [B, "INSERT"]>,
-														ParserRefErrorThirdSentinel,
-													]
-												: TblTry extends JsqlDataShape
-													? ParseInsertAliasAfterTable<R3, Db, A, B, TblTry, Params>
-													: [
-															R3,
-															FormatError<
-																Errors["UNKNOWN_SCHEMA_OR_TABLE"],
-																[A, "INSERT INTO"]
-															>,
-															ParserRefErrorThirdSentinel,
-														]
-										: never
-									: [
-											R3,
-											FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in INSERT INTO"]>,
-											ParserRefErrorThirdSentinel,
-										]
-								: never
-							: never
-						: never
-					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
-						? [TblTry] extends [never]
-							? [
-									R1,
-									FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
-									ParserRefErrorThirdSentinel,
-								]
-							: TblTry extends JsqlDataShape<"view">
-								? [
-										R1,
-										FormatError<Errors["CANNOT_WRITE_VIEW"], [A, "INSERT"]>,
-										ParserRefErrorThirdSentinel,
-									]
-								: TblTry extends JsqlDataShape
-									? ParseInsertAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry, Params>
-									: [
-											R1,
-											FormatError<Errors["UNKNOWN_TABLE"], [A, "INSERT INTO"]>,
-											ParserRefErrorThirdSentinel,
-										]
-						: never
-				: [R1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in INSERT INTO"]>, ParserRefErrorThirdSentinel]
-			: never
+	ParseTableRef<Tokens, Db, "INSERT INTO", "INSERT"> extends [infer R extends ParserMonad, infer E, infer Target]
+		? E extends null
+			? Target extends TableRefTarget<
+					infer Sch extends string,
+					infer Tab extends string,
+					infer Tbl extends JsqlDataShape
+				>
+				? ParseInsertAliasAfterTable<R, Db, Sch, Tab, Tbl, Params>
+				: never
+			: [R, E, Target]
 		: never

@@ -8,8 +8,8 @@ import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts
 import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { ColumnDef, PkKind } from "./parse-create-table.ts"
-import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
+import type { ColumnDef, HasPrimaryKey, MultiplePrimaryKeys, PkKind } from "./parse-create-table.ts"
+import type { ParseCreateTableAfterComma, ParseCreateTableBody } from "./parse-create-table-columns.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { AlterColumnDone } from "./parse-column-alter-end.ts"
 import type {
@@ -64,7 +64,7 @@ export type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnC
 	PeekToken<Tokens> extends TokenKey<",">
 		? C["alter"] extends true
 			? AlterColumnDone<Tokens, C, S>
-			: ParseCreateTableBody<
+			: ParseCreateTableAfterComma<
 					SkipToken<Tokens>,
 					C["db"],
 					C["schema"],
@@ -90,7 +90,9 @@ export type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnC
 						: PeekToken<Tokens> extends TokenKey<"default">
 							? ParseColumnDefault<SkipToken<Tokens>, C, S>
 							: PeekToken<Tokens> extends TokenKey<"primary">
-								? ColumnPrimaryKey<Tokens, C, S>
+								? HasPrimaryKey<C["stack"], S["pk"]> extends true
+									? MultiplePrimaryKeys<Tokens, C["db"], C["table"]>
+									: ColumnPrimaryKey<Tokens, C, S>
 								: PeekToken<Tokens> extends TokenKey<"unique">
 									? ColumnUnique<Tokens, C, S>
 									: PeekToken<Tokens> extends TokenKey<"check">
