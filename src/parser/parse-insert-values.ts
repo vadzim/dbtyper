@@ -16,7 +16,7 @@ import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { CollectParamProbes, IsParamProbeFound } from "../core/param-probe.ts"
-import type { FinishInsertSemicolon, InsertValuesRowCellsParsedMarker } from "./parse-insert.ts"
+import type { InsertValuesRowCellsParsedMarker } from "./parse-insert.ts"
 import type { ParseInsertOptionalTail } from "./parse-insert-on-conflict.ts"
 
 /**
@@ -73,7 +73,7 @@ export type ParseInsertAfterValuesKeyword<
 						? Out3 extends DbtyperErrorShape
 							? [ROut, DbOut, Out3]
 							: Out3 extends JsqlInsertStatementResult
-								? FinishInsertSemicolon<ROut, DbOut, Out3>
+								? [ROut, DbOut, Out3] // the tail (ParseInsertOptionalTail) already consumed the `;`
 								: never
 						: never
 					: never

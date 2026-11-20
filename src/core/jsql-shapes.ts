@@ -11,6 +11,8 @@ export type JsqlDatabaseShape = {
 	cteDml?: true
 	/** SQLite: declared spellings of the columns of the CREATE TABLE / ADD COLUMN being parsed (SQLT-28); never in a finished state. */
 	pendingSpelled?: Record<string, string>
+	/** Set while the SELECT of an `INSERT … SELECT` is parsed: the columns match by position, so no output name is needed (#166). */
+	positionalSelect?: true
 }
 
 export type JsqlSchemaShape = {
