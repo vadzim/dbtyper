@@ -5,6 +5,7 @@ import type {
 	LexerNamedQueryParams,
 } from "../lexer/sql-lexer.ts"
 import type { DialectName, IsSingle } from "./dialect.ts"
+import type { LastOf } from "./type-utils.ts"
 
 /**
  * Positional PostgreSQL parameters (`$1`, `$2`, …), or a `:name` map — interpreted by drivers such as
@@ -56,23 +57,18 @@ export type GetDriverConfig<S extends SqlDriver<DriverConfigDraft>> =
 /** `"postgres" or "sqlite"`: the names of the dialects there are, for the messages below. */
 type DialectNames = JoinOr<DialectName>
 
-type JoinOr<U extends string, Last extends string = LastOf<U>> = [U] extends [never]
+type JoinOr<U extends string, Last extends string = LastName<U>> = [U] extends [never]
 	? never
 	: [Exclude<U, Last>] extends [never]
 		? `"${Last}"`
 		: `${JoinCommas<Exclude<U, Last>>} or "${Last}"`
 
-type JoinCommas<U extends string, Last extends string = LastOf<U>> = [Exclude<U, Last>] extends [never]
+type JoinCommas<U extends string, Last extends string = LastName<U>> = [Exclude<U, Last>] extends [never]
 	? `"${Last}"`
 	: `${JoinCommas<Exclude<U, Last>>}, "${Last}"`
 
-/** One member of a union of strings. */
-type LastOf<U extends string> =
-	UnionToIntersection<U extends unknown ? (x: U) => void : never> extends (x: infer L extends string) => void
-		? L
-		: never
-
-type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+/** One member of a union of strings (`LastOf` of type-utils.ts, narrowed to a string). */
+type LastName<U extends string> = LastOf<U> extends infer L extends string ? L : never
 
 /**
  * DSEL-8: a driver whose config declares no single dialect is a compile error on `driver` at `sqlMigrations`.
