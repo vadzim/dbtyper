@@ -47,6 +47,14 @@ expectType<GetApplyError<typeof migrations, typeof nonsense>>(
 	toBe<DbtyperError<1105, "Expected semicolon after CREATE TABLE">>(),
 )
 
+// 1912 today (pinned, SPEC-Q SQLT-18 1912): reached only after WITHOUT; the Check wants it for any unknown option
+const withoutNonsense = `create table t (a int) without nonsense` as const
+// @ts-expect-error
+migrations.apply(withoutNonsense)
+expectType<GetApplyError<typeof migrations, typeof withoutNonsense>>(
+	toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>(),
+)
+
 // SQLT-18: table options in either order; a table constraint PRIMARY KEY counts
 const orders = migrations.apply(`create table o (a integer, primary key (a)) without rowid, strict;`).database()
 const _o = await orders.query(`select a from o`)
