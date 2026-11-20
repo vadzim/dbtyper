@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { FoldAsciiCase } from "../lexer/sql-lexer-chars.ts"
+import type { OutputRelation } from "./parser-scope.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -248,29 +248,27 @@ type ParseCreateTableAsSelectRun<
 
 /**
  * CORE-19: the table of `CREATE TABLE … AS SELECT`: the output columns (all nullable) in output order (#150). Where names
- * match case-insensitively (SQLite, fact `foldQuoted`), the keys are lower-cased and the output names kept as the
- * declared spellings (SQLT-28), as for a column of CREATE TABLE.
+ * match case-insensitively (SQLite, fact `foldQuoted`), the keys are folded and the output names kept as the declared
+ * spellings (SQLT-67), as for a view (`OutputRelation`).
  */
-type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = (
-	Res extends { order: infer O extends readonly string[] } ? O : UnionToStringTuple<keyof Res["returning"] & string>
-) extends infer Order extends readonly string[]
-	? DialectFact<Db, "lexer">["foldQuoted"] extends true
-		? JsqlCreateRowidTable<
-				{ [K in keyof Res["returning"] as FoldAsciiCase<K & string>]: NullableType<Res["returning"][K]> },
-				null,
-				never,
-				LowercaseNames<Order>,
-				{ [K in keyof Res["returning"] & string as FoldAsciiCase<K> extends K ? never : FoldAsciiCase<K>]: K }
-			>
-		: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
-	: never
-
-type LowercaseNames<Names extends readonly string[], Acc extends readonly string[] = []> = Names extends readonly [
-	infer H extends string,
-	...infer R extends readonly string[],
-]
-	? LowercaseNames<R, [...Acc, FoldAsciiCase<H>]>
-	: Acc
+type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> =
+	OutputRelation<
+		Db,
+		{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> },
+		Res extends { order: infer O extends readonly string[] }
+			? O
+			: UnionToStringTuple<keyof Res["returning"] & string>
+	> extends infer Rel extends { columns: Record<string, SqlTypeShape>; order: readonly string[] }
+		? DialectFact<Db, "lexer">["foldQuoted"] extends true
+			? JsqlCreateRowidTable<
+					Rel["columns"],
+					null,
+					never,
+					Rel["order"],
+					Rel extends { spelled: infer Sp } ? Sp : {}
+				>
+			: JsqlCreateTable<Rel["columns"], null, null, Rel["order"]>
+		: never
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
 

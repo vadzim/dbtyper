@@ -18,6 +18,8 @@ import type { ApplyCteColumnList, ParseCteColumnList } from "./parse-select-cte.
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { FirstDuplicateName } from "./set-operation-types.ts"
+import type { FoldedNames, OutputOrder, OutputRelation } from "./parser-scope.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 
 type ViewNameRow = {
 	name: FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>
@@ -46,7 +48,11 @@ type ParseCreateViewAfterSelect<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 	Cols,
-> = (Cols extends readonly string[] ? FirstDuplicateName<Cols> : never) extends infer Dup
+> = (
+	Cols extends readonly string[]
+		? FirstDuplicateName<DialectFact<Db, "lexer">["foldQuoted"] extends true ? FoldedNames<Cols> : Cols>
+		: never
+) extends infer Dup
 	? [Dup] extends [never]
 		? ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
 			? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
@@ -76,10 +82,15 @@ type ParseCreateViewStore<
 					Db,
 					Schema,
 					Name,
-					JsqlCreateView<
-						Sel["returning"],
-						Sel extends { order: infer O extends readonly string[] } ? O : readonly string[]
-					>
+					OutputRelation<Db, Sel["returning"], OutputOrder<Sel>> extends infer Rel extends {
+						columns: Record<string, SqlTypeShape>
+					}
+						? JsqlCreateView<
+								Rel["columns"],
+								Rel extends { order: infer O extends readonly string[] } ? O : readonly string[],
+								Rel extends { spelled: infer Sp } ? Sp : {}
+							>
+						: never
 				> extends infer NewDb
 				? NewDb extends JsqlDatabaseShape
 					? [SkipToken<Tokens>, NewDb, null]

@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175 follow-ups: names through views, CTEs and subqueries (track A; #179 items 5a, 5b; SQLT-67, DML-20)
+
+- **One shape for SELECT-made relations.** `OutputRelation<Db, Ret, Order>` (src/parser/parser-scope.ts) turns a SELECT result into the columns of a view, a CTE or a derived table, and of SQLite `CREATE TABLE … AS`: with its output order when the result has one, and where names match case-insensitively (SQLite, `foldQuoted`) keyed by the folded name with the output names as `spelled`, exactly like a table. So `select conversationid from recent` finds a view column `conversationId` (was 2307 in Signal v1450), and returns it as `conversationId`; aliases and expression keys alike.
+- **Entries carry it.** A CTE or derived-table scope entry has `order` and `spelled` (`CteAsFromEntry` copies them); `EntryData` (parse-select-resolve.ts) returns the entry itself for those, so the result key of a column reference, `*` and `alias.*` read them as they read a table. `*` from a CTE or subquery now follows its output order in both dialects (5b), which a set operation matches by position.
+- **CTE / view column lists** keep the written spelling in SQLite (`with c(Cid) …` returns `Cid`), and the view's duplicate check (3911) compares folded names there.
+- **Cost.** `typecheck:test` 20,010,282 -> 20,109,593 without the new test file (+0.5%), 20,377,588 with it.
+
 ## 2026-11-20 Review #175 follow-ups: names fold ASCII only (track A; #179 item 5d; STMT-25, SQLT-67)
 
 - **Lexer.** An unquoted word is folded with TypeScript's `Lowercase` only when it is all ASCII; a word with a non-ASCII character (the identifier reader marks it, `nonAscii: "seen"` in the result of `ReadTokenChars`) is folded character by character, A-Z only (`FoldAsciiChars`, src/lexer/sql-lexer-chars.ts), as both engines do: `Імя` stays `Імя`, `NAMEІ` is `nameІ`. SQLite's quoted names and the keys of SQLite `CREATE TABLE … AS` use `FoldAsciiCase` (cheap when `Lowercase` changes nothing). A SQLite token keeps `written` only when it differs from the folded name.
