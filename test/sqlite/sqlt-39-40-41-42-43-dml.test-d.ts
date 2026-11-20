@@ -6,7 +6,7 @@ import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
 const db = sqlMigrations({ driver: sqliteDriver })
 	.apply(
-		`create table users (id integer primary key, name text not null, email text, score real);
+		`create table users (id integer primary key, name text not null, email text, score real, avatar blob);
 		create table posts (id integer primary key, user_id integer not null, title text not null);
 		create table notes (a text, b integer);
 		create table loose (a integer, b text);`,
@@ -46,7 +46,9 @@ void [_orAbort, _orFail, _orRollback, _updateIgnore]
 const _upsert = await db.query(
 	`insert into users (id, name) values (1, 'a') on conflict (id) do update set name = excluded.name returning *`,
 )
-expectType<typeof _upsert>(toBe<Array<{ id: number; name: string; email: string | null; score: number | null }>>())
+expectType<typeof _upsert>(
+	toBe<Array<{ id: number; name: string; email: string | null; score: number | null; avatar: Uint8Array | null }>>(),
+)
 const _nothing = await db.query(`insert into users (id, name) values (1, 'a') on conflict do nothing returning id`)
 expectType<typeof _nothing>(toBe<Array<{ id: number }>>())
 const _chain = await db.query(
@@ -71,8 +73,10 @@ const _insertRowid = await db.query(`insert into users (rowid, name) values (5, 
 expectType<typeof _insertRowid>(toBe<Array<{ id: number }>>())
 const _updRowid = await db.query(`update users set name = 'b' returning rowid, name`)
 expectType<typeof _updRowid>(toBe<Array<{ id: number; name: string }>>())
-const _delRows = await db.query(`delete from users where id = 1 returning *`)
-expectType<typeof _delRows>(toBe<Array<{ id: number; name: string; email: string | null; score: number | null }>>())
+const _delRows = await db.query(`delete from users returning *`)
+expectType<typeof _delRows>(
+	toBe<Array<{ id: number; name: string; email: string | null; score: number | null; avatar: Uint8Array | null }>>(),
+)
 const _delRowid = await db.query(`delete from users returning rowid`)
 expectType<typeof _delRowid>(toBe<Array<{ id: number }>>())
 // a DML statement inside a CTE or a subquery is a compile error

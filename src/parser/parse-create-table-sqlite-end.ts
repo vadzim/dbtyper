@@ -14,6 +14,8 @@ import type {
 	PendingSpelled,
 	PkKind,
 	StackOrder,
+	PendingPkName,
+	StackPrimaryKey,
 	TableOptions,
 	WithoutPending,
 } from "./parse-create-table.ts"
@@ -68,7 +70,9 @@ type ParseTableOptions<Tokens extends ParserMonad, Acc extends TableOptions> =
 					? AfterTableOption<SkipToken<R1>, { strict: Acc["strict"]; withoutRowid: true }>
 					: [R1, FormatError<Errors["EXPECTED_TABLE_OPTION_IN_CREATE_TABLE"], []>]
 				: never
-			: [Tokens, Acc]
+			: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+				? [Tokens, Acc]
+				: [Tokens, FormatError<Errors["EXPECTED_TABLE_OPTION_IN_CREATE_TABLE"], []>]
 
 type AfterTableOption<Tokens extends ParserMonad, Acc extends TableOptions> =
 	PeekToken<Tokens> extends TokenKey<","> ? ParseTableOptions<SkipToken<Tokens>, Acc> : [Tokens, Acc]
@@ -109,7 +113,9 @@ type RowidTableBuiltOk<
 							M["facts"],
 							null,
 							StackOrder<Stack>,
-							PendingSpelled<Db, Stack[number][0]>
+							PendingSpelled<Db, Stack[number][0]>,
+							StackPrimaryKey<Stack>,
+							PendingPkName<Db, Table>
 						>
 					: JsqlCreateRowidTable<
 							M["cols"],

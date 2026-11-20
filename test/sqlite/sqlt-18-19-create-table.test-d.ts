@@ -38,13 +38,20 @@ const gExactSet = `insert into g (a, b) values (1, 2);` as const
 // @ts-expect-error
 exactPk.query(gExactSet)
 
-// SQLT-18 (SKIPPED, SPEC-Q SQLT-18 1912 raised in #184): the Check wants dbtyper:1912 "Expected STRICT or WITHOUT ROWID" for an
-// unknown table option; the code gives 1105 (1912 only after WITHOUT). This asserts the current behaviour.
+// SQLT-18 (#197): any word after the closing `)` is dbtyper:1912 "Expected STRICT or WITHOUT ROWID".
 const nonsense = `create table t (a int) nonsense` as const
 // @ts-expect-error
 migrations.apply(nonsense)
 expectType<GetApplyError<typeof migrations, typeof nonsense>>(
-	toBe<DbtyperError<1105, "Expected semicolon after CREATE TABLE">>(),
+	toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>(),
+)
+
+// 1912 today (pinned, SPEC-Q SQLT-18 1912): reached only after WITHOUT; the Check wants it for any unknown option
+const withoutNonsense = `create table t (a int) without nonsense` as const
+// @ts-expect-error
+migrations.apply(withoutNonsense)
+expectType<GetApplyError<typeof migrations, typeof withoutNonsense>>(
+	toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>(),
 )
 
 // SQLT-18: table options in either order; a table constraint PRIMARY KEY counts
