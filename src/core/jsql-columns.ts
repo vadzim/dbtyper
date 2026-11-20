@@ -27,13 +27,10 @@ type JsqlTableReplaceColumn<
 	Spelling extends string = never,
 > =
 	Table extends JsqlDataShape<"table">
-		? WithColumnOrder<
-				Table,
-				JsqlTableReplaceColumnData<Table, Col, Column>,
-				Col,
-				Column extends null ? true : false,
-				Spelling
-			>
+		? WithColumnOrder<Table, Col, Column extends null ? true : false, Spelling> extends infer T extends
+				JsqlDataShape<"table">
+			? JsqlTableReplaceColumnData<T, Col, Column>
+			: null
 		: null
 
 type JsqlTableReplaceColumnData<
@@ -74,32 +71,22 @@ type RenameName<Names extends readonly string[], Old extends string, New extends
 }
 
 /**
- * #150, #151: keep the declaration order (a new column goes last, a dropped one leaves) and the SQLite spellings in
- * step with a column change. A table without `order` (built by hand in low-level tests) is left as it is.
+ * #150, #151: the table with its declaration order (a new column goes last, a dropped one leaves) and SQLite spellings
+ * updated for a change of `Col`; the columns themselves are changed after. A table without `order` (built by hand in
+ * low-level tests) and without spellings is returned as it is.
  */
 type WithColumnOrder<
 	Old extends JsqlDataShape<"table">,
-	New,
 	Col extends string,
 	Removing extends boolean,
 	Spelling extends string,
-> = Removing extends true
-	? WithSpelling<
-			Old extends { order: infer O extends readonly string[] }
-				? ReplaceProp<New, "order", WithoutName<O, Col>>
-				: New,
-			Old,
-			Col,
-			never
-		>
-	: Col extends keyof Old["columns"]
-		? New
-		: WithSpelling<
-				Old extends { order: infer O extends readonly string[] } ? ReplaceProp<New, "order", [...O, Col]> : New,
-				Old,
-				Col,
-				Spelling
-			>
+> = Old extends { order: infer O extends readonly string[] }
+	? Removing extends true
+		? WithSpelling<ReplaceProp<Old, "order", WithoutName<O, Col>>, Old, Col, never>
+		: Col extends keyof Old["columns"]
+			? Old
+			: WithSpelling<ReplaceProp<Old, "order", [...O, Col]>, Old, Col, Spelling>
+	: Old
 
 /** Sets (or, with `never`, drops) the declared spelling of `Col`; tables with no spellings stay without the field. */
 type WithSpelling<T, Old, Col extends string, Spelling extends string> = [Spelling] extends [never]
