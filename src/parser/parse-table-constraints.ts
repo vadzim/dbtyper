@@ -19,26 +19,30 @@ import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
  */
 export type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[], Ordered extends boolean = false> =
 	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer N extends string>
-		? SkipOrderedSuffix<SkipToken<Tokens>, Ordered> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<",">
-				? ParseNameList<SkipToken<R1>, readonly [...Acc, N], Ordered>
-				: PeekToken<R1> extends TokenKey<")">
-					? [SkipToken<R1>, readonly [...Acc, N]]
-					: SkipFailedExpression<
-							R1,
-							FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
-						>
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? SkipOrderedSuffix<R0, Ordered> extends [infer R1 extends ParserMonad, null]
+				? PeekToken<R1> extends TokenKey<",">
+					? ParseNameList<SkipToken<R1>, readonly [...Acc, N], Ordered>
+					: PeekToken<R1> extends TokenKey<")">
+						? [SkipToken<R1>, readonly [...Acc, N]]
+						: SkipFailedExpression<
+								R1,
+								FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION"], []>
+							>
+				: never
 			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE constraint"]>>
 
-/** `[COLLATE x] [ASC | DESC]` after a name of an ordered list. */
+/** `[COLLATE x] [ASC | DESC]` after a name of an ordered list: `[rest, null]`. */
 type SkipOrderedSuffix<Tokens extends ParserMonad, Ordered extends boolean> = Ordered extends true
 	? PeekToken<Tokens> extends TokenIdent<"collate">
-		? SkipOrderedSuffix<SkipToken<SkipToken<Tokens>>, true>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? SkipOrderedSuffix<SkipToken<R1>, true>
+			: never
 		: PeekToken<Tokens> extends TokenKey<"asc" | "desc">
-			? SkipToken<Tokens>
-			: Tokens
-	: Tokens
+			? [SkipToken<Tokens>, null]
+			: [Tokens, null]
+	: [Tokens, null]
 
 /**
  * A table constraint (CORE-15), named or not: `PRIMARY KEY (cols)` makes its columns NOT NULL (CORE-1);

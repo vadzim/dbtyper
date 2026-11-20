@@ -15,7 +15,9 @@ type M<S extends string> = GetApplyError<typeof base, S>
 expectType<M<`alter table users alter column nope set not null;`>>(
 	toBe<DbtyperError<3209, "Column nope does not exist">>(),
 )
-expectType<M<`alter table users alter column nope type text;`>>(toBe<DbtyperError<3209, "Column nope does not exist">>())
+expectType<M<`alter table users alter column nope type text;`>>(
+	toBe<DbtyperError<3209, "Column nope does not exist">>(),
+)
 // @ts-expect-error 3209
 base.apply(`alter table users alter column nope drop default;`)
 

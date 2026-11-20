@@ -2,7 +2,7 @@
  * Type-name rows of the dialect seam (DLCT-5, SQLT-6…SQLT-11, SQLT-15): the written type name of a column or a CAST,
  * as data per dialect. Split out of dialect.ts (MOD-1); the facts they read are the `Dialects` table there.
  */
-import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { DbDialectOnlyError, DialectFact } from "./dialect.ts"
 
 /**

@@ -10,7 +10,9 @@ type M<S extends string> = GetApplyError<typeof base, S>
 
 // SQLT-Q8 B: PostgreSQL names are typed by affinity (uuid, jsonb: NUMERIC), json is text, STRING / NUMBER are NUMERIC
 const names = base
-	.apply(`create table n (id integer primary key, j json not null, s string not null, k number not null, any_words here too);`)
+	.apply(
+		`create table n (id integer primary key, j json not null, s string not null, k number not null, any_words here too);`,
+	)
 	.database()
 const _n = await names.query(`select j from n`)
 expectType<typeof _n>(toBe<{ j: string }[]>())
@@ -26,6 +28,6 @@ expectType<M<`create table st (a integer, b) strict;`>>(
 expectType<M<`create table st (a integer, b) ;`>>(toBe<null>())
 
 // SQLT-18: ordered key columns
-expectType<
-	M<`create table k (id integer, name text, primary key (id desc), unique (name collate nocase asc));`>
->(toBe<null>())
+expectType<M<`create table k (id integer, name text, primary key (id desc), unique (name collate nocase asc));`>>(
+	toBe<null>(),
+)

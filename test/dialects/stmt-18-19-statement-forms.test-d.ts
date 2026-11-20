@@ -8,9 +8,9 @@ import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 const schema = `create table users (id integer primary key, name text not null, email text);
 	create table posts (id integer primary key, user_id integer not null, title text, body text not null);`
 const pg = sqlMigrations({ driver: mockDriver }).apply(schema)
-const lite = sqlMigrations({ driver: sqliteDriver }).apply(schema)
+const _lite = sqlMigrations({ driver: sqliteDriver }).apply(schema)
 type PgM<S extends string> = GetApplyError<typeof pg, S>
-type LiteM<S extends string> = GetApplyError<typeof lite, S>
+type LiteM<S extends string> = GetApplyError<typeof _lite, S>
 type Untyped = ". If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped"
 type DidYouMean = "? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped"
 
@@ -107,9 +107,7 @@ expectType<LiteM<`create materialized view v as select 1 as a;`>>(
 	toBe<PgOnly<"MATERIALIZED VIEW", "Use a table or a view">>(),
 )
 expectType<LiteM<`create unlogged table x (a int);`>>(toBe<PgOnly<"UNLOGGED TABLE", "Use CREATE TABLE">>())
-expectType<LiteM<`CREATE DOMAIN d AS integer;`>>(
-	toBe<PgOnly<"DOMAIN", "Use the base type with a CHECK constraint">>(),
-)
+expectType<LiteM<`CREATE DOMAIN d AS integer;`>>(toBe<PgOnly<"DOMAIN", "Use the base type with a CHECK constraint">>())
 expectType<LiteM<`alter table if exists users rename to u;`>>(toBe<PgOnly<"ALTER TABLE IF EXISTS">>())
 expectType<LiteM<`alter table users owner to bob;`>>(toBe<PgOnly<"OWNER TO / ROW LEVEL SECURITY">>())
 expectType<LiteM<`alter table users add column if not exists z text;`>>(toBe<PgOnly<"IF [NOT] EXISTS on a column">>())

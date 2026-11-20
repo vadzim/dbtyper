@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **309 active error codes** and 70 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **318 active error codes** and 70 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -16,10 +16,10 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1300-1399 | Parser/UPDATE Statement       |            4 |
 | 1400-1499 | Parser/DELETE Statement       |            2 |
 | 1500-1599 | Parser/CREATE TABLE           |           16 |
-| 1600-1699 | Parser/ALTER TABLE            |            5 |
+| 1600-1699 | Parser/ALTER TABLE            |            7 |
 | 1700-1799 | Parser/DROP TABLE             |            4 |
 | 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
-| 1900-1999 | Other-dialect syntax          |           16 |
+| 1900-1999 | Other-dialect syntax          |           20 |
 | 2100-2199 | Validation/Statement          |           10 |
 | 2200-2299 | Resolution/Table-Schema       |            4 |
 | 2300-2399 | Resolution/Column             |            4 |
@@ -32,14 +32,14 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
 | 3200-3299 | Semantic/Duplicate-Existence  |           12 |
-| 3300-3399 | Semantic/Constraint           |            7 |
+| 3300-3399 | Semantic/Constraint           |            9 |
 | 3400-3499 | Semantic/SELECT               |           15 |
 | 3500-3599 | Semantic/Statement            |           11 |
 | 3600-3699 | Semantic/Function             |           20 |
 | 3700-3799 | DDL/CREATE SCHEMA             |            3 |
 | 3800-3899 | DDL/DROP SCHEMA               |            2 |
 | 3900-3999 | DDL/CREATE VIEW               |            8 |
-| 4000-4099 | DDL/ALTER TYPE                |            3 |
+| 4000-4099 | DDL/ALTER TYPE                |            4 |
 | 4100-4199 | DDL/Misc                      |            6 |
 | 4200-4299 | DML/JOIN                      |            2 |
 | 4300-4399 | DML/CASE                      |            1 |
@@ -158,13 +158,15 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 1600-1699: Parser/ALTER TABLE
 
-| Code | Name                                           | Message                                         |
-| ---- | ---------------------------------------------- | ----------------------------------------------- |
-| 1601 | `EXPECTED_TABLE_AFTER_ALTER`                   | Expected TABLE after ALTER                      |
-| 1607 | `EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE`          | Expected column type in ALTER TABLE             |
-| 1608 | `EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN` | Expected TYPE, SET, or DROP after ALTER COLUMN  |
-| 1609 | `EXPECTED_NULL_AFTER_SET_NOT`                  | Expected NULL after SET NOT                     |
-| 1610 | `EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE`      | Expected \`exists\` after \`IF\` in ALTER TABLE |
+| Code | Name                                           | Message                                                         |
+| ---- | ---------------------------------------------- | --------------------------------------------------------------- |
+| 1601 | `EXPECTED_TABLE_AFTER_ALTER`                   | Expected TABLE after ALTER                                      |
+| 1607 | `EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE`          | Expected column type in ALTER TABLE                             |
+| 1608 | `EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN` | Expected TYPE, SET, or DROP after ALTER COLUMN                  |
+| 1609 | `EXPECTED_NULL_AFTER_SET_NOT`                  | Expected NULL after SET NOT                                     |
+| 1610 | `EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE`      | Expected \`exists\` after \`IF\` in ALTER TABLE                 |
+| 1611 | `EXPECTED_ALTER_TABLE_ACTION`                  | Expected an action (ADD, DROP, RENAME, ALTER, …) in ALTER TABLE |
+| 1612 | `EXPECTED_NOT_EXISTS_AFTER_IF_ON_COLUMN`       | Expected … after \`IF\` on a column in ALTER TABLE              |
 
 ## 1700-1799: Parser/DROP TABLE
 
@@ -210,7 +212,11 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1920 | `UNKNOWN_CONFLICT_ACTION`                 | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                                                          |
 | 1930 | `UNKNOWN_STATEMENT`                       | Unknown statement keyword …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                 |
 | 1931 | `UNKNOWN_STATEMENT_DID_YOU_MEAN`          | Unknown statement keyword …; did you mean …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+| 1932 | `UNKNOWN_STATEMENT_FORM`                  | Unknown statement … …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                       |
 | 1932 | `MULTIPLE_STATEMENTS_IN_QUERY`            | This driver runs only the first statement of a text; send one statement per query or stream call                             |
+| 1933 | `UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN`     | Unknown statement … …; did you mean … …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped     |
+| 1934 | `EXPECTED_STATEMENT_FORM`                 | Expected what to … (TABLE, VIEW, INDEX, …)                                                                                   |
+| 1935 | `UNTRACKED_SCHEMA_CHANGE`                 | … is not supported: dbtyper cannot follow the schema change it makes. …                                                      |
 
 ## 2100-2199: Validation/Statement
 
@@ -354,7 +360,9 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3303 | `IN_LIST_MUST_NOT_BE_EMPTY`                 | IN list must not be empty                 |
 | 3304 | `EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE`     | Empty enum values list in CREATE TYPE     |
 | 3305 | `ENUM_VALUE_ALREADY_EXISTS`                 | Enum value already exists                 |
+| 3306 | `TYPE_IS_NOT_A_DOMAIN`                      | Type is not a domain; use DROP TYPE       |
 | 3306 | `DUPLICATE_COLUMN_IN_WRITE`                 | Column … is listed more than once in …    |
+| 3307 | `ENUM_VALUE_DOES_NOT_EXIST`                 | … is not a value of the enum              |
 
 ## 3400-3499: Semantic/SELECT
 
@@ -447,11 +455,12 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 4000-4099: DDL/ALTER TYPE
 
-| Code | Name                                                     | Message                                              |
-| ---- | -------------------------------------------------------- | ---------------------------------------------------- |
-| 4000 | `EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE`                 | Expected \`exists\` after \`IF\` in ALTER TYPE       |
-| 4001 | `EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE`                      | Expected \`.\` or \`ADD\` in ALTER TYPE              |
-| 4002 | `EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE` | Expected \`.\` or \`;\` after type name in DROP TYPE |
+| Code | Name                                                     | Message                                                          |
+| ---- | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| 4000 | `EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE`                 | Expected \`exists\` after \`IF\` in ALTER TYPE                   |
+| 4001 | `EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE`                      | Expected \`.\` or \`ADD\` in ALTER TYPE                          |
+| 4002 | `EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE` | Expected \`.\` or \`;\` after type name in DROP TYPE             |
+| 4003 | `EXPECTED_TO_IN_RENAME_VALUE`                            | Expected \`TO\` after the old label in ALTER TYPE … RENAME VALUE |
 
 ## 4100-4199: DDL/Misc
 

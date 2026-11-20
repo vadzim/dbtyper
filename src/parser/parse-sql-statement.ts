@@ -365,21 +365,36 @@ type ParseCreateNamedForm<
 							? ParseSkipTrigger<SkipToken<R2>, Db>
 							: SkipStatementForm<R2, Db, "create">
 					: never
-				: SkipStatementForm<Tokens, Db, "create">
+				: UnknownTwoWordForm<R1, Db, "create", "or">
 			: never
 		: PeekToken<Tokens> extends TokenIdent<"materialized">
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
 				? PeekToken<R1> extends TokenKey<"view">
 					? ParseCreateView<SkipToken<R1>, Db, Params>
-					: SkipStatementForm<Tokens, Db, "create">
+					: UnknownTwoWordForm<R1, Db, "create", "materialized">
 				: never
 			: PeekToken<Tokens> extends TokenIdent<"unlogged">
 				? SkipToken<Tokens> extends infer R1 extends ParserMonad
 					? PeekToken<R1> extends TokenKey<"table">
 						? ParseCreateTable<SkipToken<R1>, Db, Params>
-						: SkipStatementForm<Tokens, Db, "create">
+						: UnknownTwoWordForm<R1, Db, "create", "unlogged">
 					: never
 				: SkipStatementForm<Tokens, Db, "create">
+
+/** `CREATE MATERIALIZED <not VIEW>` and the like: `Tokens` is at the word after `First`. */
+type UnknownTwoWordForm<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Verb extends StatementVerb,
+	First extends string,
+> = SkipFailedStatement<
+	Tokens,
+	Db,
+	FormatError<
+		Errors["UNKNOWN_STATEMENT_FORM"],
+		[Uppercase<Verb>, PeekToken<Tokens> extends { value: infer W extends string } ? `${First} ${W}` : First]
+	>
+>
 
 /** `CREATE TEMP|TEMPORARY TABLE|VIEW|TRIGGER` where temp objects are typed (`tempObjects`), else an error (STMT-Q2). */
 type ParseCreateTemp<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
@@ -417,6 +432,6 @@ type ParseDrop<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 							? SkipToken<Tokens> extends infer R1 extends ParserMonad
 								? PeekToken<R1> extends TokenKey<"view">
 									? ParseDropView<SkipToken<R1>, Db>
-									: SkipStatementForm<Tokens, Db, "drop">
+									: UnknownTwoWordForm<R1, Db, "drop", "materialized">
 								: never
 							: SkipStatementForm<Tokens, Db, "drop">

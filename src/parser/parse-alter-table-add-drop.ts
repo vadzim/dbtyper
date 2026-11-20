@@ -82,9 +82,11 @@ type ParseColumnIfExists<Tokens extends ParserMonad, Db extends JsqlDatabaseShap
 		: SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Not extends true
 				? PeekToken<R1> extends TokenKey<"not">
-					? PeekToken<SkipToken<R1>> extends TokenKey<"exists">
-						? [SkipToken<SkipToken<R1>>, null]
-						: [R1, FormatError<Errors["EXPECTED_NOT_EXISTS_AFTER_IF_ON_COLUMN"], ["NOT EXISTS"]>]
+					? SkipToken<R1> extends infer R2 extends ParserMonad
+						? PeekToken<R2> extends TokenKey<"exists">
+							? [SkipToken<R2>, null]
+							: [R2, FormatError<Errors["EXPECTED_NOT_EXISTS_AFTER_IF_ON_COLUMN"], ["NOT EXISTS"]>]
+						: never
 					: [R1, FormatError<Errors["EXPECTED_NOT_EXISTS_AFTER_IF_ON_COLUMN"], ["NOT EXISTS"]>]
 				: PeekToken<R1> extends TokenKey<"exists">
 					? [SkipToken<R1>, null]

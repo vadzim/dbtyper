@@ -99,9 +99,6 @@ type ParsedForms = {
 
 export type StatementVerb = keyof ParsedForms
 
-/** The skipped second words of a dialect, one list per verb (the `skippedForms` fact). */
-export type SkippedFormsShape = { [V in StatementVerb]: readonly string[] }
-
 /** Objects PostgreSQL creates, alters and drops that change no table, view or type dbtyper types (PGT-21). */
 type PostgresUntypedObjects = readonly [
 	"index",

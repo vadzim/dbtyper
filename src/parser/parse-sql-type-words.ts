@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenNumber } from "../lexer/sql-lexer.ts"
+import type { TokenNumber, TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -23,7 +23,7 @@ type CollectSqlTypeWords<
 	Named extends boolean,
 	Prefix extends string = "",
 > =
-	PeekToken<Tokens> extends TokenIdent<infer W extends string> | TokenKey<infer W extends string>
+	PeekToken<Tokens> extends TokenType<"ident" | "key", infer W extends string>
 		? Lowercase<W> extends "collate"
 			? [Tokens, Acc]
 			: [Named, Prefix] extends [true, ""]
@@ -184,22 +184,32 @@ type ParseTypeModifiers<Tokens extends ParserMonad, BaseTypeName extends string>
 
 /** `timestamp(3) with time zone`: words after the modifier of timestamp/time (TYPE-4) */
 type ParseTypeModifiersAndZone<Tokens extends ParserMonad, Name extends string, Named extends boolean> =
-	ParseTypeModifiers<Tokens, Name> extends [infer R extends ParserMonad, infer Shape extends SqlTypeShape]
-		? Name extends "timestamp" | "time"
-			? PeekToken<Tokens> extends TokenKey<"(">
-				? CollectSqlTypeWords<R, [], Named, Named extends true ? Name : "x"> extends [
-						infer R2 extends ParserMonad,
-						infer Extra extends readonly string[],
-					]
-					? Extra extends readonly []
-						? [R2, Shape]
-						: NormalizeSqlTypeName<`${Name} ${TypeWordsToString<Extra>}`> extends infer N extends string
-							? [R2, { type: N; arg: null; nullable: false }]
-							: never
+	ParseTypeModifiers<Tokens, Name> extends [infer R extends ParserMonad, infer Shape]
+		? Shape extends SqlTypeShape
+			? ParseZoneWords<R, PeekToken<Tokens> extends TokenKey<"("> ? true : false, Name, Shape, Named>
+			: [R, Shape] // a bad modifier: the error
+		: never
+
+type ParseZoneWords<
+	R extends ParserMonad,
+	HadModifier extends boolean,
+	Name extends string,
+	Shape extends SqlTypeShape,
+	Named extends boolean,
+> = Name extends "timestamp" | "time"
+	? HadModifier extends true
+		? CollectSqlTypeWords<R, [], Named, Named extends true ? Name : "x"> extends [
+				infer R2 extends ParserMonad,
+				infer Extra extends readonly string[],
+			]
+			? Extra extends readonly []
+				? [R2, Shape]
+				: NormalizeSqlTypeName<`${Name} ${TypeWordsToString<Extra>}`> extends infer N extends string
+					? [R2, { type: N; arg: null; nullable: false }]
 					: never
-				: [R, Shape]
-			: [R, Shape]
-		: ParseTypeModifiers<Tokens, Name>
+			: never
+		: [R, Shape]
+	: [R, Shape]
 
 /**
  * Main entry point: parse SQL type and return SqlTypeShape. With `KeepDeclared` the shape also says the lower-case
@@ -245,29 +255,33 @@ type ParseUnqualifiedSqlType<
 				? DialectColumnTypeName<Db, TypeName> extends infer NormalizedName extends string
 					? ParseTypeModifiersAndZone<AfterWords, NormalizedName, Named> extends [
 							infer AfterMods extends ParserMonad,
-							infer BaseShape0 extends SqlTypeShape,
+							infer BaseShape0,
 						]
-						? ResolveUserType<Db, Schema, BaseShape0> extends [
-								infer BaseShape extends SqlTypeShape,
-								infer DomainNn extends boolean,
-							]
-							? ParseArraySuffix<AfterMods, BaseShape> extends [
-									infer AfterArray extends ParserMonad,
-									infer ArrayShape extends SqlTypeShape,
+						? BaseShape0 extends SqlTypeShape
+							? ResolveUserType<Db, Schema, BaseShape0> extends [
+									infer BaseShape extends SqlTypeShape,
+									infer DomainNn extends boolean,
 								]
-								? KeepDeclared extends true
-									? ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn> extends [
-											infer R extends ParserMonad,
-											infer Shaped,
-										]
-										? Shaped extends SqlTypeShape
-											? [R, Shaped & { declared: TypeName }]
-											: [R, Shaped]
-										: never
-									: ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn>
-								: ParseArraySuffix<AfterMods, BaseShape> // `[` without `]`: the error
-							: never
-						: ParseTypeModifiersAndZone<AfterWords, NormalizedName, Named> // a bad modifier: the error
+								? ParseArraySuffix<AfterMods, BaseShape> extends [
+										infer AfterArray extends ParserMonad,
+										infer ArrayShape,
+									]
+									? ArrayShape extends SqlTypeShape
+										? KeepDeclared extends true
+											? ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn> extends [
+													infer R extends ParserMonad,
+													infer Shaped,
+												]
+												? Shaped extends SqlTypeShape
+													? [R, Shaped & { declared: TypeName }]
+													: [R, Shaped]
+												: never
+											: ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn>
+										: [AfterArray, ArrayShape] // `[` without `]`: the error
+									: never
+								: never
+							: [AfterMods, BaseShape0] // a bad modifier: the error
+						: never
 					: DialectColumnTypeName<Db, TypeName> extends infer TypeErr extends DbtyperErrorShape
 						? SkipFailedExpression<AfterWords, TypeErr>
 						: never

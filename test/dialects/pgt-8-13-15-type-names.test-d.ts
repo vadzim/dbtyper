@@ -48,8 +48,8 @@ const enums = base
 	.database()
 const _e = await enums.query(`select m from t`)
 expectType<typeof _e>(toBe<{ m: "c" | "x" | "y" | "b" }[]>())
-const withMood = base.apply(`create type mood as enum ('a', 'b');`)
-type EM<S extends string> = GetApplyError<typeof withMood, S>
+const _withMood = base.apply(`create type mood as enum ('a', 'b');`)
+type EM<S extends string> = GetApplyError<typeof _withMood, S>
 expectType<EM<`alter type mood rename value 'nope' to 'c';`>>(
 	toBe<DbtyperError<3307, "'nope' is not a value of the enum">>(),
 )

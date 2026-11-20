@@ -91,11 +91,11 @@ type ParseAlterTypeAction<
 			: never
 		: never
 
-/** At the label after `VALUE`: `[label, rest]` or `[error, rest]`. */
+/** At an enum label: `[rest, label]` or `[rest, error]`. */
 type ReadEnumLabel<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenString<infer V extends string>
-		? [V, SkipToken<Tokens>]
-		: [FormatError<Errors["EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE"], []>, Tokens]
+		? [SkipToken<Tokens>, V]
+		: [Tokens, FormatError<Errors["EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE"], []>]
 
 /** `ADD VALUE [IF NOT EXISTS] 'x' [BEFORE | AFTER 'y']`: an existing label is an error, or a no-op with IF NOT EXISTS. */
 type ParseAlterTypeAddValue<
@@ -106,19 +106,19 @@ type ParseAlterTypeAddValue<
 	Values extends readonly string[],
 > =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? PeekToken<SkipToken<Tokens>> extends TokenKey<"not">
-			? PeekToken<SkipToken<SkipToken<Tokens>>> extends TokenKey<"exists">
-				? ParseAlterTypeAddLabel<SkipToken<SkipToken<SkipToken<Tokens>>>, Db, Sch, Typ, Values, true>
-				: SkipFailedStatement<
-						SkipToken<SkipToken<Tokens>>,
-						Db,
-						FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE"], []>
-					>
-			: SkipFailedStatement<
-					SkipToken<Tokens>,
-					Db,
-					FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE"], []>
-				>
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"not">
+				? SkipToken<R1> extends infer R2 extends ParserMonad
+					? PeekToken<R2> extends TokenKey<"exists">
+						? ParseAlterTypeAddLabel<SkipToken<R2>, Db, Sch, Typ, Values, true>
+						: SkipFailedStatement<
+								R2,
+								Db,
+								FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE"], []>
+							>
+					: never
+				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE"], []>>
+			: never
 		: ParseAlterTypeAddLabel<Tokens, Db, Sch, Typ, Values, false>
 
 type ParseAlterTypeAddLabel<
@@ -129,7 +129,7 @@ type ParseAlterTypeAddLabel<
 	Values extends readonly string[],
 	IfNotExists extends boolean,
 > =
-	ReadEnumLabel<Tokens> extends [infer NewValue, infer AfterVal extends ParserMonad]
+	ReadEnumLabel<Tokens> extends [infer AfterVal extends ParserMonad, infer NewValue]
 		? NewValue extends DbtyperErrorShape
 			? SkipFailedStatement<AfterVal, Db, NewValue>
 			: NewValue extends string
@@ -153,20 +153,22 @@ type ParseAlterTypeAddLabel<
 /** `[BEFORE | AFTER 'y']`: `[rest, labels with the new one in place]` or `[rest, error]` when `y` is no label. */
 type ParseAlterTypePosition<Tokens extends ParserMonad, Values extends readonly string[], New extends string> =
 	PeekToken<Tokens> extends TokenIdent<"before" | "after">
-		? ReadEnumLabel<SkipToken<Tokens>> extends [infer Anchor, infer R extends ParserMonad]
-			? Anchor extends DbtyperErrorShape
-				? [R, Anchor]
-				: Anchor extends Values[number] & string
-					? [
-							R,
-							InsertLabel<
-								Values,
-								Anchor,
-								New,
-								PeekToken<Tokens> extends TokenIdent<"before"> ? true : false
-							>,
-						]
-					: [R, FormatError<Errors["ENUM_VALUE_DOES_NOT_EXIST"], [`'${Anchor & string}'`]>]
+		? SkipToken<Tokens> extends infer R0 extends ParserMonad
+			? ReadEnumLabel<R0> extends [infer R extends ParserMonad, infer Anchor]
+				? Anchor extends DbtyperErrorShape
+					? [R, Anchor]
+					: Anchor extends Values[number] & string
+						? [
+								R,
+								InsertLabel<
+									Values,
+									Anchor,
+									New,
+									PeekToken<Tokens> extends TokenIdent<"before"> ? true : false
+								>,
+							]
+						: [R, FormatError<Errors["ENUM_VALUE_DOES_NOT_EXIST"], [`'${Anchor & string}'`]>]
+				: never
 			: never
 		: [Tokens, readonly [...Values, New]]
 
@@ -192,30 +194,36 @@ type ParseAlterTypeRenameValue<
 	Typ extends string,
 	Values extends readonly string[],
 > =
-	ReadEnumLabel<Tokens> extends [infer Old, infer R1 extends ParserMonad]
+	ReadEnumLabel<Tokens> extends [infer R1 extends ParserMonad, infer Old]
 		? Old extends DbtyperErrorShape
 			? SkipFailedStatement<R1, Db, Old>
 			: PeekToken<R1> extends TokenKey<"to">
-				? ReadEnumLabel<SkipToken<R1>> extends [infer New, infer R2 extends ParserMonad]
-					? New extends DbtyperErrorShape
-						? SkipFailedStatement<R2, Db, New>
-						: Old extends Values[number]
-							? New extends Values[number]
-								? SkipFailedStatement<R2, Db, FormatError<Errors["ENUM_VALUE_ALREADY_EXISTS"], []>>
-								: ParseAlterTypeCloseSemi<
-										R2,
-										JsqlDbReplaceEnum<
-											Db,
-											Sch,
-											Typ,
-											{ [I in keyof Values]: Values[I] extends Old ? New & string : Values[I] }
+				? SkipToken<R1> extends infer R1b extends ParserMonad
+					? ReadEnumLabel<R1b> extends [infer R2 extends ParserMonad, infer New]
+						? New extends DbtyperErrorShape
+							? SkipFailedStatement<R2, Db, New>
+							: Old extends Values[number]
+								? New extends Values[number]
+									? SkipFailedStatement<R2, Db, FormatError<Errors["ENUM_VALUE_ALREADY_EXISTS"], []>>
+									: ParseAlterTypeCloseSemi<
+											R2,
+											JsqlDbReplaceEnum<
+												Db,
+												Sch,
+												Typ,
+												{
+													[I in keyof Values]: Values[I] extends Old
+														? New & string
+														: Values[I]
+												}
+											>
 										>
+								: SkipFailedStatement<
+										R2,
+										Db,
+										FormatError<Errors["ENUM_VALUE_DOES_NOT_EXIST"], [`'${Old & string}'`]>
 									>
-							: SkipFailedStatement<
-									R2,
-									Db,
-									FormatError<Errors["ENUM_VALUE_DOES_NOT_EXIST"], [`'${Old & string}'`]>
-								>
+						: never
 					: never
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_TO_IN_RENAME_VALUE"], []>>
 		: never

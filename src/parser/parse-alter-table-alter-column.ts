@@ -216,7 +216,7 @@ export type ParseAlterColumnAfterAlterKw<
 						? AsIdent<Tcol> extends TokenIdent<infer Col extends string>
 							? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 								? // SCHEMA-23, #154: a missing column is an error (it used to drop the table from the schema)
-									SkipFailedStatement<R1, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>>
+									SkipFailedStatement<R2, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>>
 								: ParseAlterColumnAfterIdent<R2, Db, Sch, Tab, Col>
 							: SkipFailedExpression<
 										R2,
