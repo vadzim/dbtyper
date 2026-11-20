@@ -72,39 +72,49 @@ type ParseAlterColumnSetBranch<
 > =
 	PeekToken<R2> extends TokenKey<"set">
 		? SkipToken<R2> extends infer Rs extends ParserMonad
-			? PeekToken<Rs> extends TokenKey<"not">
-				? SkipToken<Rs> extends infer Rn extends ParserMonad
-					? PeekToken<Rn> extends infer TkNull
-						? SkipToken<Rn> extends infer Rnn extends ParserMonad
-							? TkNull extends TokenKey<"null">
-								? ParseAlterActions<
-										Rnn,
-										JsqlDbReplaceColumnNullability<Db, Sch, Tab, Col, "not_null">,
-										Sch,
-										Tab
-									>
-								: SkipFailedStatement<Rnn, Db, FormatError<Errors["EXPECTED_NULL_AFTER_SET_NOT"], []>>
+			? AlterColumnFormError<TokenKey<"set">, Db, PeekToken<Rs>> extends infer FormErr extends DbtyperErrorShape
+				? SkipFailedStatement<Rs, Db, FormErr>
+				: PeekToken<Rs> extends TokenKey<"not">
+					? SkipToken<Rs> extends infer Rn extends ParserMonad
+						? PeekToken<Rn> extends infer TkNull
+							? SkipToken<Rn> extends infer Rnn extends ParserMonad
+								? TkNull extends TokenKey<"null">
+									? ParseAlterActions<
+											Rnn,
+											JsqlDbReplaceColumnNullability<Db, Sch, Tab, Col, "not_null">,
+											Sch,
+											Tab
+										>
+									: SkipFailedStatement<
+											Rnn,
+											Db,
+											FormatError<Errors["EXPECTED_NULL_AFTER_SET_NOT"], []>
+										>
+								: never
 							: never
 						: never
-					: never
-				: PeekToken<Rs> extends TokenKey<"default">
-					? // CORE-16: the value must fit the column, as in CREATE TABLE
-						ParseDefaultValue<
-							SkipToken<Rs>,
-							Db,
-							JsqlDbGetColumnType<Db, Sch, Tab, Col> & SqlTypeShape,
-							Col
-						> extends [infer Rsd extends ParserMonad, infer DefErr]
-						? DefErr extends DbtyperErrorShape
-							? SkipFailedStatement<Rsd, Db, DefErr>
-							: ParseAlterActions<Rsd, JsqlDbReplaceColumnDefault<Db, Sch, Tab, Col, true>, Sch, Tab>
-						: never
-					: PeekToken<Rs> extends TokenKey<"data"> | TokenIdent<"data">
-						? // `SET DATA TYPE t`: the same as `TYPE t`
-							SkipToken<Rs> extends infer Rt extends ParserMonad
-							? ParseAlterColumnTypeBranch<Rt, Db, Sch, Tab, Col>
+					: PeekToken<Rs> extends TokenKey<"default">
+						? // CORE-16: the value must fit the column, as in CREATE TABLE
+							ParseDefaultValue<
+								SkipToken<Rs>,
+								Db,
+								JsqlDbGetColumnType<Db, Sch, Tab, Col> & SqlTypeShape,
+								Col
+							> extends [infer Rsd extends ParserMonad, infer DefErr]
+							? DefErr extends DbtyperErrorShape
+								? SkipFailedStatement<Rsd, Db, DefErr>
+								: ParseAlterActions<Rsd, JsqlDbReplaceColumnDefault<Db, Sch, Tab, Col, true>, Sch, Tab>
 							: never
-						: SkipFailedStatement<Rs, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE"], []>>
+						: PeekToken<Rs> extends TokenKey<"data"> | TokenIdent<"data">
+							? // `SET DATA TYPE t`: the same as `TYPE t`
+								SkipToken<Rs> extends infer Rt extends ParserMonad
+								? ParseAlterColumnTypeBranch<Rt, Db, Sch, Tab, Col>
+								: never
+							: SkipFailedStatement<
+									Rs,
+									Db,
+									FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE"], []>
+								>
 			: never
 		: never
 
@@ -154,13 +164,15 @@ type ParseAlterColumnDropAfterRd0<
 	Tab extends string,
 	Col extends string,
 > =
-	PeekToken<Rd0> extends TokenKey<"not">
-		? ParseAlterColumnDropNotNullChain<Rd0, Db, Sch, Tab, Col>
-		: PeekToken<Rd0> extends TokenKey<"default">
-			? ParseAlterColumnDropDefaultNoop<Rd0, Db, Sch, Tab, Col>
-			: PeekToken<Rd0> extends TokenIdent<"identity"> | TokenKey<"identity">
-				? ParseAlterSkipAction<Rd0, Db, Sch, Tab>
-				: SkipFailedStatement<Rd0, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE"], []>>
+	AlterColumnFormError<TokenKey<"drop">, Db, PeekToken<Rd0>> extends infer FormErr extends DbtyperErrorShape
+		? SkipFailedStatement<Rd0, Db, FormErr>
+		: PeekToken<Rd0> extends TokenKey<"not">
+			? ParseAlterColumnDropNotNullChain<Rd0, Db, Sch, Tab, Col>
+			: PeekToken<Rd0> extends TokenKey<"default">
+				? ParseAlterColumnDropDefaultNoop<Rd0, Db, Sch, Tab, Col>
+				: PeekToken<Rd0> extends TokenIdent<"identity"> | TokenKey<"identity">
+					? ParseAlterSkipAction<Rd0, Db, Sch, Tab>
+					: SkipFailedStatement<Rd0, Db, FormatError<Errors["UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE"], []>>
 
 type ParseAlterColumnDropBranch<
 	R2 extends ParserMonad,
@@ -205,15 +217,14 @@ type ParseAlterColumnAfterIdent<
 
 /**
  * #195: the other-dialect error for an `ALTER [COLUMN] c <action>` the chain's dialect lacks (fact `alterColumn` of
- * src/core/dialect.ts: SQLite has only `SET NOT NULL` and `DROP NOT NULL`, since 3.53), else `null`. `R2` is at the action.
+ * src/core/dialect.ts: SQLite has only `SET NOT NULL` and `DROP NOT NULL`, since 3.53), else `null`. `Action` is the
+ * action's first token (`SET` / `DROP`), `Next` the one after it (`NOT`; `never` while it is not read yet).
  */
-type AlterColumnFormError<R2 extends ParserMonad, Db extends JsqlDatabaseShape> =
+type AlterColumnFormError<Action, Db extends JsqlDatabaseShape, Next = TokenKey<"not">> =
 	DialectFact<Db, "alterColumn"> extends "full"
 		? null
-		: PeekToken<R2> extends TokenKey<"set" | "drop">
-			? PeekToken<SkipToken<R2>> extends TokenKey<"not">
-				? null
-				: DbDialectOnlyError<Db, "pg-alter-column">
+		: [Action, Next] extends [TokenKey<"set" | "drop">, TokenKey<"not">]
+			? null
 			: DbDialectOnlyError<Db, "pg-alter-column">
 
 export type ParseAlterColumnAfterAlterKw<
@@ -228,7 +239,7 @@ export type ParseAlterColumnAfterAlterKw<
 				? PeekToken<R1> extends infer Tcol
 					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? AsIdent<Tcol> extends TokenIdent<infer Col extends string>
-							? AlterColumnFormError<R2, Db> extends infer FormErr extends DbtyperErrorShape
+							? AlterColumnFormError<PeekToken<R2>, Db> extends infer FormErr extends DbtyperErrorShape
 								? SkipFailedStatement<R2, Db, FormErr>
 								: JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 									? // SCHEMA-23, #154: a missing column is an error (it used to drop the table from the schema)
