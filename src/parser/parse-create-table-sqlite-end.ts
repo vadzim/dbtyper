@@ -70,7 +70,9 @@ type ParseTableOptions<Tokens extends ParserMonad, Acc extends TableOptions> =
 					? AfterTableOption<SkipToken<R1>, { strict: Acc["strict"]; withoutRowid: true }>
 					: [R1, FormatError<Errors["EXPECTED_TABLE_OPTION_IN_CREATE_TABLE"], []>]
 				: never
-			: [Tokens, Acc]
+			: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
+				? [Tokens, Acc]
+				: [Tokens, FormatError<Errors["EXPECTED_TABLE_OPTION_IN_CREATE_TABLE"], []>]
 
 type AfterTableOption<Tokens extends ParserMonad, Acc extends TableOptions> =
 	PeekToken<Tokens> extends TokenKey<","> ? ParseTableOptions<SkipToken<Tokens>, Acc> : [Tokens, Acc]

@@ -8,7 +8,7 @@ const _db = sqlMigrations({ driver: mockDriver })
 	.database()
 
 // ✅ SUCCESS: positional parameters with array
-const _result = await _db.query(`select * from users where id = ? and age > ?;`, ["user1", 18])
+const _result = await _db.query(`select * from users where id = $1 and age > $2;`, ["user1", 18])
 
 expectType<typeof _result>(
 	toBe<
