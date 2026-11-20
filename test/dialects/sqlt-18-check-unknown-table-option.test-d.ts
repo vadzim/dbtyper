@@ -6,5 +6,6 @@ import { expectType, toBe } from "../test-utils/type-test-utils.ts"
 
 const lite = sqlMigrations({ driver: sqliteDriver })
 const sql = `create table t (a int) nonsense` as const
+// @ts-expect-error
 lite.apply(sql)
 expectType<GetApplyError<typeof lite, typeof sql>>(toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>())
