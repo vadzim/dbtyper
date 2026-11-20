@@ -25,7 +25,7 @@ The error system underwent a major refactoring to improve maintainability:
 - **Phase 1:** Removed 40 INVALID\_\* codes (replaced with more specific errors)
 - **Phase 2a:** Consolidated 19 UNKNOWN\_\* codes into 4 base codes with context parameters
 - **Phase 2b:** Consolidated 51 EXPECTED\_\* codes into 6 base codes with context parameters
-- **Result:** Reduced from 372 total codes to 264 active codes (29% reduction)
+- **Result:** Reduced from 372 total codes to 265 active codes (29% reduction)
 
 Many error codes now use context parameters to provide specific information while maintaining a single code. For example, `UNKNOWN_TABLE` replaces 7 different codes like `UNKNOWN_TABLE_FROM`, `UNKNOWN_TABLE_UPDATE`, etc.
 
@@ -60,7 +60,7 @@ Each category has 100 slots, providing room for future expansion.
 | 3100-3199 | Type System - Subquery       | Subquery type errors            | 4    | 96   |
 | 3200-3299 | Semantic - Duplicate/Exist   | Duplicate or existence checks   | 12   | 88   |
 | 3300-3399 | Semantic - Constraints       | Constraint violations           | 6    | 94   |
-| 3400-3499 | Semantic - SELECT            | SELECT-specific constraints     | 8    | 92   |
+| 3400-3499 | Semantic - SELECT            | SELECT-specific constraints     | 9    | 91   |
 | 3500-3599 | Semantic - Statement         | Statement constraints           | 6    | 94   |
 | 3600-3699 | Semantic - Function          | Function constraints            | 20   | 80   |
 | 3700-3799 | DDL - CREATE SCHEMA          | CREATE SCHEMA errors            | 3    | 97   |
@@ -82,7 +82,7 @@ Each category has 100 slots, providing room for future expansion.
 | 5300-5399 | Type/Data - FETCH/LIMIT      | FETCH/LIMIT errors              | 4    | 96   |
 | 5400-5499 | Type/Data - Misc             | Miscellaneous type/data errors  | 9    | 91   |
 
-**Total:** 264 active codes, 68 obsolete codes, ~3,400 slots available for future expansion
+**Total:** 265 active codes, 68 obsolete codes, ~3,400 slots available for future expansion
 
 ## Consolidated Error Codes (New in 2026-05-10)
 
@@ -366,6 +366,14 @@ const query3 = `SELECT users.nonexistent FROM users` as const
 // Error: DbtyperError<2307, "[dbt:2307] Unknown qualified column \"users.nonexistent\"">
 ```
 
+### 3400-3499: Semantic - SELECT
+
+| Code | ID                                     | Message                                                                                                                   |
+| ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 3414 | COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN | ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position |
+
+CORE-8: raised only for an ORDER BY term after a set operation that is not an output column (for example `order by upper(name)`). A plain SELECT keeps 2300.
+
 ### Codes added with the SQLite and PostgreSQL work (#63, #91)
 
 | Code | ID                                   | Message                                             |
@@ -492,7 +500,7 @@ Error codes follow this structure:
 - ✅ Phase 6: Error System Refactoring (completed 2026-05-10)
     - Removed 40 INVALID\_\* codes
     - Consolidated 70 codes into 10 base codes with context parameters
-    - Reduced from 372 to 264 active codes (29% reduction)
+    - Reduced from 372 to 265 active codes (29% reduction)
 
 **Error Code Distribution:**
 
@@ -519,7 +527,7 @@ Error codes follow this structure:
 - 3100-3199: Type System - Subquery - 4 codes (96 slots free)
 - 3200-3299: Semantic - Duplicate/Exist - 12 codes (88 slots free)
 - 3300-3399: Semantic - Constraints - 6 codes (94 slots free)
-- 3400-3499: Semantic - SELECT - 8 codes (92 slots free)
+- 3400-3499: Semantic - SELECT - 9 codes (91 slots free)
 - 3500-3599: Semantic - Statement - 6 codes (94 slots free)
 - 3600-3699: Semantic - Function - 20 codes (80 slots free)
 - 3700-3799: DDL - CREATE SCHEMA - 3 codes (97 slots free)
@@ -541,7 +549,7 @@ Error codes follow this structure:
 - 5300-5399: Type/Data - FETCH/LIMIT - 4 codes (96 slots free)
 - 5400-5499: Type/Data - Misc - 9 codes (91 slots free)
 
-**Total:** 264 active codes, 68 obsolete codes, ~3,400 slots available for future expansion
+**Total:** 265 active codes, 68 obsolete codes, ~3,400 slots available for future expansion
 
 ## See Also
 
