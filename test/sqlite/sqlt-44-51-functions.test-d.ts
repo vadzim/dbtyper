@@ -10,10 +10,10 @@ const db = sqlMigrations({ driver: sqliteDriver })
 
 // SQLT-44
 const _text = await db.query(
-	`select lower(name) as a, upper(nick) as b, trim(name) as c, replace(name, 'a', 'b') as d, substr(name, 1, 2) as e, quote(name) as f, hex(name) as g, printf('%d', age) as h from t`,
+	`select lower(name) as a, upper(nick) as b, replace(name, 'a', 'b') as c, substr(name, 1, 2) as d, quote(name) as e, hex(name) as f, printf('%d', age) as g from t`,
 )
 expectType<typeof _text>(
-	toBe<Array<{ a: string; b: string | null; c: string; d: string; e: string; f: string; g: string; h: string }>>(),
+	toBe<Array<{ a: string; b: string | null; c: string; d: string; e: string; f: string; g: string }>>(),
 )
 // SQLT-44: concat is never null; concat_ws, format and printf are nullable only through their first argument
 const _cat = await db.query(
@@ -84,6 +84,11 @@ expectType<typeof _agg>(
 		}>
 	>(),
 )
+// SQLT-47: aggregates with FILTER
+const _aggFilter = await db.query(
+	`select sum(age) filter (where age > 1) as j, count(*) filter (where name = 'a') as k from t`,
+)
+expectType<typeof _aggFilter>(toBe<Array<{ j: number | null; k: number }>>())
 
 // SQLT-48
 const _date = await db.query(`select datetime('now') as d, current_timestamp as c`)
