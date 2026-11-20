@@ -87,6 +87,7 @@ export type DialectName = keyof Dialects
  * Number and date facts (#67): `numberTyping` "uniform" = each numeric type keeps its own type in arithmetic, "affinity" = SQLite's
  * integer/real rules; `datetimeArithmetic`: `timestamp ± interval`, `date - date` are typed (PGT-31).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
+ * `positionalParamSign`: how messages spell positional parameter n: the sign before the number (`$1`, `?1`).
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
  * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
  * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
@@ -123,6 +124,7 @@ export type Dialects = {
 		groupByRule: true
 		exprKeys: "name"
 		castHint: "`::text`"
+		positionalParamSign: "$"
 		dmlInCte: true
 		viewIfNotExists: false
 		skippedStatements: readonly [
@@ -193,6 +195,7 @@ export type Dialects = {
 		groupByRule: false
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
+		positionalParamSign: "?"
 		dmlInCte: false
 		viewIfNotExists: true
 		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end"]
@@ -254,6 +257,11 @@ type SyntaxDialect<Syntax extends string> =
 export type OtherDialectTitleOf<Catalog extends string> = {
 	[D in DialectName]: Dialects[D]["functionCatalog"] extends Catalog ? never : Dialects[D]["title"]
 }[DialectName]
+
+/** One fact of the dialect a `Syntax` names (the default dialect's when it names none or several). */
+export type SyntaxDialectFact<Syntax extends string, Fact extends keyof Dialects[DialectName]> = Dialects[
+	IsSingle<SyntaxDialect<Syntax>> extends true ? SyntaxDialect<Syntax> : DefaultDialect
+][Fact]
 
 /** The dialect of a database state; the default dialect when the state names none (see {@link DialectFact}). */
 type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : DefaultDialect
