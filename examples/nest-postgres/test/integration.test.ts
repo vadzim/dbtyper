@@ -62,7 +62,7 @@ async function waitForUsersJson(baseUrl: string, timeoutMs = 30_000) {
 
 describe(
 	"nest-postgres docker integration (reset → up → migrate → app-cli → typed query → Nest)",
-	{ skip: !runIntegration },
+	{ skip: !runIntegration, timeout: 240_000 },
 	() => {
 		it("migrations, app-cli stdout, compile-time query(), Nest GET /users", async () => {
 			compose("down -v --remove-orphans", "inherit")
@@ -95,11 +95,22 @@ describe(
 			}
 
 			const port = "3099"
-			const child = spawn("npx", ["tsx", "src/main.ts"], {
+			// node itself (not `npx tsx`): SIGTERM to an npx/tsx wrapper can leave the Nest server running as an orphan that
+			// keeps the inherited stdout pipe open, so that the whole test run (and the CI job) never ends. Own process
+			// group (detached) so that the whole tree can be killed in the end.
+			const child = spawn(process.execPath, ["--import", "tsx", "src/main.ts"], {
 				cwd: exampleRoot,
 				env: { ...process.env, DATABASE_URL: databaseUrl, PORT: port },
-				stdio: ["ignore", "pipe", "pipe"],
+				stdio: "ignore",
+				detached: true,
 			})
+			const killTree = (signal: NodeJS.Signals) => {
+				try {
+					process.kill(-child.pid!, signal)
+				} catch {
+					/* already gone */
+				}
+			}
 			try {
 				const baseUrl = `http://127.0.0.1:${port}`
 				const body = await waitForUsersJson(baseUrl)
@@ -108,7 +119,7 @@ describe(
 				const nestEmails = body.map(u => u.email).sort()
 				assert.deepEqual(nestEmails.slice(0, 2), ["alice@example.com", "bob@example.com"])
 			} finally {
-				child.kill("SIGTERM")
+				killTree("SIGTERM")
 				await new Promise<void>((resolve, reject) => {
 					const t = setTimeout(() => reject(new Error("nest child did not exit")), 10_000)
 					child.once("exit", () => {
@@ -116,7 +127,7 @@ describe(
 						resolve()
 					})
 				}).catch(() => {
-					child.kill("SIGKILL")
+					killTree("SIGKILL")
 				})
 			}
 		})
