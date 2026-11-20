@@ -27,7 +27,13 @@ type JsqlTableReplaceColumn<
 	Spelling extends string = never,
 > =
 	Table extends JsqlDataShape<"table">
-		? WithColumnOrder<Table, JsqlTableReplaceColumnData<Table, Col, Column>, Col, Column extends null ? true : false, Spelling>
+		? WithColumnOrder<
+				Table,
+				JsqlTableReplaceColumnData<Table, Col, Column>,
+				Col,
+				Column extends null ? true : false,
+				Spelling
+			>
 		: null
 
 type JsqlTableReplaceColumnData<
@@ -79,7 +85,9 @@ type WithColumnOrder<
 	Spelling extends string,
 > = Removing extends true
 	? WithSpelling<
-			Old extends { order: infer O extends readonly string[] } ? ReplaceProp<New, "order", WithoutName<O, Col>> : New,
+			Old extends { order: infer O extends readonly string[] }
+				? ReplaceProp<New, "order", WithoutName<O, Col>>
+				: New,
 			Old,
 			Col,
 			never
@@ -113,20 +121,20 @@ type JsqlTableRenameColumn<
 		? JsqlTableGetColumn<Table, Old> extends infer OldCol extends JsqlColumnShape
 			? JsqlTableReplaceColumnData<Table, Old, null> extends infer T0 extends JsqlDataShape<"table">
 				? JsqlTableReplaceColumnData<T0, New, OldCol> extends infer T
-				? WithSpelling<
-						WithSpelling<
-							Table extends { order: infer O extends readonly string[] }
-								? ReplaceProp<T, "order", RenameName<O, Old, New>>
-								: T,
+					? WithSpelling<
+							WithSpelling<
+								Table extends { order: infer O extends readonly string[] }
+									? ReplaceProp<T, "order", RenameName<O, Old, New>>
+									: T,
+								Table,
+								Old,
+								never
+							>,
 							Table,
-							Old,
-							never
-						>,
-						Table,
-						New,
-						Spelling
-					>
-				: never
+							New,
+							Spelling
+						>
+					: never
 				: never
 			: null
 		: null
@@ -319,19 +327,23 @@ export type JsqlDbReplaceColumn<
 	Tab extends string,
 	Name extends string,
 	Column extends JsqlColumnShape | SqlTypeShape | null,
-> = Db extends { pendingSpelled: infer P }
-	? JsqlDbReplaceSchema<
-			Omit<Db, "pendingSpelled"> extends infer D extends JsqlDatabaseShape ? D : Db,
-			Sch,
-			JsqlSchemaReplaceColumn<
-				JsqlDbGetSchema<Db, Sch>,
-				Tab,
-				Name,
-				Column,
-				Name extends keyof P ? P[Name] & string : never
-			>
-		>
-	: JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, Column, never>>
+> = JsqlDbReplaceSchema<
+	WithoutPendingSpelled<Db>,
+	Sch,
+	JsqlSchemaReplaceColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, Column, PendingSpellingOf<Db, Name>>
+>
+
+type PendingSpellingOf<Db, Name extends string> = Db extends { pendingSpelled: infer P }
+	? Name extends keyof P
+		? P[Name] & string
+		: never
+	: never
+
+type WithoutPendingSpelled<Db extends JsqlDatabaseShape> = Db extends { pendingSpelled: unknown }
+	? Omit<Db, "pendingSpelled"> extends infer D extends JsqlDatabaseShape
+		? D
+		: Db
+	: Db
 
 /** `ALTER TABLE … RENAME COLUMN Old TO New` (#150: the column keeps its place); `Spelling`: the new name as written (SQLite). */
 export type JsqlDbRenameColumn<

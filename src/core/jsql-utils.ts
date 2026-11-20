@@ -45,7 +45,10 @@ export type JsqlCreateRowidTable<
 } & ([Alias] extends [never] ? {} : { rowid_alias: Alias }) &
 	SpelledProp<Spelled>
 
-export type JsqlCreateView<Columns extends Record<string, SqlTypeShape>, Order extends readonly string[] = readonly string[]> = {
+export type JsqlCreateView<
+	Columns extends Record<string, SqlTypeShape>,
+	Order extends readonly string[] = readonly string[],
+> = {
 	kind: "view"
 	columns: Columns
 	order: Order
@@ -219,7 +222,11 @@ export type JsqlDbAddConstraintName<
 				Db,
 				Sch,
 				Tab,
-				Omit<Tbl, "constraints"> & { constraints: { names: ConstraintNames<Tbl> | Name } }
+				Omit<Tbl, "constraints"> & {
+					constraints: { names: ConstraintNames<Tbl> | Name }
+				} extends infer T extends JsqlDataShape
+					? T
+					: never
 			>
 		: Db
 
@@ -235,7 +242,11 @@ export type JsqlDbDropConstraintName<
 				Db,
 				Sch,
 				Tab,
-				Omit<Tbl, "constraints"> & { constraints: { names: Exclude<ConstraintNames<Tbl>, Name> } }
+				Omit<Tbl, "constraints"> & {
+					constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
+				} extends infer T extends JsqlDataShape
+					? T
+					: never
 			>
 		: Db
 

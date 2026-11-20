@@ -9,7 +9,14 @@ import type { SqliteStrictTypeNames } from "../core/dialect-types.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { JsqlCreateTable, JsqlCreateRowidTable, JsqlDbReplaceData } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { ColumnDef, PkKind, TableOptions } from "./parse-create-table.ts"
+import type {
+	ColumnDef,
+	PendingSpelled,
+	PkKind,
+	StackOrder,
+	TableOptions,
+	WithoutPending,
+} from "./parse-create-table.ts"
 import type { ColumnsFromStack } from "./parse-create-table-merge.ts"
 
 export type TableConstraintStart =
@@ -92,12 +99,24 @@ type SqliteTableBuiltOk<
 		facts: Record<string, unknown>
 	}
 		? JsqlDbReplaceData<
-				Db,
+				WithoutPending<Db>,
 				Schema,
 				Table,
 				Opts["withoutRowid"] extends true
-					? JsqlCreateTable<M["cols"], M["facts"]>
-					: JsqlCreateRowidTable<M["cols"], M["facts"], RowidAliasOf<Stack>>
+					? JsqlCreateTable<
+							M["cols"],
+							M["facts"],
+							null,
+							StackOrder<Stack>,
+							PendingSpelled<Db, Stack[number][0]>
+						>
+					: JsqlCreateRowidTable<
+							M["cols"],
+							M["facts"],
+							RowidAliasOf<Stack>,
+							StackOrder<Stack>,
+							PendingSpelled<Db, Stack[number][0]>
+						>
 			> extends infer NewDb extends JsqlDatabaseShape
 			? PeekToken<Tokens> extends TokenKey<";"> | TokenEot
 				? [SkipToken<Tokens>, NewDb, null]

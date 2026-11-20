@@ -147,6 +147,10 @@ const errors = {
 		code: 1010,
 		msg: ["Invalid indexed parameter: ", ""],
 	},
+	UNCLOSED_BLOCK_COMMENT: {
+		code: 1011,
+		msg: ["Unclosed block comment: `/*` has no matching `*/`"],
+	},
 
 	// Other-dialect syntax (DSEL-5, DSEL-6, DSEL-7; rows of src/core/dialect.ts). Args: construct, this chain's dialect, hint.
 	POSTGRES_ONLY_SYNTAX: {
@@ -563,6 +567,14 @@ const errors = {
 	EXPECTED_AS_AFTER_GENERATED_ALWAYS: {
 		code: 1518,
 		msg: ["Expected AS after GENERATED ALWAYS in CREATE TABLE"],
+	},
+	MULTIPLE_PRIMARY_KEYS: {
+		code: 1519,
+		msg: ["Multiple primary keys for table ", " are not allowed"],
+	},
+	EXPECTED_COLUMN_AFTER_COMMA_IN_CREATE_TABLE: {
+		code: 1520,
+		msg: ["Expected a column or a table constraint after `,` in CREATE TABLE"],
 	},
 
 	// ALTER TABLE
@@ -1411,6 +1423,10 @@ const errors = {
 	VIEW_COLUMN_LIST_MISMATCH: {
 		code: 3910,
 		msg: ["CREATE VIEW ", ": the column list has a different number of columns than the SELECT"],
+	},
+	DUPLICATE_VIEW_COLUMN: {
+		code: 3911,
+		msg: ["CREATE VIEW ", ": column ", " is named more than once in the column list"],
 	},
 
 	// ALTER TYPE

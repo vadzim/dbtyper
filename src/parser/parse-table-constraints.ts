@@ -7,11 +7,17 @@ import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts
 import type { DialectFact } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { ColumnDef, PkKind, WithPendingConstraint } from "./parse-create-table.ts"
+import type {
+	ColumnDef,
+	HasPrimaryKey,
+	MultiplePrimaryKeys,
+	PkKind,
+	WithPendingConstraint,
+} from "./parse-create-table.ts"
 import type { OnConflictClause } from "./parse-column-constraint-clauses.ts"
 import type { SkipParenGroup } from "./parse-column-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
-import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
+import type { ParseCreateTableAfterComma, ParseCreateTableBody } from "./parse-create-table-columns.ts"
 
 /** `a, b, c)` after `(`: `[rest after ")", names]` or `[rest, error]`. */
 export type ParseNameList<Tokens extends ParserMonad, Acc extends readonly string[]> =
@@ -53,8 +59,9 @@ type TableConstraintBody<
 	Schema extends string,
 	Table extends string,
 	Stack extends readonly ColumnDef[],
-> =
-	PeekToken<Tokens> extends TokenKey<"primary" | "foreign">
+> = [PeekToken<Tokens>, HasPrimaryKey<Stack>] extends [TokenKey<"primary">, true]
+	? MultiplePrimaryKeys<Tokens, Db, Table>
+	: PeekToken<Tokens> extends TokenKey<"primary" | "foreign">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends TokenKey<"key">
 				? TableConstraintColumns<
@@ -150,7 +157,7 @@ type AfterTableConstraint<
 	Stack extends readonly ColumnDef[],
 > =
 	PeekToken<Tokens> extends TokenKey<",">
-		? ParseCreateTableBody<SkipToken<Tokens>, Db, Schema, Table, Stack>
+		? ParseCreateTableAfterComma<SkipToken<Tokens>, Db, Schema, Table, Stack>
 		: PeekToken<Tokens> extends TokenKey<")">
 			? ParseCreateTableBody<Tokens, Db, Schema, Table, Stack>
 			: PeekToken<Tokens> extends TokenIdent<"deferrable" | "initially"> | TokenKey<"not">

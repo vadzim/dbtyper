@@ -15,6 +15,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseOneColumnAfterColName } from "./parse-create-table-columns.ts"
+import type { WithColumnSpelling } from "./parse-create-table.ts"
 import type { ParseNameList } from "./parse-table-constraints.ts"
 import type { ParseAlterActions, ParseAlterAfterOptionalColumnKw, ParseAlterSkipAction } from "./parse-alter-table.ts"
 
@@ -43,7 +44,15 @@ export type ParseAlterAddColumn<
 											Db,
 											FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>
 										>
-									: ParseOneColumnAfterColName<R2, Db, Sch, Tab, readonly [], Col, true>
+									: ParseOneColumnAfterColName<
+											R2,
+											WithColumnSpelling<Db, Col, PeekToken<R1>>,
+											Sch,
+											Tab,
+											readonly [],
+											Col,
+											true
+										>
 								: never
 							: SkipFailedStatement<R1, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [Col]>>
 						: SkipFailedExpression<

@@ -23,6 +23,9 @@ import type {
 	GetNumber,
 	GetNumberFrac,
 	SomeSymbols,
+	Whitespace,
+	IdentChar,
+	AsciiChar,
 } from "./sql-lexer-chars.ts"
 
 export type {
@@ -53,15 +56,12 @@ export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryPa
 /** Lex one token from a string (internal) */
 export type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends StartTokenChar
-		? ReadTokenChars<Rest> extends {
-				token: infer Word extends string
-				rest: infer Tail extends string
-			}
-			? ReadWord<Head, Word, Tail, Syntax>
-			: never
+		? ReadIdentWord<Head, Rest, Syntax>
 		: Head extends "/"
 			? Rest extends `*${string}`
-				? ReadTokenFromString<SkipSpaces<S>, Syntax>
+				? SkipSpaces<S> extends S
+					? Return<FormatError<Errors["UNCLOSED_BLOCK_COMMENT"], []>, S>
+					: ReadTokenFromString<SkipSpaces<S>, Syntax>
 				: ReadOperator<S>
 			: Head extends "-"
 				? Rest extends `-${string}`
@@ -97,7 +97,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 											? Rest extends `${infer String}"${infer Rest}`
 												? QuotedIdent<String, Rest, Syntax>
 												: Return<FormatError<Errors["UNCLOSED_QUOTED_IDENTIFIER"], []>, S>
-											: Head extends "\x20" | "\n" | "\r" | "\t"
+											: Head extends Whitespace
 												? ReadTokenFromString<SkipSpaces<Rest>, Syntax>
 												: Head extends "'"
 													? ReadSingleQuotedString<Rest, Syntax>
@@ -202,8 +202,19 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 																		>,
 																		S
 																	>
-															: Return<TokenKey<Head>, Rest>
+															: Head extends AsciiChar
+																? Return<TokenKey<Head>, Rest>
+																: ReadIdentWord<Head, Rest, Syntax>
 	: Return<TokenEot, "">
+
+/** An unquoted identifier or keyword starting with `Head` (a letter, `_` or a non-ASCII character). */
+type ReadIdentWord<Head extends string, Rest extends string, Syntax extends string> =
+	ReadTokenChars<Rest, IdentChar, true> extends {
+		token: infer Word extends string
+		rest: infer Tail extends string
+	}
+		? ReadWord<Head, Word, Tail, Syntax>
+		: never
 
 /**
  * A token that is a one-dialect construct (src/core/dialect.ts). The parser monad turns the tag into the
@@ -360,13 +371,19 @@ type ReadSingleQuotedString<S extends string, Syntax extends string = ""> = S ex
 
 type CheckIdentOrKey<S extends string> = S extends ServiceWords ? TokenKey<S> : TokenIdent<S>
 
-type ReadTokenChars<S extends string, Chars = TokenChar> = OptimizedBySpaceReadTokenChars<S, Chars>
+/** `NonAscii`: a character outside ASCII belongs to the word too (identifiers). */
+type ReadTokenChars<
+	S extends string,
+	Chars = TokenChar,
+	NonAscii extends boolean = false,
+> = OptimizedBySpaceReadTokenChars<S, Chars, NonAscii>
 
 type OptimizedBySpaceReadTokenChars<
 	S extends string,
 	Chars = TokenChar,
+	NonAscii extends boolean = false,
 > = S extends `${infer SmallerBuffer}\x20${infer Rest extends string}`
-	? ReadTokenCharsRaw<SmallerBuffer, Chars> extends {
+	? ReadTokenCharsRaw<SmallerBuffer, Chars, "", NonAscii> extends {
 			token: infer T extends string
 			rest: infer SmallerRest extends string
 		}
@@ -375,15 +392,20 @@ type OptimizedBySpaceReadTokenChars<
 			: S extends `${T}${infer Rest2}`
 				? { token: T; rest: Rest2 }
 				: never
-		: ReadTokenCharsRaw<S, Chars>
-	: ReadTokenCharsRaw<S, Chars>
+		: ReadTokenCharsRaw<S, Chars, "", NonAscii>
+	: ReadTokenCharsRaw<S, Chars, "", NonAscii>
 
 type ReadTokenCharsRaw<
 	S extends string,
 	Chars = TokenChar,
 	Acc extends string = "",
+	NonAscii extends boolean = false,
 > = S extends `${infer C}${infer Rest}`
 	? C extends Chars
-		? ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`>
-		: { token: Acc; rest: S }
+		? ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`, NonAscii>
+		: NonAscii extends true
+			? C extends AsciiChar
+				? { token: Acc; rest: S }
+				: ReadTokenCharsRaw<Rest, Chars, `${Acc}${C}`, NonAscii>
+			: { token: Acc; rest: S }
 	: { token: Acc; rest: "" }

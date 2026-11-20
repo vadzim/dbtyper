@@ -55,12 +55,6 @@ export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends str
 	? Omit<Db, "pendingConstraints"> & { pendingConstraints: P | Name }
 	: Db & { pendingConstraints: Name }
 
-export type WithoutPendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: string }
-	? Omit<Db, "pendingConstraints"> extends infer Clean extends JsqlDatabaseShape
-		? Clean
-		: Db
-	: Db
-
 export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
 	? { names: P }
 	: null
@@ -85,11 +79,26 @@ export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> =
 	: {}
 
 /** The database state without the pending CREATE TABLE facts. */
-export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: string } | { pendingSpelled: unknown }
+export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
+	{ pendingConstraints: string } | { pendingSpelled: unknown }
 	? Omit<Db, "pendingConstraints" | "pendingSpelled"> extends infer Clean extends JsqlDatabaseShape
 		? Clean
 		: Db
 	: Db
+
+/** A column of the stack is (part of) the PRIMARY KEY already: a second one is error 1519 in both engines. */
+export type HasPrimaryKey<Stack extends readonly ColumnDef[], Pk extends PkKind = false> = [
+	Exclude<Stack[number][5] | Pk, false>,
+] extends [never]
+	? false
+	: true
+
+/** The error of a second PRIMARY KEY in one CREATE TABLE. */
+export type MultiplePrimaryKeys<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Table extends string,
+> = SkipFailedStatement<Tokens, Db, FormatError<Errors["MULTIPLE_PRIMARY_KEYS"], [Table]>>
 
 /** The column names of a column stack in declaration order (#150). */
 export type StackOrder<Stack extends readonly ColumnDef[]> = { [I in keyof Stack]: Stack[I][0] }
@@ -122,13 +131,11 @@ type ParseCreateTableQualifiedWhenSchKnown<
 			? ParseCreateTableOpenParenOrAs<R, Db, Sch, Tab, Params>
 			: IfNotExists extends true
 				? // #172: the statement is still read and checked (as if the table were new), and the schema is kept
-					ParseCreateTableOpenParenOrAs<
-						R,
-						JsqlDbReplaceData<Db, Sch, Tab, null>,
-						Sch,
-						Tab,
-						Params
-					> extends [infer R2 extends ParserMonad, unknown, infer Err]
+					ParseCreateTableOpenParenOrAs<R, JsqlDbReplaceData<Db, Sch, Tab, null>, Sch, Tab, Params> extends [
+						infer R2 extends ParserMonad,
+						unknown,
+						infer Err,
+					]
 					? [R2, Db, Err]
 					: never
 				: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS"], []>>
@@ -206,12 +213,8 @@ type ParseCreateTableAsSelectRun<
 		? Res extends DbtyperErrorShape
 			? [R, Db, Res]
 			: Res extends JsqlSelectStatementResult
-				? JsqlDbReplaceData<
-						Db,
-						Schema,
-						Table,
-						CreateTableAsShape<Db, Res>
-					> extends infer NewDb extends JsqlDatabaseShape
+				? JsqlDbReplaceData<Db, Schema, Table, CreateTableAsShape<Db, Res>> extends infer NewDb extends
+						JsqlDatabaseShape
 					? PeekToken<R> extends TokenKey<";"> | TokenEot
 						? [SkipToken<R>, NewDb, null]
 						: SkipFailedStatement<R, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE TABLE"]>>
@@ -224,18 +227,19 @@ type ParseCreateTableAsSelectRun<
  * match case-insensitively (SQLite, fact `foldQuoted`), the keys are lower-cased and the output names kept as the
  * declared spellings (SQLT-28), as for a column of CREATE TABLE.
  */
-type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> =
-	(Res extends { order: infer O extends readonly string[] } ? O : UnionToStringTuple<keyof Res["returning"] & string>) extends infer Order extends readonly string[]
-		? DialectFact<Db, "lexer">["foldQuoted"] extends true
-			? JsqlCreateRowidTable<
-					{ [K in keyof Res["returning"] as Lowercase<K & string>]: NullableType<Res["returning"][K]> },
-					null,
-					never,
-					{ [I in keyof Order]: Lowercase<Order[I]> },
-					{ [K in keyof Res["returning"] & string as Lowercase<K> extends K ? never : Lowercase<K>]: K }
-				>
-			: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
-		: never
+type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = (
+	Res extends { order: infer O extends readonly string[] } ? O : UnionToStringTuple<keyof Res["returning"] & string>
+) extends infer Order extends readonly string[]
+	? DialectFact<Db, "lexer">["foldQuoted"] extends true
+		? JsqlCreateRowidTable<
+				{ [K in keyof Res["returning"] as Lowercase<K & string>]: NullableType<Res["returning"][K]> },
+				null,
+				never,
+				{ [I in keyof Order]: Lowercase<Order[I]> },
+				{ [K in keyof Res["returning"] & string as Lowercase<K> extends K ? never : Lowercase<K>]: K }
+			>
+		: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
+	: never
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
 
