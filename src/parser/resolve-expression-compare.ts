@@ -1,4 +1,10 @@
-import type { ShapeComparisonClass, SqlComparisonClass, StringLiteralClasses } from "../core/comparison-classes.ts"
+import type {
+	AnyComparisonClass,
+	ShapeComparisonClass,
+	SqlComparisonClass,
+	StringLiteralClasses,
+} from "../core/comparison-classes.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { SqlBoolean, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
@@ -21,35 +27,42 @@ type StringLiteralFits<Ast, Other extends SqlTypeShape> = [Ast] extends [never]
 			: false
 
 /**
- * EXPR-26: two operands are compatible when their classes are equal or either is "unknown", or one is an untyped
- * string literal (its AST, when the caller has it) and the other a class that takes one (PGT-16).
+ * EXPR-26: two operands are compatible when their classes are equal or either is one compatible with all
+ * (`AnyComparisonClass`: "unknown", SQLite's NUMERIC "affinity"), or one is an untyped string literal (its AST, when the
+ * caller has it) and the other a class that takes one (PGT-16). `Classes`: the dialect's `comparisonClasses` fact
+ * (`ComparisonClassesOf<Db>`, #195).
  */
 export type SameComparisonClass<
 	SqlL extends string | SqlTypeShape,
 	SqlR extends string | SqlTypeShape,
 	AstL = never,
 	AstR = never,
+	Classes = {},
 > = SqlL extends SqlTypeShape
 	? SqlR extends SqlTypeShape
-		? ShapeComparisonClass<SqlL> extends "unknown"
-			? true
-			: ShapeComparisonClass<SqlR> extends "unknown"
-				? true
-				: ShapeComparisonClass<SqlL> extends ShapeComparisonClass<SqlR>
+		? ShapeComparisonClass<SqlL, Classes> extends infer CL
+			? ShapeComparisonClass<SqlR, Classes> extends infer CR
+				? CL extends AnyComparisonClass
 					? true
-					: StringLiteralFits<AstL, SqlR> extends true
+					: CR extends AnyComparisonClass
 						? true
-						: StringLiteralFits<AstR, SqlL>
+						: CL extends CR
+							? true
+							: StringLiteralFits<AstL, SqlR> extends true
+								? true
+								: StringLiteralFits<AstR, SqlL>
+				: never
+			: never
 		: false
 	: SqlR extends SqlTypeShape
 		? false
 		: SqlL extends string
 			? SqlR extends string
-				? SqlComparisonClass<SqlL> extends "unknown"
+				? SqlComparisonClass<SqlL, Classes> extends AnyComparisonClass
 					? true
-					: SqlComparisonClass<SqlR> extends "unknown"
+					: SqlComparisonClass<SqlR, Classes> extends AnyComparisonClass
 						? true
-						: SqlComparisonClass<SqlL> extends SqlComparisonClass<SqlR>
+						: SqlComparisonClass<SqlL, Classes> extends SqlComparisonClass<SqlR, Classes>
 							? true
 							: false
 				: false
@@ -60,11 +73,12 @@ export type MergeComparison<
 	R extends SqlTypeShape,
 	LAst = never,
 	RAst = never,
+	Classes = {},
 > = L["type"] extends "null"
 	? FormatError<Errors["USE_IS_NULL_INSTEAD_OF_EQUALS_NULL"], []>
 	: R["type"] extends "null"
 		? FormatError<Errors["USE_IS_NULL_INSTEAD_OF_EQUALS_NULL"], []>
-		: SameComparisonClass<L, R, LAst, RAst> extends true
+		: SameComparisonClass<L, R, LAst, RAst, Classes> extends true
 			? SqlBoolean
 			: FormatError<Errors["INCOMPATIBLE_TYPES_IN_COMPARISON"], []>
 
@@ -77,24 +91,29 @@ type MergeBetweenBounds<
 	EAst = never,
 	LmAst = never,
 	HAst = never,
+	Classes = {},
 > = E["type"] extends "null"
 	? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 	: Lm["type"] extends "null"
 		? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
 		: H["type"] extends "null"
 			? FormatError<Errors["NULL_NOT_ALLOWED_IN_BETWEEN"], []>
-			: SameComparisonClass<E, Lm, EAst, LmAst> extends true
-				? SameComparisonClass<E, H, EAst, HAst> extends true
+			: SameComparisonClass<E, Lm, EAst, LmAst, Classes> extends true
+				? SameComparisonClass<E, H, EAst, HAst, Classes> extends true
 					? SqlBoolean
 					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
 				: FormatError<Errors["INCOMPATIBLE_TYPES_IN_BETWEEN"], []>
 
-type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape> = Expr["type"] extends "null"
+/** A LIKE operand: text, or a value of the "affinity" class (SQLite NUMERIC: LIKE reads it as text, #195). */
+type IsLikeOperand<S extends SqlTypeShape, Classes> =
+	ShapeComparisonClass<S, Classes> extends "affinity" ? true : IsSqlTextType<S>
+
+type MergeLikeOperands<Expr extends SqlTypeShape, Pat extends SqlTypeShape, Classes> = Expr["type"] extends "null"
 	? FormatError<Errors["NULL_NOT_ALLOWED_IN_LIKE"], []>
 	: Pat["type"] extends "null"
 		? FormatError<Errors["NULL_NOT_ALLOWED_IN_LIKE"], []>
-		: IsSqlTextType<Expr> extends true
-			? IsSqlTextType<Pat> extends true
+		: IsLikeOperand<Expr, Classes> extends true
+			? IsLikeOperand<Pat, Classes> extends true
 				? SqlBoolean
 				: FormatError<Errors["LIKE_PATTERN_MUST_BE_TEXT"], []>
 			: FormatError<Errors["LIKE_LEFT_OPERAND_MUST_BE_TEXT"], []>
@@ -126,7 +145,7 @@ export type ResolveBetweenAst<
 									? HvB extends SqlTypeShape
 										? WithEnumCheck<
 												EnumBetweenCheck<Db, EvB, Eb, LvB, Lb, HvB, Hb>,
-												MergeBetweenBounds<EvB, LvB, HvB, Eb, Lb, Hb>
+												MergeBetweenBounds<EvB, LvB, HvB, Eb, Lb, Hb, ComparisonClassesOf<Db>>
 											>
 										: never
 									: never
@@ -155,7 +174,7 @@ export type ResolveLikeAst<
 					? PvL
 					: EvL extends SqlTypeShape
 						? PvL extends SqlTypeShape
-							? MergeLikeOperands<EvL, PvL>
+							? MergeLikeOperands<EvL, PvL, ComparisonClassesOf<Db>>
 							: never
 						: never
 				: never
@@ -181,7 +200,7 @@ export type ResolvePgRegexMatchAst<
 					? PvR
 					: EvR extends SqlTypeShape
 						? PvR extends SqlTypeShape
-							? MergeLikeOperands<EvR, PvR>
+							? MergeLikeOperands<EvR, PvR, {}>
 							: never
 						: never
 				: never

@@ -146,17 +146,6 @@ export type ValueMismatchError<Db, Col extends string, ColType extends string> =
 		? FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColType>]>
 		: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
 
-/**
- * SQLT-7: a column type of the dialect's `anyValueColumnTypes` (SQLite: NUMERIC affinity) stores text as well as numbers,
- * so INSERT / UPDATE values and DEFAULTs of any class fit it (no 2507, 2508, 2510); DATE, JSON and BOOLEAN have their own
- * types (SQLT-8, SQLT-9).
- */
-export type AffinityTakesAnyValue<Db, ColType extends string> = [ColType] extends [
-	DialectFact<Db, "anyValueColumnTypes">,
-]
-	? true
-	: false
-
 /** SQLT-11: the only type names a STRICT table allows. */
 export type SqliteStrictTypeNames = "int" | "integer" | "real" | "text" | "blob" | "any"
 

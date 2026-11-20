@@ -34,11 +34,11 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 - `CREATE TABLE … AS SELECT …` makes a table of the output columns of the query, all nullable.
 - With `IF NOT EXISTS`, an existing table is kept as it is.
 - `CREATE VIEW [schema.]name [(column names)] AS SELECT …` (or `AS WITH … SELECT …`): the query is checked and its output columns become the view's columns.
-- PostgreSQL: enums (`CREATE TYPE … AS ENUM`, a column of it is the union of its labels), domains, arrays (`int[]`, `text[]`), `ALTER TYPE … ADD VALUE`. SQLite: `STRICT` and `WITHOUT ROWID` tables, `INTEGER PRIMARY KEY` as the rowid, type affinity names.
+- PostgreSQL: enums (`CREATE TYPE … AS ENUM`, a column of it is the union of its labels), domains, arrays (`int[]`, `text[]`), `ALTER TYPE … ADD VALUE`. SQLite: `STRICT` and `WITHOUT ROWID` tables, `INTEGER PRIMARY KEY` as the rowid, type affinity names, a single-quoted column name (`'order' INTEGER`), a bare name as DEFAULT (`DEFAULT standard` is the text `'standard'`).
 
 ## ALTER TABLE, DROP
 
-- `ALTER TABLE [schema.]name action[, action …]` applies, in order: `ADD [COLUMN]`, `DROP [COLUMN]`, `RENAME [COLUMN] a TO b`, `RENAME TO`, `ALTER COLUMN … TYPE`, `SET`/`DROP NOT NULL`, `SET`/`DROP DEFAULT`, `ADD CONSTRAINT`. A missing table or column, a view, or an unsupported action is a compile error. In SQLite the actions are those SQLite has.
+- `ALTER TABLE [schema.]name action[, action …]` applies, in order: `ADD [COLUMN]`, `DROP [COLUMN]`, `RENAME [COLUMN] a TO b`, `RENAME TO`, `ALTER COLUMN … TYPE`, `SET`/`DROP NOT NULL`, `SET`/`DROP DEFAULT`, `ADD CONSTRAINT`. A missing table or column, a view, or an unsupported action is a compile error. In SQLite the actions are those SQLite has; of `ALTER [COLUMN] c …` only `SET NOT NULL` and `DROP NOT NULL` (they need SQLite 3.53 or later at run time).
 - `DROP TABLE`, `DROP VIEW`, `DROP SCHEMA`, `DROP TYPE` with `IF EXISTS` (and `CASCADE` / `RESTRICT` on PostgreSQL). `DROP TABLE` of a view is an error.
 - `CREATE SCHEMA [IF NOT EXISTS] name`, `DROP SCHEMA [IF EXISTS] name`: PostgreSQL only.
 
@@ -65,7 +65,7 @@ Keywords are case-insensitive. Unquoted identifiers are folded to lower case, qu
 ## Expressions
 
 - Literals (string, number, boolean, `NULL`), columns, parameters (`:name`, `$n` in PostgreSQL, `?`, `?NNN`, `:name`, `@name` in SQLite), parentheses.
-- Operators: `+ - * / % ^`, unary `-`, `||`, comparisons, `AND`, `OR`, `NOT`, `IS [NOT] NULL`, `IS [NOT] DISTINCT FROM`, `[NOT] IN (list)`, `[NOT] BETWEEN`, `[NOT] LIKE`, `ILIKE`, array operators `@> <@ &&`. Operands must be compatible: the comparison classes are numeric, text, boolean, uuid, date and time, json, array, and enum for PostgreSQL. A mismatch is error 2500 and its relatives.
+- Operators: `+ - * / % ^`, unary `-`, `||`, comparisons, `AND`, `OR`, `NOT`, `IS [NOT] NULL`, `IS [NOT] DISTINCT FROM`, `[NOT] IN (list)`, `[NOT] BETWEEN`, `[NOT] LIKE`, `ILIKE`, array operators `@> <@ &&`. Operands must be compatible: the comparison classes are numeric, text, boolean, uuid, date and time, json, array, and enum for PostgreSQL. In SQLite a NUMERIC-affinity value (`NUMERIC`, `STRING`, `NUMBER`, any unknown type name) is compatible with text and numbers, as operand and in INSERT, UPDATE and DEFAULT. A mismatch is error 2500 and its relatives.
 - `NULL` is tested with `IS NULL` only: `= null`, `<> null`, and `NULL` in arithmetic or `BETWEEN` are errors.
 - `CASE WHEN … THEN … ELSE … END` and `CASE x WHEN …`; without `ELSE` the result is nullable.
 - `CAST(x AS type)`, and `x::type` in PostgreSQL.

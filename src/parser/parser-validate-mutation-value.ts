@@ -1,5 +1,6 @@
 import type { ParamProbeFound, ProbeKeyOf } from "../core/param-probe.ts"
-import type { AffinityTakesAnyValue, ValueMismatchError } from "../core/dialect-types.ts"
+import type { ValueMismatchError } from "../core/dialect-types.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlColumnFactsEntry, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -47,11 +48,9 @@ type ValidateMutationValueBySql<
 		? InsertColNotNull<Tbl, Col> extends true
 			? FormatError<Errors["NULL_NOT_ALLOWED_NOT_NULL_COLUMN"], [Col]>
 			: true
-		: SameComparisonClass<Val, ColSql, ValAst> extends true
+		: SameComparisonClass<Val, ColSql, ValAst, never, ComparisonClassesOf<Db>> extends true
 			? true
-			: AffinityTakesAnyValue<Db, ColSql["type"]> extends true
-				? true
-				: ValueMismatchError<Db, Col, ColSql["type"]>
+			: ValueMismatchError<Db, Col, ColSql["type"]>
 
 /** A generated column (CORE-18) can be read, but never written. */
 export type IsGeneratedColumn<Tbl extends JsqlDataShape, Col extends string> =

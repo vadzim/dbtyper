@@ -34,12 +34,29 @@ expectType<GetApplyError<typeof base, typeof alterType>>(
 		>
 	>(),
 )
-const setNotNull = `alter table t alter column old set not null;` as const
+// #195 (spec PR #19, for now A): SQLite 3.53+ runs ALTER COLUMN … SET / DROP NOT NULL; typed as in PostgreSQL
+const _notNull = await base.apply(`alter table t alter column old set not null;`).database().query(`select old from t`)
+expectType<typeof _notNull>(toBe<Array<{ old: number }>>())
+const _nullAgain = await base
+	.apply(`alter table t alter column old set not null;`)
+	.apply(`alter table t alter old drop not null;`)
+	.database()
+	.query(`select old from t`)
+expectType<typeof _nullAgain>(toBe<Array<{ old: number | null }>>())
+const alterDefault = `alter table t alter column old set default 1;` as const
 // @ts-expect-error
-base.apply(setNotNull)
-expectType<GetApplyError<typeof base, typeof setNotNull> extends DbtyperError<1900, string> ? true : false>(
-	toBe<true>(),
+base.apply(alterDefault)
+expectType<GetApplyError<typeof base, typeof alterDefault>>(
+	toBe<
+		DbtyperError<
+			1900,
+			"ALTER COLUMN is PostgreSQL-only; this database is SQLite. Rebuild the table (create, copy, drop, rename)"
+		>
+	>(),
 )
+const alterNoColumnKw = `alter table t alter old type text;` as const
+// @ts-expect-error
+base.apply(alterNoColumnKw)
 const addConstraint = `alter table t add constraint c unique (name);` as const
 // @ts-expect-error
 base.apply(addConstraint)
