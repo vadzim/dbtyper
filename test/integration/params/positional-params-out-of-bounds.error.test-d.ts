@@ -7,7 +7,7 @@ import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id text, age integer);`).database()
 
 // ❌ ERROR: PARAM-13 two `?` but one value
-const query = `select * from users where id = ? and age > ?;` as const
+const query = `select * from users where id = $1 and age > $2;` as const
 
 // @ts-expect-error
 await db.query(query, ["a"])

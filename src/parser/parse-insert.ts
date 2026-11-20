@@ -2,42 +2,54 @@ import type { UnionToStringTuple } from "./set-operation-types.ts"
 import type { JsqlDatabaseShape, JsqlInsertStatementResult, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { IsGeneratedColumn, IsIdentityAlwaysColumn } from "./parser-validate-mutation-value.ts"
+import type { ColumnFacts, IsGeneratedColumn, IsIdentityAlwaysColumn } from "./parser-validate-mutation-value.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseInsertAfterValuesKeyword } from "./parse-insert-values.ts"
 import type { ParseInsertOptionalTail } from "./parse-insert-on-conflict.ts"
+import type { ColumnNameToken } from "./parse-create-table.ts"
 import type { ParseInsertWithSelect } from "./parse-insert-select.ts"
 import type { InsertTableContext, InsertRealColumns, ParseInsertFromTableRef } from "./parse-insert-table.ts"
 
 /** Returned when a suffix `ParseInsertValuesCells` pass consumed `)` closing the physical `VALUES` row; tail is handled by the caller. */
 export type InsertValuesRowCellsParsedMarker = { readonly __insertValuesRowCellsParsed: true }
 
-type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataShape, Acc extends readonly string[]> =
+/** The column list of an INSERT; a single-quoted name is the identifier where the dialect has `stringColumnNames` (SQLT-68). */
+type ParseInsertColumnNameList<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Tbl extends JsqlDataShape,
+	Acc extends readonly string[],
+> =
 	PeekToken<Tokens> extends TokenKey<")">
 		? Acc extends readonly []
 			? SkipFailedExpression<Tokens, FormatError<Errors["INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY"], []>>
 			: [Tokens, Acc]
 		: PeekToken<Tokens> extends infer Tok
 			? SkipToken<Tokens> extends infer R1 extends ParserMonad
-				? AsIdent<Tok> extends TokenIdent<infer Col extends string>
+				? ColumnNameToken<Tok, Db> extends TokenIdent<infer Col extends string>
 					? JsqlDataGetColumnType<Tbl, Col> extends null
 						? SkipFailedExpression<R1, FormatError<Errors["UNKNOWN_COLUMN"], [Col, "INSERT column list"]>>
-						: IsGeneratedColumn<Tbl, Col> extends true
-							? IsIdentityAlwaysColumn<Tbl, Col> extends true
-								? InsertColumnListNext<R1, Tbl, Acc, Col> // PGT-25: needs OVERRIDING, checked after the list
-								: SkipFailedExpression<
-										R1,
-										FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "INSERT"]>
-									>
-							: InsertColumnListNext<R1, Tbl, Acc, Col>
+						: Col extends Acc[number]
+							? SkipFailedExpression<
+									R1,
+									FormatError<Errors["DUPLICATE_COLUMN_IN_WRITE"], [Col, "INSERT"]>
+								>
+							: IsGeneratedColumn<Tbl, Col> extends true
+								? IsIdentityAlwaysColumn<Tbl, Col> extends true
+									? InsertColumnListNext<R1, Db, Tbl, Acc, Col> // PGT-25: needs OVERRIDING, checked after the list
+									: SkipFailedExpression<
+											R1,
+											FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, "INSERT"]>
+										>
+								: InsertColumnListNext<R1, Db, Tbl, Acc, Col>
 					: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in INSERT column list"]>>
 				: never
 			: never
@@ -45,6 +57,7 @@ type ParseInsertColumnNameList<Tokens extends ParserMonad, Tbl extends JsqlDataS
 /** After a column name of the INSERT column list: `)` ends the list, `,` goes on. */
 type InsertColumnListNext<
 	R1 extends ParserMonad,
+	Db extends JsqlDatabaseShape,
 	Tbl extends JsqlDataShape,
 	Acc extends readonly string[],
 	Col extends string,
@@ -54,20 +67,15 @@ type InsertColumnListNext<
 			? [R2, readonly [...Acc, Col]]
 			: never
 		: PeekToken<R1> extends TokenKey<",">
-			? ParseInsertColumnNameList<SkipToken<R1>, Tbl, readonly [...Acc, Col]>
+			? ParseInsertColumnNameList<SkipToken<R1>, Db, Tbl, readonly [...Acc, Col]>
 			: SkipFailedExpression<R1, FormatError<Errors["EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST"], []>>
 
-type IsNotNullInsertColumn<Tbl extends JsqlDataShape, Col extends string> = Tbl extends {
-	column_facts: infer Facts extends Record<string, unknown>
-}
-	? Col extends keyof Facts
-		? Facts[Col] extends { nullability: "not_null" }
-			? Facts[Col] extends { default: true } | { generated: true | { mode: "stored" | "virtual" } }
-				? false
-				: true
-			: false
+type IsNotNullInsertColumn<Tbl extends JsqlDataShape, Col extends string> =
+	ColumnFacts<Tbl, Col> extends { nullability: "not_null" }
+		? ColumnFacts<Tbl, Col> extends { default: true } | { generated: true | { mode: "stored" | "virtual" } }
+			? false
+			: true
 		: false
-	: false
 
 type MissingRequiredInsertColumn<Tbl extends JsqlDataShape, Cols extends readonly string[]> = {
 	[K in Extract<keyof Tbl["columns"], string>]: IsNotNullInsertColumn<Tbl, K> extends true
@@ -86,6 +94,13 @@ type ValidateInsertRequiredColumns<Tbl extends JsqlDataShape, Cols extends reado
 				: FormatError<Errors["MISSING_NOT_NULL_COLUMN_IN_INSERT"], [string]>
 		: never
 
+/** #150: an INSERT without a column list fills the real columns in declaration order. */
+type InsertColumnOrder<Tbl extends JsqlDataShape> = Tbl extends { order: infer O extends readonly string[] }
+	? string[] extends O
+		? UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
+		: O
+	: UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
+
 type ParseInsertAfterOpenParenCols<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -97,16 +112,7 @@ type ParseInsertAfterOpenParenCols<
 > =
 	PeekToken<Tokens> extends TokenKey<"values" | "select">
 		? // no column list: every column of the table, in declaration order
-			ParseInsertAfterColumnNames<
-				Tokens,
-				Db,
-				Scope,
-				Params,
-				Tbl,
-				Sch,
-				Tab,
-				UnionToStringTuple<Extract<keyof InsertRealColumns<Tbl>, string>>
-			>
+			ParseInsertAfterColumnNames<Tokens, Db, Scope, Params, Tbl, Sch, Tab, InsertColumnOrder<Tbl>>
 		: PeekToken<Tokens> extends TokenKey<"default">
 			? SkipToken<Tokens> extends infer Rd extends ParserMonad
 				? PeekToken<Rd> extends TokenKey<"values">
@@ -136,7 +142,7 @@ type ParseInsertAfterOpenParenCols<
 				: never
 			: PeekToken<Tokens> extends TokenKey<"(">
 				? SkipToken<Tokens> extends infer R0 extends ParserMonad
-					? ParseInsertColumnNameList<R0, Tbl, readonly []> extends [
+					? ParseInsertColumnNameList<R0, Db, Tbl, readonly []> extends [
 							infer R1 extends ParserMonad,
 							infer ColsOrErr,
 						]

@@ -11,7 +11,7 @@ Action items (see **`docs/CURRENT.md`** for shipped vs planned). Phrase each lin
 - [ ] make better error messages - like column "..." has wrong value or table "..." does not exist
 
 - [ ] define if task is simple and make it with fresh context and exit to preserve tokens
-- [x] add a test that all the error codes are tested in .error.tests.ts files
+- [x] add a test that all the error codes are tested in .error.test-d.ts files
 - [x] add infra test that checks for every error code there's at least one integration test (`test/infra/error-codes-covered.test.ts`)
 - [x] fix a mess in parse select - parse select inner expression shoild be just parse select expression and then consume ")", no bunch of _ Inner _ types
 - [x] fix a mess in parse select - parsing select as value should be just parse select expression and then check that number of columns is 1
@@ -41,30 +41,30 @@ Action items (see **`docs/CURRENT.md`** for shipped vs planned). Phrase each lin
 
 ## `INSERT` / `UPDATE` language
 
-- [x] **Implement `INSERT … ON CONFLICT … DO UPDATE` (UPSERT)** end-to-end: parse, type **`SET`** / **`WHERE`** against post-insert row shape (or documented subset), extend **`JsqlInsertStatementResult`** or add a distinct result kind, add **`test/parse-insert.test.ts`** cases.
+- [x] **Implement `INSERT … ON CONFLICT … DO UPDATE` (UPSERT)** end-to-end: parse, type **`SET`** / **`WHERE`** against post-insert row shape (or documented subset), extend **`JsqlInsertStatementResult`** or add a distinct result kind, add **`test/integration/insert/`** cases.
 - [x] **Implement multi-row `VALUES`**: **`VALUES (…), (…), …`**, type each row against the column list, reject arity mismatch, add tests.
 - [x] **Implement `RETURNING`**: parse projection list, resolve against post-mutation row type (same rules as **`SELECT`** list where feasible), add result typing and tests.
 
 ## `ALTER TABLE`
 
 - [x] For each supported clause in **`parse-alter-table.ts`**, ensure **`ParseAlterTable`** output **mutates `JsqlDatabaseShape`** correctly: **`ADD COLUMN`**, **`DROP COLUMN`**, **`RENAME COLUMN`**, **`ALTER COLUMN … TYPE`**, **`SET NOT NULL`**, **`DROP NOT NULL`** (and document no-ops: **`SET DEFAULT`**, **`ADD CONSTRAINT`**, skip-until-`,`/`;`\*\*).
-- [x] Add **`test/parse-alter-table.test.ts`**: one **`Expect<Extends<…>>`** success per clause above (start from a small **`JsqlDatabaseShape`**), plus at least three errors (**unknown qualified table**, **unknown column** on rename/drop, **malformed** / unsupported token sequence).
+- [x] Add **`test/integration/ddl/`**: one **`Expect<Extends<…>>`** success per clause above (start from a small **`JsqlDatabaseShape`**), plus at least three errors (**unknown qualified table**, **unknown column** on rename/drop, **malformed** / unsupported token sequence).
 
 ## `CASE expr WHEN`
 
 - [x] **Extend `ParseExpressionAST` / `ParseScalarExprUntyped`** to parse **`CASE expr WHEN literal THEN … [ELSE …] END`** (distinct AST shape from searched **`CASE WHEN boolean`**).
 - [x] **Extend `ResolveExpressionAST`** so **`CASE expr WHEN`** compares **`expr`** to each **`WHEN`** value with the same rules as **`=`** comparison-class checks; unify **`THEN`/`ELSE`** branch types like searched **`CASE`**.
-- [x] Add **`test/parse-where-expression.test.ts`** and **`test/parse-select.test.ts`** rows covering **`CASE users.id WHEN …`** (or equivalent) for success + **`WHEN`** type mismatch + missing **`ELSE`** widening.
+- [x] Add **`test/integration/where/`** and **`test/integration/select/`** rows covering **`CASE users.id WHEN …`** (or equivalent) for success + **`WHEN`** type mismatch + missing **`ELSE`** widening.
 
 ## Subqueries, CTEs, views
 
-- [x] **Implement scalar subquery** **`( SELECT expr )`** inside **`ParseScalarExprUntyped`** / **`ResolveExpressionAST`**: single column, **`Params`** / **`ExprParseEnv`** threading; add **`parse-select.test.ts`** / **`parse-expression.test.ts`** cases where gaps remain.
-- [x] **Implement `IN ( SELECT … )`**: single-column inner **`SELECT`**, **`IN`** comparison-class rules; **`parse-expression.test.ts`** (`WHERE`) + **`parse-select.test.ts`** as needed.
-- [x] **Implement `EXISTS ( SELECT … )`**: boolean result; inner **`SELECT`** uses empty inner **`FROM`** scope (no outer correlation in **`EXISTS`** body); tests in **`parse-expression.test.ts`**.
-- [x] **Implement `WITH cte AS ( SELECT … ) , …`**: CTE list, forward names for main **`SELECT`**, **`ScopeMap`** merge; **`parse-select.test.ts`** success + duplicate CTE name error. **Not implemented**: CTE cycle detection as a dedicated error.
+- [x] **Implement scalar subquery** **`( SELECT expr )`** inside **`ParseScalarExprUntyped`** / **`ResolveExpressionAST`**: single column, **`Params`** / **`ExprParseEnv`** threading; add **`test/integration/select/`** / **`test/integration/expressions/`** cases where gaps remain.
+- [x] **Implement `IN ( SELECT … )`**: single-column inner **`SELECT`**, **`IN`** comparison-class rules; **`test/integration/expressions/`** (`WHERE`) + **`test/integration/select/`** as needed.
+- [x] **Implement `EXISTS ( SELECT … )`**: boolean result; inner **`SELECT`** uses empty inner **`FROM`** scope (no outer correlation in **`EXISTS`** body); tests in **`test/integration/expressions/`**.
+- [x] **Implement `WITH cte AS ( SELECT … ) , …`**: CTE list, forward names for main **`SELECT`**, **`ScopeMap`** merge; **`test/integration/select/`** success + duplicate CTE name error. **Not implemented**: CTE cycle detection as a dedicated error.
 - [ ] **Implement correlated subqueries** beyond current wiring: outer **`FROM`** visible in **`WHERE`** / expression sites as needed; extend **`SELECT`**-list inner subquery scope deliberately; add tests (**v1 excludes `LATERAL`** per **`ROADMAP.md`**).
 - [ ] **`LATERAL` (deferred past v1 correlation milestone):** **`JOIN LATERAL`**, **`CROSS JOIN LATERAL`**, correlated derived tables in **`FROM`** — parse, scope (**outer row visible inside**), nullability; document in **`SUPPORTED-SQL.md`** when started.
-- [x] **Implement `CREATE VIEW`**: routed in **`ParseSqlStatement`**; **`kind: "view"`** + **`columns`** from inner **`SELECT`**; type test in **`test/apply-statements.test.ts`** (qualified view name + **`ParseQualifiedViewName`**).
+- [x] **Implement `CREATE VIEW`**: routed in **`ParseSqlStatement`**; **`kind: "view"`** + **`columns`** from inner **`SELECT`**; type test in **`test/integration/stmt/`** (qualified view name + **`ParseQualifiedViewName`**).
 
 ## `CREATE INDEX` / other `CREATE`
 
@@ -84,14 +84,12 @@ Action items (see **`docs/CURRENT.md`** for shipped vs planned). Phrase each lin
 - [ ] (**Option A**) Ensure **`functions?: …`** on **`JsqlDatabaseShape`** flows through **`sqlMigrations` → `FlattenedJsqlDatabase` → `ResolveFunctionCall`**; custom names map to **`ExprOk<…>`** return types (**no** runtime-only registration for typings).
 - [ ] Maintain a **built-in catalog** (**`lower`**, **`count`**, etc.) inside **`ResolveFunctionCall`** (or an extracted map) separately from **`Db["functions"]`** merge rules.
 - [ ] **Replace balanced skip** with real arg parse where **`function_call`** is produced; unify **`TryOperandIdentOrCall`** / **`ParseScalarExprUntypedFromIdent`** paths (`LOG.md`).
-- [ ] **`test/function-registry.test.ts`** (or **`parse-expression`**)：** one custom function** + **one unknown function** (**`SqlParserError`**) case.
+- [ ] A test for **one custom function** + **one unknown function** (error 3619), under **`test/integration/expressions/`**.
 
 ## `GROUP BY` / `HAVING` (priority **C** in **`ROADMAP.md`**)
 
-- [ ] Parse **`GROUP BY`** (one or more expressions / columns) after **`WHERE`** ordering; lexer: do not treat **`GROUP`** / **`HAVING`** as table aliases (**`ParseAliasAfterTable`** termination list).
-- [ ] Parse **`HAVING`** boolean expression against **post-aggregation / grouped** scope rules (subset first if full inference is too heavy).
-- [ ] Infer **`JsqlSelectStatementResult`** columns: non-aggregated keys vs aggregate expressions; align with **`SUPPORTED-SQL.md`**.
-- [ ] **`test/group-by.test.ts`** (or **`parse-select.test.ts`**): minimal success path + **one** invalid aggregate/column combo error.
+- [x] Parse **`GROUP BY`** and **`HAVING`**; a column outside an aggregate that is not a key is error 3403 (SEL-27…SEL-29). Tests: **`test/integration/select/`** (`group-by`), **`test/dialects/pgt-groupby-aggregate-by-dialect.test-d.ts`**.
+- [ ] `GROUP BY` an output alias (`group by d`), and a grouped primary key that covers the table's other columns (see the review in issue 175).
 
 ## PostgreSQL arrays (minimal MVP, then widen)
 
@@ -107,14 +105,14 @@ Action items (see **`docs/CURRENT.md`** for shipped vs planned). Phrase each lin
 
 ## Tests — `ApplyStatements` / skip / docs
 
-- [x] Add **`test/apply-statements.test.ts`** (or **`parse-sql-statement`** section in an existing file): **`ApplyStatements<`create table public.t (id int); select id from t;`, EmptyDb>`** (or two **`CREATE`** steps) and **`Expect<Extends<…>>`** on the final **`Db`** shape and/or **`never`** on hard error paths.
+- [x] Add a test under **`test/integration/stmt/`**: **`ApplyStatements<`create table public.t (id int); select id from t;`, EmptyDb>`** (or two **`CREATE`** steps) and **`Expect<Extends<…>>`** on the final **`Db`** shape and/or **`never`** on hard error paths.
 - [x] Add a type test: **`ApplyParsedStatements`** when the **first** statement returns **`SqlParserError`** in the third tuple slot — assert **iteration stops** and **`[Rest, Db, SqlParserError<…>]`** (encode in **`Expect`**).
-- [x] **`ParseSqlStatement`**: **`grant select …`** still **skip**; **`create view … as select … from …`** merges a **`view`** (see **`apply-statements.test.ts`**).
+- [x] **`ParseSqlStatement`**: **`grant select …`** still **skip**; **`create view … as select … from …`** merges a **`view`** (see **`test/integration/stmt/`**).
 - [x] Edit **`SUPPORTED-SQL.md` § Not supported**: remove or narrow the blanket **`ALTER`** line; add an **`ALTER TABLE`** subsection mirroring **`parse-alter-table.ts`** support and no-op clauses.
 
 ## Tests — `SELECT` derived tables (edge cases)
 
-- [x] **`test/parse-select.test.ts`**: inner derived **`WHERE`** filters inner columns only; assert success projection types.
+- [x] **`test/integration/select/`**: inner derived **`WHERE`** filters inner columns only; assert success projection types.
 - [x] Same file: inner **`SELECT DISTINCT`** + **`FROM`** + alias; assert column types.
 - [x] Same file: inner **`FROM a JOIN b ON a.id = b.id`** inside parentheses; outer references only inner alias.
 - [x] Same file: sole **`FROM`** item **`(select users.id from users) u`** without **`AS`** keyword; assert **`JsqlSelectStatementResult`**.
@@ -127,10 +125,10 @@ Action items (see **`docs/CURRENT.md`** for shipped vs planned). Phrase each lin
 
 ## Tests — `INSERT` / `UPDATE` / `DELETE` wiring
 
-- [x] **`test/parse-insert.test.ts`**: **`insert into public.users (id, name) values ('a','b');`** against a **`Db`** whose **`defaultSchema`** is not **`public`** (or inverse) so qualified resolution is exercised.
+- [x] **`test/integration/insert/`**: **`insert into public.users (id, name) values ('a','b');`** against a **`Db`** whose **`defaultSchema`** is not **`public`** (or inverse) so qualified resolution is exercised.
 - [x] Same file: **`insert into users u (id, name) values ('a','b');`** if **`ParseInsert`** allows table alias — assert **`JsqlInsertStatementResult`** or document rejection with an error test.
-- [x] **`test/parse-update.test.ts`**: **`update public.users set name = 'x', id = 'y' where …`** (two **`SET`** columns) success + one wrong-type **`SET`** error.
-- [x] **`test/parse-delete.test.ts`** or **`parse-select.test.ts`**: **`delete from users where users.name between 'a' and 'z';`** and **`… where users.name like 'x%';`** — end-to-end **`ParseSqlStatement`**, not only **`ParseWhereExpression`**.
+- [x] **`test/integration/update/`**: **`update public.users set name = 'x', id = 'y' where …`** (two **`SET`** columns) success + one wrong-type **`SET`** error.
+- [x] **`test/integration/delete/`** or **`test/integration/select/`**: **`delete from users where users.name between 'a' and 'z';`** and **`… where users.name like 'x%';`** — end-to-end **`ParseSqlStatement`**, not only **`ParseWhereExpression`**.
 
 ## Example
 

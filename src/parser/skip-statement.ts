@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { AsIdent, TokenEot, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { TokenType } from "../lexer/sql-lexer.ts"
 import type { TokenKind } from "../lexer/sql-lexer.ts"
@@ -86,11 +86,13 @@ export type SkipBracketedUntil<
 	Tokens extends ParserMonad,
 	EndToken extends TokenType<TokenKind, string> = TokenEot | TokenKey<";">,
 	ClosingBracketsStack extends ClosingBrackets[] = [],
+	Collect extends boolean = false,
+	Names extends string = never,
 > =
 	PeekToken<Tokens> extends TokenKey<"(">
-		? SkipBracketedUntil<SkipToken<Tokens>, EndToken, [")", ...ClosingBracketsStack]>
+		? SkipBracketedUntil<SkipToken<Tokens>, EndToken, [")", ...ClosingBracketsStack], Collect, Names>
 		: PeekToken<Tokens> extends TokenKey<"[">
-			? SkipBracketedUntil<SkipToken<Tokens>, EndToken, ["]", ...ClosingBracketsStack]>
+			? SkipBracketedUntil<SkipToken<Tokens>, EndToken, ["]", ...ClosingBracketsStack], Collect, Names>
 			: ClosingBracketsStack extends [
 						infer CurrentClosingBracket extends ClosingBrackets,
 						...infer Tail extends ClosingBrackets[],
@@ -98,13 +100,21 @@ export type SkipBracketedUntil<
 				? PeekToken<Tokens> extends TokenEot
 					? [Tokens, FormatError<Errors["CLOSING_BRACKET_NOT_FOUND"], [CurrentClosingBracket]>]
 					: PeekToken<Tokens> extends TokenKey<CurrentClosingBracket>
-						? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail>
+						? SkipBracketedUntil<SkipToken<Tokens>, EndToken, Tail, Collect, Names>
 						: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
 							? [Tokens, FormatError<Errors["UNMATCHED_CLOSING_BRACKET"], [PeekToken<Tokens>["value"]]>]
-							: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+							: SkipBracketedUntil<
+									SkipToken<Tokens>,
+									EndToken,
+									ClosingBracketsStack,
+									Collect,
+									Collect extends true ? CollectName<Names, PeekToken<Tokens>> : Names
+								>
 				: PeekToken<Tokens> extends infer EndTok
 					? EndTok extends EndToken
-						? [Tokens, SkippedStatement<EndTok>]
+						? Collect extends true
+							? [Tokens, { names: Names }]
+							: [Tokens, SkippedStatement<EndTok>]
 						: PeekToken<Tokens> extends TokenEot
 							? [Tokens, FormatError<Errors["TOKEN_NOT_FOUND"], []>]
 							: PeekToken<Tokens> extends TokenKey<ClosingBrackets>
@@ -112,7 +122,17 @@ export type SkipBracketedUntil<
 										Tokens,
 										FormatError<Errors["UNMATCHED_CLOSING_BRACKET"], [PeekToken<Tokens>["value"]]>,
 									]
-								: SkipBracketedUntil<SkipToken<Tokens>, EndToken, ClosingBracketsStack>
+								: SkipBracketedUntil<
+										SkipToken<Tokens>,
+										EndToken,
+										ClosingBracketsStack,
+										Collect,
+										Collect extends true ? CollectName<Names, PeekToken<Tokens>> : Names
+									>
 					: never
+
+/** With `Collect` (a named CHECK, #179): the names the skipped tokens hold. */
+type CollectName<Names extends string, Tok> =
+	AsIdent<Tok> extends TokenIdent<infer N extends string> ? Names | N : Names
 
 type ClosingBrackets = ")" | "]"

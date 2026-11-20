@@ -147,6 +147,10 @@ const errors = {
 		code: 1010,
 		msg: ["Invalid indexed parameter: ", ""],
 	},
+	UNCLOSED_BLOCK_COMMENT: {
+		code: 1011,
+		msg: ["Unclosed block comment: `/*` has no matching `*/`"],
+	},
 
 	// Other-dialect syntax (DSEL-5, DSEL-6, DSEL-7; rows of src/core/dialect.ts). Args: construct, this chain's dialect, hint.
 	POSTGRES_ONLY_SYNTAX: {
@@ -221,6 +225,43 @@ const errors = {
 			"; did you mean ",
 			"? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
 		],
+	},
+	// Unknown second word of CREATE / ALTER / DROP, untracked schema changes (#157, #158, STMT-Q2)
+	UNKNOWN_STATEMENT_FORM: {
+		code: 1936,
+		msg: [
+			"Unknown statement ",
+			" ",
+			". If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
+		],
+	},
+	// SQLT-72: `json_each` / `json_tree` with no argument or more than two (#198)
+	JSON_TABLE_FUNCTION_TAKES_1_OR_2_ARGUMENTS: {
+		code: 1937,
+		msg: ["", " takes 1 or 2 arguments: json [, path]"],
+	},
+	UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN: {
+		code: 1933,
+		msg: [
+			"Unknown statement ",
+			" ",
+			"; did you mean ",
+			" ",
+			"? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped",
+		],
+	},
+	EXPECTED_STATEMENT_FORM: {
+		code: 1934,
+		msg: ["Expected what to ", " (TABLE, VIEW, INDEX, …)"],
+	},
+	UNTRACKED_SCHEMA_CHANGE: {
+		code: 1935,
+		msg: ["", " is not supported: dbtyper cannot follow the schema change it makes. ", ""],
+	},
+
+	MULTIPLE_STATEMENTS_IN_QUERY: {
+		code: 1932,
+		msg: ["This driver runs only the first statement of a text; send one statement per query or stream call"],
 	},
 
 	// Parser Syntax Errors - Expected Keywords/Tokens
@@ -424,9 +465,11 @@ const errors = {
 	},
 
 	// UPDATE Statement
-	EXPECTED_SET_IN_UPDATE: {
+	OBSOLETE_1300_EXPECTED_SET_IN_UPDATE: {
 		code: 1300,
-		msg: ["Expected SET in UPDATE"],
+		msg: [
+			"Obsolete, no longer reported: Expected SET in UPDATE (EXPECTED_SET_AFTER_TABLE_IN_UPDATE is reported first)",
+		],
 	},
 	EXPECTED_SET_AFTER_TABLE_IN_UPDATE: {
 		code: 1301,
@@ -481,6 +524,10 @@ const errors = {
 	OBSOLETE_1404_EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM: {
 		code: 1404,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
+	},
+	BARE_DML_ALIAS_NEEDS_AS: {
+		code: 1309,
+		msg: ["On SQLite the alias of the target table of ", " needs AS: write AS ", ""],
 	},
 	EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM: {
 		code: 1405,
@@ -564,6 +611,14 @@ const errors = {
 		code: 1518,
 		msg: ["Expected AS after GENERATED ALWAYS in CREATE TABLE"],
 	},
+	MULTIPLE_PRIMARY_KEYS: {
+		code: 1519,
+		msg: ["Multiple primary keys for table ", " are not allowed"],
+	},
+	EXPECTED_COLUMN_AFTER_COMMA_IN_CREATE_TABLE: {
+		code: 1520,
+		msg: ["Expected a column or a table constraint after `,` in CREATE TABLE"],
+	},
 
 	// ALTER TABLE
 	OBSOLETE_1600_EXPECTED_SEMICOLON_AFTER_ALTER_TABLE: {
@@ -609,6 +664,14 @@ const errors = {
 	EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE: {
 		code: 1610,
 		msg: ["Expected `exists` after `IF` in ALTER TABLE"],
+	},
+	EXPECTED_ALTER_TABLE_ACTION: {
+		code: 1611,
+		msg: ["Expected an action (ADD, DROP, RENAME, ALTER, …) in ALTER TABLE"],
+	},
+	EXPECTED_NOT_EXISTS_AFTER_IF_ON_COLUMN: {
+		code: 1612,
+		msg: ["Expected ", " after `IF` on a column in ALTER TABLE"],
 	},
 
 	// DROP TABLE
@@ -895,6 +958,13 @@ const errors = {
 		code: 2406,
 		msg: ["internal: a parameter was read"],
 	},
+	TOO_MANY_PARAMETERS: {
+		code: 2407,
+		msg: [
+			"A statement may have at most ",
+			" positional parameters; pass fewer values or split it into several statements",
+		],
+	},
 
 	// Type System Errors
 	// Type Compatibility
@@ -1017,13 +1087,14 @@ const errors = {
 		code: 2803,
 		msg: ["LIKE left operand must be text"],
 	},
-	CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
+	// EXPR-Q6: text || <any non-array type> is text, so 2804 and 2805 are retired
+	OBSOLETE_2804_CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
 		code: 2804,
-		msg: ["Cannot concatenate text with ", ""],
+		msg: ["Obsolete, no longer reported: Cannot concatenate text with a type"],
 	},
-	CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
+	OBSOLETE_2805_CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
 		code: 2805,
-		msg: ["Cannot concatenate ", " with text"],
+		msg: ["Obsolete, no longer reported: Cannot concatenate a type with text"],
 	},
 	LIKE_PATTERN_MUST_BE_TEXT: {
 		code: 2806,
@@ -1122,6 +1193,10 @@ const errors = {
 		code: 3211,
 		msg: ["View or table already exists in schema"],
 	},
+	TYPE_IS_IN_USE_BY_A_COLUMN: {
+		code: 3212,
+		msg: ["Type is used by a column; drop the column first or use CASCADE (TYPE-18)"],
+	},
 
 	// Constraint Violations
 	MISSING_NOT_NULL_COLUMN_IN_INSERT: {
@@ -1147,6 +1222,19 @@ const errors = {
 	ENUM_VALUE_ALREADY_EXISTS: {
 		code: 3305,
 		msg: ["Enum value already exists"],
+	},
+	TYPE_IS_NOT_A_DOMAIN: {
+		code: 3308,
+		msg: ["Type is not a domain; use DROP TYPE"],
+	},
+	ENUM_VALUE_DOES_NOT_EXIST: {
+		code: 3307,
+		msg: ["", " is not a value of the enum"],
+	},
+
+	DUPLICATE_COLUMN_IN_WRITE: {
+		code: 3306,
+		msg: ["Column ", " is listed more than once in ", ""],
 	},
 
 	// SELECT Constraints
@@ -1206,6 +1294,19 @@ const errors = {
 		code: 3413,
 		msg: ["WITH query ", " has a different number of columns than its column list"],
 	},
+	ORDER_OR_LIMIT_BEFORE_SET_OPERATOR: {
+		code: 3416,
+		msg: [
+			"ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it",
+		],
+	},
+
+	COMPOUND_ORDER_BY_NOT_AN_OUTPUT_COLUMN: {
+		code: 3414,
+		msg: [
+			"ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position",
+		],
+	},
 
 	// Statement Constraints
 	INSERT_SELECT_COLUMN_COUNT_MISMATCH: {
@@ -1243,6 +1344,11 @@ const errors = {
 	CANNOT_WRITE_GENERATED_COLUMN: {
 		code: 3512,
 		msg: ["Cannot write generated column ", " in ", ""],
+	},
+
+	CANNOT_WRITE_VIEW: {
+		code: 3513,
+		msg: ["Cannot write to view ", " in ", "; writing to views is not supported"],
 	},
 
 	NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE: {
@@ -1402,6 +1508,10 @@ const errors = {
 		code: 3910,
 		msg: ["CREATE VIEW ", ": the column list has a different number of columns than the SELECT"],
 	},
+	DUPLICATE_VIEW_COLUMN: {
+		code: 3911,
+		msg: ["CREATE VIEW ", ": column ", " is named more than once in the column list"],
+	},
 
 	// ALTER TYPE
 	EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE: {
@@ -1415,6 +1525,10 @@ const errors = {
 	EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE: {
 		code: 4002,
 		msg: ["Expected `.` or `;` after type name in DROP TYPE"],
+	},
+	EXPECTED_TO_IN_RENAME_VALUE: {
+		code: 4003,
+		msg: ["Expected `TO` after the old label in ALTER TYPE … RENAME VALUE"],
 	},
 
 	// Misc DDL
@@ -1450,6 +1564,10 @@ const errors = {
 	EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME: {
 		code: 4107,
 		msg: ["Expected `.` or `(` after table name"],
+	},
+	SQLITE_HAS_NO_SCHEMAS_DEFAULT_SCHEMA: {
+		code: 4108,
+		msg: ['SQLite has no schemas: defaultSchema must be "main" or "temp"'],
 	},
 
 	// DML/Expression-Specific Errors
@@ -1501,9 +1619,9 @@ const errors = {
 	},
 
 	// CASE Expression
-	CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
+	OBSOLETE_4300_CASE_REQUIRES_AT_LEAST_ONE_WHEN: {
 		code: 4300,
-		msg: ["CASE requires at least one WHEN"],
+		msg: ["Obsolete, no longer reported: CASE requires at least one WHEN (the parser reads one WHEN before END)"],
 	},
 	EXPECTED_THEN_AFTER_CASE_WHEN: {
 		code: 4301,
@@ -1626,6 +1744,21 @@ const errors = {
 	EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT: {
 		code: 5009,
 		msg: ["Expected LIKE, IN or BETWEEN after NOT"],
+	},
+	EXPRESSION_NESTED_TOO_DEEP: {
+		code: 5020,
+		msg: [
+			"Parentheses, function calls and CASE are nested more than ",
+			" levels deep; simplify the expression or split the query",
+		],
+	},
+	EXPRESSION_CHAIN_TOO_LONG: {
+		code: 5021,
+		msg: ["More than ", " chained `-` operators; split the expression into parenthesized groups"],
+	},
+	EXPECTED_COLLATION_NAME: {
+		code: 5022,
+		msg: ["Expected a collation name after COLLATE"],
 	},
 	EXPECTED_FROM_AFTER_IS_DISTINCT: {
 		code: 5008,

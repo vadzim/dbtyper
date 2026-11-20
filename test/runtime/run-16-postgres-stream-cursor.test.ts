@@ -5,13 +5,15 @@ import type postgres from "postgres"
 
 import { postgresSqlDriver } from "../../src/postgres/index.ts"
 
-function fakeClient(total: number) {
+function fakeClient(total: number, noColumns = false) {
 	const log = { sizes: [] as number[], fetched: 0, args: [] as unknown[][] }
 	const sql = Object.assign((): undefined => undefined, {
 		options: { parsers: {} },
 		unsafe: (...args: unknown[]) => {
 			log.args.push(args)
 			return {
+				// RUN-12: the driver asks the server whether the statement has result columns before it opens the cursor
+				describe: async () => ({ columns: noColumns ? [] : [{ name: "n" }] }),
 				cursor: (size: number) => {
 					log.sizes.push(size)
 					return (async function* () {
@@ -63,6 +65,12 @@ describe("RUN-16 postgresSqlDriver.stream", () => {
 	it("RUN-16: params are bound before the cursor is opened", async () => {
 		const { sql, log } = fakeClient(1)
 		await Array.fromAsync(await postgresSqlDriver({ sql }).stream!(`select n from t where a = :a`, { a: 5 }))
-		assert.deepEqual(log.args, [[`select n from t where a = $1`, [5]]])
+		// one call describes the statement (RUN-12), the other opens the cursor: both carry the bound text and values
+		assert.deepEqual(log.args, Array(2).fill([`select n from t where a = $1`, [5]]))
+	})
+	it("RUN-12: a statement without result columns is rejected with the 3501 text, no cursor is opened", async () => {
+		const { sql, log } = fakeClient(0, true)
+		await assert.rejects(postgresSqlDriver({ sql }).stream!(`create table t (id int)`), /requires a row-returning/)
+		assert.deepEqual(log.sizes, [])
 	})
 })

@@ -1,12 +1,14 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { JsqlDbGetTable, UnqualifiedSchema, JsqlDbGetData } from "../core/jsql-utils.ts"
+import type { JsqlDbGetTable, JsqlDbGetData } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
+import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { SkipBracketedUntil } from "./skip-statement.ts"
 import type { ParseAlterAddColumn, ParseAlterDropColumn } from "./parse-alter-table-add-drop.ts"
 import type { ParseAlterColumnAfterAlterKw } from "./parse-alter-table-alter-column.ts"
@@ -17,19 +19,22 @@ export type SkipUntilCommaOrSemi<Tokens extends ParserMonad> = SkipBracketedUnti
 	TokenKey<","> | TokenKey<";"> | TokenEot
 >
 
-type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<".">
-		? SkipToken<AfterFirst> extends infer Rd1 extends ParserMonad
-			? PeekToken<Rd1> extends TokenIdent<infer B extends string>
-				? [SkipToken<Rd1>, null, A, B]
-				: [Rd1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>, null, null]
-			: never
-		: [AfterFirst, null, UnqualifiedSchema<Db, A>, A]
+type AlterTableNameRow = {
+	name: FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>
+	afterDot: FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in ALTER TABLE"]>
+	ends: never
+	plain: null
+	qualified: null
+	skip: false
+	home: "lookup"
+}
 
-type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends TokenIdent<infer A extends string>
-		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: [SkipToken<Tokens>, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in ALTER TABLE"]>, null, null]
+/** `[rest, null, schema, table]`, or `[rest, error, never, never]`. */
+type ParseQualifiedAlterTableName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> = ParseNameParts<
+	Tokens,
+	Db,
+	AlterTableNameRow
+>
 
 export type FinishAlterStatement<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
 	PeekToken<Tokens> extends TokenKey<";"> | TokenEot
@@ -79,8 +84,11 @@ type ParseAlterOneAction<
 						? ParseAlterColumnAfterAlterKw<Tokens, Db, Sch, Tab>
 						: PeekToken<Tokens> extends
 									TokenIdent<"enable" | "disable" | "force" | "owner"> | TokenKey<"no">
-							? // PGT-21: row level security and ownership change no type
-								ParseAlterSkipAction<Tokens, Db, Sch, Tab>
+							? // PGT-21: row level security and ownership change no type; SQLite has neither
+								DbDialectOnlyError<Db, "pg-alter-table-owner"> extends infer OnlyErr extends
+									DbtyperErrorShape
+								? SkipFailedStatement<Tokens, Db, OnlyErr>
+								: ParseAlterSkipAction<Tokens, Db, Sch, Tab>
 							: SkipFailedStatement<Tokens, Db, FormatError<Errors["UNSUPPORTED_ALTER_TABLE_ACTION"], []>>
 		: JsqlDbGetData<Db, Sch, Tab> extends null
 			? [Tokens, Db, FormatError<Errors["TABLE_KEY_MISMATCH_IN_ALTER_TABLE"], []>]
@@ -95,7 +103,10 @@ type ParseAlterAfterQualified<
 > = Err extends null
 	? JsqlDbGetTable<Db, Sch, Tab> extends object
 		? Sch extends keyof Db["schemas"]
-			? ParseAlterActions<R, Db, Sch & string, Tab & string>
+			? PeekToken<R> extends TokenKey<";"> | TokenEot
+				? // `alter table users;`: an ALTER TABLE needs at least one action
+					SkipFailedStatement<R, Db, FormatError<Errors["EXPECTED_ALTER_TABLE_ACTION"], []>>
+				: ParseAlterActions<R, Db, Sch & string, Tab & string>
 			: never
 		: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_DOES_NOT_EXIST"], []>>
 	: [R, Db, Err extends DbtyperErrorShape ? Err : FormatError<Errors["INVALID_ALTER_TABLE_NAME"], []>]

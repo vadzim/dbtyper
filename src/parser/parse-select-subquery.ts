@@ -1,30 +1,40 @@
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
+import type { ParseAlias } from "./parse-alias.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { MergeScope, ScopeEntry, ScopeMap } from "./parser-scope.ts"
+import type { MergeScope, OutputOrder, OutputRelation, ScopeEntry, ScopeMap } from "./parser-scope.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 
 /** Row shape of a parsed inner `SELECT` used as a derived table in `FROM` / `JOIN`. */
 /** A CTE definition: visible by name in FROM, but not itself a FROM item (see `FromItemsOnly`). */
-export type SelectResultToCteScopeEntry<Res extends JsqlSelectStatementResult> = {
+export type SelectResultToCteScopeEntry<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = {
 	schema: "__cte__"
 	table: "__subquery__"
-	columns: Res["returning"]
+} & OutputRelation<Db, Res["returning"], OutputOrder<Res>> extends infer E extends ScopeEntry
+	? E
+	: never
+
+/** A CTE read in FROM: a FROM item now, with the CTE's columns, spellings and order. */
+export type CteAsFromEntry<E extends ScopeEntry> = {
+	schema: "__subquery__"
+	table: E["table"]
+	columns: E["columns"]
+} & (E extends {
+	order: infer O
 }
+	? { order: O }
+	: {}) &
+	(E extends { spelled: infer Sp } ? { spelled: Sp } : {})
 
-export type CteAsFromEntry<E extends ScopeEntry> = { schema: "__subquery__"; table: E["table"]; columns: E["columns"] }
-
-type SelectResultToDerivedScopeEntry<Res extends JsqlSelectStatementResult> = {
+type SelectResultToDerivedScopeEntry<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = {
 	schema: "__subquery__"
 	table: "__subquery__"
-	columns: Res["returning"]
-}
+} & OutputRelation<Db, Res["returning"], OutputOrder<Res>>
 
 /** Helper: Consume closing `)` after subquery. Returns [Tokens, Result] or error. */
 export type ConsumeClosingParen<Tokens extends ParserMonad, Result> =
@@ -43,27 +53,31 @@ type ValidateSingleColumn<Result extends JsqlSelectStatementResult> = Result["re
 		: FormatError<Errors["SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN"], []>
 	: never
 
+type DerivedAliasRow = {
+	ends: never
+	bare: "allowed"
+	verb: ""
+	afterAs: FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>
+	bad: FormatError<Errors["EXPECTED_ALIAS_AFTER_DERIVED_TABLE"], []>
+	tail: never
+	tailError: null
+}
+
 /** Helper: Parse alias after derived table and merge into scope. Returns [Tokens, null, Scope] or error. */
 type ParseAliasAfterDerived<
 	Tokens extends ParserMonad,
-	_Db extends JsqlDatabaseShape,
+	Db extends JsqlDatabaseShape,
 	OuterScope extends ScopeMap,
 	Result extends JsqlSelectStatementResult,
 > =
-	SelectResultToDerivedScopeEntry<Result> extends infer Entry extends ScopeEntry
-		? PeekToken<Tokens> extends TokenKey<"as">
-			? SkipToken<Tokens> extends infer Ras extends ParserMonad
-				? AsIdent<PeekToken<Ras>> extends TokenIdent<infer Alias extends string>
-					? [SkipToken<Ras>, null, MergeScope<Record<Alias, Entry>, OuterScope>]
-					: [
-							SkipToken<Ras>,
-							FormatError<Errors["EXPECTED_ALIAS_NAME_AFTER_AS"], []>,
-							ParserRefErrorThirdSentinel,
-						]
-				: never
-			: PeekToken<Tokens> extends TokenIdent<infer Alias extends string>
-				? [SkipToken<Tokens>, null, MergeScope<Record<Alias, Entry>, OuterScope>]
-				: [Tokens, FormatError<Errors["EXPECTED_ALIAS_AFTER_DERIVED_TABLE"], []>, ParserRefErrorThirdSentinel]
+	SelectResultToDerivedScopeEntry<Db, Result> extends infer Entry extends ScopeEntry
+		? ParseAlias<Tokens, Db, DerivedAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+			? E extends null
+				? Alias extends string
+					? [R, null, MergeScope<Record<Alias, Entry>, OuterScope>]
+					: never
+				: [R, E, Alias]
+			: never
 		: never
 
 /** Inner `( SELECT … FROM … [WHERE …] )` ending with `)`; multi-column allowed (`EXISTS`, CTE, `IN (SELECT …)`). */

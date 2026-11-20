@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 
 import { POSTGRES_SCAN_RULES, SQLITE_SCAN_RULES, skipNonCode } from "../../src/core/sql-text-scanner.ts"
+import { scannerCases } from "../test-utils/scanner-cases.ts"
 import { bindColonNamedParamsForPg } from "../../src/postgres/bind-colon-named-params-for-pg.ts"
 
 /** Every index of `sql` that is code (not inside a string, quoted name, comment or dollar body). */
@@ -17,6 +18,26 @@ function codeIndexes(sql: string, rules: typeof POSTGRES_SCAN_RULES): number[] {
 }
 
 describe("shared SQL text scanner (PARAM-15, #146 batch 4; lexer rules at run time)", () => {
+	for (const { dialect, sql, params } of scannerCases) {
+		it(`finds ${params} parameter marker(s) as the lexer does (test/framework/lexer-scanner-cases.test-d.ts): ${sql}`, () => {
+			const rules = dialect === "sqlite" ? SQLITE_SCAN_RULES : POSTGRES_SCAN_RULES
+			const marker = dialect === "sqlite" ? "?" : ":p"
+			const found = codeIndexes(sql, rules).filter(i => sql.startsWith(marker, i))
+			assert.equal(found.length, params)
+		})
+	}
+	it("E'…' strings hide a backslash-escaped quote in PostgreSQL only", () => {
+		const sql = String.raw`E'a\' ?' ?`
+		assert.deepEqual(
+			codeIndexes(sql, POSTGRES_SCAN_RULES).filter(i => sql[i] === "?"),
+			[sql.lastIndexOf("?")],
+		)
+		// SQLite has no backslash escape: the string ends at `\'`, the first `?` is code and the last one is hidden
+		assert.deepEqual(
+			codeIndexes(sql, SQLITE_SCAN_RULES).filter(i => sql[i] === "?"),
+			[sql.indexOf("?")],
+		)
+	})
 	it("PARAM-15: :name is left alone in comments, quoted identifiers and dollar bodies", () => {
 		const sql = `select "a:b", 'c:d' /* :x */ -- :x\n, $$ :x $$, $t$ :x $$ :x $t$, :real from t`
 		const r = bindColonNamedParamsForPg(sql, { real: 7 })

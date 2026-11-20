@@ -1,6 +1,6 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -13,9 +13,17 @@ import type {
 	ColumnDef,
 	ParseCreateTableCloseParenAndSemi,
 	PendingConstraints,
-	WithoutPendingConstraints,
+	ColumnNameToken,
+	PendingSpelled,
+	StackOrder,
+	PendingPkName,
+	StackPrimaryKey,
+	WithColumnSpelling,
+	WithColumnUserType,
+	WithPendingUserTypes,
+	WithoutPending,
 } from "./parse-create-table.ts"
-import type { ParseSqliteTableEnd, TableConstraintStart } from "./parse-create-table-sqlite-end.ts"
+import type { ParseRowidTableEnd, TableConstraintStart } from "./parse-create-table-sqlite-end.ts"
 import type { ColumnsFromStack } from "./parse-create-table-merge.ts"
 import type { ParseTableConstraint } from "./parse-table-constraints.ts"
 import type { ParseColumnConstraints, SerialName } from "./parse-column-constraints.ts"
@@ -29,16 +37,27 @@ export type ParseCreateTableBody<
 > =
 	PeekToken<Tokens> extends TokenKey<")">
 		? DialectFact<Db, "rowidTables"> extends true
-			? ParseSqliteTableEnd<Tokens, Db, Schema, Table, Stack>
+			? ParseRowidTableEnd<Tokens, Db, Schema, Table, Stack>
 			: ColumnsFromStack<Stack> extends infer M extends {
 						cols: Record<string, SqlTypeShape>
 						facts: Record<string, unknown>
 				  }
 				? JsqlDbReplaceData<
-						WithoutPendingConstraints<Db>,
+						WithoutPending<Db>,
 						Schema,
 						Table,
-						JsqlCreateTable<M["cols"], M["facts"], PendingConstraints<Db>>
+						WithPendingUserTypes<
+							JsqlCreateTable<
+								M["cols"],
+								M["facts"],
+								PendingConstraints<Db>,
+								StackOrder<Stack>,
+								PendingSpelled<Db, Stack[number][0]>,
+								StackPrimaryKey<Stack>,
+								PendingPkName<Db, Table>
+							>,
+							Db
+						>
 					> extends infer NewDb
 					? NewDb extends JsqlDatabaseShape
 						? ParseCreateTableCloseParenAndSemi<Tokens, NewDb>
@@ -49,6 +68,18 @@ export type ParseCreateTableBody<
 			? ParseTableConstraint<Tokens, Db, Schema, Table, Stack>
 			: ParseOneColumn<Tokens, Db, Schema, Table, Stack>
 
+/** After the `,` between two definitions: a column or a table constraint must follow, not `)`. */
+export type ParseCreateTableAfterComma<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Stack extends readonly ColumnDef[],
+> =
+	PeekToken<Tokens> extends TokenKey<")">
+		? SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_AFTER_COMMA_IN_CREATE_TABLE"], []>>
+		: ParseCreateTableBody<Tokens, Db, Schema, Table, Stack>
+
 type ParseOneColumn<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -56,17 +87,30 @@ type ParseOneColumn<
 	Table extends string,
 	Stack extends readonly ColumnDef[],
 > =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer ColName extends string>
-		? ColName extends Stack[number][0]
-			? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
-			: Stack["length"] extends ColumnChunkEnd
-				? ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName> extends [
-						infer M extends ParserMonad,
-						...infer R,
-					]
-					? [M, ...R]
-					: never
-				: ParseOneColumnAfterColName<SkipToken<Tokens>, Db, Schema, Table, Stack, ColName>
+	ColumnNameToken<PeekToken<Tokens>, Db> extends infer NameTok
+		? NameTok extends TokenIdent<infer ColName extends string>
+			? ColName extends Stack[number][0]
+				? SkipFailedStatement<Tokens, Db, FormatError<Errors["COLUMN_ALREADY_EXISTS"], [ColName]>>
+				: Stack["length"] extends ColumnChunkEnd
+					? ParseOneColumnAfterColName<
+							SkipToken<Tokens>,
+							WithColumnSpelling<Db, ColName, NameTok>,
+							Schema,
+							Table,
+							Stack,
+							ColName
+						> extends [infer M extends ParserMonad, ...infer R]
+						? [M, ...R]
+						: never
+					: ParseOneColumnAfterColName<
+							SkipToken<Tokens>,
+							WithColumnSpelling<Db, ColName, NameTok>,
+							Schema,
+							Table,
+							Stack,
+							ColName
+						>
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_COLUMN_NAME"], ["in CREATE TABLE"]>>
 
 /**
@@ -173,7 +217,9 @@ type ParseOneColumnTyped<
 				? ParseColumnConstraints<
 						AfterType,
 						{
-							db: Db
+							db: TypeShape extends { declared: infer D extends `${string}.${string}` }
+								? WithColumnUserType<Db, Schema, Table, ColName, D, Alter>
+								: Db
 							schema: Schema
 							table: Table
 							stack: Stack

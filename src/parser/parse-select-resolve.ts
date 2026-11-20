@@ -6,13 +6,10 @@ import type { ReadParam } from "./resolve-expression-ident.ts"
 import type { ScopeEntry, ScopeMap, VisibleColumnsOf, RowidResultKey } from "./parser-scope.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FirstDuplicateName, UnionToStringTuple } from "./set-operation-types.ts"
+import type { JsqlColumnResultKey, JsqlDbGetData } from "../core/jsql-utils.ts"
+import type { DialectFact } from "../core/dialect.ts"
 import type { ItemAs, RawSelectItem } from "./parse-select.ts"
-import type {
-	MergeStringRecords,
-	OutNameFromParts,
-	ScopeEntryOfSingle,
-	SingleAliasScope,
-} from "./parse-select-returning.ts"
+import type { OutNameFromParts, ScopeEntryOfSingle, SingleAliasScope } from "./parse-select-returning.ts"
 
 /**
  * SEL-6: a bare `*` is resolved against the FROM items of this query level only (never the outer
@@ -29,8 +26,8 @@ export type ResolveSelectListFrom<
 		? ScopeEntryOfSingle<FromScope> extends infer E extends ScopeEntry
 			? {
 					kind: "select"
-					returning: VisibleColumnsOf<E>
-					order: UnionToStringTuple<keyof VisibleColumnsOf<E> & string>
+					returning: StarColumns<KeyDb<Db>, E>
+					order: StarNames<Db, E>
 				}
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
@@ -38,58 +35,226 @@ export type ResolveSelectListFrom<
 		? Res extends DbtyperErrorShape
 			? Res
 			: Res extends JsqlSelectStatementResult
-				? SelectItemNames<Items, Scope> extends infer Names extends readonly string[]
-					? FirstDuplicateName<Names> extends infer Dup
-						? [Dup] extends [never]
-							? Res & { order: Names }
-							: FormatError<Errors["DUPLICATE_OUTPUT_COLUMN"], [`\`${Dup & string}\``]>
-						: never
+				? SelectItemNames<
+						Items,
+						Scope,
+						IsSingleItem<Items>,
+						[],
+						IsPositionalSelect<Db>,
+						NamesDb<Db, Items>
+					> extends infer Names extends readonly string[]
+					? IsPositionalSelect<Db> extends true
+						? Res & { order: Names } // #166: matched by position, a repeated name is fine
+						: FirstDuplicateName<Names> extends infer Dup
+							? [Dup] extends [never]
+								? Res & { order: Names }
+								: FormatError<Errors["DUPLICATE_OUTPUT_COLUMN"], [`\`${Dup & string}\``]>
+							: never
 					: never
 				: never
 		: never
 
-/** Output column names of a select list in position order (CORE-8 matches set-operation arms by position, CORE-11). */
-type StarNames<E extends ScopeEntry> = UnionToStringTuple<keyof VisibleColumnsOf<E> & string>
+/**
+ * The database the result keys are looked up in: only where names match case-insensitively (SQLite, fact `foldQuoted`)
+ * can a key differ from the name in the scope, so elsewhere it is `null` and the name helpers below stay shared between
+ * statements (they are keyed by their type arguments). `*` order (#150) is the exception: it reads the database always.
+ */
+type KeyDb<Db extends JsqlDatabaseShape> = DialectFact<Db, "lexer">["foldQuoted"] extends true ? Db : null
 
-type SelectItemNames<
+/** {@link KeyDb}, or the database when the list has an `alias.*`, whose names come in the table's order (#150). */
+type NamesDb<Db extends JsqlDatabaseShape, Items extends readonly RawSelectItem[]> = [
+	Extract<Items[number], { kind: "expr"; ast: { kind: "qualified_table_star" | "alias_table_star" } }>,
+] extends [never]
+	? KeyDb<Db>
+	: Db
+
+/**
+ * What a scope entry reads: the table or view, or for a CTE or subquery the entry itself, which carries its output
+ * order and SQLite spellings (`OutputRelation`). `null` for a table when `Db` is `null` ({@link KeyDb}).
+ */
+type EntryData<Db, E> = E extends { schema: "__subquery__" | "__cte__" }
+	? E
+	: Db extends JsqlDatabaseShape
+		? E extends { schema: infer S extends string; table: infer T extends string }
+			? JsqlDbGetData<Db, S, T>
+			: null
+		: null
+
+/** `Names` that are keys of `Keys`, in order. */
+type NamesIn<Names extends readonly string[], Keys> = Names extends readonly [
+	infer H extends string,
+	...infer R extends readonly string[],
+]
+	? H extends Keys
+		? [H, ...NamesIn<R, Keys>]
+		: NamesIn<R, Keys>
+	: []
+
+/**
+ * The columns `*` / `alias.*` give: the visible columns, keyed by their declared spelling where the table has one
+ * (SQLite, SQLT-28, #151: the drivers return the declared name).
+ */
+type StarColumns<Db, E extends ScopeEntry> =
+	EntryData<Db, E> extends { spelled: infer Sp }
+		? VisibleColumnsOf<E> extends infer V extends Record<string, SqlTypeShape>
+			? { [K in keyof V as K extends keyof Sp ? Sp[K] & string : K]: V[K] } extends infer R extends Record<
+					string,
+					SqlTypeShape
+				>
+				? R
+				: never
+			: never
+		: VisibleColumnsOf<E>
+
+/**
+ * Output column names of `*` in position order (CORE-8 matches set-operation arms by position, CORE-11): the declared
+ * order of the table or view (#150), or the output order of a CTE or subquery (DML-20); without one (a FROM function),
+ * the keys are taken in the order TypeScript lists them.
+ */
+type StarNames<Db, E extends ScopeEntry> =
+	EntryData<Db, E> extends infer Data
+		? Data extends { order: infer O extends readonly string[] }
+			? string[] extends O
+				? UnionToStringTuple<keyof StarColumns<Db, E> & string>
+				: ResultKeysOf<Data, NamesIn<O, keyof VisibleColumnsOf<E>>>
+			: UnionToStringTuple<keyof StarColumns<Db, E> & string>
+		: never
+
+type ResultKeysOf<Data, Names extends readonly string[], Acc extends readonly string[] = []> = Names extends readonly [
+	infer H extends string,
+	...infer R extends readonly string[],
+]
+	? ResultKeysOf<Data, R, [...Acc, JsqlColumnResultKey<Data, H>]>
+	: Acc
+
+/**
+ * SQLT-28, #151: the result key of a plain column reference where names match case-insensitively (SQLite, fact
+ * `foldQuoted`): the declared spelling of the column it reads, else its (lower-case) key. Other dialects: `Key`.
+ */
+type ColumnRefKey<
+	Db,
+	Scope extends ScopeMap,
+	P extends ScalarIdentParts,
+	Key extends string,
+> = Db extends JsqlDatabaseShape
+	? DialectFact<Db, "lexer">["foldQuoted"] extends true
+		? JsqlColumnResultKey<EntryData<Db, ColumnRefEntry<Scope, P, Key>>, Key>
+		: Key
+	: Key
+
+/** The scope entry a column reference reads (the innermost level first for a bare name). */
+type ColumnRefEntry<Scope extends ScopeMap, P extends ScalarIdentParts, Key extends string> = P extends readonly [
+	infer Sch extends string,
+	infer Tab extends string,
+	string,
+]
+	? ScopeEntryForQualifiedName<Scope, Sch, Tab>
+	: P extends readonly [infer T extends string, string]
+		? T extends keyof Scope
+			? Scope[T]
+			: never
+		: {
+					[K in keyof Scope]: Key extends keyof Scope[K]["columns"]
+						? Scope[K] extends { outerDepth: readonly [1, ...1[]] }
+							? never
+							: Scope[K]
+						: never
+			  }[keyof Scope] extends infer Inner
+			? [Inner] extends [never]
+				? { [K in keyof Scope]: Key extends keyof Scope[K]["columns"] ? Scope[K] : never }[keyof Scope]
+				: Inner
+			: never
+
+/** A list of one item (an unaliased expression is then named `?column?`). */
+type IsSingleItem<Items extends readonly RawSelectItem[]> = Items extends readonly [RawSelectItem] ? true : false
+
+/** `INSERT … SELECT` (#166): the SELECT list needs no output names. */
+type IsPositionalSelect<Db> = Db extends { positionalSelect: true } ? true : false
+
+/** The synthetic output name of an unnamed expression of a positional SELECT: unique by the number of items before it. */
+type PositionalName<Positional extends boolean, Before extends readonly 1[]> = Positional extends true
+	? `__col${Before["length"]}`
+	: never
+
+/**
+ * The output names of a select list, in order. The loop counts the items with `Before` and reads `Items[Before["length"]]`
+ * instead of splitting the tuple, and hands each item to a helper alias as a type argument (#179 item 2): splitting a
+ * tuple costs one instantiation per element, a conditional type that infers from an item inside the loop costs a few
+ * hundred more per item and step, so a list of N items was quadratic (3.76M instantiations at 320 items).
+ */
+export type SelectItemNames<
 	Items extends readonly RawSelectItem[],
 	Scope extends ScopeMap,
-	AllItems extends readonly RawSelectItem[] = Items,
+	Single extends boolean = IsSingleItem<Items>,
 	Acc extends readonly string[] = [],
-> = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
-	? H extends { kind: "param"; param: infer P extends string; as?: infer As }
-		? SelectItemNames<R, Scope, AllItems, [...Acc, As extends string ? As : P]>
-		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
-			? ItemAs<H> extends infer As
-				? Ast extends {
-						kind: "qualified_table_star"
-						schema: infer Sch extends string
-						table: infer Tab extends string
-					}
-					? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E extends ScopeEntry
-						? StarNames<E> extends infer T extends readonly string[]
-							? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
-							: Acc
-						: Acc
-					: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
-						? Al extends keyof Scope
-							? StarNames<Scope[Al]> extends infer T extends readonly string[]
-								? SelectItemNames<R, Scope, AllItems, [...Acc, ...T]>
-								: Acc
-							: Acc
-						: OutNameFromExprAst<Ast, As, AllItems, Scope> extends infer O extends string
-							? SelectItemNames<R, Scope, AllItems, [...Acc, O]>
-							: Acc
+	Positional extends boolean = false,
+	Db = null,
+	Before extends readonly 1[] = [],
+> = Before["length"] extends Items["length"]
+	? Acc
+	: ItemNames<Items[Before["length"]], Items, Scope, Single, Acc, Positional, Db, Before>
+
+/** The names of the item `H` after `Acc`, then the rest of the list; the names end at an item that gives no name. */
+type ItemNames<
+	H,
+	Items extends readonly RawSelectItem[],
+	Scope extends ScopeMap,
+	Single extends boolean,
+	Acc extends readonly string[],
+	Positional extends boolean,
+	Db,
+	Before extends readonly 1[],
+> = H extends { kind: "param"; param: infer P extends string; as?: infer As }
+	? SelectItemNames<Items, Scope, Single, [...Acc, As extends string ? As : P], Positional, Db, [...Before, 1]>
+	: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+		? Ast extends {
+				kind: "qualified_table_star"
+				schema: infer Sch extends string
+				table: infer Tab extends string
+			}
+			? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E extends ScopeEntry
+				? StarNames<Db, E> extends infer T extends readonly string[]
+					? SelectItemNames<Items, Scope, Single, [...Acc, ...T], Positional, Db, [...Before, 1]>
+					: Acc
 				: Acc
-			: Acc
-	: Acc
+			: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
+				? Al extends keyof Scope
+					? StarNames<Db, Scope[Al]> extends infer T extends readonly string[]
+						? SelectItemNames<Items, Scope, Single, [...Acc, ...T], Positional, Db, [...Before, 1]>
+						: Acc
+					: Acc
+				: OutNameFromExprAst<
+							Ast,
+							ItemAs<H>,
+							Single,
+							Scope,
+							PositionalName<Positional, Before>,
+							Db
+					  > extends infer O extends string
+					? SelectItemNames<Items, Scope, Single, [...Acc, O], Positional, Db, [...Before, 1]>
+					: Acc
+		: Acc
+
+/**
+ * The select-list accumulator is a union of `[name, type]` entries (a bare `*` adds one entry per column), turned into
+ * the result record once at the end. Merging a record per item rebuilt the whole record each time, so a long list cost
+ * quadratic time (#105, DECISIONS.md); a union only grows by its new member. A duplicate name (an error, CORE-11) would
+ * give a union of types, but the duplicate check rejects the list before the record is used.
+ */
+type SelectEntry = readonly [string, SqlTypeShape]
+
+type RecordEntries<R extends Record<string, SqlTypeShape>> = {
+	[K in keyof R & string]: readonly [K, R[K]]
+}[keyof R & string]
+
+type EntriesToRecord<E extends SelectEntry> = { [P in E as P[0]]: P[1] }
 
 export type ResolveSelectList<
 	Items extends readonly RawSelectItem[],
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-> = ResolveSelectListAcc<Items, Db, Scope, Params, {}, Items>
+> = ResolveSelectListAcc<Items, Db, Scope, Params, never>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? ReadParam<Params[Name]> extends infer S
@@ -109,82 +274,115 @@ type ParamSelectOut<As, P extends string, Sql extends SqlTypeShape> = As extends
 type OutNameFromExprAst<
 	Ast extends ScalarExprAst,
 	As,
-	AllItems extends readonly RawSelectItem[],
+	Single extends boolean,
 	Scope extends ScopeMap,
+	Pos extends string = never,
+	Db = null,
 > = As extends string
 	? As
-	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts; written: infer W extends string }
-		? // SQLT-28: a SQLite result key is the column name as written in the query
-			W extends ""
-			? RowidResultKey<P, Scope, OutNameFromParts<P, undefined>>
-			: RowidResultKey<P, Scope, W>
-		: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
-			? RowidResultKey<P, Scope, OutNameFromParts<P, undefined>>
-			: Ast extends { kind: "function_call" | "window_function"; name: infer N extends string }
-				? // SEL-8: PostgreSQL names an unaliased function call (aggregate included) by the function name.
-					Lowercase<N>
-				: Ast extends { kind: "pg_cast" | "sql_cast"; expr: infer Inner extends ScalarExprAst }
-					? // EXPR-24: an unaliased cast is named after the cast operand (`id::uuid` -> `id`).
-						OutNameFromExprAst<Inner, undefined, AllItems, Scope>
-					: AllItems extends readonly [RawSelectItem]
-						? "?column?"
-						: "__invalid_select_expr_alias__"
+	: Ast extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+		? // SQLT-28, #151: a column is keyed by its declared name, as the drivers return it
+			RowidResultKey<P, Scope, ColumnRefKey<Db, Scope, P, OutNameFromParts<P, undefined>>>
+		: Ast extends { kind: "function_call" | "window_function"; name: infer N extends string }
+			? // SEL-8: PostgreSQL names an unaliased function call (aggregate included) by the function name.
+				Lowercase<N>
+			: Ast extends { kind: "pg_cast" | "sql_cast"; expr: infer Inner extends ScalarExprAst }
+				? // EXPR-24: an unaliased cast is named after the cast operand (`id::uuid` -> `id`).
+					OutNameFromExprAst<Inner, undefined, Single, Scope, Pos, Db>
+				: Single extends true
+					? "?column?"
+					: [Pos] extends [never]
+						? "__invalid_select_expr_alias__"
+						: Pos
 
 /** First scope entry whose bound table matches `schema.table`. */
 type ScopeEntryForQualifiedName<Scope extends ScopeMap, Sch extends string, Tab extends string> = {
 	[K in keyof Scope]: Scope[K]["schema"] extends Sch ? (Scope[K]["table"] extends Tab ? Scope[K] : never) : never
 }[keyof Scope]
 
-type ResolveSelectListExprItem<
-	Ast extends ScalarExprAst,
-	As,
-	R extends readonly RawSelectItem[],
+/**
+ * What one item adds to the entries: `{ add: entries }`, or the error that ends the list. The loop below hands it each
+ * item as a type argument, like {@link SelectItemNames} (an item is never inferred from inside the loop).
+ */
+type ResolveItem<
+	H,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Sqls extends Record<string, SqlTypeShape>,
-	AllItems extends readonly RawSelectItem[],
-> = Ast extends { kind: "qualified_table_star"; schema: infer Sch extends string; table: infer Tab extends string }
-	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
-		? E extends ScopeEntry
-			? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
-			: FormatError<Errors["UNKNOWN_TABLE"], [Sch, "SELECT ... *"]>
-		: FormatError<Errors["UNKNOWN_TABLE"], [Tab, "SELECT ... *"]>
-	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
-		? Al extends keyof Scope
-			? Scope[Al] extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
-				: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
-			: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
-		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
-			? Ev extends DbtyperErrorShape
-				? Ev
-				: Ev extends SqlTypeShape
-					? OutNameFromExprAst<Ast, As, AllItems, Scope> extends infer O extends string
-						? O extends "__invalid_select_expr_alias__"
-							? FormatError<Errors["SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS"], []>
-							: ResolveSelectListAcc<
-									R,
-									Db,
+	Items extends readonly RawSelectItem[],
+	Sqls extends SelectEntry,
+	Before extends readonly 1[],
+> = H extends { kind: "star" }
+	? SingleAliasScope<Scope> extends true
+		? ScopeEntryOfSingle<Scope> extends infer E extends ScopeEntry
+			? ResolveSelectListAcc<
+					Items,
+					Db,
+					Scope,
+					Params,
+					Sqls | RecordEntries<StarColumns<KeyDb<Db>, E>>,
+					[...Before, 1]
+				>
+			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
+		: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
+	: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+		? Ast extends {
+				kind: "qualified_table_star"
+				schema: infer Sch extends string
+				table: infer Tab extends string
+			}
+			? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
+				? E extends ScopeEntry
+					? ResolveSelectListAcc<
+							Items,
+							Db,
+							Scope,
+							Params,
+							Sqls | RecordEntries<StarColumns<KeyDb<Db>, E>>,
+							[...Before, 1]
+						>
+					: FormatError<Errors["UNKNOWN_TABLE"], [Sch, "SELECT ... *"]>
+				: FormatError<Errors["UNKNOWN_TABLE"], [Tab, "SELECT ... *"]>
+			: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
+				? Al extends keyof Scope
+					? Scope[Al] extends infer E extends ScopeEntry
+						? ResolveSelectListAcc<
+								Items,
+								Db,
+								Scope,
+								Params,
+								Sqls | RecordEntries<StarColumns<KeyDb<Db>, E>>,
+								[...Before, 1]
+							>
+						: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
+					: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
+				: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
+					? Ev extends DbtyperErrorShape
+						? Ev
+						: Ev extends SqlTypeShape
+							? OutNameFromExprAst<
+									Ast,
+									ItemAs<H>,
+									IsSingleItem<Items>,
 									Scope,
-									Params,
-									MergeStringRecords<Sqls, Record<O, Ev>>,
-									AllItems
-								>
-						: never
+									PositionalName<IsPositionalSelect<Db>, Before>,
+									KeyDb<Db>
+								> extends infer O extends string
+								? O extends "__invalid_select_expr_alias__"
+									? FormatError<Errors["SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS"], []>
+									: ResolveSelectListAcc<Items, Db, Scope, Params, Sqls | [O, Ev], [...Before, 1]>
+								: never
+							: never
 					: never
+		: H extends { kind: "param"; param: infer P extends string; as?: infer As }
+			? ResolveParamItem<P, As, Params> extends infer PR
+				? PR extends { add: infer Add extends SelectEntry }
+					? ResolveSelectListAcc<Items, Db, Scope, Params, Sqls | Add, [...Before, 1]>
+					: PR
+				: never
 			: never
 
-type ResolveSelectListParamItem<
-	P extends string,
-	As,
-	R extends readonly RawSelectItem[],
-	Db extends JsqlDatabaseShape,
-	Scope extends ScopeMap,
-	Params extends ExpressionParamsShape,
-	Sqls extends Record<string, SqlTypeShape>,
-	AllItems extends readonly RawSelectItem[],
-> =
+type ResolveParamItem<P extends string, As, Params extends ExpressionParamsShape> =
 	LookupSelectParam<Params, P> extends infer PV
 		? PV extends DbtyperErrorShape
 			? PV
@@ -193,7 +391,7 @@ type ResolveSelectListParamItem<
 						out: infer O extends string
 						sql: infer Sql extends SqlTypeShape
 					}
-					? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, Record<O, Sql>>, AllItems>
+					? { add: [O, Sql] }
 					: never
 				: never
 		: never
@@ -203,18 +401,8 @@ type ResolveSelectListAcc<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Sqls extends Record<string, SqlTypeShape>,
-	AllItems extends readonly RawSelectItem[] = Items,
-> = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
-	? H extends { kind: "star" }
-		? SingleAliasScope<Scope> extends true
-			? ScopeEntryOfSingle<Scope> extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
-				: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
-			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
-		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
-			? ResolveSelectListExprItem<Ast, ItemAs<H>, R, Db, Scope, Params, Sqls, AllItems>
-			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
-				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Sqls, AllItems>
-				: never
-	: { kind: "select"; returning: Sqls }
+	Sqls extends SelectEntry,
+	Before extends readonly 1[] = [],
+> = Before["length"] extends Items["length"]
+	? { kind: "select"; returning: EntriesToRecord<Sqls> }
+	: ResolveItem<Items[Before["length"]], Db, Scope, Params, Items, Sqls, Before>

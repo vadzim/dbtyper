@@ -17,4 +17,4 @@ await db.query(query)
 
 type ReturnedError = GetQueryError<typeof db, typeof query>
 
-expectType<ReturnedError>(toBe<DbtyperError<2504, "Incompatible types in IN list">>())
+expectType<ReturnedError>(toBe<DbtyperError<2505, "Incompatible types in IN subquery">>())

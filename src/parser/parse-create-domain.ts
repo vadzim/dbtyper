@@ -9,7 +9,7 @@ import type { TokenEot, TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
-import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType } from "../core/jsql-utils.ts"
+import type { JsqlDbGetSchema, JsqlDbGetType, JsqlDbReplaceType, JsqlDomainType } from "../core/jsql-utils.ts"
 import type { SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseQualifiedName } from "./parse-qualified-name.ts"
 import type { ParseSqlType } from "./parse-sql-type-words.ts"
@@ -54,12 +54,8 @@ type DomainRest<
 			? [Rest, Db, Result]
 			: PeekToken<Rest> extends TokenKey<"not">
 				? DomainRest<SkipToken<Rest>, Db, Sch, Name, Base, true>
-				: JsqlDbReplaceType<
-							Db,
-							Sch,
-							Name,
-							{ kind: "domain"; base: Base; notNull: NotNull }
-					  > extends infer NewDb extends JsqlDatabaseShape
+				: JsqlDbReplaceType<Db, Sch, Name, JsqlDomainType<Base, NotNull>> extends infer NewDb extends
+							JsqlDatabaseShape
 					? [SkipToken<Rest>, NewDb, null]
 					: never
 		: never

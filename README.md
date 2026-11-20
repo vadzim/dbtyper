@@ -18,10 +18,10 @@ The SQL string stays the source of truth for which columns appear in the result.
 Define your database through migrations:
 
 ```typescript
-import { sqlMigrations } from "dbtyper"
+import { sqlMigrations, type SqlDriver } from "dbtyper"
 import type { PostgresDriver } from "dbtyper/postgres"
 
-export async function exampleDb(driver: PostgresDriver) {
+export async function exampleDb(driver: SqlDriver<PostgresDriver>) {
 	return sqlMigrations({ driver })
 		.apply((await import("../migrations/001.do.schemas.js")).generateSql())
 		.apply((await import("../migrations/002.do.users.js")).generateSql())
@@ -56,6 +56,7 @@ The same chain works for SQLite: pass a SQLite driver and the chain is parsed as
 
 ```typescript
 import Database from "better-sqlite3"
+import { sqlMigrations } from "dbtyper"
 import { betterSqlite3Driver } from "dbtyper/sqlite"
 
 const db = sqlMigrations({ driver: betterSqlite3Driver(new Database("app.db")) })
@@ -63,7 +64,12 @@ const db = sqlMigrations({ driver: betterSqlite3Driver(new Database("app.db")) }
 	.database()
 ```
 
-`nodeSqliteDriver` does the same for `node:sqlite`. Syntax of the other engine is a compile error with its own code (1900, 1901). See [Supported SQL](./docs/SUPPORTED-SQL.md) and [Architecture](./ARCHITECTURE.md).
+`nodeSqliteDriver` does the same for `node:sqlite`; there, more than one statement in a `query` or `stream` is a compile error, because `node:sqlite` runs only the first. The default schema of a SQLite chain is `main`. Syntax of the other engine is a compile error with its own code (1900, 1901). See [Supported SQL](./docs/SUPPORTED-SQL.md) and [Architecture](./ARCHITECTURE.md).
+
+### Driver behaviour
+
+- Parameters the SQL does not use are dropped by the drivers before the statement is sent (extra parameters compile, as the engines would reject them at run time).
+- `stream` of a statement that returns no rows rejects, on every driver; use `query` for it.
 
 ## Why
 

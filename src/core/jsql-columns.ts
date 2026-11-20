@@ -1,7 +1,15 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlColumnFactsEntry } from "./jsql-shapes.ts"
-import type { ReplaceProp } from "./type-utils.ts"
-import type { SqlTypeShape, NonNull } from "./sql-type-shape.ts"
-import type { JsqlDbGetSchema, JsqlDbReplaceSchema, JsqlSchemaGetTable, JsqlSchemaReplaceData } from "./jsql-utils.ts"
+import type { FromEntries, OmitProp, ReplaceProp } from "./type-utils.ts"
+import type { SqlTypeShape, SqlTypeOf, NonNull } from "./sql-type-shape.ts"
+import type {
+	JsqlDbGetSchema,
+	JsqlDbOmitProps,
+	JsqlDbReplaceSchema,
+	JsqlSchemaGetTable,
+	JsqlSchemaReplaceData,
+	JsqlConstraints,
+	JsqlTableWithPrimaryKey,
+} from "./jsql-utils.ts"
 
 export type JsqlDataGetColumnType<Data extends JsqlDataShape | null, Col extends string> = Data extends JsqlDataShape
 	? Col extends keyof Data["columns"]
@@ -24,25 +32,189 @@ type JsqlTableReplaceColumn<
 	Table extends JsqlDataShape<"table"> | null,
 	Col extends string,
 	Column extends JsqlColumnShape | SqlTypeShape | null,
+	Spelling extends string = never,
 > =
 	Table extends JsqlDataShape<"table">
-		? Column extends JsqlColumnFactsEntry & { type: SqlTypeShape }
-			? ReplaceProp<
-					ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column["type"]>>,
-					"column_facts",
-					ReplaceProp<
-						Table["column_facts"] extends Record<string, unknown> ? Table["column_facts"] : {},
-						Col,
-						Omit<Column, "type">
-					>
-				>
-			: Column extends SqlTypeShape
-				? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column>>
-				: ReplaceProp<
-						ReplaceProp<Table, "columns", Omit<Table["columns"], Col>>,
-						"column_facts",
-						Omit<Table["column_facts"], Col>
-					>
+		? WithColumnOrder<Table, Col, Column extends null ? true : false, Spelling> extends infer T extends
+				JsqlDataShape<"table">
+			? JsqlTableReplaceColumnData<T, Col, Column>
+			: null
+		: null
+
+type JsqlTableReplaceColumnData<
+	Table extends JsqlDataShape<"table">,
+	Col extends string,
+	Column extends JsqlColumnShape | SqlTypeShape | null,
+> = Column extends JsqlColumnFactsEntry & { type: SqlTypeShape }
+	? ReplaceProp<
+			ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column["type"]>>,
+			"column_facts",
+			ReplaceProp<
+				Table["column_facts"] extends Record<string, unknown> ? Table["column_facts"] : {},
+				Col,
+				OmitProp<Column, "type">
+			>
+		>
+	: Column extends SqlTypeShape
+		? ReplaceProp<Table, "columns", ReplaceProp<Table["columns"], Col, Column>>
+		: ReplaceProp<
+				ReplaceProp<Table, "columns", OmitProp<Table["columns"], Col>>,
+				"column_facts",
+				OmitProp<Table["column_facts"], Col>
+			>
+
+/** `Names` without `Name`. Tail-recursive (#192): the depth must not grow with the width of the table. */
+type WithoutName<
+	Names extends readonly string[],
+	Name extends string,
+	Acc extends readonly string[] = [],
+> = Names extends readonly [infer H extends string, ...infer R extends readonly string[]]
+	? WithoutName<R, Name, H extends Name ? Acc : [...Acc, H]>
+	: Acc
+
+/** `Names` with `Old` replaced by `New` in place. */
+type RenameName<
+	Names extends readonly string[],
+	Old extends string,
+	New extends string,
+	Acc extends readonly string[] = [],
+> = Names extends readonly [infer H extends string, ...infer R extends readonly string[]]
+	? RenameName<R, Old, New, [...Acc, H extends Old ? New : H]>
+	: Acc
+
+/**
+ * #150, #151: the table with its declaration order (a new column goes last, a dropped one leaves) and SQLite spellings
+ * updated for a change of `Col`; the columns themselves are changed after. A table without `order` (built by hand in
+ * low-level tests) and without spellings is returned as it is.
+ */
+type WithColumnOrder<
+	Old extends JsqlDataShape<"table">,
+	Col extends string,
+	Removing extends boolean,
+	Spelling extends string,
+> = Old extends { order: infer O extends readonly string[] }
+	? Removing extends true
+		? WithoutUserTypes<
+				WithoutColumnConstraints<
+					WithoutPkColumn<
+						WithSpelling<ReplaceProp<Old, "order", WithoutName<O, Col>>, Old, Col, never>,
+						Old,
+						Col
+					>,
+					Old,
+					Col
+				>,
+				Old,
+				Col
+			>
+		: Col extends keyof Old["columns"]
+			? Old
+			: WithSpelling<ReplaceProp<Old, "order", [...O, Col]>, Old, Col, Spelling>
+	: Old
+
+/**
+ * A dropped column takes the PRIMARY KEY it is part of with it (PostgreSQL drops the constraint; CORE-15). `Col` may be
+ * a union (several columns dropped at once, TYPE-18 CASCADE).
+ */
+type WithoutPkColumn<T, Old, Col extends string> = Old extends { primary_key: { columns: infer C } }
+	? [Extract<Col, C>] extends [never]
+		? T
+		: JsqlTableWithPrimaryKey<T, null>
+	: T
+
+/**
+ * PostgreSQL drops the table's constraints that involve a dropped column, with or without CASCADE (#179): a named
+ * constraint whose columns (`constraints.columns`) include `Col` leaves `names` and `columns`.
+ */
+type WithoutColumnConstraints<T, Old, Col extends string> = Old extends {
+	constraints: { names: infer N extends string; columns: infer M }
+}
+	? { [K in keyof M]: [Extract<Col, M[K]>] extends [never] ? never : K }[keyof M] extends infer Gone extends string
+		? [Gone] extends [never]
+			? T
+			: ReplaceProp<T, "constraints", JsqlConstraints<Exclude<N, Gone>, OmitProp<M, Gone>>>
+		: T
+	: T
+
+/** A dropped column leaves `user_types` (TYPE-18, #179). */
+type WithoutUserTypes<T, Old, Col extends string> = Old extends { user_types: infer U }
+	? [Extract<Col, keyof U>] extends [never]
+		? T
+		: ReplaceProp<T, "user_types", OmitProp<U, Col>>
+	: T
+
+/** A renamed column keeps its domain or composite type under its new name. */
+type WithRenamedUserType<T, Old extends string, New extends string> = T extends { user_types: infer U }
+	? Old extends keyof U
+		? ReplaceProp<T, "user_types", ReplaceProp<OmitProp<U, Old>, New, U[Old]>>
+		: T
+	: T
+
+/** A renamed column keeps its constraints under its new name. */
+type WithRenamedConstraintColumn<T, Old extends string, New extends string> = T extends {
+	constraints: { names: infer N extends string; columns: infer M }
+}
+	? { [K in keyof M]-?: [K, Old extends M[K] ? Exclude<M[K], Old> | New : M[K]] }[keyof M] extends infer E extends
+			readonly [PropertyKey, unknown]
+		? ReplaceProp<T, "constraints", JsqlConstraints<N, FromEntries<E>>>
+		: T
+	: T
+
+/** A renamed column stays in the PRIMARY KEY under its new name. */
+type WithRenamedPkColumn<T, Old extends string, New extends string> = T extends {
+	primary_key: { columns: infer C extends string; name: infer N extends string }
+}
+	? Old extends C
+		? JsqlTableWithPrimaryKey<T, { columns: Exclude<C, Old> | New; name: N }>
+		: T
+	: T
+
+/** Sets (or, with `never`, drops) the declared spelling of `Col`; tables with no spellings stay without the field. */
+type WithSpelling<T, Old, Col extends string, Spelling extends string> = [Spelling] extends [never]
+	? Old extends { spelled: infer S }
+		? [Extract<Col, keyof S>] extends [never]
+			? T
+			: ReplaceProp<T, "spelled", OmitProp<S, Col>>
+		: T
+	: ReplaceProp<T, "spelled", ReplaceProp<Old extends { spelled: infer S } ? S : {}, Col, Spelling>>
+
+/** `ALTER TABLE … RENAME COLUMN Old TO New`: the column keeps its place, type and facts (#150); `Spelling` as written (SQLite). */
+type JsqlTableRenameColumn<
+	Table extends JsqlDataShape<"table"> | null,
+	Old extends string,
+	New extends string,
+	Spelling extends string,
+> =
+	Table extends JsqlDataShape<"table">
+		? JsqlTableGetColumn<Table, Old> extends infer OldCol extends JsqlColumnShape
+			? JsqlTableReplaceColumnData<Table, Old, null> extends infer T0 extends JsqlDataShape<"table">
+				? WithRenamedUserType<
+						WithRenamedConstraintColumn<
+							WithRenamedPkColumn<JsqlTableReplaceColumnData<T0, New, OldCol>, Old, New>,
+							Old,
+							New
+						>,
+						Old,
+						New
+					> extends infer T
+					? WithSpelling<
+							WithSpelling<
+								Table extends { order: infer O extends readonly string[] }
+									? ReplaceProp<T, "order", RenameName<O, Old, New>>
+									: T,
+								Table,
+								Old,
+								never
+							>,
+							Table,
+							New,
+							Spelling
+						> extends infer Renamed extends JsqlDataShape<"table">
+						? Renamed
+						: never
+					: never
+				: never
+			: null
 		: null
 
 type JsqlTableReplaceColumnType<
@@ -80,11 +252,7 @@ type JsqlTableReplaceColumnNullability<
 						T["columns"],
 						Col,
 						T["columns"][Col & keyof T["columns"]] extends infer Ty extends SqlTypeShape
-							? {
-									type: Ty["type"]
-									arg: Ty["arg"]
-									nullable: Nullability extends "not_null" ? false : true
-								}
+							? SqlTypeOf<Ty["type"], Ty["arg"], Nullability extends "not_null" ? false : true>
 							: never
 					>
 				>
@@ -104,7 +272,7 @@ type JsqlTableReplaceColumnNullabilityFact<
 					Nullability extends null
 						? Table["column_facts"] extends infer Facts
 							? Facts extends Record<string, unknown>
-								? ReplaceProp<Facts, Col, Omit<Facts[Col & keyof Facts], "nullability">>
+								? ReplaceProp<Facts, Col, OmitProp<Facts[Col & keyof Facts], "nullability">>
 								: Facts
 							: Table["column_facts"]
 						: ReplaceProp<
@@ -137,7 +305,7 @@ type JsqlTableReplaceColumnDefault<
 					HasDefault extends null
 						? Table["column_facts"] extends infer Facts
 							? Facts extends Record<string, unknown>
-								? ReplaceProp<Facts, Col, Omit<Facts[Col & keyof Facts], "default">>
+								? ReplaceProp<Facts, Col, OmitProp<Facts[Col & keyof Facts], "default">>
 								: Facts
 							: Table["column_facts"]
 						: ReplaceProp<
@@ -170,18 +338,13 @@ type JsqlTableGetColumn<Table extends JsqlDataShape<"table"> | null, Name extend
 		? { type: Type } & (JsqlTableGetColumnFacts<Table, Name> extends infer Facts extends {} ? Facts : {})
 		: null
 
-type JsqlSchemaGetColumn<
-	Schema extends JsqlSchemaShape | null,
-	Tab extends string,
-	Col extends string,
-> = JsqlTableGetColumn<JsqlSchemaGetTable<Schema, Tab>, Col>
-
 type JsqlSchemaReplaceColumn<
 	Schema extends JsqlSchemaShape | null,
 	Tab extends string,
 	Col extends string,
 	Column extends JsqlColumnShape | SqlTypeShape | null,
-> = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumn<JsqlSchemaGetTable<Schema, Tab>, Col, Column>>
+	Spelling extends string,
+> = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumn<JsqlSchemaGetTable<Schema, Tab>, Col, Column, Spelling>>
 
 type JsqlSchemaReplaceColumnType<
 	Schema extends JsqlSchemaShape | null,
@@ -208,13 +371,6 @@ type JsqlSchemaReplaceColumnDefault<
 	HasDefault extends true | null,
 > = JsqlSchemaReplaceData<Schema, Tab, JsqlTableReplaceColumnDefault<JsqlSchemaGetTable<Schema, Tab>, Col, HasDefault>>
 
-export type JsqlDbGetColumn<
-	Db extends JsqlDatabaseShape,
-	Sch extends string,
-	Tab extends string,
-	Name extends string,
-> = JsqlSchemaGetColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name>
-
 export type JsqlDbGetColumnType<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
@@ -222,13 +378,49 @@ export type JsqlDbGetColumnType<
 	Name extends string,
 > = JsqlSchemaGetColumnType<JsqlDbGetSchema<Db, Sch>, Tab, Name>
 
+/**
+ * Adds, replaces (`Column`) or drops (`null`) a column. An added column goes last in the declaration order; its SQLite
+ * spelling comes from `pendingSpelled` (set where its name was read, see `WithColumnSpelling`), which is cleared.
+ */
 export type JsqlDbReplaceColumn<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Name extends string,
 	Column extends JsqlColumnShape | SqlTypeShape | null,
-> = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, Column>>
+> = JsqlDbReplaceSchema<
+	WithoutPendingSpelled<Db>,
+	Sch,
+	JsqlSchemaReplaceColumn<JsqlDbGetSchema<Db, Sch>, Tab, Name, Column, PendingSpellingOf<Db, Name>>
+>
+
+type PendingSpellingOf<Db, Name extends string> = Db extends { pendingSpelled: infer P }
+	? Name extends keyof P
+		? P[Name] & string
+		: never
+	: never
+
+type WithoutPendingSpelled<Db extends JsqlDatabaseShape> = Db extends { pendingSpelled: unknown }
+	? JsqlDbOmitProps<Db, "pendingSpelled">
+	: Db
+
+/** `ALTER TABLE … RENAME COLUMN Old TO New` (#150: the column keeps its place); `Spelling`: the new name as written (SQLite). */
+export type JsqlDbRenameColumn<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Old extends string,
+	New extends string,
+	Spelling extends string = never,
+> = JsqlDbReplaceSchema<
+	Db,
+	Sch,
+	JsqlSchemaReplaceData<
+		JsqlDbGetSchema<Db, Sch>,
+		Tab,
+		JsqlTableRenameColumn<JsqlSchemaGetTable<JsqlDbGetSchema<Db, Sch>, Tab>, Old, New, Spelling>
+	>
+>
 
 export type JsqlDbReplaceColumnType<
 	Db extends JsqlDatabaseShape,
@@ -253,3 +445,16 @@ export type JsqlDbReplaceColumnDefault<
 	Name extends string,
 	HasDefault extends true | null,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumnDefault<JsqlDbGetSchema<Db, Sch>, Tab, Name, HasDefault>>
+
+/**
+ * TYPE-18 CASCADE, #179: the table without the columns `Cols` (a union), as DROP COLUMN leaves it: order, spellings,
+ * primary key and the constraints that involve them go too.
+ */
+export type JsqlTableDropColumns<Table, Cols extends string> =
+	Table extends JsqlDataShape<"table">
+		? [Cols] extends [never]
+			? Table
+			: JsqlTableReplaceColumn<Table, Cols, null> extends infer T extends JsqlDataShape<"table">
+				? T
+				: Table
+		: Table

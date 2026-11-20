@@ -1,12 +1,10 @@
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
-import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
-import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
+import type { ParseAlias } from "./parse-alias.ts"
+import type { ParseTableRef, TableRefTarget } from "./parse-table-ref.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
-import type { JsqlDbGetData, UnqualifiedSchema } from "../core/jsql-utils.ts"
 
 export type UpdateTableContext = {
 	scope: ScopeMap
@@ -15,108 +13,56 @@ export type UpdateTableContext = {
 	table: string
 }
 
+type UpdateAliasRow = {
+	ends: TokenKey<"set">
+	bare: "dml"
+	verb: "UPDATE"
+	afterAs: FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>
+	bad: FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>
+	tail: TokenKey<"set">
+	tailError: FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>
+}
+
+/** `UPDATE t [[AS] alias] SET`: on SQLite the alias needs AS (`bareDmlAlias`). */
 type ParseUpdateAliasAfterTable<
 	Tokens extends ParserMonad,
-	_Db extends JsqlDatabaseShape,
+	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
 > =
-	PeekToken<Tokens> extends TokenKey<"set">
-		? [
-				Tokens,
-				null,
-				{
-					scope: MergeScope<
-						Record<
-							Tab,
-							{
-								schema: Sch
-								table: Tab
-								columns: TableScopeColumns<Tbl>
-							}
-						>,
-						{}
-					>
-					tbl: Tbl
-					schema: Sch
-					table: Tab
-				},
-			]
-		: PeekToken<Tokens> extends infer TokAlias
-			? SkipToken<Tokens> extends infer Ra extends ParserMonad
-				? TokAlias extends TokenIdent<infer Alias extends string>
-					? PeekToken<Ra> extends TokenKey<"set">
-						? [
-								Ra,
-								null,
-								{
-									scope: MergeScope<
-										Record<
-											Alias,
-											{
-												schema: Sch
-												table: Tab
-												columns: TableScopeColumns<Tbl>
-											}
-										>,
-										{}
-									>
-									tbl: Tbl
-									schema: Sch
-									table: Tab
-								},
-							]
-						: [
-								Ra,
-								FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>,
-								ParserRefErrorThirdSentinel,
-							]
-					: [Ra, FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>, ParserRefErrorThirdSentinel]
-				: never
-			: never
+	ParseAlias<Tokens, Db, UpdateAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+		? E extends null
+			? [
+					R,
+					null,
+					{
+						scope: MergeScope<
+							Record<
+								Alias extends string ? Alias : Tab,
+								{ schema: Sch; table: Tab; columns: TableScopeColumns<Tbl> }
+							>,
+							{}
+						>
+						tbl: Tbl
+						schema: Sch
+						table: Tab
+					},
+				]
+			: [R, E, Alias]
+		: never
 
 export type ParseUpdateFromTableRef<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends infer Tok
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? Tok extends TokenIdent<infer A extends string>
-				? PeekToken<R1> extends TokenKey<".">
-					? SkipToken<R1> extends infer R2 extends ParserMonad
-						? PeekToken<R2> extends infer TokB
-							? SkipToken<R2> extends infer R3 extends ParserMonad
-								? TokB extends TokenIdent<infer B extends string>
-									? JsqlDbGetData<Db, A, B> extends infer TblTry
-										? [TblTry] extends [never]
-											? [
-													R3,
-													FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "UPDATE"]>,
-													ParserRefErrorThirdSentinel,
-												]
-											: TblTry extends JsqlDataShape
-												? ParseUpdateAliasAfterTable<R3, Db, A, B, TblTry>
-												: [
-														R3,
-														FormatError<Errors["UNKNOWN_SCHEMA_OR_TABLE"], [A, "UPDATE"]>,
-														ParserRefErrorThirdSentinel,
-													]
-										: never
-									: [
-											R3,
-											FormatError<Errors["EXPECTED_TABLE_NAME"], ["after `.` in UPDATE"]>,
-											ParserRefErrorThirdSentinel,
-										]
-								: never
-							: never
-						: never
-					: JsqlDbGetData<Db, UnqualifiedSchema<Db, A>, A> extends infer TblTry
-						? [TblTry] extends [never]
-							? [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
-							: TblTry extends JsqlDataShape
-								? ParseUpdateAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, TblTry>
-								: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "UPDATE"]>, ParserRefErrorThirdSentinel]
-						: never
-				: [R1, FormatError<Errors["EXPECTED_TABLE_NAME"], ["in UPDATE"]>, ParserRefErrorThirdSentinel]
-			: never
+	ParseTableRef<Tokens, Db, "UPDATE", "UPDATE"> extends [infer R extends ParserMonad, infer E, infer Target]
+		? E extends null
+			? Target extends TableRefTarget<
+					infer Sch extends string,
+					infer Tab extends string,
+					infer Tbl extends JsqlDataShape
+				>
+				? ParseUpdateAliasAfterTable<R, Db, Sch, Tab, Tbl>
+				: never
+			: [R, E, Target]
 		: never
 
 /** `[column, expression]` pairs of SET, resolved once the FROM scope is known (SQLT-42): see {@link ResolveUpdateAssignments}. */

@@ -3,7 +3,8 @@ import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type { ExprParseEnv, ScalarExprAst } from "./parse-expression-ast.ts"
-import type { ParseNotScalarUntyped } from "./parse-expression-relational.ts"
+import type { ParseAfterAddScalarRelIsInUntyped, ParseNotScalarUntyped } from "./parse-expression-relational.ts"
+import type { ParseOtherOpAfterOperand, ParseOtherOpScalarUntyped } from "./parse-expression-arith.ts"
 
 /**
  * `a AND b AND c …` / `a OR b OR c …` become a BALANCED tree of binary nodes (depth log2 n), not the left-nested one.
@@ -12,7 +13,7 @@ import type { ParseNotScalarUntyped } from "./parse-expression-relational.ts"
  * AND and OR are associative for typing (boolean, nullable when any operand is, first error in source order), so
  * the shape of the tree changes nothing but its depth.
  *
- * The operands are collected tail-recursively (as #48 did with ForceProps) in a short tuple `Items`; every
+ * The operands are collected tail-recursively (as #48 did by forcing the properties) in a short tuple `Items`; every
  * {@link BoolChainChunk} operands it is balanced into one node and moved to `Done`. Two things are required (#105):
  * a tuple that grows by one at every operator is copied n times, which makes the instantiation count quadratic
  * (TS2589 at about 240 operators), and a nested cons list instead of a tuple is itself deeper than the instantiation
@@ -103,11 +104,92 @@ type ParseOrLoopScalarUntyped<
 			: never
 		: [Tokens, FinishBoolChain<"or", Items, Done>, Env]
 
+/**
+ * A whole expression. The first operand is parsed by the operator level directly (`ParseOtherOpScalarUntyped`), and
+ * comparison, `AND` and `OR` follow it one after the other, not nested in each other: every nested parser level is
+ * one more level of TypeScript's instantiation depth per parenthesis, function call or CASE an expression nests
+ * (#174, #180). Only `NOT` and `EXISTS` first go the long way (`ParseNotScalarUntyped`).
+ */
 export type ParseOrScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
-	ParseAndScalarUntyped<Tokens, Env> extends [infer R0 extends ParserMonad, infer E0, infer Env0 extends ExprParseEnv]
-		? E0 extends DbtyperErrorShape
-			? SkipFailedExpressionWithEnv<R0, E0, Env0>
-			: E0 extends ScalarExprAst
-				? ParseOrLoopScalarUntyped<R0, [E0], [], Env0>
+	PeekToken<Tokens> extends TokenKey<"not" | "exists">
+		? ParseAndScalarUntyped<Tokens, Env> extends [
+				infer R0 extends ParserMonad,
+				infer E0,
+				infer Env0 extends ExprParseEnv,
+			]
+			? E0 extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<R0, E0, Env0>
+				: E0 extends ScalarExprAst
+					? ParseOrLoopScalarUntyped<R0, [E0], [], Env0>
+					: never
+			: never
+		: ParseOtherOpScalarUntyped<Tokens, Env> extends [
+					infer R1 extends ParserMonad,
+					infer E1,
+					infer Env1 extends ExprParseEnv,
+			  ]
+			? E1 extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<R1, E1, Env1>
+				: E1 extends ScalarExprAst
+					? ParseRestAfterRelOperand<R1, E1, Env1>
+					: never
+			: never
+
+/** After the first operand of a comparison: the comparison, then the `AND` and `OR` chains. */
+type ParseRestAfterRelOperand<Tokens extends ParserMonad, First extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParseAfterAddScalarRelIsInUntyped<Tokens, First, Env> extends [
+		infer R2 extends ParserMonad,
+		infer E2,
+		infer Env2 extends ExprParseEnv,
+	]
+		? E2 extends DbtyperErrorShape
+			? SkipFailedExpressionWithEnv<R2, E2, Env2>
+			: E2 extends ScalarExprAst
+				? ParseAndLoopScalarUntyped<R2, [E2], [], Env2> extends [
+						infer R3 extends ParserMonad,
+						infer E3,
+						infer Env3 extends ExprParseEnv,
+					]
+					? E3 extends DbtyperErrorShape
+						? SkipFailedExpressionWithEnv<R3, E3, Env3>
+						: E3 extends ScalarExprAst
+							? ParseOrLoopScalarUntyped<R3, [E3], [], Env3>
+							: never
+					: never
+				: never
+		: never
+
+/**
+ * The rest of an expression after its first operand, which a caller has parsed already: operators, comparison,
+ * `AND`, `OR`. Used to continue after redundant parentheses (parse-expression-primary.ts).
+ */
+export type ParseOrAfterOperand<Tokens extends ParserMonad, First extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParseOtherOpAfterOperand<Tokens, First, Env> extends [
+		infer R1 extends ParserMonad,
+		infer E1,
+		infer Env1 extends ExprParseEnv,
+	]
+		? E1 extends DbtyperErrorShape
+			? [R1, E1, Env1]
+			: E1 extends ScalarExprAst
+				? ParseAfterAddScalarRelIsInUntyped<R1, E1, Env1> extends [
+						infer R2 extends ParserMonad,
+						infer E2,
+						infer Env2 extends ExprParseEnv,
+					]
+					? E2 extends DbtyperErrorShape
+						? [R2, E2, Env2]
+						: E2 extends ScalarExprAst
+							? ParseAndLoopScalarUntyped<R2, [E2], [], Env2> extends [
+									infer R3 extends ParserMonad,
+									infer E3,
+									infer Env3 extends ExprParseEnv,
+								]
+								? E3 extends DbtyperErrorShape
+									? [R3, E3, Env3]
+									: ParseOrLoopScalarUntyped<R3, [E3], [], Env3>
+								: never
+							: never
+					: never
 				: never
 		: never

@@ -8,6 +8,7 @@ import type { SameComparisonClass } from "./resolve-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { FinishInsertSemicolon } from "./parse-insert.ts"
 
 export type ParseInsertWithSelect<
@@ -20,7 +21,7 @@ export type ParseInsertWithSelect<
 	Tab extends string,
 	Cols extends readonly string[],
 > =
-	ParseSelectExpression<SkipToken<Tokens>, Db, Params> extends [
+	ParseSelectExpression<SkipToken<Tokens>, Db & { positionalSelect: true }, Params> extends [
 		infer RSelect extends ParserMonad,
 		infer _Db2,
 		infer SelectRes,
@@ -28,7 +29,7 @@ export type ParseInsertWithSelect<
 		? SelectRes extends DbtyperErrorShape
 			? [RSelect, Db, SelectRes]
 			: SelectRes extends JsqlSelectStatementResult
-				? ValidateInsertSelectColumns<Tbl, Cols, SelectRes> extends infer ValidationRes
+				? ValidateInsertSelectColumns<Tbl, Cols, SelectRes, ComparisonClassesOf<Db>> extends infer ValidationRes
 					? ValidationRes extends DbtyperErrorShape
 						? [RSelect, Db, ValidationRes]
 						: ValidationRes extends true
@@ -54,11 +55,12 @@ type ValidateInsertSelectColumns<
 	Tbl extends JsqlDataShape,
 	InsertCols extends readonly string[],
 	SelectRes extends JsqlSelectStatementResult,
+	Classes,
 > =
 	ValidateInsertSelectColumnCount<InsertCols, SelectRes> extends infer CountCheck
 		? CountCheck extends DbtyperErrorShape
 			? CountCheck
-			: ValidateInsertSelectColumnTypes<Tbl, InsertCols, SelectRes, InsertCols>
+			: ValidateInsertSelectColumnTypes<Tbl, InsertCols, SelectRes, InsertCols, Classes>
 		: never
 
 /** The SELECT's output names in position order (`order`, set by the select parser); without it nothing is checked. */
@@ -83,6 +85,7 @@ type ValidateInsertSelectColumnTypes<
 	InsertCols extends readonly string[],
 	SelectRes extends JsqlSelectStatementResult,
 	AllCols extends readonly string[],
+	Classes,
 	Idx extends readonly unknown[] = [],
 > =
 	SelectOrder<SelectRes> extends infer O extends readonly string[]
@@ -91,12 +94,13 @@ type ValidateInsertSelectColumnTypes<
 				? SelName extends keyof SelectRes["returning"]
 					? SelectRes["returning"][SelName] extends infer SelectType extends SqlTypeShape
 						? JsqlDataGetColumnType<Tbl, Col> extends infer InsertType extends SqlTypeShape
-							? SameComparisonClass<SelectType, InsertType> extends true
+							? SameComparisonClass<SelectType, InsertType, never, never, Classes> extends true
 								? ValidateInsertSelectColumnTypes<
 										Tbl,
 										RestCols,
 										SelectRes,
 										AllCols,
+										Classes,
 										readonly [...Idx, 0]
 									>
 								: FormatError<Errors["INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN"], [Col]>

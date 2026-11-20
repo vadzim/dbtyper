@@ -1,155 +1,83 @@
-# Supported SQL (parser)
+# Supported SQL
 
-This document lists **SQL surface area that the dbtyper type-level parser understands** today: routing, schema shape updates, and validation. **Update this file whenever you add or change parser support** for a statement or construct.
+This page lists the SQL that the dbtyper type-level parser reads and checks. It is the same for migrations (`apply`) and for queries (`query`, `stream`); what a statement does to the schema is noted per statement. Everything is parsed in the dialect of the driver of the chain (PostgreSQL or SQLite).
 
-Lexing, token types, and monad mechanics are out of scope here.
+SQL that is not listed is either skipped (see "Statements that are skipped") or a compile error with a code from [ERROR_CODES.md](./ERROR_CODES.md). The untyped methods `queryUntyped` and `streamUntyped` never parse the SQL, and are the way to run what the parser does not support yet.
 
----
+## Statements
 
-## Statement routing
+| Statement                                                                                                                                                          | What the parser does                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `CREATE TABLE`, `CREATE VIEW`, `CREATE SCHEMA`, `CREATE TYPE`, `CREATE DOMAIN`, `ALTER TABLE`, `ALTER TYPE`, `DROP TABLE`, `DROP VIEW`, `DROP SCHEMA`, `DROP TYPE` | Parsed and checked; they change the schema of the chain (a statement passed to `query` is checked but changes nothing).           |
+| `CREATE OR REPLACE VIEW`, `CREATE MATERIALIZED VIEW`, `DROP MATERIALIZED VIEW`                                                                                     | PostgreSQL: parsed like a view. SQLite: error 1900.                                                                               |
+| `SELECT`, `WITH … SELECT`                                                                                                                                          | Parsed and checked; the result is the row type.                                                                                   |
+| `INSERT`, `UPDATE`, `DELETE`                                                                                                                                       | Parsed and checked; the result is `[]`, or the rows of `RETURNING`.                                                               |
+| `CREATE INDEX`, `GRANT`, `REVOKE`, `TRUNCATE`, `SET`, `BEGIN`, `COMMIT`, `COPY`, `PRAGMA` and the like                                                             | Skipped up to the next `;` (brackets must balance); no check, no schema change. A `query` of such a statement is typed `unknown`. |
+| Any other first word (`selec`, `udpate`)                                                                                                                           | Compile error 1930 (1931 with a "did you mean" hint). `ATTACH`, `DETACH` and `CREATE VIRTUAL TABLE` in SQLite are error 1916.     |
 
-`ParseSqlStatement` dispatches on the leading keyword:
+A script may hold several statements. They are applied in order, each sees the schema changes of the ones before it, and the first wrong statement is the error. A statement ends with `;` or at the end of the text. A script may have at most 2500 statements (error 1919).
 
-| Prefix                                   | Behavior                                                                                                                                    |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CREATE` + `TABLE` / `SCHEMA` / `VIEW`   | Parsed; may **merge** into `JsqlDatabaseShape` (**`VIEW`** stores **`kind: "view"`** from the inner **`SELECT`**).                          |
-| `CREATE` + anything else                 | **Skipped** to the next `;` (or end): **`ParseSkipStatement`** / `SkipBracketedUntil` (e.g. **`CREATE INDEX`**).                            |
-| `ALTER` + `TABLE`                        | Parsed; may **mutate** table shape (see **`ALTER TABLE`** below). **`ALTER`** without **`TABLE`** → error **`Expected TABLE after ALTER`**. |
-| `DROP` + `TABLE` / `SCHEMA`              | Parsed; may **remove** from `JsqlDatabaseShape`                                                                                             |
-| `DELETE`                                 | Parsed; **checked** against the DB (`WHERE` is type-checked); does **not** mutate the schema object                                         |
-| `WITH` … (CTE) + `SELECT`                | Parsed as one statement: CTEs bind in **`ScopeMap`** for the following **`SELECT`**; duplicate CTE name → **`DbtyperError`**.               |
-| `SELECT`                                 | Parsed; projection/joins and list **`:name`** params checked; does **not** mutate the DB                                                    |
-| `INSERT` / `UPDATE`                      | Parsed; checked; schema unchanged in this model.                                                                                            |
-| Anything else (e.g. `GRANT`, `TRUNCATE`) | **Skipped** to the next `;` (or end): same bracket-aware scan as **`CREATE VIEW`**, no structured parse.                                    |
+Keywords are case-insensitive. Unquoted identifiers are folded to lower case, quoted ones keep their spelling. `--` and nested `/* */` comments are whitespace. PostgreSQL also reads `$$…$$` and `$tag$…$tag$` strings; SQLite reads `[bracket]` and backtick identifiers.
 
-Multi-statement scripts: **`ApplyParsedStatements<Tokens, Db, Params>`** ( **`Params`** defaults to **`{}`** ) walks statements until end-of-input. If **`ParseSqlStatement`** returns **`DbtyperError<…>`** in the third tuple slot, the walk **stops** and returns **`[RestTokens, Db, DbtyperError<…>]`** without applying later statements; on full success through end-of-input it returns **`[RestTokens, Db, null]`**. **`ApplyStatements<Db, Text, Params>`** folds that to **`[FinalDb, DbtyperError<…> | null]`** ( **`[Db, null]`** when **`Db`** is already **`DbtyperError<…>`** — no script walk). **`DBMigrations.apply`** threads only **`ApplyStatements<…>[0]`** (the DB) as the chained **`Database`** type.
+## Dialects
 
-### Schema shape (`JsqlDatabaseShape`)
+- The driver declares the dialect (`"postgres"` or `"sqlite"`), and every migration, query and stream of the chain is parsed in it.
+- Syntax of the other engine is a compile error: 1900 (PostgreSQL-only syntax in a SQLite chain, such as `::`, `$n`, `DROP TABLE … CASCADE`), 1901 (SQLite-only syntax in a PostgreSQL chain, such as `INSERT OR …`, `REPLACE INTO`, backtick identifiers). The list is the data table in `src/core/dialect.ts`.
+- A PostgreSQL chain starts with the schema `public`: the first migration may be `create table …`. `create schema public;` is error 3200, `create schema if not exists public;` does nothing. A `defaultSchema` other than `public` must be created.
+- A SQLite chain starts with the schemas `main` (the default) and `temp`. `CREATE SCHEMA` is an error there.
+- Column types come from the driver's type map: `PostgresTypeMap` and `SqliteTypeMap` (see the README). A type spelling that is not in the map is error 3506.
 
-- Each schema has **`sets`**: a map of relation name → **`JsqlTableShape`** (shared shape for base tables and views).
-- Every entry has **`kind`**: **`"table"`** or **`"view"`** (**`CREATE TABLE`** / **`CREATE VIEW`** produce **`"table"`** / **`"view"`** respectively).
-- **`scalarTypes`**: required map from SQL type words to TS types (parser column typing uses **`Db["scalarTypes"]`**; **`DataBase`** inference follows **`driver.scalarTypes`** — for Postgres use **`postgresSqlDriver`** from **`dbtyper/postgres`** with **`sqlMigrations({ driver: … })`**).
+## CREATE TABLE, CREATE VIEW
 
-### Dialect (DSEL-1…DSEL-11)
+- `CREATE [TEMP] TABLE [IF NOT EXISTS] [schema.]name (column definitions, table constraints)`; columns keep their declaration order. Column constraints in any order: `NULL`, `NOT NULL`, `DEFAULT`, `PRIMARY KEY`, `UNIQUE`, `CHECK`, `REFERENCES`, `COLLATE`, generated columns. Table constraints: `PRIMARY KEY`, `UNIQUE`, `FOREIGN KEY`, `CHECK`, with or without `CONSTRAINT name`.
+- A `DEFAULT` must fit the column type; a `REFERENCES` target must exist; a column name may appear once; a generated column cannot be written by INSERT or UPDATE.
+- `CREATE TABLE … AS SELECT …` makes a table of the output columns of the query, all nullable.
+- With `IF NOT EXISTS`, an existing table is kept as it is.
+- `CREATE VIEW [schema.]name [(column names)] AS SELECT …` (or `AS WITH … SELECT …`): the query is checked and its output columns become the view's columns.
+- PostgreSQL: enums (`CREATE TYPE … AS ENUM`, a column of it is the union of its labels), domains, arrays (`int[]`, `text[]`), `ALTER TYPE … ADD VALUE`. SQLite: `STRICT` and `WITHOUT ROWID` tables, `INTEGER PRIMARY KEY` as the rowid, type affinity names, a single-quoted column name (`'order' INTEGER`), a bare name as DEFAULT (`DEFAULT standard` is the text `'standard'`).
 
-- The driver's type-level config declares **`dialect: "postgres" | "sqlite"`** next to **`syntax`** and **`scalarTypes`**; every migration, query and stream of a chain is parsed in that dialect. A `createDriver` config without exactly one dialect is a compile error on `driver` at **`sqlMigrations`**.
-- Syntax of the other engine is a compile error with its own code: **1900** (PostgreSQL-only, in a SQLite chain), **1901** (SQLite-only, in a PostgreSQL chain). Built so far: `::`, `$n`, dollar-quoted strings (PostgreSQL); `INSERT OR …`, `REPLACE INTO`, backtick identifiers (SQLite). The list is the data table in **`src/core/dialect.ts`**.
-- A SQLite chain starts with its default schema in place (no `create schema`).
-- A PostgreSQL chain starts with the schema `public` (SCHEMA-27): the first migration may be `create table …`; `create schema public;` is an error (3200), `create schema if not exists public;` a no-op (SCHEMA-28). A `defaultSchema` other than `public` must still be created.
+## ALTER TABLE, DROP
 
----
+- `ALTER TABLE [schema.]name action[, action …]` applies, in order: `ADD [COLUMN]`, `DROP [COLUMN]`, `RENAME [COLUMN] a TO b`, `RENAME TO`, `ALTER COLUMN … TYPE`, `SET`/`DROP NOT NULL`, `SET`/`DROP DEFAULT`, `ADD CONSTRAINT`. A missing table or column, a view, or an unsupported action is a compile error. In SQLite the actions are those SQLite has; of `ALTER [COLUMN] c …` only `SET NOT NULL` and `DROP NOT NULL` (they need SQLite 3.53 or later at run time).
+- `DROP TABLE`, `DROP VIEW`, `DROP SCHEMA`, `DROP TYPE` with `IF EXISTS` (and `CASCADE` / `RESTRICT` on PostgreSQL). `DROP TABLE` of a view is an error.
+- `CREATE SCHEMA [IF NOT EXISTS] name`, `DROP SCHEMA [IF EXISTS] name`: PostgreSQL only.
 
-## `CREATE SCHEMA`
+## SELECT
 
-- Optional **`IF NOT EXISTS`** (full keyword sequence as implemented).
-- One **identifier** (schema name), then **`;`** or end of input.
-- Adds an empty schema to `schemas`, or errors if the schema already exists (unless `IF NOT EXISTS`).
+- Select list: `*`, `t.*`, `schema.t.*`, columns (bare, `alias.col`, `table.col`, `schema.table.col`), expressions, function calls, with or without `AS`. A bare `*` must be the only item, and only over one table (error 3401 over joins). Two output columns with the same name are error 3410.
+- `DISTINCT`, and in PostgreSQL `DISTINCT ON`.
+- `FROM` is optional (`select 1 as one`). Items: `[schema.]table [AS] alias`, a view, a CTE, a derived table `(select …) [AS] alias` (the alias is required). PostgreSQL also has `unnest(…)` and `generate_series(…)`; SQLite has `json_each(json [, path])` and `json_tree(json [, path])` with the columns `key`, `value`, `type`, `atom`, `id`, `parent`, `fullkey`, `path` (the arguments may use the items before them: `from t, json_each(t.tags) j`; a call with no argument or more than two is error 1937, and outside FROM it is an unknown function, 3619).
+- Joins: `[INNER] JOIN`, `LEFT`/`RIGHT`/`FULL [OUTER] JOIN` and `CROSS JOIN`; `ON` takes any boolean condition, `USING (columns)` and `NATURAL JOIN` work too. Columns on the optional side of an outer join are nullable.
+- `WITH name AS (select …), …` (a CTE may be used in FROM and JOIN), `WITH RECURSIVE`; a CTE may not refer to an earlier CTE of the same list yet.
+- `UNION [ALL]`, `INTERSECT`, `EXCEPT`: the names come from the first SELECT, the column types are merged, and the column counts must agree.
+- `WHERE`, `GROUP BY` (columns, expressions, output positions), `HAVING`, `ORDER BY` (columns, expressions, positions, output aliases; `ASC`/`DESC`), `LIMIT`, `OFFSET`, `FETCH FIRST n ROWS ONLY`. A column in the list that is outside an aggregate and is not a `GROUP BY` key is error 3403.
+- Subqueries in expressions: scalar `(select …)`, `IN (select …)`, `EXISTS (select …)`, `x = ANY (…)`. They see the columns of the outer `FROM` in `WHERE`, not in the select list and not in derived tables.
+- Window functions: `function(…) OVER (PARTITION BY … ORDER BY …)`.
+- Not supported yet (a compile error; use `queryUntyped`): a comma-separated `FROM` list (except a `,` before SQLite's `json_each`/`json_tree`, a `CROSS JOIN`), the hidden `json`/`root` columns of `json_each`/`json_tree` and `jsonb_each`/`jsonb_tree`, `LATERAL`, `NULLS FIRST/LAST`, `FOR UPDATE` and other locking clauses, `COLLATE` in an expression, an output alias without `AS`, typing `VALUES (…)` and `TABLE t` as queries.
 
----
+## INSERT, UPDATE, DELETE
 
-## `CREATE TABLE`
+- `INSERT INTO [schema.]table [(columns)] VALUES (…), (…)` and `INSERT INTO … SELECT …`. Every value is checked against its column; `NULL` for a NOT NULL column is an error; a NOT NULL column without a default that is missing from the column list is error 3300.
+- `ON CONFLICT [(columns)] DO NOTHING` and `DO UPDATE SET … [WHERE …]`, where `excluded.column` is in scope. SQLite also has `INSERT OR …` and `REPLACE INTO`.
+- `UPDATE table SET column = value, … [FROM other] [WHERE …]`, `DELETE FROM table [USING other] [WHERE …]`; the `WHERE` follows the rules of a SELECT `WHERE`.
+- `RETURNING *`, `t.*`, columns or expressions with `AS`: the result is the typed rows. Without `RETURNING` the result is `[]`.
 
-- Optional **`IF NOT EXISTS`**.
-- **Qualified** `schema.table` or **unqualified** `table` (uses `defaultSchema`); schema must exist in the shape.
-- **`(` … `)`** column list, then **`;`** or end.
-- **Columns**: name + **type** from a run of **identifier** tokens (multi-word types, e.g. `timestamp with time zone`), mapped via **`scalarTypes`** on **`JsqlDatabaseShape`** (keys are normalized SQL type spellings; values are TS types — see **`DataBase`** / **`PostgresTypeMap`** / **`postgresSqlDriver`**). PostgreSQL (PGT-2…PGT-11): `int8`/`numeric` → `string` (`int8` → `bigint` with `postgresSqlDriver({ sql, bigint: true })`), `date`/`timestamp[tz]` → `Date`, `bytea` → `Uint8Array`, `json[b]` → `JsonValue`; dbtyper never changes the client parsers. A spelling not in the map is error 3506 (CORE-14).
-- Optional **`NULL`** / **`NOT NULL`** after the type.
-- **`CONSTRAINT` …** lines: enough structure to **skip** a typical `CONSTRAINT name PRIMARY KEY ( … )` (balanced parens); constraints are **not** merged into `JsqlTableShape` from this path.
-- With **`IF NOT EXISTS`** when the table **already** exists: table body is **skipped to `;`** without merging.
-- New tables are merged with **`kind: "table"`**.
+## Expressions
 
----
+- Literals (string, number, boolean, `NULL`), columns, parameters (`:name`, `$n` in PostgreSQL, `?`, `?NNN`, `:name`, `@name` in SQLite), parentheses.
+- Operators: `+ - * / % ^`, unary `-`, `||`, comparisons, `AND`, `OR`, `NOT`, `IS [NOT] NULL`, `IS [NOT] DISTINCT FROM`, `[NOT] IN (list)`, `[NOT] BETWEEN`, `[NOT] LIKE`, `ILIKE`, array operators `@> <@ &&`. Operands must be compatible: the comparison classes are numeric, text, boolean, uuid, date and time, json, array, and enum for PostgreSQL. In SQLite a NUMERIC-affinity value (`NUMERIC`, `STRING`, `NUMBER`, any unknown type name) is compatible with text and numbers, as operand and in INSERT, UPDATE and DEFAULT. A mismatch is error 2500 and its relatives.
+- `NULL` is tested with `IS NULL` only: `= null`, `<> null`, and `NULL` in arithmetic or `BETWEEN` are errors.
+- `CASE WHEN … THEN … ELSE … END` and `CASE x WHEN …`; without `ELSE` the result is nullable.
+- `CAST(x AS type)`, and `x::type` in PostgreSQL.
+- A condition (`WHERE`, `HAVING`, `ON`, `CASE WHEN`) must be boolean.
+- A result is nullable when any operand is nullable, except for null-aware forms (`IS NULL`, `EXISTS`, `COALESCE`).
 
-## `CREATE VIEW`
+## Functions
 
-- **`CREATE VIEW`** then **`view_name`** or **`schema.view_name`**, then **`AS`**, then **`SELECT`** or **`WITH`** … **`SELECT`** (same **`ParseSelect`** rules and **`Params`** as a top-level query).
-- The inner query must type-check; result columns (as SQL type strings) are copied onto **`sets[name]`** with **`kind: "view"`**.
-- **`;`** or end after the inner statement tail (same semicolon discipline as **`SELECT`**).
-- Errors include unknown schema, missing **`AS`**, name already in **`sets`**, and malformed inner **`SELECT`**.
+A function must be in the function catalog of the dialect (PostgreSQL or SQLite); an unknown one is error 3619, a schema-qualified one 3617. The catalog covers aggregates (`count`, `sum`, `avg`, `min`, `max` and more), `coalesce`, text, numeric, date and time, JSON and array functions, window functions (`row_number`, `rank`, `lag`, `lead`, …) and `now()`. Arity and argument types are checked, and the result type is per dialect. Users cannot declare their own functions yet.
 
----
+## Statements that are skipped
 
-## `DROP SCHEMA` / `DROP TABLE`
+Skipped statements are not checked, change nothing in the schema, and are typed `unknown` by `query`. Most are harmless (`GRANT`, `SET`, `BEGIN`, `CREATE INDEX`, `COMMENT`). Some of them change the schema in the real database, and later queries then fail against the old schema: PostgreSQL `CREATE TEMP TABLE`, `ALTER SCHEMA … RENAME`, `ALTER VIEW …`. Keep such changes out of the typed chain.
 
-- Optional **`IF EXISTS`** (as implemented per statement).
-- Identifier / qualified name forms supported by the parser; **`;`** or end.
-- **`DROP TABLE`** removes an object from **`sets`** only when its **`kind` is `"table"`**. If the name exists as a **`view`**, the statement **errors** (or with **`IF EXISTS`**, leaves the DB unchanged — no **`DROP VIEW`** parser yet).
-- **`DROP SCHEMA`**: removes the whole schema entry when applicable (behavior depends on existence and `IF EXISTS`).
-
----
-
-## `SELECT`
-
-- Optional **`DISTINCT`**.
-- **Select list**: `*`; **parameters** (`:name` per lexer); **`schema.table.column`**, **`alias.column`**, bare **`column`** resolved via the same **`ResolveColumnRefValue`** rules as expressions (catalog + `ScopeMap`): **unique** owning column succeeds; **zero** → error; **two or more** → ambiguous error. Optional **`AS alias`**. Comma-separated items.
-- **Two-phase scalar expressions** (`+`, `-`, `*`, unary `-`, literals, `:param` in the list, and **identifier-led** expressions such as **`users.row_count + 1`**): the list is parsed into an untyped **`ScalarExprAst`** (`ParseScalarExprUntyped` in [`src/parser/parse-expression.ts`](../src/parser/parse-expression.ts)) **before** `FROM`, then **`ResolveExpressionAST`** runs after **`ScopeMap`** is known (same **`MergeNumericArithmetic`**, **`LookupParam`**, **`ResolveColumnRefValue`** rules as typed scalar math). **`IN (` … `)`** stores each list operand in the AST and checks every element against the left-hand type at resolve time (same class rules as **`DELETE`** / **`WHERE`** below). Bare columns such as **`users.id`** use the same path with a **`col`** AST node (identifier chains are not resolved to catalog vs alias until the resolve pass). **`AS name` is required** for any non-**`col`** expression when the select list has **more than one** item; if the list has **exactly one** non-**`col`** expression and no **`AS`**, the output column name is **`?column?`** (PostgreSQL-style anonymous label). Optional **`AS`** remains allowed for bare **`users.id`**-style **`col`** projections. **`:param`** remains its own **`param`** raw item kind.
-- **`*` must be the only** projection in the list.
-- **`FROM` is required** after the select list.
-- **`FROM`**: `schema.table` or `table` (default schema); optional **table alias**.
-- **`WITH` / CTEs** (leading **`WITH`** on the statement): comma-separated **`name AS (` `SELECT` … `)`** list, then the main **`SELECT`**. Each CTE row shape is merged into the outer **`ScopeMap`** before **`FROM`** so the main query can reference **`cte_name.column`**. Duplicate CTE names error. **`ParseParenEnclosedSelect`** already ends past the CTE subquery’s **`)`**; the parser does **not** read a second **`)`** after it. CTE **cycle** detection is not implemented.
-- **Derived tables (subqueries in `FROM` / `JOIN`)**: **`(` `SELECT` … `)`** then **`AS alias`** or **`alias`** (alias is required; otherwise **`SqlParserError<"Expected AS or alias after derived table">`**). The inner `SELECT` uses the same rules as a top-level `SELECT` (list, required inner `FROM`, joins, optional typed `WHERE`, same **`Params`**). Inner `FROM` starts with an **empty** `ScopeMap` (no correlation with outer tables). The outer query only sees the subquery under its alias; column names (as SQL type strings) come from the inner projection’s **`JsqlSelectStatementResult`**.
-- **Scalar subqueries in expressions**: **`(` `SELECT` … one non-`*` column … `FROM` … `)`** as a scalar operand (resolved after scope is known). **`IN (SELECT` … `)`** requires a **single-column** inner projection; **`EXISTS (` `SELECT` … `)`** is **`boolean`**. Outer **`FROM`** aliases are available in **`WHERE`** (and other sites that pass the join **`ScopeMap`** into **`ParseExpressionAST`**); inner subquery **`FROM`** still starts from an empty scope unless extended for correlation elsewhere.
-- **`JOIN`**: **`INNER JOIN`**, **`LEFT [OUTER] JOIN`**, **`JOIN`**. Each joined table must be followed by **`ON alias.column = alias.column`** (equality only; columns validated against join scope). The RHS may be a **derived table** as above, then **`ON`** as usual.
-- Optional **`WHERE`**: parsed and **type-checked** with **`ParseWhereExpression`** (same rules as **`DELETE`** / **`UPDATE`**) over the join **`ScopeMap`**; must end with **`;`** (or end).
-- **Query parameters**: every **`:name`** in the select list must appear in the optional third generic of **`ParseSqlStatement<…, Db, Params>`** (defaults to **`{}`** — then any `:name` is an error). Each binding is **`{ ts, sql }`**; if **`ts` is exactly `unknown`**, the projection errors (**no silent `unknown`**). The same **`Params`** map applies to **`INSERT`** / **`UPDATE`** value expressions and their **`WHERE`** clauses.
-- Statement ends with **`;`** or end after the parsed tail.
-- Output type: **`JsqlSelectStatementResult`** (`kind`, `columns` as SQL type strings). Passing DB value is unchanged.
-
----
-
-## `DELETE`
-
-- **`DELETE FROM`** then the same **table reference** and **optional alias** style as `SELECT`.
-- Optional **`WHERE`** (parsed and **type-checked** via **`ParseExpressionAST`** then **`ResolveExpressionAST`** in [`src/parser/parse-expression.ts`](../src/parser/parse-expression.ts); entry **`ParseWhereExpression`** in [`src/parser/parse-where-expression.ts`](../src/parser/parse-where-expression.ts)):
-    - **`NOT`**, **`AND`**, **`OR`**, parenthesized groups (inner group must already type to a boolean where required).
-    - Operands: literals (`true` / `false` / **`null`** only for **`IS [NOT] NULL`** — **`= null` / `<> null` are rejected**), strings, numbers, **`:name`** parameters; qualified / unqualified column identifiers (bare name: same **unique / ambiguous / missing** rules as `SELECT` over the merged **`ScopeMap`**); parenthesized subexpressions; **`identifier(` … `)`** (balanced skip only — not a typed call).
-    - Comparisons **`=`**, **`<>`**, **`!=`**, **`<=`**, **`>=`**, **`<`**, **`>`**: operands must share the **same TS class** (e.g. both `string`, both `number`, both `boolean`); mixed classes error.
-    - **`BETWEEN` _low_ `AND` _high_** — subject and both bounds share the same comparison class; **`NULL`** in any position is rejected.
-    - **`LIKE`** / **`ILIKE`** — left operand and pattern must be **text** (`ILIKE` is case-insensitive at the type level only as a distinct operator; no pattern semantics).
-    - Searched **`CASE WHEN` … `THEN` … [`WHEN` … `THEN` …]\* [`ELSE` …] `END`** — each **`WHEN`** must be **`boolean`**; all **`THEN`** / **`ELSE`** results share the same comparison class (with **`NULL`** literals widening the result type); omitting **`ELSE`** yields **`T | null`** at the TypeScript level.
-    - Simple **`CASE`** _expr_ **`WHEN`** _value_ **`THEN`** … — each **`WHEN`** value is checked against _expr_ with the **same rules as `=`** (comparison class; **`NULL`** rejected like **`= null`**); **`THEN` / `ELSE`** merge like searched **`CASE`**; omitting **`ELSE`** also yields **`T | null`**.
-    - Root **`WHERE`** expression must resolve to **`boolean`** (e.g. a bare column reference errors).
-    - **`IS [NOT] NULL`**.
-    - **`IN (` … `)`** — comma-separated **scalar values** are parsed and each must match the **left-hand operand’s comparison class** (same rules as **`=`** / **`<>`**); **`NULL`** literals in the list are rejected (`IS NULL` / `IS NOT NULL` instead). **`IN (SELECT` … `)`** requires a **single-column** inner **`SELECT`** and applies the same class rules to that column.
-- Column references use **`ResolveColumnRefValue`** (re-exported through **`EvalWhereClause`** / **`ParseWhereExpression`**; public entry in [`src/parser/parse-where-expression.ts`](../src/parser/parse-where-expression.ts)). **Catalog** (`JsqlDatabaseShape`) plus **`ScopeMap`**. **`ParseSqlStatement<…, Db, Params>`** third generic supplies **`:name`** bindings for `WHERE` (default **`{}`** rejects any parameter).
-- Ends with **`;`** or end. Success does not alter the schema shape in the current model.
-
----
-
-## `INSERT`
-
-- **`INSERT INTO`** qualified or default-schema **table name**, optional **table alias** before the column list, then **`(`** **column names** **`)`** **`VALUES (`** … **`)`**. Multiple rows are supported as **`VALUES (row1…), (row2…), …`** (comma between closing **`)`** and opening **`(`** of the next row). Each row is type-checked against the same column list; too few or too many cell expressions surface as parse errors (for example **`Expected `,` between INSERT values`** or **`Expected `)` after INSERT values`** when the tuple does not match the column arity).
-- Each **`VALUES`** expression is parsed with **`ParseAddValue`** (same typed scalar subset as **`WHERE`** operands: literals, **`:param`**, unqualified / qualified column refs via **`ScopeMap`** for the target table).
-- Each value is checked against the corresponding column’s **TypeScript type** in **`columns`** using the same **comparison-class** rules as **`=`**; **`NULL`** is rejected when **`column_facts`** marks the column **`not_null: true`**.
-- Optional **`ON CONFLICT (`** column names **`) DO UPDATE SET`** … — same **`SET`** assignment style as **`UPDATE`** (typed **`ParseAddValue`** RHS). The scope adds **`excluded`** (mirror of the target table) so **`excluded.column_name`** is valid. Optional **`WHERE`** after **`SET`** uses **`ParseWhereExpression`** on that merged scope. Parsed **`SET`** column names are recorded on the result as **`on_conflict_update_set_columns`**.
-- Optional **`RETURNING`** … — same projection rules as a **`SELECT`** list (including **`*`** where implemented); resolved against the insert/upsert row scope. When present, **`JsqlInsertStatementResult.returning`** is a **`JsqlSelectStatementResult`** (`columns` as SQL type strings).
-- Success third slot: **`JsqlInsertStatementResult`** (`kind`, `schema`, `table`, **`columns`**, optional **`on_conflict_update_set_columns`**, optional **`returning`**). Schema shape is unchanged.
-
----
-
-## `UPDATE`
-
-- **`UPDATE`** then the same **table reference** and **optional alias** style as **`DELETE`** / **`SELECT`** (default schema or **`schema.table`**).
-- **`SET`** one or more assignments: **unqualified** **`column_name =`** typed scalar (same **`ParseAddValue`** rules and **`Params`** as **`INSERT`**). Each assignment is type-checked against the column.
-- Optional **`WHERE`** — same **`ParseWhereExpression`** rules as **`DELETE`** over a **`ScopeMap`** that includes the updated table (alias if present).
-- Success third slot: **`JsqlUpdateStatementResult`** (`kind`, `schema`, `table`, **`set_columns`**). Schema shape is unchanged.
-
-## Typed expressions (`ParseExpressionAST` / `ResolveExpressionAST` / `EvalWhereClause`)
-
-- [`src/parser/parse-expression.ts`](../src/parser/parse-expression.ts): **`ParseExpressionAST`** builds an untyped **`ScalarExprAst`** (including **`AND` / `OR` / `NOT`**, comparisons, **`IS [NOT] NULL`**, **`IN`** (value lists and **`IN (SELECT …)`**), **`BETWEEN`**, **`LIKE` / `ILIKE`**, simple and searched **`CASE`**, **`+` / `-` / `*`**, unary **`-`**, casts, **`EXISTS (SELECT …)`**, parenthesized scalar **`(SELECT …)`**). **`ResolveExpressionAST<Ast, Db, Scope, Params>`** checks types once **`ScopeMap`** and **`:name`** bindings (**`Params`**, default **`{}`**) are known; column references use **`ResolveColumnRefValue`** (unqualified / **`alias.col`** / **`schema.table.column`** against **`JsqlDatabaseShape`**).
-- **`EvalWhereClause`** / **`ParseWhereExpression`** return **`[RestTokens, DbtyperError | null]`** for statement wiring (`WHERE` must resolve to **`boolean`**).
-
----
-
-## `ALTER TABLE`
-
-- Routed as **`ALTER` + `TABLE`** then qualified **`schema.table`** or default-schema **`table`** (same resolution rules as **`CREATE TABLE`**).
-- **Merged into `JsqlTableShape`**: **`ADD COLUMN`**, **`DROP COLUMN`**, **`RENAME COLUMN`**, **`ALTER COLUMN … TYPE`**, **`SET NOT NULL`**, **`DROP NOT NULL`** (per **`parse-alter-table.ts`**).
-- **No-op (skipped until next `,` or `;` within the alter list)**: e.g. **`SET DEFAULT`**, **`DROP DEFAULT`**, **`ADD CONSTRAINT`** … — enough token structure to reach a safe delimiter without full semantic support.
-
----
-
-## Not supported (skipped or absent)
-
-- **`ALTER`** forms other than **`ALTER TABLE …`** as implemented (e.g. **`ALTER SCHEMA`**) are **not** supported beyond the **`Expected TABLE after ALTER`** path.
-- **`CREATE INDEX`**, **`TRUNCATE`**, **`GRANT`**, **`REVOKE`**, and similar are **not** parsed structurally; **`ParseSkipStatement`** advances to **`;`** (see routing table).
+Very long statements are a limit of the TypeScript compiler, not of dbtyper: an expression with about thirty chained `+`, more than about 200 positional parameters, or a very long migration chain can end in TypeScript's own "excessively deep" error (TS2589) instead of a dbtyper error. Split the statement or the migration.

@@ -68,6 +68,7 @@ export type PostgresParamTypeMap<Bigint extends boolean = false> = Omit<
 	| "bigint"
 	| "numeric"
 	| "decimal"
+	| "date"
 	| "timestamp"
 	| "timestamptz"
 	| "timestamp without time zone"
@@ -76,6 +77,7 @@ export type PostgresParamTypeMap<Bigint extends boolean = false> = Omit<
 	bigint: string | number | bigint
 	numeric: string | number | bigint
 	decimal: string | number | bigint
+	date: Date | string
 	timestamp: Date | string
 	timestamptz: Date | string
 	"timestamp without time zone": Date | string

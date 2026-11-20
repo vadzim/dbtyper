@@ -2,20 +2,19 @@
  * Type-name rows of the dialect seam (DLCT-5, SQLT-6…SQLT-11, SQLT-15): the written type name of a column or a CAST,
  * as data per dialect. Split out of dialect.ts (MOD-1); the facts they read are the `Dialects` table there.
  */
-import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
+import type { Errors, FormatError } from "../dbtyper-error.ts"
 import type { DbDialectOnlyError, DialectFact } from "./dialect.ts"
-import type { PgOnlyTypeNames } from "./dialect-constructs.ts"
 
 /**
  * SQLT-6: the affinity SQLite derives from a declared type name (lower-case, words joined by one space), by its
  * five rules in order; SQLT-8 / SQLT-9 / SQLT-11 name exceptions that keep a name apart. The result is the type name
  * of the column's shape: a key of the SQLite driver's type map (`integer`, `real`, `text`, `numeric`, `blob`,
- * `boolean`, `any`).
+ * `any`).
  */
 type SqliteTypeKey<Name extends string> = Name extends "any"
 	? "any"
 	: Name extends "boolean" | "bool"
-		? "boolean"
+		? "integer" // SQLT-9 (#161): a BOOLEAN column holds the integers 0/1
 		: Name extends "date" | "datetime" | "timestamp" | "time" | "json"
 			? "text"
 			: Name extends `${string}int${string}`
@@ -43,7 +42,10 @@ type NamedTypeAliases = {
 	timestamptz: "timestamp with time zone"
 	timetz: "time with time zone"
 	float8: "double precision"
+	float: "double precision"
 	float4: "real"
+	character: "char"
+	bpchar: "char"
 	bool: "boolean"
 	"character varying": "varchar"
 	decimal: "numeric"
@@ -52,29 +54,56 @@ type NamedTypeAliases = {
 /** DLCT-5: the canonical name of a written type name of a `named` dialect. */
 export type NormalizeSqlTypeName<T extends string> = T extends keyof NamedTypeAliases ? NamedTypeAliases[T] : T
 
+/** The fields of an interval type (PGT-8). */
+type IntervalField = "year" | "month" | "day" | "hour" | "minute" | "second"
+
+/**
+ * PostgreSQL type names of several words (the `typeNameWords` fact): the words that may follow the name read so far
+ * (lower-case, words joined by one space). A word that is not listed ends the type name (#159).
+ */
+export type PostgresTypeNameWords = {
+	double: "precision"
+	character: "varying"
+	char: "varying"
+	bit: "varying"
+	national: "character" | "char"
+	"national character": "varying"
+	"national char": "varying"
+	timestamp: "with" | "without"
+	time: "with" | "without"
+	"timestamp with": "time"
+	"timestamp without": "time"
+	"time with": "time"
+	"time without": "time"
+	"timestamp with time": "zone"
+	"timestamp without time": "zone"
+	"time with time": "zone"
+	"time without time": "zone"
+	interval: IntervalField
+	"interval year": "to"
+	"interval year to": "month"
+	"interval day": "to"
+	"interval day to": "hour" | "minute" | "second"
+	"interval hour": "to"
+	"interval hour to": "minute" | "second"
+	"interval minute": "to"
+	"interval minute to": "second"
+}
+
 /** Names of the SERIAL types (SQLT-17). */
 type SerialTypeNames = "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
-
-/** SQLT-17, SQLT-53: the other-dialect error for a PostgreSQL-only type name in an `affinity` chain, else `null`. */
-export type PgOnlyTypeError<Db, T extends string> =
-	DialectFact<Db, "declaredTypes"> extends "affinity"
-		? T extends keyof PgOnlyTypeNames
-			? DbDialectOnlyError<Db, PgOnlyTypeNames[T]>
-			: null
-		: null
 
 /**
  * DLCT-5: the type-name table of the chain's dialect, one place for every rule that reads a written type name
  * (casts, column types). A column type: PostgreSQL normalizes aliases, SQLite derives the affinity key from the name
- * (SQLT-6…SQLT-9). SQLT-17: a SERIAL name in a SQLite chain gives the other-dialect error instead (with a hint).
+ * (SQLT-6…SQLT-9). SQLT-17: a SERIAL name in a SQLite chain gives the other-dialect error instead (with a hint). Any
+ * other name, a PostgreSQL one such as `uuid` or `jsonb` too, is typed by its affinity (SQLT-Q8 B).
  */
 export type DialectColumnTypeName<Db, T extends string> =
 	DialectFact<Db, "declaredTypes"> extends "affinity"
 		? T extends SerialTypeNames
 			? DbDialectOnlyError<Db, "pg-serial">
-			: PgOnlyTypeError<Db, T> extends infer E extends DbtyperErrorShape
-				? E
-				: SqliteTypeKey<T>
+			: SqliteTypeKey<T>
 		: NormalizeSqlTypeName<T>
 
 /**
@@ -113,7 +142,7 @@ export type DialectCastRow<Db, N extends string> =
  * coerce, dbtyper names the column's storage class; elsewhere the value type is incompatible).
  */
 export type ValueMismatchError<Db, Col extends string, ColType extends string> =
-	DialectFact<Db, "declaredTypes"> extends "affinity"
+	DialectFact<Db, "valueMismatch"> extends "storage-class"
 		? FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColType>]>
 		: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
 

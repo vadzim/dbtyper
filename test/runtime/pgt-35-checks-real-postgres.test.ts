@@ -91,6 +91,15 @@ describe("PGT-35 Checks of capabilities/postgres.md against a real PostgreSQL", 
 		)
 		.database()
 
+	it('PGT-1: `select n, m from v` is typed { n: string; m: number } and the row is { n: "1", m: 1 }', async () => {
+		await sql.unsafe(`create table v (n bigint not null, m integer not null)`)
+		await sql.unsafe(`insert into v values (1, 1)`)
+		const db = sqlMigrations({ driver }).apply(`create table v (n bigint not null, m integer not null)`).database()
+		const rows = await db.query(`select n, m from v`)
+		expectType<typeof rows>(toBe<{ n: string; m: number }[]>())
+		assert.deepEqual(rows, [{ n: "1", m: 1 }])
+	})
+
 	it("PGT-3: select id, balance, count(*) over () as n from users", async () => {
 		const rows = await users.query(`select id, balance, count(*) over () as n from users`)
 		check(rows, { id: ["string"], balance: ["string", "null"], n: ["string"] })

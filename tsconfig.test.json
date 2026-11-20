@@ -1,5 +1,5 @@
 {
 	"extends": "./tsconfig.json",
 	"include": ["test/**/*.ts"],
-	"exclude": ["test/stress/**", "**/*.test-d.skip.ts"]
+	"exclude": ["test/stress/**", "test/**/*.skip.ts"]
 }

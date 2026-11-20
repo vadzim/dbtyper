@@ -9,12 +9,17 @@ import { createExampleApp } from "../src/sample-app.ts"
 
 const exampleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
-const databaseUrl = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54333/dbtyper_example"
+// DBTYPER_PG_URL: an already running PostgreSQL (CI service container): then docker compose is not used.
+const externalUrl = process.env.DBTYPER_PG_URL
+const databaseUrl =
+	externalUrl ?? process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54333/dbtyper_example"
 
-/** Run when CI is set or explicitly opted in (requires Docker). */
-const runIntegration = process.env.CI === "true" || process.env.RUN_TYPED_PG_INTEGRATION === "1"
+/** Run when CI is set or explicitly opted in (requires Docker, or DBTYPER_PG_URL for a running PostgreSQL). */
+const runIntegration =
+	externalUrl !== undefined || process.env.CI === "true" || process.env.RUN_TYPED_PG_INTEGRATION === "1"
 
 function compose(args: string, stdio: "inherit" | "pipe") {
+	if (externalUrl !== undefined) return
 	execSync(`docker compose ${args}`, { cwd: exampleRoot, stdio })
 }
 

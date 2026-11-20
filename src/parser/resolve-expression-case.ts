@@ -1,3 +1,5 @@
+import type { AffinityCommonType } from "../core/comparison-classes.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { Nullable, SqlNull, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
@@ -6,7 +8,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from
 import type { ScopeMap } from "./parser-scope.ts"
 import type { MergeComparison, SameComparisonClass } from "./resolve-expression-compare.ts"
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
-import type { IsSqlBooleanType } from "./resolve-operators.ts"
+import type { ConditionProbeOr, IsConditionType } from "./resolve-operators.ts"
 
 /** Simple `CASE expr WHEN value` — each `value` must be `=`-compatible with `expr` (same errors as comparisons). */
 type ValidateCaseSimpleWhenMatch<
@@ -14,7 +16,8 @@ type ValidateCaseSimpleWhenMatch<
 	WhenV extends SqlTypeShape,
 	DiscAst = never,
 	WhenAst = never,
-> = MergeComparison<Disc, WhenV, DiscAst, WhenAst> extends infer M extends DbtyperErrorShape ? M : true
+	Classes = {},
+> = MergeComparison<Disc, WhenV, DiscAst, WhenAst, Classes> extends infer M extends DbtyperErrorShape ? M : true
 
 /** The AST of the branch whose type the CASE has so far: the first one that is not a NULL literal (EXPR-20). */
 type NextCaseAccAst<Acc extends SqlTypeShape | null, AccAst, TvAst> = Acc extends SqlTypeShape
@@ -28,6 +31,7 @@ type MergeCaseThenAccum<
 	Tv extends SqlTypeShape,
 	AccAst = never,
 	TvAst = never,
+	Classes = {},
 > = Acc extends null
 	? Tv
 	: Acc extends SqlTypeShape
@@ -37,10 +41,18 @@ type MergeCaseThenAccum<
 				: Nullable<Tv>
 			: Tv["type"] extends "null"
 				? Nullable<Acc>
-				: SameComparisonClass<Acc, Tv, AccAst, TvAst> extends true
-					? Tv["nullable"] extends true
-						? Nullable<Acc>
-						: Acc
+				: SameComparisonClass<Acc, Tv, AccAst, TvAst, Classes> extends true
+					? (
+							[AffinityCommonType<Acc, Tv, Classes>] extends [never]
+								? Acc
+								: AffinityCommonType<Acc, Tv, Classes>
+						) extends infer W extends SqlTypeShape
+						? Acc["nullable"] extends true
+							? Nullable<W>
+							: Tv["nullable"] extends true
+								? Nullable<W>
+								: W
+						: never
 					: FormatError<Errors["INCOMPATIBLE_TYPES_IN_CASE"], []>
 		: never
 
@@ -64,12 +76,18 @@ type ResolveCaseSearchedArms<
 		? Wv extends DbtyperErrorShape
 			? Wv
 			: Wv extends SqlTypeShape
-				? IsSqlBooleanType<Wv> extends true
+				? IsConditionType<Db, Wv> extends true
 					? ResolveExpressionAST<A["then"], Db, Scope, Params> extends infer Tv
 						? Tv extends DbtyperErrorShape
 							? Tv
 							: Tv extends SqlTypeShape
-								? MergeCaseThenAccum<Acc, Tv, AccAst, A["then"]> extends infer Merged
+								? MergeCaseThenAccum<
+										Acc,
+										Tv,
+										AccAst,
+										A["then"],
+										ComparisonClassesOf<Db>
+									> extends infer Merged
 									? Merged extends DbtyperErrorShape
 										? Merged
 										: Merged extends SqlTypeShape
@@ -86,7 +104,7 @@ type ResolveCaseSearchedArms<
 									: never
 								: never
 						: never
-					: FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>
+					: ConditionProbeOr<Db, Wv, FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>> // #164
 				: FormatError<Errors["CASE_WHEN_MUST_BE_BOOLEAN"], []>
 		: never
 	: ElseB extends ScalarExprAst
@@ -94,7 +112,7 @@ type ResolveCaseSearchedArms<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB> extends infer F
+					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB, ComparisonClassesOf<Db>> extends infer F
 						? F extends DbtyperErrorShape
 							? F
 							: F extends SqlTypeShape
@@ -135,7 +153,7 @@ type ResolveCaseSimpleArms<
 			: Wv extends SqlTypeShape
 				? WithEnumCheck<
 						EnumComparisonCheck<Db, Disc, DiscAst, Wv, A["when"]>,
-						ValidateCaseSimpleWhenMatch<Disc, Wv, DiscAst, A["when"]>
+						ValidateCaseSimpleWhenMatch<Disc, Wv, DiscAst, A["when"], ComparisonClassesOf<Db>>
 					> extends infer Match
 					? Match extends DbtyperErrorShape
 						? Match
@@ -144,7 +162,13 @@ type ResolveCaseSimpleArms<
 								? Tv extends DbtyperErrorShape
 									? Tv
 									: Tv extends SqlTypeShape
-										? MergeCaseThenAccum<Acc, Tv, AccAst, A["then"]> extends infer Merged
+										? MergeCaseThenAccum<
+												Acc,
+												Tv,
+												AccAst,
+												A["then"],
+												ComparisonClassesOf<Db>
+											> extends infer Merged
 											? Merged extends DbtyperErrorShape
 												? Merged
 												: Merged extends SqlTypeShape
@@ -172,7 +196,7 @@ type ResolveCaseSimpleArms<
 			? Ev extends DbtyperErrorShape
 				? Ev
 				: Ev extends SqlTypeShape
-					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB> extends infer F
+					? MergeCaseThenAccum<Acc, Ev, AccAst, ElseB, ComparisonClassesOf<Db>> extends infer F
 						? F extends DbtyperErrorShape
 							? F
 							: F extends SqlTypeShape

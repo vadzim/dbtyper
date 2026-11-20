@@ -33,7 +33,9 @@ export type ParseJoinChain<
 							? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
 							: PeekToken<Tokens> extends TokenKey<"join">
 								? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
-								: [Tokens, null, Scope]
+								: PeekToken<Tokens> extends TokenKey<",">
+									? ParseCrossJoinItem<SkipToken<Tokens>, Db, Scope, Params, "table-function"> // SQLT-72
+									: [Tokens, null, Scope]
 
 type NaturalJoinKind<T> =
 	T extends TokenKey<"inner">
@@ -74,26 +76,33 @@ type ParseJoinAfterCross<
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"join">
-		? SkipToken<Tokens> extends infer AfterJ extends ParserMonad
-			? ParseFromTableRef<AfterJ, Db, Scope, Params> extends [
-					infer R0 extends ParserMonad,
-					infer Mid,
-					infer Third,
-				]
-				? Mid extends DbtyperErrorShape
-					? Third extends ParserRefErrorThirdSentinel
-						? [R0, Mid, ParserRefErrorThirdSentinel]
-						: never
-					: Mid extends null
-						? [JoinScopeOnly<Third>] extends [never]
-							? never
-							: JoinScopeOnly<Third> extends ScopeMap
-								? ParseJoinChain<R0, Db, JoinScopeOnly<Third>, Params>
-								: never
+		? ParseCrossJoinItem<SkipToken<Tokens>, Db, Scope, Params>
+		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["CROSS"]>, ParserRefErrorThirdSentinel]
+
+/**
+ * The item of `CROSS JOIN`, or of a `,` (`Items` "table-function": only `json_each(…)` / `json_tree(…)` is joined
+ * after a comma, like `CROSS JOIN`, SQLT-72), then the rest of the chain.
+ */
+type ParseCrossJoinItem<
+	AfterJ extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Items extends "any" | "table-function" = "any",
+> =
+	ParseFromTableRef<AfterJ, Db, Scope, Params, Items> extends [infer R0 extends ParserMonad, infer Mid, infer Third]
+		? Mid extends DbtyperErrorShape
+			? Third extends ParserRefErrorThirdSentinel
+				? [R0, Mid, ParserRefErrorThirdSentinel]
+				: never
+			: Mid extends null
+				? [JoinScopeOnly<Third>] extends [never]
+					? never
+					: JoinScopeOnly<Third> extends ScopeMap
+						? ParseJoinChain<R0, Db, JoinScopeOnly<Third>, Params>
 						: never
 				: never
-			: never
-		: [Tokens, FormatError<Errors["EXPECTED_JOIN_KEYWORD"], ["CROSS"]>, ParserRefErrorThirdSentinel]
+		: never
 
 type ParseJoinAfterOptionalInner<
 	Tokens extends ParserMonad,
@@ -182,11 +191,14 @@ type NullableScopeEntry<E extends ScopeEntry> = {
 	hidden?: HiddenColumnsOf<E>
 }
 
-/** SEL-18: columns of the optional side of an outer join are nullable (right of LEFT, left of RIGHT, both of FULL). */
+/**
+ * SEL-18: columns of the optional side of an outer join are nullable (right of LEFT, left of RIGHT, both of FULL).
+ * The old side is the FROM items before the join: a CTE definition of the same name is no FROM item (#152).
+ */
 type MarkJoinNullable<Kind extends JoinKind, Old extends ScopeMap, New extends ScopeMap> = Kind extends "inner"
 	? New
 	: {
-			[K in keyof New]: K extends keyof Old
+			[K in keyof New]: K extends keyof FromItemsOnly<Old>
 				? Kind extends "right" | "full"
 					? NullableScopeEntry<New[K]>
 					: New[K]

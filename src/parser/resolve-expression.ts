@@ -1,6 +1,7 @@
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { SqlBoolean, SqlNull, SqlText, SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -28,7 +29,7 @@ import type {
 	ResolvePgRegexMatchAst,
 } from "./resolve-expression-compare.ts"
 import type { LookupParam, LookupPositionalParam, ResolveIdentChainValue } from "./resolve-expression-ident.ts"
-import type { ApplyOperandNullability, ParamProbeAt } from "./resolve-expression-params.ts"
+import type { ApplyOperandNullability, NullTestedParam, ParamProbeAt } from "./resolve-expression-params.ts"
 import type { ResolveFunctionCall, ResolveWindowFunction } from "./resolve-function.ts"
 import type {
 	MergeBoolBinary,
@@ -121,7 +122,7 @@ type ExpressionResolvers<
 		name: infer FnName extends string
 		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
 	}
-		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params>
+		? ResolveFunctionCall<FnName, FArgs, Db, Scope, Params, Ast extends { from: true } ? true : false>
 		: never
 	window_function: Ast extends {
 		kind: "window_function"
@@ -169,7 +170,7 @@ type ExpressionResolvers<
 		left: infer L extends ScalarExprAst
 		right: infer R extends ScalarExprAst
 	}
-		? ResolveScalarExprAstPair<L, R, Db, Scope, Params>
+		? ResolveScalarExprAstPair<L, R, Db, Scope, Params, "mul">
 		: never
 	add: Ast extends {
 		kind: "add"
@@ -187,20 +188,20 @@ type ExpressionResolvers<
 		: never
 	not: Ast extends { kind: "not"; inner: infer I extends ScalarExprAst }
 		? ResolveExpressionAST<I, Db, Scope, Params> extends infer V
-			? MergeBoolNot<V>
+			? MergeBoolNot<Db, V>
 			: never
 		: never
 	and: Ast extends { kind: "and"; left: infer La extends ScalarExprAst; right: infer Ra extends ScalarExprAst }
 		? ResolveExpressionAST<La, Db, Scope, Params> extends infer Lv
 			? ResolveExpressionAST<Ra, Db, Scope, Params> extends infer Rv
-				? MergeBoolBinary<Lv, Rv, "AND_OPERANDS_MUST_BE_BOOLEAN">
+				? MergeBoolBinary<Db, Lv, Rv, "AND_OPERANDS_MUST_BE_BOOLEAN">
 				: never
 			: never
 		: never
 	or: Ast extends { kind: "or"; left: infer Lo extends ScalarExprAst; right: infer Ro extends ScalarExprAst }
 		? ResolveExpressionAST<Lo, Db, Scope, Params> extends infer Lv2
 			? ResolveExpressionAST<Ro, Db, Scope, Params> extends infer Rv2
-				? MergeBoolBinary<Lv2, Rv2, "OR_OPERANDS_MUST_BE_BOOLEAN">
+				? MergeBoolBinary<Db, Lv2, Rv2, "OR_OPERANDS_MUST_BE_BOOLEAN">
 				: never
 			: never
 		: never
@@ -220,7 +221,7 @@ type ExpressionResolvers<
 							? RcV extends SqlTypeShape
 								? WithEnumCheck<
 										EnumComparisonCheck<Db, LcV, Lc, RcV, Rc>,
-										MergeComparison<LcV, RcV, Lc, Rc>
+										MergeComparison<LcV, RcV, Lc, Rc, ComparisonClassesOf<Db>>
 									>
 								: never
 							: never
@@ -243,7 +244,7 @@ type ExpressionResolvers<
 			? V0 extends DbtyperErrorShape
 				? V0
 				: V0 extends SqlTypeShape
-					? SqlBoolean
+					? NullTestedParam<E0, V0>
 					: never
 			: never
 		: never
@@ -252,7 +253,7 @@ type ExpressionResolvers<
 			? V1 extends DbtyperErrorShape
 				? V1
 				: V1 extends SqlTypeShape
-					? SqlBoolean
+					? NullTestedParam<E1, V1>
 					: never
 			: never
 		: never

@@ -11,48 +11,35 @@ import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { SkipFailedQualifiedName } from "./skip-statement.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ApplyCteColumnList, ParseCteColumnList } from "./parse-select-cte.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { DialectFact } from "../core/dialect.ts"
+import type { FirstDuplicateName } from "./set-operation-types.ts"
+import type { FoldedNames, OutputOrder, OutputRelation } from "./parser-scope.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+
+type ViewNameRow = {
+	name: FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>
+	afterDot: FormatError<Errors["EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW"], []>
+	ends: TokenKey<"as" | "(">
+	plain: FormatError<Errors["EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME"], []>
+	qualified: FormatError<Errors["EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME"], []>
+	skip: true
+	home: "default"
+}
 
 /**
  * `view_name AS` or `schema.view_name AS` (unlike {@link ParseQualifiedTableName}, not followed by `(`).
  * Success: `[rest before AS, null, schema, viewName]`.
  */
-type ParseQualifiedViewNameUnqualified<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<"as" | "(">
-		? [AfterFirst, null, Db["defaultSchema"], A]
-		: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME"], []>>
-
-type ParseQualifiedViewNameQualified<Rdot extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<Rdot> extends TokenIdent<infer B extends string>
-		? SkipToken<Rdot> extends infer AfterB extends ParserMonad
-			? JsqlDbGetSchema<Db, A> extends JsqlSchemaShape
-				? PeekToken<AfterB> extends TokenKey<"as" | "(">
-					? A extends keyof Db["schemas"]
-						? [AfterB, null, A & keyof Db["schemas"] & string, B]
-						: never
-					: SkipFailedQualifiedName<AfterB, FormatError<Errors["EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME"], []>>
-				: SkipFailedQualifiedName<AfterB, FormatError<Errors["UNKNOWN_SCHEMA"], [A, "CREATE VIEW"]>>
-			: never
-		: SkipFailedQualifiedName<Rdot, FormatError<Errors["EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW"], []>>
-
-type ParseQualifiedViewNameAfterFirstIdent<
-	AfterFirst extends ParserMonad,
-	Db extends JsqlDatabaseShape,
-	A extends string,
-> =
-	PeekToken<AfterFirst> extends TokenKey<".">
-		? ParseQualifiedViewNameQualified<SkipToken<AfterFirst>, Db, A>
-		: ParseQualifiedViewNameUnqualified<AfterFirst, Db, A>
-
-type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	PeekToken<Tokens> extends TokenIdent<infer A extends string>
-		? ParseQualifiedViewNameAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: SkipFailedQualifiedName<Tokens, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
+type ParseQualifiedViewName<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> = ParseNameParts<
+	Tokens,
+	Db,
+	ViewNameRow
+>
 
 type ParseCreateViewAfterSelect<
 	Tokens extends ParserMonad,
@@ -61,10 +48,18 @@ type ParseCreateViewAfterSelect<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 	Cols,
-> =
-	ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
-		? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_COLUMN_LIST_MISMATCH"], [Name]>>
+> = (
+	Cols extends readonly string[]
+		? FirstDuplicateName<DialectFact<Db, "lexer">["foldQuoted"] extends true ? FoldedNames<Cols> : Cols>
+		: never
+) extends infer Dup
+	? [Dup] extends [never]
+		? ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
+			? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_COLUMN_LIST_MISMATCH"], [Name]>>
+		: // PostgreSQL and SQLite both reject a name given twice in the view's column list
+			SkipFailedStatement<Tokens, Db, FormatError<Errors["DUPLICATE_VIEW_COLUMN"], [Name, Dup & string]>>
+	: never
 
 type ParseCreateViewStore<
 	Tokens extends ParserMonad,
@@ -83,7 +78,20 @@ type ParseCreateViewStore<
 				: ParseCreateViewStore<SkipToken<R1>, Db, Schema, Name, Sel>
 			: never
 		: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
-			? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["returning"]>> extends infer NewDb
+			? JsqlDbReplaceData<
+					Db,
+					Schema,
+					Name,
+					OutputRelation<Db, Sel["returning"], OutputOrder<Sel>> extends infer Rel extends {
+						columns: Record<string, SqlTypeShape>
+					}
+						? JsqlCreateView<
+								Rel["columns"],
+								Rel extends { order: infer O extends readonly string[] } ? O : readonly string[],
+								Rel extends { spelled: infer Sp } ? Sp : {}
+							>
+						: never
+				> extends infer NewDb
 				? NewDb extends JsqlDatabaseShape
 					? [SkipToken<Tokens>, NewDb, null]
 					: never
@@ -147,21 +155,22 @@ export type ParseCreateView<
 	Replace extends boolean = false,
 > =
 	PeekToken<Tokens> extends TokenKey<"if">
-		? DialectFact<Db, "viewIfNotExists"> extends true
-			? SkipToken<Tokens> extends infer A0 extends ParserMonad
-				? PeekToken<A0> extends TokenKey<"not">
-					? SkipToken<A0> extends infer A1 extends ParserMonad
-						? PeekToken<A1> extends TokenKey<"exists">
+		? // SCHEMA-18: the `IF NOT EXISTS` words are checked in both dialects; only SQLite accepts the whole clause
+			SkipToken<Tokens> extends infer A0 extends ParserMonad
+			? PeekToken<A0> extends TokenKey<"not">
+				? SkipToken<A0> extends infer A1 extends ParserMonad
+					? PeekToken<A1> extends TokenKey<"exists">
+						? DialectFact<Db, "viewIfNotExists"> extends true
 							? ParseCreateViewNamed<SkipToken<A1>, Db, Params, Temp, true>
-							: SkipFailedStatement<
-									A1,
-									Db,
-									FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
-								>
-						: never
-					: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
-				: never
-			: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
+							: SkipFailedStatement<A1, Db, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
+						: SkipFailedStatement<
+								A1,
+								Db,
+								FormatError<Errors["EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW"], []>
+							>
+					: never
+				: SkipFailedStatement<A0, Db, FormatError<Errors["EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW"], []>>
+			: never
 		: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
 
 type ParseCreateViewNamed<

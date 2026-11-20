@@ -9,6 +9,18 @@ export type JsqlDatabaseShape = {
 	pendingConstraints?: string
 	/** Set while the INSERT / UPDATE / DELETE of a data-modifying CTE is parsed: it ends at `)` (PGT-26). */
 	cteDml?: true
+	/** SQLite: declared spellings of the columns of the CREATE TABLE / ADD COLUMN being parsed (SQLT-28); never in a finished state. */
+	pendingSpelled?: Record<string, string>
+	/** The name of the CREATE TABLE's named table PRIMARY KEY constraint (CORE-15); never in a finished state. */
+	pendingPkName?: string
+	/** The columns of the CREATE TABLE's named constraints, name -> union (#179); never in a finished state. */
+	pendingConstraintColumns?: unknown
+	/** The name of the CREATE TABLE's named table constraint being parsed (#179); never in a finished state. */
+	pendingTableConstraint?: string
+	/** The CREATE TABLE's columns of a domain or composite type, name -> `schema.type` (#179); never in a finished state. */
+	pendingUserTypes?: Record<string, string>
+	/** Set while the SELECT of an `INSERT … SELECT` is parsed: the columns match by position, so no output name is needed (#166). */
+	positionalSelect?: true
 }
 
 export type JsqlSchemaShape = {
@@ -31,6 +43,10 @@ export type JsqlTypeShape =
 			/** The domain says NOT NULL: columns of it are NOT NULL. */
 			notNull: boolean
 	  }
+	| {
+			/** `CREATE TYPE t AS (…)` (PGT-15): no TypeScript mapping; its attributes are not typed. */
+			kind: "composite"
+	  }
 
 export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	kind: Kind
@@ -38,6 +54,14 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	columns: Record<string, SqlTypeShape>
 	column_facts?: unknown
 	constraints?: unknown
+	/** The column keys in declaration order (SCHEMA-10): INSERT without a column list, `*` (#150). */
+	order?: unknown
+	/** SQLite: the declared spelling of each column whose key (lower case) differs from it; the result key (SQLT-28, #151). */
+	spelled?: unknown
+	/** The PRIMARY KEY, `JsqlPrimaryKey` (src/core/jsql-utils.ts): columns and constraint name (CORE-15, SEL-27). */
+	primary_key?: unknown
+	/** The columns of a domain or composite type: name -> `schema.type` (TYPE-18, #179); absent when none. */
+	user_types?: unknown
 }
 
 export type JsqlColumnFactsEntry = {

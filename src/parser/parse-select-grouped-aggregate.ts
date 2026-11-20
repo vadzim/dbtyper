@@ -187,13 +187,17 @@ export type SelectItemsNeedGroupedProjRules<
 		? true
 		: RawSelectItemsHaveAggregateCall<Db, Items>
 
-type RawSelectItemsHaveAggregateCall<Db, Items extends readonly RawSelectItem[]> = Items extends readonly [
-	infer H extends RawSelectItem,
-	...infer R extends readonly RawSelectItem[],
-]
-	? H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
-		? AstContainsAggregateCall<Db, Ast> extends true
-			? true
-			: RawSelectItemsHaveAggregateCall<Db, R>
-		: RawSelectItemsHaveAggregateCall<Db, R>
+/** Walks the items by index and hands each to a helper (splitting the tuple per step is quadratic, #179 item 2). */
+type RawSelectItemsHaveAggregateCall<
+	Db,
+	Items extends readonly RawSelectItem[],
+	Before extends readonly 1[] = [],
+> = Before["length"] extends Items["length"]
+	? false
+	: RawSelectItemHasAggregateCall<Db, Items[Before["length"]]> extends true
+		? true
+		: RawSelectItemsHaveAggregateCall<Db, Items, [...Before, 1]>
+
+type RawSelectItemHasAggregateCall<Db, H> = H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
+	? AstContainsAggregateCall<Db, Ast>
 	: false

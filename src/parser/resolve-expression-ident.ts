@@ -5,8 +5,13 @@ import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ResolveColumnRefValue } from "./resolve-column-ref.ts"
 
-/** PARAM-14: reading a parameter the usage probe (src/core/param-probe.ts) has marked is an error that says "used". */
-export type ReadParam<S> = S extends { type: "param-read-probe" } ? FormatError<Errors["PARAMETER_PROBE_READ"], []> : S
+/**
+ * PARAM-14: reading a parameter the usage probe (src/core/param-probe.ts) has marked is an error that says "used";
+ * `__param_read__` is the key of the parameter that was read.
+ */
+export type ReadParam<S> = S extends { type: "param-read-probe"; arg: infer Key }
+	? FormatError<Errors["PARAMETER_PROBE_READ"], []> & { __param_read__: Key }
+	: S
 
 export type LookupParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? ReadParam<Params[Name]>

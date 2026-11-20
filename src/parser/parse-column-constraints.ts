@@ -8,8 +8,8 @@ import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts
 import type { SkipBracketedUntil, SkipFailedExpression } from "./skip-statement.ts"
 import type { DialectFact } from "../core/dialect.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
-import type { ColumnDef, PkKind } from "./parse-create-table.ts"
-import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
+import type { ColumnDef, HasPrimaryKey, MultiplePrimaryKeys, PkKind } from "./parse-create-table.ts"
+import type { ParseCreateTableAfterComma, ParseCreateTableBody } from "./parse-create-table-columns.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { AlterColumnDone } from "./parse-column-alter-end.ts"
 import type {
@@ -64,7 +64,7 @@ export type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnC
 	PeekToken<Tokens> extends TokenKey<",">
 		? C["alter"] extends true
 			? AlterColumnDone<Tokens, C, S>
-			: ParseCreateTableBody<
+			: ParseCreateTableAfterComma<
 					SkipToken<Tokens>,
 					C["db"],
 					C["schema"],
@@ -90,7 +90,9 @@ export type ParseColumnConstraints<Tokens extends ParserMonad, C extends ColumnC
 						: PeekToken<Tokens> extends TokenKey<"default">
 							? ParseColumnDefault<SkipToken<Tokens>, C, S>
 							: PeekToken<Tokens> extends TokenKey<"primary">
-								? ColumnPrimaryKey<Tokens, C, S>
+								? HasPrimaryKey<C["stack"], S["pk"]> extends true
+									? MultiplePrimaryKeys<Tokens, C["db"], C["table"]>
+									: ColumnPrimaryKey<Tokens, C, S>
 								: PeekToken<Tokens> extends TokenKey<"unique">
 									? ColumnUnique<Tokens, C, S>
 									: PeekToken<Tokens> extends TokenKey<"check">
@@ -154,6 +156,21 @@ type OnConflictToken<Db extends JsqlDatabaseShape> =
 	DialectFact<Db, "constraintOnConflict"> extends true ? TokenKey<"on"> : never
 
 /** `[rest, null | error]` after a bracketed group `( … )` (the `(` is the next token). */
+/** {@link SkipParenGroup} that also gives the names in the group (a named CHECK, #179): `[rest, names | error]`. */
+export type ParenGroupNames<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<"(">
+		? SkipBracketedUntil<SkipToken<Tokens>, TokenKey<")">, [], true> extends [
+				infer R extends ParserMonad,
+				infer Res,
+			]
+			? Res extends DbtyperErrorShape
+				? SkipFailedExpression<R, Res>
+				: Res extends { names: infer N extends string }
+					? [SkipToken<R>, N]
+					: never
+			: never
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT"], []>>
+
 export type SkipParenGroup<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipBracketedUntil<SkipToken<Tokens>, TokenKey<")">> extends [infer R extends ParserMonad, infer Res]

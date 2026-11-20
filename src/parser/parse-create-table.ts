@@ -1,24 +1,32 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { OutputRelation } from "./parser-scope.ts"
+import type { JsqlDbSetUserType } from "../core/jsql-utils.ts"
+import type { ReplaceProp } from "../core/type-utils.ts"
+import type { FoldAsciiCase } from "../lexer/sql-lexer-chars.ts"
+import type { AsIdent, TokenIdent, TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParseQualifiedTableName } from "./parse-qualified-table-name.ts"
 import type { DialectFact } from "../core/dialect.ts"
-import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
+import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type {
 	JsqlCreateTable,
 	JsqlCreateRowidTable,
 	JsqlDbGetSchema,
+	JsqlConstraints,
 	JsqlDbGetData,
+	JsqlDbOmitProps,
+	JsqlDbSetProp,
 	JsqlDbReplaceData,
 } from "../core/jsql-utils.ts"
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
+import type { UnionToStringTuple } from "./set-operation-types.ts"
 
 export type ParseCreateTable<
 	Tokens extends ParserMonad,
@@ -51,18 +59,149 @@ export type ParseCreateTable<
 export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends string> = Db extends {
 	pendingConstraints: infer P extends string
 }
-	? Omit<Db, "pendingConstraints"> & { pendingConstraints: P | Name }
-	: Db & { pendingConstraints: Name }
-
-export type WithoutPendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: string }
-	? Omit<Db, "pendingConstraints"> extends infer Clean extends JsqlDatabaseShape
-		? Clean
-		: Db
-	: Db
+	? JsqlDbSetProp<Db, "pendingConstraints", P | Name>
+	: JsqlDbSetProp<Db, "pendingConstraints", Name>
 
 export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
-	? { names: P }
+	? Db extends { pendingConstraintColumns: infer C }
+		? JsqlConstraints<P, C>
+		: JsqlConstraints<P>
 	: null
+
+/**
+ * #179: the named constraint `Name` of the CREATE TABLE being parsed involves the columns `Cols` (a column constraint:
+ * its column; a table constraint: its list, or the columns a CHECK names); it ends in the table's `constraints.columns`.
+ */
+export type WithPendingConstraintColumns<Db extends JsqlDatabaseShape, Name extends string, Cols extends string> = [
+	Cols,
+] extends [never]
+	? Db
+	: Db extends { pendingConstraintColumns: infer P }
+		? JsqlDbSetProp<Db, "pendingConstraintColumns", ReplaceProp<P, Name, Cols>>
+		: JsqlDbSetProp<Db, "pendingConstraintColumns", Record<Name, Cols>>
+
+/**
+ * TYPE-18, #179: a column of a domain or composite type `Decl` (`schema.name`, see `ResolveUserType`): the CREATE
+ * TABLE collects them in the state; ALTER TABLE … ADD COLUMN records it on the table at once.
+ */
+export type WithColumnUserType<
+	Db extends JsqlDatabaseShape,
+	Schema extends string,
+	Table extends string,
+	Name extends string,
+	Decl extends string,
+	Alter extends boolean,
+> = Alter extends true
+	? JsqlDbSetUserType<Db, Schema, Table, Name, Decl>
+	: Db extends { pendingUserTypes: infer P }
+		? JsqlDbSetProp<Db, "pendingUserTypes", ReplaceProp<P, Name, Decl>>
+		: JsqlDbSetProp<Db, "pendingUserTypes", Record<Name, Decl>>
+
+/** The finished table with the user-typed columns collected while it was parsed. */
+export type WithPendingUserTypes<Tbl, Db extends JsqlDatabaseShape> = Db extends { pendingUserTypes: infer U }
+	? ReplaceProp<Tbl, "user_types", U>
+	: Tbl
+
+/** The columns of the named table constraint being parsed (`pendingTableConstraint`) are `Cols`. */
+export type WithTableConstraintColumns<Db extends JsqlDatabaseShape, Cols extends string> = Db extends {
+	pendingTableConstraint: infer N extends string
+}
+	? WithPendingConstraintColumns<Db, N, Cols>
+	: Db
+
+/**
+ * The name token of a column definition (CREATE TABLE, ADD COLUMN) as an identifier: a name or non-reserved keyword
+ * (`AsIdent`), and where the dialect has `stringColumnNames` (SQLite, #195) a single-quoted string, folded like a
+ * quoted name (SQLT-27) and keeping its spelling. Anything else is returned as is (not a name).
+ */
+export type ColumnNameToken<Tok, Db> =
+	Tok extends TokenString<infer V extends string>
+		? Tok extends { blob: true }
+			? Tok
+			: DialectFact<Db, "stringColumnNames"> extends true
+				? FoldAsciiCase<V> extends V
+					? TokenIdent<V>
+					: TokenIdent<FoldAsciiCase<V>> & { written: V }
+				: Tok
+		: AsIdent<Tok>
+
+/**
+ * SQLT-28, #151: the declared spelling of a column whose name token was written in another case (SQLite keeps it as
+ * `written`, see the lexer) travels in the database state like `pendingConstraints`, and ends in the table's `spelled`.
+ */
+export type WithColumnSpelling<Db extends JsqlDatabaseShape, Name extends string, Tok> = Tok extends {
+	written: infer W extends string
+}
+	? Db extends { pendingSpelled: infer P }
+		? JsqlDbSetProp<Db, "pendingSpelled", P & Record<Name, W>>
+		: JsqlDbSetProp<Db, "pendingSpelled", Record<Name, W>>
+	: Db
+
+/** The spellings collected for the columns `Names` of the table being created (`{}` when none). */
+export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> = Db extends {
+	pendingSpelled: infer P
+}
+	? { [K in keyof P & Names]: P[K] }
+	: {}
+
+/** The database state without the pending CREATE TABLE facts. */
+export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
+	| { pendingConstraints: string }
+	| { pendingSpelled: unknown }
+	| { pendingPkName: string }
+	| { pendingConstraintColumns: unknown }
+	| { pendingTableConstraint: string }
+	| { pendingUserTypes: unknown }
+	? JsqlDbOmitProps<
+			Db,
+			| "pendingConstraints"
+			| "pendingSpelled"
+			| "pendingPkName"
+			| "pendingConstraintColumns"
+			| "pendingTableConstraint"
+			| "pendingUserTypes"
+		>
+	: Db
+
+/** A column of the stack is (part of) the PRIMARY KEY already: a second one is error 1519 in both engines. */
+export type HasPrimaryKey<Stack extends readonly ColumnDef[], Pk extends PkKind = false> = [
+	Exclude<Stack[number][5] | Pk, false>,
+] extends [never]
+	? false
+	: true
+
+/** The PRIMARY KEY columns of a finished column stack (CORE-15, SEL-27), `never` when it has none. */
+export type StackPrimaryKey<Stack extends readonly ColumnDef[], Acc extends string = never> = Stack extends readonly [
+	infer H extends ColumnDef,
+	...infer R extends readonly ColumnDef[],
+]
+	? StackPrimaryKey<R, H[5] extends false ? Acc : Acc | H[0]>
+	: Acc
+
+/**
+ * The PRIMARY KEY's constraint name: a named table constraint's, else PostgreSQL's default `<table>_pkey` (an inline
+ * `CONSTRAINT n PRIMARY KEY` keeps the default).
+ */
+export type PendingPkName<Db extends JsqlDatabaseShape, Table extends string> = Db extends {
+	pendingPkName: infer N extends string
+}
+	? N
+	: `${Table}_pkey`
+
+/** The error of a second PRIMARY KEY in one CREATE TABLE. */
+export type MultiplePrimaryKeys<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Table extends string,
+> = SkipFailedStatement<Tokens, Db, FormatError<Errors["MULTIPLE_PRIMARY_KEYS"], [Table]>>
+
+/** The column names of a column stack in declaration order (#150). */
+export type StackOrder<
+	Stack extends readonly ColumnDef[],
+	Acc extends readonly string[] = [],
+> = Stack extends readonly [infer H extends ColumnDef, ...infer R extends readonly ColumnDef[]]
+	? StackOrder<R, [...Acc, H[0]]>
+	: Acc
 
 /**
  * One column while it is being parsed (CORE-15): name, type (its `nullable` is the declared NULL / NOT NULL),
@@ -89,9 +228,16 @@ type ParseCreateTableQualifiedWhenSchKnown<
 > =
 	JsqlDbGetData<Db, Sch, Tab> extends infer Entry
 		? Entry extends null
-			? ParseCreateTableOpenParenOrAs<R, Db, Sch, Tab, IfNotExists, Params>
+			? ParseCreateTableOpenParenOrAs<R, Db, Sch, Tab, Params>
 			: IfNotExists extends true
-				? [R, Db, null]
+				? // #172: the statement is still read and checked (as if the table were new), and the schema is kept
+					ParseCreateTableOpenParenOrAs<R, JsqlDbReplaceData<Db, Sch, Tab, null>, Sch, Tab, Params> extends [
+						infer R2 extends ParserMonad,
+						unknown,
+						infer Err,
+					]
+					? [R2, Db, Err]
+					: never
 				: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS"], []>>
 		: never
 
@@ -132,12 +278,11 @@ type ParseCreateTableOpenParenOrAs<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
-	IfNotExists extends boolean,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? ParseCreateTableAsSelect<SkipToken<Tokens>, Db, Schema, Table, Params>
-		: ParseCreateTableOpenParen<Tokens, Db, Schema, Table, IfNotExists>
+		: ParseCreateTableOpenParen<Tokens, Db, Schema, Table>
 
 /** `CREATE TABLE name AS SELECT …` (CORE-19): the columns are the SELECT's output columns, all nullable. */
 type ParseCreateTableAsSelect<
@@ -168,19 +313,37 @@ type ParseCreateTableAsSelectRun<
 		? Res extends DbtyperErrorShape
 			? [R, Db, Res]
 			: Res extends JsqlSelectStatementResult
-				? JsqlDbReplaceData<
-						Db,
-						Schema,
-						Table,
-						DialectFact<Db, "rowidTables"> extends true
-							? JsqlCreateRowidTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
-							: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
-					> extends infer NewDb extends JsqlDatabaseShape
+				? JsqlDbReplaceData<Db, Schema, Table, CreateTableAsShape<Db, Res>> extends infer NewDb extends
+						JsqlDatabaseShape
 					? PeekToken<R> extends TokenKey<";"> | TokenEot
 						? [SkipToken<R>, NewDb, null]
 						: SkipFailedStatement<R, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE TABLE"]>>
 					: never
 				: never
+		: never
+
+/**
+ * CORE-19: the table of `CREATE TABLE … AS SELECT`: the output columns (all nullable) in output order (#150). Where names
+ * match case-insensitively (SQLite, fact `foldQuoted`), the keys are folded and the output names kept as the declared
+ * spellings (SQLT-67), as for a view (`OutputRelation`).
+ */
+type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> =
+	OutputRelation<
+		Db,
+		{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> },
+		Res extends { order: infer O extends readonly string[] }
+			? O
+			: UnionToStringTuple<keyof Res["returning"] & string>
+	> extends infer Rel extends { columns: Record<string, SqlTypeShape>; order: readonly string[] }
+		? DialectFact<Db, "lexer">["foldQuoted"] extends true
+			? JsqlCreateRowidTable<
+					Rel["columns"],
+					null,
+					never,
+					Rel["order"],
+					Rel extends { spelled: infer Sp } ? Sp : {}
+				>
+			: JsqlCreateTable<Rel["columns"], null, null, Rel["order"]>
 		: never
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
@@ -192,16 +355,11 @@ type ParseCreateTableOpenParen<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
-	IfNotExists extends boolean,
 > =
 	PeekToken<Tokens> extends infer OpenTok
 		? SkipToken<Tokens> extends infer AfterOpen extends ParserMonad
 			? OpenTok extends TokenKey<"(">
-				? IfNotExists extends true
-					? JsqlDbGetData<Db, Schema, Table> extends null
-						? ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
-						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
-					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
+				? ParseCreateTableBody<AfterOpen, WithoutPending<Db>, Schema, Table, []>
 				: SkipFailedExpression<
 							AfterOpen,
 							FormatError<Errors["EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE"], []>
@@ -209,13 +367,6 @@ type ParseCreateTableOpenParen<
 					? [Rest, Db, Err]
 					: never
 			: never
-		: never
-
-type ParseCreateTableBodySkipOnly<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	SkipBracketedUntil<Tokens, TokenKey<";">> extends [infer AfterSemi extends ParserMonad, infer R]
-		? R extends DbtyperErrorShape
-			? [SkipToken<AfterSemi>, Db, R]
-			: [SkipToken<AfterSemi>, Db, null]
 		: never
 
 /** After `)`, read `;` or end. */

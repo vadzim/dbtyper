@@ -7,13 +7,14 @@ import type {
 	ProbeKeyOf,
 	ProbeTypeFromPeer,
 } from "../core/param-probe.ts"
-import type { Nullable, SqlText, SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { Nullable, SqlBoolean, SqlText, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { Inc } from "../core/type-utils.ts"
 import type { DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { CatalogRow, IsPeerTypedRow, RowArgType } from "./function-catalog.ts"
 import type { ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
-import type { ResolveCastFromShape, SqlCastTypeNorm } from "./resolve-cast.ts"
+import type { CastTargetShape, SqlCastTypeNorm } from "./resolve-cast.ts"
+import type { IsSqlNumericType } from "./resolve-operators.ts"
 import type { LookupParam, LookupPositionalParam, ResolveExpressionAST } from "./resolve-expression.ts"
 
 /** Operands of an operator that must have one type, and whether that type has to be numeric. */
@@ -46,7 +47,10 @@ type SharedTypeOperands<Ast> = Ast extends {
 					? { ops: readonly [E, ...Its]; numeric: false }
 					: never
 
-/** The probe key of a parameter operand that has no type yet, `never` for anything else. */
+/**
+ * The probe key of a parameter operand that has no type yet, `never` for anything else. #164: a parameter under a
+ * unary minus (`id = -$1`) is typed like the parameter itself.
+ */
 type ParamOperandProbeKey<Op, Params extends ExpressionParamsShape> = Op extends {
 	kind: "param"
 	name: infer N extends string
@@ -54,10 +58,12 @@ type ParamOperandProbeKey<Op, Params extends ExpressionParamsShape> = Op extends
 	? ProbeKeyOf<LookupParam<Params, N>>
 	: Op extends { kind: "positional-param"; index: infer I extends number }
 		? ProbeKeyOf<LookupPositionalParam<Params, I>>
-		: never
+		: Op extends { kind: "neg"; inner: infer Inner extends { kind: "param" | "positional-param" } }
+			? ParamOperandProbeKey<Inner, Params>
+			: never
 
 type AllParamOperands<Ops extends readonly unknown[]> = Ops extends readonly [infer H, ...infer T]
-	? H extends { kind: "param" | "positional-param" }
+	? H extends { kind: "param" | "positional-param" } | { kind: "neg"; inner: { kind: "param" | "positional-param" } }
 		? AllParamOperands<T>
 		: false
 	: true
@@ -76,7 +82,7 @@ type PeerOperandType<
 				? R["type"] extends "null" | "param-probe" | "param-unused" | "param-read-probe"
 					? PeerOperandType<T, Db, Scope, Params, Numeric>
 					: Numeric extends true
-						? R["type"] extends "integer" | "bigint" | "smallint" | "numeric" | "real" | "double precision"
+						? IsSqlNumericType<R["type"]> extends true
 							? R
 							: PeerOperandType<T, Db, Scope, Params, Numeric>
 						: R
@@ -191,7 +197,7 @@ export type ParamProbeAt<
 			? [K] extends [never]
 				? never
 				: K extends string | number
-					? ResolveCastFromShape<Db, SqlText, SqlCastTypeNorm<P>> extends infer S extends SqlTypeShape
+					? CastTargetShape<Db, SqlText, SqlCastTypeNorm<P>> extends infer S extends SqlTypeShape
 						? ParamProbeFound<K, S>
 						: never
 					: never
@@ -252,12 +258,17 @@ type NullPropagatingOperands<Ast> = Ast extends {
 								items: infer Its extends readonly ScalarExprAst[]
 						  }
 						? readonly [E, ...Its]
-						: Ast extends {
-									kind: "any_op" | "all_op" | "some_op"
-									left: infer L extends ScalarExprAst
-							  }
-							? readonly [L]
-							: readonly []
+						: Ast extends { kind: "in_subquery"; expr: infer E extends ScalarExprAst }
+							? readonly [E]
+							: Ast extends {
+										kind: "any_op" | "all_op" | "some_op"
+										left: infer L extends ScalarExprAst
+										right: infer R
+								  }
+								? R extends ScalarExprAst
+									? readonly [L, R]
+									: readonly [L]
+								: readonly []
 
 type AnyOperandNullable<
 	Ops extends readonly ScalarExprAst[],
@@ -270,6 +281,13 @@ type AnyOperandNullable<
 		: AnyOperandNullable<T, Db, Scope, Params>
 	: false
 
+/** SQLT-9: a boolean result in the type the dialect has for it (`booleanType`: an integer in SQLite). */
+type DialectResult<Db, Res extends SqlTypeShape> = Res["type"] extends "boolean"
+	? DialectFact<Db, "booleanType"> extends "boolean"
+		? Res
+		: { type: DialectFact<Db, "booleanType">; arg: null; nullable: Res["nullable"] }
+	: Res
+
 /** CORE-2: an operator result is nullable when any operand is. */
 export type ApplyOperandNullability<
 	Ast,
@@ -281,8 +299,28 @@ export type ApplyOperandNullability<
 	? Res
 	: Res extends SqlTypeShape
 		? Res["nullable"] extends true
-			? Res
+			? DialectResult<Db, Res>
 			: AnyOperandNullable<NullPropagatingOperands<Ast>, Db, Scope, Params> extends true
-				? Nullable<Res>
-				: Res
+				? DialectResult<Db, Nullable<Res>>
+				: DialectResult<Db, Res>
 		: Res
+
+/**
+ * CORE-6: a parameter the SQL tests for NULL (`$1 IS NULL OR age > $1`, the optional-filter idiom) accepts `null`:
+ * once another position has given it a type, the test makes that type nullable (one more round of the loop in
+ * src/core/param-probe.ts). `Tested` is the test's operand, `V` its resolved type.
+ */
+export type NullTestedParam<Tested, V extends SqlTypeShape> = Tested extends {
+	kind: "param"
+	name: infer N extends string
+}
+	? NullableParam<N, V>
+	: Tested extends { kind: "positional-param"; index: infer I extends number }
+		? NullableParam<I, V>
+		: SqlBoolean
+
+type NullableParam<Key extends string | number, V extends SqlTypeShape> = V["nullable"] extends true
+	? SqlBoolean
+	: V["type"] extends "param-probe" | "param-unused" | "param-read-probe"
+		? SqlBoolean
+		: ParamProbeFound<Key, Nullable<V>>

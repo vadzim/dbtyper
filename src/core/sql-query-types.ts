@@ -1,13 +1,12 @@
 import type { JsqlDatabaseShape } from "./jsql-shapes.ts"
 import type { DbtyperError, DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { Inc } from "./type-utils.ts"
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 import type { SqlTypeShapeToTs } from "./sql-to-ts-conversion.ts"
 import type { ExpressionParamsShape } from "../parser/parse-expression.ts"
 import type { ApplyStatements } from "../parser/parse-sql-statement.ts"
 import type { SqlSelectResultTs, IsNoRowsResult } from "./sql-select-result-helper.ts"
-import type { DeriveQueryParams } from "./param-probe.ts"
-import type { ParserSyntax, ParserSyntaxOf } from "./dialect.ts"
+import type { DeriveQueryParams, ParamDisplay } from "./param-probe.ts"
+import type { Dialects, ParserSyntax, ParserSyntaxOf } from "./dialect.ts"
 import type { DriverConfig, ParamsDriverConfig } from "./sql-driver.ts"
 import type { SqlMigrations } from "./sql-migrations.ts"
 import type { DataBase } from "./sql-database.ts"
@@ -25,8 +24,6 @@ export type SqlSelectRowObject<
 		: never
 	: never
 
-type ParamKeyDisplay<K> = K extends `${infer I extends number}` ? `$${Inc<I>}` : K extends string ? `:${K}` : never
-
 /** CORE-6: the first value that is not of the TypeScript type the SQL gives its parameter, as an error. */
 type CheckParamValues<Config extends DriverConfig, Db, Params extends ExpressionParamsShape, Values> = {
 	[K in keyof Params & string]: K extends keyof Values
@@ -43,7 +40,10 @@ type CheckParamValues<Config extends DriverConfig, Db, Params extends Expression
 							>,
 					  ]
 					? never
-					: FormatError<Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"], [ParamKeyDisplay<K>]>
+					: FormatError<
+							Errors["INCOMPATIBLE_PARAMETER_VALUE_TYPE"],
+							[ParamDisplay<K, Dialects[Config["dialect"]]["positionalParamSign"]>]
+						>
 			: never
 		: never
 }[keyof Params & string] extends infer E
@@ -128,7 +128,7 @@ export type QueryReturnType<
 
 export type GetApplyError<D, Stmt extends string> =
 	D extends SqlMigrations<infer Db, infer Config>
-		? CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, null> extends infer Ret
+		? CheckSqlValid<ParamsDriverConfig<Config, null, false>, Db, Stmt, null> extends infer Ret
 			? Stmt extends Ret
 				? null
 				: Ret extends FormatErrorText<infer Code, infer Msg>
