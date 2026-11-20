@@ -17,7 +17,8 @@ const _read = `select ? * ? as result;` as const
 expectType<GetQueryError<typeof _sqlite, typeof _read, [number, number]>>(
 	toBe<DbtyperError<2405, "cannot infer the type of parameter ?1; use CAST(?1 AS …)">>(),
 )
-expectType<GetQueryError<typeof _pg, typeof _read, [number, number]>>(
+const _readPg = `select $1 * $2 as result;` as const
+expectType<GetQueryError<typeof _pg, typeof _readPg, [number, number]>>(
 	toBe<DbtyperError<2405, "cannot infer the type of parameter $1; use CAST($1 AS …)">>(),
 )
 // the second one is named by its own number
@@ -36,7 +37,8 @@ const _wrong = `select name from t where id = ?;` as const
 expectType<GetQueryError<typeof _sqlite, typeof _wrong, [string]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter ?1">>(),
 )
-expectType<GetQueryError<typeof _pg, typeof _wrong, [string]>>(
+const _wrongPg = `select name from t where id = $1;` as const
+expectType<GetQueryError<typeof _pg, typeof _wrongPg, [string]>>(
 	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
 )
 

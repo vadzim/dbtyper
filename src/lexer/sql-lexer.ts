@@ -53,6 +53,23 @@ export type LexerFeatures = "" | LexerQueryParams
 export type ApplyAllowedQueryParams<Syntax extends LexerFeatures, AllowedQueryParams extends LexerQueryParams> =
 	Exclude<Syntax, LexerQueryParams> | Extract<Syntax, AllowedQueryParams>
 
+/**
+ * An operator token. Where `?` is a parameter (`question-params`, SQLite) it never belongs to an operator: `-?` and
+ * `=?` are the operator, then the parameter (#180; PostgreSQL's operator lexing would read `-?` as one operator). The
+ * text before the `?` is read again on its own, as an operator ending in `+` / `-` is then cut before them.
+ */
+type ReadOperatorIn<S extends string, Syntax extends string> = "question-params" extends Syntax
+	? ReadOperator<S> extends [TokenKey<infer Word extends string>, infer Tail extends string]
+		? Word extends `${infer Before}?${infer After}`
+			? Before extends ""
+				? Return<TokenKey<"?">, `${After}${Tail}`>
+				: ReadOperator<Before> extends [infer Op, infer Left extends string] // `<>-?`: `<>`, then `-`
+					? Return<Op, `${Left}?${After}${Tail}`>
+					: never
+			: ReadOperator<S>
+		: ReadOperator<S>
+	: ReadOperator<S>
+
 /** Lex one token from a string (internal) */
 export type ReadTokenFromString<S extends string, Syntax extends string> = S extends `${infer Head}${infer Rest}`
 	? Head extends StartTokenChar
@@ -62,15 +79,15 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 				? SkipSpaces<S, LexerFact<Syntax, "nestedComments">> extends S
 					? Return<FormatError<Errors["UNCLOSED_BLOCK_COMMENT"], []>, S>
 					: ReadTokenFromString<SkipSpaces<S, LexerFact<Syntax, "nestedComments">>, Syntax>
-				: ReadOperator<S>
+				: ReadOperatorIn<S, Syntax>
 			: Head extends "-"
 				? Rest extends `-${string}`
 					? ReadTokenFromString<SkipSpaces<S, LexerFact<Syntax, "nestedComments">>, Syntax>
-					: ReadOperator<S>
+					: ReadOperatorIn<S, Syntax>
 				: Head extends "`"
 					? Rest extends `${infer Name}\`${infer Rest2}`
 						? Tagged<QuotedIdent<Name, Rest2, Syntax>, "sqlite-backtick-ident">
-						: ReadOperator<S>
+						: ReadOperatorIn<S, Syntax>
 					: Head extends "["
 						? LexerFact<Syntax, "bracketIdents"> extends true
 							? Rest extends `${infer Name}]${infer Rest2}`
@@ -84,7 +101,7 @@ export type ReadTokenFromString<S extends string, Syntax extends string> = S ext
 						: Head extends "@" | "?"
 							? ReadSqliteParamOrOperator<S, Head, Rest, Syntax>
 							: Head extends OperatorChars
-								? ReadOperator<S>
+								? ReadOperatorIn<S, Syntax>
 								: Head extends Digit
 									? GetNumber<Rest, Head>
 									: Head extends "."
@@ -257,15 +274,15 @@ type ReadSqliteParamOrOperator<S extends string, Head extends string, Rest exten
 							}
 							? Return<TokenParam<`${Next}${Token}`>, Rest3>
 							: never
-						: ReadOperator<S>
-					: ReadOperator<S>
+						: ReadOperatorIn<S, Syntax>
+					: ReadOperatorIn<S, Syntax>
 				: Next extends NonZeroDigit
 					? "question-params" extends Syntax
 						? ReadIndexedParam<Next, Rest2>
-						: ReadOperator<S>
-					: ReadOperator<S>
-			: ReadOperator<S>
-		: ReadOperator<S>
+						: ReadOperatorIn<S, Syntax>
+					: ReadOperatorIn<S, Syntax>
+			: ReadOperatorIn<S, Syntax>
+		: ReadOperatorIn<S, Syntax>
 
 type ReadIndexedParam<Head extends string, Rest extends string> =
 	GetIndexingNumber<Head, Rest> extends Return<infer Index extends TokenInteger<string>, infer Rest2 extends string>

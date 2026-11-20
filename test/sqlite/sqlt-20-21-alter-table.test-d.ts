@@ -85,3 +85,21 @@ base.apply(addNotNull)
 expectType<GetApplyError<typeof base, typeof addNotNull>>(
 	toBe<DbtyperError<1914, "SQLite cannot ADD COLUMN with NOT NULL without a non-null DEFAULT">>(),
 )
+const addNotNullDefault = base.apply(`alter table t add column k text not null default 'x';`).database()
+const _k = await addNotNullDefault.query(`select k from t`)
+expectType<typeof _k>(toBe<Array<{ k: string }>>())
+
+// #193: a generated column's expression is its default, and constraints come in any order
+const addGenNnFirst = base
+	.apply(`alter table t add column g integer not null generated always as (id + 1) virtual;`)
+	.database()
+const _g1 = await addGenNnFirst.query(`select g from t`)
+expectType<typeof _g1>(toBe<Array<{ g: number }>>())
+const addGenNnLast = base
+	.apply(`alter table t add column g integer generated always as (id + 1) virtual not null;`)
+	.database()
+const _g2 = await addGenNnLast.query(`select g from t`)
+expectType<typeof _g2>(toBe<Array<{ g: number }>>())
+const addGenShort = base.apply(`alter table t add column g integer not null as (id + 1);`).database()
+const _g3 = await addGenShort.query(`select g from t`)
+expectType<typeof _g3>(toBe<Array<{ g: number }>>())

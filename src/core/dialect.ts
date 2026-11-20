@@ -31,6 +31,7 @@ import type { DialectConstruct, DialectOnlyConstructs } from "./dialect-construc
 import type { PostgresFunctions, PostgresSqliteOnlyFunctions } from "../parser/postgres-functions.ts"
 import type { SqliteFunctions, SqliteOperators, SqlitePgOnlyFunctions } from "../parser/sqlite-functions.ts"
 import type { PostgresSkippedForms, SqliteSkippedForms } from "../parser/statement-keywords.ts"
+import type { PostgresTypeNameWords } from "./dialect-types.ts"
 
 /** Words that start a skipped statement of both dialects (STMT-18; second words of CREATE/ALTER/DROP: `skippedForms`). */
 type CommonSkippedStatementKeywords = readonly [
@@ -107,8 +108,14 @@ export type DialectName = keyof Dialects
  * `initialSchemas`: the schemas a new chain starts with: "public" = PostgreSQL's `public` (SCHEMA-27; a `defaultSchema`
  * other than `public` must still be created, SCHEMA-3), "main" = SQLite's `main` (the default) and `temp` (no CREATE SCHEMA,
  * SQLT-25).
- * Type facts (SQLT-6…SQLT-17, #67): `declaredTypes` "named" = a declared type name is the type (PostgreSQL), "affinity" =
- * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
+ * Type facts (SQLT-6…SQLT-17, #67, #180): `declaredTypes` "named" = a declared type name is the type (PostgreSQL), "affinity" =
+ * the name only decides an affinity (SQLite, `SqliteTypeKey`): the one rule fact, read only by the type-name rows of
+ * dialect-types.ts; `typeNameWords`: which words a type name of several words may go on with (a table of the name so
+ * far → the next words, {@link PostgresTypeNameWords}; "any" = every identifier joins, SQLT-6); `userTypes`: CREATE TYPE /
+ * DOMAIN names are types and a type name may be schema-qualified (PGT-13, PGT-22); `valueMismatch`: the error for an
+ * INSERT / UPDATE value that does not fit its column ("incompatible" = the value type is incompatible, "storage-class" =
+ * the column's storage class is named, SQLT-43; a NUMERIC-affinity column takes any value: `comparisonClasses`, SQLT-7);
+ * `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
  * DDL facts, one per rule (SQLT-18…SQLT-26, #70; DLCT-4): `tempObjects`: the `temp` schema is searched first for an unqualified
@@ -155,7 +162,7 @@ export type DialectName = keyof Dialects
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * `positionalParamSign`: how messages spell positional parameter n: the sign before the number (`$1`, `?1`).
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
- * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
+ * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30); `questionParams`: `?` / `?NNN` are positional parameters (SQLT-30; DSEL-4, #196: elsewhere `?` is no parameter even if the driver's `syntax` lists `question-params`, see {@link ParserSyntaxOf});
  * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
  * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
  * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
@@ -168,6 +175,9 @@ export type Dialects = {
 		onlyError: Errors["POSTGRES_ONLY_SYNTAX"]
 		initialSchemas: "public"
 		declaredTypes: "named"
+		typeNameWords: PostgresTypeNameWords
+		userTypes: true
+		valueMismatch: "incompatible"
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
@@ -223,6 +233,7 @@ export type Dialects = {
 		lexer: {
 			bracketIdents: false
 			atParams: false
+			questionParams: false
 			blobLiterals: false
 			foldQuoted: false
 			joinStrings: true
@@ -237,6 +248,9 @@ export type Dialects = {
 		onlyError: Errors["SQLITE_ONLY_SYNTAX"]
 		initialSchemas: "main"
 		declaredTypes: "affinity"
+		typeNameWords: "any"
+		userTypes: false
+		valueMismatch: "storage-class"
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
@@ -286,6 +300,7 @@ export type Dialects = {
 		lexer: {
 			bracketIdents: true
 			atParams: true
+			questionParams: true
 			blobLiterals: true
 			foldQuoted: true
 			joinStrings: false
@@ -333,7 +348,10 @@ export type ParserSyntax = LexerFeatures | DialectFlags | SingleStatementFlag
 export type ParserSyntaxOf<
 	Config extends { syntax: LexerFeatures; dialect: DialectName; singleStatement?: true | undefined },
 > =
-	| Config["syntax"]
+	| Exclude<
+			Config["syntax"],
+			Dialects[Config["dialect"]]["lexer"]["questionParams"] extends true ? never : "question-params"
+	  >
 	| DialectFlag<Config["dialect"]>
 	| (Config extends { singleStatement: true } ? SingleStatementFlag : never)
 

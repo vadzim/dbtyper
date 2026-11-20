@@ -1,57 +1,10 @@
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
-import type { SkipBracketedUntil, SkipFailedExpression, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
+import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { SkipFailedExpression, SkipFailedExpressionWithEnv } from "./skip-statement.ts"
+import type { ParseSqlTypeNameWords } from "./parse-sql-type-words.ts"
 import type { ExprParseEnv, ScalarExprAst } from "./parse-expression-ast.ts"
 import type { ParseOrScalarUntyped } from "./parse-expression-bool.ts"
-
-/**
- * `[]` after a type name (#163): one `"[]"` element in `type_parts` for each pair, so `int[][]` is `["int", "[]", "[]"]`.
- * A size (`int[3]`) is not read: PostgreSQL ignores it too.
- */
-type ParseCastArraySuffix<Tokens extends ParserMonad, Parts extends readonly string[]> =
-	PeekToken<Tokens> extends TokenKey<"[">
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<"]">
-				? ParseCastArraySuffix<SkipToken<R1>, readonly [...Parts, "[]"]>
-				: SkipFailedExpression<
-						R1,
-						FormatError<Errors["EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE"], []>
-					>
-			: never
-		: [Tokens, Parts]
-
-/** `AS` / `::` type: the words, then any `[]`. */
-type ParseSqlTypeName<Tokens extends ParserMonad> =
-	ParseSqlTypeNameWords<Tokens> extends [infer R extends ParserMonad, infer Parts]
-		? Parts extends readonly [string, ...string[]]
-			? ParseCastArraySuffix<R, Parts>
-			: [R, Parts]
-		: never
-
-/** `AS` / `::` type list: identifiers, optional `(…)` after a name, until `)` (CAST) or non-type token (`::` chain). */
-type ParseSqlTypeNameWords<Tokens extends ParserMonad, Acc extends readonly string[] = []> =
-	PeekToken<Tokens> extends TokenIdent<infer W extends string>
-		? SkipToken<Tokens> extends infer R1 extends ParserMonad
-			? PeekToken<R1> extends TokenKey<"(">
-				? SkipBracketedUntil<SkipToken<R1>, TokenKey<")">> extends [infer R2 extends ParserMonad, infer Rs]
-					? Rs extends DbtyperErrorShape
-						? SkipFailedExpression<R2, Rs>
-						: ParseSqlTypeNameWords<SkipToken<R2>, readonly [...Acc, W]>
-					: never
-				: PeekToken<R1> extends TokenKey<".">
-					? ParseSqlTypeNameWords<SkipToken<R1>, readonly [...Acc, `${W}.`]>
-					: PeekToken<R1> extends TokenIdent<string>
-						? ParseSqlTypeNameWords<R1, readonly [...Acc, W]>
-						: [R1, readonly [...Acc, W]]
-			: never
-		: PeekToken<Tokens> extends TokenKey<")">
-			? Acc extends readonly []
-				? SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
-				: [Tokens, Acc]
-			: Acc extends readonly []
-				? SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_TYPE_NAME"], [""]>>
-				: [Tokens, Acc]
 
 /** True when `C` has exactly one own key (one projected column). */
 export type SingleProjectionColumn<C extends Record<string, unknown>> = keyof C extends infer A
@@ -77,7 +30,10 @@ export type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends Expr
 							: Inner extends ScalarExprAst
 								? PeekToken<R2> extends TokenKey<"as">
 									? SkipToken<R2> extends infer R3 extends ParserMonad
-										? ParseSqlTypeName<R3> extends [infer R4 extends ParserMonad, infer Parts]
+										? ParseSqlTypeNameWords<R3, Env["db"]> extends [
+												infer R4 extends ParserMonad,
+												infer Parts,
+											]
 											? Parts extends DbtyperErrorShape
 												? SkipFailedExpressionWithEnv<R4, Parts, Env2>
 												: Parts extends readonly []
@@ -127,16 +83,17 @@ export type ParseCastKeywordOperand<Tokens extends ParserMonad, Env extends Expr
 			: never
 		: never
 
-export type ParsePgCastSuffixTail<Tokens extends ParserMonad, Acc extends ScalarExprAst> =
+/** `expr::type`, repeated (`x::text::int`); the type name is read by the shared type-name parser (parse-sql-type-words.ts). */
+export type ParsePgCastSuffixTail<Tokens extends ParserMonad, Acc extends ScalarExprAst, Db> =
 	PeekToken<Tokens> extends TokenKey<"::">
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
-			? ParseSqlTypeName<R0> extends [infer R1 extends ParserMonad, infer Parts]
+			? ParseSqlTypeNameWords<R0, Db> extends [infer R1 extends ParserMonad, infer Parts]
 				? Parts extends DbtyperErrorShape
 					? SkipFailedExpression<R1, Parts>
 					: Parts extends readonly []
 						? SkipFailedExpression<R1, FormatError<Errors["EXPECTED_TYPE_NAME"], ["after ::"]>>
 						: Parts extends readonly string[]
-							? ParsePgCastSuffixTail<R1, { kind: "pg_cast"; expr: Acc; type_parts: Parts }>
+							? ParsePgCastSuffixTail<R1, { kind: "pg_cast"; expr: Acc; type_parts: Parts }, Db>
 							: never
 				: never
 			: never

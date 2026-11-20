@@ -54,6 +54,42 @@ type NamedTypeAliases = {
 /** DLCT-5: the canonical name of a written type name of a `named` dialect. */
 export type NormalizeSqlTypeName<T extends string> = T extends keyof NamedTypeAliases ? NamedTypeAliases[T] : T
 
+/** The fields of an interval type (PGT-8). */
+type IntervalField = "year" | "month" | "day" | "hour" | "minute" | "second"
+
+/**
+ * PostgreSQL type names of several words (the `typeNameWords` fact): the words that may follow the name read so far
+ * (lower-case, words joined by one space). A word that is not listed ends the type name (#159).
+ */
+export type PostgresTypeNameWords = {
+	double: "precision"
+	character: "varying"
+	char: "varying"
+	bit: "varying"
+	national: "character" | "char"
+	"national character": "varying"
+	"national char": "varying"
+	timestamp: "with" | "without"
+	time: "with" | "without"
+	"timestamp with": "time"
+	"timestamp without": "time"
+	"time with": "time"
+	"time without": "time"
+	"timestamp with time": "zone"
+	"timestamp without time": "zone"
+	"time with time": "zone"
+	"time without time": "zone"
+	interval: IntervalField
+	"interval year": "to"
+	"interval year to": "month"
+	"interval day": "to"
+	"interval day to": "hour" | "minute" | "second"
+	"interval hour": "to"
+	"interval hour to": "minute" | "second"
+	"interval minute": "to"
+	"interval minute to": "second"
+}
+
 /** Names of the SERIAL types (SQLT-17). */
 type SerialTypeNames = "serial" | "bigserial" | "smallserial" | "serial2" | "serial4" | "serial8"
 
@@ -106,7 +142,7 @@ export type DialectCastRow<Db, N extends string> =
  * coerce, dbtyper names the column's storage class; elsewhere the value type is incompatible).
  */
 export type ValueMismatchError<Db, Col extends string, ColType extends string> =
-	DialectFact<Db, "declaredTypes"> extends "affinity"
+	DialectFact<Db, "valueMismatch"> extends "storage-class"
 		? FormatError<Errors["COLUMN_TYPE_MISMATCH"], [Col, Uppercase<ColType>]>
 		: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Col]>
 
