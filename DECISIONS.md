@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175 follow-ups: names through views, CTEs and subqueries (track A; #179 items 5a, 5b; SQLT-67, DML-20)
+
+- **One shape for SELECT-made relations.** `OutputRelation<Db, Ret, Order>` (src/parser/parser-scope.ts) turns a SELECT result into the columns of a view, a CTE or a derived table, and of SQLite `CREATE TABLE … AS`: with its output order when the result has one, and where names match case-insensitively (SQLite, `foldQuoted`) keyed by the folded name with the output names as `spelled`, exactly like a table. So `select conversationid from recent` finds a view column `conversationId` (was 2307 in Signal v1450), and returns it as `conversationId`; aliases and expression keys alike.
+- **Entries carry it.** A CTE or derived-table scope entry has `order` and `spelled` (`CteAsFromEntry` copies them); `EntryData` (parse-select-resolve.ts) returns the entry itself for those, so the result key of a column reference, `*` and `alias.*` read them as they read a table. `*` from a CTE or subquery now follows its output order in both dialects (5b), which a set operation matches by position.
+- **CTE / view column lists** keep the written spelling in SQLite (`with c(Cid) …` returns `Cid`), and the view's duplicate check (3911) compares folded names there.
+- **Cost.** `typecheck:test` 20,010,282 -> 20,109,593 without the new test file (+0.5%), 20,377,588 with it.
+
 ## 2026-11-20 SQLite compatibility from the Signal proof (#195, track A; not spec-derived, spec PR #19 "for now A"; SQLT-7, SQLT-20)
 
 - **NUMERIC affinity compares with and is assigned from and to text and numbers.** New dialect fact `comparisonClasses` (src/core/dialect.ts): the type names whose comparison class differs in a dialect; SQLite has `{ numeric: "affinity" }`. The class "affinity" is, like "unknown", compatible with every class (`AnyComparisonClass`, src/core/comparison-classes.ts) and is a LIKE operand. `SameComparisonClass`, `MergeComparison`, BETWEEN, LIKE, IN (list and subquery), `CASE x WHEN`, INSERT … VALUES, INSERT … SELECT, UPDATE SET and DEFAULT pass `ComparisonClassesOf<Db>` (a small object, so the cache stays shared). `AffinityTakesAnyValue` (#169) and its fact `anyValueColumnTypes` (#180) are gone: they are the same rule. Not passed (still the shared table): array element unification and set-operation columns (`UNION` of a NUMERIC and a TEXT column is still an error: its result type is a separate question) and the result type of CASE branches. TEXT against a number (`text_col = 1`, Signal v15) and TEXT into INTEGER (v1290) are not this rule and stay errors.

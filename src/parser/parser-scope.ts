@@ -1,5 +1,8 @@
-import type { JsqlDataShape } from "../core/jsql-shapes.ts"
+import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { SqliteRowidNames } from "../core/dialect-types.ts"
+import type { DialectFact } from "../core/dialect.ts"
+import type { SqlTypeShape } from "../core/sql-type-shape.ts"
+import type { FoldAsciiCase } from "../lexer/sql-lexer-chars.ts"
 
 /** One FROM/JOIN alias bound to a concrete table shape (columns as SQL type strings). */
 export type ScopeEntry = {
@@ -8,6 +11,10 @@ export type ScopeEntry = {
 	columns: JsqlDataShape["columns"]
 	/** CORE-9: columns merged away by `JOIN … USING` / `NATURAL JOIN`: hidden from unqualified lookup and `alias.*`. */
 	hidden?: string
+	/** A CTE or subquery: its output names where they differ from the keys (SQLite, {@link OutputRelation}). */
+	spelled?: unknown
+	/** A CTE or subquery: its output order (DML-20), which `*` follows. */
+	order?: unknown
 }
 
 /** Union of the hidden column names of a scope entry (`never` when none). */
@@ -97,3 +104,34 @@ type RowidKeyIn<Cols, C extends string, Written extends string> = C extends keyo
 			: K
 		: Written
 	: Written
+
+/**
+ * The columns of a view, CTE or subquery made from the SELECT result `Res`, with its output order (DML-20) when the
+ * result has one. Where names match case-insensitively (SQLite, fact `foldQuoted`) they are keyed by the folded name,
+ * as a table's are, and the output names are kept as declared spellings (`spelled`, SQLT-67), so `select mixed from v`
+ * finds `Mixed` and still returns `Mixed`.
+ */
+export type OutputRelation<Db extends JsqlDatabaseShape, Ret extends Record<string, SqlTypeShape>, Order> = DialectFact<
+	Db,
+	"lexer"
+>["foldQuoted"] extends true
+	? { columns: { [K in keyof Ret & string as FoldAsciiCase<K>]: Ret[K] } } & (Order extends readonly string[]
+			? { order: FoldedNames<Order> }
+			: {}) &
+			({ [K in keyof Ret & string as FoldAsciiCase<K> extends K ? never : FoldAsciiCase<K>]: K } extends infer Sp
+				? {} extends Sp
+					? {}
+					: { spelled: Sp }
+				: never)
+	: { columns: Ret } & (Order extends readonly string[] ? { order: Order } : {})
+
+/** The SELECT result's output order, or `null`. */
+export type OutputOrder<Res> = Res extends { order: infer O extends readonly string[] } ? O : null
+
+/** Each name folded as a SQLite name ({@link FoldAsciiCase}). */
+export type FoldedNames<Names extends readonly string[], Acc extends readonly string[] = []> = Names extends readonly [
+	infer H extends string,
+	...infer R extends readonly string[],
+]
+	? FoldedNames<R, [...Acc, FoldAsciiCase<H>]>
+	: Acc

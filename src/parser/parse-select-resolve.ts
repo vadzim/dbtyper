@@ -68,12 +68,17 @@ type NamesDb<Db extends JsqlDatabaseShape, Items extends readonly RawSelectItem[
 	? KeyDb<Db>
 	: Db
 
-/** The table or view a scope entry reads, or `null` (a CTE or a subquery). */
-type EntryData<Db, E> = Db extends JsqlDatabaseShape
-	? E extends { schema: infer S extends string; table: infer T extends string }
-		? JsqlDbGetData<Db, S, T>
+/**
+ * What a scope entry reads: the table or view, or for a CTE or subquery the entry itself, which carries its output
+ * order and SQLite spellings (`OutputRelation`). `null` for a table when `Db` is `null` ({@link KeyDb}).
+ */
+type EntryData<Db, E> = E extends { schema: "__subquery__" | "__cte__" }
+	? E
+	: Db extends JsqlDatabaseShape
+		? E extends { schema: infer S extends string; table: infer T extends string }
+			? JsqlDbGetData<Db, S, T>
+			: null
 		: null
-	: null
 
 /** `Names` that are keys of `Keys`, in order. */
 type NamesIn<Names extends readonly string[], Keys> = Names extends readonly [
@@ -103,7 +108,8 @@ type StarColumns<Db, E extends ScopeEntry> =
 
 /**
  * Output column names of `*` in position order (CORE-8 matches set-operation arms by position, CORE-11): the declared
- * order of the table or view (#150); a CTE or subquery has none, its keys are taken in the order TypeScript lists them.
+ * order of the table or view (#150), or the output order of a CTE or subquery (DML-20); without one (a FROM function),
+ * the keys are taken in the order TypeScript lists them.
  */
 type StarNames<Db, E extends ScopeEntry> =
 	EntryData<Db, E> extends infer Data
