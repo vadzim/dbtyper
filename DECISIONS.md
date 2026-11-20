@@ -2,6 +2,12 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Roles of JSON function arguments as parameter types (#206 item 4, track A; SQLT-75)
+
+- **Data, not conditions.** The `params` column of the JSON rows of `SqliteFunctions` holds the roles: `text` for a JSON text, path or label, the new type name `json_arg` for a value. A repeating position (the 2nd, 4th, … of `json_set`) is a `{ head; cycle }` entry; `RowArgType` (function-catalog.ts) reads it with `CycleArgType`, so no resolver knows a function name.
+- **`json_arg`** is a type name of the SQLite type map and its parameter map (`number | bigint | string | null`: any value but a blob and a boolean, so `Uint8Array` / `boolean` are 2509 by the existing check). It is NOT a nullable shape: a nullable argument would make the result of `json_array(:a)` nullable (nulls `args`), and the results must stay those of SQLT-49; `null` lives in the parameter map instead.
+- **Cost.** `typecheck:test` 17,795,738 -> 18,424,730 including the new test file (test/sqlite/sqlt-75-json-param-roles.test-d.ts).
+
 ## 2026-11-20 A chain's schema type keeps no earlier state (#192, track A; bug)
 
 - **Cause.** TypeScript stops at instantiation depth 100 (raw TS2589). Every schema change went through `ReplaceProp`, a mapped type over `Omit<T, K> & Record<K, V>`: a mapped type keeps the type it maps in its mapper, so each state pointed at the one before, and each time the state was instantiated (any statement that reads a table) TypeScript walked all earlier states, about 3 levels per change. `ForceProps` resolved the property types but not that walk. A chain broke after 20-30 schema changes, counted over the whole chain, not per apply; mixed-case SQLite columns (`Omit<Db, "pendingSpelled"> & …`, the `spelled` intersection) cost more levels each.

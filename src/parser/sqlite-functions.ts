@@ -1,4 +1,4 @@
-import type { SqlInteger, SqlText } from "../core/sql-type-shape.ts"
+import type { SqlInteger, SqlText, SqlType } from "../core/sql-type-shape.ts"
 
 /**
  * SQLT-44…SQLT-51: the result of every SQLite function, as data (a row per function).
@@ -13,6 +13,17 @@ import type { SqlInteger, SqlText } from "../core/sql-type-shape.ts"
  *   `first` nullable only when the first argument is (`concat_ws`, `format`, `printf`; PGT-28, SQLT-44);
  *   `lag` `lag`/`lead`: nullable unless a non-null default is given.
  */
+/**
+ * SQLT-75: the roles of JSON function arguments as parameter types. A JSON text, a path or a label is `text`; a value
+ * is `json_arg` (a number, bigint, string or NULL: SQLite value but a blob; the parameter map rejects a blob and a boolean). It is not nullable as an argument, so it does not change the nullability of the result.
+ * A `{ head; cycle }` entry repeats its cycle after the head (function-catalog.ts).
+ */
+type JsonValue = SqlType<"json_arg">
+type JsonValues = { head: []; cycle: [JsonValue] }
+type JsonLabelValue = { head: []; cycle: [SqlText, JsonValue] }
+type JsonSet = { head: [SqlText]; cycle: [SqlText, JsonValue] }
+type JsonPaths = { head: [SqlText]; cycle: [SqlText] }
+
 export type SqliteFunctions = {
 	// SQLT-44 text
 	lower: ["text", "args", "scalar", null, [SqlText]]
@@ -79,21 +90,21 @@ export type SqliteFunctions = {
 	current_time: ["text", "non-null", "scalar", null, null]
 	current_timestamp: ["text", "non-null", "scalar", null, null]
 	// SQLT-49 JSON
-	json: ["text", "args", "scalar", null, null]
-	json_array: ["text", "args", "scalar", null, null]
-	json_object: ["text", "args", "scalar", null, null]
-	json_insert: ["text", "args", "scalar", null, null]
-	json_replace: ["text", "args", "scalar", null, null]
-	json_set: ["text", "args", "scalar", null, null]
-	json_remove: ["text", "args", "scalar", null, null]
-	json_patch: ["text", "args", "scalar", null, null]
-	json_quote: ["text", "args", "scalar", null, null]
-	json_group_array: ["text", "args", "aggregate", null, null]
-	json_group_object: ["text", "args", "aggregate", null, null]
-	json_array_length: ["integer", "args", "scalar", null, null]
-	json_valid: ["integer", "args", "scalar", null, null]
-	json_type: ["text", "args", "scalar", null, null]
-	json_extract: ["any", "null", "scalar", null, null]
+	json: ["text", "args", "scalar", null, [SqlText]]
+	json_array: ["text", "args", "scalar", null, JsonValues]
+	json_object: ["text", "args", "scalar", null, JsonLabelValue]
+	json_insert: ["text", "args", "scalar", null, JsonSet]
+	json_replace: ["text", "args", "scalar", null, JsonSet]
+	json_set: ["text", "args", "scalar", null, JsonSet]
+	json_remove: ["text", "args", "scalar", null, JsonPaths]
+	json_patch: ["text", "args", "scalar", null, [SqlText, SqlText]]
+	json_quote: ["text", "args", "scalar", null, [JsonValue]]
+	json_group_array: ["text", "args", "aggregate", null, [JsonValue]]
+	json_group_object: ["text", "args", "aggregate", null, [SqlText, JsonValue]]
+	json_array_length: ["integer", "args", "scalar", null, [SqlText, SqlText]]
+	json_valid: ["integer", "args", "scalar", null, [SqlText]]
+	json_type: ["text", "args", "scalar", null, [SqlText, SqlText]]
+	json_extract: ["any", "null", "scalar", null, JsonPaths]
 	// SQLT-50 other
 	typeof: ["typeof", "non-null", "scalar", null, null]
 	randomblob: ["blob", "args", "scalar", null, null]
