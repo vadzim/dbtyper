@@ -2,6 +2,11 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Inline OVER (...) columns are resolved (#216, track A; bug)
+
+- **Fix.** `ResolveExpressionAST` (resolve-expression.ts), for a `window_function`, resolves the call and then the columns of its `over` (`WindowSpecResolveError`, resolve-function.ts: PARTITION BY, ORDER BY terms, frame offsets) against the same scope; `select row_number() over (partition by ghost) from t` is 2300 in both dialects, also in ORDER BY and for `OVER (w partition by ghost)`. The spec comes from the one `ParseWindowSpec`; no second parse. The error has no "in WINDOW clause" suffix (WINDOW definitions keep theirs). `OVER w` has no lists, so it costs nothing.
+- **Cost.** `typecheck:test` 23,639,867 (before) -> 23,783,532 with the new test file test/dialects/fn-30-inline-over-columns-216.test-d.ts (+0.6%).
+
 ## 2026-11-20 Named windows and their CASCADE case (#214, track A; FN-30…FN-35, TYPE-18; design dbtyper-spec#25/#26)
 
 - **One window-spec parser.** `ParseWindowSpec` (parse-function-call.ts) reads the content of `OVER (…)` and of `WINDOW w AS (…)`: an optional window name, `PARTITION BY`, `ORDER BY`, a frame. The AST (`WindowSpecAst`) keeps `ref`, `bare` (`OVER w`), the lists and the frame's offset expressions; the frame is now parsed (`ROWS|RANGE|GROUPS`, one bound or `BETWEEN … AND …`, bounds `UNBOUNDED PRECEDING|FOLLOWING`, `CURRENT ROW`, `<expr> PRECEDING|FOLLOWING`) instead of skipped to `)`, so its offsets are reads (FN-35). `EXCLUDE …` after a frame is still stepped over. A malformed frame is 4601. The resolver still ignores `over` (FN-31: typing unchanged).
@@ -10,7 +15,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **PostgreSQL copy rule.** Dialect fact `copyFramedWindow` (SQLite true, PostgreSQL false): PostgreSQL refuses every parenthesised reference to a framed window (`OVER (w)`, `OVER (w ORDER BY …)`, `w2 AS (w)`) with 4608, as `transformWindowDefinitions` does; the spec names `OVER (w)`, the other forms follow the engine.
 - **Grouped selects.** A window call in a grouped select is validated like a function call (its arguments; an aggregate argument counts as inside an aggregate); before, every window call in a grouped PostgreSQL select was 3403. Its PARTITION BY / ORDER BY and the WINDOW definitions are not checked against GROUP BY.
 - **TYPE-18 for enums.** A view's `user_types` now also holds the enums it reads outside its output columns (`ColumnEnumType`), and `DROP TYPE … CASCADE` of an enum drops such views (`TypeColumnNames`); before, only a view selecting the enum column went (FN-35's Check uses an enum).
-- **Not done.** Column references in an inline OVER clause are still not resolved (no 2300 there; FN-30 states it "as in an inline OVER"), unchanged from before.
+- **Not done.** Column references in an inline OVER clause were not resolved yet (fixed in #216).
 - **Cost.** `typecheck:test` 22,912,829 (before) -> 22,992,968 without the new test file (+0.35%), 23,640,167 with it.
 
 ## 2026-11-20 A CTE is visible in every subquery of its WITH … SELECT (#211, track A; bug, not spec-derived)
