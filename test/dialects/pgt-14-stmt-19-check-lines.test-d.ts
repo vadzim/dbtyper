@@ -37,6 +37,4 @@ expectType<GetQueryError<typeof db, typeof s1>>(
 expectType<GetQueryError<typeof db, typeof s2>>(
 	toBe<DbtyperError<1931, `Unknown statement keyword udpate; did you mean UPDATE? ${Hint}`>>(),
 )
-expectType<GetQueryError<typeof db, typeof s3>>(
-	toBe<DbtyperError<1930, `Unknown statement keyword foo. ${Hint}`>>(),
-)
+expectType<GetQueryError<typeof db, typeof s3>>(toBe<DbtyperError<1930, `Unknown statement keyword foo. ${Hint}`>>())
