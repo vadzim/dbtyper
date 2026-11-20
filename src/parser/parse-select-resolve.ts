@@ -7,12 +7,7 @@ import type { ScopeEntry, ScopeMap, VisibleColumnsOf, RowidResultKey } from "./p
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FirstDuplicateName, UnionToStringTuple } from "./set-operation-types.ts"
 import type { ItemAs, RawSelectItem } from "./parse-select.ts"
-import type {
-	MergeStringRecords,
-	OutNameFromParts,
-	ScopeEntryOfSingle,
-	SingleAliasScope,
-} from "./parse-select-returning.ts"
+import type { OutNameFromParts, ScopeEntryOfSingle, SingleAliasScope } from "./parse-select-returning.ts"
 
 /**
  * SEL-6: a bare `*` is resolved against the FROM items of this query level only (never the outer
@@ -102,12 +97,26 @@ export type SelectItemNames<
 			: Acc
 	: Acc
 
+/**
+ * The select-list accumulator is a union of `[name, type]` entries (a bare `*` adds one entry per column), turned into
+ * the result record once at the end. Merging a record per item rebuilt the whole record each time, so a long list cost
+ * quadratic time (#105, DECISIONS.md); a union only grows by its new member. A duplicate name (an error, CORE-11) would
+ * give a union of types, but the duplicate check rejects the list before the record is used.
+ */
+type SelectEntry = readonly [string, SqlTypeShape]
+
+type RecordEntries<R extends Record<string, SqlTypeShape>> = {
+	[K in keyof R & string]: readonly [K, R[K]]
+}[keyof R & string]
+
+type EntriesToRecord<E extends SelectEntry> = { [P in E as P[0]]: P[1] }
+
 export type ResolveSelectList<
 	Items extends readonly RawSelectItem[],
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-> = ResolveSelectListAcc<Items, Db, Scope, Params, {}, Items>
+> = ResolveSelectListAcc<Items, Db, Scope, Params, never, Items>
 
 type LookupSelectParam<Params extends ExpressionParamsShape, Name extends string> = Name extends keyof Params
 	? ReadParam<Params[Name]> extends infer S
@@ -163,18 +172,18 @@ type ResolveSelectListExprItem<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Sqls extends Record<string, SqlTypeShape>,
+	Sqls extends SelectEntry,
 	AllItems extends readonly RawSelectItem[],
 > = Ast extends { kind: "qualified_table_star"; schema: infer Sch extends string; table: infer Tab extends string }
 	? ScopeEntryForQualifiedName<Scope, Sch, Tab> extends infer E
 		? E extends ScopeEntry
-			? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
+			? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<VisibleColumnsOf<E>>, AllItems>
 			: FormatError<Errors["UNKNOWN_TABLE"], [Sch, "SELECT ... *"]>
 		: FormatError<Errors["UNKNOWN_TABLE"], [Tab, "SELECT ... *"]>
 	: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
 		? Al extends keyof Scope
 			? Scope[Al] extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
+				? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<VisibleColumnsOf<E>>, AllItems>
 				: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 			: FormatError<Errors["UNKNOWN_ALIAS_IN_SELECT_STAR"], []>
 		: ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Ev
@@ -190,14 +199,7 @@ type ResolveSelectListExprItem<
 						> extends infer O extends string
 						? O extends "__invalid_select_expr_alias__"
 							? FormatError<Errors["SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS"], []>
-							: ResolveSelectListAcc<
-									R,
-									Db,
-									Scope,
-									Params,
-									MergeStringRecords<Sqls, Record<O, Ev>>,
-									AllItems
-								>
+							: ResolveSelectListAcc<R, Db, Scope, Params, Sqls | [O, Ev], AllItems>
 						: never
 					: never
 			: never
@@ -209,7 +211,7 @@ type ResolveSelectListParamItem<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Sqls extends Record<string, SqlTypeShape>,
+	Sqls extends SelectEntry,
 	AllItems extends readonly RawSelectItem[],
 > =
 	LookupSelectParam<Params, P> extends infer PV
@@ -220,7 +222,7 @@ type ResolveSelectListParamItem<
 						out: infer O extends string
 						sql: infer Sql extends SqlTypeShape
 					}
-					? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, Record<O, Sql>>, AllItems>
+					? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | [O, Sql], AllItems>
 					: never
 				: never
 		: never
@@ -230,13 +232,13 @@ type ResolveSelectListAcc<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
-	Sqls extends Record<string, SqlTypeShape>,
+	Sqls extends SelectEntry,
 	AllItems extends readonly RawSelectItem[] = Items,
 > = Items extends readonly [infer H extends RawSelectItem, ...infer R extends readonly RawSelectItem[]]
 	? H extends { kind: "star" }
 		? SingleAliasScope<Scope> extends true
 			? ScopeEntryOfSingle<Scope> extends infer E extends ScopeEntry
-				? ResolveSelectListAcc<R, Db, Scope, Params, MergeStringRecords<Sqls, VisibleColumnsOf<E>>, AllItems>
+				? ResolveSelectListAcc<R, Db, Scope, Params, Sqls | RecordEntries<VisibleColumnsOf<E>>, AllItems>
 				: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: H extends { kind: "expr"; ast: infer Ast extends ScalarExprAst }
@@ -244,4 +246,4 @@ type ResolveSelectListAcc<
 			: H extends { kind: "param"; param: infer P extends string; as?: infer As }
 				? ResolveSelectListParamItem<P, As, R, Db, Scope, Params, Sqls, AllItems>
 				: never
-	: { kind: "select"; returning: Sqls }
+	: { kind: "select"; returning: EntriesToRecord<Sqls> }

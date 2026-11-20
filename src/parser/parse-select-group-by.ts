@@ -9,6 +9,28 @@ import type { ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
+import type { RawSelectItem } from "./parse-select.ts"
+
+/** The expression of the select item named `Name` by its alias, `never` when no item has that alias. */
+type AliasItemAst<Items extends readonly RawSelectItem[], Name extends string> = Items extends readonly [
+	infer H,
+	...infer R extends readonly RawSelectItem[],
+]
+	? H extends { kind: "expr"; ast: infer A extends ScalarExprAst; as: Name }
+		? A
+		: AliasItemAst<R, Name>
+	: never
+
+/**
+ * SEL-36: a GROUP BY key that is a bare output alias stands for that item's expression, when no column of the FROM
+ * items has the name (as in both engines). `never` for any other key.
+ */
+type GroupKeyOutputAlias<Items extends readonly RawSelectItem[], Ast extends ScalarExprAst> = Ast extends {
+	kind: "col"
+	parts: readonly [infer N extends string]
+}
+	? AliasItemAst<Items, N>
+	: never
 
 export type SelectGroupClauseMeta = {
 	readonly have_explicit_group_by: boolean
@@ -23,22 +45,37 @@ type GroupByAstResolution<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Items extends readonly RawSelectItem[],
 > =
 	ResolveExpressionAST<Ast, Db, Scope, Params> extends infer Rv
 		? Rv extends DbtyperErrorShape
-			? readonly [R1, { readonly error: WithErrorClause<Rv, "GROUP BY"> }]
+			? [GroupKeyOutputAlias<Items, Ast>] extends [never]
+				? readonly [R1, { readonly error: WithErrorClause<Rv, "GROUP BY"> }]
+				: GroupByNextTerm<R1, GroupKeyOutputAlias<Items, Ast>, Acc, Db, Scope, Params, Items>
 			: Rv extends SqlTypeShape
-				? PeekToken<R1> extends TokenKey<",">
-					? ParseGroupByTermsAcc<SkipToken<R1>, Db, Scope, Params, readonly [...Acc, Ast]>
-					: readonly [R1, { readonly keys: readonly [...Acc, Ast] }]
+				? GroupByNextTerm<R1, Ast, Acc, Db, Scope, Params, Items>
 				: readonly [R1, { readonly error: never }]
 		: never
+
+type GroupByNextTerm<
+	R1 extends ParserMonad,
+	Key extends ScalarExprAst,
+	Acc extends readonly ScalarExprAst[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Items extends readonly RawSelectItem[],
+> =
+	PeekToken<R1> extends TokenKey<",">
+		? ParseGroupByTermsAcc<SkipToken<R1>, Db, Scope, Params, Items, readonly [...Acc, Key]>
+		: readonly [R1, { readonly keys: readonly [...Acc, Key] }]
 
 type ParseGroupByTermsAcc<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Items extends readonly RawSelectItem[],
 	Acc extends readonly ScalarExprAst[] = readonly [],
 > =
 	ParseExpressionAST<Tokens, { db: Db; params: Params; outerScope: Scope }> extends [
@@ -49,7 +86,7 @@ type ParseGroupByTermsAcc<
 		? Ast extends DbtyperErrorShape
 			? readonly [R1, { readonly error: Ast }]
 			: Ast extends ScalarExprAst
-				? GroupByAstResolution<R1, Ast, Acc, Db, Scope, Params>
+				? GroupByAstResolution<R1, Ast, Acc, Db, Scope, Params, Items>
 				: readonly [R1, { readonly error: never }]
 		: never
 
@@ -164,12 +201,13 @@ export type ParseOptionalGroupHaving<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Items extends readonly RawSelectItem[] = readonly [],
 > =
 	PeekToken<Tokens> extends TokenKey<"group">
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
 			? PeekToken<R0> extends TokenKey<"by">
 				? SkipToken<R0> extends infer R1 extends ParserMonad
-					? ParseGroupByTermsAcc<R1, Db, Scope, Params> extends readonly [
+					? ParseGroupByTermsAcc<R1, Db, Scope, Params, Items> extends readonly [
 							infer R2 extends ParserMonad,
 							infer Outcome,
 						]

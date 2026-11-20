@@ -1222,6 +1222,12 @@ const errors = {
 		code: 3413,
 		msg: ["WITH query ", " has a different number of columns than its column list"],
 	},
+	ORDER_OR_LIMIT_BEFORE_SET_OPERATOR: {
+		code: 3416,
+		msg: [
+			"ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it",
+		],
+	},
 
 	// Statement Constraints
 	INSERT_SELECT_COLUMN_COUNT_MISMATCH: {

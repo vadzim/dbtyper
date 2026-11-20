@@ -75,7 +75,25 @@ export type ParseCallArgs<Tokens extends ParserMonad, Parts, Env extends ExprPar
 			? PeekToken<Tokens> extends TokenIdent<"both" | "leading" | "trailing"> // `trim(both 'x' from s)`
 				? ParseFunctionArgs<SkipToken<Tokens>, Env>
 				: ParseFunctionArgs<Tokens, Env>
-			: ParseFunctionArgs<Tokens, Env>
+			: Parts extends readonly [infer Name extends string]
+				? Lowercase<Name> extends DistinctAggregateName
+					? ParseAggregateArgs<Tokens, Env>
+					: ParseFunctionArgs<Tokens, Env>
+				: ParseFunctionArgs<Tokens, Env>
+
+/** Aggregates that take `DISTINCT` before their arguments (`count(DISTINCT x)`); the result type is the same without it. */
+type DistinctAggregateName =
+	"count" | "sum" | "avg" | "min" | "max" | "total" | "group_concat" | "string_agg" | "array_agg"
+
+/** `[DISTINCT] args)` of an aggregate; `DISTINCT *` is not SQL. */
+type ParseAggregateArgs<Tokens extends ParserMonad, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenKey<"distinct">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? PeekToken<R1> extends TokenKey<"*">
+				? SkipFailedExpressionWithEnv<R1, FormatError<Errors["UNEXPECTED_TOKEN"], ["DISTINCT *"]>, Env>
+				: ParseFunctionArgs<R1, Env>
+			: never
+		: ParseFunctionArgs<Tokens, Env>
 
 /** One more expression and the closing `)` of a `FROM` / `IN` call form. */
 type ParseCallArgsTail<
