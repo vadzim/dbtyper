@@ -7,7 +7,7 @@ import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts
 import type { ScopeMap } from "./parser-scope.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseWhereExpression } from "./parse-where-expression.ts"
-import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
+import type { JsqlConstraintNames, JsqlDataGetColumnType } from "../core/jsql-utils.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseSetAssignments, ResolveSetAssignments, PendingAssignments } from "./parse-set-assignments.ts"
 import type { ParseInsertMaybeReturning } from "./parse-insert-returning.ts"
@@ -61,8 +61,8 @@ type ParseInsertOnConflictDoUpdate<
 		: never
 
 /**
- * PGT-25: `ON CONFLICT ON CONSTRAINT name DO …`. The name must be one of the table's named constraints, or a default
- * name PostgreSQL gives (`<table>_pkey`, `<table>_<column>_key`; those are not checked against the table's keys).
+ * PGT-25: `ON CONFLICT ON CONSTRAINT name DO …`. The name must be one of the table's constraints: a named one, or
+ * one under the name PostgreSQL gives it (`<table>_pkey`, `<table>_<column>_key`, #207).
  */
 type ParseInsertOnConstraint<
 	R0 extends ParserMonad,
@@ -77,7 +77,7 @@ type ParseInsertOnConstraint<
 	PeekToken<R0> extends TokenKey<"constraint">
 		? SkipToken<R0> extends infer R1 extends ParserMonad
 			? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
-				? ConstraintExists<Tbl, Tab, CName> extends true
+				? ConstraintExists<Tbl, CName> extends true
 					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? PeekToken<R2> extends TokenKey<"do">
 							? ParseInsertOnConflictAfterDoKw<SkipToken<R2>, Db, Scope, Params, Tbl, Sch, Tab, Cols>
@@ -92,14 +92,11 @@ type ParseInsertOnConstraint<
 			: never
 		: SkipFailedStatement<R0, Db, FormatError<Errors["EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT"], []>>
 
-type ConstraintExists<Tbl extends JsqlDataShape, Tab extends string, Name extends string> = Name extends
-	`${Tab}_pkey` | `${Tab}_${string}_key`
+/** The table's constraint names (#207: default names too) or its PRIMARY KEY's name. */
+type ConstraintExists<Tbl extends JsqlDataShape, Name extends string> = Name extends
+	JsqlConstraintNames<Tbl> | (Tbl extends { primary_key: { name: infer P extends string } } ? P : never)
 	? true
-	: Tbl extends { constraints: { names: infer N extends string } }
-		? Name extends N
-			? true
-			: false
-		: false
+	: false
 
 type ParseInsertOnConflictAfterOpenParen<
 	R0 extends ParserMonad,

@@ -15,9 +15,13 @@ import type { ParseSelectExpression } from "./parse-select.ts"
 export type SelectResultToCteScopeEntry<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = {
 	schema: "__cte__"
 	table: "__subquery__"
-} & OutputRelation<Db, Res["returning"], OutputOrder<Res>> extends infer E extends ScopeEntry
+} & OutputRelation<Db, Res["returning"], OutputOrder<Res>> &
+	ResUserTypes<Res> extends infer E extends ScopeEntry
 	? E
 	: never
+
+/** #207: the user types a CTE's or subquery's select reads (in a CREATE VIEW only, see `WithViewUserTypes`). */
+type ResUserTypes<Res> = Res extends { user_types: infer U } ? { user_types: U } : {}
 
 /** A CTE read in FROM: a FROM item now, with the CTE's columns, spellings and order. */
 export type CteAsFromEntry<E extends ScopeEntry> = {
@@ -29,12 +33,14 @@ export type CteAsFromEntry<E extends ScopeEntry> = {
 }
 	? { order: O }
 	: {}) &
-	(E extends { spelled: infer Sp } ? { spelled: Sp } : {})
+	(E extends { spelled: infer Sp } ? { spelled: Sp } : {}) &
+	(E extends { user_types: infer U } ? { user_types: U } : {})
 
 type SelectResultToDerivedScopeEntry<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> = {
 	schema: "__subquery__"
 	table: "__subquery__"
-} & OutputRelation<Db, Res["returning"], OutputOrder<Res>>
+} & OutputRelation<Db, Res["returning"], OutputOrder<Res>> &
+	ResUserTypes<Res>
 
 /** Helper: Consume closing `)` after subquery. Returns [Tokens, Result] or error. */
 export type ConsumeClosingParen<Tokens extends ParserMonad, Result> =

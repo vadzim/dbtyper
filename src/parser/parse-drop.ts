@@ -3,7 +3,9 @@ import type {
 	JsqlDbGetData,
 	JsqlDbGetType,
 	JsqlDbReplaceData,
+	JsqlDbDropReferencingConstraints,
 	JsqlDbDropTypeUsers,
+	JsqlDbTypeColumnRefs,
 	JsqlDbTypeInUse,
 	JsqlDbReplaceType,
 	UnqualifiedSchema,
@@ -201,7 +203,12 @@ type DropTarget<
 				(T extends { kind: "enum" } ? true : false) extends infer Enum extends boolean
 				? [JsqlDbTypeInUse<Db, Sch, Name, Enum>] extends [true]
 					? Cascade extends true
-						? JsqlDbDropTypeUsers<Db, Sch, Name, Enum> extends infer D extends JsqlDatabaseShape
+						? JsqlDbDropReferencingConstraints<
+								JsqlDbDropTypeUsers<Db, Sch, Name, Enum> extends infer U extends JsqlDatabaseShape
+									? U
+									: Db,
+								JsqlDbTypeColumnRefs<Db, Sch, Name, Enum>
+							> extends infer D extends JsqlDatabaseShape
 							? JsqlDbReplaceType<D, Sch, Name, null>
 							: never
 						: FormatError<Errors["TYPE_IS_IN_USE_BY_A_COLUMN"], []>
