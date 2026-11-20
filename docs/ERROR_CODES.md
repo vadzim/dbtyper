@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **321 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **323 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -31,7 +31,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2900-2999 | Type/Numeric Operations       |            1 |
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
-| 3200-3299 | Semantic/Duplicate-Existence  |           12 |
+| 3200-3299 | Semantic/Duplicate-Existence  |           13 |
 | 3300-3399 | Semantic/Constraint           |            9 |
 | 3400-3499 | Semantic/SELECT               |           16 |
 | 3500-3599 | Semantic/Statement            |           11 |
@@ -40,7 +40,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3800-3899 | DDL/DROP SCHEMA               |            2 |
 | 3900-3999 | DDL/CREATE VIEW               |            8 |
 | 4000-4099 | DDL/ALTER TYPE                |            4 |
-| 4100-4199 | DDL/Misc                      |            6 |
+| 4100-4199 | DDL/Misc                      |            7 |
 | 4200-4299 | DML/JOIN                      |            2 |
 | 4300-4399 | DML/CASE                      |            1 |
 | 4400-4499 | DML/BETWEEN-IN                |            3 |
@@ -334,20 +334,21 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 3200-3299: Semantic/Duplicate-Existence
 
-| Code | Name                                                  | Message                                              |
-| ---- | ----------------------------------------------------- | ---------------------------------------------------- |
-| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS             |
-| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                 |
-| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS              |
-| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                 |
-| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                  |
-| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS               |
-| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                   |
-| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS |
-| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                              |
-| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                              |
-| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                           |
-| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema               |
+| Code | Name                                                  | Message                                                                  |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS                                 |
+| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                                     |
+| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS                                  |
+| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                                     |
+| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                                      |
+| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS                                   |
+| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                                       |
+| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS                     |
+| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                                                  |
+| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                                                  |
+| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                                               |
+| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema                                   |
+| 3212 | `TYPE_IS_IN_USE_BY_A_COLUMN`                          | Type is used by a column; drop the column first or use CASCADE (TYPE-18) |
 
 ## 3300-3399: Semantic/Constraint
 
@@ -464,14 +465,15 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 4100-4199: DDL/Misc
 
-| Code | Name                                             | Message                                     |
-| ---- | ------------------------------------------------ | ------------------------------------------- |
-| 4100 | `EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME` | Expected \`(\` after qualified table name   |
-| 4101 | `EXPECTED_NAME`                                  | Expected name                               |
-| 4102 | `EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME`      | Expected name after \`.\` in qualified name |
-| 4103 | `EXPECTED_DOT_OR_KEYWORD_AFTER_NAME`             | Expected \`.\` or keyword after name        |
-| 4105 | `EXPECTED_TYPE_NAME`                             | Expected type name …                        |
-| 4107 | `EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME`    | Expected \`.\` or \`(\` after table name    |
+| Code | Name                                             | Message                                                       |
+| ---- | ------------------------------------------------ | ------------------------------------------------------------- |
+| 4100 | `EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME` | Expected \`(\` after qualified table name                     |
+| 4101 | `EXPECTED_NAME`                                  | Expected name                                                 |
+| 4102 | `EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME`      | Expected name after \`.\` in qualified name                   |
+| 4103 | `EXPECTED_DOT_OR_KEYWORD_AFTER_NAME`             | Expected \`.\` or keyword after name                          |
+| 4105 | `EXPECTED_TYPE_NAME`                             | Expected type name …                                          |
+| 4107 | `EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME`    | Expected \`.\` or \`(\` after table name                      |
+| 4108 | `SQLITE_HAS_NO_SCHEMAS_DEFAULT_SCHEMA`           | SQLite has no schemas: defaultSchema must be "main" or "temp" |
 
 ## 4200-4299: DML/JOIN
 

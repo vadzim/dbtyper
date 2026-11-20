@@ -15,7 +15,13 @@ import type {
 } from "./sql-driver.ts"
 import { STREAM_REQUIRES_ROWS_MESSAGE } from "./stream-requires-rows.ts"
 import type { CheckSqlValid } from "./sql-query-types.ts"
-import type { DataBase, InitialDatabase, SqlDatabaseConfig } from "./sql-database.ts"
+import type {
+	DataBase,
+	DefaultSchemaOf,
+	InitialDatabase,
+	RequireSqliteDefaultSchema,
+	SqlDatabaseConfig,
+} from "./sql-database.ts"
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
@@ -38,9 +44,19 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends Driv
 	getDefaultSchema(): string
 }
 
-export function sqlMigrations<D extends SqlDriver<DriverConfigDraft>, const DS extends string = "public">(
-	config: SqlDatabaseConfig<D> & { defaultSchema?: DS } & RequireDriverDialect<D>,
-) {
+export function sqlMigrations<
+	D extends SqlDriver<DriverConfigDraft>,
+	const DS extends string = DefaultSchemaOf<GetDriverConfig<D>>,
+>(config: SqlDatabaseConfig<D> & { defaultSchema?: DS } & RequireDriverDialect<D> & RequireSqliteDefaultSchema<D, DS>) {
+	// SQLT-25: the type level rejects it; a caller that got past it fails here instead of running on a schema SQLite lacks
+	if (
+		config.driver.defaultSchema === "main" &&
+		config.defaultSchema !== undefined &&
+		config.defaultSchema !== "main" &&
+		config.defaultSchema !== "temp"
+	) {
+		throw new Error(`SQLite has no schemas: defaultSchema must be "main" or "temp", got "${config.defaultSchema}"`)
+	}
 	// The driver names the schema its engine starts with (SQLite `main`, PostgreSQL `public`); the type level says the same.
 	const defaultSchema = config.defaultSchema ?? config.driver.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
