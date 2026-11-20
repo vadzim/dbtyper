@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { JsqlDbSetProp } from "../core/jsql-utils.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -69,7 +70,7 @@ export type ParseTableConstraint<
 							R2,
 							WithPendingConstraint<Db, CName> extends infer Db1 extends JsqlDatabaseShape
 								? PeekToken<R2> extends TokenKey<"primary">
-									? Db1 & { pendingPkName: CName }
+									? JsqlDbSetProp<Db1, "pendingPkName", CName>
 									: Db1
 								: never,
 							Schema,

@@ -14,7 +14,10 @@ import type {
 	JsqlCreateTable,
 	JsqlCreateRowidTable,
 	JsqlDbGetSchema,
+	JsqlConstraints,
 	JsqlDbGetData,
+	JsqlDbOmitProps,
+	JsqlDbSetProp,
 	JsqlDbReplaceData,
 } from "../core/jsql-utils.ts"
 import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
@@ -54,11 +57,11 @@ export type ParseCreateTable<
 export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends string> = Db extends {
 	pendingConstraints: infer P extends string
 }
-	? Omit<Db, "pendingConstraints"> & { pendingConstraints: P | Name }
-	: Db & { pendingConstraints: Name }
+	? JsqlDbSetProp<Db, "pendingConstraints", P | Name>
+	: JsqlDbSetProp<Db, "pendingConstraints", Name>
 
 export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
-	? { names: P }
+	? JsqlConstraints<P>
 	: null
 
 /**
@@ -85,8 +88,8 @@ export type WithColumnSpelling<Db extends JsqlDatabaseShape, Name extends string
 	written: infer W extends string
 }
 	? Db extends { pendingSpelled: infer P }
-		? Omit<Db, "pendingSpelled"> & { pendingSpelled: P & Record<Name, W> }
-		: Db & { pendingSpelled: Record<Name, W> }
+		? JsqlDbSetProp<Db, "pendingSpelled", P & Record<Name, W>>
+		: JsqlDbSetProp<Db, "pendingSpelled", Record<Name, W>>
 	: Db
 
 /** The spellings collected for the columns `Names` of the table being created (`{}` when none). */
@@ -99,9 +102,7 @@ export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> =
 /** The database state without the pending CREATE TABLE facts. */
 export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends
 	{ pendingConstraints: string } | { pendingSpelled: unknown } | { pendingPkName: string }
-	? Omit<Db, "pendingConstraints" | "pendingSpelled" | "pendingPkName"> extends infer Clean extends JsqlDatabaseShape
-		? Clean
-		: Db
+	? JsqlDbOmitProps<Db, "pendingConstraints" | "pendingSpelled" | "pendingPkName">
 	: Db
 
 /** A column of the stack is (part of) the PRIMARY KEY already: a second one is error 1519 in both engines. */
