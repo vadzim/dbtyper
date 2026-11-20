@@ -17,7 +17,7 @@ import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
  *   checked).
  * An error leaves the rest at the token that was not as expected, so a `;` is never swallowed.
  */
-export type AliasRow = {
+type AliasRow = {
 	ends: TokenType<TokenKind, string>
 	bare: "allowed" | "never" | "dml"
 	verb: string
