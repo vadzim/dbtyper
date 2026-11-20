@@ -224,7 +224,7 @@ const errors = {
 	},
 	// Unknown second word of CREATE / ALTER / DROP, untracked schema changes (#157, #158, STMT-Q2)
 	UNKNOWN_STATEMENT_FORM: {
-		code: 1932,
+		code: 1936,
 		msg: [
 			"Unknown statement ",
 			" ",
@@ -1203,7 +1203,7 @@ const errors = {
 		msg: ["Enum value already exists"],
 	},
 	TYPE_IS_NOT_A_DOMAIN: {
-		code: 3306,
+		code: 3308,
 		msg: ["Type is not a domain; use DROP TYPE"],
 	},
 	ENUM_VALUE_DOES_NOT_EXIST: {
