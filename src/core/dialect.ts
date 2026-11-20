@@ -152,7 +152,7 @@ export type DialectName = keyof Dialects
  * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
  * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
  * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
- * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28); `dollarStrings`: `$$…$$` strings exist
+ * `callableJoinWords`: `left(`/`right(` are function calls, not join keywords (PGT-28); `dollarStrings`: `$$…$$` strings exist; `nestedComments`: a block comment may hold another (PostgreSQL), else it ends at the first close (SQLite)
  * (without a dialect flag, in low-level lexer tests, the PostgreSQL row applies).
  */
 export type Dialects = {
@@ -218,6 +218,7 @@ export type Dialects = {
 			keepWritten: false
 			callableJoinWords: true
 			dollarStrings: true
+			nestedComments: true
 		}
 	}
 	sqlite: {
@@ -276,6 +277,7 @@ export type Dialects = {
 			keepWritten: true
 			callableJoinWords: false
 			dollarStrings: false
+			nestedComments: false
 		}
 	}
 }

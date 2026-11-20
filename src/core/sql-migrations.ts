@@ -168,7 +168,10 @@ type FlattenedJsqlDatabase<Db extends JsqlDatabaseShape> = {
 												} & (Table extends { rowid_table: true } ? { rowid_table: true } : {}) &
 													(Table extends { rowid_alias: infer A extends string }
 														? { rowid_alias: A }
-														: {})
+														: {}) &
+													// #150, #151: declaration order and SQLite spellings
+													(Table extends { order: infer O } ? { order: O } : {}) &
+													(Table extends { spelled: infer Sp } ? { spelled: Sp } : {})
 											: never
 									}
 								: never

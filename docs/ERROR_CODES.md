@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **323 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **327 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -10,12 +10,12 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 | Range     | Category                      | Active codes |
 | --------- | ----------------------------- | -----------: |
-| 1000-1099 | Lexer/Tokenization            |           10 |
+| 1000-1099 | Lexer/Tokenization            |           11 |
 | 1100-1199 | Parser/SELECT Statement       |           22 |
 | 1200-1299 | Parser/INSERT Statement       |           18 |
 | 1300-1399 | Parser/UPDATE Statement       |            4 |
 | 1400-1499 | Parser/DELETE Statement       |            2 |
-| 1500-1599 | Parser/CREATE TABLE           |           16 |
+| 1500-1599 | Parser/CREATE TABLE           |           18 |
 | 1600-1699 | Parser/ALTER TABLE            |            7 |
 | 1700-1799 | Parser/DROP TABLE             |            4 |
 | 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
@@ -38,7 +38,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3600-3699 | Semantic/Function             |           20 |
 | 3700-3799 | DDL/CREATE SCHEMA             |            3 |
 | 3800-3899 | DDL/DROP SCHEMA               |            2 |
-| 3900-3999 | DDL/CREATE VIEW               |            8 |
+| 3900-3999 | DDL/CREATE VIEW               |            9 |
 | 4000-4099 | DDL/ALTER TYPE                |            4 |
 | 4100-4199 | DDL/Misc                      |            7 |
 | 4200-4299 | DML/JOIN                      |            2 |
@@ -68,6 +68,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1008 | `CLOSING_BRACKET_NOT_FOUND`  | Closing bracket not found: …                                                                                                       |
 | 1009 | `UNMATCHED_CLOSING_BRACKET`  | Unmatched closing bracket: …                                                                                                       |
 | 1010 | `INVALID_INDEXED_PARAM`      | Invalid indexed parameter: …                                                                                                       |
+| 1011 | `UNCLOSED_BLOCK_COMMENT`     | Unclosed block comment: \`/\*\` has no matching \`\*/\`                                                                            |
 
 ## 1100-1199: Parser/SELECT Statement
 
@@ -137,24 +138,26 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 1500-1599: Parser/CREATE TABLE
 
-| Code | Name                                                     | Message                                                         |
-| ---- | -------------------------------------------------------- | --------------------------------------------------------------- |
-| 1501 | `EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE` | Expected \`(\` before column list in CREATE TABLE               |
-| 1502 | `EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE`        | Expected \`)\` before end of CREATE TABLE                       |
-| 1504 | `EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE`                   | Expected column type in CREATE TABLE                            |
-| 1505 | `EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION`  | Expected \`,\` or \`)\` after column definition                 |
-| 1507 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE`                  | Expected \`not\` after \`IF\` in CREATE TABLE                   |
-| 1508 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE`           | Expected \`exists\` after \`IF NOT\` in CREATE TABLE            |
-| 1509 | `EXPECTED_DEFAULT_VALUE`                                 | Expected DEFAULT value                                          |
-| 1510 | `EXPECTED_NULL_AFTER_NOT`                                | Expected NULL after NOT                                         |
-| 1511 | `EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_TABLE`       | Expected SELECT or WITH after AS in CREATE TABLE                |
-| 1512 | `EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE`  | Expected KEY after PRIMARY or FOREIGN in CREATE TABLE           |
-| 1513 | `EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT`         | Expected \`(\` in CREATE TABLE constraint                       |
-| 1514 | `EXPECTED_CONSTRAINT_AFTER_NAME_IN_CREATE_TABLE`         | Expected a constraint after the constraint name in CREATE TABLE |
-| 1515 | `EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE`               | Expected constraint name after CONSTRAINT in CREATE TABLE       |
-| 1516 | `EXPECTED_REFERENCES_AFTER_FOREIGN_KEY`                  | Expected REFERENCES after FOREIGN KEY (columns) in CREATE TABLE |
-| 1517 | `EXPECTED_ALWAYS_AFTER_GENERATED`                        | Expected ALWAYS after GENERATED in CREATE TABLE                 |
-| 1518 | `EXPECTED_AS_AFTER_GENERATED_ALWAYS`                     | Expected AS after GENERATED ALWAYS in CREATE TABLE              |
+| Code | Name                                                     | Message                                                             |
+| ---- | -------------------------------------------------------- | ------------------------------------------------------------------- |
+| 1501 | `EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE` | Expected \`(\` before column list in CREATE TABLE                   |
+| 1502 | `EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE`        | Expected \`)\` before end of CREATE TABLE                           |
+| 1504 | `EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE`                   | Expected column type in CREATE TABLE                                |
+| 1505 | `EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION`  | Expected \`,\` or \`)\` after column definition                     |
+| 1507 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE`                  | Expected \`not\` after \`IF\` in CREATE TABLE                       |
+| 1508 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE`           | Expected \`exists\` after \`IF NOT\` in CREATE TABLE                |
+| 1509 | `EXPECTED_DEFAULT_VALUE`                                 | Expected DEFAULT value                                              |
+| 1510 | `EXPECTED_NULL_AFTER_NOT`                                | Expected NULL after NOT                                             |
+| 1511 | `EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_TABLE`       | Expected SELECT or WITH after AS in CREATE TABLE                    |
+| 1512 | `EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE`  | Expected KEY after PRIMARY or FOREIGN in CREATE TABLE               |
+| 1513 | `EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT`         | Expected \`(\` in CREATE TABLE constraint                           |
+| 1514 | `EXPECTED_CONSTRAINT_AFTER_NAME_IN_CREATE_TABLE`         | Expected a constraint after the constraint name in CREATE TABLE     |
+| 1515 | `EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE`               | Expected constraint name after CONSTRAINT in CREATE TABLE           |
+| 1516 | `EXPECTED_REFERENCES_AFTER_FOREIGN_KEY`                  | Expected REFERENCES after FOREIGN KEY (columns) in CREATE TABLE     |
+| 1517 | `EXPECTED_ALWAYS_AFTER_GENERATED`                        | Expected ALWAYS after GENERATED in CREATE TABLE                     |
+| 1518 | `EXPECTED_AS_AFTER_GENERATED_ALWAYS`                     | Expected AS after GENERATED ALWAYS in CREATE TABLE                  |
+| 1519 | `MULTIPLE_PRIMARY_KEYS`                                  | Multiple primary keys for table … are not allowed                   |
+| 1520 | `EXPECTED_COLUMN_AFTER_COMMA_IN_CREATE_TABLE`            | Expected a column or a table constraint after \`,\` in CREATE TABLE |
 
 ## 1600-1699: Parser/ALTER TABLE
 
@@ -453,6 +456,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3908 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW`        | Expected \`not\` after \`IF\` in CREATE VIEW                                     |
 | 3909 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW` | Expected \`exists\` after \`IF NOT\` in CREATE VIEW                              |
 | 3910 | `VIEW_COLUMN_LIST_MISMATCH`                   | CREATE VIEW …: the column list has a different number of columns than the SELECT |
+| 3911 | `DUPLICATE_VIEW_COLUMN`                       | CREATE VIEW …: column … is named more than once in the column list               |
 
 ## 4000-4099: DDL/ALTER TYPE
 

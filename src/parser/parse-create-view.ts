@@ -17,6 +17,7 @@ import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expre
 import type { ApplyCteColumnList, ParseCteColumnList } from "./parse-select-cte.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { DialectFact } from "../core/dialect.ts"
+import type { FirstDuplicateName } from "./set-operation-types.ts"
 
 type ViewNameRow = {
 	name: FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>
@@ -45,10 +46,14 @@ type ParseCreateViewAfterSelect<
 	Name extends string,
 	Sel extends JsqlSelectStatementResult,
 	Cols,
-> =
-	ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
-		? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_COLUMN_LIST_MISMATCH"], [Name]>>
+> = (Cols extends readonly string[] ? FirstDuplicateName<Cols> : never) extends infer Dup
+	? [Dup] extends [never]
+		? ApplyCteColumnList<Sel, Cols> extends infer Named extends JsqlSelectStatementResult
+			? ParseCreateViewStore<Tokens, Db, Schema, Name, Named>
+			: SkipFailedStatement<Tokens, Db, FormatError<Errors["VIEW_COLUMN_LIST_MISMATCH"], [Name]>>
+		: // PostgreSQL and SQLite both reject a name given twice in the view's column list
+			SkipFailedStatement<Tokens, Db, FormatError<Errors["DUPLICATE_VIEW_COLUMN"], [Name, Dup & string]>>
+	: never
 
 type ParseCreateViewStore<
 	Tokens extends ParserMonad,
@@ -67,7 +72,15 @@ type ParseCreateViewStore<
 				: ParseCreateViewStore<SkipToken<R1>, Db, Schema, Name, Sel>
 			: never
 		: PeekToken<Tokens> extends TokenKey<";"> | TokenEot
-			? JsqlDbReplaceData<Db, Schema, Name, JsqlCreateView<Sel["returning"]>> extends infer NewDb
+			? JsqlDbReplaceData<
+					Db,
+					Schema,
+					Name,
+					JsqlCreateView<
+						Sel["returning"],
+						Sel extends { order: infer O extends readonly string[] } ? O : readonly string[]
+					>
+				> extends infer NewDb
 				? NewDb extends JsqlDatabaseShape
 					? [SkipToken<Tokens>, NewDb, null]
 					: never

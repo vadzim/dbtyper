@@ -10,6 +10,7 @@ import type {
 	TokenKey,
 	TokenStreamHead,
 } from "./sql-lexer.ts"
+import type { Whitespace } from "./sql-lexer-chars.ts"
 
 export type CreateParserMonad<Query extends string, Syntax extends string = LexerFeatures> = ReadToken<Query, Syntax, 0>
 
@@ -33,11 +34,9 @@ export type SourceSpan<Start, End> = Start extends { from: infer From extends st
 		: ""
 	: ""
 
-type Space = " " | "\n" | "\t" | "\r"
-
-type TrimSpaces<S extends string> = S extends `${Space}${infer Tail}`
+type TrimSpaces<S extends string> = S extends `${Whitespace}${infer Tail}`
 	? TrimSpaces<Tail>
-	: S extends `${infer Head}${Space}`
+	: S extends `${infer Head}${Whitespace}`
 		? TrimSpaces<Head>
 		: S
 
