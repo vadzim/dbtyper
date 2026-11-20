@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175: one name parser (track A; not spec-derived)
+
+- **One reader of `[schema.]name`.** `ParseNameParts` (src/parser/parse-qualified-name.ts) replaces the copies in CREATE TABLE / TYPE / DOMAIN / VIEW, ALTER TABLE, ALTER TYPE, DROP and the table references of INSERT, UPDATE and DELETE (FROM and USING). Each caller is a data row (`NameRow`): its two "expected a name" errors, the tokens that may follow, the errors for a bad tail (unqualified / qualified), whether the rest is skipped after an error, and the schema of an unqualified name (`home`: default schema, `UnqualifiedSchema`, or left to the caller). The three DML copies of the table lookup (unknown, view, found) are `ParseTableRef` (src/parser/parse-table-ref.ts).
+- **Behaviour changes where a copy was wrong.** CREATE VIEW read `TokenIdent` only, so a non-reserved keyword as view name (`create view type as …`, `create view public.key as …`) was 3900 / 3901; it is `AsIdent` as in every other copy (tests review-175-name-parser-view-keyword-name-*). A name that fails now leaves the rest at the bad token, not after it, so a `;` is no longer swallowed together with the next statement. In CREATE VIEW a bad tail after `schema.name` is reported before an unknown schema (syntax first, as in DROP).
+- **Not done:** the alias parsers of INSERT / UPDATE / DELETE differ by design (`AS` required, bare alias per dialect fact, end tokens) and stay; FROM's alias is in batch 3's files.
+- **Cost:** `typecheck:test` 16,034,396 -> 16,082,261 instantiations (+0.30%, with two new test files).
+
 ## 2026-11-20 Review #175 batch 4: statements and DDL (track A; #154, #157, #158, #159, #165, #171; STMT-18, STMT-19, STMT-Q2, SCHEMA-21, SCHEMA-23, SCHEMA-29, PGT-8, PGT-13, PGT-15, CORE-16, CORE-17, SQLT-11, SQLT-18, SQLT-Q8)
 
 - **Second words (#158).** CREATE / ALTER / DROP dispatch on the parsed forms (list `ParsedForms` in src/parser/statement-keywords.ts); any other second word is skipped only if it is in the dialect's `skippedForms` fact (rows `PostgresSkippedForms`, `SqliteSkippedForms`), else 1932 UNKNOWN_STATEMENT_FORM / 1933 (with "did you mean", the STMT-19 one-edit rule) and 1934 EXPECTED_STATEMENT_FORM for `create;`. `CREATE UNLOGGED TABLE` is a table, `DROP DOMAIN` removes a domain (a fourth row of the one DROP parser; 3306 TYPE_IS_NOT_A_DOMAIN).

@@ -2,11 +2,11 @@ import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenString } from "../lexer/sql-lexer.ts"
-import type { TokenIdent, AsIdent } from "../lexer/sql-lexer.ts"
+import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
-import type { SkipFailedQualifiedName } from "./skip-statement.ts"
+import type { ParseNameParts } from "./parse-qualified-name.ts"
 import type { SkipFailedExpression, SkipFailedStatement, ParseSkipStatement } from "./skip-statement.ts"
 import type { JsqlDbGetEnum, JsqlDbReplaceEnum } from "../core/jsql-utils.ts"
 
@@ -19,25 +19,22 @@ export type ParseAlterType<Tokens extends ParserMonad, Db extends JsqlDatabaseSh
 			: never
 		: ParseAlterTypeQualified<Tokens, Db, false>
 
-/** After `schema.` in qualified `ALTER TYPE schema.type`. */
-type ParseAlterQualifiedSecondIdent<AfterDot extends ParserMonad, A extends string> =
-	AsIdent<PeekToken<AfterDot>> extends TokenIdent<infer B extends string>
-		? [SkipToken<AfterDot>, null, A, B]
-		: SkipFailedQualifiedName<AfterDot, FormatError<Errors["EXPECTED_TYPE_NAME"], ["after `.` in ALTER TYPE"]>>
-
-/** After first identifier (type or schema). */
-type ParseAlterAfterFirstIdent<AfterFirst extends ParserMonad, Db extends JsqlDatabaseShape, A extends string> =
-	PeekToken<AfterFirst> extends TokenKey<"add" | "rename">
-		? [AfterFirst, null, Db["defaultSchema"], A]
-		: PeekToken<AfterFirst> extends TokenKey<".">
-			? ParseAlterQualifiedSecondIdent<SkipToken<AfterFirst>, A>
-			: SkipFailedQualifiedName<AfterFirst, FormatError<Errors["EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE"], []>>
+type AlterTypeNameRow = {
+	name: FormatError<Errors["EXPECTED_TYPE_NAME"], ["in ALTER TYPE"]>
+	afterDot: FormatError<Errors["EXPECTED_TYPE_NAME"], ["after `.` in ALTER TYPE"]>
+	ends: TokenKey<"add" | "rename">
+	plain: FormatError<Errors["EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE"], []>
+	qualified: null
+	skip: true
+	home: "default"
+}
 
 /** `[rest, null, schema, type]` on success; `[rest, error, never, never]` on parse failure. */
-type ParseQualifiedTypeNameForAlter<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	AsIdent<PeekToken<Tokens>> extends TokenIdent<infer A extends string>
-		? ParseAlterAfterFirstIdent<SkipToken<Tokens>, Db, A>
-		: SkipFailedQualifiedName<Tokens, FormatError<Errors["EXPECTED_TYPE_NAME"], ["in ALTER TYPE"]>>
+type ParseQualifiedTypeNameForAlter<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> = ParseNameParts<
+	Tokens,
+	Db,
+	AlterTypeNameRow
+>
 
 type ParseAlterTypeQualified<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, IfExists extends boolean> =
 	ParseQualifiedTypeNameForAlter<Tokens, Db> extends [
