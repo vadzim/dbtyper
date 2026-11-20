@@ -72,6 +72,15 @@ const addNotNullDefault = base.apply(`alter table t add column k text not null d
 const _k = await addNotNullDefault.query(`select k from t`)
 expectType<typeof _k>(toBe<Array<{ k: string }>>())
 
+// #202: SQLite cannot ADD COLUMN of a STORED generated column; VIRTUAL is fine
+const addStored = `alter table t add column k integer as (1) stored;` as const
+// @ts-expect-error
+base.apply(addStored)
+expectType<GetApplyError<typeof base, typeof addStored>>(
+	toBe<DbtyperError<1914, "SQLite cannot ADD COLUMN with STORED">>(),
+)
+base.apply(`alter table t add column k integer as (1) virtual;`)
+
 // #193: a generated column's expression is its default, and constraints come in any order
 const addGenNnFirst = base
 	.apply(`alter table t add column g integer not null generated always as (id + 1) virtual;`)

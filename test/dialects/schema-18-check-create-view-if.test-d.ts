@@ -1,5 +1,4 @@
-// Integration Test (SKIPPED, bug #200): SCHEMA-18 `create view if v as select 1;` must be 3908 and
-// `create view if not v as select 1;` 3909; the code reports 3900 "Expected view name in CREATE VIEW" for both.
+// Integration Test: SCHEMA-18 Check: `create view if v as select 1;` is 3908 and `create view if not v as select 1;` 3909 (PostgreSQL mock driver)
 import { sqlMigrations, type GetApplyError } from "../../src/core/sql-database.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
