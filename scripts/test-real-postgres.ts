@@ -13,6 +13,7 @@ if (serverUrl === undefined || serverUrl === "") {
 
 const suites = [
 	{ database: "dbtyper_pgt35", args: ["--test", "test/runtime/pgt-35-checks-real-postgres.test.ts"] },
+	{ database: "dbtyper_run23", args: ["--test", "test/runtime/run-23-driver-value-kinds.test.ts"] },
 	{ database: "dbtyper_example_postgres", args: ["--test", "examples/typed-postgres/test/integration.test.ts"] },
 	{ database: "dbtyper_example_nest", args: ["--test", "examples/nest-postgres/test/integration.test.ts"] },
 ]

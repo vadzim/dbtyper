@@ -120,8 +120,8 @@ export type DialectName = keyof Dialects
  * far → the next words, {@link PostgresTypeNameWords}; "any" = every identifier joins, SQLT-6); `userTypes`: CREATE TYPE /
  * DOMAIN names are types and a type name may be schema-qualified (PGT-13, PGT-22); `valueMismatch`: the error for an
  * INSERT / UPDATE value that does not fit its column ("incompatible" = the value type is incompatible, "storage-class" =
- * the column's storage class is named, SQLT-43); `anyValueColumnTypes`: column types that take a value of any class
- * (SQLT-7: NUMERIC affinity); `pkImpliesNotNull`: PRIMARY KEY makes a column
+ * the column's storage class is named, SQLT-43; a NUMERIC-affinity column takes any value: `comparisonClasses`, SQLT-7);
+ * `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
  * DDL facts, one per rule (SQLT-18…SQLT-26, #70; DLCT-4): `tempObjects`: the `temp` schema is searched first for an unqualified
@@ -132,7 +132,11 @@ export type DialectName = keyof Dialects
  * `CURRENT_DATE`/`CURRENT_TIME`/`CURRENT_TIMESTAMP` in a DEFAULT ("typed" = date/time/timestamp, "any" = any column may
  * default to them, SQLT-19); `addColumn`: "full" = `ADD COLUMN` takes the full column definition and a `, <action>` may
  * follow, "restricted" = PRIMARY KEY, UNIQUE and NOT NULL without a default are errors and the definition ends the
- * statement (SQLT-20, SQLT-21).
+ * statement (SQLT-20, SQLT-21); `alterColumn`: "full" = every `ALTER [COLUMN] c` action, "not-null" = only
+ * `SET NOT NULL` and `DROP NOT NULL` (SQLite 3.53 and later; any other is the `pg-alter-column` error, #195);
+ * `stringColumnNames`: a single-quoted string where a column definition (CREATE TABLE, ADD COLUMN) names its column is
+ * the name (SQLite's legacy rule, `'order' INTEGER`, #195); `bareNameDefault`: `DEFAULT name` (one unqualified
+ * identifier) is the text default 'name' (SQLite, #195; PostgreSQL rejects a column reference there).
  * Function facts (SQLT-44…SQLT-52, #76; #175): `functionCatalog` is the dialect's function data ({@link FunctionCatalogFacts}):
  * `rows` the table of functions (`PostgresFunctions`, `SqliteFunctions`; grammar and resolver helpers in
  * function-catalog.ts), `tables` the columns of each table-valued function (a row of kind "table", a FROM item only:
@@ -159,6 +163,9 @@ export type DialectName = keyof Dialects
  * then NUMERIC, then INTEGER); `numberLiterals`: the type of a number literal with a fraction or an exponent (`fraction`),
  * of an integer literal beyond the 32-bit range (`big`; SQLT-35, PGT-35); `booleanType`: the type of TRUE/FALSE, of every comparison result and of a condition (SQLT-9:
  * SQLite has no boolean type, they are integers 0/1); `datetimeArithmetic`: `timestamp ± interval`, `date - date` are typed (PGT-31).
+ * `comparisonClasses`: the type names whose comparison class (src/core/comparison-classes.ts) differs in this dialect:
+ * SQLite's NUMERIC affinity (STRING, NUMBER, any unknown type name) holds text as well as numbers, so it is the class
+ * "affinity", which compares with and is assigned from every class, and is a LIKE operand (#195).
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * `positionalParamSign`: how messages spell positional parameter n: the sign before the number (`$1`, `?1`).
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
@@ -178,7 +185,6 @@ export type Dialects = {
 		typeNameWords: PostgresTypeNameWords
 		userTypes: true
 		valueMismatch: "incompatible"
-		anyValueColumnTypes: never
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
@@ -189,6 +195,9 @@ export type Dialects = {
 		shortGenerated: false
 		currentDatetimeType: "typed"
 		addColumn: "full"
+		alterColumn: "full"
+		stringColumnNames: false
+		bareNameDefault: false
 		functionCatalog: {
 			rows: PostgresFunctions
 			tables: {}
@@ -215,6 +224,7 @@ export type Dialects = {
 		bareDmlAlias: true
 		groupByRule: true
 		exprKeys: "name"
+		comparisonClasses: {}
 		castHint: "`::text`"
 		positionalParamSign: "$"
 		dmlInCte: true
@@ -249,7 +259,6 @@ export type Dialects = {
 		typeNameWords: "any"
 		userTypes: false
 		valueMismatch: "storage-class"
-		anyValueColumnTypes: "numeric"
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true
@@ -260,6 +269,9 @@ export type Dialects = {
 		shortGenerated: true
 		currentDatetimeType: "any"
 		addColumn: "restricted"
+		alterColumn: "not-null"
+		stringColumnNames: true
+		bareNameDefault: true
 		functionCatalog: {
 			rows: SqliteFunctions
 			tables: SqliteTableFunctions
@@ -280,6 +292,7 @@ export type Dialects = {
 		bareDmlAlias: false
 		groupByRule: false
 		exprKeys: "text"
+		comparisonClasses: { numeric: "affinity" }
 		castHint: "`CAST(x AS TEXT)`"
 		positionalParamSign: "?"
 		dmlInCte: false
@@ -361,6 +374,12 @@ export type SyntaxDialectFact<Syntax extends string, Fact extends keyof Dialects
 > extends true
 	? SyntaxDialect<Syntax>
 	: DefaultDialect][Fact]
+
+/**
+ * The `comparisonClasses` fact of a database state's dialect (see {@link Dialects}); `{}` for no state (`never`), so a
+ * caller without a database compares by the shared table.
+ */
+export type ComparisonClassesOf<Db> = [Db] extends [never] ? {} : DialectFact<Db, "comparisonClasses">
 
 /** The dialect of a database state; the default dialect when the state names none (see {@link DialectFact}). */
 type DialectOf<Db> = Db extends { dialect: infer D extends DialectName } ? D : DefaultDialect

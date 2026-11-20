@@ -4,6 +4,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { ColumnFail, ColumnStateWith } from "./parse-column-constraint-clauses.ts"
+import type { FullAddColumn } from "./parse-column-alter-end.ts"
 import type { SkipParenGroup } from "./parse-column-constraints.ts"
 import type { ColumnCtx, ColumnState, ParseColumnConstraints } from "./parse-column-constraints.ts"
 
@@ -65,7 +66,12 @@ export type ColumnGeneratedBody<Tokens extends ParserMonad, C extends ColumnCtx,
 	SkipParenGroup<Tokens> extends [infer R2 extends ParserMonad, infer E]
 		? E extends DbtyperErrorShape
 			? [R2, C["db"], E]
-			: PeekToken<R2> extends TokenKey<"stored" | "virtual">
-				? ParseColumnConstraints<SkipToken<R2>, C, ColumnStateWith<S, { gen: true }>>
-				: ParseColumnConstraints<R2, C, ColumnStateWith<S, { gen: true }>>
+			: PeekToken<R2> extends TokenKey<"stored">
+				? // SQLite: "cannot add a STORED column" (#202)
+					[C["alter"], FullAddColumn<C>] extends [true, never]
+					? ColumnFail<R2, C, FormatError<Errors["SQLITE_ADD_COLUMN_RESTRICTED"], ["STORED"]>>
+					: ParseColumnConstraints<SkipToken<R2>, C, ColumnStateWith<S, { gen: true }>>
+				: PeekToken<R2> extends TokenKey<"virtual">
+					? ParseColumnConstraints<SkipToken<R2>, C, ColumnStateWith<S, { gen: true }>>
+					: ParseColumnConstraints<R2, C, ColumnStateWith<S, { gen: true }>>
 		: never

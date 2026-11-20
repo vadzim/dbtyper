@@ -1,3 +1,4 @@
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { Nullable, SqlNull, SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
@@ -14,7 +15,8 @@ type ValidateCaseSimpleWhenMatch<
 	WhenV extends SqlTypeShape,
 	DiscAst = never,
 	WhenAst = never,
-> = MergeComparison<Disc, WhenV, DiscAst, WhenAst> extends infer M extends DbtyperErrorShape ? M : true
+	Classes = {},
+> = MergeComparison<Disc, WhenV, DiscAst, WhenAst, Classes> extends infer M extends DbtyperErrorShape ? M : true
 
 /** The AST of the branch whose type the CASE has so far: the first one that is not a NULL literal (EXPR-20). */
 type NextCaseAccAst<Acc extends SqlTypeShape | null, AccAst, TvAst> = Acc extends SqlTypeShape
@@ -135,7 +137,7 @@ type ResolveCaseSimpleArms<
 			: Wv extends SqlTypeShape
 				? WithEnumCheck<
 						EnumComparisonCheck<Db, Disc, DiscAst, Wv, A["when"]>,
-						ValidateCaseSimpleWhenMatch<Disc, Wv, DiscAst, A["when"]>
+						ValidateCaseSimpleWhenMatch<Disc, Wv, DiscAst, A["when"], ComparisonClassesOf<Db>>
 					> extends infer Match
 					? Match extends DbtyperErrorShape
 						? Match

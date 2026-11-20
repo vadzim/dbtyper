@@ -46,7 +46,7 @@ expectType<GetApplyError<typeof migrations, typeof nonsense>>(
 	toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>(),
 )
 
-// 1912 today (pinned, SPEC-Q SQLT-18 1912): reached only after WITHOUT; the Check wants it for any unknown option
+// the same 1912 after WITHOUT
 const withoutNonsense = `create table t (a int) without nonsense` as const
 // @ts-expect-error
 migrations.apply(withoutNonsense)
