@@ -248,6 +248,60 @@ export type JsqlDbReplaceEnum<
 /** PGT-25: the names of a table's named constraints (`constraints: { names }`), or `never`. */
 type ConstraintNames<Tbl> = Tbl extends { constraints: { names: infer N extends string } } ? N : never
 
+/** TYPE-18, #179: column `Col` of the table has the domain or composite type `Decl` (`schema.name`). */
+export type JsqlDbSetUserType<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Col extends string,
+	Decl extends string,
+> =
+	JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+		? ReplaceProp<
+				Tbl,
+				"user_types",
+				WithEntry<Tbl extends { user_types: infer U } ? U : {}, Col, Decl>
+			> extends infer T extends JsqlDataShape
+			? JsqlDbReplaceData<Db, Sch, Tab, T>
+			: Db
+		: Db
+
+/** `M` with the entry `Name: V` (one flat object, not an intersection). */
+export type WithEntry<M, Name extends string, V> = {
+	[K in keyof M | Name]: K extends Name ? V : K extends keyof M ? M[K] : never
+}
+
+/** #179: the columns each named constraint involves (`constraints.columns`: name -> union of columns), or `{}`. */
+type ConstraintColumns<Tbl> = Tbl extends { constraints: { columns: infer C } } ? C : {}
+
+/**
+ * #179: the named constraint `Name` of the table involves the columns `Cols` (PRIMARY KEY, UNIQUE, FOREIGN KEY: their
+ * list; CHECK: the table's columns its expression names). PostgreSQL drops it with any of them (`DROP COLUMN`).
+ */
+export type JsqlDbSetConstraintColumns<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Tab extends string,
+	Name extends string,
+	Cols extends string,
+> = [Name] extends [never]
+	? Db
+	: [Cols] extends [never]
+		? JsqlDbAddConstraintName<Db, Sch, Tab, Name>
+		: JsqlDbGetData<Db, Sch, Tab> extends infer Tbl extends JsqlDataShape
+			? JsqlDbReplaceData<
+					Db,
+					Sch,
+					Tab,
+					Omit<Tbl, "constraints"> & {
+						constraints: {
+							names: ConstraintNames<Tbl> | Name
+							columns: WithEntry<ConstraintColumns<Tbl>, Name, Cols>
+						}
+					}
+				>
+			: Db
+
 /** PGT-25: `ALTER TABLE … ADD CONSTRAINT name`: the name is known to `ON CONFLICT ON CONSTRAINT`. */
 export type JsqlDbAddConstraintName<
 	Db extends JsqlDatabaseShape,
@@ -261,7 +315,7 @@ export type JsqlDbAddConstraintName<
 				Sch,
 				Tab,
 				Omit<Tbl, "constraints"> & {
-					constraints: { names: ConstraintNames<Tbl> | Name }
+					constraints: { names: ConstraintNames<Tbl> | Name; columns: ConstraintColumns<Tbl> }
 				}
 			>
 		: Db
@@ -280,7 +334,10 @@ export type JsqlDbDropConstraintName<
 					Sch,
 					Tab,
 					Omit<T, "constraints"> & {
-						constraints: { names: Exclude<ConstraintNames<Tbl>, Name> }
+						constraints: {
+							names: Exclude<ConstraintNames<Tbl>, Name>
+							columns: Omit<ConstraintColumns<Tbl>, Name>
+						}
 					}
 				>
 			: Db
@@ -310,6 +367,7 @@ export type {
 	JsqlDbReplaceColumnNullability,
 	JsqlDbReplaceColumnDefault,
 } from "./jsql-columns.ts"
+import type { JsqlTableDropColumns } from "./jsql-columns.ts"
 
 /** TYPE-18: the column is the enum `[name, schema]`, or an array of it. */
 type IsEnumColumn<Col, Name extends string, Sch extends string> = Col extends {
@@ -321,28 +379,46 @@ type IsEnumColumn<Col, Name extends string, Sch extends string> = Col extends {
 		? IsEnumColumn<Elem, Name, Sch>
 		: false
 
-type EnumColumnNames<Data, Name extends string, Sch extends string> = Data extends { columns: infer Cols }
-	? { [C in keyof Cols]: IsEnumColumn<Cols[C], Name, Sch> extends true ? C : never }[keyof Cols]
-	: never
+/**
+ * TYPE-18: the columns of a table or view that use the type `Sch.Name`: an enum by the column type, a domain or
+ * composite type (#179) by the table's `user_types` (a domain column's type is its base type).
+ */
+type TypeColumnNames<Data, Name extends string, Sch extends string, Enum extends boolean> = Enum extends true
+	? Data extends { columns: infer Cols }
+		? { [C in keyof Cols]: IsEnumColumn<Cols[C], Name, Sch> extends true ? C : never }[keyof Cols] & string
+		: never
+	: Data extends { user_types: infer U }
+		? { [C in keyof U]: U[C] extends `${Sch}.${Name}` ? C : never }[keyof U] & string
+		: never
 
-type EnumUserSets<Db extends JsqlDatabaseShape, Name extends string, Sch extends string> = {
+type TypeUserSets<Db extends JsqlDatabaseShape, Name extends string, Sch extends string, Enum extends boolean> = {
 	[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }
-		? { [T in keyof Sets]: [EnumColumnNames<Sets[T], Name, Sch>] extends [never] ? never : T }[keyof Sets]
+		? { [T in keyof Sets]: [TypeColumnNames<Sets[T], Name, Sch, Enum>] extends [never] ? never : T }[keyof Sets]
 		: never
 }[keyof Db["schemas"]]
 
-/** TYPE-18: some column of a table or view of the chain has the enum `Sch.Name` (PostgreSQL refuses to drop it). */
-export type JsqlDbEnumInUse<Db extends JsqlDatabaseShape, Sch extends string, Name extends string> = [
-	EnumUserSets<Db, Name, Sch>,
-] extends [never]
-	? false
-	: true
+/**
+ * TYPE-18: some column of a table or view of the chain has the type `Sch.Name` (PostgreSQL refuses to drop it). `Enum`:
+ * the type is an enum (else a domain or composite type).
+ */
+export type JsqlDbTypeInUse<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Name extends string,
+	Enum extends boolean,
+> = [TypeUserSets<Db, Name, Sch, Enum>] extends [never] ? false : true
 
 /**
- * TYPE-18, DROP TYPE … CASCADE as in PostgreSQL: the columns of the enum go from their tables, and the views that
- * select such a column go as a whole.
+ * TYPE-18, DROP TYPE | DOMAIN … CASCADE as in PostgreSQL: the columns of the type go from their tables (with the
+ * primary key and the named constraints that involve them, #179), and the views that select an enum column go as a
+ * whole.
  */
-export type JsqlDbDropEnumUsers<Db extends JsqlDatabaseShape, Sch extends string, Name extends string> = ReplaceProp<
+export type JsqlDbDropTypeUsers<
+	Db extends JsqlDatabaseShape,
+	Sch extends string,
+	Name extends string,
+	Enum extends boolean,
+> = ReplaceProp<
 	Db,
 	"schemas",
 	{
@@ -353,27 +429,11 @@ export type JsqlDbDropEnumUsers<Db extends JsqlDatabaseShape, Sch extends string
 					{
 						[
 							T in keyof Sets as Sets[T] extends { kind: "view" }
-								? [EnumColumnNames<Sets[T], Name, Sch>] extends [never]
+								? [TypeColumnNames<Sets[T], Name, Sch, Enum>] extends [never]
 									? T
 									: never
 								: T
-						]: [EnumColumnNames<Sets[T], Name, Sch>] extends [never]
-							? Sets[T]
-							: Sets[T] extends { columns: infer Cols }
-								? ReplaceProp<
-										ReplaceProp<
-											Sets[T],
-											"columns",
-											Omit<Cols, EnumColumnNames<Sets[T], Name, Sch> & string>
-										>,
-										"column_facts",
-										Sets[T] extends { column_facts: infer F }
-											? F extends object
-												? Omit<F, EnumColumnNames<Sets[T], Name, Sch> & string>
-												: F
-											: null
-									>
-								: Sets[T]
+						]: JsqlTableDropColumns<Sets[T], TypeColumnNames<Sets[T], Name, Sch, Enum>>
 					}
 				>
 			: Db["schemas"][S]

@@ -19,6 +19,8 @@ import type {
 	PendingPkName,
 	StackPrimaryKey,
 	WithColumnSpelling,
+	WithColumnUserType,
+	WithPendingUserTypes,
 	WithoutPending,
 } from "./parse-create-table.ts"
 import type { ParseRowidTableEnd, TableConstraintStart } from "./parse-create-table-sqlite-end.ts"
@@ -44,14 +46,17 @@ export type ParseCreateTableBody<
 						WithoutPending<Db>,
 						Schema,
 						Table,
-						JsqlCreateTable<
-							M["cols"],
-							M["facts"],
-							PendingConstraints<Db>,
-							StackOrder<Stack>,
-							PendingSpelled<Db, Stack[number][0]>,
-							StackPrimaryKey<Stack>,
-							PendingPkName<Db, Table>
+						WithPendingUserTypes<
+							JsqlCreateTable<
+								M["cols"],
+								M["facts"],
+								PendingConstraints<Db>,
+								StackOrder<Stack>,
+								PendingSpelled<Db, Stack[number][0]>,
+								StackPrimaryKey<Stack>,
+								PendingPkName<Db, Table>
+							>,
+							Db
 						>
 					> extends infer NewDb
 					? NewDb extends JsqlDatabaseShape
@@ -212,7 +217,9 @@ type ParseOneColumnTyped<
 				? ParseColumnConstraints<
 						AfterType,
 						{
-							db: Db
+							db: TypeShape extends { declared: infer D extends `${string}.${string}` }
+								? WithColumnUserType<Db, Schema, Table, ColName, D, Alter>
+								: Db
 							schema: Schema
 							table: Table
 							stack: Stack

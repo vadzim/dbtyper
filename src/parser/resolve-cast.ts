@@ -57,7 +57,7 @@ export type CastTargetShape<Db, Ev extends SqlTypeShape, N extends string> = N e
 
 /** PGT-13, PGT-22: a cast to a type name: an enum or a domain of the chain, else the dialect's built-in type. */
 type CastToNamedType<Db, Ev extends SqlTypeShape, Schema extends string, N extends string> =
-	ResolveUserType<Db, Schema, SqlType<N>> extends [infer U extends SqlTypeShape, boolean]
+	ResolveUserType<Db, Schema, SqlType<N>> extends [infer U extends SqlTypeShape, boolean, string]
 		? U["type"] extends N
 			? ResolveCastFromShape<Db, Ev, N>
 			: U

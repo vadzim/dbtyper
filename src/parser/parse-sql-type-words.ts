@@ -220,6 +220,7 @@ type ParseUnqualifiedSqlType<
 							? ResolveUserType<Db, Schema, BaseShape0> extends [
 									infer BaseShape extends SqlTypeShape,
 									infer DomainNn extends boolean,
+									infer UserDecl extends string,
 								]
 								? ParseArraySuffix<AfterMods, BaseShape> extends [
 										infer AfterArray extends ParserMonad,
@@ -232,7 +233,14 @@ type ParseUnqualifiedSqlType<
 													infer Shaped,
 												]
 												? Shaped extends SqlTypeShape
-													? [R, Shaped & { declared: TypeName }]
+													? [
+															R,
+															Shaped & {
+																declared: [UserDecl] extends [never]
+																	? TypeName
+																	: UserDecl
+															},
+														]
 													: [R, Shaped]
 												: never
 											: ParseNullabilityOfDomain<AfterArray, ArrayShape, DomainNn>
@@ -249,31 +257,35 @@ type ParseUnqualifiedSqlType<
 
 /**
  * PGT-13, PGT-22: a declared name that is a type of the chain is its enum shape (labels are looked up when the shape is
- * used, so ALTER TYPE changes them) or its domain's base type; the second item says a domain NOT NULL applies.
+ * used, so ALTER TYPE changes them) or its domain's base type; the second item says a domain NOT NULL applies. The
+ * third is `schema.name` of a domain or composite type, `never` otherwise: the column keeps it as its declared name
+ * (the type no longer names it), so DROP DOMAIN / DROP TYPE finds the columns that use it (TYPE-18, #179).
  * Only PostgreSQL chains have named types; a name with parameters or no match stays as parsed.
  */
 export type ResolveUserType<Db, Schema extends string, Base extends SqlTypeShape> =
 	DialectFact<Db, "userTypes"> extends false
-		? [Base, false]
+		? [Base, false, never]
 		: Db extends JsqlDatabaseShape
 			? Base["arg"] extends null
 				? JsqlDbFindUserType<Db, Schema, Base["type"]> extends infer Found
 					? [Found] extends [never]
-						? [Base, false]
+						? [Base, false, never]
 						: Found extends { schema: infer S extends string; type: infer T }
 							? T extends { kind: "enum" }
-								? [{ type: "enum"; arg: readonly [Base["type"], S]; nullable: false }, false]
+								? [{ type: "enum"; arg: readonly [Base["type"], S]; nullable: false }, false, never]
 								: T extends {
 											kind: "domain"
 											base: infer B extends SqlTypeShape
 											notNull: infer N extends boolean
 									  }
-									? [B, N]
-									: [Base, false]
-							: [Base, false]
+									? [B, N, `${S}.${Base["type"]}`]
+									: T extends { kind: "composite" }
+										? [Base, false, `${S}.${Base["type"]}`]
+										: [Base, false, never]
+							: [Base, false, never]
 					: never
-				: [Base, false]
-			: [Base, false]
+				: [Base, false, never]
+			: [Base, false, never]
 
 /** {@link ParseNullability}, and a domain's NOT NULL makes the column NOT NULL (not for arrays: it is about the elements). */
 type ParseNullabilityOfDomain<Tokens extends ParserMonad, Shape extends SqlTypeShape, DomainNn extends boolean> =

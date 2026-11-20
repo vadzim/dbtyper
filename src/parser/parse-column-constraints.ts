@@ -156,6 +156,21 @@ type OnConflictToken<Db extends JsqlDatabaseShape> =
 	DialectFact<Db, "constraintOnConflict"> extends true ? TokenKey<"on"> : never
 
 /** `[rest, null | error]` after a bracketed group `( … )` (the `(` is the next token). */
+/** {@link SkipParenGroup} that also gives the names in the group (a named CHECK, #179): `[rest, names | error]`. */
+export type ParenGroupNames<Tokens extends ParserMonad> =
+	PeekToken<Tokens> extends TokenKey<"(">
+		? SkipBracketedUntil<SkipToken<Tokens>, TokenKey<")">, [], true> extends [
+				infer R extends ParserMonad,
+				infer Res,
+			]
+			? Res extends DbtyperErrorShape
+				? SkipFailedExpression<R, Res>
+				: Res extends { names: infer N extends string }
+					? [SkipToken<R>, N]
+					: never
+			: never
+		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT"], []>>
+
 export type SkipParenGroup<Tokens extends ParserMonad> =
 	PeekToken<Tokens> extends TokenKey<"(">
 		? SkipBracketedUntil<SkipToken<Tokens>, TokenKey<")">> extends [infer R extends ParserMonad, infer Res]

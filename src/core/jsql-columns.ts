@@ -93,17 +93,71 @@ type WithColumnOrder<
 	Spelling extends string,
 > = Old extends { order: infer O extends readonly string[] }
 	? Removing extends true
-		? WithoutPkColumn<WithSpelling<ReplaceProp<Old, "order", WithoutName<O, Col>>, Old, Col, never>, Old, Col>
+		? WithoutUserTypes<
+				WithoutColumnConstraints<
+					WithoutPkColumn<
+						WithSpelling<ReplaceProp<Old, "order", WithoutName<O, Col>>, Old, Col, never>,
+						Old,
+						Col
+					>,
+					Old,
+					Col
+				>,
+				Old,
+				Col
+			>
 		: Col extends keyof Old["columns"]
 			? Old
 			: WithSpelling<ReplaceProp<Old, "order", [...O, Col]>, Old, Col, Spelling>
 	: Old
 
-/** A dropped column takes the PRIMARY KEY it is part of with it (PostgreSQL drops the constraint; CORE-15). */
+/**
+ * A dropped column takes the PRIMARY KEY it is part of with it (PostgreSQL drops the constraint; CORE-15). `Col` may be
+ * a union (several columns dropped at once, TYPE-18 CASCADE).
+ */
 type WithoutPkColumn<T, Old, Col extends string> = Old extends { primary_key: { columns: infer C } }
-	? Col extends C
-		? JsqlTableWithPrimaryKey<T, null>
+	? [Extract<Col, C>] extends [never]
+		? T
+		: JsqlTableWithPrimaryKey<T, null>
+	: T
+
+/**
+ * PostgreSQL drops the table's constraints that involve a dropped column, with or without CASCADE (#179): a named
+ * constraint whose columns (`constraints.columns`) include `Col` leaves `names` and `columns`.
+ */
+type WithoutColumnConstraints<T, Old, Col extends string> = Old extends {
+	constraints: { names: infer N extends string; columns: infer M }
+}
+	? { [K in keyof M]: [Extract<Col, M[K]>] extends [never] ? never : K }[keyof M] extends infer Gone extends string
+		? [Gone] extends [never]
+			? T
+			: ReplaceProp<T, "constraints", { names: Exclude<N, Gone>; columns: Omit<M, Gone> }>
 		: T
+	: T
+
+/** A dropped column leaves `user_types` (TYPE-18, #179). */
+type WithoutUserTypes<T, Old, Col extends string> = Old extends { user_types: infer U }
+	? [Extract<Col, keyof U>] extends [never]
+		? T
+		: ReplaceProp<T, "user_types", Omit<U, Col>>
+	: T
+
+/** A renamed column keeps its domain or composite type under its new name. */
+type WithRenamedUserType<T, Old extends string, New extends string> = T extends { user_types: infer U }
+	? Old extends keyof U
+		? ReplaceProp<T, "user_types", Omit<U, Old> & Record<New, U[Old]>>
+		: T
+	: T
+
+/** A renamed column keeps its constraints under its new name. */
+type WithRenamedConstraintColumn<T, Old extends string, New extends string> = T extends {
+	constraints: { names: infer N; columns: infer M }
+}
+	? ReplaceProp<
+			T,
+			"constraints",
+			{ names: N; columns: { [K in keyof M]: Old extends M[K] ? Exclude<M[K], Old> | New : M[K] } }
+		>
 	: T
 
 /** A renamed column stays in the PRIMARY KEY under its new name. */
@@ -118,9 +172,9 @@ type WithRenamedPkColumn<T, Old extends string, New extends string> = T extends 
 /** Sets (or, with `never`, drops) the declared spelling of `Col`; tables with no spellings stay without the field. */
 type WithSpelling<T, Old, Col extends string, Spelling extends string> = [Spelling] extends [never]
 	? Old extends { spelled: infer S }
-		? Col extends keyof S
-			? ReplaceProp<T, "spelled", Omit<S, Col>>
-			: T
+		? [Extract<Col, keyof S>] extends [never]
+			? T
+			: ReplaceProp<T, "spelled", Omit<S, Col>>
 		: T
 	: ReplaceProp<T, "spelled", (Old extends { spelled: infer S } ? Omit<S, Col> : {}) & Record<Col, Spelling>>
 
@@ -134,7 +188,15 @@ type JsqlTableRenameColumn<
 	Table extends JsqlDataShape<"table">
 		? JsqlTableGetColumn<Table, Old> extends infer OldCol extends JsqlColumnShape
 			? JsqlTableReplaceColumnData<Table, Old, null> extends infer T0 extends JsqlDataShape<"table">
-				? WithRenamedPkColumn<JsqlTableReplaceColumnData<T0, New, OldCol>, Old, New> extends infer T
+				? WithRenamedUserType<
+						WithRenamedConstraintColumn<
+							WithRenamedPkColumn<JsqlTableReplaceColumnData<T0, New, OldCol>, Old, New>,
+							Old,
+							New
+						>,
+						Old,
+						New
+					> extends infer T
 					? WithSpelling<
 							WithSpelling<
 								Table extends { order: infer O extends readonly string[] }
@@ -387,3 +449,16 @@ export type JsqlDbReplaceColumnDefault<
 	Name extends string,
 	HasDefault extends true | null,
 > = JsqlDbReplaceSchema<Db, Sch, JsqlSchemaReplaceColumnDefault<JsqlDbGetSchema<Db, Sch>, Tab, Name, HasDefault>>
+
+/**
+ * TYPE-18 CASCADE, #179: the table without the columns `Cols` (a union), as DROP COLUMN leaves it: order, spellings,
+ * primary key and the constraints that involve them go too.
+ */
+export type JsqlTableDropColumns<Table, Cols extends string> =
+	Table extends JsqlDataShape<"table">
+		? [Cols] extends [never]
+			? Table
+			: JsqlTableReplaceColumn<Table, Cols, null> extends infer T extends JsqlDataShape<"table">
+				? T
+				: Table
+		: Table

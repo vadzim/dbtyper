@@ -6,6 +6,7 @@ import type {
 	JsqlDbGetColumnType,
 	JsqlDbAddConstraintName,
 	JsqlDbDropConstraintName,
+	JsqlDbSetConstraintColumns,
 	JsqlDbSetPrimaryKey,
 	JsqlPrimaryKey,
 	JsqlTablePrimaryKey,
@@ -21,6 +22,7 @@ import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement
 import type { ParseOneColumnAfterColName } from "./parse-create-table-columns.ts"
 import type { ColumnNameToken, MultiplePrimaryKeys, WithColumnSpelling } from "./parse-create-table.ts"
 import type { ParseNameList } from "./parse-table-constraints.ts"
+import type { ParenGroupNames } from "./parse-column-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { ParseAlterActions, ParseAlterAfterOptionalColumnKw, ParseAlterSkipAction } from "./parse-alter-table.ts"
 
@@ -118,7 +120,7 @@ type ParseAlterAddConstraint<
 	PeekToken<Tokens> extends TokenKey<"constraint">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? AsIdent<PeekToken<R1>> extends TokenIdent<infer CName extends string>
-				? ParseAlterConstraintBody<SkipToken<R1>, JsqlDbAddConstraintName<Db, Sch, Tab, CName>, Sch, Tab, CName>
+				? ParseAlterConstraintBody<SkipToken<R1>, Db, Sch, Tab, CName> // the body records the name
 				: ParseAlterConstraintBody<SkipToken<R1>, Db, Sch, Tab>
 			: never
 		: ParseAlterConstraintBody<Tokens, Db, Sch, Tab>
@@ -132,7 +134,7 @@ type ParseAlterConstraintBody<
 	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
-	CName extends string = `${Tab}_pkey`,
+	CName extends string = never,
 > =
 	PeekToken<Tokens> extends TokenKey<"primary" | "foreign">
 		? [PeekToken<Tokens>, JsqlTablePrimaryKey<JsqlDbGetTable<Db, Sch, Tab>>] extends [
@@ -151,8 +153,35 @@ type ParseAlterConstraintBody<
 					>
 				: never
 		: PeekToken<Tokens> extends TokenKey<"unique">
-			? ParseAlterConstraintColumns<SkipToken<Tokens>, Db, Sch, Tab, "UNIQUE">
-			: ParseAlterSkipAction<Tokens, Db, Sch, Tab>
+			? ParseAlterConstraintColumns<SkipToken<Tokens>, Db, Sch, Tab, "UNIQUE", CName>
+			: [PeekToken<Tokens>, CName] extends [TokenKey<"check">, never]
+				? ParseAlterSkipAction<Tokens, WithConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
+				: PeekToken<Tokens> extends TokenKey<"check">
+					? // #179: a named CHECK involves the table's columns its expression names
+						ParenGroupNames<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
+						? E extends DbtyperErrorShape
+							? [R, Db, E]
+							: ParseAlterSkipAction<
+									R,
+									JsqlDbSetConstraintColumns<
+										Db,
+										Sch,
+										Tab,
+										CName,
+										Extract<E, keyof JsqlTableColumns<Db, Sch, Tab> & string>
+									>,
+									Sch,
+									Tab
+								>
+						: never
+					: ParseAlterSkipAction<Tokens, WithConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
+
+/** The name of `ADD CONSTRAINT name …` where no column list records it (PGT-25). */
+type WithConstraintName<Db extends JsqlDatabaseShape, Sch extends string, Tab extends string, CName extends string> = [
+	CName,
+] extends [never]
+	? Db
+	: JsqlDbAddConstraintName<Db, Sch, Tab, CName>
 
 /** At the `(` of the column list (a form without one, `UNIQUE USING INDEX i`, is skipped). */
 type ParseAlterConstraintColumns<
@@ -170,26 +199,37 @@ type ParseAlterConstraintColumns<
 				: Names extends readonly string[]
 					? Exclude<Names[number], keyof JsqlTableColumns<Db, Sch, Tab>> extends infer Missing extends string
 						? [Missing] extends [never]
-							? Kind extends "PRIMARY KEY"
-								? ParseAlterSkipAction<
-										R2,
-										AlterPrimaryKeyNotNull<
-											JsqlDbSetPrimaryKey<Db, Sch, Tab, { columns: Names[number]; name: CName }>,
+							? JsqlDbSetConstraintColumns<Db, Sch, Tab, CName, Names[number]> extends infer Db1 extends
+									JsqlDatabaseShape
+								? Kind extends "PRIMARY KEY"
+									? ParseAlterSkipAction<
+											R2,
+											AlterPrimaryKeyNotNull<
+												JsqlDbSetPrimaryKey<
+													Db1,
+													Sch,
+													Tab,
+													{
+														columns: Names[number]
+														name: [CName] extends [never] ? `${Tab}_pkey` : CName
+													}
+												>,
+												Sch,
+												Tab,
+												Names
+											>,
 											Sch,
-											Tab,
-											Names
-										>,
-										Sch,
-										Tab
-									>
-								: Kind extends "FOREIGN KEY"
-									? ParseAlterForeignKeyTarget<R2, Db, Sch, Tab>
-									: ParseAlterSkipAction<R2, Db, Sch, Tab>
+											Tab
+										>
+									: Kind extends "FOREIGN KEY"
+										? ParseAlterForeignKeyTarget<R2, Db1, Sch, Tab>
+										: ParseAlterSkipAction<R2, Db1, Sch, Tab>
+								: never
 							: SkipFailedStatement<R2, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Missing, Kind]>>
 						: never
 					: never
 			: never
-		: ParseAlterSkipAction<R1, Db, Sch, Tab>
+		: ParseAlterSkipAction<R1, WithConstraintName<Db, Sch, Tab, CName>, Sch, Tab>
 
 /** `REFERENCES target [(cols)] …` after the FOREIGN KEY columns: the target must exist (CORE-17). */
 type ParseAlterForeignKeyTarget<
