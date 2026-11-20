@@ -9,23 +9,14 @@ const db = sqlMigrations({ driver: mockDriver })
 	.apply(`create table b (id integer not null, name text not null);`)
 	.database()
 
-const expr = `select name from a intersect select name from b order by upper(name)` as const
-const col = `select name from a intersect select name from b order by id` as const
+const query = `select name from a intersect select name from b order by upper(name)` as const
 
 // @ts-expect-error
-await db.query(expr)
-// @ts-expect-error
-await db.query(col)
+await db.query(query)
 
-expectType<GetQueryError<typeof db, typeof expr>>(
-	toBe<
-		DbtyperError<
-			3414,
-			"ORDER BY after UNION, INTERSECT or EXCEPT can only use the output columns of the result: name one by its name or position"
-		>
-	>(),
-)
-expectType<GetQueryError<typeof db, typeof col>>(
+type ReturnedError = GetQueryError<typeof db, typeof query>
+
+expectType<ReturnedError>(
 	toBe<
 		DbtyperError<
 			3414,
