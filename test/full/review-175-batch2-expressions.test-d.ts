@@ -191,3 +191,15 @@ const _cteDmlList = `with w (a, b) as (delete from users returning id) select a 
 expectType<GetQueryError<typeof pg, typeof _cteDmlList>>(
 	toBe<DbtyperError<3413, "WITH query w has a different number of columns than its column list">>(),
 )
+
+// #163 (PGT-12): array types in casts, an array parameter through a cast
+const _arr = await pg.query(`select '{1,2}'::integer[] as a, cast(name as text[]) as b, '{}'::int[][] as c from users`)
+expectType<typeof _arr>(toBe<{ a: readonly number[]; b: readonly string[]; c: readonly (readonly number[])[] }[]>())
+const _anyCast = await pg.query(`select id from users where id = any($1::int[])`, [[1, 2]])
+expectType<typeof _anyCast>(toBe<{ id: number }[]>())
+const _anyCastWrong = `select id from users where id = any($1::int[])` as const
+expectType<GetQueryError<typeof pg, typeof _anyCastWrong, [number]>>(
+	toBe<DbtyperError<2509, "Incompatible value type for parameter $1">>(),
+)
+// a hint's target parses: `::` after a function call
+await pg.query(`select pg_typeof(id)::text as t, lower(name)::varchar as l from users`)
