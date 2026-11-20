@@ -223,6 +223,11 @@ const errors = {
 		],
 	},
 
+	MULTIPLE_STATEMENTS_IN_QUERY: {
+		code: 1932,
+		msg: ["This driver runs only the first statement of a text; send one statement per query or stream call"],
+	},
+
 	// Parser Syntax Errors - Expected Keywords/Tokens
 	// SELECT Statement
 	EXPECTED_SELECT_AFTER_WITH: {

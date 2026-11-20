@@ -1,4 +1,10 @@
-import type { PeekToken, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
+import type {
+	PeekToken,
+	SkipToken,
+	CreateParserMonad,
+	HasSyntaxFlag,
+	TokenEotWithDialectError,
+} from "../lexer/parser-monad.ts"
 import type { DialectFact, ParserSyntax } from "../core/dialect.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
@@ -118,15 +124,37 @@ type ApplyParsedStatementsInner<
 						infer NewDB extends JsqlDatabaseShape,
 						infer NewResult,
 				  ]
-				? ApplyParsedStatementsInner<
-						Rest,
-						NewDB,
-						Params,
-						NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
-						NewResult extends DbtyperErrorShape ? null : NewResult,
-						Inc<Depth>
-					>
+				? SecondStatementError<Rest> extends infer Second extends DbtyperErrorShape
+					? // STMT-Q5, #156: a driver that runs only the first statement of a text (`single-statement`)
+						[
+							Rest,
+							NewDB,
+							ConcatErrors<
+								NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
+								Second
+							>,
+							NewResult extends DbtyperErrorShape ? null : NewResult,
+						]
+					: ApplyParsedStatementsInner<
+							Rest,
+							NewDB,
+							Params,
+							NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
+							NewResult extends DbtyperErrorShape ? null : NewResult,
+							Inc<Depth>
+						>
 				: never
+
+/** The error for a statement after the first one when the syntax has `single-statement`; `null` otherwise. */
+type SecondStatementError<Rest extends ParserMonad> =
+	HasSyntaxFlag<Rest, "single-statement"> extends true
+		? PeekToken<SkipSemicolons<Rest>> extends TokenEot
+			? null
+			: FormatError<Errors["MULTIPLE_STATEMENTS_IN_QUERY"], []>
+		: null
+
+type SkipSemicolons<Rest extends ParserMonad> =
+	PeekToken<Rest> extends TokenKey<";"> ? SkipSemicolons<SkipToken<Rest>> : Rest
 
 export type ParseSqlStatement<
 	Tokens extends ParserMonad,

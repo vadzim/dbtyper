@@ -19,6 +19,13 @@ export type EmptyTokenList = Buffer<TokenEot, "", string, number, DbtyperErrorSh
 
 export type PeekToken<M extends ParserMonad> = M[typeof tokenKey]
 
+/** True when the lexer `Syntax` of the monad names `Flag` (a feature flag such as `single-statement`). */
+export type HasSyntaxFlag<M extends ParserMonad, Flag extends string> = [Extract<M[typeof syntaxKey], Flag>] extends [
+	never,
+]
+	? false
+	: true
+
 /**
  * Source spans (SQLT-28: a result key is the expression text as written). In a SQLite chain every token read carries
  * `from`, the text it was read from (the whitespace before it included), so the monad itself stays single-pass:

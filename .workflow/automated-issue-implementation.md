@@ -229,7 +229,7 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 **Testing Strategy:**
 
 - Run `npm run typecheck:test` after each significant change
-- Run `TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"` for integration tests
+- Run `DBTYPER_TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"` for integration tests
 - Fix issues immediately before proceeding
 
 **Deliverables:**
@@ -246,7 +246,7 @@ echo "Cleaned up worktree: $WORKTREE_PATH"
 
 1. Run full test suite: `npm run test:ci`
     - Type checking: `npm run typecheck:full`
-    - Unit tests: `TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"`
+    - Unit tests: `DBTYPER_TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"`
     - Linting: `npm run lint`
     - Unused exports: `npm run find-unused`
     - Formatting: `npm run format:check`
