@@ -64,6 +64,8 @@ export type JsqlDataShape<Kind extends "table" | "view" = "table" | "view"> = {
 	spelled?: unknown
 	/** The PRIMARY KEY, `JsqlPrimaryKey` (src/core/jsql-utils.ts): columns and constraint name (CORE-15, SEL-27). */
 	primary_key?: unknown
+	/** SQLite: the names of the table's indexes, a union (`CREATE INDEX`, for `INDEXED BY`; src/parser/parse-index.ts, SQLT-74). */
+	indexes?: unknown
 	/** The columns of a domain or composite type: name -> `schema.type` (TYPE-18, #179); absent when none. */
 	user_types?: unknown
 }

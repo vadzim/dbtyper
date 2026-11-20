@@ -2,6 +2,12 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Roles of JSON function arguments as parameter types (#206 item 4, track A; SQLT-75)
+
+- **Data, not conditions.** The `params` column of the JSON rows of `SqliteFunctions` holds the roles: `text` for a JSON text, path or label, the new type name `json_arg` for a value. A repeating position (the 2nd, 4th, … of `json_set`) is a `{ head; cycle }` entry; `RowArgType` (function-catalog.ts) reads it with `CycleArgType`, so no resolver knows a function name.
+- **`json_arg`** is a type name of the SQLite type map and its parameter map (`number | bigint | string | null`: any value but a blob and a boolean, so `Uint8Array` / `boolean` are 2509 by the existing check). It is NOT a nullable shape: a nullable argument would make the result of `json_array(:a)` nullable (nulls `args`), and the results must stay those of SQLT-49; `null` lives in the parameter map instead.
+- **Cost.** `typecheck:test` 17,795,738 -> 18,424,730 including the new test file (test/sqlite/sqlt-75-json-param-roles.test-d.ts).
+
 ## 2026-11-20 A chain's schema type keeps no earlier state (#192, track A; bug)
 
 - **Cause.** TypeScript stops at instantiation depth 100 (raw TS2589). Every schema change went through `ReplaceProp`, a mapped type over `Omit<T, K> & Record<K, V>`: a mapped type keeps the type it maps in its mapper, so each state pointed at the one before, and each time the state was instantiated (any statement that reads a table) TypeScript walked all earlier states, about 3 levels per change. `ForceProps` resolved the property types but not that walk. A chain broke after 20-30 schema changes, counted over the whole chain, not per apply; mixed-case SQLite columns (`Omit<Db, "pendingSpelled"> & …`, the `spelled` intersection) cost more levels each.
@@ -16,6 +22,12 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **Array element unification.** Nothing to change: SQLite has no arrays (`ARRAY[…]` is 1900, SQLT-53), so the PostgreSQL rule is the only one.
 - **INSERT column list (SQLT-68).** `ParseInsertColumnNameList` reads each name with `ColumnNameToken` (the CREATE TABLE reader of #195, fact `stringColumnNames`), so `insert into t ('order', "name")` names the columns; PostgreSQL still rejects a string there (1206-style EXPECTED_COLUMN_NAME).
 - **Cost.** `typecheck:test` (TS 7) 21,003,065 on main-track before, 20,786,117 after, with the new test file (the facts reach the merges as one small object, so the cache is shared as in #195).
+
+## 2026-11-20 Grouped select-list cost linear (#208, track A; not spec-derived; #179 item 2 for GROUP BY / HAVING)
+
+- **Change.** The loops of the grouped rules read `Items[Before["length"]]` with a counter and give the item to a helper alias, as #179 item 2 did: `ValidateGroupedSelectItemsAgainstKeys` (+ `GroupedSelectItemOutcome`), `GroupKeysWithPositionsResolved` (was non-tail recursive, so deep) with `SelectItemAstAtPosition` (SEL-28), and `AliasItemAst` (parse-select-group-by.ts). The two lookups that ran for every select item over every key (`GroupKeySetContainsColParts`, `AstEqualsGroupKey`) are membership tests in the union of the keys (`GroupKeyColParts`, `Keys[number]`): the keys are parsed trees, so a tree assignable to a key is that key; the SEL-27 key (column parts a union) is the only wider one and a column of it is valid either way. Same results and errors.
+- **Result (probe `select c1..cN from t group by c1..cN`, 320-column table, net of the empty probe).** PostgreSQL N = 40 / 80 / 160 / 320: 0.38M / false 3403 and TS2589 from 80 on (instantiation depth) -> 0.30M / 0.60M / 1.22M / 2.47M, and the same with `count(*)` and HAVING. SQLite (no GROUP BY rule, SQLT-28) 0.34M / 0.70M / 1.41M / 2.85M, unchanged (it was already linear). `test/stress/grouped-select-320-items.test-d.ts` pins the row type of 320 grouped columns, an aggregate with HAVING (both dialects) and 3403 for an ungrouped 320th column.
+- **Cost.** `typecheck:test` 20,720,989 -> 19,846,194 instantiations (-4.2%) against main-track 9961716.
 
 ## 2026-11-20 Select-list cost linear (#179 item 2, track A; not spec-derived)
 
@@ -655,3 +667,9 @@ The dialect row field `defaultSchemaExists` (boolean) became `initialSchemas` ("
 - **count(DISTINCT x)** (`ParseAggregateArgs`, parse-function-call.ts): `DISTINCT` before the arguments of count, sum, avg, min, max, total, group_concat, string_agg, array_agg is skipped; the result type is the same. `DISTINCT *` is 1007. No catalog row changed.
 - **Select list cost.** The accumulator is a union of `[name, type]` entries turned into a record once (`EntriesToRecord`), not a record merged per item (`MergeStringRecords` is gone). 320 items: 3.76M -> 3.0M instantiations net; still not linear (the item tuple), see #175.
 - **Not done:** the PostgreSQL grouped-primary-key rule of SEL-27 needs the primary key in the table shape (jsql-*, CREATE/ALTER TABLE: other batches).
+
+## 2026-11-20 INDEXED BY and SQLite index names (#206 item 1, track A; SQLT-73, SQLT-74)
+
+- **Where the names live.** An index name is a member of `indexes` (a string union) of its table's data, not a schema-level map: DROP TABLE drops it, RENAME keeps it, and `INDEXED BY` asks only the table it follows. `DROP INDEX` finds the table by one mapped lookup over the schemas. Only the dialect fact `trackedIndexes` (SQLite) parses CREATE/DROP INDEX (src/parser/parse-index.ts); PostgreSQL still skips them.
+- **One alias parser.** The hint is read by `ParseAlias` (an optional `IndexHint` argument: the table name and its index names), before a bare alias (`indexed` followed by `by`, `not` followed by `indexed`) and after the alias, before the row's tail (`SET` of UPDATE). FROM tables, CTEs (no indexes: 2221), UPDATE and DELETE targets pass it; other places pass nothing and pay one check. PostgreSQL: the `sqlite-indexed-by` construct row (1901).
+- **New code** 1122 `EXPECTED_INDEX_NAME_AFTER_INDEXED_BY` (not in the spec).

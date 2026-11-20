@@ -7,6 +7,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseAlias } from "./parse-alias.ts"
+import type { IndexNamesOf } from "./parse-index.ts"
 import type { ParseTableRef, TableRefTarget } from "./parse-table-ref.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
@@ -201,7 +202,7 @@ type DeleteAliasRow = {
 	tailError: null
 }
 
-/** `DELETE FROM t [[AS] alias]`: on SQLite the alias needs AS (`bareDmlAlias`). */
+/** `DELETE FROM t [[AS] alias] [INDEXED BY i | NOT INDEXED]`: on SQLite the alias needs AS (`bareDmlAlias`). */
 type ParseDeleteAliasAfterTable<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -211,7 +212,11 @@ type ParseDeleteAliasAfterTable<
 	Scope extends ScopeMap,
 	_Params extends ExpressionParamsShape,
 > =
-	ParseAlias<Tokens, Db, DeleteAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+	ParseAlias<Tokens, Db, DeleteAliasRow, { table: Tab; indexes: IndexNamesOf<Tbl> }> extends [
+		infer R extends ParserMonad,
+		infer E,
+		infer Alias,
+	]
 		? E extends null
 			? [
 					R,
