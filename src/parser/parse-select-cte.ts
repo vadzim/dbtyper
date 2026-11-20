@@ -18,7 +18,12 @@ import type {
 	ParseParenEnclosedSelect,
 	SelectResultToCteScopeEntry,
 } from "./parse-select-subquery.ts"
-import type { ParseSelectArm, ParseSelectCompound, ParseSetOperationRightArm } from "./parse-select.ts"
+import type {
+	ParseCompoundTrailing,
+	ParseSelectArm,
+	ParseSelectCompound,
+	ParseSetOperationRightArm,
+} from "./parse-select.ts"
 
 type ParseSelectWithCtesAfterSubquery<
 	R4 extends ParserMonad,
@@ -104,7 +109,15 @@ type ParseCteBody<
 												? MergeSetOperation<Named, Res2, "UNION"> extends infer Merged
 													? Merged extends DbtyperErrorShape
 														? SkipFailedExpression<Rb, Merged>
-														: ConsumeClosingParen<Rb, Merged>
+														: ParseCompoundTrailing<Rb, Db, Merged, Params> extends [
+																	infer Rc extends ParserMonad,
+																	infer _Db3,
+																	infer Mt,
+															  ]
+															? Mt extends DbtyperErrorShape
+																? SkipFailedExpression<Rc, Mt>
+																: ConsumeClosingParen<Rc, Mt>
+															: never
 													: never
 												: never
 										: never
