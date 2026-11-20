@@ -8,7 +8,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **FROM parsing reuses the PGT-32 path.** `ParseFromFunction` (parse-select-from.ts) takes the dialect's table-function names besides `unnest` / `generate_series`, resolves the call marked `from: true` in the scope of the items before it (so `t.col` and unknown columns behave as for `unnest`), and puts the `tables` columns under the alias (or the function name). No column-alias list (Not yet).
 - **Comma (SQLT-72, SQLT-Q15 A).** `,` now ends a FROM item like a join word; the join chain reads it: before `json_each(` / `json_tree(` (`StartsTableFunction`) it is the `CROSS JOIN` item parser (`ParseCrossJoinItem`, shared with `CROSS JOIN`), any other comma stays 1115 (it used to be raised by the alias reader after an unaliased table, now by the join chain: same code and message).
 - **Types (SQLT-70, SQLT-Q14 A).** Three SQLite type-map names: `json_key` (`Integer | string`), `json_value` (`Integer | number | string`), `json_type` (the eight names); `Integer` is `bigint` in big-integer mode. The parameter map takes number, bigint and text for the first two. Comparison class "unknown" (compatible with all), like `typeof`.
-- **Cost:** see the report of #198 (instantiations of `tsconfig.test.json`).
+- **Cost:** `typecheck:test` (TS 7.0.2) without the new test files 19,550,148 -> 19,581,722 instantiations (+0.16%); with them 19,872,962.
 
 ## 2026-11-20 Review #175 follow-ups: the table keeps its PRIMARY KEY (track A; #179 items 1, 5c; SEL-27, CORE-15)
 
