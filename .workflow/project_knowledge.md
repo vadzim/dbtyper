@@ -89,7 +89,7 @@ Update this when you discover patterns, conventions, or insights specific to THI
 
 - Full test suite includes: typecheck, test, lint, find-unused, format:check
 - Workspaces: `@dbtyper/example-postgres`, `@dbtyper/example-nest-postgres`, `dbtyper-nest`
-- `TEST_MIGRATIONS=1` environment variable for migration tests
+- `DBTYPER_TEST_MIGRATIONS=1` environment variable for migration tests
 
 **Commands to Remember:**
 
@@ -97,7 +97,7 @@ Update this when you discover patterns, conventions, or insights specific to THI
 npm run typecheck:test          # Fast type checking for tests only
 npm run typecheck:full          # Full type checking including examples
 npm test                        # Full test suite (includes lint)
-TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
+DBTYPER_TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"  # Tests only, no lint
 ```
 
 ---

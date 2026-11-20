@@ -1,4 +1,4 @@
-// Integration Test: SELECT - SEL-36 GROUP BY names an output alias
+// Integration Test: SELECT - SEL-28 GROUP BY names an output alias
 import { sqlMigrations } from "../../../src/core/sql-database.ts"
 import { expectType, toBe } from "../../test-utils/type-test-utils.ts"
 import { mockDriver } from "../../test-utils/test-databases.ts"

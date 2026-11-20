@@ -124,7 +124,7 @@ Implement the feature described in the GitHub issue above, following the project
 
 4. **Testing:**
    - Run `npm run typecheck:test` after each significant change
-   - Run `TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"` for integration tests
+   - Run `DBTYPER_TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"` for integration tests
    - Fix issues immediately before proceeding
 
 ### Phase 3: Validation
@@ -301,7 +301,7 @@ npm run typecheck:test
 npm run typecheck:full
 
 # Integration tests only
-TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"
+DBTYPER_TEST_MIGRATIONS=1 node --test "test/**/*.test.ts"
 
 # Full test suite (required before PR)
 npm run test:ci

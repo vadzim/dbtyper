@@ -19,14 +19,19 @@ import type { DataBase, InitialDatabase, SqlDatabaseConfig } from "./sql-databas
 
 export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends DriverConfig> {
 	apply<Source extends string>(
-		statement: Source extends CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>
+		statement: Source extends CheckSqlValid<
+			ParamsDriverConfig<Config, null, false>,
+			Db,
+			Source,
+			EmptyExpressionParams
+		>
 			? Source
-			: CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Source, EmptyExpressionParams>,
+			: CheckSqlValid<ParamsDriverConfig<Config, null, false>, Db, Source, EmptyExpressionParams>,
 		name?: string,
 	): SqlMigrations<
-		FlattenedJsqlDatabase<
-			ApplyStatements<Db, Source, EmptyExpressionParams, ParserSyntaxOf<ParamsDriverConfig<Config, null>>>[0]
-		>,
+		// Not flattened here: flattening maps the whole schema again at every step, so a chain would cost quadratic
+		// time; `database()` flattens once.
+		ApplyStatements<Db, Source, EmptyExpressionParams, ParserSyntaxOf<ParamsDriverConfig<Config, null, false>>>[0],
 		Config
 	>
 	database(): DataBase<FlattenedJsqlDatabase<Db>, Config>
@@ -36,7 +41,8 @@ export interface SqlMigrations<Db extends JsqlDatabaseShape, Config extends Driv
 export function sqlMigrations<D extends SqlDriver<DriverConfigDraft>, const DS extends string = "public">(
 	config: SqlDatabaseConfig<D> & { defaultSchema?: DS } & RequireDriverDialect<D>,
 ) {
-	const defaultSchema = config.defaultSchema ?? "public"
+	// The driver names the schema its engine starts with (SQLite `main`, PostgreSQL `public`); the type level says the same.
+	const defaultSchema = config.defaultSchema ?? config.driver.defaultSchema ?? "public"
 	const migrations = new DBMigrations(defaultSchema, null, config.driver)
 	const result = migrations as unknown as SqlMigrations<
 		FlattenedJsqlDatabase<InitialDatabase<GetDriverConfig<D>, DS>>,
@@ -83,7 +89,7 @@ export function migrationCallerFile(stack: string, ownDir: string = DBTYPER_DIR)
 }
 
 export function migration<S extends string>(source: S): S {
-	if (process.env.TEST_MIGRATIONS) {
+	if (process.env.DBTYPER_TEST_MIGRATIONS) {
 		const caller = migrationCallerFile(new Error().stack ?? "")
 		if (caller !== undefined && !/\.[mc]?js$/.test(caller)) {
 			throw new Error(

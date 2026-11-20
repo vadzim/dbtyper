@@ -43,22 +43,6 @@ export type InitialDatabase<
 export type DataBase<Db extends JsqlDatabaseShape, Config extends DriverConfig> = {
 	__db(): { [K in keyof Db]: Db[K] }
 	__config(): { [K in keyof Config]: Config[K] }
-	// _config_params<ParamsValues extends Record<string, unknown> | readonly unknown[]>(
-	// 	params: ParamsValues,
-	// ): { [K in keyof ParamsDriverConfig<Config, ParamsValues>]: ParamsDriverConfig<Config, ParamsValues>[K] }
-	// _get_params<ParamsValues extends Record<string, unknown> | readonly unknown[]>(params: ParamsValues): ParamsValues
-	// _params_no_any<Stmt extends string>(statement: Stmt): CheckSqlValid<Config, Db, Stmt, EmptyExpressionParams>
-	// _params_no<Stmt extends string>(
-	// 	statement: Stmt,
-	// ): CheckSqlValid<NoParamsDriverConfig<Config,null>, Db, Stmt, EmptyExpressionParams>
-	// _params<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
-	// 	statement: Stmt,
-	// 	params: ParamsValues,
-	// ): CheckSqlValid<ParamsDriverConfig<Config, ParamsValues>, Db, Stmt, QueryParams<Config, Db, Stmt, ParamsValues>>
-	// _params_any<Stmt extends string, ParamsValues extends Record<string, unknown> | readonly unknown[]>(
-	// 	statement: Stmt,
-	// 	params: ParamsValues,
-	// ): CheckSqlValid<Config, Db, Stmt, QueryParams<Config, Db, Stmt, ParamsValues>>
 
 	/**
 	 * Execute any valid SQL statement. Returns typed array for SELECT/RETURNING, `[]` for other statements (CORE-13).

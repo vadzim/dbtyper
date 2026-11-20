@@ -39,7 +39,7 @@ type ParseUpdateAfterSetKeyword<
 				? [R, Db2, { kind: "update"; table: Tab; schema: Sch; set_columns: Cols; pending: Pending }]
 				: [R, Db2, Out]
 			: never
-		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SET_IN_UPDATE"], []>>
+		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>>
 
 type ParseUpdateFromClause<
 	Tokens extends ParserMonad,

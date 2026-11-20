@@ -3,10 +3,8 @@
 	"compilerOptions": {
 		"noEmit": true,
 		"allowJs": true,
-		"paths": {
-			"dbtyper": ["../../src/index.ts"],
-			"dbtyper/sqlite": ["../../src/sqlite/index.ts"]
-		},
+		// No `paths`: "dbtyper" resolves through node_modules to the package's exports map and dist/ (`npm run build`),
+		// so a broken exports map or a broken build fails this typecheck. The other examples check against src/.
 		"ignoreDeprecations": "6.0"
 	},
 	"include": ["src/**/*.ts", "migrations/**/*.js", "test/**/*.ts"],

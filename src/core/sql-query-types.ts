@@ -128,7 +128,7 @@ export type QueryReturnType<
 
 export type GetApplyError<D, Stmt extends string> =
 	D extends SqlMigrations<infer Db, infer Config>
-		? CheckSqlValid<ParamsDriverConfig<Config, null>, Db, Stmt, null> extends infer Ret
+		? CheckSqlValid<ParamsDriverConfig<Config, null, false>, Db, Stmt, null> extends infer Ret
 			? Stmt extends Ret
 				? null
 				: Ret extends FormatErrorText<infer Code, infer Msg>

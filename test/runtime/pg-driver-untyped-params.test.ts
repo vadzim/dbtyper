@@ -36,17 +36,16 @@ describe("postgres driver parameters at runtime", () => {
 		await db.query(`select * from users where id = ':x' and age = :a::integer;`, { a: 1 })
 		assert.deepEqual(sent, [[`select * from users where id = ':x' and age = $1::integer;`, [1]]])
 	})
-	it("PARAM-14: extra array elements are accepted for $n", async () => {
-		// (typed query() rejects unused elements with dbtyper:2405, see the BUG skip file for PARAM-14; the driver itself accepts them)
+	it("PARAM-14: extra array elements are left out ($n above the highest one the text reads, #170)", async () => {
 		const { sent, driver } = setup()
 		await driver.query(`select * from users where id = $1;`, ["a", "unused"])
-		assert.deepEqual(sent, [[`select * from users where id = $1;`, ["a", "unused"]]])
+		assert.deepEqual(sent, [[`select * from users where id = $1;`, ["a"]]])
 	})
 	it("PARAM-15: the driver never rewrites ? (a jsonb operator there, PGT-24); the compile check rejects it as a parameter", async () => {
 		const { sent, db } = setup()
 		// @ts-expect-error `?` is not accepted as a parameter by postgresSqlDriver (dbtyper:1007)
 		await db.query(`select * from users where id = ?;`, ["a"])
-		assert.deepEqual(sent, [[`select * from users where id = ?;`, ["a"]]])
+		assert.deepEqual(sent, [[`select * from users where id = ?;`]]) // no $n in the text: no value is sent (#170)
 	})
 	it("PARAM-16: a missing :name rejects before anything is sent", async () => {
 		const { sent, db } = setup()
