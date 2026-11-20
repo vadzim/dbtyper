@@ -26,6 +26,8 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
 	json_key: Integer | string
 	/** `value` / `atom` of `json_each` / `json_tree` (SQLT-70, SQLT-Q14): a number or text (arrays and objects as JSON text). */
 	json_value: Integer | number | string
+	/** A value argument of a JSON function (SQLT-75): only a parameter has this type; it accepts `null` besides (see the parameter map). */
+	json_arg: Integer | number | string
 	/** `type` of `json_each` / `json_tree` (SQLT-70). */
 	json_type: "null" | "true" | "false" | "integer" | "real" | "text" | "array" | "object"
 }
@@ -37,7 +39,7 @@ export type SqliteTypeMap<Integer extends number | bigint = number> = {
  */
 type SqliteParamTypeMap = Omit<
 	SqliteTypeMap,
-	"integer" | "boolean" | "bigint" | "any" | "numeric" | "json_key" | "json_value"
+	"integer" | "boolean" | "bigint" | "any" | "numeric" | "json_key" | "json_value" | "json_arg"
 > & {
 	integer: number | bigint
 	numeric: number | bigint | string
@@ -46,6 +48,8 @@ type SqliteParamTypeMap = Omit<
 	any: number | bigint | string | Uint8Array
 	json_key: number | bigint | string
 	json_value: number | bigint | string
+	/** SQLT-75: any SQLite value but a blob; `null` is part of the type, the argument does not make a result nullable. */
+	json_arg: number | bigint | string | null
 }
 
 /** Options of `betterSqlite3Driver` / `nodeSqliteDriver` (SQLT-4). */
