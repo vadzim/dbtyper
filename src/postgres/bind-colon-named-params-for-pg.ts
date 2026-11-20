@@ -29,12 +29,18 @@ export function bindColonNamedParamsForPg(
 			i += 2
 			continue
 		}
-		if (ch === ":" && i + 1 < sql.length && /[A-Za-z_]/.test(sql[i + 1] as string)) {
+		// `arr[lo:hi]`: a colon right after a word, `]`, `)` or `[` is a slice bound, not a parameter.
+		if (
+			ch === ":" &&
+			i + 1 < sql.length &&
+			/[A-Za-z_]/.test(sql[i + 1] as string) &&
+			!/[\w\])\[]/.test(sql[i - 1] ?? " ")
+		) {
 			let j = i + 1
 			while (j < sql.length && /[A-Za-z0-9_]/.test(sql[j] as string)) j++
 			const name = sql.slice(i + 1, j)
 			if (!nameToIndex.has(name)) {
-				if (!(name in params)) {
+				if (!Object.hasOwn(params, name)) {
 					throw new Error(`Missing SQL parameter :${name}`)
 				}
 				nameToIndex.set(name, values.length + 1)

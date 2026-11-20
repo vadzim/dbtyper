@@ -6,7 +6,7 @@ See [DESIGN.md](./DESIGN.md) for boundaries and lifecycle.
 
 ## Install
 
-Peer dependencies: `@nestjs/common` and `@nestjs/core` ^10 or ^11, `dbtyper`, and **`postgres`** when using **`postgresSqlDriver`** from **`dbtyper/postgres`**.
+Peer dependencies: `@nestjs/common` and `@nestjs/core` ^10, ^11 or ^12, `dbtyper`, and **`postgres`** when using **`postgresSqlDriver`** from **`dbtyper/postgres`**.
 
 ```bash
 npm install dbtyper-nest @nestjs/common dbtyper postgres
@@ -41,11 +41,14 @@ Inject the database:
 
 ```typescript
 import { InjectDbtyper } from "dbtyper-nest"
-import type { DataBase } from "dbtyper"
+import type { exampleDb } from "./example-schema.js"
+
+// The type of the database is whatever your migration chain returns; no type is written by hand.
+type ExampleDb = Awaited<ReturnType<typeof exampleDb>>
 
 @Injectable()
 export class UsersService {
-	constructor(@InjectDbtyper(DBTYPER_ID) private readonly db: DataBase<MyDbShape>) {}
+	constructor(@InjectDbtyper(DBTYPER_ID) private readonly db: ExampleDb) {}
 
 	async listEmails() {
 		return this.db.query("select email from auth.users;")

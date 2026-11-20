@@ -15,6 +15,8 @@ type SqlScanRules = {
 	readonly nestedBlockComments: boolean
 	/** `$tag$ … $tag$` bodies (PostgreSQL). */
 	readonly dollarBodies: boolean
+	/** `E'…'` strings: a backslash escapes the next character, so `E'it\'s'` is one string (PostgreSQL). */
+	readonly escapeStrings: boolean
 }
 
 export const POSTGRES_SCAN_RULES: SqlScanRules = {
@@ -22,6 +24,7 @@ export const POSTGRES_SCAN_RULES: SqlScanRules = {
 	bracketNames: false,
 	nestedBlockComments: true,
 	dollarBodies: true,
+	escapeStrings: true,
 }
 
 export const SQLITE_SCAN_RULES: SqlScanRules = {
@@ -29,10 +32,29 @@ export const SQLITE_SCAN_RULES: SqlScanRules = {
 	bracketNames: true,
 	nestedBlockComments: false,
 	dollarBodies: false,
+	escapeStrings: false,
 }
 
 /** A dollar tag has no length limit: `$` + optional identifier + `$`. */
 const DOLLAR_TAG = /\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/y
+
+/** The end of an `E'…'` string opened at `i`: a backslash escapes the next character, a doubled quote is an escape too. */
+function endOfEscapeString(sql: string, i: number): number {
+	let j = i + 1
+	while (j < sql.length) {
+		if (sql[j] === "\\") j += 2
+		else if (sql[j] === "'") {
+			if (sql[j + 1] === "'") j += 2
+			else return j + 1
+		} else j++
+	}
+	return sql.length
+}
+
+/** True when the quote at `i` opens an `E'…'` string: an `E` (not the end of a longer word) comes right before it. */
+function opensEscapeString(sql: string, i: number): boolean {
+	return (sql[i - 1] === "E" || sql[i - 1] === "e") && !/[A-Za-z0-9_$]/.test(sql[i - 2] ?? " ")
+}
 
 /** The end of a `close`-terminated run opened at `i`, where a doubled `close` is an escape; the end of text when unterminated. */
 function endOfQuoted(sql: string, i: number, close: string, doubles: boolean): number {
@@ -68,7 +90,11 @@ function endOfBlockComment(sql: string, i: number, nested: boolean): number {
  */
 export function skipNonCode(sql: string, i: number, rules: SqlScanRules): number {
 	const ch = sql[i] as string
-	if (ch === "'") return endOfQuoted(sql, i, "'", true)
+	if (ch === "'") {
+		return rules.escapeStrings && opensEscapeString(sql, i)
+			? endOfEscapeString(sql, i)
+			: endOfQuoted(sql, i, "'", true)
+	}
 	if (rules.quotedNames.includes(ch)) return endOfQuoted(sql, i, ch, true)
 	if (ch === "[" && rules.bracketNames) return endOfQuoted(sql, i, "]", false)
 	if (ch === "-" && sql[i + 1] === "-") {

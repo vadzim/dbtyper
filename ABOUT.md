@@ -48,10 +48,10 @@ The types come from your schema, which is declared once through your migration c
 
 ```typescript
 // db/index.ts
-import { sqlMigrations } from "dbtyper"
+import { sqlMigrations, type SqlDriver } from "dbtyper"
 import type { PostgresDriver } from "dbtyper/postgres"
 
-export async function exampleDb(driver: PostgresDriver) {
+export async function exampleDb(driver: SqlDriver<PostgresDriver>) {
 	return sqlMigrations({ driver })
 		.apply((await import("../migrations/001.do.schemas.js")).generateSql())
 		.apply((await import("../migrations/002.do.users.js")).generateSql())
@@ -194,27 +194,30 @@ const rows = await db.query(`SELECT * FROM users WHERE id = :id AND active = :ac
 ## The full API
 
 ```typescript
-export type DataBase<Db> = {
-	// Typed query — statement parsed at type level
-	query<Stmt extends string>(statement: Stmt): Promise<Array<SqlSelectRowObject<Db, Stmt>>>
-	query<Stmt extends string, Params extends ExpressionParamsShape>(
+// Simplified: the real types also check the statement and its parameters against the schema.
+export type DataBase<Db, Config> = {
+	// Typed query: the statement is parsed at type level. SELECT / RETURNING give rows, other statements `[]`
+	query<Stmt extends string>(statement: Stmt): Promise<Array<RowOf<Db, Stmt>>>
+	query<Stmt extends string, Params extends Record<string, unknown> | readonly unknown[]>(
 		statement: Stmt,
-		params: ParamRuntimeValues<Params>,
-	): Promise<Array<SqlSelectRowObject<Db, Stmt, Params>>>
+		params: Params,
+	): Promise<Array<RowOf<Db, Stmt, Params>>>
 
 	// Escape hatch for unsupported features or gradual migration
 	queryUntyped(statement: string, params?: Record<string, unknown>): Promise<Array<any>>
 
-	// Streaming — same type inference, async iterable
-	stream<Stmt extends string>(statement: Stmt): AsyncIterable<SqlSelectRowObject<Db, Stmt>>
-	stream<Stmt extends string, Params extends ExpressionParamsShape>(
+	// Streaming: same type inference; the promise resolves to an async iterable (SELECT / RETURNING only)
+	stream<Stmt extends string>(statement: Stmt): Promise<AsyncIterable<RowOf<Db, Stmt>>>
+	stream<Stmt extends string, Params extends Record<string, unknown> | readonly unknown[]>(
 		statement: Stmt,
-		params: ParamRuntimeValues<Params>,
-	): AsyncIterable<SqlSelectRowObject<Db, Stmt, Params>>
+		params: Params,
+	): Promise<AsyncIterable<RowOf<Db, Stmt, Params>>>
 
-	streamUntyped(statement: string, params?: Record<string, unknown>): AsyncIterable<any>
+	streamUntyped(statement: string, params?: Record<string, unknown>): Promise<AsyncIterable<any>>
 }
 ```
+
+You do not write `DataBase<…>` yourself: `sqlMigrations(...).database()` returns it, and `Awaited<ReturnType<typeof exampleDb>>` names its type.
 
 `queryUntyped` / `streamUntyped` exist for two reasons: gradual codebase migration, and SQL features the parser doesn't support yet (more on that below).
 
@@ -226,25 +229,30 @@ export type DataBase<Db> = {
 
 ✅ `SELECT col1, col2 as col3` — named columns and aliases
 ✅ `SELECT *` or `SELECT table.*` — full table expansion  
-✅ `LEFT JOIN`, `INNER JOIN`, cross-schema joins  
+✅ `INNER`, `LEFT`, `RIGHT`, `FULL` and `CROSS JOIN`, `USING`, cross-schema joins  
 ✅ SQL parameters — validated at compile time  
-✅ `ORDER BY`, `LIMIT`, `OFFSET`  
+✅ `WHERE`, `GROUP BY` / `HAVING` (non-grouped columns are an error), `ORDER BY`, `LIMIT`, `OFFSET`  
+✅ CTEs (`WITH`, `WITH RECURSIVE`), `UNION` / `INTERSECT` / `EXCEPT`, derived tables, scalar / `IN` / `EXISTS` subqueries in `WHERE`  
 ✅ Multi-schema databases (`auth.users`, `public.sales`)  
 ✅ Streaming results  
-✅ Computed expressions with operators (`price * quantity AS total`, `a + b AS sum`)
+✅ Computed expressions with operators (`price * quantity AS total`, `a + b AS sum`)  
+✅ Built-in functions of the PostgreSQL and SQLite catalogs: aggregates, window functions, text, date, JSON, array  
+✅ `INSERT`, `UPDATE`, `DELETE` with `RETURNING` and `ON CONFLICT` — values checked against the columns  
+✅ PostgreSQL enums — a column is the union of its labels, and a wrong label is an error  
+✅ PostgreSQL and SQLite — one dialect per migration chain
 
 ✅ Accessing a column that doesn't exist in the query result — compile-time error
 
 🚧 Not yet supported:
 
-- `GROUP BY` / `HAVING`
-- Built-in SQL functions — partial support only
 - User-defined functions
-- User-defined types — enums are surfaced as `string`
-- Nested subqueries
-- Better compile-time diagnostics when the SQL string itself is malformed — planned
+- Correlated subqueries in the select list, `LATERAL`, a comma-separated `FROM` list
+- `NULLS FIRST` / `NULLS LAST`, locking clauses (`FOR UPDATE`)
+- Typing `VALUES (…)` and `TABLE t` as queries
+- Engines other than PostgreSQL and SQLite
+- Error messages that point at the offending token inside the SQL string — planned
 
-For anything in the 🚧 list, `queryUntyped` is your bridge. You don't have to delay adopting the library — use typed queries where you can, untyped where you can't, and migrate as the parser grows.
+The exact list is in [docs/SUPPORTED-SQL.md](./docs/SUPPORTED-SQL.md). For anything in the 🚧 list, `queryUntyped` is your bridge. You don't have to delay adopting the library — use typed queries where you can, untyped where you can't, and migrate as the parser grows.
 
 ---
 
@@ -302,4 +310,4 @@ _SQL already was the right abstraction. It just needed types._
 
 ## Dialects: PostgreSQL and SQLite
 
-A migration chain targets exactly one engine, chosen by its driver: `dbtyper/postgres` (`postgresSqlDriver`) or `dbtyper/sqlite` (`betterSqlite3Driver`, `nodeSqliteDriver`). Every migration, query and stream of the chain is parsed in that dialect: PostgreSQL type names, casts and functions in one, type affinity, `?` parameters and SQLite functions in the other. SQL that only the other engine has fails with its own error code (1900, 1901). How dialect facts are kept is described in [ARCHITECTURE.md](./ARCHITECTURE.md).
+A migration chain targets exactly one engine, chosen by its driver: `dbtyper/postgres` (`postgresSqlDriver`) or `dbtyper/sqlite` (`betterSqlite3Driver`, `nodeSqliteDriver`). Every migration, query and stream of the chain is parsed in that dialect: PostgreSQL type names, casts and functions in one, type affinity, `?` parameters and SQLite functions in the other. SQL that only the other engine has fails with its own error code (1900, 1901). The default schema of a SQLite chain is `main`; on `node:sqlite`, more than one statement in a `query` or `stream` is a compile error. How dialect facts are kept is described in [ARCHITECTURE.md](./ARCHITECTURE.md).
