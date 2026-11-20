@@ -1,0 +1,11 @@
+{
+	// Half 1 of the stress type-check (#215): the heaviest files, listed by name. See DECISIONS.md "Stress type-check split".
+	"extends": "./tsconfig.json",
+	"include": [
+		"test/stress/params-150-parameters-postgres.test-d.ts",
+		"test/stress/grouped-select-320-items.test-d.ts",
+		"test/stress/chain-repeated-ddl-postgres.test-d.ts",
+		"test/stress/select-list-320-items.test-d.ts"
+	],
+	"exclude": []
+}

@@ -1,0 +1,12 @@
+{
+	// Half 2 of the stress type-check (#215): every stress file that half 1 (tsconfig.test-stress-1.json) does not list,
+	// so a new stress file lands here without a config change.
+	"extends": "./tsconfig.json",
+	"include": ["test/stress/**/*.ts"],
+	"exclude": [
+		"test/stress/params-150-parameters-postgres.test-d.ts",
+		"test/stress/grouped-select-320-items.test-d.ts",
+		"test/stress/chain-repeated-ddl-postgres.test-d.ts",
+		"test/stress/select-list-320-items.test-d.ts"
+	]
+}
