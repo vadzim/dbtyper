@@ -19,6 +19,7 @@ import type { SqlTypeShape, NonNull } from "../core/sql-type-shape.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { ParseSelectExpression } from "./parse-select.ts"
 import type { ParseCreateTableBody } from "./parse-create-table-columns.ts"
+import type { UnionToStringTuple } from "./set-operation-types.ts"
 
 export type ParseCreateTable<
 	Tokens extends ParserMonad,
@@ -65,6 +66,35 @@ export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pend
 	: null
 
 /**
+ * SQLT-28, #151: the declared spelling of a column whose name token was written in another case (SQLite keeps it as
+ * `written`, see the lexer) travels in the database state like `pendingConstraints`, and ends in the table's `spelled`.
+ */
+export type WithColumnSpelling<Db extends JsqlDatabaseShape, Name extends string, Tok> = Tok extends {
+	written: infer W extends string
+}
+	? Db extends { pendingSpelled: infer P }
+		? Omit<Db, "pendingSpelled"> & { pendingSpelled: P & Record<Name, W> }
+		: Db & { pendingSpelled: Record<Name, W> }
+	: Db
+
+/** The spellings collected for the columns `Names` of the table being created (`{}` when none). */
+export type PendingSpelled<Db extends JsqlDatabaseShape, Names extends string> = Db extends {
+	pendingSpelled: infer P
+}
+	? { [K in keyof P & Names]: P[K] }
+	: {}
+
+/** The database state without the pending CREATE TABLE facts. */
+export type WithoutPending<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: string } | { pendingSpelled: unknown }
+	? Omit<Db, "pendingConstraints" | "pendingSpelled"> extends infer Clean extends JsqlDatabaseShape
+		? Clean
+		: Db
+	: Db
+
+/** The column names of a column stack in declaration order (#150). */
+export type StackOrder<Stack extends readonly ColumnDef[]> = { [I in keyof Stack]: Stack[I][0] }
+
+/**
  * One column while it is being parsed (CORE-15): name, type (its `nullable` is the declared NULL / NOT NULL),
  * NOT NULL by any constraint (NOT NULL, PRIMARY KEY; CORE-1), has a DEFAULT, is a generated column (CORE-18).
  */
@@ -89,9 +119,18 @@ type ParseCreateTableQualifiedWhenSchKnown<
 > =
 	JsqlDbGetData<Db, Sch, Tab> extends infer Entry
 		? Entry extends null
-			? ParseCreateTableOpenParenOrAs<R, Db, Sch, Tab, IfNotExists, Params>
+			? ParseCreateTableOpenParenOrAs<R, Db, Sch, Tab, Params>
 			: IfNotExists extends true
-				? [R, Db, null]
+				? // #172: the statement is still read and checked (as if the table were new), and the schema is kept
+					ParseCreateTableOpenParenOrAs<
+						R,
+						JsqlDbReplaceData<Db, Sch, Tab, null>,
+						Sch,
+						Tab,
+						Params
+					> extends [infer R2 extends ParserMonad, unknown, infer Err]
+					? [R2, Db, Err]
+					: never
 				: SkipFailedStatement<R, Db, FormatError<Errors["TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS"], []>>
 		: never
 
@@ -132,12 +171,11 @@ type ParseCreateTableOpenParenOrAs<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
-	IfNotExists extends boolean,
 	Params extends ExpressionParamsShape,
 > =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? ParseCreateTableAsSelect<SkipToken<Tokens>, Db, Schema, Table, Params>
-		: ParseCreateTableOpenParen<Tokens, Db, Schema, Table, IfNotExists>
+		: ParseCreateTableOpenParen<Tokens, Db, Schema, Table>
 
 /** `CREATE TABLE name AS SELECT …` (CORE-19): the columns are the SELECT's output columns, all nullable. */
 type ParseCreateTableAsSelect<
@@ -172,15 +210,31 @@ type ParseCreateTableAsSelectRun<
 						Db,
 						Schema,
 						Table,
-						DialectFact<Db, "rowidTables"> extends true
-							? JsqlCreateRowidTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
-							: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }>
+						CreateTableAsShape<Db, Res>
 					> extends infer NewDb extends JsqlDatabaseShape
 					? PeekToken<R> extends TokenKey<";"> | TokenEot
 						? [SkipToken<R>, NewDb, null]
 						: SkipFailedStatement<R, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["CREATE TABLE"]>>
 					: never
 				: never
+		: never
+
+/**
+ * CORE-19: the table of `CREATE TABLE … AS SELECT`: the output columns (all nullable) in output order (#150). Where names
+ * match case-insensitively (SQLite, fact `foldQuoted`), the keys are lower-cased and the output names kept as the
+ * declared spellings (SQLT-28), as for a column of CREATE TABLE.
+ */
+type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStatementResult> =
+	(Res extends { order: infer O extends readonly string[] } ? O : UnionToStringTuple<keyof Res["returning"] & string>) extends infer Order extends readonly string[]
+		? DialectFact<Db, "lexer">["foldQuoted"] extends true
+			? JsqlCreateRowidTable<
+					{ [K in keyof Res["returning"] as Lowercase<K & string>]: NullableType<Res["returning"][K]> },
+					null,
+					never,
+					{ [I in keyof Order]: Lowercase<Order[I]> },
+					{ [K in keyof Res["returning"] & string as Lowercase<K> extends K ? never : Lowercase<K>]: K }
+				>
+			: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
 		: never
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
@@ -192,16 +246,11 @@ type ParseCreateTableOpenParen<
 	Db extends JsqlDatabaseShape,
 	Schema extends string,
 	Table extends string,
-	IfNotExists extends boolean,
 > =
 	PeekToken<Tokens> extends infer OpenTok
 		? SkipToken<Tokens> extends infer AfterOpen extends ParserMonad
 			? OpenTok extends TokenKey<"(">
-				? IfNotExists extends true
-					? JsqlDbGetData<Db, Schema, Table> extends null
-						? ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
-						: ParseCreateTableBodySkipOnly<AfterOpen, Db>
-					: ParseCreateTableBody<AfterOpen, Db, Schema, Table, []>
+				? ParseCreateTableBody<AfterOpen, WithoutPending<Db>, Schema, Table, []>
 				: SkipFailedExpression<
 							AfterOpen,
 							FormatError<Errors["EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE"], []>
@@ -209,13 +258,6 @@ type ParseCreateTableOpenParen<
 					? [Rest, Db, Err]
 					: never
 			: never
-		: never
-
-type ParseCreateTableBodySkipOnly<Tokens extends ParserMonad, Db extends JsqlDatabaseShape> =
-	SkipBracketedUntil<Tokens, TokenKey<";">> extends [infer AfterSemi extends ParserMonad, infer R]
-		? R extends DbtyperErrorShape
-			? [SkipToken<AfterSemi>, Db, R]
-			: [SkipToken<AfterSemi>, Db, null]
 		: never
 
 /** After `)`, read `;` or end. */
