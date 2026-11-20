@@ -25,8 +25,10 @@ try {
 		await admin.unsafe(`create database ${database}`)
 		const url = new URL(serverUrl)
 		url.pathname = `/${database}`
-		const { status } = spawnSync(process.execPath, args, {
+		const { status } = spawnSync(process.execPath, ["--test-timeout=240000", ...args], {
 			stdio: "inherit",
+			timeout: 300_000, // a hung suite (an open handle) fails the run instead of waiting for ever
+			killSignal: "SIGKILL",
 			env: { ...process.env, DBTYPER_PG_URL: url.toString() },
 		})
 		if (status !== 0) failed = true

@@ -58,6 +58,7 @@ jobs:
     # integration tests of the two Postgres examples). scripts/test-real-postgres.ts creates a database per suite.
     real-postgres:
         runs-on: ubuntu-latest
+        timeout-minutes: 15
 
         services:
             postgres:

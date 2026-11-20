@@ -1,6 +1,6 @@
 // PGT-8, PGT-13, PGT-15 (#159, #171; review #175 batch 4): PostgreSQL type names of several words, interval fields,
 // ALTER TYPE … RENAME VALUE / ADD VALUE IF NOT EXISTS | BEFORE | AFTER, composite types.
-import { sqlMigrations, type GetApplyError } from "../../src/core/sql-database.ts"
+import { sqlMigrations, type GetApplyError, type GetQueryError } from "../../src/core/sql-database.ts"
 import type { DbtyperError } from "../../src/dbtyper-error.ts"
 import { mockDriver } from "../test-utils/test-databases.ts"
 import { expectType, toBe } from "../test-utils/type-test-utils.ts"
@@ -72,3 +72,19 @@ expectType<M<`create type pair as (a int); create type pair as (b int);`>>(
 	toBe<DbtyperError<3205, "Type already exists; use IF NOT EXISTS">>(),
 )
 expectType<M<`create type pair as (a int); create type if not exists pair as (b int); drop type pair;`>>(toBe<null>())
+
+// PGT-15: the whole Check line on its own table: `vector(3)` applies, selecting it is 3506, `vec::text` is a string
+const vecDb = base.apply(`create table t (id integer not null, vec vector(3) not null)`)
+const vecD = vecDb.database()
+const _vid = await vecD.query(`select id from t`)
+expectType<typeof _vid>(toBe<{ id: number }[]>())
+expectType<GetQueryError<typeof vecD, `select vec from t`>>(
+	toBe<
+		DbtyperError<
+			3506,
+			"No TypeScript type for SQL type vector in the driver's type map; select it with a cast, e.g. `::text`"
+		>
+	>(),
+)
+const _vtext = await vecD.query(`select vec::text as v from t`)
+expectType<typeof _vtext>(toBe<{ v: string }[]>())
