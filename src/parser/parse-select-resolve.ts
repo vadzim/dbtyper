@@ -97,7 +97,7 @@ export type AddViewReads<Res, W> = W extends { viewTypes: infer U extends string
 	: Res
 
 /** The reads of the JOIN … ON conditions, kept by {@link WithJoinReads} as a hidden scope entry. */
-export type JoinReadsKey = "__view_reads__"
+type JoinReadsKey = "__view_reads__"
 
 /** `Scope` with the user types `W` (`ViewReads`) read by a JOIN … ON condition added to its hidden entry. */
 export type WithJoinReads<Scope extends ScopeMap, W> = W extends { viewTypes: infer U extends string }
