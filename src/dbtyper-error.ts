@@ -941,6 +941,13 @@ const errors = {
 		code: 2406,
 		msg: ["internal: a parameter was read"],
 	},
+	TOO_MANY_PARAMETERS: {
+		code: 2407,
+		msg: [
+			"A statement may have at most ",
+			" positional parameters; pass fewer values or split it into several statements",
+		],
+	},
 
 	// Type System Errors
 	// Type Compatibility
@@ -1063,13 +1070,14 @@ const errors = {
 		code: 2803,
 		msg: ["LIKE left operand must be text"],
 	},
-	CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
+	// EXPR-Q6: text || <any non-array type> is text, so 2804 and 2805 are retired
+	OBSOLETE_2804_CANNOT_CONCATENATE_TEXT_WITH_TYPE: {
 		code: 2804,
-		msg: ["Cannot concatenate text with ", ""],
+		msg: ["Obsolete, no longer reported: Cannot concatenate text with a type"],
 	},
-	CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
+	OBSOLETE_2805_CANNOT_CONCATENATE_TYPE_WITH_TEXT: {
 		code: 2805,
-		msg: ["Cannot concatenate ", " with text"],
+		msg: ["Obsolete, no longer reported: Cannot concatenate a type with text"],
 	},
 	LIKE_PATTERN_MUST_BE_TEXT: {
 		code: 2806,
@@ -1707,6 +1715,18 @@ const errors = {
 	EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT: {
 		code: 5009,
 		msg: ["Expected LIKE, IN or BETWEEN after NOT"],
+	},
+	EXPRESSION_NESTED_TOO_DEEP: {
+		code: 5020,
+		msg: ["Parentheses are nested more than ", " levels deep; simplify the expression or split the query"],
+	},
+	EXPRESSION_CHAIN_TOO_LONG: {
+		code: 5021,
+		msg: ["More than ", " chained `-` operators; split the expression into parenthesized groups"],
+	},
+	EXPECTED_COLLATION_NAME: {
+		code: 5022,
+		msg: ["Expected a collation name after COLLATE"],
 	},
 	EXPECTED_FROM_AFTER_IS_DISTINCT: {
 		code: 5008,

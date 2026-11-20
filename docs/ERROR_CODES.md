@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **319 active error codes** and 70 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **321 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -23,11 +23,11 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2100-2199 | Validation/Statement          |           10 |
 | 2200-2299 | Resolution/Table-Schema       |            4 |
 | 2300-2399 | Resolution/Column             |            4 |
-| 2400-2499 | Resolution/Other              |            5 |
+| 2400-2499 | Resolution/Other              |            6 |
 | 2500-2599 | Type/Compatibility            |           11 |
 | 2600-2699 | Type/Boolean                  |            7 |
 | 2700-2799 | Type/NULL Handling            |            5 |
-| 2800-2899 | Type/Text Operations          |            7 |
+| 2800-2899 | Type/Text Operations          |            5 |
 | 2900-2999 | Type/Numeric Operations       |            1 |
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
@@ -49,7 +49,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 4700-4799 | DML/Array                     |            3 |
 | 4800-4899 | DML/Operator                  |            5 |
 | 4900-4999 | DML/EXISTS                    |            2 |
-| 5000-5099 | DML/Misc Expression           |           10 |
+| 5000-5099 | DML/Misc Expression           |           13 |
 | 5100-5199 | Type-Data/VARCHAR-NUMERIC     |            6 |
 | 5300-5399 | Type-Data/FETCH-LIMIT         |            4 |
 | 5400-5499 | Type-Data/Misc                |            9 |
@@ -253,13 +253,14 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 2400-2499: Resolution/Other
 
-| Code | Name                                  | Message                                                                     |
-| ---- | ------------------------------------- | --------------------------------------------------------------------------- |
-| 2400 | `UNKNOWN_QUERY_PARAMETER`             | Unknown query parameter: …                                                  |
-| 2403 | `POSITIONAL_PARAMETER_REQUIRES_ARRAY` | Positional parameter (?) requires array of parameters, not named parameters |
-| 2404 | `POSITIONAL_PARAMETER_OUT_OF_BOUNDS`  | Positional parameter index … is out of bounds                               |
-| 2405 | `CANNOT_INFER_PARAMETER_TYPE`         | cannot infer the type of parameter …; use CAST(… AS …)                      |
-| 2406 | `PARAMETER_PROBE_READ`                | internal: a parameter was read                                              |
+| Code | Name                                  | Message                                                                                                     |
+| ---- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 2400 | `UNKNOWN_QUERY_PARAMETER`             | Unknown query parameter: …                                                                                  |
+| 2403 | `POSITIONAL_PARAMETER_REQUIRES_ARRAY` | Positional parameter (?) requires array of parameters, not named parameters                                 |
+| 2404 | `POSITIONAL_PARAMETER_OUT_OF_BOUNDS`  | Positional parameter index … is out of bounds                                                               |
+| 2405 | `CANNOT_INFER_PARAMETER_TYPE`         | cannot infer the type of parameter …; use CAST(… AS …)                                                      |
+| 2406 | `PARAMETER_PROBE_READ`                | internal: a parameter was read                                                                              |
+| 2407 | `TOO_MANY_PARAMETERS`                 | A statement may have at most … positional parameters; pass fewer values or split it into several statements |
 
 ## 2500-2599: Type/Compatibility
 
@@ -307,8 +308,6 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2801 | `CANNOT_CONCATENATE_ARRAY_WITH_TEXT`        | Cannot concatenate array with text      |
 | 2802 | `CANNOT_CONCATENATE_TEXT_WITH_ARRAY`        | Cannot concatenate text with array      |
 | 2803 | `LIKE_LEFT_OPERAND_MUST_BE_TEXT`            | LIKE left operand must be text          |
-| 2804 | `CANNOT_CONCATENATE_TEXT_WITH_TYPE`         | Cannot concatenate text with …          |
-| 2805 | `CANNOT_CONCATENATE_TYPE_WITH_TEXT`         | Cannot concatenate … with text          |
 | 2806 | `LIKE_PATTERN_MUST_BE_TEXT`                 | LIKE pattern must be text               |
 
 ## 2900-2999: Type/Numeric Operations
@@ -553,6 +552,9 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 5007 | `UNSUPPORTED_PARENTHESIZED_EXPRESSION`                | Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped |
 | 5008 | `EXPECTED_FROM_AFTER_IS_DISTINCT`                     | Expected FROM after IS DISTINCT                                                                                |
 | 5009 | `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`               | Expected LIKE, IN or BETWEEN after NOT                                                                         |
+| 5020 | `EXPRESSION_NESTED_TOO_DEEP`                          | Parentheses are nested more than … levels deep; simplify the expression or split the query                     |
+| 5021 | `EXPRESSION_CHAIN_TOO_LONG`                           | More than … chained \`-\` operators; split the expression into parenthesized groups                            |
+| 5022 | `EXPECTED_COLLATION_NAME`                             | Expected a collation name after COLLATE                                                                        |
 
 ## 5100-5199: Type-Data/VARCHAR-NUMERIC
 
@@ -650,6 +652,8 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 2305 | `UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET`                 |
 | 2402 | `UNKNOWN_WINDOW_FUNCTION`                                     |
 | 2506 | `INCOMPATIBLE_TYPES_IN_JOIN_ON`                               |
+| 2804 | `CANNOT_CONCATENATE_TEXT_WITH_TYPE`                           |
+| 2805 | `CANNOT_CONCATENATE_TYPE_WITH_TEXT`                           |
 | 2807 | `FUNCTION_EXPECTS_TEXT_ARGUMENT`                              |
 | 3606 | `INVALID_LAG_LEAD_ARGUMENTS`                                  |
 | 3701 | `EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA`       |

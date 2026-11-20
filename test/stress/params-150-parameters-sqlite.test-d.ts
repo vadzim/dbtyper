@@ -660,7 +660,7 @@ expectType<
 			string,
 		]
 	>
->(toBe<DbtyperError<2509, "Incompatible value type for parameter $150">>())
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter ?150">>())
 // @ts-expect-error
 await _db.query(whereOrSql, [
 	0,
@@ -987,7 +987,7 @@ expectType<
 			string,
 		]
 	>
->(toBe<DbtyperError<2509, "Incompatible value type for parameter $150">>())
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter ?150">>())
 // @ts-expect-error
 await _db.query(insSql, [
 	0,
@@ -1454,7 +1454,7 @@ expectType<
 			string,
 		]
 	>
->(toBe<DbtyperError<2509, "Incompatible value type for parameter $150">>())
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter ?150">>())
 // @ts-expect-error
 await _db.query(multiSql, [
 	0,
@@ -1780,7 +1780,7 @@ expectType<
 			string,
 		]
 	>
->(toBe<DbtyperError<2509, "Incompatible value type for parameter $150">>())
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter ?150">>())
 // @ts-expect-error
 await _db.query(upsertSql, [
 	0,
@@ -2575,7 +2575,7 @@ expectType<
 			string,
 		]
 	>
->(toBe<DbtyperError<2509, "Incompatible value type for parameter $150">>())
+>(toBe<DbtyperError<2509, "Incompatible value type for parameter ?150">>())
 // @ts-expect-error
 await _db.query(inlSql, [
 	0,

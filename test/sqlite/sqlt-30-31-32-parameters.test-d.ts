@@ -28,7 +28,7 @@ expectType<GetQueryError<typeof db, `select name from users where id = @id`, { i
 // @ts-expect-error
 db.query(`select name from users where id = ?1 or score > ?2`, [1, "x"])
 expectType<GetQueryError<typeof db, `select name from users where id = ?1 or score > ?2`, [number, string]>>(
-	toBe<DbtyperError<2509, "Incompatible value type for parameter $2">>(),
+	toBe<DbtyperError<2509, "Incompatible value type for parameter ?2">>(),
 )
 // @ts-expect-error
 db.query(`select name from users where id = :id`, { other: 1 })
