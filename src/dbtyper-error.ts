@@ -1655,6 +1655,18 @@ const errors = {
 		code: 5009,
 		msg: ["Expected LIKE, IN or BETWEEN after NOT"],
 	},
+	EXPRESSION_NESTED_TOO_DEEP: {
+		code: 5020,
+		msg: ["Parentheses are nested more than ", " levels deep; simplify the expression or split the query"],
+	},
+	EXPRESSION_CHAIN_TOO_LONG: {
+		code: 5021,
+		msg: ["More than ", " chained `-` operators; split the expression into parenthesized groups"],
+	},
+	EXPECTED_COLLATION_NAME: {
+		code: 5022,
+		msg: ["Expected a collation name after COLLATE"],
+	},
 	EXPECTED_FROM_AFTER_IS_DISTINCT: {
 		code: 5008,
 		msg: ["Expected FROM after IS DISTINCT"],

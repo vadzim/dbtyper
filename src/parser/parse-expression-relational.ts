@@ -156,7 +156,11 @@ type ParseAnyAllSomeAfterOpPg<Tokens extends ParserMonad, L extends ScalarExprAs
 			: never
 		: never
 
-type ParseAfterAddScalarRelIsInUntyped<Tokens extends ParserMonad, L extends ScalarExprAst, Env extends ExprParseEnv> =
+export type ParseAfterAddScalarRelIsInUntyped<
+	Tokens extends ParserMonad,
+	L extends ScalarExprAst,
+	Env extends ExprParseEnv,
+> =
 	PeekToken<Tokens> extends infer P
 		? IsRelOp<P> extends true
 			? SkipToken<Tokens> extends infer R2 extends ParserMonad
