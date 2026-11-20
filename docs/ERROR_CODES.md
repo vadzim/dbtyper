@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **306 active error codes** and 68 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **307 active error codes** and 68 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -19,7 +19,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1600-1699 | Parser/ALTER TABLE            |            5 |
 | 1700-1799 | Parser/DROP TABLE             |            4 |
 | 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
-| 1900-1999 | Other-dialect syntax          |           15 |
+| 1900-1999 | Other-dialect syntax          |           16 |
 | 2100-2199 | Validation/Statement          |           10 |
 | 2200-2299 | Resolution/Table-Schema       |            4 |
 | 2300-2399 | Resolution/Column             |            4 |
@@ -210,6 +210,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1920 | `UNKNOWN_CONFLICT_ACTION`                 | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                                                          |
 | 1930 | `UNKNOWN_STATEMENT`                       | Unknown statement keyword …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                 |
 | 1931 | `UNKNOWN_STATEMENT_DID_YOU_MEAN`          | Unknown statement keyword …; did you mean …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+| 1932 | `MULTIPLE_STATEMENTS_IN_QUERY`            | This driver runs only the first statement of a text; send one statement per query or stream call                             |
 
 ## 2100-2199: Validation/Statement
 
