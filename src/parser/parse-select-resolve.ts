@@ -96,6 +96,13 @@ export type AddViewReads<Res, W> = W extends { viewTypes: infer U extends string
 	? Res & { user_types: { [K in U]: K } }
 	: Res
 
+/** The union of two `ViewReads` results. */
+export type MergeViewReads<A, B> = A extends { viewTypes: infer U1 extends string }
+	? B extends { viewTypes: infer U2 extends string }
+		? { viewTypes: U1 | U2 }
+		: A
+	: B
+
 /** The reads of the JOIN … ON conditions, kept by {@link WithJoinReads} as a hidden scope entry. */
 type JoinReadsKey = "__view_reads__"
 

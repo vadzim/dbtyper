@@ -85,3 +85,26 @@ expectType<Unknown<GetQueryError<typeof _names, OnConstraint<"a_b", "a_b_c_key">
 )
 // ALTER TABLE: a_b_c(a) is a_b_c_a_key, nobody has it
 expectType<Known<GetQueryError<typeof _names, OnConstraint<"a_b_c", "a_b_c_a_key">>>>(toBe<true>())
+
+// #212: ORDER BY and DISTINCT ON read the domain too
+const base212 = sqlMigrations({ driver: mockDriver }).apply(
+	`create domain email as text;
+	 create table t (id integer not null, e email);
+	 create view v_order as select id from t order by e;
+	 create view v_order2 as select id from t order by id, lower(e) desc;
+	 create view v_distinct as select distinct on (e) id from t;
+	 create view v_distinct_order as select distinct on (id) id from t order by id, e;
+	 create view v_arm_order as select id from t where id > 0 union select id from t order by id;
+	 create view v_alias as select id as e from t order by e;
+	 create view v_plain as select id from t order by id;`,
+)
+const noEmail212 = base212.apply(`drop domain email cascade;`).database()
+type Gone212<V extends string> = Code<GetQueryError<typeof noEmail212, `select count(*) as n from ${V}`>>
+expectType<Gone212<"v_order">>(toBe<2200>())
+expectType<Gone212<"v_order2">>(toBe<2200>())
+expectType<Gone212<"v_distinct">>(toBe<2200>())
+expectType<Gone212<"v_distinct_order">>(toBe<2200>())
+const _alias212 = await noEmail212.query(`select * from v_alias`)
+expectType<typeof _alias212>(toBe<Array<{ e: number }>>())
+const _plain212 = await noEmail212.query(`select * from v_plain`)
+expectType<typeof _plain212>(toBe<Array<{ id: number }>>())
