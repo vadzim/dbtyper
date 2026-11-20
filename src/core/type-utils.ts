@@ -27,7 +27,7 @@ export type ReplaceProp<T, K extends string | symbol, V> = Omit<T, K> & Record<K
  * Without it each ReplaceProp layer keeps pointing at the previous one, and reading a property
  * after ~50 chained updates (STMT-16: 60 statements in one migration) exceeds the instantiation depth.
  */
-export type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
+type ForceProps<F> = F extends Record<keyof F, infer _V> ? F : F
 
 export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void
 	? I

@@ -394,10 +394,10 @@ type SelectAfterWhereAndGroupHaving<
 
 type SetOperationToken = TokenKey<"union" | "intersect" | "except">
 
-export type SelectOutputNames<Res> = Res extends { returning: infer Ret } ? keyof Ret & string : never
+type SelectOutputNames<Res> = Res extends { returning: infer Ret } ? keyof Ret & string : never
 
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
-export type ParseSelectTrailingClauses<
+type ParseSelectTrailingClauses<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
