@@ -3,7 +3,8 @@ import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { SkipFailedExpressionWithEnv } from "./skip-statement.ts"
 import type { ExprParseEnv, ScalarExprAst } from "./parse-expression-ast.ts"
-import type { ParseNotScalarUntyped } from "./parse-expression-relational.ts"
+import type { ParseAfterAddScalarRelIsInUntyped, ParseNotScalarUntyped } from "./parse-expression-relational.ts"
+import type { ParseOtherOpAfterOperand } from "./parse-expression-arith.ts"
 
 /**
  * `a AND b AND c …` / `a OR b OR c …` become a BALANCED tree of binary nodes (depth log2 n), not the left-nested one.
@@ -109,5 +110,40 @@ export type ParseOrScalarUntyped<Tokens extends ParserMonad, Env extends ExprPar
 			? SkipFailedExpressionWithEnv<R0, E0, Env0>
 			: E0 extends ScalarExprAst
 				? ParseOrLoopScalarUntyped<R0, [E0], [], Env0>
+				: never
+		: never
+
+/**
+ * The rest of an expression after its first operand, which a caller has parsed already: operators, comparison,
+ * `AND`, `OR`. Used to continue after redundant parentheses (parse-expression-primary.ts).
+ */
+export type ParseOrAfterOperand<Tokens extends ParserMonad, First extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParseOtherOpAfterOperand<Tokens, First, Env> extends [
+		infer R1 extends ParserMonad,
+		infer E1,
+		infer Env1 extends ExprParseEnv,
+	]
+		? E1 extends DbtyperErrorShape
+			? [R1, E1, Env1]
+			: E1 extends ScalarExprAst
+				? ParseAfterAddScalarRelIsInUntyped<R1, E1, Env1> extends [
+						infer R2 extends ParserMonad,
+						infer E2,
+						infer Env2 extends ExprParseEnv,
+					]
+					? E2 extends DbtyperErrorShape
+						? [R2, E2, Env2]
+						: E2 extends ScalarExprAst
+							? ParseAndLoopScalarUntyped<R2, [E2], [], Env2> extends [
+									infer R3 extends ParserMonad,
+									infer E3,
+									infer Env3 extends ExprParseEnv,
+								]
+								? E3 extends DbtyperErrorShape
+									? [R3, E3, Env3]
+									: ParseOrLoopScalarUntyped<R3, [E3], [], Env3>
+								: never
+							: never
+					: never
 				: never
 		: never

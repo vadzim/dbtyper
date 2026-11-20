@@ -20,7 +20,7 @@ import type { SkipBracketedUntil, SkipFailedExpressionWithEnv } from "./skip-sta
 import type { ExprParseEnv, ScalarIdentParts, ScalarExprAst } from "./parse-expression-ast.ts"
 import type { ParseCastKeywordOperand, ParsePgCastSuffixTail } from "./parse-expression-cast.ts"
 import type { ParseCaseAfterCaseKw } from "./parse-expression-predicates.ts"
-import type { ParseOrScalarUntyped } from "./parse-expression-bool.ts"
+import type { ParseOrAfterOperand, ParseOrScalarUntyped } from "./parse-expression-bool.ts"
 import type {
 	TypedLiteralName,
 	TypedLiteralTail,
@@ -147,7 +147,147 @@ export type ParsePostfixArrayIndexTail<
 						: never
 				: never
 			: never
+		: ParseCollateTail<Tokens, Acc, Env>
+
+/**
+ * `<expr> COLLATE <name>` (name: identifier or quoted identifier): a postfix that keeps the operand's type, so it is
+ * read and dropped. May repeat (`x COLLATE a COLLATE b`).
+ */
+type ParseCollateTail<Tokens extends ParserMonad, Acc extends ScalarExprAst, Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenIdent<"collate">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? AsIdent<PeekToken<R1>> extends TokenIdent<string>
+				? ParseCollateTail<SkipToken<R1>, Acc, Env>
+				: SkipFailedExpressionWithEnv<R1, FormatError<Errors["EXPECTED_COLLATION_NAME"], []>, Env>
+			: never
 		: [Tokens, Acc, Env]
+
+/** How many parentheses may nest before the parser gives up with a dbtyper error instead of TS2589 (#174). */
+type ParenNestingLimit = 6
+
+type NestedEnv<Env extends ExprParseEnv> = Env extends { noPostfixNot: true }
+	? { db: Env["db"]; params: Env["params"]; outerScope: Env["outerScope"]; noPostfixNot: true; depth: NextDepth<Env> }
+	: { db: Env["db"]; params: Env["params"]; outerScope: Env["outerScope"]; depth: NextDepth<Env> }
+
+type NextDepth<Env extends ExprParseEnv> = Env extends { depth: infer D extends readonly unknown[] } ? [...D, 0] : [0]
+
+type EnvDepthIsAtLimit<Env extends ExprParseEnv> = Env extends { depth: infer D extends readonly unknown[] }
+	? D["length"] extends ParenNestingLimit
+		? true
+		: false
+	: false
+
+/** `(` was skipped (`Ri` follows it, not `SELECT`/`WITH`): the expression, then `)`. */
+type ParseParenExprPlain<Ri extends ParserMonad, Env extends ExprParseEnv> =
+	EnvDepthIsAtLimit<Env> extends true
+		? SkipFailedExpressionWithEnv<
+				Ri,
+				FormatError<Errors["EXPRESSION_NESTED_TOO_DEEP"], [`${ParenNestingLimit}`]>,
+				Env
+			>
+		: ParseOrScalarUntyped<Ri, NestedEnv<Env>> extends [infer Rj extends ParserMonad, infer Ej, infer _EnvJ]
+			? Ej extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<Rj, Ej, Env>
+				: PeekToken<Rj> extends infer TokCl
+					? SkipToken<Rj> extends infer Rk2 extends ParserMonad
+						? TokCl extends TokenKey<")">
+							? [Rk2, Ej, Env]
+							: SkipFailedExpressionWithEnv<Rk2, FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>, Env>
+						: never
+					: never
+			: never
+
+/** After a parenthesised group inside redundant parentheses: its postfixes (`::`, `[]`, COLLATE), then the rest of the expression. */
+type ContinueAfterGroup<Tokens extends ParserMonad, Group extends ScalarExprAst, Env extends ExprParseEnv> =
+	ParsePgCastSuffixTail<Tokens, Group> extends [infer R1 extends ParserMonad, infer G1]
+		? G1 extends ScalarExprAst
+			? ParsePostfixArrayIndexTail<R1, G1, Env> extends [
+					infer R2 extends ParserMonad,
+					infer G2,
+					infer Env2 extends ExprParseEnv,
+				]
+				? G2 extends ScalarExprAst
+					? ParseOrAfterOperand<R2, G2, Env2>
+					: [R2, G2, Env2]
+				: never
+			: [R1, G1, Env]
+		: never
+
+/**
+ * Closes the parentheses that {@link ParseParenCollapsed} opened. `Pending` has one element for each open parenthesis
+ * that is not closed yet; `Inner` is the expression of the innermost one.
+ */
+type CloseCollapsedParens<
+	Tokens extends ParserMonad,
+	Inner extends ScalarExprAst,
+	Pending extends readonly unknown[],
+	Env extends ExprParseEnv,
+> =
+	PeekToken<Tokens> extends TokenKey<")">
+		? SkipToken<Tokens> extends infer R1 extends ParserMonad
+			? Pending extends readonly [unknown, ...infer Rest]
+				? Rest extends readonly []
+					? [R1, Inner, Env]
+					: PeekToken<R1> extends TokenKey<")">
+						? CloseCollapsedParens<R1, Inner, Rest, Env>
+						: ContinueAfterGroup<R1, Inner, Env> extends [
+									infer R2 extends ParserMonad,
+									infer E2,
+									infer EnvC extends ExprParseEnv,
+							  ]
+							? E2 extends DbtyperErrorShape
+								? SkipFailedExpressionWithEnv<R2, E2, EnvC>
+								: E2 extends ScalarExprAst
+									? CloseCollapsedParens<R2, E2, Rest, Env>
+									: never
+							: never
+				: never
+			: never
+		: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>, Env>
+
+/**
+ * `((( expr )))`: the opening parentheses are counted in a loop and the expression is parsed once, so redundant
+ * parentheses do not nest (nesting costs about 10 instantiation levels each; 9 gave TS2589, #174). Closing them is a
+ * loop too ({@link CloseCollapsedParens}), which also reads what follows a group inside another (`((a) + b)`).
+ * The monad is not copied, so there is no way back: every case is handled in the one pass.
+ */
+type ParseParenCollapsed<Tokens extends ParserMonad, Opened extends readonly unknown[], Env extends ExprParseEnv> =
+	PeekToken<Tokens> extends TokenKey<"(">
+		? ParseParenCollapsed<SkipToken<Tokens>, [...Opened, 0], Env>
+		: PeekToken<Tokens> extends TokenKey<"select" | "with">
+			? ParseParenScalarSelect<Tokens, Env["db"], Env["params"], Env["outerScope"]> extends [
+					infer Rk extends ParserMonad,
+					infer Sub,
+				]
+				? Sub extends DbtyperErrorShape
+					? SkipFailedExpressionWithEnv<Rk, Sub, Env>
+					: Sub extends JsqlSelectStatementResult
+						? Opened extends readonly [unknown, ...infer Rest]
+							? ContinueAfterGroup<Rk, { kind: "scalar_subquery"; sel: Sub }, Env> extends [
+									infer R2 extends ParserMonad,
+									infer E2,
+									infer EnvC extends ExprParseEnv,
+								]
+								? E2 extends DbtyperErrorShape
+									? SkipFailedExpressionWithEnv<R2, E2, EnvC>
+									: E2 extends ScalarExprAst
+										? CloseCollapsedParens<R2, E2, Rest, Env>
+										: never
+								: never
+							: never
+						: never
+				: never
+			: ParseOrScalarUntyped<Tokens, Env> extends [
+						infer Rj extends ParserMonad,
+						infer Ej,
+						infer EnvJ extends ExprParseEnv,
+				  ]
+				? Ej extends DbtyperErrorShape
+					? SkipFailedExpressionWithEnv<Rj, Ej, EnvJ>
+					: Ej extends ScalarExprAst
+						? CloseCollapsedParens<Rj, Ej, Opened, Env>
+						: never
+				: never
 
 type TryParenOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	PeekToken<Tokens> extends TokenKey<"(">
@@ -174,25 +314,9 @@ type TryParenOperandScalarUntyped<Tokens extends ParserMonad, Env extends ExprPa
 								? [Rw, { kind: "scalar_subquery"; sel: Subw }, Env]
 								: never
 						: never
-					: ParseOrScalarUntyped<Ri, Env> extends [
-								infer Rj extends ParserMonad,
-								infer Ej,
-								infer EnvJ extends ExprParseEnv,
-						  ]
-						? Ej extends DbtyperErrorShape
-							? SkipFailedExpressionWithEnv<Rj, Ej, EnvJ>
-							: PeekToken<Rj> extends infer TokCl
-								? SkipToken<Rj> extends infer Rk2 extends ParserMonad
-									? TokCl extends TokenKey<")">
-										? [Rk2, Ej, EnvJ]
-										: SkipFailedExpressionWithEnv<
-												Rk2,
-												FormatError<Errors["EXPECTED_CLOSE_PAREN"], []>,
-												EnvJ
-											>
-									: never
-								: never
-						: never
+					: PeekToken<Ri> extends TokenKey<"(">
+						? ParseParenCollapsed<Ri, [0], Env>
+						: ParseParenExprPlain<Ri, Env>
 			: never
 		: never
 
@@ -303,9 +427,30 @@ export type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env exte
 												infer EnvCall extends ExprParseEnv,
 											]
 											? Call extends ScalarExprAst
-												? PeekToken<Rcall> extends ArithOpToken
-													? ParseArithTailAfterFirstScalarUntyped<Rcall, Call, EnvCall> // `now() - interval '1 day'`, `count(*) - 1`
-													: [Rcall, Call, EnvCall]
+												? PeekToken<Rcall> extends TokenKey<"::"> | TokenIdent<"collate">
+													? ParsePgCastSuffixTail<Rcall, Call> extends [
+															infer Rcs extends ParserMonad,
+															infer Casted extends ScalarExprAst,
+														]
+														? ParseCollateTail<Rcs, Casted, EnvCall> extends [
+																infer Rcc extends ParserMonad,
+																infer CallC,
+																infer EnvCc extends ExprParseEnv,
+															]
+															? CallC extends ScalarExprAst
+																? PeekToken<Rcc> extends ArithOpToken
+																	? ParseArithTailAfterFirstScalarUntyped<
+																			Rcc,
+																			CallC,
+																			EnvCc
+																		>
+																	: [Rcc, CallC, EnvCc]
+																: [Rcc, CallC, EnvCc]
+															: never
+														: never
+													: PeekToken<Rcall> extends ArithOpToken
+														? ParseArithTailAfterFirstScalarUntyped<Rcall, Call, EnvCall> // `now() - interval '1 day'`, `count(*) - 1`
+														: [Rcall, Call, EnvCall]
 												: [Rcall, Call, EnvCall]
 											: never
 										: SkipFailedExpressionWithEnv<
@@ -335,7 +480,23 @@ export type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env exte
 												{ kind: "col"; parts: Parts; written: W },
 												Env
 											>
-										: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
+										: Pa extends TokenIdent<"collate">
+											? ParseCollateTail<
+													Rm,
+													{ kind: "col"; parts: Parts; written: W },
+													Env
+												> extends [
+													infer Rcl extends ParserMonad,
+													infer Col,
+													infer EnvCl extends ExprParseEnv,
+												]
+												? Col extends ScalarExprAst
+													? PeekToken<Rcl> extends ArithOpToken
+														? ParseArithTailAfterFirstScalarUntyped<Rcl, Col, EnvCl>
+														: [Rcl, Col, EnvCl]
+													: [Rcl, Col, EnvCl]
+												: never
+											: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
 							: never
 					: never
 		: never

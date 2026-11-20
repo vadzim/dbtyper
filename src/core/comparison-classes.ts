@@ -1,6 +1,8 @@
 /**
  * Comparison classes (EXPR-26, PGT-16): which SQL types may be compared, combined or assigned. Facts are data:
  * add a type name to {@link ComparisonClassOfType}, or a class to {@link StringLiteralClasses}; no parser condition.
+ * This table is the one list of the numeric type names ("is it a number": class "numeric"); which of two numeric types
+ * is the wider is the `numericOrder` fact of the dialect (src/core/dialect.ts).
  */
 import type { SqlTypeShape } from "./sql-type-shape.ts"
 
@@ -20,12 +22,17 @@ type ComparisonClassOfType = {
 	numeric: "numeric"
 	decimal: "numeric"
 	number: "numeric"
+	float: "numeric"
 	boolean: "boolean"
 	bool: "boolean"
 	text: "text"
 	varchar: "text"
 	"character varying": "text"
 	char: "text"
+	character: "text"
+	bpchar: "text"
+	name: "text"
+	citext: "text"
 	uuid: "uuid"
 	date: "datetime"
 	time: "datetime"
