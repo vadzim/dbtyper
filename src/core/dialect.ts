@@ -155,7 +155,7 @@ export type DialectName = keyof Dialects
  * `castHint`: the cast spelling the CORE-14 error (3506) suggests for a type without a TypeScript mapping.
  * `positionalParamSign`: how messages spell positional parameter n: the sign before the number (`$1`, `?1`).
  * Lexer facts (#116 item 2), the `lexer` object of a row, read by the lexer through {@link LexerFact} only:
- * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30);
+ * `bracketIdents`: `[name]` is a quoted identifier; `atParams`: `@name` and `$name` are named parameters (SQLT-30); `questionParams`: `?` / `?NNN` are positional parameters (SQLT-30; DSEL-4, #196: elsewhere `?` is no parameter even if the driver's `syntax` lists `question-params`, see {@link ParserSyntaxOf});
  * `blobLiterals`: `X'..'` is a blob literal (SQLT-29); `foldQuoted`: quoted names match case-insensitively, so they are
  * lower-cased (SQLT-27); `joinStrings`: adjacent string literals `'a' 'b'` are one string (SQLite: they are not);
  * `keepWritten`: an identifier remembers how it was written, and every token its source text (SQLT-28, result keys);
@@ -223,6 +223,7 @@ export type Dialects = {
 		lexer: {
 			bracketIdents: false
 			atParams: false
+			questionParams: false
 			blobLiterals: false
 			foldQuoted: false
 			joinStrings: true
@@ -286,6 +287,7 @@ export type Dialects = {
 		lexer: {
 			bracketIdents: true
 			atParams: true
+			questionParams: true
 			blobLiterals: true
 			foldQuoted: true
 			joinStrings: false
@@ -333,7 +335,10 @@ export type ParserSyntax = LexerFeatures | DialectFlags | SingleStatementFlag
 export type ParserSyntaxOf<
 	Config extends { syntax: LexerFeatures; dialect: DialectName; singleStatement?: true | undefined },
 > =
-	| Config["syntax"]
+	| Exclude<
+			Config["syntax"],
+			Dialects[Config["dialect"]]["lexer"]["questionParams"] extends true ? never : "question-params"
+	  >
 	| DialectFlag<Config["dialect"]>
 	| (Config extends { singleStatement: true } ? SingleStatementFlag : never)
 
