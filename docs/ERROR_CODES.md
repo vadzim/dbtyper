@@ -212,11 +212,11 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1920 | `UNKNOWN_CONFLICT_ACTION`                 | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                                                          |
 | 1930 | `UNKNOWN_STATEMENT`                       | Unknown statement keyword …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                 |
 | 1931 | `UNKNOWN_STATEMENT_DID_YOU_MEAN`          | Unknown statement keyword …; did you mean …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
-| 1932 | `UNKNOWN_STATEMENT_FORM`                  | Unknown statement … …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                       |
 | 1932 | `MULTIPLE_STATEMENTS_IN_QUERY`            | This driver runs only the first statement of a text; send one statement per query or stream call                             |
 | 1933 | `UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN`     | Unknown statement … …; did you mean … …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped     |
 | 1934 | `EXPECTED_STATEMENT_FORM`                 | Expected what to … (TABLE, VIEW, INDEX, …)                                                                                   |
 | 1935 | `UNTRACKED_SCHEMA_CHANGE`                 | … is not supported: dbtyper cannot follow the schema change it makes. …                                                      |
+| 1936 | `UNKNOWN_STATEMENT_FORM`                  | Unknown statement … …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                       |
 
 ## 2100-2199: Validation/Statement
 
@@ -359,9 +359,9 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3303 | `IN_LIST_MUST_NOT_BE_EMPTY`                 | IN list must not be empty                 |
 | 3304 | `EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE`     | Empty enum values list in CREATE TYPE     |
 | 3305 | `ENUM_VALUE_ALREADY_EXISTS`                 | Enum value already exists                 |
-| 3306 | `TYPE_IS_NOT_A_DOMAIN`                      | Type is not a domain; use DROP TYPE       |
 | 3306 | `DUPLICATE_COLUMN_IN_WRITE`                 | Column … is listed more than once in …    |
 | 3307 | `ENUM_VALUE_DOES_NOT_EXIST`                 | … is not a value of the enum              |
+| 3308 | `TYPE_IS_NOT_A_DOMAIN`                      | Type is not a domain; use DROP TYPE       |
 
 ## 3400-3499: Semantic/SELECT
 
