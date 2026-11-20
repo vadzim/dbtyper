@@ -2,6 +2,11 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175 follow-ups: names fold ASCII only (track A; #179 item 5d; STMT-25, SQLT-67)
+
+- **Lexer.** An unquoted word is folded with TypeScript's `Lowercase` only when it is all ASCII; a word with a non-ASCII character (the identifier reader marks it, `nonAscii: "seen"` in the result of `ReadTokenChars`) is folded character by character, A-Z only (`FoldAsciiChars`, src/lexer/sql-lexer-chars.ts), as both engines do: `Імя` stays `Імя`, `NAMEІ` is `nameІ`. SQLite's quoted names and the keys of SQLite `CREATE TABLE … AS` use `FoldAsciiCase` (cheap when `Lowercase` changes nothing). A SQLite token keeps `written` only when it differs from the folded name.
+- **Cost.** `typecheck:test` 19,534,078 -> 19,715,753 without the new test file (+0.93%: one more field per token), 19,741,176 with it.
+
 ## 2026-11-20 SQLite json_each / json_tree in FROM (#198, track A; SQLT-69…SQLT-72, design dbtyper-spec#22)
 
 - **Catalog rows of a new kind "table".** `json_each` and `json_tree` are rows of `SqliteFunctions` with kind `"table"`, arity rule `jsonTable` (1 or 2 arguments, error 1937 naming the function: an arity rule may now carry `"name"` and a range `min…max`) and parameter types `[text, text]` (SQLT-71: a parameter in either position is `string`, through the existing probe of function arguments). Their columns are a new `tables` member of the `functionCatalog` fact (`SqliteTableFunctions`; PostgreSQL: none). A "table" row is a FROM item only: the one catalog resolver answers the unknown-function error (3619) for it elsewhere, as SQLite does, and in FROM checks the arguments and returns no value.
