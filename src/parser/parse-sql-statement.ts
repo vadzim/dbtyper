@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
-import type { DialectFact, ParserSyntax } from "../core/dialect.ts"
+import type { DialectFact, ParserSyntax, SingleStatementFlag } from "../core/dialect.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
@@ -38,7 +38,8 @@ export type ApplyStatements<
 		Db,
 		Params extends null ? EmptyExpressionParams : Params,
 		null,
-		null
+		null,
+		[Extract<Syntax, SingleStatementFlag>] extends [never] ? false : true
 	> extends [
 		infer Rest extends ParserMonad,
 		infer NewDB extends JsqlDatabaseShape,
@@ -71,6 +72,7 @@ type ApplyParsedStatements<
 	Params extends ExpressionParamsShape,
 	Error extends DbtyperErrorShape | null,
 	Result,
+	Single extends boolean,
 	BatchDepth extends number = 0,
 > =
 	PeekToken<Tokens> extends TokenEot
@@ -81,13 +83,13 @@ type ApplyParsedStatements<
 			BatchDepth extends StatementBatches
 			? // STMT-16: the script is too long to apply; say so instead of dropping the tail.
 				[Tokens, Db, ConcatErrors<Error, FormatError<Errors["TOO_MANY_STATEMENTS"], [MaxStatements]>>, Result]
-			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result> extends [
+			: ApplyParsedStatementsInner<Tokens, Db, Params, Error, Result, Single> extends [
 						infer Rest extends ParserMonad,
 						infer NewDb extends JsqlDatabaseShape,
 						infer NewError extends DbtyperErrorShape | null,
 						infer NewResult,
 				  ]
-				? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Inc<BatchDepth>>
+				? ApplyParsedStatements<Rest, NewDb, Params, NewError, NewResult, Single, Inc<BatchDepth>>
 				: never
 
 /** TLVL-4: statements per batch, and batches per script: a script may have `StatementsPerBatch * StatementBatches` (2500) statements. */
@@ -106,6 +108,7 @@ type ApplyParsedStatementsInner<
 	Params extends ExpressionParamsShape,
 	Error extends DbtyperErrorShape | null,
 	Result,
+	Single extends boolean,
 	Depth extends number = 0,
 > = Depth extends StatementsPerBatch
 	? [Tokens, Db, Error, Result]
@@ -113,7 +116,7 @@ type ApplyParsedStatementsInner<
 		? [Tokens, Db, Error, Result]
 		: PeekToken<Tokens> extends TokenKey<";">
 			? // STMT-8: an empty statement is ignored and does not replace the previous result
-				ApplyParsedStatementsInner<SkipToken<Tokens>, Db, Params, Error, Result, Inc<Depth>>
+				ApplyParsedStatementsInner<SkipToken<Tokens>, Db, Params, Error, Result, Single, Inc<Depth>>
 			: ParseSqlStatement<Tokens, Db, Params> extends [
 						infer Rest extends ParserMonad,
 						infer NewDB extends JsqlDatabaseShape,
@@ -123,11 +126,29 @@ type ApplyParsedStatementsInner<
 						Rest,
 						NewDB,
 						Params,
-						NewResult extends DbtyperErrorShape ? ConcatErrors<Error, NewResult> : Error,
+						NewResult extends DbtyperErrorShape
+							? ConcatErrors<ErrorWithSecondStatement<Single, Error, Result>, NewResult>
+							: ErrorWithSecondStatement<Single, Error, Result>,
 						NewResult extends DbtyperErrorShape ? null : NewResult,
+						Single,
 						Inc<Depth>
 					>
 				: never
+
+/**
+ * STMT-22, #156: with the flag `single-statement` (a driver that runs only the first statement of a text) a statement
+ * that follows another one is an error; the first error stays the reported one. A statement was parsed before when the
+ * error or the result is set.
+ */
+type ErrorWithSecondStatement<
+	Single extends boolean,
+	Error extends DbtyperErrorShape | null,
+	Result,
+> = Single extends true
+	? [Error, Result] extends [null, null]
+		? Error
+		: ConcatErrors<Error, FormatError<Errors["MULTIPLE_STATEMENTS_IN_QUERY"], []>>
+	: Error
 
 export type ParseSqlStatement<
 	Tokens extends ParserMonad,

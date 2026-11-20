@@ -244,11 +244,17 @@ export type SyntaxWithoutLexerFact<Syntax extends string, K extends keyof Dialec
 >
 
 /** Everything the lexer/parser `Syntax` union may hold: driver lexer features plus the dialect flag. */
-export type ParserSyntax = LexerFeatures | DialectFlags
+/** `single-statement`: the driver runs only the first statement of a text, so a second statement is an error (STMT-Q5, #156). */
+export type SingleStatementFlag = "single-statement"
+export type ParserSyntax = LexerFeatures | DialectFlags | SingleStatementFlag
 
 /** The parser syntax of a driver config: its lexer features plus its dialect flag (DSEL-1, DSEL-3). */
-export type ParserSyntaxOf<Config extends { syntax: LexerFeatures; dialect: DialectName }> =
-	Config["syntax"] | DialectFlag<Config["dialect"]>
+export type ParserSyntaxOf<
+	Config extends { syntax: LexerFeatures; dialect: DialectName; singleStatement?: true | undefined },
+> =
+	| Config["syntax"]
+	| DialectFlag<Config["dialect"]>
+	| (Config extends { singleStatement: true } ? SingleStatementFlag : never)
 
 /** The dialect(s) `Syntax` names: one name, a union of both, or `never` for none. */
 type SyntaxDialect<Syntax extends string> =
