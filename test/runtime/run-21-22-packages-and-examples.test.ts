@@ -51,19 +51,14 @@ describe("RUN-22 Postgres examples", () => {
 			assert.ok(files.length > 0)
 			assert.match(read(`${dir}/scripts/migrate.ts`), /migrations\/\*\.do\.\*\.js/)
 		})
-		// nest-postgres skips 005.do.seed_agenda.js: bug #204
-		it(
-			`RUN-22 ${name}: .apply(...) receives the SQL of every migration file, in file order`,
-			{ skip: name === "nest-postgres" && "bug #204" },
-			() => {
-				const applied = [
-					...read(`${dir}/src/example-schema.ts`).matchAll(
-						/import\("\.\.\/migrations\/([^"]+)"\)\)\.generateSql\(\)/g,
-					),
-				].map(m => m[1])
-				assert.deepEqual(applied, files)
-			},
-		)
+		it(`RUN-22 ${name}: .apply(...) receives the SQL of every migration file, in file order`, () => {
+			const applied = [
+				...read(`${dir}/src/example-schema.ts`).matchAll(
+					/import\("\.\.\/migrations\/([^"]+)"\)\)\.generateSql\(\)/g,
+				),
+			].map(m => m[1])
+			assert.deepEqual(applied, files)
+		})
 		it(`RUN-22 ${name}: the example has a docker test that selects email from auth.users`, () => {
 			assert.match(read(`${dir}/test/integration.test.ts`), /select email[^"`]*from auth\.users/)
 		})
