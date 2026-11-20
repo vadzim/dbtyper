@@ -1,5 +1,5 @@
 import type { PeekToken, SkipToken, CreateParserMonad, TokenEotWithDialectError } from "../lexer/parser-monad.ts"
-import type { DialectFact, ParserSyntax, SingleStatementFlag } from "../core/dialect.ts"
+import type { DialectFact, OtherDialectFormError, ParserSyntax, SingleStatementFlag } from "../core/dialect.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"

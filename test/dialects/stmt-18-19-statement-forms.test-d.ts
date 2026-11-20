@@ -27,8 +27,20 @@ expectType<PgM<`alter tabel users add column z int;`>>(
 expectType<PgM<`drop vew v;`>>(toBe<DbtyperError<1936, `Unknown statement DROP vew${Untyped}`>>())
 expectType<PgM<`create;`>>(toBe<DbtyperError<1934, "Expected what to CREATE (TABLE, VIEW, INDEX, …)">>())
 expectType<PgM<`drop;`>>(toBe<DbtyperError<1934, "Expected what to DROP (TABLE, VIEW, INDEX, …)">>())
-// a form skipped in one dialect only is unknown in the other
-expectType<LiteM<`create sequence s;`>>(toBe<DbtyperError<1936, `Unknown statement CREATE sequence${Untyped}`>>())
+// DSEL-7: a form only the other engine has is the other-dialect error, not a typo
+type PgOnlyForm<Form extends string> = DbtyperError<1900, `${Form} is PostgreSQL-only; this database is SQLite`>
+type SqliteOnlyForm<Form extends string> = DbtyperError<1901, `${Form} is SQLite-only; this database is PostgreSQL`>
+expectType<LiteM<`create sequence s;`>>(toBe<PgOnlyForm<"CREATE SEQUENCE">>())
+expectType<LiteM<`create function f() returns int as 'select 1' language sql;`>>(toBe<PgOnlyForm<"CREATE FUNCTION">>())
+expectType<LiteM<`alter view v owner to bob;`>>(toBe<PgOnlyForm<"ALTER VIEW">>())
+expectType<LiteM<`drop sequence s;`>>(toBe<PgOnlyForm<"DROP SEQUENCE">>())
+expectType<LiteM<`comment on table users is 'x';`>>(toBe<PgOnlyForm<"COMMENT">>())
+expectType<LiteM<`copy users from stdin;`>>(toBe<PgOnlyForm<"COPY">>())
+expectType<PgM<`pragma foreign_keys = on;`>>(toBe<SqliteOnlyForm<"PRAGMA">>())
+// a real typo stays the unknown-form error on both
+expectType<LiteM<`create sequense s;`>>(toBe<DbtyperError<1936, `Unknown statement CREATE sequense${Untyped}`>>())
+expectType<PgM<`drop vew v;`>>(toBe<DbtyperError<1936, `Unknown statement DROP vew${Untyped}`>>())
+expectType<LiteM<`drop vew v;`>>(toBe<DbtyperError<1936, `Unknown statement DROP vew${Untyped}`>>())
 
 // the skipped forms stay skipped (PGT-21, SQLT-23)
 expectType<
