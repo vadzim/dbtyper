@@ -24,11 +24,11 @@ expectType<PgM<`drop tabel users;`>>(
 expectType<PgM<`alter tabel users add column z int;`>>(
 	toBe<DbtyperError<1933, `Unknown statement ALTER tabel; did you mean ALTER TABLE${DidYouMean}`>>(),
 )
-expectType<PgM<`drop vew v;`>>(toBe<DbtyperError<1932, `Unknown statement DROP vew${Untyped}`>>())
+expectType<PgM<`drop vew v;`>>(toBe<DbtyperError<1936, `Unknown statement DROP vew${Untyped}`>>())
 expectType<PgM<`create;`>>(toBe<DbtyperError<1934, "Expected what to CREATE (TABLE, VIEW, INDEX, …)">>())
 expectType<PgM<`drop;`>>(toBe<DbtyperError<1934, "Expected what to DROP (TABLE, VIEW, INDEX, …)">>())
 // a form skipped in one dialect only is unknown in the other
-expectType<LiteM<`create sequence s;`>>(toBe<DbtyperError<1932, `Unknown statement CREATE sequence${Untyped}`>>())
+expectType<LiteM<`create sequence s;`>>(toBe<DbtyperError<1936, `Unknown statement CREATE sequence${Untyped}`>>())
 
 // the skipped forms stay skipped (PGT-21, SQLT-23)
 expectType<
@@ -50,7 +50,7 @@ expectType<typeof _x>(toBe<{ a: number }[]>())
 expectType<PgM<`create domain posint as integer; drop domain posint; create domain posint as text;`>>(toBe<null>())
 expectType<PgM<`drop domain if exists nope; create type mood as enum ('a');`>>(toBe<null>())
 expectType<PgM<`create type mood as enum ('a'); drop domain mood;`>>(
-	toBe<DbtyperError<3306, "Type is not a domain; use DROP TYPE">>(),
+	toBe<DbtyperError<3308, "Type is not a domain; use DROP TYPE">>(),
 )
 
 // STMT-Q2: schema changes dbtyper cannot follow are errors, not silent skips
