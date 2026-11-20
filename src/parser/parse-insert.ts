@@ -7,7 +7,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { ScopeMap } from "./parser-scope.ts"
+import type { MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { ColumnFacts, IsGeneratedColumn, IsIdentityAlwaysColumn } from "./parser-validate-mutation-value.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { JsqlDataGetColumnType } from "../core/jsql-utils.ts"
@@ -219,7 +219,9 @@ type ParseInsertAfterColumnNamesChecked<
 					: never
 				: never
 			: TkValues extends TokenKey<"select">
-				? ParseInsertWithSelect<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
+				? ValidateInsertRequiredColumns<Tbl, Cols> extends infer RequiredOk extends DbtyperErrorShape
+					? SkipFailedStatement<R1, Db, RequiredOk> // DML-4, DML-21: as for VALUES
+					: ParseInsertWithSelect<R1, Db, Scope, Params, Tbl, Sch, Tab, Cols>
 				: SkipToken<R1> extends infer Rv extends ParserMonad
 					? [Rv, Db, FormatError<Errors["EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT"], []>]
 					: never
@@ -236,10 +238,12 @@ export type FinishInsertSemicolon<
 			? [Tokens, Db, Res] // PGT-26: the INSERT of a data-modifying CTE ends at `)`
 			: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SEMICOLON"], ["INSERT"]>>
 
+/** After `INTO`; `Ctes`: the CTE definitions of a `WITH … INSERT` (DML-21), visible by name in its subqueries. */
 type ParseInsertAfterInto<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape,
+	Ctes extends ScopeMap,
 > =
 	ParseInsertFromTableRef<Tokens, Db, Params> extends [infer R extends ParserMonad, infer Mid, infer Third]
 		? Mid extends DbtyperErrorShape
@@ -251,7 +255,7 @@ type ParseInsertAfterInto<
 					? ParseInsertAfterOpenParenCols<
 							R,
 							Db,
-							Third["scope"],
+							MergeScope<Third["scope"], Ctes>,
 							Params,
 							Third["tbl"],
 							Third["schema"],
@@ -270,16 +274,22 @@ export type ParseInsert<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Ctes extends ScopeMap = {},
 > =
 	PeekToken<Tokens> extends TokenKey<"or">
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? PeekToken<R1> extends ConflictActionToken
-				? ParseInsertInto<SkipToken<R1>, Db, Params>
+				? ParseInsertInto<SkipToken<R1>, Db, Params, Ctes>
 				: SkipFailedStatement<R1, Db, FormatError<Errors["EXPECTED_CONFLICT_ACTION_AFTER_OR"], []>>
 			: never
-		: ParseInsertInto<Tokens, Db, Params>
+		: ParseInsertInto<Tokens, Db, Params, Ctes>
 
-type ParseInsertInto<Tokens extends ParserMonad, Db extends JsqlDatabaseShape, Params extends ExpressionParamsShape> =
+type ParseInsertInto<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Ctes extends ScopeMap,
+> =
 	PeekToken<Tokens> extends TokenKey<"into">
-		? ParseInsertAfterInto<SkipToken<Tokens>, Db, Params>
+		? ParseInsertAfterInto<SkipToken<Tokens>, Db, Params, Ctes>
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_INTO_AFTER_INSERT"], []>>

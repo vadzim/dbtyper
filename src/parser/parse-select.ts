@@ -8,7 +8,7 @@ import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperError, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape, ScalarExprAst } from "./parse-expression.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
-import type { FromItemsOnly, MarkOuterScope, MergeScope, ScopeMap } from "./parser-scope.ts"
+import type { CteDefsOnly, FromItemsOnly, MarkOuterScope, MergeScope, ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
@@ -274,11 +274,13 @@ type ParseSelectAfterDistinct<
 							]
 						: PeekToken<AfterList> extends TokenKey<"from">
 							? SkipToken<AfterList> extends infer AfterFrom extends ParserMonad
-								? ParseFromJoinScope<AfterFrom, Db, CteBase, Params> extends [
-										infer R extends ParserMonad,
-										infer Mid,
-										infer Tail,
-									]
+								? // DML-21: a subquery of a `WITH … UPDATE | DELETE | INSERT` sees the CTEs of the outer scope in FROM
+									ParseFromJoinScope<
+										AfterFrom,
+										Db,
+										MergeScope<CteBase, CteDefsOnly<OuterScope>>,
+										Params
+									> extends [infer R extends ParserMonad, infer Mid, infer Tail]
 									? Mid extends DbtyperErrorShape
 										? Tail extends ParserRefErrorThirdSentinel
 											? [R, Db, Mid]

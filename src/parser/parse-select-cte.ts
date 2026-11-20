@@ -1,7 +1,7 @@
 import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
-import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
+import type { AsIdent, TokenEot, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
@@ -13,6 +13,7 @@ import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseUpdate } from "./parse-update.ts"
 import type { ParseDelete } from "./parse-delete.ts"
+import type { ParseValuesBody } from "./parse-values-cte.ts"
 import type { MergeSetOperation, RenameOutputColumns } from "./set-operation-types.ts"
 import type {
 	ConsumeClosingParen,
@@ -36,17 +37,71 @@ type ParseSelectWithCtesAfterSubquery<
 	OuterScope extends ScopeMap,
 	CteBase extends ScopeMap,
 	Recursive extends boolean,
+	Top extends boolean,
 > =
 	SelectResultToCteScopeEntry<Db, SubOut> extends infer Entry extends ScopeEntry
 		? MergeScope<Record<CteName, Entry>, Acc> extends infer NextAcc
 			? NextAcc extends ScopeMap
 				? PeekToken<R4> extends TokenKey<",">
-					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope, CteBase, Recursive>
+					? ParseSelectWithCtes<SkipToken<R4>, Db, Params, NextAcc, OuterScope, CteBase, Recursive, Top>
 					: PeekToken<R4> extends TokenKey<"select">
-						? ParseSelectCompound<SkipToken<R4>, Db, Params, MergeScope<NextAcc, CteBase>, OuterScope>
-						: SkipFailedStatement<R4, Db, FormatError<Errors["EXPECTED_SELECT_AFTER_WITH"], []>>
+						? Top extends true
+							? ParseSelectCompound<
+									SkipToken<R4>,
+									Db,
+									Params,
+									MergeScope<NextAcc, CteBase>,
+									OuterScope
+								> extends [infer R5 extends ParserMonad, infer Db5 extends JsqlDatabaseShape, infer Res]
+								? Res extends DbtyperErrorShape
+									? [R5, Db5, Res]
+									: PeekToken<R5> extends TokenKey<";"> | TokenEot
+										? [SkipToken<R5>, Db5, Res]
+										: SkipFailedStatement<
+												R5,
+												Db5,
+												FormatError<Errors["EXPECTED_SEMICOLON"], ["SELECT"]>
+											>
+								: never
+							: ParseSelectCompound<SkipToken<R4>, Db, Params, MergeScope<NextAcc, CteBase>, OuterScope>
+						: Top extends true
+							? ParseDmlAfterWith<R4, Db, Params, MergeScope<NextAcc, CteBase>>
+							: SkipFailedStatement<R4, Db, FormatError<Errors["EXPECTED_SELECT_AFTER_WITH"], []>>
 				: never
 			: never
+		: never
+
+/**
+ * DML-21: `WITH … INSERT | REPLACE | UPDATE | DELETE` (a statement, not a subquery): the statement's own parser, with
+ * the CTEs as definitions visible by name (`Ctes`); the target is looked up in the schema only, never among them.
+ */
+type ParseDmlAfterWith<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+	Ctes extends ScopeMap,
+> =
+	PeekToken<Tokens> extends TokenKey<"insert" | "replace">
+		? ParseInsert<SkipToken<Tokens>, Db, Params, Ctes>
+		: PeekToken<Tokens> extends TokenKey<"update">
+			? ParseUpdate<SkipToken<Tokens>, Db, Params, Ctes>
+			: PeekToken<Tokens> extends TokenKey<"delete">
+				? ParseDelete<SkipToken<Tokens>, Db, Params, Ctes>
+				: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_SELECT_AFTER_WITH"], []>>
+
+/**
+ * A statement that starts with `WITH` (at `WITH`): SELECT, then `;` (as `ParseSelectStatement`), or, DML-21,
+ * INSERT / UPDATE / DELETE, which read their own `;`.
+ */
+export type ParseWithStatement<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Params extends ExpressionParamsShape,
+> =
+	SkipToken<Tokens> extends infer R1 extends ParserMonad
+		? PeekToken<R1> extends TokenIdent<"recursive">
+			? ParseSelectWithCtes<SkipToken<R1>, Db, Params, {}, {}, {}, true, true>
+			: ParseSelectWithCtes<R1, Db, Params, {}, {}, {}, false, true>
 		: never
 
 /** Optional `(col, …)` after a CTE name. Returns `[Tokens, names | error]`. */
@@ -141,19 +196,35 @@ type ParseCteBody<
 					: never
 			: never
 		: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
-	: PeekToken<Tokens> extends TokenKey<"insert" | "update" | "delete">
-		? DialectFact<Db, "dmlInCte"> extends true
-			? ParseCteDml<Tokens, Db, Params, Cols, CteName>
-			: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
-		: ParseParenEnclosedSelect<Tokens, Db, Params, {}, Visible> extends [infer R4 extends ParserMonad, infer SubOut]
-			? SubOut extends JsqlSelectStatementResult
-				? ApplyCteColumnList<SubOut, Cols, CteName> extends infer Named
-					? Named extends DbtyperErrorShape
-						? SkipFailedExpression<R4, Named>
-						: [R4, Named]
+	: PeekToken<Tokens> extends TokenKey<"values">
+		? // SEL-40: a VALUES body, columns `column1`, … unless the CTE names them
+			ParseValuesBody<SkipToken<Tokens>, Db, Params> extends [infer Rv extends ParserMonad, infer Vals]
+			? Vals extends DbtyperErrorShape
+				? [Rv, Vals]
+				: Vals extends JsqlSelectStatementResult
+					? ApplyCteColumnList<Vals, Cols, CteName> extends infer Named
+						? Named extends DbtyperErrorShape
+							? SkipFailedExpression<Rv, Named>
+							: ConsumeClosingParen<Rv, Named>
+						: never
 					: never
-				: [R4, SubOut]
 			: never
+		: PeekToken<Tokens> extends TokenKey<"insert" | "update" | "delete">
+			? DialectFact<Db, "dmlInCte"> extends true
+				? ParseCteDml<Tokens, Db, Params, Cols, CteName>
+				: SkipFailedExpression<Tokens, FormatError<Errors["EXPECTED_SELECT_IN_SUBQUERY"], []>>
+			: ParseParenEnclosedSelect<Tokens, Db, Params, {}, Visible> extends [
+						infer R4 extends ParserMonad,
+						infer SubOut,
+				  ]
+				? SubOut extends JsqlSelectStatementResult
+					? ApplyCteColumnList<SubOut, Cols, CteName> extends infer Named
+						? Named extends DbtyperErrorShape
+							? SkipFailedExpression<R4, Named>
+							: [R4, Named]
+						: never
+					: [R4, SubOut]
+				: never
 
 /**
  * PGT-26: `WITH x AS (INSERT | UPDATE | DELETE … [RETURNING …])`: the statement is parsed by its own parser (it ends
@@ -213,6 +284,7 @@ export type ParseSelectWithCtes<
 	OuterScope extends ScopeMap,
 	CteBase extends ScopeMap,
 	Recursive extends boolean,
+	Top extends boolean = false,
 > =
 	PeekToken<Tokens> extends infer TokCteName
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
@@ -247,7 +319,8 @@ export type ParseSelectWithCtes<
 																SubOut,
 																OuterScope,
 																CteBase,
-																Recursive
+																Recursive,
+																Top
 															>
 														: never
 												: never

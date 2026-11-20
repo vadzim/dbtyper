@@ -23,6 +23,7 @@ import type { ParseInsert } from "./parse-insert.ts"
 import type { ParseSelectStatement, ParseSetOperationTail } from "./parse-select.ts"
 import type { ParseParenEnclosedSelect } from "./parse-select-subquery.ts"
 import type { ParseUpdate } from "./parse-update.ts"
+import type { ParseWithStatement } from "./parse-select-cte.ts"
 import type { ParseSkipStatement, ParseSkipTrigger, SkipBracketedUntil, SkipFailedStatement } from "./skip-statement.ts"
 import type { EmptyExpressionParams, ExpressionParamsShape } from "./parse-expression.ts"
 import type { Inc } from "../core/type-utils.ts"
@@ -187,7 +188,7 @@ export type ParseSqlStatement<
 						: PeekToken<Tokens> extends TokenKey<"insert">
 							? ParseInsert<SkipToken<Tokens>, Db, Params>
 							: PeekToken<Tokens> extends TokenIdent<"with">
-								? ParseSelectStatement<Tokens, Db, Params>
+								? ParseWithStatement<Tokens, Db, Params> // SEL-20, DML-21
 								: PeekToken<Tokens> extends TokenKey<"select">
 									? ParseSelectStatement<SkipToken<Tokens>, Db, Params>
 									: PeekToken<Tokens> extends TokenKey<"update">
