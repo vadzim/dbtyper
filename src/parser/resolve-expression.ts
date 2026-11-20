@@ -31,7 +31,7 @@ import type {
 import type { LookupParam, LookupPositionalParam, ResolveIdentChainValue } from "./resolve-expression-ident.ts"
 import type { CollectParamProbes } from "../core/param-probe.ts"
 import type { ApplyOperandNullability, NullTestedParam, ParamProbeAt } from "./resolve-expression-params.ts"
-import type { ResolveFunctionCall, ResolveWindowFunction } from "./resolve-function.ts"
+import type { ResolveFunctionCall, ResolveWindowFunction, WindowSpecResolveError } from "./resolve-function.ts"
 import type {
 	MergeBoolBinary,
 	MergeBoolNot,
@@ -129,9 +129,15 @@ type ExpressionResolvers<
 		kind: "window_function"
 		name: infer FnName extends string
 		args: infer FArgs extends readonly (ScalarExprAst | { kind: "star" })[]
-		over: infer _Over
+		over: infer Over
 	}
-		? ResolveWindowFunction<FnName, FArgs, Db, Scope, Params>
+		? ResolveWindowFunction<FnName, FArgs, Db, Scope, Params> extends infer R
+			? R extends DbtyperErrorShape
+				? R
+				: WindowSpecResolveError<Over, Db, Scope, Params> extends infer E extends DbtyperErrorShape
+					? E
+					: R
+			: never
 		: never
 	qualified_table_star: FormatError<Errors["QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS"], []>
 	alias_table_star: FormatError<Errors["QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS"], []>

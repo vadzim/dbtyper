@@ -145,3 +145,43 @@ export type ResolveWindowFunction<
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	L extends string = Lowercase<Name>,
 > = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, false, L>
+
+/**
+ * FN-30 (#216): the columns of an inline `OVER (PARTITION BY … ORDER BY … frame)` resolve against the FROM scope, as
+ * the columns of a WINDOW definition do (the spec comes from the one window-spec parser). `null` when all resolve
+ * (and for `OVER w`, which has none); else the first error.
+ */
+export type WindowSpecResolveError<
+	Over,
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> = Over extends {
+	partition_by: infer P extends readonly ScalarExprAst[]
+	order_by: infer O extends readonly { expr: ScalarExprAst }[]
+	frame: infer F
+}
+	? FirstExprError<
+			readonly [
+				...P,
+				...{ [I in keyof O]: O[I]["expr"] },
+				...(F extends readonly ScalarExprAst[] ? F : readonly []),
+			],
+			Db,
+			Scope,
+			Params
+		>
+	: null
+
+type FirstExprError<
+	Exprs extends readonly ScalarExprAst[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+> = Exprs extends readonly [infer H extends ScalarExprAst, ...infer T extends readonly ScalarExprAst[]]
+	? ResolveExpressionAST<H, Db, Scope, Params> extends infer R
+		? R extends DbtyperErrorShape
+			? R
+			: FirstExprError<T, Db, Scope, Params>
+		: never
+	: null
