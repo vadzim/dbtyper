@@ -28,6 +28,32 @@ const gSet = `insert into g (a, b) values (1, 2);` as const
 // @ts-expect-error
 withPk.query(gSet)
 
+// SQLT-18 (whole Check): the same table with `primary key` on `a` is applied and `b` is read-only (CORE-18)
+const exactPk = migrations
+	.apply(`create table g (a integer not null primary key, b integer as (a * 2) stored) strict, without rowid;`)
+	.database()
+const _gExact = await exactPk.query(`select a, b from g`)
+expectType<typeof _gExact>(toBe<Array<{ a: number; b: number | null }>>())
+const gExactSet = `insert into g (a, b) values (1, 2);` as const
+// @ts-expect-error
+exactPk.query(gExactSet)
+
+// SQLT-18 (#197): any word after the closing `)` is dbtyper:1912 "Expected STRICT or WITHOUT ROWID".
+const nonsense = `create table t (a int) nonsense` as const
+// @ts-expect-error
+migrations.apply(nonsense)
+expectType<GetApplyError<typeof migrations, typeof nonsense>>(
+	toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>(),
+)
+
+// the same 1912 after WITHOUT
+const withoutNonsense = `create table t (a int) without nonsense` as const
+// @ts-expect-error
+migrations.apply(withoutNonsense)
+expectType<GetApplyError<typeof migrations, typeof withoutNonsense>>(
+	toBe<DbtyperError<1912, "Expected STRICT or WITHOUT ROWID">>(),
+)
+
 // SQLT-18: table options in either order; a table constraint PRIMARY KEY counts
 const orders = migrations.apply(`create table o (a integer, primary key (a)) without rowid, strict;`).database()
 const _o = await orders.query(`select a from o`)

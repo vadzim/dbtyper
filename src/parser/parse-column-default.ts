@@ -5,8 +5,7 @@ import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
 import type { EnumAssignmentCheck, WithEnumCheck } from "./parse-enum-checks.ts"
-import type { DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
-import type { AffinityTakesAnyValue } from "../core/dialect-types.ts"
+import type { ComparisonClassesOf, DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { EmptyExpressionParams, ParseExpressionAST, ScalarExprAst } from "./parse-expression.ts"
 import type { ResolveExpressionAST, SameComparisonClass } from "./resolve-expression.ts"
@@ -49,11 +48,17 @@ export type ParseDefaultValue<
 					? [R, Ast]
 					: [PeekToken<Tokens>, Ast] extends [TokenKey<"(">, unknown] | [unknown, DefaultLiteral]
 						? DefaultValueFits<R, Ast, Db, Type, Name>
-						: // SQLite: an expression other than a literal must be in parentheses (`DEFAULT (now())`)
-							DbDialectOnlyError<Db, "pg-default-expression"> extends infer OnlyErr extends
-									DbtyperErrorShape
-							? [R, OnlyErr]
-							: DefaultValueFits<R, Ast, Db, Type, Name>
+						: [Ast, DialectFact<Db, "bareNameDefault">] extends [
+									{ kind: "col"; parts: readonly [infer N extends string] },
+									true,
+							  ]
+							? // #195, SQLite: `DEFAULT standard` is the text 'standard'
+								DefaultValueFits<R, { kind: "string"; value: N }, Db, Type, Name>
+							: // SQLite: an expression other than a literal must be in parentheses (`DEFAULT (now())`)
+								DbDialectOnlyError<Db, "pg-default-expression"> extends infer OnlyErr extends
+										DbtyperErrorShape
+								? [R, OnlyErr]
+								: DefaultValueFits<R, Ast, Db, Type, Name>
 				: never
 
 /** A DEFAULT that every dialect takes without parentheses: a literal or a signed number. */
@@ -110,13 +115,14 @@ type DefaultFits<V, Db, Type extends SqlTypeShape, Name extends string, Ast = ne
 		: V extends SqlTypeShape
 			? V["type"] extends "null"
 				? null
-				: WithEnumCheck<EnumAssignmentCheck<Db, Type, Ast>, SameComparisonClass<V, Type, Ast>> extends infer Fit
+				: WithEnumCheck<
+							EnumAssignmentCheck<Db, Type, Ast>,
+							SameComparisonClass<V, Type, Ast, never, ComparisonClassesOf<Db>>
+					  > extends infer Fit
 					? Fit extends DbtyperErrorShape
 						? Fit
 						: Fit extends true
 							? null
-							: AffinityTakesAnyValue<Db, Type["type"]> extends true
-								? null
-								: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Name]>
+							: FormatError<Errors["INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN"], [Name]>
 					: never
 			: never

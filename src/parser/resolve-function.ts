@@ -2,7 +2,13 @@ import type { DialectFact, FunctionCatalogFacts, OtherDialectTitle } from "../co
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
 import type { SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
-import type { CatalogRow, IsCatalogFunction, IsWindowCapableRow, IsWindowOnlyRow } from "./function-catalog.ts"
+import type {
+	CatalogRow,
+	IsCatalogFunction,
+	IsTableRow,
+	IsWindowCapableRow,
+	IsWindowOnlyRow,
+} from "./function-catalog.ts"
 import type { CatalogArityError } from "./function-catalog-arity.ts"
 import type { CatalogRowResult } from "./function-catalog-result.ts"
 import type { EnumPeerCheck } from "./parse-enum-checks.ts"
@@ -43,7 +49,9 @@ type ArgsTupleContainsStar<Args extends readonly (ScalarExprAst | { kind: "star"
  * SQLT-44…SQLT-52, PGT-27…PGT-33, FN-19…FN-21: a call in a chain, typed from its row in the function catalog of the
  * dialect (`functionCatalog`, src/parser/function-catalog.ts): argument count, window rules, result type and
  * nullability are columns of the row. A name that is not in the catalog is FN-1 (with the other dialect's hint,
- * SQLT-52, PGT-34). `Windowed`: the call has an OVER clause.
+ * SQLT-52, PGT-34). `Windowed`: the call has an OVER clause. `InFrom`: the call is a FROM item; a table-valued
+ * function (kind "table") is one only there, elsewhere it is unknown (SQLT-72); in FROM its result is no value
+ * (`SqlUnknown`): the FROM parser takes its columns from the catalog's `tables`.
  */
 type ResolveCatalogFunctionCall<
 	Name extends string,
@@ -52,22 +60,41 @@ type ResolveCatalogFunctionCall<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Windowed extends boolean,
+	InFrom extends boolean,
 	L extends string = Lowercase<Name>,
 	C extends FunctionCatalogFacts = DialectFact<Db, "functionCatalog">,
 > =
 	IsCatalogFunction<C, L> extends true
-		? ArgsTupleContainsStar<Args> extends true
-			? L extends "count"
-				? CatalogRowResult<C, CatalogRow<C, "count", 0>, []>
-				: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
-			: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
-				? ArgsRes extends DbtyperErrorShape
-					? ArgsRes
-					: ArgsRes extends readonly SqlTypeShape[]
-						? CatalogRow<C, L, ArgsRes["length"]> extends infer Row
-							? CatalogArityError<Row, ArgsRes> extends infer Arity
-								? Arity extends DbtyperErrorShape
-									? Arity
+		? IsTableRow<CatalogRow<C, L, Args["length"]>> extends InFrom
+			? ResolveCatalogRowCall<Name, Args, Db, Scope, Params, Windowed, L, C>
+			: UnknownFunction<Db, C, Name, L>
+		: UnknownFunction<Db, C, Name, L>
+
+/** {@link ResolveCatalogFunctionCall} of a name that is in the catalog, in a position its kind allows. */
+type ResolveCatalogRowCall<
+	Name extends string,
+	Args extends readonly (ScalarExprAst | { kind: "star" })[],
+	Db extends JsqlDatabaseShape,
+	Scope extends ScopeMap,
+	Params extends ExpressionParamsShape,
+	Windowed extends boolean,
+	L extends string,
+	C extends FunctionCatalogFacts,
+> =
+	ArgsTupleContainsStar<Args> extends true
+		? L extends "count"
+			? CatalogRowResult<C, CatalogRow<C, "count", 0>, []>
+			: FormatError<Errors["STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT"], []>
+		: ResolveFunctionArgsList<Args, Db, Scope, Params> extends infer ArgsRes
+			? ArgsRes extends DbtyperErrorShape
+				? ArgsRes
+				: ArgsRes extends readonly SqlTypeShape[]
+					? CatalogRow<C, L, ArgsRes["length"]> extends infer Row
+						? CatalogArityError<Row, ArgsRes, L> extends infer Arity
+							? Arity extends DbtyperErrorShape
+								? Arity
+								: IsTableRow<Row> extends true
+									? SqlUnknown
 									: EnumPeerCheck<Db, L, ArgsRes, Args> extends infer Peer extends DbtyperErrorShape
 										? Peer
 										: Windowed extends false
@@ -77,11 +104,10 @@ type ResolveCatalogFunctionCall<
 											: IsWindowCapableRow<Row> extends true
 												? CatalogRowResult<C, Row, ArgsRes>
 												: UnknownFunction<Db, C, Name, L>
-								: never
 							: never
 						: never
-				: never
-		: UnknownFunction<Db, C, Name, L>
+					: never
+			: never
 
 type PgHint<Hint extends string> = Hint extends "" ? "" : `; ${Hint}`
 
@@ -107,8 +133,9 @@ export type ResolveFunctionCall<
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	InFrom extends boolean = false,
 	L extends string = Lowercase<Name>,
-> = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, false, L>
+> = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, false, InFrom, L>
 
 export type ResolveWindowFunction<
 	Name extends string,
@@ -117,4 +144,4 @@ export type ResolveWindowFunction<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
 	L extends string = Lowercase<Name>,
-> = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, L>
+> = ResolveCatalogFunctionCall<Name, Args, Db, Scope, Params, true, false, L>

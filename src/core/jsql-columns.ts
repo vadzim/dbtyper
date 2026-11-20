@@ -1,7 +1,13 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlDataShape, JsqlColumnFactsEntry } from "./jsql-shapes.ts"
 import type { ReplaceProp } from "./type-utils.ts"
 import type { SqlTypeShape, NonNull } from "./sql-type-shape.ts"
-import type { JsqlDbGetSchema, JsqlDbReplaceSchema, JsqlSchemaGetTable, JsqlSchemaReplaceData } from "./jsql-utils.ts"
+import type {
+	JsqlDbGetSchema,
+	JsqlDbReplaceSchema,
+	JsqlSchemaGetTable,
+	JsqlSchemaReplaceData,
+	JsqlTableWithPrimaryKey,
+} from "./jsql-utils.ts"
 
 export type JsqlDataGetColumnType<Data extends JsqlDataShape | null, Col extends string> = Data extends JsqlDataShape
 	? Col extends keyof Data["columns"]
@@ -87,11 +93,27 @@ type WithColumnOrder<
 	Spelling extends string,
 > = Old extends { order: infer O extends readonly string[] }
 	? Removing extends true
-		? WithSpelling<ReplaceProp<Old, "order", WithoutName<O, Col>>, Old, Col, never>
+		? WithoutPkColumn<WithSpelling<ReplaceProp<Old, "order", WithoutName<O, Col>>, Old, Col, never>, Old, Col>
 		: Col extends keyof Old["columns"]
 			? Old
 			: WithSpelling<ReplaceProp<Old, "order", [...O, Col]>, Old, Col, Spelling>
 	: Old
+
+/** A dropped column takes the PRIMARY KEY it is part of with it (PostgreSQL drops the constraint; CORE-15). */
+type WithoutPkColumn<T, Old, Col extends string> = Old extends { primary_key: { columns: infer C } }
+	? Col extends C
+		? JsqlTableWithPrimaryKey<T, null>
+		: T
+	: T
+
+/** A renamed column stays in the PRIMARY KEY under its new name. */
+type WithRenamedPkColumn<T, Old extends string, New extends string> = T extends {
+	primary_key: { columns: infer C extends string; name: infer N extends string }
+}
+	? Old extends C
+		? JsqlTableWithPrimaryKey<T, { columns: Exclude<C, Old> | New; name: N }>
+		: T
+	: T
 
 /** Sets (or, with `never`, drops) the declared spelling of `Col`; tables with no spellings stay without the field. */
 type WithSpelling<T, Old, Col extends string, Spelling extends string> = [Spelling] extends [never]
@@ -112,7 +134,7 @@ type JsqlTableRenameColumn<
 	Table extends JsqlDataShape<"table">
 		? JsqlTableGetColumn<Table, Old> extends infer OldCol extends JsqlColumnShape
 			? JsqlTableReplaceColumnData<Table, Old, null> extends infer T0 extends JsqlDataShape<"table">
-				? JsqlTableReplaceColumnData<T0, New, OldCol> extends infer T
+				? WithRenamedPkColumn<JsqlTableReplaceColumnData<T0, New, OldCol>, Old, New> extends infer T
 					? WithSpelling<
 							WithSpelling<
 								Table extends { order: infer O extends readonly string[] }

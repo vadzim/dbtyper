@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **327 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **328 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -19,7 +19,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1600-1699 | Parser/ALTER TABLE            |            7 |
 | 1700-1799 | Parser/DROP TABLE             |            4 |
 | 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
-| 1900-1999 | Other-dialect syntax          |           20 |
+| 1900-1999 | Other-dialect syntax          |           21 |
 | 2100-2199 | Validation/Statement          |           10 |
 | 2200-2299 | Resolution/Table-Schema       |            4 |
 | 2300-2399 | Resolution/Column             |            4 |
@@ -198,28 +198,29 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 1900-1999: Other-dialect syntax
 
-| Code | Name                                      | Message                                                                                                                      |
-| ---- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 1900 | `POSTGRES_ONLY_SYNTAX`                    | … is PostgreSQL-only; this database is ……                                                                                    |
-| 1901 | `SQLITE_ONLY_SYNTAX`                      | … is SQLite-only; this database is ……                                                                                        |
-| 1910 | `STRICT_TABLE_TYPE_NOT_ALLOWED`           | STRICT tables allow only INT, INTEGER, REAL, TEXT, BLOB, ANY                                                                 |
-| 1911 | `AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY` | AUTOINCREMENT is allowed only on a column declared INTEGER PRIMARY KEY                                                       |
-| 1912 | `EXPECTED_TABLE_OPTION_IN_CREATE_TABLE`   | Expected STRICT or WITHOUT ROWID                                                                                             |
-| 1913 | `WITHOUT_ROWID_NEEDS_PRIMARY_KEY`         | WITHOUT ROWID tables need a PRIMARY KEY                                                                                      |
-| 1914 | `SQLITE_ADD_COLUMN_RESTRICTED`            | SQLite cannot ADD COLUMN with …                                                                                              |
-| 1915 | `SQLITE_NO_SCHEMAS`                       | SQLite has no schemas; drop the schema qualifier, or use main or temp                                                        |
-| 1916 | `SQLITE_UNSUPPORTED_STATEMENT`            | … is not supported in migrations                                                                                             |
-| 1917 | `REGEXP_NEEDS_FUNCTION`                   | REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB                                         |
-| 1918 | `EXPECTED_CONFLICT_ACTION_AFTER_OR`       | Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR                                                                   |
-| 1919 | `TOO_MANY_STATEMENTS`                     | A script may have at most … statements; split it into several migrations                                                     |
-| 1920 | `UNKNOWN_CONFLICT_ACTION`                 | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                                                          |
-| 1930 | `UNKNOWN_STATEMENT`                       | Unknown statement keyword …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                 |
-| 1931 | `UNKNOWN_STATEMENT_DID_YOU_MEAN`          | Unknown statement keyword …; did you mean …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
-| 1932 | `MULTIPLE_STATEMENTS_IN_QUERY`            | This driver runs only the first statement of a text; send one statement per query or stream call                             |
-| 1933 | `UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN`     | Unknown statement … …; did you mean … …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped     |
-| 1934 | `EXPECTED_STATEMENT_FORM`                 | Expected what to … (TABLE, VIEW, INDEX, …)                                                                                   |
-| 1935 | `UNTRACKED_SCHEMA_CHANGE`                 | … is not supported: dbtyper cannot follow the schema change it makes. …                                                      |
-| 1936 | `UNKNOWN_STATEMENT_FORM`                  | Unknown statement … …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                       |
+| Code | Name                                         | Message                                                                                                                      |
+| ---- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1900 | `POSTGRES_ONLY_SYNTAX`                       | … is PostgreSQL-only; this database is ……                                                                                    |
+| 1901 | `SQLITE_ONLY_SYNTAX`                         | … is SQLite-only; this database is ……                                                                                        |
+| 1910 | `STRICT_TABLE_TYPE_NOT_ALLOWED`              | STRICT tables allow only INT, INTEGER, REAL, TEXT, BLOB, ANY                                                                 |
+| 1911 | `AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY`    | AUTOINCREMENT is allowed only on a column declared INTEGER PRIMARY KEY                                                       |
+| 1912 | `EXPECTED_TABLE_OPTION_IN_CREATE_TABLE`      | Expected STRICT or WITHOUT ROWID                                                                                             |
+| 1913 | `WITHOUT_ROWID_NEEDS_PRIMARY_KEY`            | WITHOUT ROWID tables need a PRIMARY KEY                                                                                      |
+| 1914 | `SQLITE_ADD_COLUMN_RESTRICTED`               | SQLite cannot ADD COLUMN with …                                                                                              |
+| 1915 | `SQLITE_NO_SCHEMAS`                          | SQLite has no schemas; drop the schema qualifier, or use main or temp                                                        |
+| 1916 | `SQLITE_UNSUPPORTED_STATEMENT`               | … is not supported in migrations                                                                                             |
+| 1917 | `REGEXP_NEEDS_FUNCTION`                      | REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB                                         |
+| 1918 | `EXPECTED_CONFLICT_ACTION_AFTER_OR`          | Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR                                                                   |
+| 1919 | `TOO_MANY_STATEMENTS`                        | A script may have at most … statements; split it into several migrations                                                     |
+| 1920 | `UNKNOWN_CONFLICT_ACTION`                    | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                                                          |
+| 1930 | `UNKNOWN_STATEMENT`                          | Unknown statement keyword …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                 |
+| 1931 | `UNKNOWN_STATEMENT_DID_YOU_MEAN`             | Unknown statement keyword …; did you mean …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+| 1932 | `MULTIPLE_STATEMENTS_IN_QUERY`               | This driver runs only the first statement of a text; send one statement per query or stream call                             |
+| 1933 | `UNKNOWN_STATEMENT_FORM_DID_YOU_MEAN`        | Unknown statement … …; did you mean … …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped     |
+| 1934 | `EXPECTED_STATEMENT_FORM`                    | Expected what to … (TABLE, VIEW, INDEX, …)                                                                                   |
+| 1935 | `UNTRACKED_SCHEMA_CHANGE`                    | … is not supported: dbtyper cannot follow the schema change it makes. …                                                      |
+| 1936 | `UNKNOWN_STATEMENT_FORM`                     | Unknown statement … …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                       |
+| 1937 | `JSON_TABLE_FUNCTION_TAKES_1_OR_2_ARGUMENTS` | … takes 1 or 2 arguments: json \[, path\]                                                                                    |
 
 ## 2100-2199: Validation/Statement
 
@@ -546,21 +547,21 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 5000-5099: DML/Misc Expression
 
-| Code | Name                                                  | Message                                                                                                        |
-| ---- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 5000 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST`      | Expected \`,\` or \`)\` in argument list                                                                       |
-| 5001 | `EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT` | Expected \`)\` after function name in DEFAULT                                                                  |
-| 5002 | `EXPECTED_NULL_AFTER_IS`                              | Expected NULL after IS                                                                                         |
-| 5003 | `EXPECTED_NULL_AFTER_IS_NOT`                          | Expected NULL after IS NOT                                                                                     |
-| 5004 | `EXPECTED_NULL_AFTER_DROP_NOT`                        | Expected NULL after DROP NOT                                                                                   |
-| 5005 | `EXPECTED_CLOSE_PAREN_AFTER_STAR`                     | Expected \`)\` after \`\*\`                                                                                    |
-| 5006 | `EXPECTED_CLOSE_PAREN`                                | Expected \`)\`                                                                                                 |
-| 5007 | `UNSUPPORTED_PARENTHESIZED_EXPRESSION`                | Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped |
-| 5008 | `EXPECTED_FROM_AFTER_IS_DISTINCT`                     | Expected FROM after IS DISTINCT                                                                                |
-| 5009 | `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`               | Expected LIKE, IN or BETWEEN after NOT                                                                         |
-| 5020 | `EXPRESSION_NESTED_TOO_DEEP`                          | Parentheses are nested more than … levels deep; simplify the expression or split the query                     |
-| 5021 | `EXPRESSION_CHAIN_TOO_LONG`                           | More than … chained \`-\` operators; split the expression into parenthesized groups                            |
-| 5022 | `EXPECTED_COLLATION_NAME`                             | Expected a collation name after COLLATE                                                                        |
+| Code | Name                                                  | Message                                                                                                             |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 5000 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST`      | Expected \`,\` or \`)\` in argument list                                                                            |
+| 5001 | `EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT` | Expected \`)\` after function name in DEFAULT                                                                       |
+| 5002 | `EXPECTED_NULL_AFTER_IS`                              | Expected NULL after IS                                                                                              |
+| 5003 | `EXPECTED_NULL_AFTER_IS_NOT`                          | Expected NULL after IS NOT                                                                                          |
+| 5004 | `EXPECTED_NULL_AFTER_DROP_NOT`                        | Expected NULL after DROP NOT                                                                                        |
+| 5005 | `EXPECTED_CLOSE_PAREN_AFTER_STAR`                     | Expected \`)\` after \`\*\`                                                                                         |
+| 5006 | `EXPECTED_CLOSE_PAREN`                                | Expected \`)\`                                                                                                      |
+| 5007 | `UNSUPPORTED_PARENTHESIZED_EXPRESSION`                | Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped      |
+| 5008 | `EXPECTED_FROM_AFTER_IS_DISTINCT`                     | Expected FROM after IS DISTINCT                                                                                     |
+| 5009 | `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`               | Expected LIKE, IN or BETWEEN after NOT                                                                              |
+| 5020 | `EXPRESSION_NESTED_TOO_DEEP`                          | Parentheses, function calls and CASE are nested more than … levels deep; simplify the expression or split the query |
+| 5021 | `EXPRESSION_CHAIN_TOO_LONG`                           | More than … chained \`-\` operators; split the expression into parenthesized groups                                 |
+| 5022 | `EXPECTED_COLLATION_NAME`                             | Expected a collation name after COLLATE                                                                             |
 
 ## 5100-5199: Type-Data/VARCHAR-NUMERIC
 

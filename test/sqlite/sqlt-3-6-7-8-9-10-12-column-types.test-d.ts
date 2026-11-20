@@ -54,6 +54,13 @@ const untyped = sqlMigrations({ driver: sqliteDriver }).apply(`create table u (x
 const _untyped = await untyped.query(`select x, y from u`)
 expectType<typeof _untyped>(toBe<Array<{ x: number | string | Uint8Array | null; y: number | string | Uint8Array }>>())
 
+// SQLT-10 Check (bigint mode): integers come back as `bigint`, reals stay `number`, so the union has both
+const untypedBig = sqlMigrations({ driver: sqliteBigintDriver }).apply(`create table u (x, y not null);`).database()
+const _untypedBig = await untypedBig.query(`select x, y from u`)
+expectType<typeof _untypedBig>(
+	toBe<Array<{ x: number | bigint | string | Uint8Array | null; y: number | bigint | string | Uint8Array }>>(),
+)
+
 // SQLT-12: CAST gives the type of a column declared so
 const _cast = await db.query(`select cast(score as integer) as s, cast(name as varchar(5)) as v from users`)
 expectType<typeof _cast>(toBe<Array<{ s: number | null; v: string }>>())
