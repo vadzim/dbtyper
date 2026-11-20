@@ -54,9 +54,7 @@ const untyped = sqlMigrations({ driver: sqliteDriver }).apply(`create table u (x
 const _untyped = await untyped.query(`select x, y from u`)
 expectType<typeof _untyped>(toBe<Array<{ x: number | string | Uint8Array | null; y: number | string | Uint8Array }>>())
 
-// SQLT-10 (SKIPPED, SPEC-Q SQLT-10 raised in #184): the Check says with { bigint: true } the union has bigint INSTEAD of
-// number; the code (and product SQLT-10 "with bigint in big-integer mode") keeps number too, since a REAL value is a number.
-// This asserts the current behaviour; it fails when either side changes.
+// SQLT-10 Check (bigint mode): integers come back as `bigint`, reals stay `number`, so the union has both
 const untypedBig = sqlMigrations({ driver: sqliteBigintDriver }).apply(`create table u (x, y not null);`).database()
 const _untypedBig = await untypedBig.query(`select x, y from u`)
 expectType<typeof _untypedBig>(
