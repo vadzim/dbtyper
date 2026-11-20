@@ -94,6 +94,7 @@ export type ParseSelectArm<
 	Params extends ExpressionParamsShape,
 	CteBase extends ScopeMap,
 	OuterScope extends ScopeMap,
+	Trailing extends boolean = true,
 > =
 	PeekToken<Tokens> extends TokenKey<"distinct">
 		? SkipToken<Tokens> extends infer R0 extends ParserMonad
@@ -107,12 +108,12 @@ export type ParseSelectArm<
 						? OnAsts extends DbtyperErrorShape
 							? SkipFailedStatement<R1, Db, OnAsts>
 							: OnAsts extends readonly ScalarExprAst[]
-								? ParseSelectAfterDistinct<R1, Db, Params, CteBase, OuterScope, OnAsts>
+								? ParseSelectAfterDistinct<R1, Db, Params, CteBase, OuterScope, OnAsts, Trailing>
 								: never
 						: never
-				: ParseSelectAfterDistinct<R0, Db, Params, CteBase, OuterScope>
+				: ParseSelectAfterDistinct<R0, Db, Params, CteBase, OuterScope, readonly [], Trailing>
 			: never
-		: ParseSelectAfterDistinct<Tokens, Db, Params, CteBase, OuterScope>
+		: ParseSelectAfterDistinct<Tokens, Db, Params, CteBase, OuterScope, readonly [], Trailing>
 
 type SetOperationKeyword<T> =
 	T extends TokenKey<"union">
@@ -130,8 +131,11 @@ type ParseSetOperationTail<
 	Params extends ExpressionParamsShape,
 	CteBase extends ScopeMap,
 	OuterScope extends ScopeMap,
+	Chained extends boolean = false,
 > = [SetOperationKeyword<PeekToken<Tokens>>] extends [never]
-	? [Tokens, Db, Left]
+	? Chained extends true
+		? ParseCompoundTrailing<Tokens, Db, Left, Params>
+		: [Tokens, Db, Left]
 	: ParseSetOperationRightArm<SkipToken<Tokens>, Db, Params, CteBase, OuterScope> extends [
 				infer R extends ParserMonad,
 				infer Right,
@@ -141,7 +145,7 @@ type ParseSetOperationTail<
 			: Right extends JsqlSelectStatementResult
 				? MergeSetOperation<Left, Right, SetOperationKeyword<PeekToken<Tokens>>> extends infer Merged
 					? Merged extends JsqlSelectStatementResult
-						? ParseSetOperationTail<R, Db, Merged, Params, CteBase, OuterScope>
+						? ParseSetOperationTail<R, Db, Merged, Params, CteBase, OuterScope, true>
 						: [R, Db, Merged]
 					: never
 				: never
@@ -161,6 +165,25 @@ export type ParseSetOperationRightArm<
 			: never
 		: ParseSetOperationSelect<Tokens, Db, Params, CteBase, OuterScope>
 
+/**
+ * `ORDER BY` / paging after the last arm of a set operation belong to the whole compound and see only its output
+ * names (SEL-30, SEL-31, CORE-8; #160). Returns `[Tokens, Db, Result | error]`.
+ */
+export type ParseCompoundTrailing<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Res,
+	Params extends ExpressionParamsShape,
+> =
+	ParseSelectTrailingClauses<Tokens, Db, {}, Params, SelectOutputNames<Res>> extends [
+		infer Rt extends ParserMonad,
+		infer Te,
+	]
+		? Te extends DbtyperErrorShape
+			? [Rt, Db, Te]
+			: [Rt, Db, Res]
+		: never
+
 type ParseSetOperationSelect<
 	R0 extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -170,7 +193,7 @@ type ParseSetOperationSelect<
 > =
 	PeekToken<R0> extends TokenKey<"select">
 		? SkipToken<R0> extends infer R1 extends ParserMonad
-			? ParseSelectArm<R1, Db, Params, CteBase, OuterScope> extends [
+			? ParseSelectArm<R1, Db, Params, CteBase, OuterScope, false> extends [
 					infer R extends ParserMonad,
 					infer _Db2,
 					infer Res,
@@ -201,7 +224,7 @@ export type ParseSelectStatement<
 				: SkipFailedStatement<R1, Db2, FormatError<Errors["EXPECTED_SEMICOLON"], ["SELECT"]>>
 		: never
 
-export type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
+type SelectListStarInvalid<Items extends readonly RawSelectItem[]> = Items extends readonly [
 	{ kind: "star" },
 	...infer Rest extends readonly RawSelectItem[],
 ]
@@ -217,6 +240,7 @@ type ParseSelectAfterDistinct<
 	CteBase extends ScopeMap = {},
 	OuterScope extends ScopeMap = {},
 	OnAsts extends readonly ScalarExprAst[] = readonly [],
+	Trailing extends boolean = true,
 > =
 	MergeScope<CteBase, MarkOuterScope<OuterScope>> extends infer MergedOuterScope extends ScopeMap
 		? ParseRawSelectList<Tokens, Db, Params, MergedOuterScope> extends [
@@ -273,7 +297,8 @@ type ParseSelectAfterDistinct<
 																			Res,
 																			MergedScope,
 																			Params,
-																			Items
+																			Items,
+																			Trailing
 																		>
 															: never
 														: never
@@ -287,6 +312,13 @@ type ParseSelectAfterDistinct<
 										| TokenKey<"union">
 										| TokenKey<"intersect">
 										| TokenKey<"except">
+										| TokenKey<"where">
+										| TokenKey<"group">
+										| TokenKey<"having">
+										| TokenKey<"order">
+										| TokenKey<"limit">
+										| TokenKey<"offset">
+										| TokenKey<"fetch">
 										| TokenEot
 								? MergeScope<{}, MarkOuterScope<OuterScope>> extends infer MergedScope extends ScopeMap
 									? ResolveSelectListFrom<Items, Db, {}, MergedScope, Params> extends infer Res
@@ -299,7 +331,15 @@ type ParseSelectAfterDistinct<
 														Params
 												  > extends infer OnErr extends DbtyperErrorShape
 												? [AfterList, Db, OnErr]
-												: FinishSelectStatement<AfterList, Db, Res, MergedScope, Params, Items>
+												: FinishSelectStatement<
+														AfterList,
+														Db,
+														Res,
+														MergedScope,
+														Params,
+														Items,
+														Trailing
+													>
 										: never
 									: never
 								: SkipFailedStatement<
@@ -318,8 +358,9 @@ type SelectAfterWhereAndGroupHaving<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Items extends readonly RawSelectItem[],
+	Trailing extends boolean,
 > =
-	ParseOptionalGroupHaving<Tokens, Db, Scope, Params> extends readonly [
+	ParseOptionalGroupHaving<Tokens, Db, Scope, Params, Items> extends readonly [
 		infer T1 extends ParserMonad,
 		infer Gh,
 		infer Meta extends SelectGroupClauseMeta,
@@ -329,21 +370,34 @@ type SelectAfterWhereAndGroupHaving<
 			: GroupedProjValidationOutcome<Db, Items, Meta> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
-					: ParseSelectTrailingClauses<T1, Db, Scope, Params, SelectOutputNames<Res>> extends [
-								infer Rt extends ParserMonad,
-								infer Te,
-						  ]
-						? Te extends DbtyperErrorShape
-							? [Rt, Db, Te]
-							: [Rt, Db, Res]
-						: never
+					: Trailing extends false
+						? [T1, Db, Res] // an arm after a set operator: ORDER BY / paging belong to the whole compound
+						: ParseSelectTrailingClauses<T1, Db, Scope, Params, SelectOutputNames<Res>> extends [
+									infer Rt extends ParserMonad,
+									infer Te,
+							  ]
+							? Te extends DbtyperErrorShape
+								? [Rt, Db, Te]
+								: [PeekToken<T1>, PeekToken<Rt>] extends [
+											TokenKey<"order" | "limit" | "offset" | "fetch">,
+											SetOperationToken,
+									  ]
+									? SkipFailedStatement<
+											Rt,
+											Db,
+											FormatError<Errors["ORDER_OR_LIMIT_BEFORE_SET_OPERATOR"], []>
+										>
+									: [Rt, Db, Res]
+							: never
 				: never
 		: never
 
-type SelectOutputNames<Res> = Res extends { returning: infer Ret } ? keyof Ret & string : never
+type SetOperationToken = TokenKey<"union" | "intersect" | "except">
+
+export type SelectOutputNames<Res> = Res extends { returning: infer Ret } ? keyof Ret & string : never
 
 /** Optional `ORDER BY …` then optional paging; does not change projection type (`Res`). */
-type ParseSelectTrailingClauses<
+export type ParseSelectTrailingClauses<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
@@ -367,13 +421,14 @@ type FinishSelectStatement<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	Items extends readonly RawSelectItem[],
+	Trailing extends boolean,
 > =
 	PeekToken<Tokens> extends TokenKey<"where">
 		? SkipToken<Tokens> extends infer Rw0 extends ParserMonad
 			? ParseWhereExpression<Rw0, Db, Scope, Params> extends [infer Rw extends ParserMonad, infer We]
 				? We extends DbtyperErrorShape
 					? [Rw, Db, We]
-					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params, Items>
+					: SelectAfterWhereAndGroupHaving<Rw, Db, Res, Scope, Params, Items, Trailing>
 				: never
 			: never
-		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params, Items>
+		: SelectAfterWhereAndGroupHaving<Tokens, Db, Res, Scope, Params, Items, Trailing>

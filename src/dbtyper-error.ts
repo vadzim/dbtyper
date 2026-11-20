@@ -482,6 +482,10 @@ const errors = {
 		code: 1404,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
+	BARE_DML_ALIAS_NEEDS_AS: {
+		code: 1309,
+		msg: ["On SQLite the alias of the target table of ", " needs AS: write AS ", ""],
+	},
 	EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM: {
 		code: 1405,
 		msg: ["Expected alias or end of table in DELETE FROM"],
@@ -1157,6 +1161,11 @@ const errors = {
 		msg: ["Enum value already exists"],
 	},
 
+	DUPLICATE_COLUMN_IN_WRITE: {
+		code: 3306,
+		msg: ["Column ", " is listed more than once in ", ""],
+	},
+
 	// SELECT Constraints
 	SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST: {
 		code: 3400,
@@ -1214,6 +1223,12 @@ const errors = {
 		code: 3413,
 		msg: ["WITH query ", " has a different number of columns than its column list"],
 	},
+	ORDER_OR_LIMIT_BEFORE_SET_OPERATOR: {
+		code: 3416,
+		msg: [
+			"ORDER BY, LIMIT, OFFSET and FETCH go after the last SELECT of a UNION, INTERSECT or EXCEPT, not before it",
+		],
+	},
 
 	// Statement Constraints
 	INSERT_SELECT_COLUMN_COUNT_MISMATCH: {
@@ -1251,6 +1266,11 @@ const errors = {
 	CANNOT_WRITE_GENERATED_COLUMN: {
 		code: 3512,
 		msg: ["Cannot write generated column ", " in ", ""],
+	},
+
+	CANNOT_WRITE_VIEW: {
+		code: 3513,
+		msg: ["Cannot write to view ", " in ", "; writing to views is not supported"],
 	},
 
 	NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE: {

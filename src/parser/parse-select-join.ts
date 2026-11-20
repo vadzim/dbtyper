@@ -33,7 +33,14 @@ export type ParseJoinChain<
 							? ParseJoinAfterCross<SkipToken<Tokens>, Db, Scope, Params>
 							: PeekToken<Tokens> extends TokenKey<"join">
 								? ParseJoinAfterJoinKw<Tokens, Db, Scope, Params, "inner">
-								: [Tokens, null, Scope]
+								: PeekToken<Tokens> extends TokenKey<",">
+									? // a comma FROM list is not supported (SEL "Not yet"): say so here, not at the first use of its table
+										[
+											Tokens,
+											FormatError<Errors["EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE"], []>,
+											ParserRefErrorThirdSentinel,
+										]
+									: [Tokens, null, Scope]
 
 type NaturalJoinKind<T> =
 	T extends TokenKey<"inner">
@@ -182,11 +189,14 @@ type NullableScopeEntry<E extends ScopeEntry> = {
 	hidden?: HiddenColumnsOf<E>
 }
 
-/** SEL-18: columns of the optional side of an outer join are nullable (right of LEFT, left of RIGHT, both of FULL). */
+/**
+ * SEL-18: columns of the optional side of an outer join are nullable (right of LEFT, left of RIGHT, both of FULL).
+ * The old side is the FROM items before the join: a CTE definition of the same name is no FROM item (#152).
+ */
 type MarkJoinNullable<Kind extends JoinKind, Old extends ScopeMap, New extends ScopeMap> = Kind extends "inner"
 	? New
 	: {
-			[K in keyof New]: K extends keyof Old
+			[K in keyof New]: K extends keyof FromItemsOnly<Old>
 				? Kind extends "right" | "full"
 					? NullableScopeEntry<New[K]>
 					: New[K]

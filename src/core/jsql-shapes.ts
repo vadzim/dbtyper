@@ -9,6 +9,8 @@ export type JsqlDatabaseShape = {
 	pendingConstraints?: string
 	/** Set while the INSERT / UPDATE / DELETE of a data-modifying CTE is parsed: it ends at `)` (PGT-26). */
 	cteDml?: true
+	/** Set while the SELECT of an `INSERT … SELECT` is parsed: the columns match by position, so no output name is needed (#166). */
+	positionalSelect?: true
 }
 
 export type JsqlSchemaShape = {
