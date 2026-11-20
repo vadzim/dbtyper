@@ -104,11 +104,21 @@ export type ScalarExprAst =
 			kind: "window_function"
 			name: string
 			args: readonly (ScalarExprAst | { kind: "star" })[]
-			over: {
-				partition_by?: readonly ScalarExprAst[]
-				order_by: readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
-			}
+			over: WindowSpecAst
 	  }
+
+/**
+ * The content of an OVER clause or of a `WINDOW w AS (…)` definition (FN-11, FN-30, FN-31). `ref`: the named window
+ * it starts from (`OVER w` is `bare`, `OVER (w …)` is not); `partition_by` empty = none; `frame`: the offset
+ * expressions of a frame clause (`ROWS 2 PRECEDING` → `[2]`; a frame changes no type), `null` = no frame.
+ */
+export type WindowSpecAst = {
+	ref: string | null
+	bare: boolean
+	partition_by: readonly ScalarExprAst[]
+	order_by: readonly { expr: ScalarExprAst; direction: "asc" | "desc" | null }[]
+	frame: readonly ScalarExprAst[] | null
+}
 
 /** Lowercase joined SQL type name for cast resolution (e.g. `["double","precision"]` → `"double precision"`). */
 /** PGT-14: both bounds of `BETWEEN` against an enum operand. */

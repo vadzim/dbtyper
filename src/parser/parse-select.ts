@@ -21,6 +21,7 @@ import type { AddJoinReads, AddViewReads, ResolveSelectListFrom, ViewReads } fro
 import type { ParseOptionalGroupHaving, SelectGroupClauseMeta } from "./parse-select-group-by.ts"
 import type { GroupedProjValidationOutcome } from "./parse-select-grouped.ts"
 import type { ParseOptionalOrderByTokens, ParseOptionalPagingTokens } from "./parse-select-order-limit.ts"
+import type { ParseOptionalWindowClause, WindowDefs, WindowUsesError } from "./parse-select-window.ts"
 import type { ParseDistinctOnList, DistinctOnError } from "./parse-select-distinct-on.ts"
 import type { ParseParenEnclosedSelect } from "./parse-select-subquery.ts"
 
@@ -357,6 +358,7 @@ type ParseSelectAfterDistinct<
 										| TokenKey<"where">
 										| TokenKey<"group">
 										| TokenKey<"having">
+										| TokenKey<"window">
 										| TokenKey<"order">
 										| TokenKey<"limit">
 										| TokenKey<"offset">
@@ -415,29 +417,53 @@ type SelectAfterWhereAndGroupHaving<
 			: GroupedProjValidationOutcome<Db, Items, Meta, Scope> extends infer V
 				? V extends DbtyperErrorShape
 					? [T1, Db, V]
-					: // #210: a view's types HAVING and GROUP BY read
-						AddViewReads<
-								AddViewReads<Res0, Gh>,
-								ViewReads<Db, Meta["group_key_asts"], Scope>
-						  > extends infer Res
-						? Trailing extends false
-							? [T1, Db, Res] // an arm after a set operator: ORDER BY / paging belong to the whole compound
-							: ParseSelectTrailingClauses<T1, Db, Scope, Params, SelectOutputNames<Res>> extends [
-										infer Rt extends ParserMonad,
-										infer Te,
-								  ]
-								? Te extends DbtyperErrorShape
-									? [Rt, Db, Te]
-									: [PeekToken<T1>, PeekToken<Rt>] extends [
-												TokenKey<"order" | "limit" | "offset" | "fetch">,
-												SetOperationToken,
-										  ]
+					: ParseOptionalWindowClause<T1, Db, Scope, Params> extends [infer Tw extends ParserMonad, infer Wc]
+						? Wc extends DbtyperErrorShape
+							? [Tw, Db, Wc]
+							: Wc extends { windows: infer Wins extends WindowDefs; reads: infer Wr }
+								? WindowUsesError<Items, Wins, Db> extends infer Ue extends DbtyperErrorShape
+									? [Tw, Db, Ue]
+									: PeekToken<Tw> extends TokenKey<"where" | "group" | "having">
 										? SkipFailedStatement<
-												Rt,
+												Tw,
 												Db,
-												FormatError<Errors["ORDER_OR_LIMIT_BEFORE_SET_OPERATOR"], []>
+												FormatError<Errors["WINDOW_CLAUSE_MISPLACED"], []>
 											>
-										: [Rt, Db, AddViewReads<Res, Te>]
+										: // #210: a view's types HAVING and GROUP BY read; FN-35: and the window definitions
+											AddViewReads<
+													AddViewReads<
+														AddViewReads<Res0, Gh>,
+														ViewReads<Db, Meta["group_key_asts"], Scope>
+													>,
+													Wr
+											  > extends infer Res
+											? Trailing extends false
+												? [Tw, Db, Res] // an arm after a set operator: ORDER BY / paging belong to the whole compound
+												: ParseSelectTrailingClauses<
+															Tw,
+															Db,
+															Scope,
+															Params,
+															SelectOutputNames<Res>,
+															Wins
+													  > extends [infer Rt extends ParserMonad, infer Te]
+													? Te extends DbtyperErrorShape
+														? [Rt, Db, Te]
+														: [PeekToken<Tw>, PeekToken<Rt>] extends [
+																	TokenKey<"order" | "limit" | "offset" | "fetch">,
+																	SetOperationToken,
+															  ]
+															? SkipFailedStatement<
+																	Rt,
+																	Db,
+																	FormatError<
+																		Errors["ORDER_OR_LIMIT_BEFORE_SET_OPERATOR"],
+																		[]
+																	>
+																>
+															: [Rt, Db, AddViewReads<Res, Te>]
+													: never
+											: never
 								: never
 						: never
 				: never
@@ -454,14 +480,20 @@ type ParseSelectTrailingClauses<
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
 	OutNames extends string,
+	Wins extends WindowDefs = {},
 > =
-	ParseOptionalOrderByTokens<Tokens, Db, Scope, Params, OutNames> extends [infer T1 extends ParserMonad, infer E1]
+	ParseOptionalOrderByTokens<Tokens, Db, Scope, Params, OutNames, Wins> extends [
+		infer T1 extends ParserMonad,
+		infer E1,
+	]
 		? E1 extends DbtyperErrorShape
 			? SkipFailedExpression<T1, E1>
 			: ParseOptionalPagingTokens<T1, Db, Scope, Params> extends [infer T2 extends ParserMonad, infer E2]
 				? E2 extends DbtyperErrorShape
 					? SkipFailedExpression<T2, E2>
-					: [T2, E1] // E1: the user types a CREATE VIEW's ORDER BY reads (#212), else null
+					: PeekToken<T2> extends TokenKey<"window">
+						? SkipFailedExpression<T2, FormatError<Errors["WINDOW_CLAUSE_MISPLACED"], []>> // FN-34
+						: [T2, E1] // E1: the user types a CREATE VIEW's ORDER BY reads (#212), else null
 				: never
 		: never
 

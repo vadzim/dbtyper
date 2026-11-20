@@ -480,12 +480,16 @@ type IsEnumColumn<Col, Name extends string, Sch extends string> = Col extends {
  * composite type (#179) by the table's `user_types` (a domain column's type is its base type).
  */
 type TypeColumnNames<Data, Name extends string, Sch extends string, Enum extends boolean> = Enum extends true
-	? Data extends { columns: infer Cols }
-		? { [C in keyof Cols]: IsEnumColumn<Cols[C], Name, Sch> extends true ? C : never }[keyof Cols] & string
-		: never
-	: Data extends { user_types: infer U }
-		? { [C in keyof U]: U[C] extends `${Sch}.${Name}` ? C : never }[keyof U] & string
-		: never
+	? | (Data extends { columns: infer Cols }
+				? { [C in keyof Cols]: IsEnumColumn<Cols[C], Name, Sch> extends true ? C : never }[keyof Cols] & string
+				: never)
+		// #214: a view that reads an enum column outside its output (WHERE, a window definition, …) keeps it in `user_types`
+		| (Data extends { kind: "view" } ? UserTypeColumnNames<Data, Name, Sch> : never)
+	: UserTypeColumnNames<Data, Name, Sch>
+
+type UserTypeColumnNames<Data, Name extends string, Sch extends string> = Data extends { user_types: infer U }
+	? { [C in keyof U]: U[C] extends `${Sch}.${Name}` ? C : never }[keyof U] & string
+	: never
 
 type TypeUserSets<Db extends JsqlDatabaseShape, Name extends string, Sch extends string, Enum extends boolean> = {
 	[S in keyof Db["schemas"]]: Db["schemas"][S] extends { sets: infer Sets }

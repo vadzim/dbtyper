@@ -260,6 +260,7 @@ type FromItemEndToken =
 	| TokenKey<"fetch">
 	| TokenKey<"group">
 	| TokenKey<"having">
+	| TokenKey<"window">
 	| TokenKey<"union">
 	| TokenKey<"intersect">
 	| TokenKey<"except">

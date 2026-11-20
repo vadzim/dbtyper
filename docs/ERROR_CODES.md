@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **335 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **341 active error codes** and 72 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -45,7 +45,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 4300-4399 | DML/CASE                      |            1 |
 | 4400-4499 | DML/BETWEEN-IN                |            3 |
 | 4500-4599 | DML/CAST                      |            5 |
-| 4600-4699 | DML/Window Function           |            4 |
+| 4600-4699 | DML/Window Function           |           10 |
 | 4700-4799 | DML/Array                     |            3 |
 | 4800-4899 | DML/Operator                  |            5 |
 | 4900-4999 | DML/EXISTS                    |            2 |
@@ -520,12 +520,18 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 4600-4699: DML/Window Function
 
-| Code | Name                                                  | Message                                          |
-| ---- | ----------------------------------------------------- | ------------------------------------------------ |
-| 4600 | `EXPECTED_OPEN_PAREN_AFTER_OVER`                      | Expected ( after OVER                            |
-| 4601 | `EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE`              | Expected ) after OVER clause                     |
-| 4602 | `EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE`    | Expected PARTITION BY or ORDER BY in OVER clause |
-| 4603 | `EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY` | Expected ORDER BY or ) after PARTITION BY        |
+| Code | Name                                                  | Message                                                  |
+| ---- | ----------------------------------------------------- | -------------------------------------------------------- |
+| 4600 | `EXPECTED_OPEN_PAREN_AFTER_OVER`                      | Expected ( after OVER                                    |
+| 4601 | `EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE`              | Expected ) after OVER clause                             |
+| 4602 | `EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE`    | Expected PARTITION BY or ORDER BY in OVER clause         |
+| 4603 | `EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY` | Expected ORDER BY or ) after PARTITION BY                |
+| 4604 | `UNKNOWN_WINDOW`                                      | Unknown window: …                                        |
+| 4605 | `DUPLICATE_WINDOW_NAME`                               | Duplicate window name: …                                 |
+| 4606 | `WINDOW_ALREADY_HAS_PARTITION_BY`                     | Window … already has PARTITION BY; OVER cannot add one   |
+| 4607 | `WINDOW_ALREADY_HAS_ORDER_BY`                         | Window … already has ORDER BY; OVER cannot add one       |
+| 4608 | `WINDOW_HAS_FRAME_CLAUSE`                             | Window … has a frame clause; OVER cannot add or copy one |
+| 4609 | `WINDOW_CLAUSE_MISPLACED`                             | WINDOW clause must come after HAVING and before ORDER BY |
 
 ## 4700-4799: DML/Array
 
