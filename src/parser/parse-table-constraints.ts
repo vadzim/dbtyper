@@ -14,8 +14,11 @@ import type {
 	MultiplePrimaryKeys,
 	PkKind,
 	WithPendingConstraint,
+	WithPendingConstraintRefs,
+	WithPendingDefaultConstraint,
 	WithTableConstraintColumns,
 } from "./parse-create-table.ts"
+import type { JoinColumnNames, SingleName } from "../core/jsql-constraint-names.ts"
 import type { OnConflictClause } from "./parse-column-constraint-clauses.ts"
 import type { ParenGroupNames, SkipParenGroup } from "./parse-column-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
@@ -133,11 +136,26 @@ type TableConstraintBody<
 									Stack
 								>
 						: never
-					: SkipParenGroup<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
-						? E extends DbtyperErrorShape
-							? [R, Db, E]
-							: AfterTableConstraint<R, Db, Schema, Table, Stack>
-						: never
+					: DialectFact<Db, "defaultConstraintNames"> extends true
+						? // #207: an unnamed CHECK is `<table>_<column>_check` when its expression names one column
+							ParenGroupNames<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
+							? [E] extends [DbtyperErrorShape]
+								? [R, Db, E]
+								: Extract<E, Stack[number][0]> extends infer Used extends string
+									? AfterTableConstraint<
+											R,
+											WithPendingDefaultConstraint<Db, Table, SingleName<Used>, "check", Used>,
+											Schema,
+											Table,
+											Stack
+										>
+									: never
+							: never
+						: SkipParenGroup<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
+							? E extends DbtyperErrorShape
+								? [R, Db, E]
+								: AfterTableConstraint<R, Db, Schema, Table, Stack>
+							: never
 				: SkipFailedStatement<
 						Tokens,
 						Db,
@@ -165,13 +183,25 @@ type TableConstraintColumns<
 						? [Missing] extends [never]
 							? TableConstraintAfterColumns<
 									R,
-									WithTableConstraintColumns<Db, Names[number]>,
+									Db extends { pendingTableConstraint: string }
+										? WithTableConstraintColumns<Db, Names[number]>
+										: Kind extends "UNIQUE"
+											? // #207: an unnamed UNIQUE is `<table>_<columns>_key`
+												WithPendingDefaultConstraint<
+													Db,
+													Table,
+													JoinColumnNames<Names>,
+													"key",
+													Names[number]
+												>
+											: Db,
 									Schema,
 									Table,
 									Stack,
 									Kind,
 									Names[number],
-									Names["length"] extends 1 ? true : false
+									Names["length"] extends 1 ? true : false,
+									JoinColumnNames<Names>
 								>
 							: SkipFailedStatement<R, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Missing, Kind]>>
 						: never
@@ -189,12 +219,22 @@ type TableConstraintAfterColumns<
 	Kind extends string,
 	Names extends string,
 	Single extends boolean,
+	NamePart extends string,
 > = Kind extends "FOREIGN KEY"
 	? PeekToken<Tokens> extends TokenKey<"references">
 		? ParseReferences<SkipToken<Tokens>, Db, Schema, Table> extends [infer R2 extends ParserMonad, infer E]
-			? E extends DbtyperErrorShape
-				? [R2, Db, E]
-				: AfterTableConstraint<R2, Db, Schema, Table, Stack>
+			? E extends { refs: infer Refs extends string }
+				? AfterTableConstraint<
+						R2,
+						// #207: the columns it references; unnamed, it is `<table>_<columns>_fkey`
+						Db extends { pendingTableConstraint: infer N extends string }
+							? WithPendingConstraintRefs<Db, N, Refs>
+							: WithPendingDefaultConstraint<Db, Table, NamePart, "fkey", Names, Refs>,
+						Schema,
+						Table,
+						Stack
+					>
+				: [R2, Db, E]
 			: never
 		: SkipFailedStatement<Tokens, Db, FormatError<Errors["EXPECTED_REFERENCES_AFTER_FOREIGN_KEY"], []>>
 	: AfterTableConstraint<

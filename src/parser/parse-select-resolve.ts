@@ -24,11 +24,17 @@ export type ResolveSelectListFrom<
 > = Items extends readonly [{ kind: "star" }]
 	? SingleAliasScope<FromScope> extends true
 		? ScopeEntryOfSingle<FromScope> extends infer E extends ScopeEntry
-			? {
-					kind: "select"
-					returning: StarColumns<KeyDb<Db>, E>
-					order: StarNames<Db, E>
-				}
+			? WithViewUserTypes<
+					{
+						kind: "select"
+						returning: StarColumns<KeyDb<Db>, E>
+						order: StarNames<Db, E>
+					},
+					Items,
+					Db,
+					FromScope,
+					FromScope
+				>
 			: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 		: FormatError<Errors["SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE"], []>
 	: ResolveSelectList<Items, Db, Scope, Params> extends infer Res
@@ -47,11 +53,75 @@ export type ResolveSelectListFrom<
 						? Res & { order: Names } // #166: matched by position, a repeated name is fine
 						: FirstDuplicateName<Names> extends infer Dup
 							? [Dup] extends [never]
-								? Res & { order: Names }
+								? WithViewUserTypes<Res & { order: Names }, Items, Db, FromScope, Scope>
 								: FormatError<Errors["DUPLICATE_OUTPUT_COLUMN"], [`\`${Dup & string}\``]>
 							: never
 					: never
 				: never
+		: never
+
+/**
+ * #207 (item 1): in the SELECT of a CREATE VIEW (`pendingView`), the domain and composite types (`schema.name`) the
+ * select list reads: a column of one (the table's `user_types`), any column of a view that has one, `*` and `alias.*`
+ * over them, a subquery's. The view keeps them as its `user_types` (keyed by the type itself), so DROP DOMAIN | TYPE
+ * … CASCADE drops it as PostgreSQL does. Other queries never compute this.
+ */
+type WithViewUserTypes<
+	Res,
+	Items extends readonly RawSelectItem[],
+	Db,
+	FromScope extends ScopeMap,
+	Scope extends ScopeMap,
+> = Db extends { pendingView: true }
+	? ItemUserTypes<Items[number], Db, FromScope, Scope> extends infer U extends string
+		? [U] extends [never]
+			? Res
+			: Res & { user_types: { [K in U]: K } }
+		: Res
+	: Res
+
+/** The user types an item reads (distributes over a union of items). */
+type ItemUserTypes<H, Db, FromScope extends ScopeMap, Scope extends ScopeMap> = H extends { kind: "star" }
+	? ScopeEntryOfSingle<FromScope> extends infer E extends ScopeEntry
+		? AllUserTypes<EntryData<Db, E>>
+		: never
+	: H extends { kind: "expr"; ast: infer Ast }
+		? Ast extends {
+				kind: "qualified_table_star"
+				schema: infer Sch extends string
+				table: infer Tab extends string
+			}
+			? AllUserTypes<EntryData<Db, ScopeEntryForQualifiedName<Scope, Sch, Tab>>>
+			: Ast extends { kind: "alias_table_star"; alias: infer Al extends string }
+				? Al extends keyof Scope
+					? AllUserTypes<EntryData<Db, Scope[Al]>>
+					: never
+				: AstUserTypes<Ast, Db, Scope>
+		: never
+
+/** Every user type of a relation (a table's columns, a view's or a subquery's types). */
+type AllUserTypes<Data> = Data extends { user_types: infer U } ? U[keyof U] & string : never
+
+/** The user types an expression reads: its column references, and the subqueries in it (their own `user_types`). */
+type AstUserTypes<A, Db, Scope extends ScopeMap> = A extends { kind: "col"; parts: infer P extends ScalarIdentParts }
+	? ColumnUserType<EntryData<Db, ColumnRefEntry<Scope, P, LastPart<P>>>, LastPart<P>>
+	: A extends { kind: "select" }
+		? AllUserTypes<A>
+		: A extends readonly (infer E)[]
+			? AstUserTypes<E, Db, Scope>
+			: A extends object
+				? { [K in keyof A]: K extends "kind" ? never : AstUserTypes<A[K], Db, Scope> }[keyof A]
+				: never
+
+type LastPart<P extends ScalarIdentParts> = P extends readonly [...unknown[], infer L extends string] ? L : never
+
+/** The user type of column `Col` of a table, or every one of a view, CTE or subquery (it may read it anywhere). */
+type ColumnUserType<Data, Col extends string> = Data extends { kind: "view" } | { schema: "__subquery__" | "__cte__" }
+	? AllUserTypes<Data>
+	: Data extends { user_types: infer U }
+		? Col extends keyof U
+			? U[Col] & string
+			: never
 		: never
 
 /**
