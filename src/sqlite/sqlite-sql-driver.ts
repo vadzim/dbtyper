@@ -168,18 +168,22 @@ function adapt<Stmt extends StatementLike, Big extends boolean, Single extends b
 /**
  * SQLT-2: adapts a `better-sqlite3` `Database` to dbtyper's {@link SqlDriver}.
  * Rows: INTEGER → number (bigint with `{ bigint: true }`), REAL → number, TEXT → string, BLOB → Buffer (a `Uint8Array`).
+ * One statement per `query` / `stream` call: a second one is a compile error (STMT-22, #156; better-sqlite3 throws at run time).
  */
 export function betterSqlite3Driver(
 	db: BetterSqlite3Like,
 	options: { bigint: true },
-): SqlDriver<SqliteDriverConfig<true>>
-export function betterSqlite3Driver(db: BetterSqlite3Like, options?: SqliteDriverOptions): SqlDriver<SqliteDriverConfig>
+): SqlDriver<SqliteDriverConfig<true, true>>
+export function betterSqlite3Driver(
+	db: BetterSqlite3Like,
+	options?: SqliteDriverOptions,
+): SqlDriver<SqliteDriverConfig<false, true>>
 export function betterSqlite3Driver(
 	db: BetterSqlite3Like,
 	options: SqliteDriverOptions = {},
-): SqlDriver<SqliteDriverConfig<boolean>> {
+): SqlDriver<SqliteDriverConfig<boolean, true>> {
 	const bigint = options.bigint === true
-	return adapt<BetterStatement, boolean, false>(
+	return adapt<BetterStatement, boolean, true>(
 		sql => {
 			const stmt = db.prepare(sql) as BetterStatement
 			if (stmt.reader) {
@@ -196,7 +200,7 @@ export function betterSqlite3Driver(
 /**
  * SQLT-2: adapts a `node:sqlite` `DatabaseSync` to dbtyper's {@link SqlDriver}.
  * Rows: INTEGER → number (bigint with `{ bigint: true }`), REAL → number, TEXT → string, BLOB → Uint8Array.
- * It runs only the first statement of a text, so a second statement is a compile error in `query` / `stream` (#156).
+ * Both SQLite drivers take one statement per call (node:sqlite runs only the first and says nothing, better-sqlite3 throws), so a second statement is a compile error in `query` / `stream` (#156).
  */
 export function nodeSqliteDriver(
 	db: NodeSqliteLike,

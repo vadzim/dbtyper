@@ -2,7 +2,7 @@
 
 <!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
 
-dbtyper has **307 active error codes** and 68 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+dbtyper has **308 active error codes** and 70 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
 
 A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
 
@@ -32,9 +32,9 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3000-3099 | Type/Array Operations         |            2 |
 | 3100-3199 | Type/Subquery                 |            4 |
 | 3200-3299 | Semantic/Duplicate-Existence  |           12 |
-| 3300-3399 | Semantic/Constraint           |            6 |
+| 3300-3399 | Semantic/Constraint           |            7 |
 | 3400-3499 | Semantic/SELECT               |           14 |
-| 3500-3599 | Semantic/Statement            |           10 |
+| 3500-3599 | Semantic/Statement            |           11 |
 | 3600-3699 | Semantic/Function             |           20 |
 | 3700-3799 | DDL/CREATE SCHEMA             |            3 |
 | 3800-3899 | DDL/DROP SCHEMA               |            2 |
@@ -42,7 +42,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 4000-4099 | DDL/ALTER TYPE                |            3 |
 | 4100-4199 | DDL/Misc                      |            6 |
 | 4200-4299 | DML/JOIN                      |            2 |
-| 4300-4399 | DML/CASE                      |            2 |
+| 4300-4399 | DML/CASE                      |            1 |
 | 4400-4499 | DML/BETWEEN-IN                |            3 |
 | 4500-4599 | DML/CAST                      |            5 |
 | 4600-4699 | DML/Window Function           |            4 |
@@ -121,12 +121,12 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 1300-1399: Parser/UPDATE Statement
 
-| Code | Name                                                       | Message                                                     |
-| ---- | ---------------------------------------------------------- | ----------------------------------------------------------- |
-| 1300 | `EXPECTED_SET_IN_UPDATE`                                   | Expected SET in UPDATE                                      |
-| 1301 | `EXPECTED_SET_AFTER_TABLE_IN_UPDATE`                       | Expected SET after table in UPDATE                          |
-| 1304 | `EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET`               | Expected \`=\` after column in UPDATE SET                   |
-| 1305 | `EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT` | Expected \`,\`, FROM, WHERE, or end after UPDATE assignment |
+| Code | Name                                                       | Message                                                           |
+| ---- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1301 | `EXPECTED_SET_AFTER_TABLE_IN_UPDATE`                       | Expected SET after table in UPDATE                                |
+| 1304 | `EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET`               | Expected \`=\` after column in UPDATE SET                         |
+| 1305 | `EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT` | Expected \`,\`, FROM, WHERE, or end after UPDATE assignment       |
+| 1309 | `BARE_DML_ALIAS_NEEDS_AS`                                  | On SQLite the alias of the target table of … needs AS: write AS … |
 
 ## 1400-1499: Parser/DELETE Statement
 
@@ -354,6 +354,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3303 | `IN_LIST_MUST_NOT_BE_EMPTY`                 | IN list must not be empty                 |
 | 3304 | `EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE`     | Empty enum values list in CREATE TYPE     |
 | 3305 | `ENUM_VALUE_ALREADY_EXISTS`                 | Enum value already exists                 |
+| 3306 | `DUPLICATE_COLUMN_IN_WRITE`                 | Column … is listed more than once in …    |
 
 ## 3400-3499: Semantic/SELECT
 
@@ -388,6 +389,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 3510 | `DROP_VIEW_TARGETS_A_TABLE_USE_DROP_TABLE`  | DROP VIEW targets a table; use DROP TABLE                                                       |
 | 3511 | `VIEW_DOES_NOT_EXIST_USE_IF_EXISTS`         | View does not exist; use IF EXISTS                                                              |
 | 3512 | `CANNOT_WRITE_GENERATED_COLUMN`             | Cannot write generated column … in …                                                            |
+| 3513 | `CANNOT_WRITE_VIEW`                         | Cannot write to view … in …; writing to views is not supported                                  |
 
 ## 3600-3699: Semantic/Function
 
@@ -470,10 +472,9 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 
 ## 4300-4399: DML/CASE
 
-| Code | Name                              | Message                         |
-| ---- | --------------------------------- | ------------------------------- |
-| 4300 | `CASE_REQUIRES_AT_LEAST_ONE_WHEN` | CASE requires at least one WHEN |
-| 4301 | `EXPECTED_THEN_AFTER_CASE_WHEN`   | Expected THEN after CASE WHEN   |
+| Code | Name                            | Message                       |
+| ---- | ------------------------------- | ----------------------------- |
+| 4301 | `EXPECTED_THEN_AFTER_CASE_WHEN` | Expected THEN after CASE WHEN |
 
 ## 4400-4499: DML/BETWEEN-IN
 
@@ -592,6 +593,7 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 1222 | `EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET`           |
 | 1223 | `INVALID_VALUE_EXPRESSION_IN_INSERT`                          |
 | 1224 | `INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE`              |
+| 1300 | `EXPECTED_SET_IN_UPDATE`                                      |
 | 1302 | `EXPECTED_SEMICOLON_AFTER_UPDATE`                             |
 | 1303 | `EXPECTED_COLUMN_NAME_IN_UPDATE_SET`                          |
 | 1306 | `EXPECTED_TABLE_NAME_IN_UPDATE`                               |
@@ -652,3 +654,4 @@ A code is never reused. A removed error stays in the registry as `OBSOLETE_<code
 | 4207 | `EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT`                          |
 | 4208 | `EXPECTED_OUTER_OR_JOIN_AFTER_FULL`                           |
 | 4210 | `EXPECTED_ON_KEYWORD`                                         |
+| 4300 | `CASE_REQUIRES_AT_LEAST_ONE_WHEN`                             |

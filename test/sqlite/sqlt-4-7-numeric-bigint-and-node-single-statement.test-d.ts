@@ -29,7 +29,7 @@ expectType<GetQueryError<typeof _node, typeof _trailing>>(toBe<null>())
 expectType<GetQueryError<typeof _node, typeof _two>>(toBe<DbtyperError<1932, typeof _msg>>())
 expectType<GetStreamError<typeof _node, typeof _two>>(toBe<DbtyperError<1932, typeof _msg>>())
 
-// better-sqlite3 rejects several statements at run time too, but the spec decision (STMT-Q5) names node:sqlite only
+// better-sqlite3 throws at run time for several statements: the same compile error (STMT-22)
 const _better = sqlMigrations({ driver: sqliteDriver }).apply(schema).database()
-expectType<GetQueryError<typeof _better, typeof _two>>(toBe<null>())
+expectType<GetQueryError<typeof _better, typeof _two>>(toBe<DbtyperError<1932, typeof _msg>>())
 void db
