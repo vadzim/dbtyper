@@ -21,15 +21,19 @@ type ParseAfterIsUntyped<Tokens extends ParserMonad, L extends ScalarExprAst, En
 		? SkipToken<Tokens> extends infer R5 extends ParserMonad
 			? PeekToken<R5> extends TokenKey<"null">
 				? [SkipToken<R5>, { kind: "is_not_null"; expr: L }, Env]
-				: DialectFact<Env["db"], "isOperand"> extends "value"
+				: IsValueAllowed<PeekToken<R5>, Env> extends true
 					? ParseIsValueOperand<R5, L, Env>
 					: SkipFailedExpressionWithEnv<R5, FormatError<Errors["EXPECTED_NULL_AFTER_IS_NOT"], []>, Env>
 			: never
 		: PeekToken<Tokens> extends TokenKey<"null">
 			? [SkipToken<Tokens>, { kind: "is_null"; expr: L }, Env]
-			: DialectFact<Env["db"], "isOperand"> extends "value"
+			: IsValueAllowed<PeekToken<Tokens>, Env> extends true
 				? ParseIsValueOperand<Tokens, L, Env>
 				: SkipFailedExpressionWithEnv<Tokens, FormatError<Errors["EXPECTED_NULL_AFTER_IS"], []>, Env>
+
+/** `IS [NOT] DISTINCT FROM` is standard SQL (CORE-2, both dialects); a bare value after `IS [NOT]` is the `isOperand` dialect fact. */
+type IsValueAllowed<Next, Env extends ExprParseEnv> =
+	DialectFact<Env["db"], "isOperand"> extends "value" ? true : Next extends TokenKey<"distinct"> ? true : false
 
 /** SQLT-33: `a IS [NOT] b` and `a IS [NOT] DISTINCT FROM b`: any value on the right; the result is never NULL. */
 type ParseIsValueOperand<Tokens extends ParserMonad, L extends ScalarExprAst, Env extends ExprParseEnv> =

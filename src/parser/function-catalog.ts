@@ -1,5 +1,6 @@
 import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { FunctionCatalogFacts } from "../core/dialect.ts"
+import type { Dec } from "../core/type-utils.ts"
 
 /**
  * The function catalog grammar shared by the dialects (#116 item 4). A dialect's data file (`SqliteFunctions`,
@@ -16,7 +17,8 @@ import type { FunctionCatalogFacts } from "../core/dialect.ts"
  *   (needs OVER) or `"table"` (a table-valued function: a FROM item only, elsewhere unknown as in the engine; its
  *   columns are the `tables` row of the same name, its `result` is unused; SQLT-69…SQLT-72).
  * - `arity`: `null` (any count) or a key of {@link ArityRules}.
- * - `params`: the SQL type a parameter gets as argument N (CORE-6: a tuple of types by position), `"peer"` (the type
+ * - `params`: the SQL type a parameter gets as argument N (CORE-6: a tuple of types by position, or `{ head; cycle }`:
+ *   the `head` types, then the `cycle` types repeated, SQLT-75), `"peer"` (the type
  *   of another argument), or `null` (a parameter there is not typed).
  *
  * This file holds the row lookup and row predicates; the argument-count rules are in function-catalog-arity.ts and the
@@ -70,14 +72,39 @@ type IsAggregateRow<Row> = [Row] extends [never]
  * rows are handled by the caller ({@link IsPeerTypedRow}).
  */
 export type RowArgType<Row, Index extends number> = Row extends readonly [string, string, string, unknown, infer P]
-	? P extends readonly unknown[]
-		? `${Index}` extends keyof P
-			? P[`${Index}` & keyof P] extends infer S extends SqlTypeShape
-				? S
+	? P extends { head: infer H extends readonly unknown[]; cycle: infer C extends readonly SqlTypeShape[] }
+		? CycleArgType<H, C, Index>
+		: P extends readonly unknown[]
+			? `${Index}` extends keyof P
+				? P[`${Index}` & keyof P] extends infer S extends SqlTypeShape
+					? S
+					: never
 				: never
 			: never
-		: never
 	: never
+
+/**
+ * SQLT-75: the type at position `Index` of a repeating `params` entry `{ head; cycle }`: the `head` types by position,
+ * then the `cycle` types again and again (the role of `json_set`'s 4th argument is that of its 2nd).
+ */
+type CycleArgType<
+	H extends readonly unknown[],
+	C extends readonly SqlTypeShape[],
+	Index extends number,
+	Rest extends readonly unknown[] = C,
+> = H extends readonly [unknown, ...infer HT]
+	? Index extends 0
+		? H[0] extends infer S extends SqlTypeShape
+			? S
+			: never
+		: CycleArgType<HT, C, Dec<Index>, C>
+	: Index extends 0
+		? Rest[0] extends infer S extends SqlTypeShape
+			? S
+			: never
+		: Rest extends readonly [unknown, ...infer RT]
+			? CycleArgType<[], C, Dec<Index>, RT extends readonly [] ? C : RT>
+			: never
 
 /** A row whose arguments all share one type: a parameter takes the type of another argument. */
 export type IsPeerTypedRow<Row> = Row extends readonly [string, string, string, unknown, "peer"] ? true : false
