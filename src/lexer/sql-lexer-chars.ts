@@ -279,3 +279,14 @@ type SkipSymbols<Text extends string, Count extends number> = Count extends 0
 	: Text extends `${string}${infer Rest}`
 		? SkipSymbols<Rest, Dec<Count>>
 		: Text
+
+/**
+ * `S` in lower case, ASCII letters only: both engines fold `A`–`Z` and keep any other character (STMT-25), while
+ * TypeScript's `Lowercase` folds non-ASCII letters too. Cheap when `Lowercase` changes nothing.
+ */
+export type FoldAsciiCase<S extends string> = S extends Lowercase<S> ? S : FoldAsciiChars<S>
+
+/** {@link FoldAsciiCase} character by character (the lexer calls it only for a word with a non-ASCII character). */
+export type FoldAsciiChars<S extends string, Acc extends string = ""> = S extends `${infer C}${infer R}`
+	? FoldAsciiChars<R, `${Acc}${C extends AsciiChar ? Lowercase<C> : C}`>
+	: Acc
