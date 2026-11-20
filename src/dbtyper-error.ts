@@ -356,6 +356,11 @@ const errors = {
 		code: 1121,
 		msg: ["Expected table name or `(` in FROM"],
 	},
+	// SQLT-73: `INDEXED BY` without a name
+	EXPECTED_INDEX_NAME_AFTER_INDEXED_BY: {
+		code: 1122,
+		msg: ["Expected index name after INDEXED BY"],
+	},
 
 	// INSERT Statement
 	EXPECTED_INTO_AFTER_INSERT: {
@@ -832,6 +837,11 @@ const errors = {
 	UNKNOWN_CONSTRAINT: {
 		code: 2220,
 		msg: ["Unknown constraint ", " on table ", ""],
+	},
+	// SQLT-73: `INDEXED BY name` with a name no CREATE INDEX of the table has (also after a CTE or a view)
+	UNKNOWN_INDEX: {
+		code: 2221,
+		msg: ["Unknown index ", " on table ", ""],
 	},
 	OBSOLETE_2201_UNKNOWN_TABLE_UPDATE: {
 		code: 2201,

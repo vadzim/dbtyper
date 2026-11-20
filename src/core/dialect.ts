@@ -152,7 +152,8 @@ export type DialectName = keyof Dialects
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
- * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error); `viewIfNotExists`: `CREATE VIEW IF NOT EXISTS` exists (SQLite, SQLT-22; PostgreSQL has it only for `OR REPLACE`).
+ * Statement facts (PGT-26): `dmlInCte`: `WITH x AS (INSERT | UPDATE | DELETE … RETURNING …)` is a typed CTE (SQLite: an error); `viewIfNotExists`: `CREATE VIEW IF NOT EXISTS` exists (SQLite, SQLT-22; PostgreSQL has it only for `OR REPLACE`);
+ * `trackedIndexes`: `CREATE INDEX` / `DROP INDEX` names are kept on their table for `INDEXED BY` (SQLite, SQLT-74; parse-index.ts).
  * `skippedStatements`: the first words of statements stepped over unchecked (STMT-18, STMT-19, #144); `skippedForms`: the
  * second words of `CREATE` / `ALTER` / `DROP` statements stepped over unchecked (the parsed ones are in statement-keywords.ts;
  * any other second word is an error, #158); `otherDialectForms`: the first words and the CREATE / ALTER / DROP second words
@@ -229,6 +230,7 @@ export type Dialects = {
 		positionalParamSign: "$"
 		dmlInCte: true
 		viewIfNotExists: false
+		trackedIndexes: false
 		skippedStatements: readonly [...CommonSkippedStatementKeywords, ...PostgresOnlyStatementKeywords, "end"]
 		skippedForms: PostgresSkippedForms
 		otherDialectForms: {
@@ -297,6 +299,7 @@ export type Dialects = {
 		positionalParamSign: "?"
 		dmlInCte: false
 		viewIfNotExists: true
+		trackedIndexes: true
 		skippedStatements: readonly [...CommonSkippedStatementKeywords, "pragma", "end"]
 		skippedForms: SqliteSkippedForms
 		otherDialectForms: {
