@@ -1,6 +1,7 @@
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenIdent, TokenKey } from "../lexer/sql-lexer.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
+import type { ComparisonClassesOf } from "../core/dialect.ts"
 import type { SqlBoolean, SqlNull, SqlText, SqlTypeShape, SqlUnknown } from "../core/sql-type-shape.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { EnumComparisonCheck, WithEnumCheck } from "./parse-enum-checks.ts"
@@ -220,7 +221,7 @@ type ExpressionResolvers<
 							? RcV extends SqlTypeShape
 								? WithEnumCheck<
 										EnumComparisonCheck<Db, LcV, Lc, RcV, Rc>,
-										MergeComparison<LcV, RcV, Lc, Rc>
+										MergeComparison<LcV, RcV, Lc, Rc, ComparisonClassesOf<Db>>
 									>
 								: never
 							: never

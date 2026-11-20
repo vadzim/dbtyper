@@ -1,7 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
-import type { TokenIdent } from "../lexer/sql-lexer.ts"
+import type { AsIdent, TokenIdent, TokenString } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { DbtyperErrorShape, FormatError, Errors } from "../dbtyper-error.ts"
@@ -58,6 +58,22 @@ export type WithPendingConstraint<Db extends JsqlDatabaseShape, Name extends str
 export type PendingConstraints<Db extends JsqlDatabaseShape> = Db extends { pendingConstraints: infer P extends string }
 	? { names: P }
 	: null
+
+/**
+ * The name token of a column definition (CREATE TABLE, ADD COLUMN) as an identifier: a name or non-reserved keyword
+ * (`AsIdent`), and where the dialect has `stringColumnNames` (SQLite, #195) a single-quoted string, folded like a
+ * quoted name (SQLT-27) and keeping its spelling. Anything else is returned as is (not a name).
+ */
+export type ColumnNameToken<Tok, Db> =
+	Tok extends TokenString<infer V extends string>
+		? Tok extends { blob: true }
+			? Tok
+			: DialectFact<Db, "stringColumnNames"> extends true
+				? Lowercase<V> extends V
+					? TokenIdent<V>
+					: TokenIdent<Lowercase<V>> & { written: V }
+				: Tok
+		: AsIdent<Tok>
 
 /**
  * SQLT-28, #151: the declared spelling of a column whose name token was written in another case (SQLite keeps it as

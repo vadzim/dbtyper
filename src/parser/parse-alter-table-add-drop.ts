@@ -16,7 +16,7 @@ import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts
 import type { DbDialectOnlyError } from "../core/dialect.ts"
 import type { SkipFailedExpression, SkipFailedStatement } from "./skip-statement.ts"
 import type { ParseOneColumnAfterColName } from "./parse-create-table-columns.ts"
-import type { WithColumnSpelling } from "./parse-create-table.ts"
+import type { ColumnNameToken, WithColumnSpelling } from "./parse-create-table.ts"
 import type { ParseNameList } from "./parse-table-constraints.ts"
 import type { ParseReferences } from "./parse-column-references.ts"
 import type { ParseAlterActions, ParseAlterAfterOptionalColumnKw, ParseAlterSkipAction } from "./parse-alter-table.ts"
@@ -56,14 +56,14 @@ type ParseAlterAddColumnNamed<
 	Tab extends string,
 	IfNotExists extends boolean,
 > =
-	AsIdent<PeekToken<R1>> extends TokenIdent<infer Col extends string>
+	ColumnNameToken<PeekToken<R1>, Db> extends TokenIdent<infer Col extends string>
 		? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
 			? SkipToken<R1> extends infer R2 extends ParserMonad
 				? PeekToken<R2> extends TokenKey<";" | ","> | TokenEot
 					? SkipFailedStatement<R2, Db, FormatError<Errors["EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE"], []>>
 					: ParseOneColumnAfterColName<
 							R2,
-							WithColumnSpelling<Db, Col, PeekToken<R1>>,
+							WithColumnSpelling<Db, Col, ColumnNameToken<PeekToken<R1>, Db>>,
 							Sch,
 							Tab,
 							readonly [],

@@ -1,4 +1,5 @@
 import type { JsqlDatabaseShape } from "../core/jsql-shapes.ts"
+import type { DbDialectOnlyError, DialectFact } from "../core/dialect.ts"
 import type {
 	JsqlDbReplaceColumnType,
 	JsqlDbReplaceColumnNullability,
@@ -202,6 +203,19 @@ type ParseAlterColumnAfterIdent<
 							FormatError<Errors["EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN"], []>
 						>
 
+/**
+ * #195: the other-dialect error for an `ALTER [COLUMN] c <action>` the chain's dialect lacks (fact `alterColumn` of
+ * src/core/dialect.ts: SQLite has only `SET NOT NULL` and `DROP NOT NULL`, since 3.53), else `null`. `R2` is at the action.
+ */
+type AlterColumnFormError<R2 extends ParserMonad, Db extends JsqlDatabaseShape> =
+	DialectFact<Db, "alterColumn"> extends "full"
+		? null
+		: PeekToken<R2> extends TokenKey<"set" | "drop">
+			? PeekToken<SkipToken<R2>> extends TokenKey<"not">
+				? null
+				: DbDialectOnlyError<Db, "pg-alter-column">
+			: DbDialectOnlyError<Db, "pg-alter-column">
+
 export type ParseAlterColumnAfterAlterKw<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
@@ -214,10 +228,12 @@ export type ParseAlterColumnAfterAlterKw<
 				? PeekToken<R1> extends infer Tcol
 					? SkipToken<R1> extends infer R2 extends ParserMonad
 						? AsIdent<Tcol> extends TokenIdent<infer Col extends string>
-							? JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
-								? // SCHEMA-23, #154: a missing column is an error (it used to drop the table from the schema)
-									SkipFailedStatement<R2, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>>
-								: ParseAlterColumnAfterIdent<R2, Db, Sch, Tab, Col>
+							? AlterColumnFormError<R2, Db> extends infer FormErr extends DbtyperErrorShape
+								? SkipFailedStatement<R2, Db, FormErr>
+								: JsqlDbGetColumnType<Db, Sch, Tab, Col> extends null
+									? // SCHEMA-23, #154: a missing column is an error (it used to drop the table from the schema)
+										SkipFailedStatement<R2, Db, FormatError<Errors["COLUMN_DOES_NOT_EXIST"], [Col]>>
+									: ParseAlterColumnAfterIdent<R2, Db, Sch, Tab, Col>
 							: SkipFailedExpression<
 										R2,
 										FormatError<Errors["EXPECTED_COLUMN_NAME"], ["after ALTER COLUMN"]>
