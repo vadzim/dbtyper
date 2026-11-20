@@ -151,7 +151,7 @@ export type ParseCreateView<
 					? PeekToken<A1> extends TokenKey<"exists">
 						? DialectFact<Db, "viewIfNotExists"> extends true
 							? ParseCreateViewNamed<SkipToken<A1>, Db, Params, Temp, true>
-							: ParseCreateViewNamed<Tokens, Db, Params, Temp, Replace extends true ? "replace" : false>
+							: SkipFailedStatement<A1, Db, FormatError<Errors["EXPECTED_VIEW_NAME_IN_CREATE_VIEW"], []>>
 						: SkipFailedStatement<
 								A1,
 								Db,
