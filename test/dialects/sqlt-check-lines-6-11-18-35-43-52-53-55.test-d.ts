@@ -60,7 +60,9 @@ const s52 = `select now()` as const
 // @ts-expect-error
 users.query(s52)
 expectType<GetQueryError<typeof users, typeof s52>>(
-	toBe<DbtyperError<3619, "Unknown function: now. now() is PostgreSQL-only; use datetime('now') or CURRENT_TIMESTAMP">>(),
+	toBe<
+		DbtyperError<3619, "Unknown function: now. now() is PostgreSQL-only; use datetime('now') or CURRENT_TIMESTAMP">
+	>(),
 )
 
 // ❌ ERROR: SQLT-53 ILIKE
@@ -68,7 +70,12 @@ const s53 = `select * from users where name ilike 'a%'` as const
 // @ts-expect-error
 users.query(s53)
 expectType<GetQueryError<typeof users, typeof s53>>(
-	toBe<DbtyperError<1900, "ILIKE is PostgreSQL-only; this database is SQLite. In SQLite LIKE is already case-insensitive">>(),
+	toBe<
+		DbtyperError<
+			1900,
+			"ILIKE is PostgreSQL-only; this database is SQLite. In SQLite LIKE is already case-insensitive"
+		>
+	>(),
 )
 
 // SQLT-55: a valid conflict action is accepted, an unknown one is 1920
