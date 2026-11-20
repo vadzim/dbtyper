@@ -1,551 +1,653 @@
-# Error Code Reference
-
-This document provides a comprehensive reference for all error codes in dbtyper.
-
-## Overview
-
-dbtyper uses a type-level error system where errors are TypeScript types. Error codes help identify and categorize errors for better debugging and documentation.
-
-**Error Type System:**
-
-- **FormatError<ID, Args>** - Primary error constructor with error codes (use this for new code)
-- **DbtyperError<Code, Message>** - Formatted error result type
-- **SqlParserError<Message>** - Legacy alias for `DbtyperError<-1, Message>` (deprecated)
-
-**Error codes appear in:**
-
-- IDE tooltips when hovering over SQL queries
-- TypeScript compilation errors
-- Type-level error checking
-
-**Recent Changes (2026-05-10):**
-
-The error system underwent a major refactoring to improve maintainability:
-
-- **Phase 1:** Removed 40 INVALID\_\* codes (replaced with more specific errors)
-- **Phase 2a:** Consolidated 19 UNKNOWN\_\* codes into 4 base codes with context parameters
-- **Phase 2b:** Consolidated 51 EXPECTED\_\* codes into 6 base codes with context parameters
-- **Result:** Reduced from 372 total codes to 264 active codes (29% reduction)
-
-Many error codes now use context parameters to provide specific information while maintaining a single code. For example, `UNKNOWN_TABLE` replaces 7 different codes like `UNKNOWN_TABLE_FROM`, `UNKNOWN_TABLE_UPDATE`, etc.
-
-## Error Code Ranges
-
-**4-Digit Scheme with 100-Code Intervals**
-
-Each category has 100 slots, providing room for future expansion.
-
-| Range     | Category                     | Description                     | Used | Free |
-| --------- | ---------------------------- | ------------------------------- | ---- | ---- |
-| 1000-1099 | Lexer/Tokenization           | Errors during SQL tokenization  | 9    | 91   |
-| 1100-1199 | Parser Syntax - SELECT       | SELECT statement parsing        | 22   | 78   |
-| 1200-1299 | Parser Syntax - INSERT       | INSERT statement parsing        | 17   | 83   |
-| 1300-1399 | Parser Syntax - UPDATE       | UPDATE statement parsing        | 4    | 96   |
-| 1400-1499 | Parser Syntax - DELETE       | DELETE statement parsing        | 2    | 98   |
-| 1500-1599 | Parser Syntax - CREATE TABLE | CREATE TABLE parsing            | 7    | 93   |
-| 1600-1699 | Parser Syntax - ALTER TABLE  | ALTER TABLE parsing             | 4    | 96   |
-| 1700-1799 | Parser Syntax - DROP TABLE   | DROP TABLE parsing              | 2    | 98   |
-| 1800-1899 | Parser Syntax - Type DDL     | CREATE/ALTER/DROP TYPE          | 11   | 89   |
-| 1900-1999 | Other-dialect syntax         | Syntax of the other SQL engine  | 15   | 85   |
-| 2100-2199 | Validation - Statement       | Invalid statements              | 10   | 90   |
-| 2200-2299 | Resolution - Table/Schema    | Unknown tables or schemas       | 3    | 97   |
-| 2300-2399 | Resolution - Column          | Unknown columns                 | 4    | 96   |
-| 2400-2499 | Resolution - Other           | Other resolution errors         | 3    | 97   |
-| 2500-2599 | Type System - Compatibility  | Type compatibility errors       | 9    | 91   |
-| 2600-2699 | Type System - Boolean        | Boolean type errors             | 7    | 93   |
-| 2700-2799 | Type System - NULL           | NULL handling errors            | 5    | 95   |
-| 2800-2899 | Type System - Text/String    | Text operation errors           | 8    | 92   |
-| 2900-2999 | Type System - Numeric        | Numeric operation errors        | 1    | 99   |
-| 3000-3099 | Type System - Array          | Array operation errors          | 2    | 98   |
-| 3100-3199 | Type System - Subquery       | Subquery type errors            | 4    | 96   |
-| 3200-3299 | Semantic - Duplicate/Exist   | Duplicate or existence checks   | 12   | 88   |
-| 3300-3399 | Semantic - Constraints       | Constraint violations           | 6    | 94   |
-| 3400-3499 | Semantic - SELECT            | SELECT-specific constraints     | 8    | 92   |
-| 3500-3599 | Semantic - Statement         | Statement constraints           | 6    | 94   |
-| 3600-3699 | Semantic - Function          | Function constraints            | 20   | 80   |
-| 3700-3799 | DDL - CREATE SCHEMA          | CREATE SCHEMA errors            | 3    | 97   |
-| 3800-3899 | DDL - DROP SCHEMA            | DROP SCHEMA errors              | 2    | 98   |
-| 3900-3999 | DDL - CREATE VIEW            | CREATE VIEW errors              | 8    | 92   |
-| 4000-4099 | DDL - ALTER TYPE             | ALTER TYPE errors               | 3    | 97   |
-| 4100-4199 | DDL - Misc                   | Miscellaneous DDL errors        | 6    | 94   |
-| 4200-4299 | DML - JOIN                   | JOIN operation errors           | 3    | 97   |
-| 4300-4399 | DML - CASE                   | CASE expression errors          | 2    | 98   |
-| 4400-4499 | DML - BETWEEN/IN             | BETWEEN/IN operation errors     | 3    | 97   |
-| 4500-4599 | DML - CAST                   | CAST operation errors           | 5    | 95   |
-| 4600-4699 | DML - Window Functions       | Window function errors          | 4    | 96   |
-| 4700-4799 | DML - Array Operations       | Array operation errors          | 3    | 97   |
-| 4800-4899 | DML - Operators              | Operator errors                 | 5    | 95   |
-| 4900-4999 | DML - EXISTS/Subquery        | EXISTS/subquery errors          | 2    | 98   |
-| 5000-5099 | DML - Misc Expression        | Miscellaneous expression errors | 8    | 92   |
-| 5100-5199 | Type/Data - VARCHAR/NUMERIC  | VARCHAR/NUMERIC errors          | 6    | 94   |
-| 5200-5299 | Type/Data - DEFAULT          | DEFAULT value errors            | 5    | 95   |
-| 5300-5399 | Type/Data - FETCH/LIMIT      | FETCH/LIMIT errors              | 4    | 96   |
-| 5400-5499 | Type/Data - Misc             | Miscellaneous type/data errors  | 9    | 91   |
-
-**Total:** 264 active codes, 68 obsolete codes, ~3,400 slots available for future expansion
-
-## Consolidated Error Codes (New in 2026-05-10)
-
-Many error codes have been consolidated to use context parameters instead of having separate codes for each context. This improves maintainability while preserving error specificity through dynamic message formatting.
-
-### UNKNOWN\_\* Family (Phase 2a Consolidation)
-
-**UNKNOWN_TABLE (2200)**
-
-- **Replaces:** 7 context-specific codes
-    - `UNKNOWN_TABLE_FROM` → `UNKNOWN_TABLE` with context "FROM"
-    - `UNKNOWN_TABLE_UPDATE` → `UNKNOWN_TABLE` with context "UPDATE"
-    - `UNKNOWN_TABLE_IN_UPDATE_FROM` → `UNKNOWN_TABLE` with context "UPDATE FROM"
-    - `UNKNOWN_TABLE_INSERT_INTO` → `UNKNOWN_TABLE` with context "INSERT INTO"
-    - `UNKNOWN_TABLE_DELETE_FROM` → `UNKNOWN_TABLE` with context "DELETE FROM"
-    - `UNKNOWN_TABLE_IN_DELETE_USING` → `UNKNOWN_TABLE` with context "DELETE USING"
-    - `UNKNOWN_TABLE_IN_SELECT_STAR` → `UNKNOWN_TABLE` with context "SELECT \*"
-- **Format:** `["Unknown table ", " in ", ""]`
-- **Example:** `Unknown table "users" in UPDATE`
-
-**UNKNOWN_SCHEMA_OR_TABLE (2207)**
-
-- **Replaces:** 6 context-specific codes
-    - `UNKNOWN_SCHEMA_OR_TABLE_IN_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "FROM"
-    - `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE` → `UNKNOWN_SCHEMA_OR_TABLE` with context "UPDATE"
-    - `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "UPDATE FROM"
-    - `UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO` → `UNKNOWN_SCHEMA_OR_TABLE` with context "INSERT INTO"
-    - `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM` → `UNKNOWN_SCHEMA_OR_TABLE` with context "DELETE FROM"
-    - `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING` → `UNKNOWN_SCHEMA_OR_TABLE` with context "DELETE USING"
-- **Format:** `["Unknown schema or table ", " in ", ""]`
-- **Example:** `Unknown schema or table "public.users" in FROM`
-
-**UNKNOWN_SCHEMA (2214)**
-
-- **Replaces:** 2 context-specific codes
-    - `UNKNOWN_SCHEMA_FOR_CREATE_TYPE` → `UNKNOWN_SCHEMA` with context "CREATE TYPE"
-    - `UNKNOWN_SCHEMA_FOR_CREATE_VIEW` → `UNKNOWN_SCHEMA` with context "CREATE VIEW"
-- **Format:** `["Unknown schema ", " for ", ""]`
-- **Example:** `Unknown schema "myschema" for CREATE TYPE`
-
-**UNKNOWN_COLUMN (2300)**
-
-- **Replaces:** 5 context-specific codes
-    - `UNKNOWN_COLUMN_UPDATE_SET` → `UNKNOWN_COLUMN` with context "UPDATE SET"
-    - `UNKNOWN_COLUMN_INSERT` → `UNKNOWN_COLUMN` with context "INSERT"
-    - `UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST` → `UNKNOWN_COLUMN` with context "INSERT column list"
-    - `UNKNOWN_COLUMN_IN_ON_CONFLICT` → `UNKNOWN_COLUMN` with context "ON CONFLICT"
-    - `UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET` → `UNKNOWN_COLUMN` with context "ON CONFLICT DO UPDATE SET"
-- **Format:** `["Unknown column ", " in ", ""]`
-- **Example:** `Unknown column "email" in UPDATE SET`
-
-### EXPECTED\_\* Family (Phase 2b Consolidation)
-
-**EXPECTED_SEMICOLON (1105)**
-
-- **Replaces:** 14 context-specific codes across all statement types
-- **Format:** `["Expected semicolon after ", ""]`
-- **Example:** `Expected semicolon after INSERT`
-
-**EXPECTED_TABLE_NAME (1120)**
-
-- **Replaces:** 14 context-specific codes
-- **Format:** `["Expected table name ", ""]`
-- **Example:** `Expected table name in UPDATE`
-
-**EXPECTED_COLUMN_NAME (1206)**
-
-- **Replaces:** 8 context-specific codes
-- **Format:** `["Expected column name ", ""]`
-- **Example:** `Expected column name in INSERT column list`
-
-**EXPECTED_TYPE_NAME (4105)**
-
-- **Replaces:** 6 context-specific codes
-- **Format:** `["Expected type name ", ""]`
-- **Example:** `Expected type name after CAST AS`
-
-**EXPECTED_JOIN_KEYWORD (4200)**
-
-- **Replaces:** 9 context-specific codes
-- **Format:** `["Expected JOIN after ", ""]`
-- **Example:** `Expected JOIN after INNER`
-
-**OBSOLETE_4210_EXPECTED_ON_KEYWORD (4210)**
-
-- **Status:** obsolete, no parser emits it; the code stays reserved (never reuse a code).
-
-## Migration Guide
-
-If you're checking for specific error codes in your tests or error handling, update your code to use the new consolidated codes:
-
-### Before (Old Context-Specific Codes)
-
-```typescript
-// Checking for specific table resolution errors
-type Err = DbtyperError<2201, ...> // UNKNOWN_TABLE_UPDATE
-type Err = DbtyperError<2203, ...> // UNKNOWN_TABLE_INSERT_INTO
-type Err = DbtyperError<2204, ...> // UNKNOWN_TABLE_DELETE_FROM
-```
-
-### After (Consolidated Codes with Context)
-
-```typescript
-// All table resolution errors now use the same code
-type Err = DbtyperError<2200, ...> // UNKNOWN_TABLE with context parameter
-// The error message will include the context: "Unknown table X in UPDATE"
-```
-
-### Code Mapping Reference
-
-**UNKNOWN\_\* codes (2200-2399):**
-
-- 2201-2206 → 2200 (UNKNOWN_TABLE)
-- 2208-2213 → 2207 (UNKNOWN_SCHEMA_OR_TABLE)
-- 2215-2216 → 2214 (UNKNOWN_SCHEMA)
-- 2301-2305 → 2300 (UNKNOWN_COLUMN)
-
-**EXPECTED\_\* codes (1100-5400):**
-
-- 1201, 1302, 1401, 1500, 1600, 1700, 1800-1802, 3701, 3801, 3905 → 1105 (EXPECTED_SEMICOLON)
-- 1220-1221, 1306-1308, 1402-1404, 1506, 1602-1603, 1701 → 1120 (EXPECTED_TABLE_NAME)
-- 1212, 1218, 1303, 1503, 1604-1606 → 1206 (EXPECTED_COLUMN_NAME)
-- 1809-1812, 4104, 4106 → 4105 (EXPECTED_TYPE_NAME)
-- 4201-4208 → 4200 (EXPECTED_JOIN_KEYWORD)
-
-### Obsolete Code Handling
-
-Obsolete codes are marked in the source code as `OBSOLETE_<CODE>_<OLD_NAME>` and include a message directing you to the replacement code. These codes are kept in the registry to:
-
-1. Maintain code number stability (codes are never reused)
-2. Provide clear migration paths
-3. Support online documentation and help systems
-
-## Error Code Registry
-
-### 1000-1099: Lexer/Tokenization Errors
-
-| Code | ID                         | Message                            |
-| ---- | -------------------------- | ---------------------------------- |
-| 1000 | UNCLOSED_QUOTED_IDENTIFIER | Unclosed quoted identifier literal |
-| 1001 | UNCLOSED_STRING_LITERAL    | Unclosed string literal            |
-| 1002 | UNCLOSED_TAGGED_STRING     | Unclosed tagged string             |
-| 1003 | WRONG_STRING_TAG           | Wrong string tag                   |
-| 1004 | UNBALANCED_PARENTHESES     | Unbalanced parentheses             |
-| 1005 | TOKEN_NOT_FOUND            | Token not found                    |
-| 1006 | UNEXPECTED_TOKEN           | Unexpected token                   |
-| 1007 | CLOSING_BRACKET_NOT_FOUND  | Closing bracket not found: X       |
-| 1008 | UNMATCHED_CLOSING_BRACKET  | Unmatched closing bracket: X       |
-
-**Example:**
-
-```typescript
-const query = `SELECT "unclosed FROM users` as const
-// Error: DbtyperError<1000, "[dbt:1000] Unclosed quoted identifier literal">
-```
-
-### 1900-1999: Other-dialect syntax (DSEL-5, DSEL-6, DSEL-7)
-
-The chain's dialect follows its driver. Syntax that only the other engine has is reported with these codes, never as
-a plain syntax error. The constructs are rows of `DialectOnlyConstructs` in `src/core/dialect.ts`.
-
-| Code | ID                   | Message                                             |
-| ---- | -------------------- | --------------------------------------------------- |
-| 1900 | POSTGRES_ONLY_SYNTAX | X is PostgreSQL-only; this database is SQLite. Hint |
-| 1901 | SQLITE_ONLY_SYNTAX   | X is SQLite-only; this database is PostgreSQL. Hint |
-
-SQLite-specific codes (SQLT-18, SQLT-21, SQLT-24, SQLT-26; #70):
-
-| Code | ID                                | Message                                                                              |
-| ---- | --------------------------------- | ------------------------------------------------------------------------------------ |
-| 1913 | WITHOUT_ROWID_NEEDS_PRIMARY_KEY   | WITHOUT ROWID tables need a PRIMARY KEY                                              |
-| 1914 | SQLITE_ADD_COLUMN_RESTRICTED      | SQLite cannot ADD COLUMN with {restriction}                                          |
-| 1915 | SQLITE_NO_SCHEMAS                 | SQLite has no schemas                                                                |
-| 1916 | SQLITE_UNSUPPORTED_STATEMENT      | {statement} is not supported in migrations                                           |
-| 1917 | REGEXP_NEEDS_FUNCTION             | REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB |
-| 1918 | EXPECTED_CONFLICT_ACTION_AFTER_OR | Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR                           |
-| 1919 | TOO_MANY_STATEMENTS               | A script may have at most 2500 statements; split it into several migrations          |
-| 1920 | UNKNOWN_CONFLICT_ACTION           | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                  |
-
-Unknown statements (STMT-19; both dialects):
-
-| Code | ID                             | Message                                                                                                                                   |
-| ---- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1930 | UNKNOWN_STATEMENT              | Unknown statement keyword {word}. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                         |
-| 1931 | UNKNOWN_STATEMENT_DID_YOU_MEAN | Unknown statement keyword {word}; did you mean {keyword}? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
-
-**Example:** SQLite chain, `select id::text from users` →
-`error [dbtyper:1900]: \`::\` cast is PostgreSQL-only; this database is SQLite. Use CAST(x AS TEXT)`
-
-### 1100-1199: Parser Syntax - SELECT Statement
-
-| Code | ID                                              | Message                                         |
-| ---- | ----------------------------------------------- | ----------------------------------------------- |
-| 1100 | EXPECTED_SELECT_AFTER_WITH                      | Expected SELECT after WITH clause               |
-| 1101 | EXPECTED_SELECT_IN_SUBQUERY                     | Expected SELECT in subquery                     |
-| 1102 | EXPECTED_SELECT_IN_DERIVED_TABLE                | Expected SELECT in derived table                |
-| 1103 | EXPECTED_SELECT_IN_EXISTS_SUBQUERY              | Expected SELECT in EXISTS subquery              |
-| 1104 | EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW | Expected SELECT or WITH after AS in CREATE VIEW |
-| 1105 | EXPECTED_SEMICOLON ⭐                           | Expected semicolon after {context}              |
-| 1106 | EXPECTED_FROM_AFTER_SELECT_LIST                 | Expected FROM after SELECT list                 |
-| 1107 | EXPECTED_BY_AFTER_GROUP                         | Expected BY after GROUP                         |
-| 1108 | EXPECTED_BY_AFTER_ORDER                         | Expected BY after ORDER                         |
-| 1109 | EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE          | Expected BY after ORDER in OVER clause          |
-| 1110 | EXPECTED_BY_AFTER_PARTITION                     | Expected BY after PARTITION                     |
-| 1111 | EXPECTED_CTE_NAME_IN_WITH                       | Expected CTE name in WITH                       |
-| 1112 | EXPECTED_ALIAS_AFTER_CTE                        | Expected alias after CTE                        |
-| 1113 | EXPECTED_ALIAS_AFTER_DERIVED_TABLE              | Expected alias after derived table              |
-| 1114 | EXPECTED_ALIAS_NAME_AFTER_AS                    | Expected alias name after AS                    |
-| 1115 | EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE       | Expected alias or join clause after table       |
-| 1116 | EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH            | Expected open paren after AS in WITH            |
-| 1117 | EXPECTED_END_AFTER_CASE                         | Expected END after CASE                         |
-| 1118 | EXPECTED_WHEN_AFTER_CASE_EXPRESSION             | Expected WHEN after CASE expression             |
-| 1119 | EXPECTED_WHEN_ELSE_OR_END_IN_CASE               | Expected WHEN ELSE or END in CASE               |
-| 1120 | EXPECTED_TABLE_NAME ⭐                          | Expected table name {context}                   |
-| 1121 | EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM       | Expected table name or `(` in FROM              |
-
-⭐ = Consolidated code with context parameters (see Consolidated Error Codes section)
-
-**Example:**
-
-```typescript
-const query = `SELECT * FROM users GROUP` as const
-// Error: DbtyperError<1107, "[dbt:1107] Expected BY after GROUP">
-
-const query2 = `INSERT INTO users VALUES (1)` as const
-// Error: DbtyperError<1105, "[dbt:1105] Expected semicolon after INSERT">
-```
-
-### 3900-3999: DDL - CREATE VIEW
-
-| Code | ID                                          | Message                                                                               |
-| ---- | ------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 3908 | EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW        | Expected `not` after `IF` in CREATE VIEW                                              |
-| 3909 | EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW | Expected `exists` after `IF NOT` in CREATE VIEW                                       |
-| 3910 | VIEW_COLUMN_LIST_MISMATCH                   | CREATE VIEW {name}: the column list has a different number of columns than the SELECT |
-
-### 2200-2299: Resolution - Table/Schema Errors
-
-| Code | ID                         | Message                                     |
-| ---- | -------------------------- | ------------------------------------------- |
-| 2200 | UNKNOWN_TABLE ⭐           | Unknown table {name} in {context}           |
-| 2207 | UNKNOWN_SCHEMA_OR_TABLE ⭐ | Unknown schema or table {name} in {context} |
-| 2214 | UNKNOWN_SCHEMA ⭐          | Unknown schema {name} for {context}         |
-
-⭐ = Consolidated code with context parameters (see Consolidated Error Codes section)
-
-**Example:**
-
-```typescript
-const query = `SELECT * FROM nonexistent_table` as const
-// Error: DbtyperError<2200, "[dbt:2200] Unknown table \"nonexistent_table\" in FROM">
-
-const query2 = `UPDATE nonexistent_table SET x = 1` as const
-// Error: DbtyperError<2200, "[dbt:2200] Unknown table \"nonexistent_table\" in UPDATE">
-
-const query3 = `SELECT * FROM public.nonexistent` as const
-// Error: DbtyperError<2207, "[dbt:2207] Unknown schema or table \"public.nonexistent\" in FROM">
-```
-
-### 2300-2399: Resolution - Column Errors
-
-| Code | ID                                 | Message                                   |
-| ---- | ---------------------------------- | ----------------------------------------- |
-| 2300 | UNKNOWN_COLUMN ⭐                  | Unknown column {name} in {context}        |
-| 2306 | UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN | Unknown column {schema}.{table}.{column}  |
-| 2307 | UNKNOWN_QUALIFIED_COLUMN           | Unknown qualified column {table}.{column} |
-| 2308 | UNKNOWN_ALIAS_IN_SELECT_STAR       | Unknown alias in SELECT ... \*            |
-
-⭐ = Consolidated code with context parameters (see Consolidated Error Codes section)
-
-**Example:**
-
-```typescript
-const query = `SELECT nonexistent_column FROM users` as const
-// Error: DbtyperError<2300, "[dbt:2300] Unknown column \"nonexistent_column\" in SELECT">
-
-const query2 = `UPDATE users SET nonexistent = 1` as const
-// Error: DbtyperError<2300, "[dbt:2300] Unknown column \"nonexistent\" in UPDATE SET">
-
-const query3 = `SELECT users.nonexistent FROM users` as const
-// Error: DbtyperError<2307, "[dbt:2307] Unknown qualified column \"users.nonexistent\"">
-```
-
-### Codes added with the SQLite and PostgreSQL work (#63, #91)
-
-| Code | ID                                   | Message                                             |
-| ---- | ------------------------------------ | --------------------------------------------------- |
-| 2220 | UNKNOWN_CONSTRAINT                   | Unknown constraint {name} on table {table}          |
-| 3512 | CANNOT_WRITE_GENERATED_COLUMN        | Cannot write generated column {column} in {context} |
-| 3619 | UNKNOWN_FUNCTION                     | Unknown function: {name}                            |
-| 3620 | WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE | Window function `{name}` needs an OVER clause       |
-
-### 2600-2699: Type System - Boolean Type Errors
-
-| Code | ID                                    | Message                                           |
-| ---- | ------------------------------------- | ------------------------------------------------- |
-| 2600 | EXPRESSION_MUST_BE_BOOLEAN            | Expression must be boolean, but has a type X      |
-| 2601 | CASE_WHEN_MUST_BE_BOOLEAN             | CASE WHEN must be boolean                         |
-| 2602 | NOT_REQUIRES_BOOLEAN_OPERAND          | NOT requires a boolean operand                    |
-| 2603 | NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL | NOT argument must be boolean, not NULL            |
-| 2604 | AND_OPERANDS_MUST_BE_BOOLEAN          | AND operands must be boolean                      |
-| 2605 | OR_OPERANDS_MUST_BE_BOOLEAN           | OR operands must be boolean                       |
-| 2606 | NULL_NOT_VALID_BOOLEAN_OPERAND        | NULL is not a valid boolean operand (use IS NULL) |
-
-**Example:**
-
-```typescript
-const query = `SELECT * FROM users WHERE 'text'` as const
-// Error: DbtyperError<2600, "[dbt:2600] Expression must be boolean, but has a type text">
-```
-
-### 2700-2799: Type System - NULL Handling
-
-| Code | ID                                 | Message                              |
-| ---- | ---------------------------------- | ------------------------------------ |
-| 2700 | NULL_NOT_ALLOWED_NOT_NULL_COLUMN   | NULL not allowed for NOT NULL column |
-| 2701 | NULL_NOT_ALLOWED_ARITHMETIC        | NULL not allowed in arithmetic       |
-| 2704 | USE_IS_NULL_INSTEAD_OF_EQUALS_NULL | Use IS NULL instead of = null        |
-
-**Example:**
-
-```typescript
-const query = `SELECT * FROM users WHERE name = null` as const
-// Error: DbtyperError<2704, "[dbt:2704] Use IS NULL instead of = null">
-```
-
-## How to Add New Error Codes
-
-When adding a new error code to the registry:
-
-1. **Choose the appropriate range** based on error category
-2. **Pick the next available code** in that range
-3. **Create a unique ID** in SCREAMING_SNAKE_CASE format
-4. **Format the message** as an array:
-    - Static messages: `["message text"]`
-    - Dynamic messages: `["part1", "part2"]` for interpolation
-5. **Add to registry** in `src/dbtyper-error.ts`
-6. **Update this documentation** with the new error code
-7. **Never reuse error codes** - mark deleted codes as OBSOLETE instead
-
-### Example
-
-```typescript
-// In src/dbtyper-error.ts
-export const errors = {
-	// ... existing codes ...
-
-	// Add new error in appropriate range
-	1122: {
-		id: "EXPECTED_COLUMN_NAME_IN_SELECT",
-		msg: ["Expected column name in SELECT"],
-	},
-} as const
-```
-
-### Consolidated Codes
-
-For errors that vary only by context, use consolidated codes with parameters:
-
-```typescript
-// Instead of creating multiple codes:
-// UNKNOWN_TABLE_FROM, UNKNOWN_TABLE_UPDATE, etc.
-
-// Use one code with context parameter:
-2200: {
-	id: "UNKNOWN_TABLE",
-	msg: ["Unknown table ", " in ", ""],
-},
-```
-
-## Compile-Time Guarantees
-
-The error registry includes compile-time checks for:
-
-1. **Duplicate IDs**: Ensures no two error codes share the same ID
-2. **Duplicate Messages**: Ensures no two error codes have identical messages
-
-If you add a duplicate, TypeScript will show a compilation error.
-
-## Error Code Format
-
-Error codes follow this structure:
-
-```typescript
-{
-  id: string,           // SCREAMING_SNAKE_CASE identifier
-  msg: string[]         // Array of message parts for interpolation
-}
-```
-
-## Status
-
-**Current Coverage:** 264 active error codes (as of 2026-05-10)
-
-**Numbering Scheme:** 4-digit codes (1000-5499) with 100-code intervals
-
-**Complete Coverage:** All error messages in codebase now have error codes
-
-**Implementation Status:**
-
-- ✅ Phase 1: Foundation (38 core errors)
-- ✅ Phase 2: Lexer & Expression Parser (completed)
-- ✅ Phase 3: Statement Parsers (completed)
-- ✅ Phase 4: DDL & Type System (completed)
-- ✅ Phase 5: Semantic & Finalization (completed)
-- ✅ Renumbering: 3-digit to 4-digit scheme (completed)
-- ✅ Phase 6: Error System Refactoring (completed 2026-05-10)
-    - Removed 40 INVALID\_\* codes
-    - Consolidated 70 codes into 10 base codes with context parameters
-    - Reduced from 372 to 264 active codes (29% reduction)
-
-**Error Code Distribution:**
-
-- 1000-1099: Lexer/Tokenization - 9 codes (91 slots free)
-- 1100-1199: Parser Syntax - SELECT - 22 codes (78 slots free)
-- 1200-1299: Parser Syntax - INSERT - 17 codes (83 slots free)
-- 1300-1399: Parser Syntax - UPDATE - 4 codes (96 slots free)
-- 1400-1499: Parser Syntax - DELETE - 2 codes (98 slots free)
-- 1500-1599: Parser Syntax - CREATE TABLE - 7 codes (93 slots free)
-- 1600-1699: Parser Syntax - ALTER TABLE - 4 codes (96 slots free)
-- 1700-1799: Parser Syntax - DROP TABLE - 2 codes (98 slots free)
-- 1800-1899: Parser Syntax - Type DDL - 11 codes (89 slots free)
-- 1900-1999: Other-dialect syntax - 15 codes (85 slots free)
-- 2100-2199: Validation - Statement - 10 codes (90 slots free)
-- 2200-2299: Resolution - Table/Schema - 3 codes (97 slots free)
-- 2300-2399: Resolution - Column - 4 codes (96 slots free)
-- 2400-2499: Resolution - Other - 3 codes (97 slots free)
-- 2500-2599: Type System - Compatibility - 9 codes (91 slots free)
-- 2600-2699: Type System - Boolean - 7 codes (93 slots free)
-- 2700-2799: Type System - NULL - 5 codes (95 slots free)
-- 2800-2899: Type System - Text/String - 8 codes (92 slots free)
-- 2900-2999: Type System - Numeric - 1 code (99 slots free)
-- 3000-3099: Type System - Array - 2 codes (98 slots free)
-- 3100-3199: Type System - Subquery - 4 codes (96 slots free)
-- 3200-3299: Semantic - Duplicate/Exist - 12 codes (88 slots free)
-- 3300-3399: Semantic - Constraints - 6 codes (94 slots free)
-- 3400-3499: Semantic - SELECT - 8 codes (92 slots free)
-- 3500-3599: Semantic - Statement - 6 codes (94 slots free)
-- 3600-3699: Semantic - Function - 20 codes (80 slots free)
-- 3700-3799: DDL - CREATE SCHEMA - 3 codes (97 slots free)
-- 3800-3899: DDL - DROP SCHEMA - 2 codes (98 slots free)
-- 3900-3999: DDL - CREATE VIEW - 8 codes (92 slots free)
-- 4000-4099: DDL - ALTER TYPE - 3 codes (97 slots free)
-- 4100-4199: DDL - Misc - 6 codes (94 slots free)
-- 4200-4299: DML - JOIN - 3 codes (97 slots free)
-- 4300-4399: DML - CASE - 2 codes (98 slots free)
-- 4400-4499: DML - BETWEEN/IN - 3 codes (97 slots free)
-- 4500-4599: DML - CAST - 5 codes (95 slots free)
-- 4600-4699: DML - Window Functions - 4 codes (96 slots free)
-- 4700-4799: DML - Array Operations - 3 codes (97 slots free)
-- 4800-4899: DML - Operators - 5 codes (95 slots free)
-- 4900-4999: DML - EXISTS/Subquery - 2 codes (98 slots free)
-- 5000-5099: DML - Misc Expression - 8 codes (92 slots free)
-- 5100-5199: Type/Data - VARCHAR/NUMERIC - 6 codes (94 slots free)
-- 5200-5299: Type/Data - DEFAULT - 5 codes (95 slots free)
-- 5300-5399: Type/Data - FETCH/LIMIT - 4 codes (96 slots free)
-- 5400-5499: Type/Data - Misc - 9 codes (91 slots free)
-
-**Total:** 264 active codes, 68 obsolete codes, ~3,400 slots available for future expansion
-
-## See Also
-
-- `src/dbtyper-error.ts` - Error code registry implementation
-- `.features/2026-05-08-1416-error-codes.md` - Initial error codes feature implementation
-- `docs/ERROR_SYSTEM_REFACTORING.md` - Error system refactoring documentation (2026-05-10)
-- `.features/2026-05-10-1433-error-system-refactoring.md` - Refactoring implementation plan
+# Error code reference
+
+<!-- Generated from src/dbtyper-error.ts by scripts/gen-error-codes.ts (npm run gen-error-codes). Do not edit by hand. -->
+
+dbtyper has **306 active error codes** and 68 retired ones. A compile error is the TypeScript type `DbtyperError<Code, Message>`; the code is the number in `__sql_parser_error_code__`, the text is in `__sql_parser_error__`. A `…` in a message marks a place where dbtyper inserts a name or a value (a table, a column, a type).
+
+A code is never reused. A removed error stays in the registry as `OBSOLETE_<code>_<name>` (see the end of this page), because codes are used in online help.
+
+## Ranges
+
+| Range     | Category                      | Active codes |
+| --------- | ----------------------------- | -----------: |
+| 1000-1099 | Lexer/Tokenization            |           10 |
+| 1100-1199 | Parser/SELECT Statement       |           22 |
+| 1200-1299 | Parser/INSERT Statement       |           18 |
+| 1300-1399 | Parser/UPDATE Statement       |            4 |
+| 1400-1499 | Parser/DELETE Statement       |            2 |
+| 1500-1599 | Parser/CREATE TABLE           |           16 |
+| 1600-1699 | Parser/ALTER TABLE            |            5 |
+| 1700-1799 | Parser/DROP TABLE             |            4 |
+| 1800-1899 | Parser/CREATE/ALTER/DROP TYPE |           11 |
+| 1900-1999 | Other-dialect syntax          |           15 |
+| 2100-2199 | Validation/Statement          |           10 |
+| 2200-2299 | Resolution/Table-Schema       |            4 |
+| 2300-2399 | Resolution/Column             |            4 |
+| 2400-2499 | Resolution/Other              |            5 |
+| 2500-2599 | Type/Compatibility            |           11 |
+| 2600-2699 | Type/Boolean                  |            7 |
+| 2700-2799 | Type/NULL Handling            |            5 |
+| 2800-2899 | Type/Text Operations          |            7 |
+| 2900-2999 | Type/Numeric Operations       |            1 |
+| 3000-3099 | Type/Array Operations         |            2 |
+| 3100-3199 | Type/Subquery                 |            4 |
+| 3200-3299 | Semantic/Duplicate-Existence  |           12 |
+| 3300-3399 | Semantic/Constraint           |            6 |
+| 3400-3499 | Semantic/SELECT               |           14 |
+| 3500-3599 | Semantic/Statement            |           10 |
+| 3600-3699 | Semantic/Function             |           20 |
+| 3700-3799 | DDL/CREATE SCHEMA             |            3 |
+| 3800-3899 | DDL/DROP SCHEMA               |            2 |
+| 3900-3999 | DDL/CREATE VIEW               |            8 |
+| 4000-4099 | DDL/ALTER TYPE                |            3 |
+| 4100-4199 | DDL/Misc                      |            6 |
+| 4200-4299 | DML/JOIN                      |            2 |
+| 4300-4399 | DML/CASE                      |            2 |
+| 4400-4499 | DML/BETWEEN-IN                |            3 |
+| 4500-4599 | DML/CAST                      |            5 |
+| 4600-4699 | DML/Window Function           |            4 |
+| 4700-4799 | DML/Array                     |            3 |
+| 4800-4899 | DML/Operator                  |            5 |
+| 4900-4999 | DML/EXISTS                    |            2 |
+| 5000-5099 | DML/Misc Expression           |           10 |
+| 5100-5199 | Type-Data/VARCHAR-NUMERIC     |            6 |
+| 5300-5399 | Type-Data/FETCH-LIMIT         |            4 |
+| 5400-5499 | Type-Data/Misc                |            9 |
+
+## 1000-1099: Lexer/Tokenization
+
+| Code | Name                         | Message                                                                                                                            |
+| ---- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1001 | `UNCLOSED_QUOTED_IDENTIFIER` | Unclosed quoted identifier literal                                                                                                 |
+| 1002 | `UNCLOSED_STRING_LITERAL`    | Unclosed string literal                                                                                                            |
+| 1003 | `UNCLOSED_TAGGED_STRING`     | Unclosed tagged string                                                                                                             |
+| 1004 | `WRONG_STRING_TAG`           | Wrong string tag                                                                                                                   |
+| 1005 | `UNBALANCED_PARENTHESES`     | Unbalanced parentheses                                                                                                             |
+| 1006 | `TOKEN_NOT_FOUND`            | Statement is not closed: an expected closing token was not found (for example a trigger with BEGIN but no END, or a missing \`)\`) |
+| 1007 | `UNEXPECTED_TOKEN`           | Unexpected token at: …                                                                                                             |
+| 1008 | `CLOSING_BRACKET_NOT_FOUND`  | Closing bracket not found: …                                                                                                       |
+| 1009 | `UNMATCHED_CLOSING_BRACKET`  | Unmatched closing bracket: …                                                                                                       |
+| 1010 | `INVALID_INDEXED_PARAM`      | Invalid indexed parameter: …                                                                                                       |
+
+## 1100-1199: Parser/SELECT Statement
+
+| Code | Name                                              | Message                                         |
+| ---- | ------------------------------------------------- | ----------------------------------------------- |
+| 1100 | `EXPECTED_SELECT_AFTER_WITH`                      | Expected SELECT after WITH clause               |
+| 1101 | `EXPECTED_SELECT_IN_SUBQUERY`                     | Expected SELECT in subquery                     |
+| 1102 | `EXPECTED_SELECT_IN_DERIVED_TABLE`                | Expected SELECT in derived table                |
+| 1103 | `EXPECTED_SELECT_IN_EXISTS_SUBQUERY`              | Expected SELECT in EXISTS subquery              |
+| 1104 | `EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_VIEW` | Expected SELECT or WITH after AS in CREATE VIEW |
+| 1105 | `EXPECTED_SEMICOLON`                              | Expected semicolon after …                      |
+| 1106 | `EXPECTED_FROM_AFTER_SELECT_LIST`                 | Expected FROM after SELECT list                 |
+| 1107 | `EXPECTED_BY_AFTER_GROUP`                         | Expected BY after GROUP                         |
+| 1108 | `EXPECTED_BY_AFTER_ORDER`                         | Expected BY after ORDER                         |
+| 1109 | `EXPECTED_BY_AFTER_ORDER_IN_OVER_CLAUSE`          | Expected BY after ORDER in OVER clause          |
+| 1110 | `EXPECTED_BY_AFTER_PARTITION`                     | Expected BY after PARTITION                     |
+| 1111 | `EXPECTED_CTE_NAME_IN_WITH`                       | Expected CTE name in WITH                       |
+| 1112 | `EXPECTED_ALIAS_AFTER_CTE`                        | Expected alias after CTE                        |
+| 1113 | `EXPECTED_ALIAS_AFTER_DERIVED_TABLE`              | Expected alias after derived table              |
+| 1114 | `EXPECTED_ALIAS_NAME_AFTER_AS`                    | Expected alias name after AS                    |
+| 1115 | `EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE`       | Expected alias or join clause after table       |
+| 1116 | `EXPECTED_OPEN_PAREN_AFTER_AS_IN_WITH`            | Expected open paren after AS in WITH            |
+| 1117 | `EXPECTED_END_AFTER_CASE`                         | Expected END after CASE                         |
+| 1118 | `EXPECTED_WHEN_AFTER_CASE_EXPRESSION`             | Expected WHEN after CASE expression             |
+| 1119 | `EXPECTED_WHEN_ELSE_OR_END_IN_CASE`               | Expected WHEN ELSE or END in CASE               |
+| 1120 | `EXPECTED_TABLE_NAME`                             | Expected table name …                           |
+| 1121 | `EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM`       | Expected table name or \`(\` in FROM            |
+
+## 1200-1299: Parser/INSERT Statement
+
+| Code | Name                                                         | Message                                                   |
+| ---- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| 1200 | `EXPECTED_INTO_AFTER_INSERT`                                 | Expected INTO after INSERT                                |
+| 1202 | `EXPECTED_OPEN_PAREN_AFTER_VALUES_IN_INSERT`                 | Expected \`(\` after VALUES in INSERT                     |
+| 1203 | `EXPECTED_CLOSE_PAREN_AFTER_INSERT_VALUES`                   | Expected \`)\` after INSERT values                        |
+| 1204 | `EXPECTED_OPEN_PAREN_AFTER_COMMA_BETWEEN_INSERT_VALUES_ROWS` | Expected \`(\` after \`,\` between INSERT VALUES rows     |
+| 1205 | `EXPECTED_OPEN_PAREN_COLUMN_LIST_AFTER_TABLE_IN_INSERT`      | Expected \`(\` (column list) after table in INSERT        |
+| 1206 | `EXPECTED_COLUMN_NAME`                                       | Expected column name …                                    |
+| 1207 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_INSERT_COLUMN_LIST`        | Expected \`,\` or \`)\` in INSERT column list             |
+| 1208 | `EXPECTED_COMMA_BETWEEN_INSERT_VALUES`                       | Expected \`,\` between INSERT values                      |
+| 1209 | `EXPECTED_VALUES_OR_SELECT_AFTER_COLUMN_LIST_IN_INSERT`      | Expected VALUES or SELECT after column list in INSERT     |
+| 1210 | `EXPECTED_CONFLICT_AFTER_ON_IN_INSERT`                       | Expected CONFLICT after ON in INSERT                      |
+| 1211 | `EXPECTED_OPEN_PAREN_AFTER_ON_CONFLICT_IN_INSERT`            | Expected \`(\` after ON CONFLICT in INSERT                |
+| 1213 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ON_CONFLICT_COLUMN_LIST`   | Expected \`,\` or \`)\` in ON CONFLICT column list        |
+| 1214 | `EXPECTED_DO_AFTER_ON_CONFLICT_COLUMN_LIST_IN_INSERT`        | Expected DO after ON CONFLICT column list in INSERT       |
+| 1215 | `EXPECTED_DO_AFTER_ON_CONFLICT_COLUMNS_IN_INSERT`            | Expected DO after ON CONFLICT columns in INSERT           |
+| 1216 | `EXPECTED_UPDATE_AFTER_DO_IN_INSERT_ON_CONFLICT`             | Expected UPDATE or NOTHING after DO in INSERT ON CONFLICT |
+| 1217 | `EXPECTED_SET_AFTER_UPDATE_IN_INSERT_ON_CONFLICT`            | Expected SET after UPDATE in INSERT ON CONFLICT           |
+| 1219 | `EXPECTED_EQUALS_AFTER_COLUMN_IN_ON_CONFLICT_UPDATE`         | Expected \`=\` after column in ON CONFLICT UPDATE         |
+| 1226 | `EXPECTED_VALUES_AFTER_DEFAULT_IN_INSERT`                    | Expected VALUES after DEFAULT in INSERT                   |
+
+## 1300-1399: Parser/UPDATE Statement
+
+| Code | Name                                                       | Message                                                     |
+| ---- | ---------------------------------------------------------- | ----------------------------------------------------------- |
+| 1300 | `EXPECTED_SET_IN_UPDATE`                                   | Expected SET in UPDATE                                      |
+| 1301 | `EXPECTED_SET_AFTER_TABLE_IN_UPDATE`                       | Expected SET after table in UPDATE                          |
+| 1304 | `EXPECTED_EQUALS_AFTER_COLUMN_IN_UPDATE_SET`               | Expected \`=\` after column in UPDATE SET                   |
+| 1305 | `EXPECTED_COMMA_FROM_WHERE_OR_END_AFTER_UPDATE_ASSIGNMENT` | Expected \`,\`, FROM, WHERE, or end after UPDATE assignment |
+
+## 1400-1499: Parser/DELETE Statement
+
+| Code | Name                                            | Message                                       |
+| ---- | ----------------------------------------------- | --------------------------------------------- |
+| 1400 | `EXPECTED_FROM_AFTER_DELETE`                    | Expected FROM after DELETE                    |
+| 1405 | `EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM` | Expected alias or end of table in DELETE FROM |
+
+## 1500-1599: Parser/CREATE TABLE
+
+| Code | Name                                                     | Message                                                         |
+| ---- | -------------------------------------------------------- | --------------------------------------------------------------- |
+| 1501 | `EXPECTED_OPEN_PAREN_BEFORE_COLUMN_LIST_IN_CREATE_TABLE` | Expected \`(\` before column list in CREATE TABLE               |
+| 1502 | `EXPECTED_CLOSE_PAREN_BEFORE_END_OF_CREATE_TABLE`        | Expected \`)\` before end of CREATE TABLE                       |
+| 1504 | `EXPECTED_COLUMN_TYPE_IN_CREATE_TABLE`                   | Expected column type in CREATE TABLE                            |
+| 1505 | `EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_COLUMN_DEFINITION`  | Expected \`,\` or \`)\` after column definition                 |
+| 1507 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_TABLE`                  | Expected \`not\` after \`IF\` in CREATE TABLE                   |
+| 1508 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TABLE`           | Expected \`exists\` after \`IF NOT\` in CREATE TABLE            |
+| 1509 | `EXPECTED_DEFAULT_VALUE`                                 | Expected DEFAULT value                                          |
+| 1510 | `EXPECTED_NULL_AFTER_NOT`                                | Expected NULL after NOT                                         |
+| 1511 | `EXPECTED_SELECT_OR_WITH_AFTER_AS_IN_CREATE_TABLE`       | Expected SELECT or WITH after AS in CREATE TABLE                |
+| 1512 | `EXPECTED_KEY_AFTER_PRIMARY_OR_FOREIGN_IN_CREATE_TABLE`  | Expected KEY after PRIMARY or FOREIGN in CREATE TABLE           |
+| 1513 | `EXPECTED_OPEN_PAREN_IN_CREATE_TABLE_CONSTRAINT`         | Expected \`(\` in CREATE TABLE constraint                       |
+| 1514 | `EXPECTED_CONSTRAINT_AFTER_NAME_IN_CREATE_TABLE`         | Expected a constraint after the constraint name in CREATE TABLE |
+| 1515 | `EXPECTED_CONSTRAINT_NAME_IN_CREATE_TABLE`               | Expected constraint name after CONSTRAINT in CREATE TABLE       |
+| 1516 | `EXPECTED_REFERENCES_AFTER_FOREIGN_KEY`                  | Expected REFERENCES after FOREIGN KEY (columns) in CREATE TABLE |
+| 1517 | `EXPECTED_ALWAYS_AFTER_GENERATED`                        | Expected ALWAYS after GENERATED in CREATE TABLE                 |
+| 1518 | `EXPECTED_AS_AFTER_GENERATED_ALWAYS`                     | Expected AS after GENERATED ALWAYS in CREATE TABLE              |
+
+## 1600-1699: Parser/ALTER TABLE
+
+| Code | Name                                           | Message                                         |
+| ---- | ---------------------------------------------- | ----------------------------------------------- |
+| 1601 | `EXPECTED_TABLE_AFTER_ALTER`                   | Expected TABLE after ALTER                      |
+| 1607 | `EXPECTED_COLUMN_TYPE_IN_ALTER_TABLE`          | Expected column type in ALTER TABLE             |
+| 1608 | `EXPECTED_TYPE_SET_OR_DROP_AFTER_ALTER_COLUMN` | Expected TYPE, SET, or DROP after ALTER COLUMN  |
+| 1609 | `EXPECTED_NULL_AFTER_SET_NOT`                  | Expected NULL after SET NOT                     |
+| 1610 | `EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TABLE`      | Expected \`exists\` after \`IF\` in ALTER TABLE |
+
+## 1700-1799: Parser/DROP TABLE
+
+| Code | Name                                              | Message                                           |
+| ---- | ------------------------------------------------- | ------------------------------------------------- |
+| 1702 | `EXPECTED_EXISTS_AFTER_IF_IN_DROP_TABLE`          | Expected \`exists\` after \`IF\` in DROP TABLE    |
+| 1703 | `EXPECTED_DOT_OR_END_OF_TABLE_NAME_IN_DROP_TABLE` | Expected \`.\` or end of table name in DROP TABLE |
+| 1705 | `EXPECTED_EXISTS_AFTER_IF_IN_DROP_VIEW`           | Expected \`exists\` after \`IF\` in DROP VIEW     |
+| 1706 | `EXPECTED_VIEW_NAME_IN_DROP_VIEW`                 | Expected view name in DROP VIEW                   |
+
+## 1800-1899: Parser/CREATE/ALTER/DROP TYPE
+
+| Code | Name                                                            | Message                                                 |
+| ---- | --------------------------------------------------------------- | ------------------------------------------------------- |
+| 1803 | `EXPECTED_AS_AFTER_TYPE_NAME_IN_CREATE_TYPE`                    | Expected \`as\` after type name in CREATE TYPE          |
+| 1804 | `EXPECTED_ENUM_AFTER_AS_IN_CREATE_TYPE`                         | Expected \`enum\` after \`AS\` in CREATE TYPE           |
+| 1805 | `EXPECTED_OPEN_PAREN_BEFORE_ENUM_VALUES_IN_CREATE_TYPE`         | Expected \`(\` before enum values in CREATE TYPE        |
+| 1806 | `EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_CREATE_TYPE`         | Expected string literal for enum value in CREATE TYPE   |
+| 1807 | `EXPECTED_STRING_LITERAL_FOR_ENUM_VALUE_IN_ALTER_TYPE`          | Expected string literal for enum value in ALTER TYPE    |
+| 1808 | `EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_ENUM_VALUE_IN_CREATE_TYPE` | Expected \`,\` or \`)\` after enum value in CREATE TYPE |
+| 1813 | `EXPECTED_ADD_IN_ALTER_TYPE`                                    | Expected \`add\` in ALTER TYPE                          |
+| 1814 | `EXPECTED_VALUE_AFTER_ADD_IN_ALTER_TYPE`                        | Expected \`value\` after \`ADD\` in ALTER TYPE          |
+| 1815 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_TYPE`                          | Expected \`not\` after \`IF\` in CREATE TYPE            |
+| 1816 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_TYPE`                   | Expected \`exists\` after \`IF NOT\` in CREATE TYPE     |
+| 1817 | `EXPECTED_EXISTS_AFTER_IF_IN_DROP_TYPE`                         | Expected \`exists\` after \`IF\` in DROP TYPE           |
+
+## 1900-1999: Other-dialect syntax
+
+| Code | Name                                      | Message                                                                                                                      |
+| ---- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1900 | `POSTGRES_ONLY_SYNTAX`                    | … is PostgreSQL-only; this database is ……                                                                                    |
+| 1901 | `SQLITE_ONLY_SYNTAX`                      | … is SQLite-only; this database is ……                                                                                        |
+| 1910 | `STRICT_TABLE_TYPE_NOT_ALLOWED`           | STRICT tables allow only INT, INTEGER, REAL, TEXT, BLOB, ANY                                                                 |
+| 1911 | `AUTOINCREMENT_NEEDS_INTEGER_PRIMARY_KEY` | AUTOINCREMENT is allowed only on a column declared INTEGER PRIMARY KEY                                                       |
+| 1912 | `EXPECTED_TABLE_OPTION_IN_CREATE_TABLE`   | Expected STRICT or WITHOUT ROWID                                                                                             |
+| 1913 | `WITHOUT_ROWID_NEEDS_PRIMARY_KEY`         | WITHOUT ROWID tables need a PRIMARY KEY                                                                                      |
+| 1914 | `SQLITE_ADD_COLUMN_RESTRICTED`            | SQLite cannot ADD COLUMN with …                                                                                              |
+| 1915 | `SQLITE_NO_SCHEMAS`                       | SQLite has no schemas; drop the schema qualifier, or use main or temp                                                        |
+| 1916 | `SQLITE_UNSUPPORTED_STATEMENT`            | … is not supported in migrations                                                                                             |
+| 1917 | `REGEXP_NEEDS_FUNCTION`                   | REGEXP needs a user function regexp(pattern, text); register one or use LIKE or GLOB                                         |
+| 1918 | `EXPECTED_CONFLICT_ACTION_AFTER_OR`       | Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after OR                                                                   |
+| 1919 | `TOO_MANY_STATEMENTS`                     | A script may have at most … statements; split it into several migrations                                                     |
+| 1920 | `UNKNOWN_CONFLICT_ACTION`                 | Expected ROLLBACK, ABORT, FAIL, IGNORE or REPLACE after ON CONFLICT                                                          |
+| 1930 | `UNKNOWN_STATEMENT`                       | Unknown statement keyword …. If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped                 |
+| 1931 | `UNKNOWN_STATEMENT_DID_YOU_MEAN`          | Unknown statement keyword …; did you mean …? If this is SQL dbtyper does not know, run it with queryUntyped or streamUntyped |
+
+## 2100-2199: Validation/Statement
+
+| Code | Name                                | Message                                                                                         |
+| ---- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 2107 | `INVALID_ALTER_TABLE_NAME`          | Invalid ALTER TABLE name (internal parser error; please report this SQL as a dbtyper issue)     |
+| 2108 | `INVALID_CREATE_TABLE_NAME_PARSE`   | Invalid CREATE TABLE name (internal parser error; please report this SQL as a dbtyper issue)    |
+| 2109 | `INVALID_DROP_TABLE_PARSE`          | Invalid DROP TABLE statement (internal parser error; please report this SQL as a dbtyper issue) |
+| 2110 | `INVALID_CREATE_TYPE_NAME_PARSE`    | Invalid CREATE TYPE name (internal parser error; please report this SQL as a dbtyper issue)     |
+| 2111 | `INVALID_ALTER_TYPE_PARSE`          | Invalid ALTER TYPE statement (internal parser error; please report this SQL as a dbtyper issue) |
+| 2112 | `INVALID_DROP_TYPE_PARSE`           | Invalid DROP TYPE statement (internal parser error; please report this SQL as a dbtyper issue)  |
+| 2116 | `INVALID_NUMBER`                    | Invalid number                                                                                  |
+| 2117 | `INVALID_NUMBER_FOR_VARCHAR_LENGTH` | Invalid number for VARCHAR length                                                               |
+| 2118 | `INVALID_PRECISION_NUMBER`          | Invalid precision number                                                                        |
+| 2119 | `INVALID_SCALE_NUMBER`              | Invalid scale number                                                                            |
+
+## 2200-2299: Resolution/Table-Schema
+
+| Code | Name                      | Message                         |
+| ---- | ------------------------- | ------------------------------- |
+| 2200 | `UNKNOWN_TABLE`           | Unknown table … in …            |
+| 2207 | `UNKNOWN_SCHEMA_OR_TABLE` | Unknown schema or table … in …  |
+| 2214 | `UNKNOWN_SCHEMA`          | Unknown schema … for …          |
+| 2220 | `UNKNOWN_CONSTRAINT`      | Unknown constraint … on table … |
+
+## 2300-2399: Resolution/Column
+
+| Code | Name                                 | Message                        |
+| ---- | ------------------------------------ | ------------------------------ |
+| 2300 | `UNKNOWN_COLUMN`                     | Unknown column … in …          |
+| 2306 | `UNKNOWN_COLUMN_SCHEMA_TABLE_COLUMN` | Unknown column ….….…           |
+| 2307 | `UNKNOWN_QUALIFIED_COLUMN`           | Unknown qualified column ….…   |
+| 2308 | `UNKNOWN_ALIAS_IN_SELECT_STAR`       | Unknown alias in SELECT ... \* |
+
+## 2400-2499: Resolution/Other
+
+| Code | Name                                  | Message                                                                     |
+| ---- | ------------------------------------- | --------------------------------------------------------------------------- |
+| 2400 | `UNKNOWN_QUERY_PARAMETER`             | Unknown query parameter: …                                                  |
+| 2403 | `POSITIONAL_PARAMETER_REQUIRES_ARRAY` | Positional parameter (?) requires array of parameters, not named parameters |
+| 2404 | `POSITIONAL_PARAMETER_OUT_OF_BOUNDS`  | Positional parameter index … is out of bounds                               |
+| 2405 | `CANNOT_INFER_PARAMETER_TYPE`         | cannot infer the type of parameter …; use CAST(… AS …)                      |
+| 2406 | `PARAMETER_PROBE_READ`                | internal: a parameter was read                                              |
+
+## 2500-2599: Type/Compatibility
+
+| Code | Name                                     | Message                                    |
+| ---- | ---------------------------------------- | ------------------------------------------ |
+| 2500 | `INCOMPATIBLE_TYPES_IN_COMPARISON`       | Incompatible types in comparison           |
+| 2501 | `INCOMPATIBLE_TYPES_IN_ARITHMETIC`       | Incompatible types in arithmetic           |
+| 2502 | `INCOMPATIBLE_TYPES_IN_CASE`             | Incompatible types in CASE                 |
+| 2503 | `INCOMPATIBLE_TYPES_IN_BETWEEN`          | Incompatible types in BETWEEN              |
+| 2504 | `INCOMPATIBLE_TYPES_IN_IN_LIST`          | Incompatible types in IN list              |
+| 2505 | `INCOMPATIBLE_TYPES_IN_IN_SUBQUERY`      | Incompatible types in IN subquery          |
+| 2507 | `INCOMPATIBLE_VALUE_TYPE_FOR_COLUMN`     | Incompatible value type for column …       |
+| 2508 | `INSERT_SELECT_TYPE_MISMATCH_FOR_COLUMN` | INSERT...SELECT type mismatch for column … |
+| 2509 | `INCOMPATIBLE_PARAMETER_VALUE_TYPE`      | Incompatible value type for parameter …    |
+| 2510 | `COLUMN_TYPE_MISMATCH`                   | column \`…\` is …                          |
+| 2511 | `VALUE_NOT_IN_ENUM`                      | '…' is not a value of enum …               |
+
+## 2600-2699: Type/Boolean
+
+| Code | Name                                    | Message                                           |
+| ---- | --------------------------------------- | ------------------------------------------------- |
+| 2600 | `EXPRESSION_MUST_BE_BOOLEAN`            | Expression must be boolean, but has a type ….     |
+| 2601 | `CASE_WHEN_MUST_BE_BOOLEAN`             | CASE WHEN must be boolean                         |
+| 2602 | `NOT_REQUIRES_BOOLEAN_OPERAND`          | NOT requires a boolean operand                    |
+| 2603 | `NOT_ARGUMENT_MUST_BE_BOOLEAN_NOT_NULL` | NOT argument must be boolean, not NULL            |
+| 2604 | `AND_OPERANDS_MUST_BE_BOOLEAN`          | AND operands must be boolean                      |
+| 2605 | `OR_OPERANDS_MUST_BE_BOOLEAN`           | OR operands must be boolean                       |
+| 2606 | `NULL_NOT_VALID_BOOLEAN_OPERAND`        | NULL is not a valid boolean operand (use IS NULL) |
+
+## 2700-2799: Type/NULL Handling
+
+| Code | Name                                 | Message                                |
+| ---- | ------------------------------------ | -------------------------------------- |
+| 2700 | `NULL_NOT_ALLOWED_NOT_NULL_COLUMN`   | NULL not allowed for NOT NULL column … |
+| 2701 | `NULL_NOT_ALLOWED_ARITHMETIC`        | NULL not allowed in arithmetic         |
+| 2702 | `NULL_NOT_ALLOWED_IN_BETWEEN`        | NULL not allowed in BETWEEN            |
+| 2703 | `NULL_NOT_ALLOWED_IN_LIKE`           | NULL not allowed in LIKE               |
+| 2704 | `USE_IS_NULL_INSTEAD_OF_EQUALS_NULL` | Use IS NULL instead of = null          |
+
+## 2800-2899: Type/Text Operations
+
+| Code | Name                                        | Message                                 |
+| ---- | ------------------------------------------- | --------------------------------------- |
+| 2800 | `CONCAT_REQUIRES_AT_LEAST_ONE_TEXT_OPERAND` | \|\| requires at least one text operand |
+| 2801 | `CANNOT_CONCATENATE_ARRAY_WITH_TEXT`        | Cannot concatenate array with text      |
+| 2802 | `CANNOT_CONCATENATE_TEXT_WITH_ARRAY`        | Cannot concatenate text with array      |
+| 2803 | `LIKE_LEFT_OPERAND_MUST_BE_TEXT`            | LIKE left operand must be text          |
+| 2804 | `CANNOT_CONCATENATE_TEXT_WITH_TYPE`         | Cannot concatenate text with …          |
+| 2805 | `CANNOT_CONCATENATE_TYPE_WITH_TEXT`         | Cannot concatenate … with text          |
+| 2806 | `LIKE_PATTERN_MUST_BE_TEXT`                 | LIKE pattern must be text               |
+
+## 2900-2999: Type/Numeric Operations
+
+| Code | Name                            | Message                       |
+| ---- | ------------------------------- | ----------------------------- |
+| 2900 | `UNARY_MINUS_REQUIRES_A_NUMBER` | Unary minus requires a number |
+
+## 3000-3099: Type/Array Operations
+
+| Code | Name                                      | Message                                    |
+| ---- | ----------------------------------------- | ------------------------------------------ |
+| 3000 | `CANNOT_DETERMINE_TYPE_OF_EMPTY_ARRAY`    | Cannot determine type of empty array       |
+| 3001 | `ANY_ALL_SOME_REQUIRES_ARRAY_OR_SUBQUERY` | ANY/ALL/SOME requires an array or subquery |
+
+## 3100-3199: Type/Subquery
+
+| Code | Name                                              | Message                                                                                                                    |
+| ---- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 3100 | `SCALAR_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN` | Scalar subquery must project exactly one column                                                                            |
+| 3101 | `IN_SUBQUERY_MUST_PROJECT_EXACTLY_ONE_COLUMN`     | IN subquery must project exactly one column                                                                                |
+| 3102 | `SCALAR_SUBQUERY_COLUMN_INFERENCE_FAILED`         | Cannot infer the column of this scalar subquery; select exactly one column, or cast the result (internal inference failed) |
+| 3103 | `IN_SUBQUERY_COLUMN_INFERENCE_FAILED`             | Cannot infer the column of this IN subquery; select exactly one column, or cast the result (internal inference failed)     |
+
+## 3200-3299: Semantic/Duplicate-Existence
+
+| Code | Name                                                  | Message                                              |
+| ---- | ----------------------------------------------------- | ---------------------------------------------------- |
+| 3200 | `SCHEMA_ALREADY_EXISTS_USE_IF_NOT_EXISTS`             | Schema already exists; use IF NOT EXISTS             |
+| 3201 | `SCHEMA_DOES_NOT_EXIST_USE_IF_EXISTS`                 | Schema does not exist; use IF EXISTS                 |
+| 3202 | `TABLE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`              | Table already exists; use IF NOT EXISTS              |
+| 3203 | `TABLE_DOES_NOT_EXIST`                                | Table does not exist                                 |
+| 3204 | `TABLE_DOES_NOT_EXIST_USE_IF_EXISTS`                  | Table does not exist; use IF EXISTS                  |
+| 3205 | `TYPE_ALREADY_EXISTS_USE_IF_NOT_EXISTS`               | Type already exists; use IF NOT EXISTS               |
+| 3206 | `TYPE_DOES_NOT_EXIST_USE_IF_EXISTS`                   | Type does not exist; use IF EXISTS                   |
+| 3207 | `TYPE_DOES_NOT_EXIST_OR_IS_NOT_AN_ENUM_USE_IF_EXISTS` | Type does not exist or is not an enum; use IF EXISTS |
+| 3208 | `COLUMN_ALREADY_EXISTS`                               | Column … already exists                              |
+| 3209 | `COLUMN_DOES_NOT_EXIST`                               | Column … does not exist                              |
+| 3210 | `DUPLICATE_WITH_CLAUSE_NAME`                          | Duplicate WITH clause name                           |
+| 3211 | `VIEW_OR_TABLE_ALREADY_EXISTS_IN_SCHEMA`              | View or table already exists in schema               |
+
+## 3300-3399: Semantic/Constraint
+
+| Code | Name                                        | Message                                   |
+| ---- | ------------------------------------------- | ----------------------------------------- |
+| 3300 | `MISSING_NOT_NULL_COLUMN_IN_INSERT`         | Missing NOT NULL column … in INSERT       |
+| 3301 | `INSERT_COLUMN_LIST_MUST_NOT_BE_EMPTY`      | INSERT column list must not be empty      |
+| 3302 | `ON_CONFLICT_COLUMN_LIST_MUST_NOT_BE_EMPTY` | ON CONFLICT column list must not be empty |
+| 3303 | `IN_LIST_MUST_NOT_BE_EMPTY`                 | IN list must not be empty                 |
+| 3304 | `EMPTY_ENUM_VALUES_LIST_IN_CREATE_TYPE`     | Empty enum values list in CREATE TYPE     |
+| 3305 | `ENUM_VALUE_ALREADY_EXISTS`                 | Enum value already exists                 |
+
+## 3400-3499: Semantic/SELECT
+
+| Code | Name                                                                          | Message                                                                     |
+| ---- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 3400 | `SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST`                         | SELECT \* must be the only projection in the list                           |
+| 3401 | `SELECT_STAR_REQUIRES_A_SINGLE_FROM_TABLE`                                    | SELECT \* requires a single FROM table                                      |
+| 3402 | `SCALAR_EXPRESSION_IN_SELECT_REQUIRES_AS_ALIAS`                               | Scalar expression in SELECT requires AS alias                               |
+| 3403 | `GROUPED_SELECT_REQUIRES_COLUMN_TO_APPEAR_IN_GROUP_BY_OR_INSIDE_AN_AGGREGATE` | Grouped SELECT requires column to appear in GROUP BY or inside an aggregate |
+| 3404 | `AMBIGUOUS_UNQUALIFIED_COLUMN`                                                | Ambiguous unqualified column …                                              |
+| 3405 | `QUALIFIED_TABLE_STAR_IS_ONLY_VALID_IN_SELECT_LISTS`                          | Qualified table .\* is only valid in SELECT lists                           |
+| 3406 | `SELECT_RESULT_COLUMN_INDEX_OUT_OF_BOUNDS`                                    | SELECT result column index out of bounds                                    |
+| 3407 | `SELECT_RESULT_MISSING_COLUMN`                                                | SELECT result missing column                                                |
+| 3408 | `SET_OPERATION_COLUMN_COUNT_MISMATCH`                                         | Each … query must have the same number of columns                           |
+| 3409 | `SET_OPERATION_INCOMPATIBLE_TYPES`                                            | Incompatible types in … for column …                                        |
+| 3410 | `DUPLICATE_OUTPUT_COLUMN`                                                     | Duplicate output column …; use AS to give one of them an alias              |
+| 3411 | `JOIN_USING_COLUMN_NOT_FOUND`                                                 | Column … specified in USING clause does not exist in both join sides        |
+| 3412 | `EXPECTED_SELECT_AFTER_SET_OPERATOR`                                          | Expected SELECT after UNION, INTERSECT or EXCEPT                            |
+| 3413 | `CTE_COLUMN_LIST_MISMATCH`                                                    | WITH query … has a different number of columns than its column list         |
+
+## 3500-3599: Semantic/Statement
+
+| Code | Name                                        | Message                                                                                         |
+| ---- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 3500 | `INSERT_SELECT_COLUMN_COUNT_MISMATCH`       | INSERT...SELECT column count mismatch                                                           |
+| 3501 | `STREAM_REQUIRES_A_ROW_RETURNING_STATEMENT` | stream() requires a row-returning statement (SELECT or RETURNING clause)                        |
+| 3502 | `DROP_TABLE_TARGETS_A_VIEW_USE_DROP_VIEW`   | DROP TABLE targets a view; use DROP VIEW                                                        |
+| 3503 | `ALTER_TABLE_APPLIES_ONLY_TO_BASE_TABLES`   | ALTER TABLE applies only to base tables                                                         |
+| 3504 | `TABLE_KEY_MISMATCH_IN_ALTER_TABLE`         | ALTER TABLE target not found (internal parser error; please report this SQL as a dbtyper issue) |
+| 3505 | `COLUMN_RENAME_FAILED`                      | Cannot rename the column: check that the old name exists and the new name is not taken          |
+| 3506 | `NO_TYPESCRIPT_TYPE_FOR_SQL_TYPE`           | No TypeScript type for SQL type … in the driver's type map; select it with a cast, e.g. …       |
+| 3510 | `DROP_VIEW_TARGETS_A_TABLE_USE_DROP_TABLE`  | DROP VIEW targets a table; use DROP TABLE                                                       |
+| 3511 | `VIEW_DOES_NOT_EXIST_USE_IF_EXISTS`         | View does not exist; use IF EXISTS                                                              |
+| 3512 | `CANNOT_WRITE_GENERATED_COLUMN`             | Cannot write generated column … in …                                                            |
+
+## 3600-3699: Semantic/Function
+
+| Code | Name                                          | Message                                      |
+| ---- | --------------------------------------------- | -------------------------------------------- |
+| 3600 | `THIS_FUNCTION_TAKES_NO_ARGUMENTS`            | This function takes no arguments             |
+| 3601 | `FUNCTION_REQUIRES_AT_LEAST_ONE_ARGUMENT`     | Function requires at least one argument      |
+| 3602 | `ROW_NUMBER_TAKES_NO_ARGUMENTS`               | ROW\_NUMBER() takes no arguments             |
+| 3603 | `RANK_DENSE_RANK_TAKES_NO_ARGUMENTS`          | RANK/DENSE\_RANK takes no arguments          |
+| 3604 | `NOW_TAKES_NO_ARGUMENTS`                      | now() takes no arguments                     |
+| 3605 | `LAG_LEAD_REQUIRES_AT_LEAST_1_ARGUMENT`       | LAG/LEAD requires at least 1 argument        |
+| 3607 | `COALESCE_REQUIRES_AT_LEAST_ONE_ARGUMENT`     | coalesce() requires at least one argument    |
+| 3608 | `SUM_REQUIRES_AN_ARGUMENT`                    | sum() requires an argument                   |
+| 3609 | `ARRAY_APPEND_REQUIRES_2_ARGUMENTS`           | array\_append requires 2 arguments           |
+| 3610 | `ARRAY_APPEND_EXPECTS_ARRAY_ELEMENT`          | array\_append expects (array, element)       |
+| 3611 | `ARRAY_PREPEND_REQUIRES_2_ARGUMENTS`          | array\_prepend requires 2 arguments          |
+| 3612 | `ARRAY_PREPEND_EXPECTS_ELEMENT_ARRAY`         | array\_prepend expects (element, array)      |
+| 3613 | `ARRAY_LENGTH_REQUIRES_2_ARGUMENTS`           | array\_length requires 2 arguments           |
+| 3614 | `ARRAY_LENGTH_EXPECTS_ARRAY_INTEGER`          | array\_length expects (array, integer)       |
+| 3615 | `UNNEST_REQUIRES_1_ARGUMENT`                  | unnest requires 1 argument                   |
+| 3616 | `UNNEST_EXPECTS_AN_ARRAY`                     | unnest expects an array                      |
+| 3617 | `QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED`  | Qualified function names are not supported   |
+| 3618 | `STAR_IS_ONLY_ALLOWED_AS_COUNT_STAR_ARGUMENT` | \`\*\` is only allowed as COUNT(\*) argument |
+| 3619 | `UNKNOWN_FUNCTION`                            | Unknown function: …                          |
+| 3620 | `WINDOW_FUNCTION_REQUIRES_OVER_CLAUSE`        | Window function \`…\` needs an OVER clause   |
+
+## 3700-3799: DDL/CREATE SCHEMA
+
+| Code | Name                                            | Message                                               |
+| ---- | ----------------------------------------------- | ----------------------------------------------------- |
+| 3700 | `EXPECTED_SCHEMA_NAME_IN_CREATE_SCHEMA`         | Expected schema name in CREATE SCHEMA                 |
+| 3702 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_SCHEMA`        | Expected \`not\` after \`IF\` in CREATE SCHEMA        |
+| 3703 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_SCHEMA` | Expected \`exists\` after \`IF NOT\` in CREATE SCHEMA |
+
+## 3800-3899: DDL/DROP SCHEMA
+
+| Code | Name                                      | Message                                         |
+| ---- | ----------------------------------------- | ----------------------------------------------- |
+| 3800 | `EXPECTED_SCHEMA_NAME_IN_DROP_SCHEMA`     | Expected schema name in DROP SCHEMA             |
+| 3802 | `EXPECTED_EXISTS_AFTER_IF_IN_DROP_SCHEMA` | Expected \`exists\` after \`IF\` in DROP SCHEMA |
+
+## 3900-3999: DDL/CREATE VIEW
+
+| Code | Name                                          | Message                                                                          |
+| ---- | --------------------------------------------- | -------------------------------------------------------------------------------- |
+| 3900 | `EXPECTED_VIEW_NAME_IN_CREATE_VIEW`           | Expected view name in CREATE VIEW                                                |
+| 3901 | `EXPECTED_VIEW_NAME_AFTER_DOT_IN_CREATE_VIEW` | Expected view name after \`.\` in CREATE VIEW                                    |
+| 3902 | `EXPECTED_AS_IN_CREATE_VIEW`                  | Expected AS in CREATE VIEW                                                       |
+| 3903 | `EXPECTED_AS_OR_DOT_BEFORE_VIEW_NAME`         | Expected AS or \`.\` before view name                                            |
+| 3904 | `EXPECTED_AS_AFTER_QUALIFIED_VIEW_NAME`       | Expected AS after qualified view name                                            |
+| 3908 | `EXPECTED_NOT_AFTER_IF_IN_CREATE_VIEW`        | Expected \`not\` after \`IF\` in CREATE VIEW                                     |
+| 3909 | `EXPECTED_EXISTS_AFTER_IF_NOT_IN_CREATE_VIEW` | Expected \`exists\` after \`IF NOT\` in CREATE VIEW                              |
+| 3910 | `VIEW_COLUMN_LIST_MISMATCH`                   | CREATE VIEW …: the column list has a different number of columns than the SELECT |
+
+## 4000-4099: DDL/ALTER TYPE
+
+| Code | Name                                                     | Message                                              |
+| ---- | -------------------------------------------------------- | ---------------------------------------------------- |
+| 4000 | `EXPECTED_EXISTS_AFTER_IF_IN_ALTER_TYPE`                 | Expected \`exists\` after \`IF\` in ALTER TYPE       |
+| 4001 | `EXPECTED_DOT_OR_ADD_IN_ALTER_TYPE`                      | Expected \`.\` or \`ADD\` in ALTER TYPE              |
+| 4002 | `EXPECTED_DOT_OR_SEMICOLON_AFTER_TYPE_NAME_IN_DROP_TYPE` | Expected \`.\` or \`;\` after type name in DROP TYPE |
+
+## 4100-4199: DDL/Misc
+
+| Code | Name                                             | Message                                     |
+| ---- | ------------------------------------------------ | ------------------------------------------- |
+| 4100 | `EXPECTED_OPEN_PAREN_AFTER_QUALIFIED_TABLE_NAME` | Expected \`(\` after qualified table name   |
+| 4101 | `EXPECTED_NAME`                                  | Expected name                               |
+| 4102 | `EXPECTED_NAME_AFTER_DOT_IN_QUALIFIED_NAME`      | Expected name after \`.\` in qualified name |
+| 4103 | `EXPECTED_DOT_OR_KEYWORD_AFTER_NAME`             | Expected \`.\` or keyword after name        |
+| 4105 | `EXPECTED_TYPE_NAME`                             | Expected type name …                        |
+| 4107 | `EXPECTED_DOT_OR_OPEN_PAREN_AFTER_TABLE_NAME`    | Expected \`.\` or \`(\` after table name    |
+
+## 4200-4299: DML/JOIN
+
+| Code | Name                           | Message                      |
+| ---- | ------------------------------ | ---------------------------- |
+| 4200 | `EXPECTED_JOIN_KEYWORD`        | Expected JOIN after …        |
+| 4209 | `EXPECTED_ON_AFTER_JOIN_TABLE` | Expected ON after JOIN table |
+
+## 4300-4399: DML/CASE
+
+| Code | Name                              | Message                         |
+| ---- | --------------------------------- | ------------------------------- |
+| 4300 | `CASE_REQUIRES_AT_LEAST_ONE_WHEN` | CASE requires at least one WHEN |
+| 4301 | `EXPECTED_THEN_AFTER_CASE_WHEN`   | Expected THEN after CASE WHEN   |
+
+## 4400-4499: DML/BETWEEN-IN
+
+| Code | Name                                       | Message                             |
+| ---- | ------------------------------------------ | ----------------------------------- |
+| 4400 | `EXPECTED_AND_BETWEEN_BETWEEN_BOUNDS`      | Expected AND between BETWEEN bounds |
+| 4401 | `EXPECTED_OPEN_PAREN_AFTER_IN`             | Expected \`(\` after IN             |
+| 4402 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_IN_LIST` | Expected \`,\` or \`)\` in IN list  |
+
+## 4500-4599: DML/CAST
+
+| Code | Name                                   | Message                        |
+| ---- | -------------------------------------- | ------------------------------ |
+| 4500 | `EXPECTED_OPEN_PAREN_AFTER_CAST`       | Expected \`(\` after CAST      |
+| 4501 | `EXPECTED_CLOSE_PAREN_AFTER_CAST_TYPE` | Expected \`)\` after CAST type |
+| 4502 | `EXPECTED_AS_IN_CAST`                  | Expected AS in CAST            |
+| 4503 | `CANNOT_CAST_BOOLEAN_TO_INTEGER`       | Cannot cast boolean to integer |
+| 4504 | `CANNOT_CAST_INTEGER_TO_BOOLEAN`       | Cannot cast integer to boolean |
+
+## 4600-4699: DML/Window Function
+
+| Code | Name                                                  | Message                                          |
+| ---- | ----------------------------------------------------- | ------------------------------------------------ |
+| 4600 | `EXPECTED_OPEN_PAREN_AFTER_OVER`                      | Expected ( after OVER                            |
+| 4601 | `EXPECTED_CLOSE_PAREN_AFTER_OVER_CLAUSE`              | Expected ) after OVER clause                     |
+| 4602 | `EXPECTED_PARTITION_BY_OR_ORDER_BY_IN_OVER_CLAUSE`    | Expected PARTITION BY or ORDER BY in OVER clause |
+| 4603 | `EXPECTED_ORDER_BY_OR_CLOSE_PAREN_AFTER_PARTITION_BY` | Expected ORDER BY or ) after PARTITION BY        |
+
+## 4700-4799: DML/Array
+
+| Code | Name                                                      | Message                                       |
+| ---- | --------------------------------------------------------- | --------------------------------------------- |
+| 4700 | `EXPECTED_CLOSE_BRACKET_AFTER_ARRAY_SUBSCRIPT`            | Expected \`\]\` after array subscript         |
+| 4701 | `EXPECTED_COMMA_OR_CLOSE_BRACKET_IN_ARRAY_CONSTRUCTOR`    | Expected \`,\` or \`\]\` in ARRAY constructor |
+| 4702 | `EXPECTED_CLOSE_BRACKET_AFTER_OPEN_BRACKET_IN_ARRAY_TYPE` | Expected \] after \[ in array type            |
+
+## 4800-4899: DML/Operator
+
+| Code | Name                                                 | Message                                  |
+| ---- | ---------------------------------------------------- | ---------------------------------------- |
+| 4800 | `EXPECTED_OPEN_PAREN_AFTER_OPERATOR`                 | Expected \`(\` after OPERATOR            |
+| 4801 | `EXPECTED_CLOSE_PAREN_AFTER_OPERATOR_OPEN_PAREN`     | Expected ) after OPERATOR(               |
+| 4802 | `EXPECTED_OPERATOR_AFTER_OPERATOR_OPEN_PAREN`        | Expected operator after OPERATOR(        |
+| 4803 | `EXPECTED_OPEN_PAREN_AFTER_ANY_ALL_SOME`             | Expected ( after ANY/ALL/SOME            |
+| 4804 | `EXPECTED_CLOSE_PAREN_AFTER_ANY_ALL_SOME_EXPRESSION` | Expected ) after ANY/ALL/SOME expression |
+
+## 4900-4999: DML/EXISTS
+
+| Code | Name                                  | Message                       |
+| ---- | ------------------------------------- | ----------------------------- |
+| 4900 | `EXPECTED_OPEN_PAREN_AFTER_EXISTS`    | Expected \`(\` after EXISTS   |
+| 4901 | `EXPECTED_CLOSE_PAREN_AFTER_SUBQUERY` | Expected \`)\` after subquery |
+
+## 5000-5099: DML/Misc Expression
+
+| Code | Name                                                  | Message                                                                                                        |
+| ---- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 5000 | `EXPECTED_COMMA_OR_CLOSE_PAREN_IN_ARGUMENT_LIST`      | Expected \`,\` or \`)\` in argument list                                                                       |
+| 5001 | `EXPECTED_CLOSE_PAREN_AFTER_FUNCTION_NAME_IN_DEFAULT` | Expected \`)\` after function name in DEFAULT                                                                  |
+| 5002 | `EXPECTED_NULL_AFTER_IS`                              | Expected NULL after IS                                                                                         |
+| 5003 | `EXPECTED_NULL_AFTER_IS_NOT`                          | Expected NULL after IS NOT                                                                                     |
+| 5004 | `EXPECTED_NULL_AFTER_DROP_NOT`                        | Expected NULL after DROP NOT                                                                                   |
+| 5005 | `EXPECTED_CLOSE_PAREN_AFTER_STAR`                     | Expected \`)\` after \`\*\`                                                                                    |
+| 5006 | `EXPECTED_CLOSE_PAREN`                                | Expected \`)\`                                                                                                 |
+| 5007 | `UNSUPPORTED_PARENTHESIZED_EXPRESSION`                | Unsupported parenthesized expression; rewrite it without the parentheses or as a subquery, or use queryUntyped |
+| 5008 | `EXPECTED_FROM_AFTER_IS_DISTINCT`                     | Expected FROM after IS DISTINCT                                                                                |
+| 5009 | `EXPECTED_LIKE_IN_OR_BETWEEN_AFTER_NOT`               | Expected LIKE, IN or BETWEEN after NOT                                                                         |
+
+## 5100-5199: Type-Data/VARCHAR-NUMERIC
+
+| Code | Name                                                    | Message                                 |
+| ---- | ------------------------------------------------------- | --------------------------------------- |
+| 5100 | `EXPECTED_CLOSE_PAREN_AFTER_VARCHAR_LENGTH`             | Expected ) after VARCHAR length         |
+| 5101 | `EXPECTED_NUMBER_FOR_VARCHAR_LENGTH`                    | Expected number for VARCHAR length      |
+| 5102 | `EXPECTED_CLOSE_PAREN_AFTER_NUMERIC_SCALE`              | Expected ) after NUMERIC scale          |
+| 5103 | `EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_NUMERIC_PRECISION` | Expected , or ) after NUMERIC precision |
+| 5104 | `EXPECTED_PRECISION_NUMBER`                             | Expected precision number               |
+| 5105 | `EXPECTED_SCALE_NUMBER`                                 | Expected scale number                   |
+
+## 5300-5399: Type-Data/FETCH-LIMIT
+
+| Code | Name                                 | Message                            |
+| ---- | ------------------------------------ | ---------------------------------- |
+| 5300 | `EXPECTED_FIRST_OR_NEXT_AFTER_FETCH` | Expected FIRST or NEXT after FETCH |
+| 5301 | `EXPECTED_ROW_OR_ROWS_IN_FETCH`      | Expected ROW or ROWS in FETCH      |
+| 5302 | `EXPECTED_ONLY_AFTER_FETCH_ROW`      | Expected ONLY after FETCH … ROW    |
+| 5303 | `EXPECTED_ONLY_AFTER_FETCH_ROWS`     | Expected ONLY after FETCH … ROWS   |
+
+## 5400-5499: Type-Data/Misc
+
+| Code | Name                                                 | Message                                                              |
+| ---- | ---------------------------------------------------- | -------------------------------------------------------------------- |
+| 5400 | `EXPECTED_TO_IN_RENAME_COLUMN`                       | Expected TO in RENAME COLUMN                                         |
+| 5401 | `EXPECTED_OLD_COLUMN_NAME_IN_RENAME_COLUMN`          | Expected old column name in RENAME COLUMN                            |
+| 5402 | `EXPECTED_NEW_COLUMN_NAME_AFTER_TO_IN_RENAME_COLUMN` | Expected new column name after TO in RENAME COLUMN                   |
+| 5403 | `UNSUPPORTED_ALTER_COLUMN_SET_CLAUSE`                | Unsupported ALTER COLUMN SET clause                                  |
+| 5404 | `UNSUPPORTED_ALTER_COLUMN_DROP_CLAUSE`               | Unsupported ALTER COLUMN DROP clause                                 |
+| 5405 | `UNSUPPORTED_ALTER_TABLE_ACTION`                     | Unsupported ALTER TABLE action; run this statement with queryUntyped |
+| 5406 | `UNEXPECTED_END_IN_CREATE_TYPE_ENUM_BODY`            | Unexpected end in CREATE TYPE enum body                              |
+| 5407 | `EXPECTED_COMMA_OR_CLOSE_PAREN_AFTER_DEFAULT_VALUE`  | Expected \`,\` or \`)\` after DEFAULT value                          |
+| 5408 | `EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET`  | Expected \`,\`, WHERE, or end after ON CONFLICT SET                  |
+
+## Internal error
+
+- 9999 `INTERNAL_ERROR`: it must never be reachable; if you see it, report a bug.
+
+## Retired codes
+
+| Code | Former name                                                   |
+| ---- | ------------------------------------------------------------- |
+| 1201 | `EXPECTED_SEMICOLON_AFTER_INSERT`                             |
+| 1212 | `EXPECTED_COLUMN_NAME_IN_ON_CONFLICT`                         |
+| 1218 | `EXPECTED_COLUMN_NAME_IN_ON_CONFLICT_UPDATE`                  |
+| 1220 | `EXPECTED_TABLE_NAME_IN_INSERT_INTO`                          |
+| 1221 | `EXPECTED_TABLE_NAME_AFTER_DOT_IN_INSERT_INTO`                |
+| 1222 | `EXPECTED_COMMA_WHERE_OR_END_AFTER_ON_CONFLICT_SET`           |
+| 1223 | `INVALID_VALUE_EXPRESSION_IN_INSERT`                          |
+| 1224 | `INVALID_VALUE_EXPRESSION_IN_ON_CONFLICT_UPDATE`              |
+| 1302 | `EXPECTED_SEMICOLON_AFTER_UPDATE`                             |
+| 1303 | `EXPECTED_COLUMN_NAME_IN_UPDATE_SET`                          |
+| 1306 | `EXPECTED_TABLE_NAME_IN_UPDATE`                               |
+| 1307 | `EXPECTED_TABLE_NAME_IN_UPDATE_FROM`                          |
+| 1308 | `EXPECTED_TABLE_NAME_AFTER_DOT_IN_UPDATE`                     |
+| 1401 | `EXPECTED_SEMICOLON_AFTER_DELETE`                             |
+| 1402 | `EXPECTED_TABLE_NAME_IN_DELETE_FROM`                          |
+| 1403 | `EXPECTED_TABLE_NAME_IN_DELETE_USING`                         |
+| 1404 | `EXPECTED_TABLE_NAME_AFTER_DOT_IN_DELETE_FROM`                |
+| 1500 | `EXPECTED_SEMICOLON_AFTER_CREATE_TABLE`                       |
+| 1503 | `EXPECTED_COLUMN_NAME_IN_CREATE_TABLE`                        |
+| 1506 | `EXPECTED_TABLE_NAME_IN_CREATE_TABLE`                         |
+| 1600 | `EXPECTED_SEMICOLON_AFTER_ALTER_TABLE`                        |
+| 1602 | `EXPECTED_TABLE_NAME_IN_ALTER_TABLE`                          |
+| 1603 | `EXPECTED_TABLE_NAME_AFTER_DOT_IN_ALTER_TABLE`                |
+| 1604 | `EXPECTED_COLUMN_NAME_AFTER_ADD_IN_ALTER_TABLE`               |
+| 1605 | `EXPECTED_COLUMN_NAME_AFTER_ALTER_COLUMN`                     |
+| 1606 | `EXPECTED_COLUMN_NAME_AFTER_DROP_COLUMN`                      |
+| 1700 | `EXPECTED_SEMICOLON_AFTER_DROP_TABLE`                         |
+| 1701 | `EXPECTED_TABLE_NAME_IN_DROP_TABLE`                           |
+| 1704 | `EXPECTED_SEMICOLON_AFTER_QUALIFIED_TABLE_NAME_IN_DROP_TABLE` |
+| 1800 | `EXPECTED_SEMICOLON_AFTER_CREATE_TYPE`                        |
+| 1801 | `EXPECTED_SEMICOLON_AFTER_ALTER_TYPE`                         |
+| 1802 | `EXPECTED_SEMICOLON_AFTER_DROP_TYPE`                          |
+| 1809 | `EXPECTED_TYPE_NAME_IN_ALTER_TYPE`                            |
+| 1810 | `EXPECTED_TYPE_NAME_IN_DROP_TYPE`                             |
+| 1811 | `EXPECTED_TYPE_NAME_AFTER_DOT_IN_ALTER_TYPE`                  |
+| 1812 | `EXPECTED_TYPE_NAME_AFTER_DOT_IN_DROP_TYPE`                   |
+| 2201 | `UNKNOWN_TABLE_UPDATE`                                        |
+| 2203 | `UNKNOWN_TABLE_INSERT_INTO`                                   |
+| 2204 | `UNKNOWN_TABLE_DELETE_FROM`                                   |
+| 2205 | `UNKNOWN_TABLE_IN_DELETE_USING`                               |
+| 2208 | `UNKNOWN_SCHEMA_OR_TABLE_IN_FROM`                             |
+| 2209 | `UNKNOWN_SCHEMA_OR_TABLE_IN_UPDATE`                           |
+| 2211 | `UNKNOWN_SCHEMA_OR_TABLE_IN_INSERT_INTO`                      |
+| 2212 | `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_FROM`                      |
+| 2213 | `UNKNOWN_SCHEMA_OR_TABLE_IN_DELETE_USING`                     |
+| 2215 | `UNKNOWN_SCHEMA_FOR_CREATE_TYPE`                              |
+| 2216 | `UNKNOWN_SCHEMA_FOR_CREATE_VIEW`                              |
+| 2301 | `UNKNOWN_COLUMN_UPDATE_SET`                                   |
+| 2303 | `UNKNOWN_COLUMN_IN_INSERT_COLUMN_LIST`                        |
+| 2304 | `UNKNOWN_COLUMN_IN_ON_CONFLICT`                               |
+| 2305 | `UNKNOWN_COLUMN_IN_ON_CONFLICT_DO_UPDATE_SET`                 |
+| 2402 | `UNKNOWN_WINDOW_FUNCTION`                                     |
+| 2506 | `INCOMPATIBLE_TYPES_IN_JOIN_ON`                               |
+| 2807 | `FUNCTION_EXPECTS_TEXT_ARGUMENT`                              |
+| 3606 | `INVALID_LAG_LEAD_ARGUMENTS`                                  |
+| 3701 | `EXPECTED_SEMICOLON_AFTER_SCHEMA_NAME_IN_CREATE_SCHEMA`       |
+| 3801 | `EXPECTED_SEMICOLON_AFTER_DROP_SCHEMA`                        |
+| 4104 | `EXPECTED_TYPE_NAME_GENERIC`                                  |
+| 4106 | `EXPECTED_TYPE_NAME_AFTER_CAST_AS`                            |
+| 4201 | `EXPECTED_JOIN_AFTER_INNER`                                   |
+| 4202 | `EXPECTED_JOIN_AFTER_LEFT_OUTER`                              |
+| 4203 | `EXPECTED_JOIN_AFTER_RIGHT_OUTER`                             |
+| 4204 | `EXPECTED_JOIN_AFTER_FULL_OUTER`                              |
+| 4205 | `EXPECTED_JOIN_KEYWORD_GENERIC`                               |
+| 4206 | `EXPECTED_OUTER_OR_JOIN_AFTER_LEFT`                           |
+| 4207 | `EXPECTED_OUTER_OR_JOIN_AFTER_RIGHT`                          |
+| 4208 | `EXPECTED_OUTER_OR_JOIN_AFTER_FULL`                           |
+| 4210 | `EXPECTED_ON_KEYWORD`                                         |
