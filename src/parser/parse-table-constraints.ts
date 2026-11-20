@@ -123,7 +123,7 @@ type TableConstraintBody<
 				? Db extends { pendingTableConstraint: string }
 					? // #179: a named CHECK involves the table's columns its expression names
 						ParenGroupNames<SkipToken<Tokens>> extends [infer R extends ParserMonad, infer E]
-						? E extends DbtyperErrorShape
+						? [E] extends [DbtyperErrorShape] // E is a union of names: no distribution
 							? [R, Db, E]
 							: AfterTableConstraint<
 									R,
