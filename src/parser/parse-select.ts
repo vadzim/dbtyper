@@ -323,7 +323,19 @@ type ParseSelectAfterDistinct<
 																	: FinishSelectStatement<
 																			R,
 																			Db,
-																			AddJoinReads<Res, Db, JoinScopeOnly<Tail>>,
+																			AddViewReads<
+																				AddJoinReads<
+																					Res,
+																					Db,
+																					JoinScopeOnly<Tail>
+																				>,
+																				DistinctOnError<
+																					OnAsts,
+																					Db,
+																					MergedScope,
+																					Params
+																				>
+																			>,
 																			MergedScope,
 																			Params,
 																			Items,
@@ -363,7 +375,10 @@ type ParseSelectAfterDistinct<
 												: FinishSelectStatement<
 														AfterList,
 														Db,
-														Res,
+														AddViewReads<
+															Res,
+															DistinctOnError<OnAsts, Db, MergedScope, Params>
+														>,
 														MergedScope,
 														Params,
 														Items,
@@ -421,7 +436,7 @@ type SelectAfterWhereAndGroupHaving<
 												Db,
 												FormatError<Errors["ORDER_OR_LIMIT_BEFORE_SET_OPERATOR"], []>
 											>
-										: [Rt, Db, Res]
+										: [Rt, Db, AddViewReads<Res, Te>]
 								: never
 						: never
 				: never
@@ -445,7 +460,7 @@ type ParseSelectTrailingClauses<
 			: ParseOptionalPagingTokens<T1, Db, Scope, Params> extends [infer T2 extends ParserMonad, infer E2]
 				? E2 extends DbtyperErrorShape
 					? SkipFailedExpression<T2, E2>
-					: [T2, null]
+					: [T2, E1] // E1: the user types a CREATE VIEW's ORDER BY reads (#212), else null
 				: never
 		: never
 

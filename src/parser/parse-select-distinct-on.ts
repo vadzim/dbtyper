@@ -7,6 +7,7 @@ import type { ExpressionParamsShape, ParseExpressionAST, ScalarExprAst } from ".
 import type { ResolveExpressionAST } from "./resolve-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
+import type { ViewReads, MergeViewReads } from "./parse-select-resolve.ts"
 import type { SkipFailedExpression } from "./skip-statement.ts"
 
 /**
@@ -46,16 +47,20 @@ type ParseDistinctOnItems<
 				: never
 		: never
 
-/** The first error of the `DISTINCT ON` expressions resolved against the FROM scope, or `null`. */
+/**
+ * The first error of the `DISTINCT ON` expressions resolved against the FROM scope, or `null` (#212: or the
+ * `ViewReads` of a CREATE VIEW, which the caller adds to the select's `user_types`).
+ */
 export type DistinctOnError<
 	OnAsts extends readonly ScalarExprAst[],
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape,
+	Reads = null,
 > = OnAsts extends readonly [infer H extends ScalarExprAst, ...infer T extends readonly ScalarExprAst[]]
 	? ResolveExpressionAST<H, Db, Scope, Params> extends infer R
 		? R extends DbtyperErrorShape
 			? WithErrorClause<R, "DISTINCT ON">
-			: DistinctOnError<T, Db, Scope, Params>
+			: DistinctOnError<T, Db, Scope, Params, MergeViewReads<Reads, ViewReads<Db, H, Scope>>>
 		: never
-	: null
+	: Reads
