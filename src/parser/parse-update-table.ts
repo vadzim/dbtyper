@@ -3,6 +3,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
+import type { DialectFact } from "../core/dialect.ts"
 import type { FormatError, Errors } from "../dbtyper-error.ts"
 import type { ParserRefErrorThirdSentinel } from "./parser-ref-error-third-sentinel.ts"
 import type { MergeScope, ScopeMap, TableScopeColumns } from "./parser-scope.ts"
@@ -17,7 +18,7 @@ export type UpdateTableContext = {
 
 type ParseUpdateAliasAfterTable<
 	Tokens extends ParserMonad,
-	_Db extends JsqlDatabaseShape,
+	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -25,7 +26,7 @@ type ParseUpdateAliasAfterTable<
 > =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? AfterAs extends false
-			? ParseUpdateAliasAfterTable<SkipToken<Tokens>, _Db, Sch, Tab, Tbl, true>
+			? ParseUpdateAliasAfterTable<SkipToken<Tokens>, Db, Sch, Tab, Tbl, true>
 			: [
 					SkipToken<Tokens>,
 					FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>,
@@ -54,38 +55,48 @@ type ParseUpdateAliasAfterTable<
 				]
 			: PeekToken<Tokens> extends infer TokAlias
 				? SkipToken<Tokens> extends infer Ra extends ParserMonad
-					? AsIdent<TokAlias> extends TokenIdent<infer Alias extends string>
-						? PeekToken<Ra> extends TokenKey<"set">
-							? [
-									Ra,
-									null,
-									{
-										scope: MergeScope<
-											Record<
-												Alias,
-												{
-													schema: Sch
-													table: Tab
-													columns: TableScopeColumns<Tbl>
-												}
-											>,
-											{}
-										>
-										tbl: Tbl
-										schema: Sch
-										table: Tab
-									},
-								]
+					? [AfterAs, DialectFact<Db, "bareDmlAlias">, AsIdent<TokAlias>] extends [
+							false,
+							false,
+							TokenIdent<infer BareAlias extends string>,
+						]
+						? [
+								Ra,
+								FormatError<Errors["BARE_DML_ALIAS_NEEDS_AS"], ["UPDATE", BareAlias]>,
+								ParserRefErrorThirdSentinel,
+							]
+						: AsIdent<TokAlias> extends TokenIdent<infer Alias extends string>
+							? PeekToken<Ra> extends TokenKey<"set">
+								? [
+										Ra,
+										null,
+										{
+											scope: MergeScope<
+												Record<
+													Alias,
+													{
+														schema: Sch
+														table: Tab
+														columns: TableScopeColumns<Tbl>
+													}
+												>,
+												{}
+											>
+											tbl: Tbl
+											schema: Sch
+											table: Tab
+										},
+									]
+								: [
+										Ra,
+										FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>,
+										ParserRefErrorThirdSentinel,
+									]
 							: [
 									Ra,
 									FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>,
 									ParserRefErrorThirdSentinel,
 								]
-						: [
-								Ra,
-								FormatError<Errors["EXPECTED_SET_AFTER_TABLE_IN_UPDATE"], []>,
-								ParserRefErrorThirdSentinel,
-							]
 					: never
 				: never
 

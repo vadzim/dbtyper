@@ -482,6 +482,10 @@ const errors = {
 		code: 1404,
 		msg: ["Use EXPECTED_TABLE_NAME with context parameter"],
 	},
+	BARE_DML_ALIAS_NEEDS_AS: {
+		code: 1309,
+		msg: ["On SQLite the alias of the target table of ", " needs AS: write AS ", ""],
+	},
 	EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM: {
 		code: 1405,
 		msg: ["Expected alias or end of table in DELETE FROM"],
