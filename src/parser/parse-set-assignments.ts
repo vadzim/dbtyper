@@ -60,52 +60,57 @@ export type ParseSetAssignments<
 			? AsIdent<TokCol> extends TokenIdent<infer Col extends string>
 				? JsqlDataGetColumnType<Tbl, Col> extends null
 					? [R1, Db, FormatError<Errors["UNKNOWN_COLUMN"], [Col, SetKinds[Kind]["clause"]]>]
-					: IsGeneratedColumn<Tbl, Col> extends true
-						? [
-								R1,
-								Db,
-								FormatError<Errors["CANNOT_WRITE_GENERATED_COLUMN"], [Col, SetKinds[Kind]["clause"]]>,
-							]
-						: PeekToken<R1> extends TokenKey<"=">
-							? SkipToken<R1> extends infer R2 extends ParserMonad
-								? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
-										infer R3 extends ParserMonad,
-										infer Ast,
-										infer _UpdatedEnv,
-									]
-									? Ast extends DbtyperErrorShape
-										? [R3, Db, Ast]
-										: Ast extends ScalarExprAst
-											? PeekToken<R3> extends TokenKey<",">
-												? ParseSetAssignments<
-														SkipToken<R3>,
-														Kind,
-														Db,
-														Scope,
-														Params,
-														Tbl,
-														readonly [...Acc, Col],
-														readonly [...Pending, readonly [Col, Ast]]
-													>
-												: PeekToken<R3> extends SetKinds[Kind]["end"]
-													? [
-															R3,
+					: Col extends Acc[number]
+						? [R1, Db, FormatError<Errors["DUPLICATE_COLUMN_IN_WRITE"], [Col, SetKinds[Kind]["clause"]]>]
+						: IsGeneratedColumn<Tbl, Col> extends true
+							? [
+									R1,
+									Db,
+									FormatError<
+										Errors["CANNOT_WRITE_GENERATED_COLUMN"],
+										[Col, SetKinds[Kind]["clause"]]
+									>,
+								]
+							: PeekToken<R1> extends TokenKey<"=">
+								? SkipToken<R1> extends infer R2 extends ParserMonad
+									? ParseExpressionAST<R2, { db: Db; params: Params; outerScope: Scope }> extends [
+											infer R3 extends ParserMonad,
+											infer Ast,
+											infer _UpdatedEnv,
+										]
+										? Ast extends DbtyperErrorShape
+											? [R3, Db, Ast]
+											: Ast extends ScalarExprAst
+												? PeekToken<R3> extends TokenKey<",">
+													? ParseSetAssignments<
+															SkipToken<R3>,
+															Kind,
 															Db,
-															{
-																cols: readonly [...Acc, Col]
-																pending: readonly [...Pending, readonly [Col, Ast]]
-															},
-														]
-													: [R3, Db, FormatErrorOf<SetKinds[Kind]["noEnd"], []>]
-											: SkipFailedExpression<R3, never> extends [
-														infer Rest extends ParserMonad,
-														infer Err,
-												  ]
-												? [Rest, Db, Err]
-												: never
+															Scope,
+															Params,
+															Tbl,
+															readonly [...Acc, Col],
+															readonly [...Pending, readonly [Col, Ast]]
+														>
+													: PeekToken<R3> extends SetKinds[Kind]["end"]
+														? [
+																R3,
+																Db,
+																{
+																	cols: readonly [...Acc, Col]
+																	pending: readonly [...Pending, readonly [Col, Ast]]
+																},
+															]
+														: [R3, Db, FormatErrorOf<SetKinds[Kind]["noEnd"], []>]
+												: SkipFailedExpression<R3, never> extends [
+															infer Rest extends ParserMonad,
+															infer Err,
+													  ]
+													? [Rest, Db, Err]
+													: never
+										: never
 									: never
-								: never
-							: SkipFailedStatement<R1, Db, FormatErrorOf<SetKinds[Kind]["noEquals"], []>>
+								: SkipFailedStatement<R1, Db, FormatErrorOf<SetKinds[Kind]["noEquals"], []>>
 				: SkipFailedStatement<
 						R1,
 						Db,

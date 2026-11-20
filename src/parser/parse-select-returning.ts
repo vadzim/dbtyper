@@ -5,8 +5,9 @@ import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
 import type { ParseRawSelectList } from "./parse-select-list.ts"
-import type { RawSelectItem, SelectListStarInvalid } from "./parse-select.ts"
-import type { ResolveSelectList } from "./parse-select-resolve.ts"
+import type { RawSelectItem } from "./parse-select.ts"
+import type { ResolveSelectList, SelectItemNames } from "./parse-select-resolve.ts"
+import type { FirstDuplicateName } from "./set-operation-types.ts"
 
 export type SingleAliasScope<Scope extends ScopeMap> = [keyof Scope] extends [never]
 	? false
@@ -44,14 +45,24 @@ export type ParseAndResolveReturningClause<
 		? Items extends DbtyperErrorShape
 			? [After, Db, Items]
 			: Items extends readonly RawSelectItem[]
-				? SelectListStarInvalid<Items> extends true
-					? [After, Db, FormatError<Errors["SELECT_STAR_MUST_BE_THE_ONLY_PROJECTION_IN_THE_LIST"], []>]
-					: ResolveSelectList<Items, Db, Scope, Params> extends infer Res
-						? Res extends DbtyperErrorShape
-							? [After, Db, WithErrorClause<Res, "RETURNING">]
-							: Res extends JsqlSelectStatementResult
-								? [After, Db, Res]
+				? // `*` may sit beside other items here (`returning *, id as id2`), unlike in SELECT
+					ResolveSelectList<Items, Db, Scope, Params> extends infer Res
+					? Res extends DbtyperErrorShape
+						? [After, Db, WithErrorClause<Res, "RETURNING">]
+						: Res extends JsqlSelectStatementResult
+							? // CORE-11: the output names of RETURNING are unique too
+								SelectItemNames<Items, Scope> extends infer Names extends readonly string[]
+								? FirstDuplicateName<Names> extends infer Dup
+									? [Dup] extends [never]
+										? [After, Db, Res]
+										: [
+												After,
+												Db,
+												FormatError<Errors["DUPLICATE_OUTPUT_COLUMN"], [`\`${Dup & string}\``]>,
+											]
+									: never
 								: never
-						: never
+							: never
+					: never
 				: never
 		: never
