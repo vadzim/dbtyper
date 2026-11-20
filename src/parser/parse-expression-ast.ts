@@ -97,6 +97,8 @@ export type ScalarExprAst =
 			kind: "function_call"
 			name: string
 			args: readonly (ScalarExprAst | { kind: "star" })[]
+			/** The call is a FROM item (a table-valued function, SQLT-69; set by parse-select-from.ts only). */
+			from?: true
 	  }
 	| {
 			kind: "window_function"

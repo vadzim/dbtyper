@@ -1,3 +1,4 @@
+import type { DialectFact } from "../core/dialect.ts"
 import type { JsqlDatabaseShape, JsqlDataShape } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
@@ -18,38 +19,62 @@ import type { CteAsFromEntry, ParseParenDerivedSelect } from "./parse-select-sub
 import type { JoinScopeOnly } from "./parse-select.ts"
 import type { ParseJoinChain } from "./parse-select-join.ts"
 
+/**
+ * One FROM item. `Items` "table-function": only a table-valued function call may come (the item after a `,`, SQLT-72);
+ * anything else is the comma-list error (SEL "Not yet", SQLT-Q15), said at the comma, not at the first use of its table.
+ */
 export type ParseFromTableRef<
 	Tokens extends ParserMonad,
 	Db extends JsqlDatabaseShape,
 	Scope extends ScopeMap,
 	Params extends ExpressionParamsShape = EmptyExpressionParams,
+	Items extends "any" | "table-function" = "any",
 > =
 	PeekToken<Tokens> extends infer Tok
 		? SkipToken<Tokens> extends infer R1 extends ParserMonad
 			? Tok extends TokenKey<"(">
-				? ParseParenDerivedSelect<R1, Db, Scope, Params>
+				? Items extends "any"
+					? ParseParenDerivedSelect<R1, Db, Scope, Params>
+					: CommaListError<R1>
 				: AsIdent<Tok> extends TokenIdent<infer A extends string>
-					? A extends FromFunctionName
+					? A extends (Items extends "any" ? FromFunctionName : never) | TableFunctionName<Db>
 						? PeekToken<R1> extends TokenKey<"(">
 							? ParseFromFunction<R1, A, Db, Scope, Params>
-							: ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
-						: ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
-					: [
-							R1,
-							FormatError<Errors["EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM"], []>,
-							ParserRefErrorThirdSentinel,
-						]
+							: Items extends "any"
+								? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
+								: CommaListError<R1>
+						: Items extends "any"
+							? ParseFromTableAfterLeadingIdent<R1, Db, A, Scope>
+							: CommaListError<R1>
+					: Items extends "any"
+						? [
+								R1,
+								FormatError<Errors["EXPECTED_TABLE_NAME_OR_OPEN_PAREN_IN_FROM"], []>,
+								ParserRefErrorThirdSentinel,
+							]
+						: CommaListError<R1>
 			: never
 		: never
 
+type CommaListError<R extends ParserMonad> = [
+	R,
+	FormatError<Errors["EXPECTED_ALIAS_OR_JOIN_CLAUSE_AFTER_TABLE"], []>,
+	ParserRefErrorThirdSentinel,
+]
+
 /** PGT-32: set-returning functions that may be a FROM item. */
 type FromFunctionName = "unnest" | "generate_series"
+
+/** SQLT-69: the table-valued functions of the chain's dialect (`tables` of its function catalog). */
+type TableFunctionName<Db> = keyof DialectFact<Db, "functionCatalog">["tables"] & string
 
 /**
  * PGT-32: `FROM unnest(array) [AS] alias[(col)]`, `FROM generate_series(a, b[, step]) [AS] alias[(col)]`: a one-column
  * relation of the element type. The call is parsed and resolved by the expression parser (in the scope of the items
  * before it, so a `JOIN unnest(t.tags)` sees `t`); the column is named by the column alias, else the alias, else
  * the function name.
+ * SQLT-69…SQLT-71: a table-valued function (`json_each`, `json_tree`) is parsed the same way, as a call marked `from`
+ * (the catalog checks its arguments and types its parameters); its columns are the catalog's `tables` row.
  */
 type ParseFromFunction<
 	AtParen extends ParserMonad,
@@ -67,16 +92,20 @@ type ParseFromFunction<
 			? [R, Args, ParserRefErrorThirdSentinel]
 			: Args extends readonly (ScalarExprAst | { kind: "star" })[]
 				? ResolveExpressionAST<
-						{ kind: "function_call"; name: Name; args: Args },
+						Name extends TableFunctionName<Db>
+							? { kind: "function_call"; name: Name; args: Args; from: true }
+							: { kind: "function_call"; name: Name; args: Args },
 						Db,
 						Scope,
 						Params
 					> extends infer V
 					? V extends DbtyperErrorShape
 						? [R, WithErrorClause<V, "FROM">, ParserRefErrorThirdSentinel]
-						: V extends SqlTypeShape
-							? ParseFromFunctionAlias<R, Db, Name, NonNull<V>, Scope>
-							: never
+						: Name extends TableFunctionName<Db>
+							? ParseTableFunctionAlias<R, Db, Name, Scope>
+							: V extends SqlTypeShape
+								? ParseFromFunctionAlias<R, Db, Name, NonNull<V>, Scope>
+								: never
 					: never
 				: never
 		: never
@@ -104,6 +133,31 @@ type ParseFromFunctionAlias<
 			? Alias extends string
 				? ParseFromFunctionAliasColumn<R, Alias, Col, Scope>
 				: [R, null, MergeScope<Record<Name, FromFunctionEntry<Name, Col>>, Scope>]
+			: [R, E, Alias]
+		: never
+
+/** `[AS] alias` after a table-valued function (SQLT-69); no alias keeps the function name. */
+type ParseTableFunctionAlias<
+	Tokens extends ParserMonad,
+	Db extends JsqlDatabaseShape,
+	Name extends TableFunctionName<Db>,
+	Scope extends ScopeMap,
+> =
+	ParseAlias<Tokens, Db, FunctionAliasRow> extends [infer R extends ParserMonad, infer E, infer Alias]
+		? E extends null
+			? DialectFact<Db, "functionCatalog">["tables"][Name] extends infer Cols extends Record<string, SqlTypeShape>
+				? [
+						R,
+						null,
+						MergeScope<
+							Record<
+								Alias extends string ? Alias : Name,
+								{ schema: "__subquery__"; table: "__subquery__"; columns: Cols }
+							>,
+							Scope
+						>,
+					]
+				: never
 			: [R, E, Alias]
 		: never
 
@@ -185,8 +239,9 @@ type ParseFromTableAfterLeadingIdent<
 				? ParseAliasAfterTable<R1, Db, UnqualifiedSchema<Db, A>, A, Tbl, Scope>
 				: [R1, FormatError<Errors["UNKNOWN_TABLE"], [A, "FROM"]>, ParserRefErrorThirdSentinel]
 
-/** Tokens that end a FROM item without an alias. */
+/** Tokens that end a FROM item without an alias (`,`: the join chain reads it, SQLT-72). */
 type FromItemEndToken =
+	| TokenKey<",">
 	| TokenKey<"returning">
 	| TokenKey<"inner">
 	| TokenKey<"left">
