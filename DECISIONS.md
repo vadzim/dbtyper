@@ -2,6 +2,11 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175 follow-ups: names fold ASCII only (track A; #179 item 5d; STMT-25, SQLT-67)
+
+- **Lexer.** An unquoted word is folded with TypeScript's `Lowercase` only when it is all ASCII; a word with a non-ASCII character (the identifier reader marks it, `nonAscii: "seen"` in the result of `ReadTokenChars`) is folded character by character, A-Z only (`FoldAsciiChars`, src/lexer/sql-lexer-chars.ts), as both engines do: `Імя` stays `Імя`, `NAMEІ` is `nameІ`. SQLite's quoted names and the keys of SQLite `CREATE TABLE … AS` use `FoldAsciiCase` (cheap when `Lowercase` changes nothing). A SQLite token keeps `written` only when it differs from the folded name.
+- **Cost.** `typecheck:test` 19,534,078 -> 19,715,753 without the new test file (+0.93%: one more field per token), 19,741,176 with it.
+
 ## 2026-11-20 Review #175 follow-ups: the table keeps its PRIMARY KEY (track A; #179 items 1, 5c; SEL-27, CORE-15)
 
 - **Shape.** A table has `primary_key: { columns; name }` (`JsqlPrimaryKey`, src/core/jsql-utils.ts) when it has one: the columns as a union of keys, and the constraint name `DROP CONSTRAINT` matches (a named table constraint's, else PostgreSQL's `<table>_pkey`; an inline `CONSTRAINT n PRIMARY KEY` keeps the default name, a known gap). CREATE TABLE takes it from the column stack (`StackPrimaryKey`, the name through the pending state `pendingPkName`); `ALTER TABLE … ADD [CONSTRAINT n] PRIMARY KEY` and `ADD COLUMN … PRIMARY KEY` set it; DROP CONSTRAINT of its name and DROP COLUMN of one of its columns remove it (as PostgreSQL drops the constraint); RENAME COLUMN renames it. SQLite rowid tables do not carry it (no rule reads it there). `FlattenedJsqlDatabase` keeps it.

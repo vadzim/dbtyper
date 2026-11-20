@@ -1,6 +1,7 @@
 import type { JsqlDatabaseShape, JsqlSchemaShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
+import type { FoldAsciiCase } from "../lexer/sql-lexer-chars.ts"
 import type { TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
@@ -255,11 +256,11 @@ type CreateTableAsShape<Db extends JsqlDatabaseShape, Res extends JsqlSelectStat
 ) extends infer Order extends readonly string[]
 	? DialectFact<Db, "lexer">["foldQuoted"] extends true
 		? JsqlCreateRowidTable<
-				{ [K in keyof Res["returning"] as Lowercase<K & string>]: NullableType<Res["returning"][K]> },
+				{ [K in keyof Res["returning"] as FoldAsciiCase<K & string>]: NullableType<Res["returning"][K]> },
 				null,
 				never,
 				LowercaseNames<Order>,
-				{ [K in keyof Res["returning"] & string as Lowercase<K> extends K ? never : Lowercase<K>]: K }
+				{ [K in keyof Res["returning"] & string as FoldAsciiCase<K> extends K ? never : FoldAsciiCase<K>]: K }
 			>
 		: JsqlCreateTable<{ [K in keyof Res["returning"]]: NullableType<Res["returning"][K]> }, null, null, Order>
 	: never
@@ -268,7 +269,7 @@ type LowercaseNames<Names extends readonly string[], Acc extends readonly string
 	infer H extends string,
 	...infer R extends readonly string[],
 ]
-	? LowercaseNames<R, [...Acc, Lowercase<H>]>
+	? LowercaseNames<R, [...Acc, FoldAsciiCase<H>]>
 	: Acc
 
 type NullableType<T> = T extends SqlTypeShape ? { type: T["type"]; arg: T["arg"]; nullable: true } : never
