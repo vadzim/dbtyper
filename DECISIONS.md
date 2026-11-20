@@ -2,6 +2,13 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 SQLite NUMERIC affinity in UNION and CASE; quoted name in INSERT column list (#205, track A; not spec-derived, spec PR #19; CORE-21, SQLT-56, SQLT-68)
+
+- **One helper, `AffinityCommonType`** (src/core/comparison-classes.ts): when one of two branch types has the comparison class "affinity" (the `comparisonClasses` fact) and the other is text, a number or affinity, the common type is the affinity one (SQLite NUMERIC is `number | string`, plus `bigint` in big-integer mode); otherwise `never` and the old rule applies. `[keyof Classes] extends [never]` returns at once for PostgreSQL. Used by set-operation columns (`MergeSetOperation` takes `ComparisonClassesOf<Db>` as a last parameter, both callers pass it; the class check of the columns uses it too, so NUMERIC with TEXT is no longer 3409) and by `MergeCaseThenAccum` (CASE, searched and simple; the result is the affinity branch's type whichever branch comes first, nullable as before). NUMERIC with INTEGER or REAL in a set operation is the NUMERIC type now (`number | string`; it was the wider numeric type). TEXT with INTEGER stays an error in both (SQLT-56).
+- **Array element unification.** Nothing to change: SQLite has no arrays (`ARRAY[…]` is 1900, SQLT-53), so the PostgreSQL rule is the only one.
+- **INSERT column list (SQLT-68).** `ParseInsertColumnNameList` reads each name with `ColumnNameToken` (the CREATE TABLE reader of #195, fact `stringColumnNames`), so `insert into t ('order', "name")` names the columns; PostgreSQL still rejects a string there (1206-style EXPECTED_COLUMN_NAME).
+- **Cost.** `typecheck:test` (TS 7) 21,003,065 on main-track before, 20,786,117 after, with the new test file (the facts reach the merges as one small object, so the cache is shared as in #195).
+
 ## 2026-11-20 Select-list cost linear (#179 item 2, track A; not spec-derived)
 
 - **Cause.** Every loop over the select items split the item tuple per step (`[infer H, ...infer R]`). Splitting or growing a tuple costs about one instantiation per element, so a loop over N items was N^2/2 (3.76M instantiations at 320 items, only partly cured by the entries union of batch 2). A conditional type that infers from an item inside the loop (`H extends { kind: "expr"; ast: infer Ast }` in the loop alias itself) costs a few hundred more per item and step; with the item handed to a helper alias as a type argument it costs nothing extra (measured on the real parser output, with a probe of 80 / 160 / 320 items).
