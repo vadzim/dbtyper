@@ -1,26 +1,13 @@
-import type { ForceProps, MergeRecords } from "../core/type-utils.ts"
 import type { JsqlDatabaseShape, JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { ExpressionParamsShape } from "./parse-expression.ts"
 import type { ScopeMap } from "./parser-scope.ts"
 import type { WithErrorClause } from "./resolve-column-ref.ts"
-import type { SqlTypeShape } from "../core/sql-type-shape.ts"
 import type { ParseRawSelectList } from "./parse-select-list.ts"
 import type { RawSelectItem } from "./parse-select.ts"
 import type { ResolveSelectList, SelectItemNames } from "./parse-select-resolve.ts"
 import type { FirstDuplicateName } from "./set-operation-types.ts"
-
-/**
- * The select-list accumulator. Every item merges into the previous record; without forcing, each layer stays a lazy
- * mapped type pointing at the one before, and reading a property after ~50 items exceeds the instantiation depth
- * (TS2589, #105). The properties are resolved right away (inferring from all of them does it), the same shape as
- * ForceProps in src/core/type-utils.ts (#48): required, do not make it lazy.
- */
-export type MergeStringRecords<
-	A extends Record<string, SqlTypeShape>,
-	B extends Record<string, SqlTypeShape>,
-> = ForceProps<MergeRecords<A, B>>
 
 export type SingleAliasScope<Scope extends ScopeMap> = [keyof Scope] extends [never]
 	? false

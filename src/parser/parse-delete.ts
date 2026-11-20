@@ -4,6 +4,7 @@ import type { PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type { TokenEot } from "../lexer/sql-lexer.ts"
 import type { AsIdent, TokenIdent } from "../lexer/sql-lexer.ts"
 import type { TokenKey } from "../lexer/sql-lexer.ts"
+import type { DialectFact } from "../core/dialect.ts"
 import type { ParserMonad } from "../lexer/parser-monad.ts"
 import type { FormatError, Errors, DbtyperErrorShape } from "../dbtyper-error.ts"
 import type { SkipFailedStatement } from "./skip-statement.ts"
@@ -319,7 +320,7 @@ type ParseDeleteFromTableRef<
 
 type ParseDeleteAliasAfterTable<
 	Tokens extends ParserMonad,
-	_Db extends JsqlDatabaseShape,
+	Db extends JsqlDatabaseShape,
 	Sch extends string,
 	Tab extends string,
 	Tbl extends JsqlDataShape,
@@ -329,7 +330,7 @@ type ParseDeleteAliasAfterTable<
 > =
 	PeekToken<Tokens> extends TokenKey<"as">
 		? AfterAs extends false
-			? ParseDeleteAliasAfterTable<SkipToken<Tokens>, _Db, Sch, Tab, Tbl, Scope, _Params, true>
+			? ParseDeleteAliasAfterTable<SkipToken<Tokens>, Db, Sch, Tab, Tbl, Scope, _Params, true>
 			: [
 					SkipToken<Tokens>,
 					FormatError<Errors["EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM"], []>,
@@ -356,26 +357,36 @@ type ParseDeleteAliasAfterTable<
 				]
 			: PeekToken<Tokens> extends infer TokAlias
 				? SkipToken<Tokens> extends infer Ra extends ParserMonad
-					? AsIdent<TokAlias> extends TokenIdent<infer Alias extends string>
+					? [AfterAs, DialectFact<Db, "bareDmlAlias">, AsIdent<TokAlias>] extends [
+							false,
+							false,
+							TokenIdent<infer BareAlias extends string>,
+						]
 						? [
 								Ra,
-								null,
-								MergeScope<
-									Record<
-										Alias,
-										{
-											schema: Sch
-											table: Tab
-											columns: TableScopeColumns<Tbl>
-										}
-									>,
-									Scope
-								>,
-							]
-						: [
-								Ra,
-								FormatError<Errors["EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM"], []>,
+								FormatError<Errors["BARE_DML_ALIAS_NEEDS_AS"], ["DELETE", BareAlias]>,
 								ParserRefErrorThirdSentinel,
 							]
+						: AsIdent<TokAlias> extends TokenIdent<infer Alias extends string>
+							? [
+									Ra,
+									null,
+									MergeScope<
+										Record<
+											Alias,
+											{
+												schema: Sch
+												table: Tab
+												columns: TableScopeColumns<Tbl>
+											}
+										>,
+										Scope
+									>,
+								]
+							: [
+									Ra,
+									FormatError<Errors["EXPECTED_ALIAS_OR_END_OF_TABLE_IN_DELETE_FROM"], []>,
+									ParserRefErrorThirdSentinel,
+								]
 					: never
 				: never

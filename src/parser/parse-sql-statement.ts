@@ -193,7 +193,7 @@ type ParseParenthesizedQuery<
 		? Res extends DbtyperErrorShape
 			? [R1, Db, Res]
 			: Res extends JsqlSelectStatementResult
-				? ParseSetOperationTail<R1, Db, Res, Params, {}, {}> extends [
+				? ParseSetOperationTail<R1, Db, Res, Params, {}, {}, true> extends [
 						infer R2 extends ParserMonad,
 						infer _Db,
 						infer Res2,

@@ -9,8 +9,8 @@ import type { DbtyperError } from "../../../src/dbtyper-error.ts"
 
 const db = sqlMigrations({ driver: mockDriver }).apply(`create table users (id integer, name text);`).database()
 
-// ❌ ERROR: SELECT list followed by unexpected token (not FROM, not semicolon)
-const query = `SELECT 1 WHERE true; SELECT 42;` as const
+// ❌ ERROR: SELECT list followed by unexpected token (not FROM, not WHERE, not semicolon)
+const query = `SELECT 1 one two; SELECT 42;` as const
 
 // @ts-expect-error
 await db.query(query)

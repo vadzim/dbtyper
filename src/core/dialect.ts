@@ -79,7 +79,7 @@ export type DialectName = keyof Dialects
  * expression parser, "affinity" = `||`, `->`, `->>` from the data table `SqliteOperators` (same file); `globRegexp`: the `GLOB` and `REGEXP`
  * operators exist (`REGEXP` is always error 1917 until users can declare functions, SQLT-34, FN-Q1); `isOperand`: what may follow `IS [NOT]`
  * ("null" = only NULL as in the shared parser, "value" = any value or `DISTINCT FROM`, null-safe, SQLT-33); `limitComma`:
- * `LIMIT offset, count` (SQLT-37).
+ * `LIMIT offset, count` (SQLT-37); `bareDmlAlias`: the alias of an UPDATE / DELETE target may omit `AS` (SQLite: needs it, error 1309; DML-ALIAS).
  * Query facts (SQLT-28, #101): `groupByRule`: a grouped SELECT may only use grouped columns or aggregates outside
  * aggregates (PostgreSQL; SQLite allows bare columns next to an aggregate); `exprKeys` "name" = an unaliased function
  * call is keyed by its function name (SEL-8), "text" = every unaliased expression is keyed by its source text.
@@ -123,6 +123,7 @@ export type Dialects = {
 		datetimeArithmetic: true
 		isOperand: "null"
 		limitComma: false
+		bareDmlAlias: true
 		groupByRule: true
 		exprKeys: "name"
 		castHint: "`::text`"
@@ -194,6 +195,7 @@ export type Dialects = {
 		datetimeArithmetic: false
 		isOperand: "value"
 		limitComma: true
+		bareDmlAlias: false
 		groupByRule: false
 		exprKeys: "text"
 		castHint: "`CAST(x AS TEXT)`"
