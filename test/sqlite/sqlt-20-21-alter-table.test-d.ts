@@ -37,6 +37,9 @@ expectType<GetApplyError<typeof base, typeof alterType>>(
 const setNotNull = `alter table t alter column old set not null;` as const
 // @ts-expect-error
 base.apply(setNotNull)
+expectType<GetApplyError<typeof base, typeof setNotNull> extends DbtyperError<1900, string> ? true : false>(
+	toBe<true>(),
+)
 const addConstraint = `alter table t add constraint c unique (name);` as const
 // @ts-expect-error
 base.apply(addConstraint)
@@ -65,3 +68,6 @@ base.apply(addNotNull)
 expectType<GetApplyError<typeof base, typeof addNotNull>>(
 	toBe<DbtyperError<1914, "SQLite cannot ADD COLUMN with NOT NULL without a non-null DEFAULT">>(),
 )
+const addNotNullDefault = base.apply(`alter table t add column k text not null default 'x';`).database()
+const _k = await addNotNullDefault.query(`select k from t`)
+expectType<typeof _k>(toBe<Array<{ k: string }>>())

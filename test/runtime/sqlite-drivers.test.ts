@@ -4,9 +4,11 @@ import { createRequire } from "node:module"
 import { DatabaseSync } from "node:sqlite"
 import { describe, test } from "node:test"
 
-import type { SqlDriver } from "../../src/core/sql-database.ts"
+import { sqlMigrations, type SqlDriver } from "../../src/core/sql-database.ts"
 import { betterSqlite3Driver, nodeSqliteDriver } from "../../src/sqlite/index.ts"
 import { usesNumberedParams } from "../../src/sqlite/sqlite-sql-driver.ts"
+import { expectType, toBe } from "../test-utils/type-test-utils.ts"
+import BetterSqlite3Database from "better-sqlite3"
 
 const require = createRequire(import.meta.url)
 const BetterSqlite3 = require("better-sqlite3") as new (path: string) => {
@@ -203,6 +205,51 @@ describe("SQLT-2, SQLT-4: the driver switches the real driver to big-integer mod
 			const driver = nodeSqliteDriver({ prepare: () => stmt }, bigint ? { bigint: true } : undefined)
 			await (driver as unknown as SqlDriver<never>).query("select 1")
 			assert.deepEqual(calls, [bigint])
+		}
+	})
+})
+
+// SQLT-2, SQLT-5 (whole Checks): the real drivers on real in-memory databases, rows and compile-time types together.
+const checkSchema = "create table users (id integer primary key, name text not null)"
+const betterReal = new BetterSqlite3Database(":memory:")
+const nodeReal = new DatabaseSync(":memory:")
+betterReal.exec(checkSchema)
+nodeReal.exec(checkSchema)
+const betterDb = sqlMigrations({ driver: betterSqlite3Driver(betterReal) })
+	.apply(checkSchema)
+	.database()
+const nodeDb = sqlMigrations({ driver: nodeSqliteDriver(nodeReal) })
+	.apply(checkSchema)
+	.database()
+
+describe("SQLT-2, SQLT-5 (whole Checks): both real drivers", () => {
+	test("SQLT-2: each driver compiles, `select id, name from users` has the same type, and a row inserted through the connection is read back", async () => {
+		const _better = await betterDb.query("select id, name from users")
+		const _node = await nodeDb.query("select id, name from users")
+		expectType<typeof _better>(toBe<Array<{ id: number; name: string }>>())
+		expectType<typeof _node>(toBe<Array<{ id: number; name: string }>>())
+		betterReal.exec("insert into users (name) values ('a')")
+		nodeReal.exec("insert into users (name) values ('a')")
+		const betterRows = await betterDb.query("select name from users")
+		const nodeRows = await nodeDb.query("select name from users")
+		expectType<typeof betterRows>(toBe<Array<{ name: string }>>())
+		expectType<typeof nodeRows>(toBe<Array<{ name: string }>>())
+		assert.deepEqual(betterRows, [{ name: "a" }])
+		assert.deepEqual(
+			nodeRows.map(r => ({ ...r })),
+			[{ name: "a" }],
+		) // node:sqlite rows have a null prototype
+	})
+
+	test("SQLT-5: `await db.query` is a promise of `{ id: number }[]` and `await Array.fromAsync(await db.stream(...))` has the same rows", async () => {
+		for (const db of [betterDb, nodeDb]) {
+			const pending = db.query("select id from users")
+			assert.ok(pending instanceof Promise)
+			const rows = await pending
+			expectType<typeof rows>(toBe<Array<{ id: number }>>())
+			const streamed = await Array.fromAsync(await db.stream("select id from users"))
+			expectType<typeof streamed>(toBe<Array<{ id: number }>>())
+			assert.deepEqual(streamed, rows)
 		}
 	})
 })
