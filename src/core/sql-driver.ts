@@ -23,6 +23,8 @@ export type DriverConfig = {
 	scalarTypes: Record<string, unknown>
 	/** Types accepted as parameter VALUES per SQL type, where they differ from the row types (SQLT-32). */
 	paramTypes?: Record<string, unknown>
+	/** The driver runs only the first statement of a text: a second one in `query` / `stream` is an error (#156). */
+	singleStatement?: true | undefined
 }
 
 /** What `createDriver` accepts: a config that may lack `dialect`; `sqlMigrations` then rejects the driver (DSEL-8). */
@@ -32,9 +34,15 @@ export type DriverConfigDraft = Omit<DriverConfig, "dialect"> & { dialect?: Dial
  * The driver config with only the parameter style the call's values allow. `syntax` is replaced, not intersected:
  * a driver whose syntax is only parameter styles (SQLite) would otherwise reduce the whole config to `never`.
  */
-export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = {
+export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues, ForQuery extends boolean = true> = {
 	dialect: Config["dialect"]
 	scalarTypes: Config["scalarTypes"]
+	/**
+	 * Kept only for `query` / `stream` (`ForQuery`): a driver that runs only the first statement of a text
+	 * (node:sqlite) makes a second statement a compile error there (STMT-Q5, #156, via {@link ParserSyntaxOf});
+	 * migrations (`apply`) are not run by the driver and pass `false`.
+	 */
+	singleStatement: ForQuery extends true ? Config["singleStatement"] : undefined
 	syntax: ApplyAllowedQueryParams<
 		Config["syntax"],
 		ParamsValues extends null | undefined
@@ -46,6 +54,8 @@ export type ParamsDriverConfig<Config extends DriverConfig, ParamsValues> = {
 }
 
 export type SqlDriver<_Config extends DriverConfigDraft> = {
+	/** The schema a chain starts with when `sqlMigrations` gets no `defaultSchema` (SQLT-25: SQLite `main`; absent: `public`). */
+	readonly defaultSchema?: string
 	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
 	stream?(sql: string, params?: SqlDriverParams): Promise<AsyncIterable<unknown>>
 }
@@ -93,6 +103,7 @@ export type RequireDriverDialect<D> =
  * (`"postgres"` or `"sqlite"`, DSEL-8), its lexer `syntax` features and its `scalarTypes` map.
  */
 export function createDriver<Config extends DriverConfigDraft>(methods: {
+	readonly defaultSchema?: string
 	query(sql: string, params?: SqlDriverParams): Promise<Array<unknown>>
 	stream?(sql: string, params?: SqlDriverParams): Promise<AsyncIterable<unknown>>
 }) {

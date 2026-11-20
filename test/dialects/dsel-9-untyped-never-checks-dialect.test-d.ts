@@ -11,7 +11,8 @@ const _liteStream = await lite.streamUntyped(`select $$x$$`)
 const _pgRows = await pg.queryUntyped(`insert or replace into users (id) values (1)`)
 const _pgStream = await pg.streamUntyped("select `name` from users")
 
-expectType<typeof _liteRows>(toBe<Array<unknown>>())
-expectType<typeof _liteStream>(toBe<AsyncIterable<unknown>>())
-expectType<typeof _pgRows>(toBe<Array<unknown>>())
-expectType<typeof _pgStream>(toBe<AsyncIterable<unknown>>())
+// The untyped methods return `any` rows (src/core/sql-database.ts), and expectType tells any from unknown.
+expectType<typeof _liteRows>(toBe<Array<any>>())
+expectType<typeof _liteStream>(toBe<AsyncIterable<any>>())
+expectType<typeof _pgRows>(toBe<Array<any>>())
+expectType<typeof _pgStream>(toBe<AsyncIterable<any>>())

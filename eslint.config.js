@@ -3,38 +3,15 @@ import tsparser from "@typescript-eslint/parser"
 
 export default [
 	{
-		files: ["src/**/*.ts"],
+		files: ["src/**/*.ts", "test/**/*.ts"],
 		languageOptions: {
 			parser: tsparser,
+			// No `project`: the only rule below is syntactic (scope analysis), it needs no type information, and
+			// type-aware parsing would build the whole TypeScript program (very slow on the type-level code).
+			// Add `project` back when a rule that needs types is enabled.
 			parserOptions: {
 				ecmaVersion: 2022,
 				sourceType: "module",
-				project: "./tsconfig.json",
-			},
-		},
-		plugins: {
-			"@typescript-eslint": tseslint,
-		},
-		rules: {
-			"@typescript-eslint/no-unused-vars": [
-				"error",
-				{
-					argsIgnorePattern: "^_",
-					varsIgnorePattern: "^_",
-					caughtErrorsIgnorePattern: "^_",
-				},
-			],
-		},
-	},
-	{
-		files: ["test/**/*.ts"],
-		ignores: ["test/**/*.test-d.skip.ts"],
-		languageOptions: {
-			parser: tsparser,
-			parserOptions: {
-				ecmaVersion: 2022,
-				sourceType: "module",
-				project: ["./tsconfig.test.json", "./tsconfig.test-stress.json"],
 			},
 		},
 		plugins: {

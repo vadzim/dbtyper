@@ -5,7 +5,7 @@
  * in the error message, not just "false is not assignable to true".
  * This makes failures immediately readable by both humans and LLMs.
  *
- * The pattern works by forcing TypeScript to unify two `Invariant<X>` shapes —
+ * The pattern works by forcing TypeScript to unify two `<U>() => U extends X ? 1 : 2` shapes —
  * a mismatch surfaces X itself in the error, not a boolean sentinel.
  *
  * Invalid (any/never-containing) types are rejected before unification,
@@ -18,8 +18,10 @@
 
 // TODO: extract to a package
 
-declare const typeref: unique symbol
-type Invariant<T> = { [typeref]: (x: T) => T }
+// Identity check (the same trick as the usual `Equal<A, B>`): unlike `(x: T) => T` it tells `any` from every other
+// type at any depth, so `any[]`, `Promise<any>` or `{ a: any }` do not pass for a concrete type. The function type is
+// written inline on purpose: wrapped into a generic alias, TypeScript compares two instances by the
+// variance of the alias parameter and an `any` argument is then related to everything.
 
 declare const invalidref: unique symbol
 
@@ -29,9 +31,11 @@ type InvalidExpectType<T> = { [invalidExpectType]: "Invalid expect type: it cont
 declare const invalidToBeType: unique symbol
 type InvalidToBeType<T> = { [invalidToBeType]: "Invalid to-be type: it contains never or any"; [invalidref]: T }
 
-export function expectType<X>(_x: HasNeverOrAnyDeep<X> extends true ? InvalidExpectType<X> : Invariant<X>) {}
+export function expectType<X>(
+	_x: HasNeverOrAnyDeep<X> extends true ? InvalidExpectType<X> : <U>() => U extends X ? 1 : 2,
+) {}
 
-export function toBe<X>(): HasNeverOrAnyDeep<X> extends true ? InvalidToBeType<X> : Invariant<X> {
+export function toBe<X>(): HasNeverOrAnyDeep<X> extends true ? InvalidToBeType<X> : <U>() => U extends X ? 1 : 2 {
 	return undefined as never
 }
 

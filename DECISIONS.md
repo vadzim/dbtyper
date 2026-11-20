@@ -2,6 +2,18 @@
 
 Technical choices made while implementing the spec. Newest first. Each entry names its issue and spec IDs.
 
+## 2026-11-20 Review #175 batch 6: run time (track A; #156, #169, #170; RUN-3, RUN-4, RUN-12, RUN-20, SQLT-4, SQLT-7, PARAM-14)
+
+- **#169, SQLT-7 (spec A).** A SQLite NUMERIC-affinity column, and every expression typed by its affinity, reads as `number | string`, plus `bigint` in big-integer mode; a NUMERIC parameter takes `number | bigint | string`. Writes accept text and numbers: `AffinityTakesAnyValue` (src/core/dialect-types.ts, read by the INSERT/UPDATE value check and the column DEFAULT check) gives no 2507/2508/2510 for any value into a `numeric` column of an `affinity` dialect. DATE, JSON, BOOLEAN keep their own types (a number into DATE is still 2510). Test from Signal's schema (`x STRING DEFAULT ''`, `INSERT … SELECT` of a STRING column) in test/sqlite/sqlt-4-7-….
+- **#170.** The drivers leave out values the SQL does not read: SQLite counts positional slots (`?`, `?NNN`, named ones as SQLite numbers them) and the names of `:a`, `@a`, `$a` in one scan (cached per text); PostgreSQL cuts an array at the highest `$n`. `:name` maps already sent only the used keys.
+- **#156 (STMT-22).** A driver config may carry `singleStatement: true` (both SQLite drivers: node:sqlite drops the rest silently, better-sqlite3 throws); `ParamsDriverConfig<Config, Values, ForQuery>` keeps it for `query` / `stream` and drops it for `apply`, `ParserSyntaxOf` turns it into the flag `single-statement`, and the statement loop reports the new error 1932 MULTIPLE_STATEMENTS_IN_QUERY when a second statement follows. The flag is a parameter of the statement loop (`Single`), because the monad may only be read with `PeekToken`. An intersection type for the query config cost +1.5M instantiations; the third parameter of `ParamsDriverConfig` costs nothing.
+- **RUN-12.** `stream` of a statement without rows rejects with the 3501 text on every driver: node:sqlite looks at `columns()`, PostgreSQL describes the statement first (`.describe()`, one extra round trip, `columns` is empty for NoData).
+- **RUN-3.** A driver names the schema its engine starts with (`defaultSchema`: SQLite `main`, PostgreSQL `public`); `sqlMigrations` reads it when no `defaultSchema` is given, so the run-time value matches the type level.
+- **RUN-4.** `TEST_MIGRATIONS` is now `DBTYPER_TEST_MIGRATIONS`, no old alias.
+- **RUN-20.** `SqliteSqlDriver<Bigint>` and `PostgresSqlDriver<Bigint>` are the `SqlDriver<…>` aliases next to the config types `SqliteDriver` / `PostgresDriver`.
+- **Run-time scanner.** `E'…'` strings take a backslash escape (PostgreSQL rows); `:x` after a word, `]`, `)` or `[` is a slice bound, not a parameter; `name in params` became `Object.hasOwn`. test/runtime/sql-text-scanner.test.ts and test/framework/lexer-scanner-cases.test-d.ts read one case table (test/test-utils/scanner-cases.ts). Found: the lexer nests block comments in SQLite, SQLite does not (not fixed here, lexer is batch 1).
+- **`.apply()` cost.** The chain type is no longer flattened at every step, only in `database()`: `typecheck:test` 12,235,282 -> 11,932,352 instantiations (-2.5%, with the new tests).
+
 ## 2026-11-19 Review #146 leftovers of batches 2 and 3 (track A; DLCT-4, FCAT-2, MOD-1)
 
 - **One SET parser.** `src/parser/parse-set-assignments.ts` parses `col = expr, …` for UPDATE SET and ON CONFLICT DO UPDATE SET (`ParseSetAssignments`, kind `"update"` / `"upsert"`: clause name, error codes and end tokens are one `SetKinds` row) and resolves the values (`ResolveSetAssignments`). UPDATE resolves after FROM, DO UPDATE SET at the end of its list. Behaviour changes: DO UPDATE SET accepts a non-reserved keyword as column name (as UPDATE SET did; test `insert-do-update-set-keyword-column-name`), and a syntax error later in a DO UPDATE SET list now wins over a value error earlier in it (values are resolved after the list, as in UPDATE).
@@ -27,7 +39,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 ## 2026-11-19 Runtime robustness: stream binding, migration caller detection, nest test in CI (#137, track A; RUN-4, RUN-12, RUN-17)
 
 - **`stream`** is called as `db.stream(...)` on the driver object (like `query`), so a class-based driver keeps `this`.
-- **RUN-4.** `migrationCallerFile(stack)` (src/core/sql-migrations.ts) returns the first stack frame outside dbtyper's own `src/`/`dist/` folder and `node:` internals; frames with or without parentheses, `file://` URLs or paths, any extension. `migration()` under `TEST_MIGRATIONS` accepts `.js`, `.mjs`, `.cjs` and throws for anything else (`.ts` under tsx). Not solved: with `--enable-source-maps` a compiled `.js` may be reported as its `.ts` source.
+- **RUN-4.** `migrationCallerFile(stack)` (src/core/sql-migrations.ts) returns the first stack frame outside dbtyper's own `src/`/`dist/` folder and `node:` internals; frames with or without parentheses, `file://` URLs or paths, any extension. `migration()` under `DBTYPER_TEST_MIGRATIONS` accepts `.js`, `.mjs`, `.cjs` and throws for anything else (`.ts` under tsx). Not solved: with `--enable-source-maps` a compiled `.js` may be reported as its `.ts` source.
 - **RUN-17** test is wired into `test:ci` as `node --import tsx --test packages/dbtyper-nest/test/*.test.ts`.
 
 ## 2026-11-19 Type-name table for casts, column types, value checks (#128, #135, track A; DLCT-5)
