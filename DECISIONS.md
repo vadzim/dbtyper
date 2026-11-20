@@ -13,7 +13,7 @@ Technical choices made while implementing the spec. Newest first. Each entry nam
 - **ALTER TYPE (#171).** `RENAME VALUE 'a' TO 'b'`, `ADD VALUE IF NOT EXISTS`, `BEFORE | AFTER 'x'` (the label lands in place); 3307 ENUM_VALUE_DOES_NOT_EXIST, 4003 EXPECTED_TO_IN_RENAME_VALUE. `CREATE TYPE t AS (…)` registers a type of kind `composite` (PGT-15: no TS mapping, CORE-14 at use; the attributes are not read).
 - **SQLite.** A STRICT column needs a type (SQLT-11); a table PRIMARY KEY / UNIQUE column may have COLLATE and ASC / DESC (SQLT-18). SQLT-Q8 B: every declared type name but SERIAL is typed by affinity; the PostgreSQL-only type-name list (`PgOnlyTypeNames`, the `pg-type-*` construct rows, the CAST check) is removed; no code retired (they used 1900).
 - **DEFAULT cost.** The DEFAULT value is checked by `ParseDefaultValue`, which knows nothing of the table being built, and the column parser goes on from its small result: 100 columns with `default 0` 1.53M -> 0.43M instantiations, `default (0)` 2.30M -> 0.49M; 200 such columns (was TS2589) 0.80M (test/stress/create-table-200-default-columns).
-- **Cost:** `typecheck:test` without the new test files 12,785,928 -> 12,810,904 instantiations (+0.2%); with them 13,180,080.
+- **Cost:** `typecheck:test` without the new test files 15,625,191 -> 15,648,190 instantiations (+0.15%); with them 16,034,770.
 
 ## 2026-11-20 Review #175 batch 6: run time (track A; #156, #169, #170; RUN-3, RUN-4, RUN-12, RUN-20, SQLT-4, SQLT-7, PARAM-14)
 
