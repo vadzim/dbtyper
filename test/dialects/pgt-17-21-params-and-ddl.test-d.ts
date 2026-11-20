@@ -42,7 +42,20 @@ const d18 = base
 const _i18 = await d18.query(`insert into a (u) values ('x') returning id, at, g, h, seq`)
 expectType<typeof _i18>(toBe<{ id: string; at: Date | null; g: string; h: number; seq: number | null }[]>())
 
-// PGT-19
+// PGT-19: the statements of the Check line, one after the other, nothing else
+const d19a = base
+	.apply(`create table t (id integer, a text not null default 'q', b integer);`)
+	.apply(`alter table t add primary key (id);`)
+	.apply(`alter table if exists t rename to t2;`)
+	.apply(`alter table t2 rename to t;`)
+	.apply(`alter table t alter column b type bigint using b::bigint;`)
+	.apply(`alter table t add column c timestamptz not null default now(), add column d text;`)
+	.apply(`alter table t add column f text not null;`)
+	.database()
+const _s19a = await d19a.query(`select id, b, c, d, f from t`)
+expectType<typeof _s19a>(toBe<{ id: number; b: string | null; c: Date; d: string | null; f: string }[]>())
+
+// PGT-19: the same with more forms in between
 const d19 = base
 	.apply(`create table t (id integer, a text not null default 'q', b integer);`)
 	.apply(`alter table t add primary key (id);`)
@@ -98,6 +111,33 @@ expectType<typeof _mv>(toBe<{ n: string | null }[]>())
 expectType<GetQueryError<typeof d20, `select id from mv2`>>(toBe<DbtyperError<2200, "Unknown table mv2 in FROM">>())
 // @ts-expect-error dropped
 await d20.query(`select id from mv2`)
+
+// PGT-21: the whole Check line: skipped statements around `create table t`, begin ... commit enclosing it
+const d21a = base
+	.apply(
+		`begin;
+		create table t (id integer not null);
+		create index t_idx on t (id);
+		create unique index on t (id);
+		drop index t_idx;
+		create extension if not exists "uuid-ossp";
+		create function f() returns trigger as $$ begin return new; end; $$ language plpgsql;
+		create procedure p() language sql as $$ select 1; $$;
+		create trigger tr before insert on t for each row execute function f();
+		create policy pol on t using (true);
+		create sequence s;
+		alter sequence s restart;
+		grant select on t to public;
+		revoke all on t from public;
+		comment on table t is 'x';
+		do $$ begin perform 1; end $$;
+		alter table t enable row level security;
+		set search_path = public;
+		commit;`,
+	)
+	.database()
+const _t21a = await d21a.query(`select id from t`)
+expectType<typeof _t21a>(toBe<{ id: number }[]>())
 
 // PGT-21: skipped statements
 const d21 = base
