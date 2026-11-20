@@ -1,5 +1,5 @@
 import type { JsqlSelectStatementResult } from "../core/jsql-shapes.ts"
-import type { Dec, ParseNumber } from "../core/type-utils.ts"
+import type { Dec, MaxPositionalParams, OverParamLimit, ParseNumber } from "../core/type-utils.ts"
 import type { DbtyperErrorShape, Errors, FormatError } from "../dbtyper-error.ts"
 import type { ParserMonad, PeekToken, SkipToken } from "../lexer/parser-monad.ts"
 import type {
@@ -162,17 +162,28 @@ type ParseCollateTail<Tokens extends ParserMonad, Acc extends ScalarExprAst, Env
 			: never
 		: [Tokens, Acc, Env]
 
-/** How many parentheses may nest before the parser gives up with a dbtyper error instead of TS2589 (#174). */
-type ParenNestingLimit = 6
+/**
+ * How many parentheses, function calls and CASE expressions may nest in each other before the parser gives up with
+ * a dbtyper error instead of TS2589 (#174, #180; spec: at least 8). Every level is a few levels of TypeScript's
+ * instantiation depth (the expression parser, then the resolver); measured (TS 7.0.2, 2026-11-20): 10 levels of
+ * `c1 + (…)` fit in a scalar subquery, the deepest common context, and 12 in a plain select list.
+ * Redundant parentheses `((x))` are read in one step and do not count.
+ */
+type NestingLimit = 8
 
+/** EXPRESSION_NESTED_TOO_DEEP with the limit. */
+type NestedTooDeepError = FormatError<Errors["EXPRESSION_NESTED_TOO_DEEP"], [`${NestingLimit}`]>
+
+/** `Env` one nesting level deeper (see {@link NestingLimit}). */
 type NestedEnv<Env extends ExprParseEnv> = Env extends { noPostfixNot: true }
 	? { db: Env["db"]; params: Env["params"]; outerScope: Env["outerScope"]; noPostfixNot: true; depth: NextDepth<Env> }
 	: { db: Env["db"]; params: Env["params"]; outerScope: Env["outerScope"]; depth: NextDepth<Env> }
 
 type NextDepth<Env extends ExprParseEnv> = Env extends { depth: infer D extends readonly unknown[] } ? [...D, 0] : [0]
 
+/** `true` when `Env` is {@link NestingLimit} levels deep. */
 type EnvDepthIsAtLimit<Env extends ExprParseEnv> = Env extends { depth: infer D extends readonly unknown[] }
-	? D["length"] extends ParenNestingLimit
+	? D["length"] extends NestingLimit
 		? true
 		: false
 	: false
@@ -180,11 +191,7 @@ type EnvDepthIsAtLimit<Env extends ExprParseEnv> = Env extends { depth: infer D 
 /** `(` was skipped (`Ri` follows it, not `SELECT`/`WITH`): the expression, then `)`. */
 type ParseParenExprPlain<Ri extends ParserMonad, Env extends ExprParseEnv> =
 	EnvDepthIsAtLimit<Env> extends true
-		? SkipFailedExpressionWithEnv<
-				Ri,
-				FormatError<Errors["EXPRESSION_NESTED_TOO_DEEP"], [`${ParenNestingLimit}`]>,
-				Env
-			>
+		? SkipFailedExpressionWithEnv<Ri, NestedTooDeepError, Env>
 		: ParseOrScalarUntyped<Ri, NestedEnv<Env>> extends [infer Rj extends ParserMonad, infer Ej, infer _EnvJ]
 			? Ej extends DbtyperErrorShape
 				? SkipFailedExpressionWithEnv<Rj, Ej, Env>
@@ -199,7 +206,7 @@ type ParseParenExprPlain<Ri extends ParserMonad, Env extends ExprParseEnv> =
 
 /** After a parenthesised group inside redundant parentheses: its postfixes (`::`, `[]`, COLLATE), then the rest of the expression. */
 type ContinueAfterGroup<Tokens extends ParserMonad, Group extends ScalarExprAst, Env extends ExprParseEnv> =
-	ParsePgCastSuffixTail<Tokens, Group> extends [infer R1 extends ParserMonad, infer G1]
+	ParsePgCastSuffixTail<Tokens, Group, Env["db"]> extends [infer R1 extends ParserMonad, infer G1]
 		? G1 extends ScalarExprAst
 			? ParsePostfixArrayIndexTail<R1, G1, Env> extends [
 					infer R2 extends ParserMonad,
@@ -324,7 +331,15 @@ export type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends Expr
 	PeekToken<Tokens> extends TokenKey<"cast">
 		? ParseCastKeywordOperand<Tokens, Env>
 		: PeekToken<Tokens> extends TokenKey<"case">
-			? ParseCaseAfterCaseKw<SkipToken<Tokens>, Env>
+			? EnvDepthIsAtLimit<Env> extends true
+				? SkipFailedExpressionWithEnv<SkipToken<Tokens>, NestedTooDeepError, Env>
+				: ParseCaseAfterCaseKw<SkipToken<Tokens>, NestedEnv<Env>> extends [
+							infer Rcase extends ParserMonad,
+							infer Case,
+							infer _EnvCase extends ExprParseEnv,
+					  ]
+					? [Rcase, Case, Env]
+					: never
 			: PeekToken<Tokens> extends TokenKey<"array">
 				? SkipToken<Tokens> extends infer RarrKw extends ParserMonad
 					? ParseArrayCtorAfterArrayKw<RarrKw, Env> extends [
@@ -364,14 +379,24 @@ export type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends Expr
 											: PeekToken<Tokens> extends TokenParam<infer P>
 												? [SkipToken<Tokens>, { kind: "param"; name: P }, Env]
 												: PeekToken<Tokens> extends TokenIndexedParam<infer Index>
-													? [
-															SkipToken<Tokens>,
-															{
-																kind: "positional-param"
-																index: Dec<ParseNumber<Index>>
-															},
-															Env,
-														]
+													? OverParamLimit<ParseNumber<Index>> extends true
+														? // #167, #180: `$200`, `?250` are past the most positional parameters a statement may have
+															SkipFailedExpressionWithEnv<
+																Tokens,
+																FormatError<
+																	Errors["TOO_MANY_PARAMETERS"],
+																	[MaxPositionalParams]
+																>,
+																Env
+															>
+														: [
+																SkipToken<Tokens>,
+																{
+																	kind: "positional-param"
+																	index: Dec<ParseNumber<Index>>
+																},
+																Env,
+															]
 													: AsIdent<PeekToken<Tokens>> extends TokenIdent<string>
 														? TryColumnOperandScalarUntyped<Tokens, Env>
 														: PeekToken<Tokens> extends TokenType<infer _Kind, infer Value>
@@ -381,6 +406,65 @@ export type TryOperandScalarUntyped<Tokens extends ParserMonad, Env extends Expr
 																	Env
 																>
 															: never
+/**
+ * A function call after its name (`Rm` is at `(`): the arguments one nesting level deeper ({@link NestingLimit}),
+ * FILTER / OVER, then `::` and COLLATE. With `ArithTail` the arithmetic after it too (the leftmost operand of an
+ * expression); as the right operand of an operator (`x + f(y)`, `TryColumnOperandScalarUntyped`) it stops there, and
+ * that operator's loop goes on (#180: a call was error 1007 there).
+ */
+export type ParseCallAfterName<
+	Rm extends ParserMonad,
+	Parts extends ScalarIdentParts,
+	Env extends ExprParseEnv,
+	ArithTail extends boolean,
+> =
+	EnvDepthIsAtLimit<Env> extends true
+		? SkipFailedExpressionWithEnv<SkipToken<Rm>, NestedTooDeepError, Env>
+		: ParseCallArgs<SkipToken<Rm>, Parts, NestedEnv<Env>> extends [
+					infer After extends ParserMonad,
+					infer Args,
+					infer _EnvArgs extends ExprParseEnv,
+			  ]
+			? Args extends DbtyperErrorShape
+				? SkipFailedExpressionWithEnv<After, Args, Env>
+				: Args extends readonly (ScalarExprAst | { kind: "star" })[]
+					? Parts extends readonly [infer FnName extends string]
+						? ParseOptionalOverClause<After, FnName, Args, Env> extends [
+								infer Rcall extends ParserMonad,
+								infer Call,
+								infer EnvCall extends ExprParseEnv,
+							]
+							? Call extends ScalarExprAst
+								? PeekToken<Rcall> extends TokenKey<"::"> | TokenIdent<"collate">
+									? ParsePgCastSuffixTail<Rcall, Call, Env["db"]> extends [
+											infer Rcs extends ParserMonad,
+											infer Casted extends ScalarExprAst,
+										]
+										? ParseCollateTail<Rcs, Casted, EnvCall> extends [
+												infer Rcc extends ParserMonad,
+												infer CallC,
+												infer EnvCc extends ExprParseEnv,
+											]
+											? CallC extends ScalarExprAst
+												? [ArithTail, PeekToken<Rcc>] extends [true, ArithOpToken]
+													? ParseArithTailAfterFirstScalarUntyped<Rcc, CallC, EnvCc>
+													: [Rcc, CallC, EnvCc]
+												: [Rcc, CallC, EnvCc]
+											: never
+										: never
+									: [ArithTail, PeekToken<Rcall>] extends [true, ArithOpToken]
+										? ParseArithTailAfterFirstScalarUntyped<Rcall, Call, EnvCall> // `now() - interval '1 day'`, `count(*) - 1`
+										: [Rcall, Call, EnvCall]
+								: [Rcall, Call, EnvCall]
+							: never
+						: SkipFailedExpressionWithEnv<
+								After,
+								FormatError<Errors["QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED"], []>,
+								Env
+							>
+					: never
+			: never
+
 export type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env extends ExprParseEnv> =
 	MaximalIdentChain<Tokens> extends [infer Rm extends ParserMonad, infer Parts, infer W extends string]
 		? Parts extends readonly ["__ats__", infer Al extends string]
@@ -412,67 +496,33 @@ export type ParseScalarExprUntypedFromIdent<Tokens extends ParserMonad, Env exte
 					: [Rm, { kind: "qualified_table_star"; schema: Sch; table: Tab }, Env]
 				: Parts extends ScalarIdentParts
 					? PeekToken<Rm> extends TokenKey<"(">
-						? ParseCallArgs<SkipToken<Rm>, Parts, Env> extends [
-								infer After extends ParserMonad,
-								infer Args,
-								infer EnvAfter extends ExprParseEnv,
-							]
-							? Args extends DbtyperErrorShape
-								? SkipFailedExpressionWithEnv<After, Args, EnvAfter>
-								: Args extends readonly (ScalarExprAst | { kind: "star" })[]
-									? Parts extends readonly [infer FnName extends string]
-										? ParseOptionalOverClause<After, FnName, Args, EnvAfter> extends [
-												infer Rcall extends ParserMonad,
-												infer Call,
-												infer EnvCall extends ExprParseEnv,
-											]
-											? Call extends ScalarExprAst
-												? PeekToken<Rcall> extends TokenKey<"::"> | TokenIdent<"collate">
-													? ParsePgCastSuffixTail<Rcall, Call> extends [
-															infer Rcs extends ParserMonad,
-															infer Casted extends ScalarExprAst,
-														]
-														? ParseCollateTail<Rcs, Casted, EnvCall> extends [
-																infer Rcc extends ParserMonad,
-																infer CallC,
-																infer EnvCc extends ExprParseEnv,
-															]
-															? CallC extends ScalarExprAst
-																? PeekToken<Rcc> extends ArithOpToken
-																	? ParseArithTailAfterFirstScalarUntyped<
-																			Rcc,
-																			CallC,
-																			EnvCc
-																		>
-																	: [Rcc, CallC, EnvCc]
-																: [Rcc, CallC, EnvCc]
-															: never
-														: never
-													: PeekToken<Rcall> extends ArithOpToken
-														? ParseArithTailAfterFirstScalarUntyped<Rcall, Call, EnvCall> // `now() - interval '1 day'`, `count(*) - 1`
-														: [Rcall, Call, EnvCall]
-												: [Rcall, Call, EnvCall]
-											: never
-										: SkipFailedExpressionWithEnv<
-												After,
-												FormatError<Errors["QUALIFIED_FUNCTION_NAMES_ARE_NOT_SUPPORTED"], []>,
-												EnvAfter
-											>
-									: never
-							: never
+						? ParseCallAfterName<Rm, Parts, Env, true>
 						: PeekToken<Rm> extends infer Pa
 							? Pa extends TokenString<infer Lit extends string>
 								? Parts extends readonly [infer TypeName extends TypedLiteralName]
 									? TypedLiteralTail<SkipToken<Rm>, TypeName, Lit, Env>
 									: [Rm, { kind: "col"; parts: Parts; written: W }, Env]
 								: Pa extends TokenKey<"::">
-									? ParsePgCastSuffixTail<Rm, { kind: "col"; parts: Parts; written: W }> extends [
-											infer Rcast extends ParserMonad,
-											infer Casted extends ScalarExprAst,
-										]
+									? ParsePgCastSuffixTail<
+											Rm,
+											{ kind: "col"; parts: Parts; written: W },
+											Env["db"]
+										> extends [infer Rcast extends ParserMonad, infer Casted extends ScalarExprAst]
 										? PeekToken<Rcast> extends ArithOpToken
 											? ParseArithTailAfterFirstScalarUntyped<Rcast, Casted, Env>
-											: [Rcast, Casted, Env]
+											: PeekToken<Rcast> extends TokenIdent<"collate"> // `s::text collate "C"`
+												? ParseCollateTail<Rcast, Casted, Env> extends [
+														infer Rcc extends ParserMonad,
+														infer CastC,
+														infer EnvCc extends ExprParseEnv,
+													]
+													? CastC extends ScalarExprAst
+														? PeekToken<Rcc> extends ArithOpToken
+															? ParseArithTailAfterFirstScalarUntyped<Rcc, CastC, EnvCc>
+															: [Rcc, CastC, EnvCc]
+														: [Rcc, CastC, EnvCc]
+													: never
+												: [Rcast, Casted, Env]
 										: never
 									: Pa extends ArithOpToken
 										? ParseArithTailAfterFirstScalarUntyped<

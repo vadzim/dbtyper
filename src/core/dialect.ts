@@ -31,6 +31,7 @@ import type { DialectConstruct, DialectOnlyConstructs } from "./dialect-construc
 import type { PostgresFunctions, PostgresSqliteOnlyFunctions } from "../parser/postgres-functions.ts"
 import type { SqliteFunctions, SqliteOperators, SqlitePgOnlyFunctions } from "../parser/sqlite-functions.ts"
 import type { PostgresSkippedForms, SqliteSkippedForms } from "../parser/statement-keywords.ts"
+import type { PostgresTypeNameWords } from "./dialect-types.ts"
 
 /** Words that start a skipped statement of both dialects (STMT-18; second words of CREATE/ALTER/DROP: `skippedForms`). */
 type CommonSkippedStatementKeywords = readonly [
@@ -107,8 +108,14 @@ export type DialectName = keyof Dialects
  * `initialSchemas`: the schemas a new chain starts with: "public" = PostgreSQL's `public` (SCHEMA-27; a `defaultSchema`
  * other than `public` must still be created, SCHEMA-3), "main" = SQLite's `main` (the default) and `temp` (no CREATE SCHEMA,
  * SQLT-25).
- * Type facts (SQLT-6…SQLT-17, #67): `declaredTypes` "named" = a declared type name is the type (PostgreSQL), "affinity" =
- * the name only decides an affinity (SQLite, {@link SqliteTypeKey}); `pkImpliesNotNull`: PRIMARY KEY makes a column
+ * Type facts (SQLT-6…SQLT-17, #67, #180): `declaredTypes` "named" = a declared type name is the type (PostgreSQL), "affinity" =
+ * the name only decides an affinity (SQLite, `SqliteTypeKey`): the one rule fact, read only by the type-name rows of
+ * dialect-types.ts; `typeNameWords`: which words a type name of several words may go on with (a table of the name so
+ * far → the next words, {@link PostgresTypeNameWords}; "any" = every identifier joins, SQLT-6); `userTypes`: CREATE TYPE /
+ * DOMAIN names are types and a type name may be schema-qualified (PGT-13, PGT-22); `valueMismatch`: the error for an
+ * INSERT / UPDATE value that does not fit its column ("incompatible" = the value type is incompatible, "storage-class" =
+ * the column's storage class is named, SQLT-43); `anyValueColumnTypes`: column types that take a value of any class
+ * (SQLT-7: NUMERIC affinity); `pkImpliesNotNull`: PRIMARY KEY makes a column
  * NOT NULL (CORE-1; SQLite: only for INTEGER PRIMARY KEY, STRICT and WITHOUT ROWID tables, SQLT-14);
  * `rowidTables`: tables have the `rowid` pseudo-columns (SQLT-15); `typelessColumns`: a column may have no type (SQLT-10).
  * DDL facts, one per rule (SQLT-18…SQLT-26, #70; DLCT-4): `tempObjects`: the `temp` schema is searched first for an unqualified
@@ -161,6 +168,10 @@ export type Dialects = {
 		onlyError: Errors["POSTGRES_ONLY_SYNTAX"]
 		initialSchemas: "public"
 		declaredTypes: "named"
+		typeNameWords: PostgresTypeNameWords
+		userTypes: true
+		valueMismatch: "incompatible"
+		anyValueColumnTypes: never
 		pkImpliesNotNull: true
 		rowidTables: false
 		typelessColumns: false
@@ -226,6 +237,10 @@ export type Dialects = {
 		onlyError: Errors["SQLITE_ONLY_SYNTAX"]
 		initialSchemas: "main"
 		declaredTypes: "affinity"
+		typeNameWords: "any"
+		userTypes: false
+		valueMismatch: "storage-class"
+		anyValueColumnTypes: "numeric"
 		pkImpliesNotNull: false
 		rowidTables: true
 		typelessColumns: true

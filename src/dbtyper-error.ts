@@ -1742,7 +1742,10 @@ const errors = {
 	},
 	EXPRESSION_NESTED_TOO_DEEP: {
 		code: 5020,
-		msg: ["Parentheses are nested more than ", " levels deep; simplify the expression or split the query"],
+		msg: [
+			"Parentheses, function calls and CASE are nested more than ",
+			" levels deep; simplify the expression or split the query",
+		],
 	},
 	EXPRESSION_CHAIN_TOO_LONG: {
 		code: 5021,
